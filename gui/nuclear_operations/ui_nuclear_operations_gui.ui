@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>NuclearOperationsGUI</class>
  <widget class="QMainWindow" name="NuclearOperationsGUI">
@@ -13,7 +12,7 @@
   <property name="windowTitle">
    <string>qudi: Nuclear Operations</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget" />
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -24,7 +23,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QDockWidget" name="dockWidget_2">
    <property name="windowTitle">
     <string>Nuclear Operations Parameter</string>
@@ -34,27 +33,27 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0" rowspan="2">
+     <item column="0" row="0" rowspan="2">
       <widget class="QGroupBox" name="groupBox_3">
        <property name="title">
         <string>Pulser Parameter</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="2">
+        <item column="2" row="0">
          <widget class="QLabel" name="label_31">
           <property name="text">
            <string>Laser length (ns)</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item column="0" row="2">
          <widget class="QLabel" name="label_18">
           <property name="text">
            <string>MW Amp (V)</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
+        <item column="1" row="2">
          <widget class="QDoubleSpinBox" name="pulser_mw_amp_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -64,35 +63,35 @@
           </property>
          </widget>
         </item>
-        <item row="14" column="0">
+        <item column="0" row="14">
          <widget class="QLabel" name="label_15">
           <property name="text">
            <string>RF Channel</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="0">
+        <item column="0" row="10">
          <widget class="QLabel" name="label_14">
           <property name="text">
            <string>RF Amp 0 (V)</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="0">
+        <item column="0" row="6">
          <widget class="QLabel" name="nuclear_rabi_period0_Label">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Nuclear Rabi &lt;br/&gt;period 0 (µs)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Nuclear Rabi &lt;br/&gt;period 0 (&#181;s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="1">
+        <item column="1" row="10">
          <widget class="QDoubleSpinBox" name="pulser_rf_amp0_DSpinBox">
           <property name="singleStep">
            <double>0.100000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
+        <item column="1" row="6">
          <widget class="QDoubleSpinBox" name="nuclear_rabi_period0_DSpinBox">
           <property name="decimals">
            <number>4</number>
@@ -102,28 +101,28 @@
           </property>
          </widget>
         </item>
-        <item row="8" column="0">
+        <item column="0" row="8">
          <widget class="QLabel" name="pulser_rf_freq0_Label">
           <property name="text">
            <string>RF Freq. 0 (MHz)</string>
           </property>
          </widget>
         </item>
-        <item row="8" column="1">
+        <item column="1" row="8">
          <widget class="QDoubleSpinBox" name="pulser_rf_freq0_DSpinBox">
           <property name="maximum">
            <double>1000000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="5" column="3">
+        <item column="3" row="5">
          <widget class="QSpinBox" name="num_singleshot_readout_SpinBox">
           <property name="maximum">
            <number>100000</number>
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
+        <item column="1" row="5">
          <widget class="QSpinBox" name="pulser_mw_ch_SpinBox">
           <property name="minimum">
            <number>-20</number>
@@ -133,7 +132,7 @@
           </property>
          </widget>
         </item>
-        <item row="14" column="1">
+        <item column="1" row="14">
          <widget class="QSpinBox" name="pulser_rf_ch_SpinBox">
           <property name="minimum">
            <number>-20</number>
@@ -143,14 +142,14 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
+        <item column="0" row="5">
          <widget class="QLabel" name="label_17">
           <property name="text">
            <string>MW Channel</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
+        <item column="1" row="0">
          <widget class="QDoubleSpinBox" name="electron_rabi_periode_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -160,38 +159,38 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QLabel" name="label_29">
           <property name="frameShape">
            <enum>QFrame::NoFrame</enum>
           </property>
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;e&lt;span style=&quot; vertical-align:super;&quot;&gt;-&lt;/span&gt; Rabi Periode (ns)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;e&lt;span style=" vertical-align:super;"&gt;-&lt;/span&gt; Rabi Periode (ns)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="3">
+        <item column="3" row="0">
          <widget class="QDoubleSpinBox" name="pulser_laser_length_DSpinBox">
           <property name="maximum">
            <double>100000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="6" column="2">
+        <item column="2" row="6">
          <widget class="QLabel" name="label_34">
           <property name="text">
            <string>Idle Time (ns)</string>
           </property>
          </widget>
         </item>
-        <item row="13" column="1">
+        <item column="1" row="13">
          <widget class="QDoubleSpinBox" name="pulser_rf_amp1_DSpinBox">
           <property name="singleStep">
            <double>0.100000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="12" column="1">
+        <item column="1" row="12">
          <widget class="QDoubleSpinBox" name="pulser_rf_freq1_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -201,35 +200,35 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="3">
+        <item column="3" row="6">
          <widget class="QDoubleSpinBox" name="pulser_idle_time_DSpinBox">
           <property name="maximum">
            <double>100000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="5" column="2">
+        <item column="2" row="5">
          <widget class="QLabel" name="label_33">
           <property name="text">
            <string>Num SSR</string>
           </property>
          </widget>
         </item>
-        <item row="13" column="0">
+        <item column="0" row="13">
          <widget class="QLabel" name="pulser_rf_amp1_Label">
           <property name="text">
            <string>RF Amp 1 (V)</string>
           </property>
          </widget>
         </item>
-        <item row="8" column="2">
+        <item column="2" row="8">
          <widget class="QLabel" name="label_19">
           <property name="text">
            <string>Detect Channel</string>
           </property>
          </widget>
         </item>
-        <item row="11" column="1">
+        <item column="1" row="11">
          <widget class="QDoubleSpinBox" name="nuclear_rabi_period1_DSpinBox">
           <property name="decimals">
            <number>4</number>
@@ -239,7 +238,7 @@
           </property>
          </widget>
         </item>
-        <item row="8" column="3">
+        <item column="3" row="8">
          <widget class="QSpinBox" name="pulser_detect_ch_SpinBox">
           <property name="minimum">
            <number>-20</number>
@@ -249,28 +248,28 @@
           </property>
          </widget>
         </item>
-        <item row="12" column="0">
+        <item column="0" row="12">
          <widget class="QLabel" name="pulser_rf_freq1_Label">
           <property name="text">
            <string>RF Freq. 1 (MHz)</string>
           </property>
          </widget>
         </item>
-        <item row="11" column="0">
+        <item column="0" row="11">
          <widget class="QLabel" name="nuclear_rabi_period1_Label">
           <property name="text">
-           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Nuclear Rabi &lt;br/&gt;period 1 (µs)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Nuclear Rabi &lt;br/&gt;period 1 (&#181;s)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="0">
+        <item column="0" row="1">
          <widget class="QLabel" name="label_16">
           <property name="text">
            <string>MW freq (MHz)</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
+        <item column="1" row="1">
          <widget class="QDoubleSpinBox" name="pulser_mw_freq_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -280,24 +279,24 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="2">
+        <item column="2" row="1">
          <widget class="QLabel" name="label_32">
           <property name="text">
            <string>Laser Amp (V)</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="3">
-         <widget class="QDoubleSpinBox" name="pulser_laser_amp_DSpinBox"/>
+        <item column="3" row="1">
+         <widget class="QDoubleSpinBox" name="pulser_laser_amp_DSpinBox" />
         </item>
-        <item row="2" column="2">
+        <item column="2" row="2">
          <widget class="QLabel" name="label_35">
           <property name="text">
            <string>Laser Channel</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="3">
+        <item column="3" row="2">
          <widget class="QSpinBox" name="pulser_laser_ch_SpinBox">
           <property name="minimum">
            <number>-20</number>
@@ -310,20 +309,20 @@
        </layout>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <widget class="QGroupBox" name="groupBox">
        <property name="title">
         <string>Optimize parameters (ODMR and Confocal)</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_3">
-        <item row="5" column="2">
+        <item column="2" row="5">
          <widget class="QLabel" name="label_5">
           <property name="text">
            <string>Freq Range (MHz):</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="3">
+        <item column="3" row="6">
          <widget class="QDoubleSpinBox" name="odmr_meas_step_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -333,28 +332,28 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item column="0" row="2">
          <widget class="QLabel" name="label_8">
           <property name="text">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Repeat ODMR &lt;br/&gt;scan in (s):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="2">
+        <item column="2" row="10">
          <widget class="QLabel" name="label_7">
           <property name="text">
            <string>ODMR power (dBm):</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="2">
+        <item column="2" row="6">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>Freq. Step (MHz)</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="1">
+        <item column="1" row="4">
          <widget class="QDoubleSpinBox" name="odmr_meas_freq0_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -364,7 +363,7 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="3">
+        <item column="3" row="5">
          <widget class="QDoubleSpinBox" name="odmr_meas_freq_range_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -374,21 +373,21 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="3">
+        <item column="3" row="4">
          <widget class="QDoubleSpinBox" name="odmr_meas_runtime_DSpinBox">
           <property name="maximum">
            <double>10000000.000000000000000</double>
           </property>
          </widget>
         </item>
-        <item row="4" column="2">
+        <item column="2" row="4">
          <widget class="QLabel" name="label_4">
           <property name="text">
            <string>ODMR runtime (s):</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="3">
+        <item column="3" row="10">
          <widget class="QDoubleSpinBox" name="odmr_meas_power_DSpinBox">
           <property name="minimum">
            <double>-100.000000000000000</double>
@@ -398,28 +397,28 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="0">
+        <item column="0" row="5">
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string>Freq 1 (MHz):</string>
           </property>
          </widget>
         </item>
-        <item row="4" column="0">
+        <item column="0" row="4">
          <widget class="QLabel" name="label">
           <property name="text">
            <string>Freq 0 (MHz):</string>
           </property>
          </widget>
         </item>
-        <item row="6" column="0">
+        <item column="0" row="6">
          <widget class="QLabel" name="label_3">
           <property name="text">
            <string>Freq 2 (MHz):</string>
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
+        <item column="1" row="5">
          <widget class="QDoubleSpinBox" name="odmr_meas_freq1_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -429,7 +428,7 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
+        <item column="1" row="6">
          <widget class="QDoubleSpinBox" name="odmr_meas_freq2_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -439,28 +438,28 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="0" colspan="4">
+        <item colspan="4" column="0" row="3">
          <widget class="Line" name="line">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
+        <item column="1" row="2">
          <widget class="QSpinBox" name="optimize_period_odmr_SpinBox">
           <property name="maximum">
            <number>1000000</number>
           </property>
          </widget>
         </item>
-        <item row="2" column="2">
+        <item column="2" row="2">
          <widget class="QLabel" name="label_9">
           <property name="text">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Repeat optimize&lt;br/&gt;pos in (s):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="3">
+        <item column="3" row="2">
          <widget class="QSpinBox" name="optimize_period_confocal_SpinBox">
           <property name="maximum">
            <number>1000000</number>
@@ -470,20 +469,20 @@
        </layout>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item column="1" row="1">
       <widget class="QGroupBox" name="groupBox_2">
        <property name="title">
         <string>MW parameter for measurement</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_5">
-        <item row="1" column="0">
+        <item column="0" row="1">
          <widget class="QLabel" name="label_11">
           <property name="text">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;MW power for&lt;br/&gt;measure (dBm):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
+        <item column="1" row="0">
          <widget class="QDoubleSpinBox" name="mw_cw_freq_DSpinBox">
           <property name="decimals">
            <number>3</number>
@@ -493,30 +492,30 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QLabel" name="label_10">
           <property name="toolTip">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Set the frequency of an external microwave source, which should run for that measurement at the given cw frequency.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
           <property name="statusTip">
-           <string/>
+           <string />
           </property>
           <property name="text">
            <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;MW freq for &lt;br/&gt;measure (MHz):&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item column="0" row="2">
          <widget class="QLabel" name="label_30">
           <property name="text">
            <string>MW on peak</string>
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
-         <widget class="QComboBox" name="mw_on_odmr_peak_ComboBox"/>
+        <item column="1" row="2">
+         <widget class="QComboBox" name="mw_on_odmr_peak_ComboBox" />
         </item>
-        <item row="1" column="1">
+        <item column="1" row="1">
          <widget class="QDoubleSpinBox" name="mw_cw_power_DSpinBox">
           <property name="decimals">
            <number>2</number>
@@ -532,20 +531,20 @@
        </layout>
       </widget>
      </item>
-     <item row="2" column="0">
+     <item column="0" row="2">
       <widget class="QGroupBox" name="groupBox_4">
        <property name="title">
         <string>Measuremnt parameter</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_6">
-        <item row="1" column="0">
+        <item column="0" row="1">
          <widget class="QLabel" name="x_axis_start_Label">
           <property name="text">
            <string>x start</string>
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
+        <item column="1" row="1">
          <widget class="QDoubleSpinBox" name="x_axis_start_DSpinBox">
           <property name="decimals">
            <number>5</number>
@@ -555,7 +554,7 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="1">
+        <item column="1" row="2">
          <widget class="QDoubleSpinBox" name="x_axis_step_DSpinBox">
           <property name="decimals">
            <number>5</number>
@@ -565,45 +564,45 @@
           </property>
          </widget>
         </item>
-        <item row="2" column="0">
+        <item column="0" row="2">
          <widget class="QLabel" name="x_axis_step_Label">
           <property name="text">
            <string>x step</string>
           </property>
          </widget>
         </item>
-        <item row="3" column="0">
+        <item column="0" row="3">
          <widget class="QLabel" name="label_22">
           <property name="text">
            <string>x num points</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="current_meas_asset_name_ComboBox"/>
+        <item column="1" row="0">
+         <widget class="QComboBox" name="current_meas_asset_name_ComboBox" />
         </item>
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QLabel" name="label_27">
           <property name="text">
            <string>Measurement Type</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="2">
+        <item column="2" row="0">
          <widget class="QLabel" name="label_28">
           <property name="text">
            <string>Num meas runs</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="3">
+        <item column="3" row="0">
          <widget class="QSpinBox" name="num_of_meas_runs_SpinBox">
           <property name="maximum">
            <number>100000</number>
           </property>
          </widget>
         </item>
-        <item row="3" column="1">
+        <item column="1" row="3">
          <widget class="QSpinBox" name="x_axis_num_points_SpinBox">
           <property name="maximum">
            <number>10000000</number>
@@ -613,13 +612,13 @@
        </layout>
       </widget>
      </item>
-     <item row="2" column="1">
+     <item column="1" row="2">
       <widget class="QGroupBox" name="groupBox_5">
        <property name="title">
         <string>Gated Counter parameter</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_7">
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QLabel" name="label_36">
           <property name="text">
            <string>Num of samples
@@ -627,7 +626,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="2">
+        <item column="2" row="0">
          <widget class="QLabel" name="label_37">
           <property name="text">
            <string>Samples per
@@ -635,7 +634,7 @@ readout</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
+        <item column="1" row="0">
          <widget class="QSpinBox" name="gc_number_of_samples_SpinBox">
           <property name="maximum">
            <number>1000000</number>
@@ -645,7 +644,7 @@ readout</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="3">
+        <item column="3" row="0">
          <widget class="QSpinBox" name="gc_samples_per_readout_SpinBox">
           <property name="maximum">
            <number>1000000</number>
@@ -670,28 +669,28 @@ readout</string>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="2">
+     <item column="2" row="0">
       <widget class="QLabel" name="label_24">
        <property name="text">
         <string>Curr meas index:</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="4">
+     <item column="4" row="0">
       <widget class="QLabel" name="label_25">
        <property name="text">
         <string>Elapsed time (s):</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="6">
+     <item column="6" row="0">
       <widget class="QLabel" name="label_26">
        <property name="text">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Num of current&lt;br/&gt;meas runs:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <widget class="QDoubleSpinBox" name="current_meas_point_DSpinBox">
        <property name="readOnly">
         <bool>true</bool>
@@ -707,14 +706,14 @@ readout</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
+     <item column="0" row="0">
       <widget class="QLabel" name="current_meas_point_Label">
        <property name="text">
         <string>Curr meas point</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="7">
+     <item column="7" row="0">
       <widget class="QSpinBox" name="num_of_current_meas_runs_SpinBox">
        <property name="readOnly">
         <bool>true</bool>
@@ -727,7 +726,7 @@ readout</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
+     <item column="3" row="0">
       <widget class="QSpinBox" name="current_meas_index_SpinBox">
        <property name="readOnly">
         <bool>true</bool>
@@ -740,7 +739,7 @@ readout</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="5">
+     <item column="5" row="0">
       <widget class="QDoubleSpinBox" name="elapsed_time_DSpinBox">
        <property name="readOnly">
         <bool>true</bool>
@@ -756,8 +755,8 @@ readout</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="0" colspan="8">
-      <widget class="PlotWidget" name="nulcear_ops_GraphicsView"/>
+     <item colspan="8" column="0" row="1">
+      <widget class="PlotWidget" name="nulcear_ops_GraphicsView" />
      </item>
     </layout>
    </widget>
@@ -772,8 +771,8 @@ readout</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_run_stop"/>
-   <addaction name="action_continue"/>
+   <addaction name="action_run_stop" />
+   <addaction name="action_continue" />
   </widget>
   <widget class="QToolBar" name="save_ToolBar">
    <property name="windowTitle">
@@ -785,7 +784,7 @@ readout</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_save"/>
+   <addaction name="action_save" />
   </widget>
   <action name="action_run_stop">
    <property name="checkable">
@@ -839,6 +838,6 @@ readout</string>
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

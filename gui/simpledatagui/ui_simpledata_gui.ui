@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -13,7 +12,7 @@
   <property name="windowTitle">
    <string>qudi: Simple Data recorder</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget" />
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -27,14 +26,14 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="viewAction"/>
-    <addaction name="separator"/>
-    <addaction name="separator"/>
-    <addaction name="actionClose"/>
+    <addaction name="viewAction" />
+    <addaction name="separator" />
+    <addaction name="separator" />
+    <addaction name="actionClose" />
    </widget>
-   <addaction name="menuView"/>
+   <addaction name="menuView" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QDockWidget" name="traceDockWidget">
    <property name="windowTitle">
     <string>Display</string>
@@ -44,8 +43,8 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QGridLayout" name="gridLayout">
-     <item row="2" column="1" colspan="2">
-      <widget class="PlotWidget" name="trace_PlotWidget"/>
+     <item colspan="2" column="1" row="2">
+      <widget class="PlotWidget" name="trace_PlotWidget" />
      </item>
     </layout>
    </widget>
@@ -66,8 +65,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="startAction"/>
-   <addaction name="recordAction"/>
+   <addaction name="startAction" />
+   <addaction name="recordAction" />
   </widget>
   <action name="startAction">
    <property name="checkable">
@@ -130,7 +129,7 @@
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>viewAction</sender>

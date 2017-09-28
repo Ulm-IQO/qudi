@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>ScanWindow</class>
  <widget class="QMainWindow" name="ScanWindow">
@@ -15,7 +14,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item column="0" row="0">
      <widget class="QLabel" name="autoMinLabel">
       <property name="text">
        <string>Minimum:  (nm)</string>
@@ -25,7 +24,7 @@
       </property>
      </widget>
     </item>
-    <item row="0" column="1">
+    <item column="1" row="0">
      <widget class="QLabel" name="autoMaxLabel">
       <property name="text">
        <string>Maximum: (nm)</string>
@@ -35,11 +34,11 @@
       </property>
      </widget>
     </item>
-    <item row="1" column="0" colspan="2">
-     <widget class="PlotWidget" name="plotWidget"/>
+    <item colspan="2" column="0" row="1">
+     <widget class="PlotWidget" name="plotWidget" />
     </item>
-    <item row="2" column="0" colspan="2">
-     <widget class="PlotWidget" name="scatterPlotWidget"/>
+    <item colspan="2" column="0" row="2">
+     <widget class="PlotWidget" name="scatterPlotWidget" />
     </item>
    </layout>
   </widget>
@@ -56,27 +55,27 @@
     <property name="title">
      <string>&amp;Laserscan</string>
     </property>
-    <addaction name="actionSave_histogram"/>
-    <addaction name="actionClose"/>
+    <addaction name="actionSave_histogram" />
+    <addaction name="actionClose" />
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionWavelength"/>
-    <addaction name="actionScan_parameters"/>
-    <addaction name="actionFit"/>
-    <addaction name="actionReset_to_default_view"/>
+    <addaction name="actionWavelength" />
+    <addaction name="actionScan_parameters" />
+    <addaction name="actionFit" />
+    <addaction name="actionReset_to_default_view" />
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Setti&amp;ngs</string>
     </property>
-    <addaction name="actionFit_settings"/>
+    <addaction name="actionFit_settings" />
    </widget>
-   <addaction name="menuLaserscan"/>
-   <addaction name="menuView"/>
-   <addaction name="menuSettings"/>
+   <addaction name="menuLaserscan" />
+   <addaction name="menuView" />
+   <addaction name="menuSettings" />
   </widget>
   <widget class="QToolBar" name="scanToolBar">
    <property name="enabled">
@@ -91,10 +90,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionStart_scan"/>
-   <addaction name="actionStop_resume_scan"/>
-   <addaction name="separator"/>
-   <addaction name="actionSave_histogram"/>
+   <addaction name="actionStart_scan" />
+   <addaction name="actionStop_resume_scan" />
+   <addaction name="separator" />
+   <addaction name="actionSave_histogram" />
   </widget>
   <widget class="QDockWidget" name="scanParametersDockWidget">
    <property name="windowTitle">
@@ -191,7 +190,7 @@ High bin number gives noisy but detailed data.</string>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="0" column="0">
+     <item column="0" row="0">
       <widget class="QLabel" name="wavelengthLabel">
        <property name="font">
         <font>
@@ -222,7 +221,7 @@ High bin number gives noisy but detailed data.</string>
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionAuto_range"/>
+   <addaction name="actionAuto_range" />
   </widget>
   <widget class="QDockWidget" name="fitDockWidget">
    <property name="windowTitle">
@@ -233,14 +232,14 @@ High bin number gives noisy but detailed data.</string>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_3">
-     <item row="0" column="0">
+     <item column="0" row="0">
       <widget class="QLabel" name="functionLabel">
        <property name="text">
         <string>Fit Function :</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
        <property name="minimumSize">
         <size>
@@ -250,7 +249,7 @@ High bin number gives noisy but detailed data.</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="2">
+     <item column="2" row="0">
       <widget class="QPushButton" name="do_fit_PushButton">
        <property name="minimumSize">
         <size>
@@ -263,14 +262,14 @@ High bin number gives noisy but detailed data.</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="0">
+     <item column="0" row="1">
       <widget class="QLabel" name="resultsLabel">
        <property name="text">
         <string>Fit Results   :</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="1" colspan="2">
+     <item colspan="2" column="1" row="1">
       <widget class="QTextBrowser" name="fit_results_DisplayWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -387,7 +386,7 @@ High bin number gives noisy but detailed data.</string>
    <header>gui/fitsettings</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>actionClose</sender>

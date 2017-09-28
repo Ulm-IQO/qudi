@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -44,17 +43,17 @@
      <property name="title">
       <string>&amp;Toolbars</string>
      </property>
-     <addaction name="counting_controls_view_Action"/>
+     <addaction name="counting_controls_view_Action" />
     </widget>
-    <addaction name="pid_view_Action"/>
-    <addaction name="pid_parameters_view_Action"/>
-    <addaction name="separator"/>
-    <addaction name="menuToolbars"/>
-    <addaction name="separator"/>
-    <addaction name="restore_default_view_Action"/>
-    <addaction name="actionClose"/>
+    <addaction name="pid_view_Action" />
+    <addaction name="pid_parameters_view_Action" />
+    <addaction name="separator" />
+    <addaction name="menuToolbars" />
+    <addaction name="separator" />
+    <addaction name="restore_default_view_Action" />
+    <addaction name="actionClose" />
    </widget>
-   <addaction name="menuView"/>
+   <addaction name="menuView" />
   </widget>
   <widget class="QStatusBar" name="statusbar">
    <property name="sizePolicy">
@@ -97,7 +96,7 @@
      </size>
     </property>
     <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="5">
+     <item column="5" row="0">
       <widget class="QLabel" name="control_value_Label">
        <property name="font">
         <font>
@@ -114,7 +113,7 @@
        </property>
       </widget>
      </item>
-     <item row="3" column="1" colspan="5">
+     <item colspan="5" column="1" row="3">
       <widget class="PlotWidget" name="trace_PlotWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -130,7 +129,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="4">
+     <item column="4" row="0">
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -146,7 +145,7 @@
        </property>
       </spacer>
      </item>
-     <item row="0" column="2">
+     <item column="2" row="0">
       <spacer name="horizontalSpacer">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -162,7 +161,7 @@
        </property>
       </spacer>
      </item>
-     <item row="0" column="3">
+     <item column="3" row="0">
       <widget class="QLabel" name="process_value_Label">
        <property name="font">
         <font>
@@ -179,7 +178,7 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <widget class="QLabel" name="setpoint_value_Label">
        <property name="font">
         <font>
@@ -226,28 +225,28 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_2">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item row="1" column="9">
+     <item column="9" row="1">
       <widget class="QLabel" name="labelI">
        <property name="text">
         <string>I</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="6">
+     <item column="6" row="1">
       <widget class="QLabel" name="labelP">
        <property name="text">
         <string>P</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="9">
+     <item column="9" row="0">
       <widget class="QLabel" name="labelkItext">
        <property name="text">
         <string>kI</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="15">
+     <item column="15" row="0">
       <widget class="ScienDSpinBox" name="D_DoubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -274,14 +273,14 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="1" column="2">
+     <item column="2" row="1">
       <widget class="QLabel" name="labelManual">
        <property name="text">
         <string>Manual control</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="3">
+     <item column="3" row="1">
       <widget class="ScienDSpinBox" name="manualDoubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -303,7 +302,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="1" column="4">
+     <item column="4" row="1">
       <spacer name="horizontalSpacer_4">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -316,7 +315,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="1" column="7">
+     <item column="7" row="1">
       <widget class="QLabel" name="labelkP">
        <property name="text">
         <string>0</string>
@@ -326,7 +325,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="1" column="8">
+     <item column="8" row="1">
       <spacer name="horizontalSpacer_6">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -339,7 +338,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="1" column="11">
+     <item column="11" row="1">
       <widget class="QLabel" name="labelkI">
        <property name="text">
         <string>0</string>
@@ -349,7 +348,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="1" column="12">
+     <item column="12" row="1">
       <spacer name="horizontalSpacer_8">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -362,7 +361,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="1" column="15">
+     <item column="15" row="1">
       <widget class="QLabel" name="labelkD">
        <property name="text">
         <string>0</string>
@@ -372,14 +371,14 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="2">
+     <item column="2" row="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Setpoint</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
+     <item column="3" row="0">
       <widget class="ScienDSpinBox" name="setpointDoubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -401,7 +400,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="7">
+     <item column="7" row="0">
       <widget class="ScienDSpinBox" name="P_DoubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -426,7 +425,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="8">
+     <item column="8" row="0">
       <spacer name="horizontalSpacer_5">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -442,7 +441,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="0" column="11">
+     <item column="11" row="0">
       <widget class="ScienDSpinBox" name="I_DoubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -464,7 +463,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="12">
+     <item column="12" row="0">
       <spacer name="horizontalSpacer_7">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -480,21 +479,21 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="0" column="6">
+     <item column="6" row="0">
       <widget class="QLabel" name="labelkPtext">
        <property name="text">
         <string>kP</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="13">
+     <item column="13" row="0">
       <widget class="QLabel" name="labelkDtext">
        <property name="text">
         <string>kD</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="13">
+     <item column="13" row="1">
       <widget class="QLabel" name="labelD">
        <property name="toolTip">
         <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
@@ -506,7 +505,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="0">
+     <item column="0" row="0">
       <widget class="QCheckBox" name="pidEnabledCheckBox">
        <property name="text">
         <string>PID enabled</string>
@@ -516,7 +515,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </widget>
      </item>
-     <item row="0" column="4">
+     <item column="4" row="0">
       <spacer name="horizontalSpacer_3">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -532,7 +531,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
        </property>
       </spacer>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <spacer name="horizontalSpacer_9">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -570,8 +569,8 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="start_control_Action"/>
-   <addaction name="record_control_Action"/>
+   <addaction name="start_control_Action" />
+   <addaction name="record_control_Action" />
   </widget>
   <action name="start_control_Action">
    <property name="checkable">
@@ -660,7 +659,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>pid_view_Action</sender>
