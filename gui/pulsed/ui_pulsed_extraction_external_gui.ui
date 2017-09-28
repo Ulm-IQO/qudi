@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -33,10 +32,10 @@
      <property name="sizeConstraint">
       <enum>QLayout::SetMinAndMaxSize</enum>
      </property>
-     <item row="3" column="1">
-      <layout class="QGridLayout" name="gridLayout_8"/>
+     <item column="1" row="3">
+      <layout class="QGridLayout" name="gridLayout_8" />
      </item>
-     <item row="0" column="0">
+     <item column="0" row="0">
       <widget class="QDockWidget" name="raw_data_DockWidget">
        <property name="windowTitle">
         <string>Raw data</string>
@@ -54,7 +53,7 @@
        </widget>
       </widget>
      </item>
-     <item row="0" column="1">
+     <item column="1" row="0">
       <widget class="QDockWidget" name="extracted_laser_DockWidget">
        <property name="windowTitle">
         <string>extracted laserpulses</string>
@@ -63,16 +62,16 @@
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <layout class="QGridLayout" name="gridLayout_7">
-           <item row="0" column="0">
+           <item column="0" row="0">
             <widget class="PlotWidget" name="extracted_laser_PlotWidget">
              <property name="layoutDirection">
               <enum>Qt::RightToLeft</enum>
              </property>
             </widget>
            </item>
-           <item row="0" column="4">
+           <item column="4" row="0">
             <layout class="QGridLayout" name="gridLayout_9">
-             <item row="0" column="1">
+             <item column="1" row="0">
               <widget class="QSpinBox" name="signal_begin_SpinBox">
                <property name="maximum">
                 <number>999999999</number>
@@ -82,7 +81,7 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="1">
+             <item column="1" row="1">
               <widget class="QSpinBox" name="signal_end_SpinBox">
                <property name="maximum">
                 <number>999999999</number>
@@ -92,7 +91,7 @@
                </property>
               </widget>
              </item>
-             <item row="2" column="1">
+             <item column="1" row="2">
               <widget class="QSpinBox" name="norm_begin_SpinBox">
                <property name="maximum">
                 <number>999999999</number>
@@ -102,7 +101,7 @@
                </property>
               </widget>
              </item>
-             <item row="3" column="1">
+             <item column="1" row="3">
               <widget class="QSpinBox" name="norm_end_SpinBox">
                <property name="maximum">
                 <number>999999999</number>
@@ -112,10 +111,10 @@
                </property>
               </widget>
              </item>
-             <item row="4" column="1">
-              <widget class="QComboBox" name="choose_laserpulse_ComboBox"/>
+             <item column="1" row="4">
+              <widget class="QComboBox" name="choose_laserpulse_ComboBox" />
              </item>
-             <item row="0" column="0">
+             <item column="0" row="0">
               <widget class="QLabel" name="signal_begin_Label">
                <property name="text">
                 <string>signal begin:</string>
@@ -125,7 +124,7 @@
                </property>
               </widget>
              </item>
-             <item row="1" column="0">
+             <item column="0" row="1">
               <widget class="QLabel" name="signal_end_Label">
                <property name="text">
                 <string>signal end:</string>
@@ -135,7 +134,7 @@
                </property>
               </widget>
              </item>
-             <item row="2" column="0">
+             <item column="0" row="2">
               <widget class="QLabel" name="norm_begin_Label">
                <property name="text">
                 <string>norm begin:</string>
@@ -145,7 +144,7 @@
                </property>
               </widget>
              </item>
-             <item row="3" column="0">
+             <item column="0" row="3">
               <widget class="QLabel" name="norm_end_Label">
                <property name="text">
                 <string>norm end:</string>
@@ -155,7 +154,7 @@
                </property>
               </widget>
              </item>
-             <item row="4" column="0">
+             <item column="0" row="4">
               <widget class="QLabel" name="label">
                <property name="text">
                 <string># Pulse:</string>
@@ -173,9 +172,9 @@
        </widget>
       </widget>
      </item>
-     <item row="1" column="1">
+     <item column="1" row="1">
       <layout class="QGridLayout" name="gridLayout_10">
-       <item row="0" column="0">
+       <item column="0" row="0">
         <widget class="QDockWidget" name="result_DockWidget_2">
          <property name="windowTitle">
           <string>Result</string>
@@ -183,7 +182,7 @@
          <widget class="QWidget" name="dockWidgetContents_6">
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <item>
-            <widget class="PlotWidget" name="result_PlotWidget_2"/>
+            <widget class="PlotWidget" name="result_PlotWidget_2" />
            </item>
           </layout>
          </widget>
@@ -191,7 +190,7 @@
        </item>
       </layout>
      </item>
-     <item row="1" column="0">
+     <item column="0" row="1">
       <widget class="QDockWidget" name="result_DockWidget">
        <property name="windowTitle">
         <string>Result</string>
@@ -200,12 +199,12 @@
         <layout class="QVBoxLayout" name="verticalLayout_2">
          <item>
           <layout class="QGridLayout" name="gridLayout_18">
-           <item row="0" column="0">
-            <widget class="PlotWidget" name="result_PlotWidget"/>
+           <item column="0" row="0">
+            <widget class="PlotWidget" name="result_PlotWidget" />
            </item>
-           <item row="1" column="0">
+           <item column="0" row="1">
             <layout class="QGridLayout" name="gridLayout_17">
-             <item row="0" column="6">
+             <item column="6" row="0">
               <widget class="QLabel" name="ylabel_Label">
                <property name="text">
                 <string>ylabel:</string>
@@ -215,14 +214,14 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="5">
+             <item column="5" row="0">
               <widget class="QLineEdit" name="xlabel_LineEdit">
                <property name="text">
                 <string>tau(ns)</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="4">
+             <item column="4" row="0">
               <widget class="QLabel" name="xlabel_Label">
                <property name="text">
                 <string>xlabel:</string>
@@ -232,14 +231,14 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="7">
+             <item column="7" row="0">
               <widget class="QLineEdit" name="ylabel_LineEdit">
                <property name="text">
                 <string>intensity(a.u.)</string>
                </property>
               </widget>
              </item>
-             <item row="0" column="1">
+             <item column="1" row="0">
               <widget class="QDoubleSpinBox" name="start_SpinBox">
                <property name="maximum">
                 <double>999999999.000000000000000</double>
@@ -249,7 +248,7 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="2">
+             <item column="2" row="0">
               <widget class="QLabel" name="increment_Label">
                <property name="text">
                 <string>increment:</string>
@@ -259,7 +258,7 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="3">
+             <item column="3" row="0">
               <widget class="QDoubleSpinBox" name="increment_SpinBox">
                <property name="maximum">
                 <double>999999999.000000000000000</double>
@@ -269,7 +268,7 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="0">
+             <item column="0" row="0">
               <widget class="QLabel" name="start_Label">
                <property name="text">
                 <string>start:</string>
@@ -279,7 +278,7 @@
                </property>
               </widget>
              </item>
-             <item row="0" column="8">
+             <item column="8" row="0">
               <widget class="QCheckBox" name="errorbars_CheckBox">
                <property name="text">
                 <string>Errorbars?</string>
@@ -312,10 +311,10 @@
      <layout class="QHBoxLayout" name="horizontalLayout_4">
       <item>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item row="0" column="1">
-         <widget class="QLCDNumber" name="number_pulses_lcdNumber"/>
+        <item column="1" row="0">
+         <widget class="QLCDNumber" name="number_pulses_lcdNumber" />
         </item>
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QLabel" name="number_of_pulses_Label">
           <property name="text">
            <string>Number of pulses:</string>
@@ -325,7 +324,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="4">
+        <item column="4" row="0">
          <widget class="QLabel" name="free_Label">
           <property name="text">
            <string>Free</string>
@@ -335,20 +334,20 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="7">
+        <item column="7" row="0">
          <widget class="QPushButton" name="save_result_PushButton">
           <property name="text">
            <string>Save result</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="3">
-         <widget class="QLCDNumber" name="length_pulse_lcdNumber"/>
+        <item column="3" row="0">
+         <widget class="QLCDNumber" name="length_pulse_lcdNumber" />
         </item>
-        <item row="0" column="5">
-         <widget class="QLCDNumber" name="free_lcdNumber"/>
+        <item column="5" row="0">
+         <widget class="QLCDNumber" name="free_lcdNumber" />
         </item>
-        <item row="0" column="2">
+        <item column="2" row="0">
          <widget class="QLabel" name="length_pulse_Label">
           <property name="text">
            <string>Length pulse (bins):</string>
@@ -358,7 +357,7 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="6">
+        <item column="6" row="0">
          <widget class="QPushButton" name="analyze_PushButton">
           <property name="text">
            <string>Analyze</string>
@@ -381,7 +380,7 @@
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QDockWidget" name="Parameter_DockWidget">
    <property name="windowTitle">
     <string>Parameters</string>
@@ -393,12 +392,12 @@
     <layout class="QHBoxLayout" name="horizontalLayout_3">
      <item>
       <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="0">
+       <item column="0" row="0">
         <layout class="QGridLayout" name="gridLayout_6">
-         <item row="0" column="4">
+         <item column="4" row="0">
           <widget class="QSpinBox" name="header_SpinBox">
            <property name="whatsThis">
-            <string/>
+            <string />
            </property>
            <property name="maximum">
             <number>999999999</number>
@@ -408,10 +407,10 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="3">
+         <item column="3" row="0">
           <widget class="QLabel" name="header_Label">
            <property name="whatsThis">
-            <string/>
+            <string />
            </property>
            <property name="text">
             <string>header:</string>
@@ -421,14 +420,14 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="6">
+         <item column="6" row="0">
           <widget class="QSpinBox" name="column_SpinBox">
            <property name="value">
             <number>1</number>
            </property>
           </widget>
          </item>
-         <item row="0" column="5">
+         <item column="5" row="0">
           <widget class="QLabel" name="column_Label">
            <property name="text">
             <string>column:</string>
@@ -438,7 +437,7 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="0">
+         <item column="0" row="0">
           <widget class="QLabel" name="file_Label">
            <property name="text">
             <string>File:</string>
@@ -448,21 +447,21 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="1">
+         <item column="1" row="0">
           <widget class="QLineEdit" name="data_filename_LineEdit">
            <property name="whatsThis">
-            <string extracomment="tetetert"/>
+            <string extracomment="tetetert" />
            </property>
           </widget>
          </item>
-         <item row="0" column="9">
+         <item column="9" row="0">
           <widget class="QPushButton" name="load_data_PushButton">
            <property name="text">
             <string>Load data</string>
            </property>
           </widget>
          </item>
-         <item row="0" column="10">
+         <item column="10" row="0">
           <widget class="QLabel" name="analysis_method_Label">
            <property name="text">
             <string>Method:</string>
@@ -472,14 +471,14 @@
            </property>
           </widget>
          </item>
-         <item row="0" column="11">
-          <widget class="QComboBox" name="analysis_method_ComboBox"/>
+         <item column="11" row="0">
+          <widget class="QComboBox" name="analysis_method_ComboBox" />
          </item>
         </layout>
        </item>
-       <item row="1" column="0">
+       <item column="0" row="1">
         <layout class="QGridLayout" name="gridLayout_3">
-         <item row="1" column="30">
+         <item column="30" row="1">
           <widget class="QSpinBox" name="initial_length_SpinBox">
            <property name="maximum">
             <number>99999</number>
@@ -489,7 +488,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="26">
+         <item column="26" row="1">
           <widget class="QSpinBox" name="pulse_length_SpinBox">
            <property name="maximum">
             <number>99999</number>
@@ -499,14 +498,14 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="24">
+         <item column="24" row="1">
           <widget class="QSpinBox" name="exception_SpinBox">
            <property name="maximum">
             <number>99999</number>
            </property>
           </widget>
          </item>
-         <item row="1" column="23">
+         <item column="23" row="1">
           <widget class="QLabel" name="exception_Label">
            <property name="text">
             <string>Exception:</string>
@@ -516,7 +515,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="0">
+         <item column="0" row="1">
           <widget class="QCheckBox" name="ignore_first_CheckBox">
            <property name="layoutDirection">
             <enum>Qt::RightToLeft</enum>
@@ -526,7 +525,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="22">
+         <item column="22" row="1">
           <widget class="QSpinBox" name="min_laser_SpinBox">
            <property name="maximum">
             <number>999999999</number>
@@ -536,7 +535,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="6">
+         <item column="6" row="1">
           <widget class="QLabel" name="filter_Label">
            <property name="text">
             <string>filter:</string>
@@ -546,7 +545,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="7">
+         <item column="7" row="1">
           <widget class="QDoubleSpinBox" name="filter_SpinBox">
            <property name="maximum">
             <double>999999999.990000009536743</double>
@@ -556,7 +555,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="1">
+         <item column="1" row="1">
           <widget class="QCheckBox" name="alternating_CheckBox">
            <property name="layoutDirection">
             <enum>Qt::RightToLeft</enum>
@@ -566,7 +565,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="4">
+         <item column="4" row="1">
           <widget class="QLabel" name="number_pulses_Label">
            <property name="text">
             <string>#pulses:</string>
@@ -576,7 +575,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="13">
+         <item column="13" row="1">
           <widget class="QLabel" name="treshold_Label">
            <property name="text">
             <string>treshold:</string>
@@ -586,7 +585,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="5">
+         <item column="5" row="1">
           <widget class="QSpinBox" name="number_pulses_SpinBox">
            <property name="maximum">
             <number>999999999</number>
@@ -596,7 +595,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="27">
+         <item column="27" row="1">
           <widget class="QLabel" name="initial_offset_Label">
            <property name="text">
             <string>offset:</string>
@@ -606,7 +605,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="31">
+         <item column="31" row="1">
           <widget class="QLabel" name="increment_length_Label">
            <property name="text">
             <string>increment:</string>
@@ -616,7 +615,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="25">
+         <item column="25" row="1">
           <widget class="QLabel" name="pulse_length_Label">
            <property name="text">
             <string>pulselength:</string>
@@ -626,7 +625,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="14">
+         <item column="14" row="1">
           <widget class="QSpinBox" name="treshold_SpinBox">
            <property name="maximum">
             <number>999999999</number>
@@ -636,7 +635,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="29">
+         <item column="29" row="1">
           <widget class="QLabel" name="initial_length_Label">
            <property name="text">
             <string>length:</string>
@@ -646,7 +645,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="21">
+         <item column="21" row="1">
           <widget class="QLabel" name="min_laser_Label">
            <property name="text">
             <string>min. laser:</string>
@@ -656,7 +655,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="28">
+         <item column="28" row="1">
           <widget class="QSpinBox" name="initial_offset_SpinBox">
            <property name="maximum">
             <number>99999</number>
@@ -666,7 +665,7 @@
            </property>
           </widget>
          </item>
-         <item row="1" column="32">
+         <item column="32" row="1">
           <widget class="QSpinBox" name="increment_length_SpinBox">
            <property name="maximum">
             <number>99999</number>
@@ -693,7 +692,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionTest"/>
+   <addaction name="actionTest" />
   </widget>
   <action name="actionTest">
    <property name="text">
@@ -708,6 +707,6 @@
    <header location="global">pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

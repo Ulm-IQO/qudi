@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -20,7 +19,7 @@
    <layout class="QHBoxLayout" name="horizontalLayout">
     <item>
      <layout class="QGridLayout" name="plotGridLayout">
-      <item row="0" column="0">
+      <item column="0" row="0">
        <widget class="QLabel" name="traceLabel">
         <property name="text">
          <string>Trace</string>
@@ -30,7 +29,7 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="1">
+      <item column="1" row="0">
        <widget class="QLabel" name="retraceLabel">
         <property name="text">
          <string>Retrace</string>
@@ -40,7 +39,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item column="0" row="1">
        <widget class="PlotWidget" name="voltscan_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -50,7 +49,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item column="1" row="1">
        <widget class="PlotWidget" name="voltscan2_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -60,7 +59,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
+      <item column="0" row="2">
        <widget class="PlotWidget" name="voltscan_matrix_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -70,7 +69,7 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="1">
+      <item column="1" row="2">
        <widget class="PlotWidget" name="voltscan_matrix2_ViewWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -84,7 +83,7 @@
     </item>
     <item>
      <layout class="QGridLayout" name="gridLayout">
-      <item row="4" column="0" colspan="2">
+      <item colspan="2" column="0" row="4">
        <widget class="QSpinBox" name="voltscan_cb_min_InputWidget">
         <property name="maximum">
          <number>999999999</number>
@@ -94,7 +93,7 @@
         </property>
        </widget>
       </item>
-      <item row="0" column="0" colspan="2">
+      <item colspan="2" column="0" row="0">
        <widget class="QSpinBox" name="voltscan_cb_max_InputWidget">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -113,7 +112,7 @@
         </property>
        </widget>
       </item>
-      <item row="1" column="1">
+      <item column="1" row="1">
        <widget class="QSpinBox" name="voltscan_cb_high_centile_InputWidget">
         <property name="maximum">
          <number>100</number>
@@ -123,7 +122,7 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
+      <item column="0" row="3">
        <widget class="QLabel" name="percentLabel1">
         <property name="maximumSize">
          <size>
@@ -132,11 +131,11 @@
          </size>
         </property>
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="right"&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="0">
+      <item column="0" row="1">
        <widget class="QLabel" name="percentLabel2">
         <property name="maximumSize">
          <size>
@@ -145,11 +144,11 @@
          </size>
         </property>
         <property name="text">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="right"&gt;% :&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
         </property>
        </widget>
       </item>
-      <item row="6" column="0" colspan="2">
+      <item colspan="2" column="0" row="6">
        <widget class="QRadioButton" name="voltscan_cb_manual_RadioButton">
         <property name="text">
          <string>Man&amp;ual</string>
@@ -159,7 +158,7 @@
         </attribute>
        </widget>
       </item>
-      <item row="5" column="0" colspan="2">
+      <item colspan="2" column="0" row="5">
        <widget class="QRadioButton" name="voltscan_cb_centiles_RadioButton">
         <property name="text">
          <string>&amp;Centiles</string>
@@ -172,14 +171,14 @@
         </attribute>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item column="1" row="3">
        <widget class="QSpinBox" name="voltscan_cb_low_centile_InputWidget">
         <property name="maximum">
          <number>100</number>
         </property>
        </widget>
       </item>
-      <item row="2" column="0" colspan="2">
+      <item colspan="2" column="0" row="2">
        <widget class="PlotWidget" name="voltscan_cb_ViewWidget">
         <property name="maximumSize">
          <size>
@@ -206,19 +205,19 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_Save"/>
-    <addaction name="action_Exit"/>
+    <addaction name="action_Save" />
+    <addaction name="action_Exit" />
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
      <string>O&amp;ptions</string>
     </property>
-    <addaction name="action_Settings"/>
+    <addaction name="action_Settings" />
    </widget>
-   <addaction name="menu_File"/>
-   <addaction name="menu_Options"/>
+   <addaction name="menu_File" />
+   <addaction name="menu_Options" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -229,9 +228,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_run_stop"/>
-   <addaction name="separator"/>
-   <addaction name="action_Save"/>
+   <addaction name="action_run_stop" />
+   <addaction name="separator" />
+   <addaction name="action_Save" />
   </widget>
   <widget class="QDockWidget" name="scan_control_DockWidget">
    <property name="sizePolicy">
@@ -251,68 +250,68 @@
    </attribute>
    <widget class="QWidget" name="controlDockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_11">
-     <item row="0" column="0">
+     <item column="0" row="0">
       <layout class="QGridLayout" name="controlGridLayout">
-       <item row="0" column="4">
+       <item column="4" row="0">
         <widget class="QLabel" name="resLabel">
          <property name="text">
           <string>Values per scan:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
+       <item column="2" row="2">
         <widget class="QLabel" name="stopLabel">
          <property name="text">
           <string>Stop:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="4">
+       <item column="4" row="2">
         <widget class="QLabel" name="speedLabel">
          <property name="text">
           <string>Speed:</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
+       <item column="2" row="0">
         <widget class="QLabel" name="scannedLabel">
          <property name="text">
           <string>Scanned lines</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
+       <item column="0" row="0">
         <widget class="QLabel" name="linesLabel">
          <property name="text">
           <string>Lines</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
+       <item column="0" row="2">
         <widget class="QLabel" name="startLabel">
          <property name="text">
           <string>Start :</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="6">
+       <item colspan="6" column="0" row="1">
         <widget class="Line" name="line">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
-       <item row="0" column="3">
-        <widget class="QLCDNumber" name="elapsed_lines_DisplayWidget"/>
+       <item column="3" row="0">
+        <widget class="QLCDNumber" name="elapsed_lines_DisplayWidget" />
        </item>
-       <item row="2" column="6">
+       <item column="6" row="2">
         <widget class="QLabel" name="constLabel">
          <property name="text">
           <string>Constant voltage:</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item column="1" row="2">
         <widget class="ScienDSpinBox" name="startDoubleSpinBox">
          <property name="suffix">
           <string>V</string>
@@ -325,7 +324,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
+       <item column="3" row="2">
         <widget class="ScienDSpinBox" name="stopDoubleSpinBox">
          <property name="suffix">
           <string>V</string>
@@ -338,7 +337,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
+       <item column="1" row="0">
         <widget class="QSpinBox" name="linesSpinBox">
          <property name="minimum">
           <number>1</number>
@@ -348,7 +347,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="5">
+       <item column="5" row="2">
         <widget class="ScienDSpinBox" name="speedDoubleSpinBox">
          <property name="suffix">
           <string>V/s</string>
@@ -361,7 +360,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="7">
+       <item column="7" row="2">
         <widget class="ScienDSpinBox" name="constDoubleSpinBox">
          <property name="suffix">
           <string>V</string>
@@ -374,7 +373,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="5">
+       <item column="5" row="0">
         <widget class="QSpinBox" name="resolutionSpinBox">
          <property name="minimum">
           <number>1</number>
@@ -463,7 +462,7 @@
   <tabstop>voltscan_matrix2_ViewWidget</tabstop>
   <tabstop>voltscan_cb_ViewWidget</tabstop>
  </tabstops>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>action_Exit</sender>
@@ -483,6 +482,6 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup" />
  </buttongroups>
 </ui>

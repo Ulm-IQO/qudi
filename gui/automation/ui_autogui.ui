@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -18,8 +17,8 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0" rowspan="2">
-     <widget class="QTreeView" name="autoTreeView"/>
+    <item column="0" row="0" rowspan="2">
+     <widget class="QTreeView" name="autoTreeView" />
     </item>
    </layout>
   </widget>
@@ -36,15 +35,15 @@
     <property name="title">
      <string>A&amp;utomation</string>
     </property>
-    <addaction name="actionNew_automation"/>
-    <addaction name="actionLoad_automation_file"/>
-    <addaction name="actionSave_automation_file"/>
-    <addaction name="actionSave_automation_as"/>
-    <addaction name="actionClose"/>
+    <addaction name="actionNew_automation" />
+    <addaction name="actionLoad_automation_file" />
+    <addaction name="actionSave_automation_file" />
+    <addaction name="actionSave_automation_as" />
+    <addaction name="actionClose" />
    </widget>
-   <addaction name="menuAutomation"/>
+   <addaction name="menuAutomation" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QToolBar" name="taskToolBar">
    <property name="enabled">
     <bool>true</bool>
@@ -58,9 +57,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionStart_Task"/>
-   <addaction name="actionPause_Task"/>
-   <addaction name="actionStop_Task"/>
+   <addaction name="actionStart_Task" />
+   <addaction name="actionPause_Task" />
+   <addaction name="actionStop_Task" />
   </widget>
   <widget class="QToolBar" name="fileToolBar">
    <property name="windowTitle">
@@ -72,9 +71,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionNew_automation"/>
-   <addaction name="actionLoad_automation_file"/>
-   <addaction name="actionSave_automation_file"/>
+   <addaction name="actionNew_automation" />
+   <addaction name="actionLoad_automation_file" />
+   <addaction name="actionSave_automation_file" />
   </widget>
   <action name="actionStart_Task">
    <property name="enabled">
@@ -157,7 +156,7 @@
    </property>
   </action>
  </widget>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>actionClose</sender>

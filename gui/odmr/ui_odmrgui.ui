@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -218,27 +217,27 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_Save"/>
-    <addaction name="action_Close"/>
+    <addaction name="action_Save" />
+    <addaction name="action_Close" />
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
      <string>O&amp;ptions</string>
     </property>
-    <addaction name="action_Settings"/>
-    <addaction name="action_FitSettings"/>
+    <addaction name="action_Settings" />
+    <addaction name="action_FitSettings" />
    </widget>
    <widget class="QMenu" name="menu_View">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="action_RestoreDefault"/>
+    <addaction name="action_RestoreDefault" />
    </widget>
-   <addaction name="menu_File"/>
-   <addaction name="menu_View"/>
-   <addaction name="menu_Options"/>
+   <addaction name="menu_File" />
+   <addaction name="menu_View" />
+   <addaction name="menu_Options" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -249,8 +248,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_run_stop"/>
-   <addaction name="action_resume_odmr"/>
+   <addaction name="action_run_stop" />
+   <addaction name="action_resume_odmr" />
   </widget>
   <widget class="QDockWidget" name="odmr_control_DockWidget">
    <property name="sizePolicy">
@@ -272,7 +271,7 @@
     </size>
    </property>
    <property name="toolTip">
-    <string/>
+    <string />
    </property>
    <property name="windowTitle">
     <string>ODMR Control Parameters</string>
@@ -282,12 +281,12 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_11">
-     <item row="1" column="0">
+     <item column="0" row="1">
       <layout class="QGridLayout" name="gridLayout_9">
        <property name="leftMargin">
         <number>8</number>
        </property>
-       <item row="0" column="3">
+       <item column="3" row="0">
         <widget class="ScienDSpinBox" name="cw_power_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -315,7 +314,7 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item column="1" row="4">
         <widget class="ScienDSpinBox" name="sweep_power_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -343,14 +342,14 @@
          </property>
         </widget>
        </item>
-       <item row="4" column="0">
+       <item column="0" row="4">
         <widget class="QLabel" name="label_2">
          <property name="text">
           <string>Power :</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="3">
+       <item column="3" row="5">
         <widget class="ScienDSpinBox" name="step_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -381,7 +380,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item column="1" row="2">
         <widget class="QDoubleSpinBox" name="runtime_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -403,14 +402,14 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="0">
+       <item column="0" row="5">
         <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Start :</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="3">
+       <item column="3" row="2">
         <widget class="QLCDNumber" name="elapsed_time_DisplayWidget">
          <property name="maximumSize">
           <size>
@@ -420,14 +419,14 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="4">
+       <item column="4" row="5">
         <widget class="QLabel" name="label_5">
          <property name="text">
           <string>Stop :</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="1">
+       <item column="1" row="5">
         <widget class="ScienDSpinBox" name="start_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -458,7 +457,7 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="5">
+       <item column="5" row="2">
         <widget class="QLCDNumber" name="elapsed_sweeps_DisplayWidget">
          <property name="maximumSize">
           <size>
@@ -468,21 +467,21 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="2">
+       <item column="2" row="5">
         <widget class="QLabel" name="label_4">
          <property name="text">
           <string>Step :</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
+       <item column="2" row="2">
         <widget class="QLabel" name="label_8">
          <property name="text">
           <string>Elapsed Time (s) :</string>
          </property>
         </widget>
        </item>
-       <item row="5" column="5">
+       <item column="5" row="5">
         <widget class="ScienDSpinBox" name="stop_freq_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -516,21 +515,21 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0" colspan="6">
+       <item colspan="6" column="0" row="3">
         <widget class="Line" name="line">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
-       <item row="2" column="0">
+       <item column="0" row="2">
         <widget class="QLabel" name="label_7">
          <property name="text">
           <string>Runtime:</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
+       <item column="1" row="0">
         <widget class="ScienDSpinBox" name="cw_frequency_DoubleSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -564,28 +563,28 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
+       <item column="2" row="0">
         <widget class="QLabel" name="label_6">
          <property name="text">
           <string>CW Power :</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="4">
+       <item column="4" row="2">
         <widget class="QLabel" name="label_10">
          <property name="text">
           <string>Elapsed Sweeps :</string>
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
+       <item column="0" row="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>CW Frequency :</string>
          </property>
         </widget>
        </item>
-       <item row="1" column="0" colspan="6">
+       <item colspan="6" column="0" row="1">
         <widget class="Line" name="line_2">
          <property name="minimumSize">
           <size>
@@ -624,9 +623,9 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QGridLayout" name="gridLayout_12">
-     <item row="0" column="0">
+     <item column="0" row="0">
       <layout class="QGridLayout" name="gridLayout_10">
-       <item row="0" column="0">
+       <item column="0" row="0">
         <widget class="QLabel" name="label_9">
          <property name="maximumSize">
           <size>
@@ -639,7 +638,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="1">
+       <item column="1" row="0">
         <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
          <property name="minimumSize">
           <size>
@@ -655,7 +654,7 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="0">
+       <item column="0" row="1">
         <widget class="QLabel" name="label_12">
          <property name="maximumSize">
           <size>
@@ -668,10 +667,10 @@
          </property>
         </widget>
        </item>
-       <item row="1" column="1" colspan="2">
-        <widget class="QTextBrowser" name="odmr_fit_results_DisplayWidget"/>
+       <item colspan="2" column="1" row="1">
+        <widget class="QTextBrowser" name="odmr_fit_results_DisplayWidget" />
        </item>
-       <item row="0" column="2">
+       <item column="2" row="0">
         <widget class="QPushButton" name="do_fit_PushButton">
          <property name="text">
           <string>Fit</string>
@@ -693,7 +692,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_Save"/>
+   <addaction name="action_Save" />
   </widget>
   <widget class="QToolBar" name="cw_ToolBar">
    <property name="windowTitle">
@@ -705,7 +704,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_toggle_cw"/>
+   <addaction name="action_toggle_cw" />
   </widget>
   <action name="action_Settings">
    <property name="icon">
@@ -832,7 +831,7 @@
   <tabstop>odmr_PlotWidget</tabstop>
   <tabstop>odmr_matrix_PlotWidget</tabstop>
  </tabstops>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>action_Close</sender>
@@ -852,6 +851,6 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup" />
  </buttongroups>
 </ui>
