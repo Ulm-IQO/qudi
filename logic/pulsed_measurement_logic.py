@@ -267,7 +267,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                              self._pulse_analysis_logic.norm_end_bin)
         self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
                                                self._pulse_extraction_logic.conv_std_dev,
-                                               self._pulse_extraction_logic.count_treshold,
+                                               self._pulse_extraction_logic.count_threshold,
                                                self._pulse_extraction_logic.threshold_tolerance_bins,
                                                self._pulse_extraction_logic.min_laser_length)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
