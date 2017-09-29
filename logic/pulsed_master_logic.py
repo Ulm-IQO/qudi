@@ -889,33 +889,33 @@ class PulsedMasterLogic(GenericLogic):
                                        error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
+    def extraction_settings_changed(self, method, conv_std_dev, count_threshold,
                                     threshold_tolerance_bins, min_laser_length):
         """
 
         @param method:
         @param conv_std_dev:
-        @param count_treshold:
+        @param count_threshold:
         @param threshold_tolerance_bins:
         @param min_laser_length:
         @return:
         """
-        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_treshold,
+        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_threshold,
                                                threshold_tolerance_bins, min_laser_length)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+    def extraction_settings_updated(self, method, conv_std_dev, count_threshold,
                                     threshold_tolerance_bins, min_laser_length):
         """
 
         @param method:
         @param conv_std_dev:
-        @param count_treshold:
+        @param count_threshold:
         @param threshold_tolerance_bins:
         @param min_laser_length:
         @return:
         """
-        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
+        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_threshold,
                                                threshold_tolerance_bins, min_laser_length)
         return
 

@@ -80,11 +80,11 @@ class PulsedExtractionExternalLogic(GenericLogic):
             conv=param_dict['conv']
             return_dict = self._pe_logic.ungated_extraction(self.data,conv,number_laser)
             laser_y = return_dict['laser_arr_y']
-        elif method == 'treshold':
-            count_treshold=param_dict['count_treshold']
+        elif method == 'threshold':
+            count_threshold=param_dict['count_threshold']
             min_len_laser=param_dict['min_len_laser']
             exception=param_dict['exception']
-            return_dict = self._pe_logic.extract_laser_pulses(self.data,count_treshold,min_len_laser,exception)
+            return_dict = self._pe_logic.extract_laser_pulses(self.data,count_threshold,min_len_laser,exception)
             laser_y = return_dict['laser_arr_y']
         elif method == 'old':
             number_laser=param_dict['number_laser']
@@ -152,7 +152,7 @@ class PulsedExtractionExternalLogic(GenericLogic):
 
 
     def get_analysis_methods(self):
-        return ('Niko','treshold','old')
+        return ('Niko','threshold','old')
 
 
 
