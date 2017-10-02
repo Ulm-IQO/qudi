@@ -96,6 +96,10 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def set_up_continuous_analog_reader(self, analogue_channel, clock_channel=None):
+        pass
+
+    @abc.abstractmethod
     def start_analogue_voltage_reader(self, analogue_channel, start_clock=False):
         """
         Starts the preconfigured analogue input task
@@ -110,17 +114,19 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_analogue_voltage_reader(self, analogue_channels):
+    def get_analogue_voltage_reader(self, analogue_channels, read_samples=None):
         """"
-        Returns the last voltages read by the analogue input reader
+        Returns the last voltages read by the analog input reader
 
         @param  List(string) analogue_channels: the representative name of the analogue channels
                                         for which channels are read.
                                         The first list element must be the one for which the
                                         task was created
+        @param int read_samples: The amount of samples to be read from the buffer for a continuous mode acquisition. Not
+                                        needed for finite amount of samples
 
-        @return np.array samples:The photon counts per second and the amount of samples read. For
-        error array with length 1 and entry -1
+        @return np.array, int:The photon counts per second (array) and the amount of samples read (int). For
+                                error array with length 2 and entry -1, 0
         """
         pass
 
