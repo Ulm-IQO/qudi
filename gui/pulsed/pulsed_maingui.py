@@ -421,6 +421,8 @@ class PulsedMeasurementGui(GUIBase):
             sauplo_button.setText('GenSaUpLo')
             sauplo_button.setObjectName('sauplo_' + method_name)
             sauplo_button.clicked.connect(self.generate_sauplo_predefined_clicked)
+            gridLayout.addWidget(gen_button, 0, 0, 1, 1)
+            gridLayout.addWidget(sauplo_button, 1, 0, 1, 1)
             # inspect current method to extract the parameters
             inspected = inspect.signature(methods_dict[method_name])
             # run through all parameters of the current method and create the widgets
@@ -470,15 +472,20 @@ class PulsedMeasurementGui(GUIBase):
                                        ' of the valid types str, float, int or bool!\nChoose one of '
                                        'those default values! Creation of the viewbox aborted.'
                                        ''.format('generate_' + method_name, param_name))
-                    gridLayout.addWidget(param_label, 0, param_index, 1, 1)
-                    gridLayout.addWidget(input_obj, 1, param_index, 1, 1)
+                    # Adjust size policy
+                    input_obj.setMinimumWidth(75)
+                    input_obj.setMaximumWidth(100)
+                    gridLayout.addWidget(param_label, 0, param_index+1, 1, 1)
+                    gridLayout.addWidget(input_obj, 1, param_index+1, 1, 1)
                     setattr(self._pm, method_name + '_param_' + param_name + '_Widget', input_obj)
+            h_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding,
+                                             QtWidgets.QSizePolicy.Minimum)
+            gridLayout.addItem(h_spacer, 1, param_index+2, 1, 1)
 
-            gridLayout.addWidget(gen_button, 0, len(inspected.parameters), 1, 1)
-            gridLayout.addWidget(sauplo_button, 1, len(inspected.parameters), 1, 1)
             # attach the GroupBox widget to the predefined methods widget.
             setattr(self._pm, method_name + '_GroupBox', groupBox)
             self._pm.verticalLayout.addWidget(groupBox)
+        self._pm.verticalLayout.addStretch()
         return
 
     def keep_former_predefined_methods_config(self):
