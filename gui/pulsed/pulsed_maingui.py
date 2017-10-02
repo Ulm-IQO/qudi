@@ -257,6 +257,21 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.rejected.connect(self.keep_former_predefined_methods_config)
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_predefined_methods_config)
+        # Set ranges for the global parameters and default values
+        self._pm.pm_mw_amp_Widget.setRange(0.0, np.inf)
+        self._pm.pm_mw_freq_Widget.setRange(0.0, np.inf)
+        self._pm.pm_channel_amp_Widget.setRange(0.0, np.inf)
+        self._pm.pm_delay_length_Widget.setRange(0.0, np.inf)
+        self._pm.pm_wait_time_Widget.setRange(0.0, np.inf)
+        self._pm.pm_laser_length_Widget.setRange(0.0, np.inf)
+        self._pm.pm_rabi_period_Widget.setRange(0.0, np.inf)
+        self._pm.pm_mw_amp_Widget.setValue(0.125)
+        self._pm.pm_mw_freq_Widget.setValue(2.87e6)
+        self._pm.pm_channel_amp_Widget.setValue(0.0)
+        self._pm.pm_delay_length_Widget.setValue(500.0e-9)
+        self._pm.pm_wait_time_Widget.setValue(1.5e-6)
+        self._pm.pm_laser_length_Widget.setValue(3.0e-6)
+        self._pm.pm_rabi_period_Widget.setValue(200.0e-9)
 
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
