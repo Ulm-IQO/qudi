@@ -38,7 +38,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     _host = ConfigOption('host', missing='error')
     tmp = ConfigOption('password', b"123456", missing='warn')
     _port = ConfigOption('port', 7230, missing='warn')
-    _position_feedback = ConfigOption('position_feedback', False, missing='warn')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -71,10 +70,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # handle all the parameters given by the config
         self._attocube_axis = {}  # dictionary contains the axes and the specific controller
         self._attocube_axis_range = {}  # dictionary contains the axes stepping range
+        self._position_feedback  = {}
         default_range = [0, 5]
 
         if 'x' in config.keys():
             self._attocube_axis["x"] = config['x']
+            self._position_feedback["x"] = ConfigOption('position_feedback_x', False, missing='warn')
             if 'x_range' in config.keys():
                 if float(config['x_range'][0]) < float(config['x_range'][1]):
                     self._attocube_axis_range["x"] = [float(config['x_range'][0]),
@@ -94,6 +95,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'y' in config.keys():
             self._attocube_axis["y"] = config['y']
+            self._position_feedback["y"] = ConfigOption('position_feedback_y', False, missing='warn')
             if 'y_range' in config.keys():
                 if float(config['y_range'][0]) < float(config['y_range'][1]):
                     self._attocube_axis_range["y"] = [float(config['y_range'][0]),
@@ -113,6 +115,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'z' in config.keys():
             self._attocube_axis["z"] = config['z']
+            self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
             if 'z_range' in config.keys():
                 if float(config['z_range'][0]) < float(config['z_range'][1]):
                     self._attocube_axis_range["z"] = [float(config['z_range'][0]),
@@ -657,12 +660,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self.log.warning('Attocube Device does not need to be reset.')
         pass
 
-    def get_position_feedback(self):
+    def get_position_feedback(self, axis_name):
         """Checks if the hardware is a closed loop hardware with position feedback
         return bool: if True the hardware has a position feedback"""
         # Todo: This needs to be programmed axis specific and done in the nidaq when a concept for differentiating
         # between different controllers has been established
-        return self._position_feedback
+        return self._position_feedback[axis_name]
 
     def get_position_range_stepper(self, axis_name):
         """ Returns the physical range of the stepper.

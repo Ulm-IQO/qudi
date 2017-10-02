@@ -161,3 +161,12 @@ class AnalogReaderInterface(metaclass=InterfaceMetaclass):
         """"Returns the resolution of the analogue input resolution in bits
         @return int: input bit resolution """
         pass
+
+    def start_ai_counter_reader(self, analogue_channel):
+        """Starts task of reading analogue voltage and finite counts synchronised.
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the task is created
+        @return int: error code (0:OK, -1:error)
+        """
+        pass

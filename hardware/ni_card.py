@@ -2777,3 +2777,28 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """"Returns the resolution of the analog input of the NIDAQ in bits
         @return int: input bit resolution """
         return self._ai_resolution
+
+    def start_ai_counter_reader(self, analogue_channel):
+        """Starts task of reading analogue voltage and finite counts synchronised.
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the task is created
+        @return int: error code (0:OK, -1:error)
+        """
+        if type(analogue_channel) != str:
+            self.log.error("analogue channel needs to be passed as a string. A different "
+                           "variable type ({}) was used".format(type(analogue_channel)))
+            return -1
+        if analogue_channel in self._analogue_input_daq_tasks:
+            if 0 > self.start_finite_counter():
+                return -1
+            try:
+                daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
+            except:
+                self.log.exception('Error while starting up analogue voltage reader and counter.')
+                return -1
+            return 0
+        self.log.error(
+            'Cannot start analogue voltage reader since it is not configured!\n'
+            'Run the or set_up_analogue_voltage_reader_scanner routine first.')
+        return -1
