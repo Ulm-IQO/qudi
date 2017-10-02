@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from lmfit.models import Model
-from core.util.units import compute_dft
+from core.util.units import compute_ft
 
 
 ################################################################################
@@ -415,7 +415,7 @@ def estimate_baresine(self, x_axis, data, params):
 
     # calculate dft with zeropadding to obtain nicer interpolation between the
     # appearing peaks.
-    dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data, zeropad_num=1)
 
     stepsize = x_axis[1]-x_axis[0]  # for frequency axis
     frequency_max = np.abs(dft_x[np.log(dft_y).argmax()])
@@ -481,7 +481,7 @@ def estimate_sinewithoutoffset(self, x_axis, data, params):
 
     # calculate dft with zeropadding to obtain nicer interpolation between the
     # appearing peaks.
-    dft_x, dft_y = compute_dft(x_axis, data, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data, zeropad_num=1)
 
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
 
@@ -742,7 +742,7 @@ def estimate_sineexponentialdecay(self, x_axis, data, params=None):
     # estimate amplitude
     ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
 
-    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data_level, zeropad_num=1)
 
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
 
