@@ -192,6 +192,17 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time corresponding to the
+        frequency switching speed.
+        """
+        pass
+
     @abc.abstractmethod
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
