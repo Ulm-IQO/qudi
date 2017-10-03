@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>qudi: Confocal</string>
+   <string>qudi: Confocal Stepper</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_8"/>
@@ -1793,7 +1793,7 @@
       </widget>
      </item>
      <item row="3" column="2">
-      <widget class="QDoubleSpinBox" name="y_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="y_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1935,7 +1935,7 @@
       </widget>
      </item>
      <item row="5" column="2">
-      <widget class="QDoubleSpinBox" name="z_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="z_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1957,7 +1957,7 @@
       </widget>
      </item>
      <item row="2" column="2">
-      <widget class="QDoubleSpinBox" name="x_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="x_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -2156,7 +2156,6 @@
       </widget>
      </item>
     </layout>
-    <zorder>horizontalLayoutWidget_3</zorder>
     <zorder>x_axis_hardware_label</zorder>
     <zorder>y_axis_hardware_label</zorder>
     <zorder>update_hardware_pushButton</zorder>
@@ -2566,13 +2565,6 @@
   <tabstop>x_piezo_InputWidget</tabstop>
   <tabstop>y_piezo_InputWidget</tabstop>
   <tabstop>z_piezo_InputWidget</tabstop>
-  <tabstop>depth_cb_max_DoubleSpinBox</tabstop>
-  <tabstop>depth_cb_high_percentile_DoubleSpinBox</tabstop>
-  <tabstop>depth_cb_ViewWidget</tabstop>
-  <tabstop>depth_cb_low_percentile_DoubleSpinBox</tabstop>
-  <tabstop>depth_cb_min_DoubleSpinBox</tabstop>
-  <tabstop>depth_cb_centiles_RadioButton</tabstop>
-  <tabstop>depth_cb_manual_RadioButton</tabstop>
   <tabstop>tilt_set_01_pushButton</tabstop>
   <tabstop>tilt_set_02_pushButton</tabstop>
   <tabstop>tilt_set_03_pushButton</tabstop>

@@ -28,6 +28,7 @@ import numpy as np
 import os
 import time
 
+from core.module import Connector, ConfigOption, StatusVar
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -40,8 +41,10 @@ class ConfocalStepperMainWindow(QtWidgets.QMainWindow):
     """ The main window for the ODMR measurement GUI.
     """
 
+    sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
+
     def __init__(self):
-        # Get the path to the *.ui file
+        # Get the path to the *.ui filezorry
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_confocal_stepper_gui.ui')
 
@@ -78,9 +81,9 @@ class ConfocalStepperGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'stepperlogic1': 'ConfocalStepperLogicLogic',
-                   'savelogic': 'SaveLogic',
-                   'confocallogic1': 'ConfocalLogic'}
+    confocallogic1 = Connector(interface='ConfocalLogic')
+    savelogic = Connector(interface='SaveLogic')
+    stepperlogic1 = Connector(interface='ConfocalStepperLogic')
 
     sigStartSteppingScan = QtCore.Signal()
     sigStopSteppingScan = QtCore.Signal()
@@ -91,11 +94,11 @@ class ConfocalStepperGui(GUIBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        #self.log.info('The following configuration was found.')
 
         # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+        #for key in config.keys():
+        #    self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the Confocal Stepper GUI.
@@ -142,7 +145,7 @@ class ConfocalStepperGui(GUIBase):
         # All our gui elements are dockable, and so there should be no "central" widget.
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-        self._mw.scanLineDockWidget.hide()
+        #self._mw.scanLineDockWidget.hide()
 
         self.init_plot_step_UI()
         self.init_hardware_UI()
@@ -228,10 +231,10 @@ class ConfocalStepperGui(GUIBase):
         # set up scan line plot
         sc = self._stepper_logic._step_counter
         sc = sc - 1 if sc >= 1 else sc
-        data = self._stepper_logic.stepping_raw_data
+        data = self._stepper_logic.image[sc, :, 0:3:2]
 
         self.step_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
-        self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
+        #self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
 
         # Add the display item  ViewWidget, which was defined in the UI file:
         self._mw.ViewWidget.addItem(self.step_image)
@@ -242,7 +245,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.ViewWidget.setLabel('left', units='Steps')
 
         # Set up and connect xy channel combobox
-        scan_channels = self._stepper_logic.get_scanner_count_channels()
+        scan_channels = self._stepper_logic.get_counter_count_channels()
         for n, ch in enumerate(scan_channels):
             self._mw.count_channel_ComboBox.addItem(str(ch), n)
         self._mw.count_channel_ComboBox.activated.connect(self.update_count_channel)
@@ -277,24 +280,24 @@ class ConfocalStepperGui(GUIBase):
 
     def init_hardware_UI(self):
         # Set the range for the spin boxes of the voltage and frequency values:
-        amplitude_range = self._stepper_logic.get_amplitude_range()
+        amplitude_range = self._stepper_logic.axis_class["x"].get_amplitude_range()
         self._mw.x_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
+        amplitude_range = self._stepper_logic.axis_class["y"].get_amplitude_range()
         self._mw.y_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
+        amplitude_range = self._stepper_logic.axis_class["z"].get_amplitude_range()
         self._mw.z_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
 
-        frequency_range = self._stepper_logic.get_freq_range()
-        self._mw.x_frequency_spinBox.setRange(frequency_range['x'][0], frequency_range['x'][1])
-        self._mw.y_frequency_spinBox.setRange(frequency_range['y'][0], frequency_range['y'][1])
-        self._mw.z_frequency_spinBox.setRange(frequency_range['z'][0], frequency_range['z'][1])
+        frequency_range = self._stepper_logic.axis_class["x"].get_freq_range()
+        self._mw.x_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
+        frequency_range = self._stepper_logic.axis_class["y"].get_freq_range()
+        self._mw.y_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
+        frequency_range = self._stepper_logic.axis_class["z"].get_freq_range()
+        self._mw.z_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
 
         # set minimal steps for the current value
         self._mw.x_amplitude_doubleSpinBox.setOpts(minStep=0.1)
         self._mw.y_amplitude_doubleSpinBox.setOpts(minStep=0.1)
         self._mw.z_amplitude_doubleSpinBox.setOpts(minStep=0.1)
-
-        self._mw.x_frequency_spinBox.setOpts(minStep=1)
-        self._mw.y_frequency_spinBox.setOpts(minStep=1)
-        self._mw.z_frequency_spinBox.setOpts(minStep=1)
 
     def init_step_parameters_UI(self):
 
@@ -364,9 +367,9 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
 
         # Handle slider movements by user:
-        self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
-        self._mw.y_piezo_SliderWidget.sliderMoved.connect(self.update_from_slider_y)
-        self._mw.z_piezo_SliderWidget.sliderMoved.connect(self.update_from_slider_z)
+        self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)
+        self._mw.y_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_y)
+        self._mw.z_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_z)
 
         # Add Step Directions
         self._mw.step_direction_comboBox.addItem("XY", "xy")
@@ -436,8 +439,8 @@ class ConfocalStepperGui(GUIBase):
         # then take manual cb range.
         if self._mw.cb_manual_RadioButton.isChecked() or np.max(
                 self.step_image.image) == 0.0:
-            cb_min = self._mw.xy_cb_min_DoubleSpinBox.value()
-            cb_max = self._mw.xy_cb_max_DoubleSpinBox.value()
+            cb_min = self._mw.cb_min_DoubleSpinBox.value()
+            cb_max = self._mw.cb_max_DoubleSpinBox.value()
 
         # Otherwise, calculate cb range from percentiles.
         else:
@@ -903,19 +906,19 @@ class ConfocalStepperGui(GUIBase):
         self._mw.scan_control_dockWidget.show()
         self._mw.hardware_dockWidget.show()
         self._mw.tilt_correction_dockWidget.hide()
-        self._mw.scanLineDockWidget.hide()
+        #self._mw.scanLineDockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.step_dockWidget.setFloating(False)
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.hardware_dockWidget.setFloating(False)
         self._mw.tilt_correction_dockWidget.setFloating(False)
-        self._mw.scanLineDockWidget.setFloating(False)
+        #self._mw.scanLineDockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.step_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.tilt_correction_dockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
+        #self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.hardware_dockWidget)
 
         # Resize window to default size

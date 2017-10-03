@@ -26,6 +26,7 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
+from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -63,12 +64,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     _modclass = 'ConfocalStepperLogic'
     _modtype = 'logic'
 
-    _connectors = {
-        'confocalstepper1': 'ConfocalStepperInterface',
-        'savelogic': 'SaveLogic',
-        'confocalcounter': 'FiniteCounterInterface',
-        'analoguereader': 'AnalogReaderInterface'
-    }
+    # declare connectors
+    confocalstepper1 = Connector(interface='ConfocalStepperInterface')
+    savelogic = Connector(interface='SaveLogic')
+    confocalcounter = Connector(interface='FiniteCounterInterface')
+    analoguereader = Connector(interface='AnalogReaderInterface')
 
     # Todo: add connectors and QTCore Signals
     # signals
@@ -267,9 +267,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         def get_freq_range(self):
             """Returns the current possible frequency range of the stepping device for all axes
-            @return dict: key[axis], value[list of range]
+            @return list: The range fo possible frequencies (min and max). Empty for error
             """
-            return self.hardware.get_freq_range_stepper()
+            range = self.hardware.get_freq_range_stepper()
+            if self.name in range.keys():
+                return range[self.name]
+            else:
+                self.log.error("Frequency range is not defined for axis %s", self.name)
+                return []
 
         def get_amplitude_range(self):
             """Returns the current possible stepping voltage range of the stepping device for all axes
@@ -1238,6 +1243,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             second_positions = np.linspace(0, self._steps_scan_second_line - 1, self._steps_scan_second_line)
             first_position_array, second_position_array = np.meshgrid(first_positions, second_positions)
             image_raw[:, :, 1] = second_position_array
+            image_raw[:, :, 0] = first_position_array
+            image_raw_back[:, :, 1] = second_position_array
             image_raw_back[:, :, 0] = first_position_array
 
         self.image = image_raw
