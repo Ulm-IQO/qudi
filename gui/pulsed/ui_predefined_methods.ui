@@ -56,6 +56,9 @@
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Pulse generator channel used for a gate signal for fast counter devices supporting this functionality.</string>
+             </property>
              <property name="text">
               <string>d_ch2</string>
              </property>
@@ -70,8 +73,7 @@
               </sizepolicy>
              </property>
              <property name="text">
-              <string>analog
-trigger amplitude:</string>
+              <string>channel_amp:</string>
              </property>
             </widget>
            </item>
@@ -95,6 +97,9 @@ trigger amplitude:</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>The pulse generator channel used for the microwave output.</string>
+             </property>
              <property name="text">
               <string>a_ch1</string>
              </property>
@@ -109,14 +114,14 @@ trigger amplitude:</string>
               </sizepolicy>
              </property>
              <property name="text">
-              <string>MW channel:</string>
+              <string>mw_channel:</string>
              </property>
             </widget>
            </item>
            <item row="2" column="4">
             <widget class="QLabel" name="label_9">
              <property name="text">
-              <string>MW amplitude:</string>
+              <string>mw_amp:</string>
              </property>
             </widget>
            </item>
@@ -134,6 +139,9 @@ trigger amplitude:</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>If used, the microwave frequency.</string>
+             </property>
              <property name="suffix">
               <string>Hz</string>
              </property>
@@ -145,14 +153,14 @@ trigger amplitude:</string>
            <item row="2" column="2">
             <widget class="QLabel" name="label_8">
              <property name="text">
-              <string>MW frequency:</string>
+              <string>mw_freq:</string>
              </property>
             </widget>
            </item>
            <item row="1" column="2">
             <widget class="QLabel" name="label_6">
              <property name="text">
-              <string>wait time:</string>
+              <string>wait_time:</string>
              </property>
             </widget>
            </item>
@@ -175,6 +183,9 @@ trigger amplitude:</string>
                <width>100</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>Logical high voltage in case an analog channel is used for digital trigger output.</string>
              </property>
              <property name="suffix">
               <string>V</string>
@@ -199,8 +210,7 @@ trigger amplitude:</string>
               </size>
              </property>
              <property name="text">
-              <string>sync
-trigger channel:</string>
+              <string>sync_trig_channel:</string>
              </property>
             </widget>
            </item>
@@ -213,15 +223,14 @@ trigger channel:</string>
               </sizepolicy>
              </property>
              <property name="text">
-              <string>laser length:</string>
+              <string>laser_length:</string>
              </property>
             </widget>
            </item>
            <item row="1" column="4">
             <widget class="QLabel" name="label_7">
              <property name="text">
-              <string>trigger--&gt;laser
-delay:</string>
+              <string>delay_length:</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
@@ -237,8 +246,7 @@ delay:</string>
               </sizepolicy>
              </property>
              <property name="text">
-              <string>counter
-gate channel:</string>
+              <string>gate_count_channel:</string>
              </property>
             </widget>
            </item>
@@ -261,6 +269,9 @@ gate channel:</string>
                <width>100</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>The waiting time after each laser pulse.</string>
              </property>
              <property name="suffix">
               <string>s</string>
@@ -290,6 +301,9 @@ gate channel:</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>The duration of the laser pulses in the pulse sequence to generate.</string>
+             </property>
              <property name="suffix">
               <string>s</string>
              </property>
@@ -318,6 +332,9 @@ gate channel:</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>Pulse generator channel used for a synchonization trigger for fast counter devices.</string>
+             </property>
              <property name="text">
               <string>d_ch3</string>
              </property>
@@ -342,6 +359,9 @@ gate channel:</string>
                <width>100</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>The delay between trigger output and actual laser power going high.</string>
              </property>
              <property name="suffix">
               <string>s</string>
@@ -368,6 +388,9 @@ gate channel:</string>
                <height>16777215</height>
               </size>
              </property>
+             <property name="toolTip">
+              <string>If used, the microwave amplitude (NOT peak-to-peak).</string>
+             </property>
              <property name="suffix">
               <string>V</string>
              </property>
@@ -389,14 +412,14 @@ gate channel:</string>
              </property>
             </spacer>
            </item>
-           <item row="1" column="6">
+           <item row="2" column="6">
             <widget class="QLabel" name="label_10">
              <property name="text">
-              <string>rabi period:</string>
+              <string>rabi_period:</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="7">
+           <item row="2" column="7">
             <widget class="ScienDSpinBox" name="pm_rabi_period_Widget">
              <property name="minimumSize">
               <size>
@@ -409,6 +432,9 @@ gate channel:</string>
                <width>100</width>
                <height>16777215</height>
               </size>
+             </property>
+             <property name="toolTip">
+              <string>If used, the Rabi period for the measurement.</string>
              </property>
              <property name="suffix">
               <string>s</string>
@@ -448,6 +474,19 @@ gate channel:</string>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>pm_sync_trig_channel_Widget</tabstop>
+  <tabstop>pm_gate_count_channel_Widget</tabstop>
+  <tabstop>pm_channel_amp_Widget</tabstop>
+  <tabstop>pm_laser_length_Widget</tabstop>
+  <tabstop>pm_wait_time_Widget</tabstop>
+  <tabstop>pm_delay_length_Widget</tabstop>
+  <tabstop>pm_mw_channel_Widget</tabstop>
+  <tabstop>pm_mw_freq_Widget</tabstop>
+  <tabstop>pm_mw_amp_Widget</tabstop>
+  <tabstop>pm_rabi_period_Widget</tabstop>
+  <tabstop>scrollArea</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
