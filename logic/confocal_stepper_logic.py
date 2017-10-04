@@ -100,13 +100,17 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.step_amplitude = None
             self.step_freq = None
             self.mode = None
+            self.dc_mode = None
+
             self.steps_direction = 50
+
             self.hardware = hardware
             self.voltage_range = []
             self.step_range = []
             self.absolute_position = None
             self.feedback_precision_volt = None
             self.feedback_precision_position = None
+
             self.log = log
 
             # initialise values
@@ -204,7 +208,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
             if frequency is not None:
                 if frequency is not None:
-                    range_f = self.get_freq_range()[self.name]
+                    range_f = self.get_freq_range()
                     if frequency < range_f[0] or frequency > range_f[1]:
                         self.log.error(
                             'Voltages {0} exceed the limit, the positions have to '
@@ -322,6 +326,21 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             @ return list: min and max possible voltage in feedback for given axis"""
             self.step_range = self.hardware.get_position_range_stepper(self.name)
             return self.step_range
+
+        def get_dc_mode(self):
+            """Reads the DC input status from the stepper hardware
+            @return bool: True for on, False for off or error
+            """
+            self.dc_mode = self.hardware.get_DC_in(self.name)
+            return self.dc_mode
+
+        def set_dc_mode(self, On=False):
+            """Set the DC input status of the stepper hardware
+
+            @param bool On: if True is turned on, False is turned off, default False
+            @return int: error code (0: OK, -1:error)
+            """
+            return self.hardware.set_DC_in(self.name, On)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -596,7 +615,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     ################################# Stepper Scan Methods #######################################
 
     def set_scan_axes(self, scan_axes):
-        """"
+        """"Sets the step scan axes for the stepper to the given direction
+
+        @param str scan_axes: The axes combination(of two exiting axes) along which the stepper should scan
         @return int: error code (0:OK, -1:error)
         """
         if len(scan_axes) != 2:
@@ -610,8 +631,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         for axis in scan_axes:
-            if axis not in self.axis_class.keys:
-                self.log.error("The specified scan axis {} is not a stepper axis".format(axis))
+            if axis not in self.axis_class.keys():
+                self.log.error("The specified scan axis % is not a stepper axis", axis)
                 return -1
         self._scan_axes = scan_axes
         return 0
@@ -743,6 +764,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.map_scan_position = False
 
         self.initialize_image()
+        self.signal_image_updated.emit()
 
         self.signal_step_lines_next.emit(True)
 

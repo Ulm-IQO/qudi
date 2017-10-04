@@ -75,7 +75,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'x' in config.keys():
             self._attocube_axis["x"] = config['x']
-            self._position_feedback["x"] = ConfigOption('position_feedback_x', False, missing='warn')
+            if 'position_feedback_x' in config.keys():
+                self._position_feedback["x"] = config['position_feedback_x']
+            else:
+                self.log.warning("no position feedback defined")
+                self._position_feedback["x"] = False
             if 'x_range' in config.keys():
                 if float(config['x_range'][0]) < float(config['x_range'][1]):
                     self._attocube_axis_range["x"] = [float(config['x_range'][0]),
@@ -95,7 +99,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'y' in config.keys():
             self._attocube_axis["y"] = config['y']
-            self._position_feedback["y"] = ConfigOption('position_feedback_y', False, missing='warn')
+            #self._position_feedback["y"] = ConfigOption('position_feedback_y')
+            if 'position_feedback_y' in config.keys():
+                self._position_feedback["y"] = config['position_feedback_y']
+            else:
+                self.log.warning("no position feedback defined")
+                self._position_feedback["y"] = False
             if 'y_range' in config.keys():
                 if float(config['y_range'][0]) < float(config['y_range'][1]):
                     self._attocube_axis_range["y"] = [float(config['y_range'][0]),
@@ -115,7 +124,12 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'z' in config.keys():
             self._attocube_axis["z"] = config['z']
-            self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
+            if 'position_feedback_z' in config.keys():
+                self._position_feedback["z"] = config['position_feedback_z']
+            else:
+                self.log.warning("no position feedback defined")
+                self._position_feedback["z"] = False
+            #self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
             if 'z_range' in config.keys():
                 if float(config['z_range'][0]) < float(config['z_range'][1]):
                     self._attocube_axis_range["z"] = [float(config['z_range'][0]),
@@ -457,20 +471,20 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         """ Checks the status of the DC input for a specific axis
 
         @param str axis: the axis for which the input is to be checked
-        @return bool: True for on, False for off, -1 for error
+        @return bool: True for on, False for off or error
         """
         if axis in self._attocube_axis.keys():
             command = "getdci {}".format(self._attocube_axis[axis])
             result = self._send_cmd(command, read=True)
             if result[0] == -1:
-                return -1
+                return False
             dci_result = result[1][-3].split()
             self._axis_dci[axis] = dci_result[-1]
             if dci_result[-1] == "off":
                 return False
             return True
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
-        return -1
+        return False
 
     def set_AC_in(self, axis, on):
         """Changes Attocube axis DC input status

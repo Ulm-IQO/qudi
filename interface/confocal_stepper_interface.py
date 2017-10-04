@@ -231,4 +231,23 @@ class ConfocalStepperInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @abc.abstractmethod
+    def get_DC_in(self, axis):
+        """ Checks the status of the DC input for a specific axis
+
+        @param str axis: the axis for which the input is to be checked
+        @return bool: True for on, False for off or error
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_DC_in(self, axis, on):
+        """Changes stepper axis DC input status
+
+        @param str axis: axis to be changed, can only be part of dictionary axes
+        @param bool on: if True is turned on, False is turned off
+        @return int: error code (0: OK, -1:error)
+        """
+        pass
+
 	

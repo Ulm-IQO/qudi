@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>942</width>
-    <height>1117</height>
+    <width>950</width>
+    <height>929</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -27,7 +27,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>942</width>
+     <width>950</width>
      <height>21</height>
     </rect>
    </property>
@@ -92,7 +92,7 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_3">
      <item row="2" column="1">
-      <widget class="QSpinBox" name="y_step_InputWidget">
+      <widget class="QSpinBox" name="y_steps_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -178,7 +178,7 @@
       </widget>
      </item>
      <item row="3" column="1">
-      <widget class="QSpinBox" name="z_step_InputWidget">
+      <widget class="QSpinBox" name="z_steps_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -930,7 +930,7 @@
       </widget>
      </item>
      <item row="4" column="6">
-      <widget class="QCheckBox" name="inverted__direction_checkBox">
+      <widget class="QCheckBox" name="inverted_direction_checkBox">
        <property name="text">
         <string>Invert Step Axes</string>
        </property>
@@ -1793,7 +1793,7 @@
       </widget>
      </item>
      <item row="3" column="2">
-      <widget class="ScienDSpinBox" name="y_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="y_amplitude">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1935,7 +1935,7 @@
       </widget>
      </item>
      <item row="5" column="2">
-      <widget class="ScienDSpinBox" name="z_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="z_amplitude">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -1957,7 +1957,7 @@
       </widget>
      </item>
      <item row="2" column="2">
-      <widget class="ScienDSpinBox" name="x_amplitude_doubleSpinBox">
+      <widget class="ScienDSpinBox" name="x_amplitude">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -2126,7 +2126,7 @@
         </size>
        </property>
        <property name="text">
-        <string> Update Hardware</string>
+        <string extracomment="Reads tehe hardware values directly from the stepper harware"> Update Hardware</string>
        </property>
       </widget>
      </item>
@@ -2151,7 +2151,7 @@
         </size>
        </property>
        <property name="text">
-        <string>Get Hardware Values</string>
+        <string extracomment="Reads the hardware values saved in the computer">Get Hardware Values</string>
        </property>
       </widget>
      </item>
@@ -2160,9 +2160,9 @@
     <zorder>y_axis_hardware_label</zorder>
     <zorder>update_hardware_pushButton</zorder>
     <zorder>z_axis_hardware_label</zorder>
-    <zorder>z_amplitude_doubleSpinBox</zorder>
-    <zorder>y_amplitude_doubleSpinBox</zorder>
-    <zorder>x_amplitude_doubleSpinBox</zorder>
+    <zorder>z_amplitude</zorder>
+    <zorder>y_amplitude</zorder>
+    <zorder>x_amplitude</zorder>
     <zorder>x_frequency_spinBox</zorder>
     <zorder>y_frequency_spinBox</zorder>
     <zorder>z_frequency_spinBox</zorder>
@@ -2555,7 +2555,7 @@
  </customwidgets>
  <tabstops>
   <tabstop>x_steps_InputWidget</tabstop>
-  <tabstop>z_step_InputWidget</tabstop>
+  <tabstop>z_steps_InputWidget</tabstop>
   <tabstop>x_piezo_min_InputWidget</tabstop>
   <tabstop>x_piezo_max_InputWidget</tabstop>
   <tabstop>y_piezo_min_InputWidget</tabstop>

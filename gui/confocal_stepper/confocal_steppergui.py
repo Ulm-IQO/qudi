@@ -94,10 +94,10 @@ class ConfocalStepperGui(GUIBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        #self.log.info('The following configuration was found.')
+        # self.log.info('The following configuration was found.')
 
         # checking for the right configuration
-        #for key in config.keys():
+        # for key in config.keys():
         #    self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
@@ -118,7 +118,7 @@ class ConfocalStepperGui(GUIBase):
 
 
         # Show the Main SteppingConfocal GUI:
-        self._show()
+        self.show()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -145,7 +145,7 @@ class ConfocalStepperGui(GUIBase):
         # All our gui elements are dockable, and so there should be no "central" widget.
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-        #self._mw.scanLineDockWidget.hide()
+        # self._mw.scanLineDockWidget.hide()
 
         self.init_plot_step_UI()
         self.init_hardware_UI()
@@ -226,7 +226,8 @@ class ConfocalStepperGui(GUIBase):
         # matrix to get the proper scan. The graphic widget displays vector-
         # wise the lines and the lines are normally columns, but in our
         # measurement we scan rows per row. That's why it has to be transposed.
-        self.step_image = pg.ImageItem(self._stepper_logic.stepping_raw_data.transpose())
+        self.step_image = pg.ImageItem(self._stepper_logic.image[:, :, 2])
+        # Todo: Add option to see data from other counter later
 
         # set up scan line plot
         sc = self._stepper_logic._step_counter
@@ -234,7 +235,7 @@ class ConfocalStepperGui(GUIBase):
         data = self._stepper_logic.image[sc, :, 0:3:2]
 
         self.step_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
-        #self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
+        # self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
 
         # Add the display item  ViewWidget, which was defined in the UI file:
         self._mw.ViewWidget.addItem(self.step_image)
@@ -265,7 +266,7 @@ class ConfocalStepperGui(GUIBase):
         # Create colorbars and add them at the desired place in the GUI. Add
         # also units to the colorbar.
 
-        self.cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
+        self.cb = ColorBar(self.my_colors.cmap_normed, width=50, cb_min=0, cb_max=100)
         self._mw.cb_ViewWidget.addItem(self.cb)
         self._mw.cb_ViewWidget.hideAxis('bottom')
         self._mw.cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
@@ -276,16 +277,16 @@ class ConfocalStepperGui(GUIBase):
         # a refresh of the GUI picture:
         self._stepper_logic.signal_image_updated.connect(self.refresh_image)
         self._stepper_logic.signal_image_updated.connect(self.refresh_scan_line)
-        #self._stepper_logic.sigImageInitialized.connect(self.adjust_window)
+        # self._stepper_logic.sigImageInitialized.connect(self.adjust_window)
 
     def init_hardware_UI(self):
         # Set the range for the spin boxes of the voltage and frequency values:
         amplitude_range = self._stepper_logic.axis_class["x"].get_amplitude_range()
-        self._mw.x_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.x_amplitude.setRange(amplitude_range[0], amplitude_range[1])
         amplitude_range = self._stepper_logic.axis_class["y"].get_amplitude_range()
-        self._mw.y_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.y_amplitude.setRange(amplitude_range[0], amplitude_range[1])
         amplitude_range = self._stepper_logic.axis_class["z"].get_amplitude_range()
-        self._mw.z_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.z_amplitude.setRange(amplitude_range[0], amplitude_range[1])
 
         frequency_range = self._stepper_logic.axis_class["x"].get_freq_range()
         self._mw.x_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
@@ -295,15 +296,30 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
 
         # set minimal steps for the current value
-        self._mw.x_amplitude_doubleSpinBox.setOpts(minStep=0.1)
-        self._mw.y_amplitude_doubleSpinBox.setOpts(minStep=0.1)
-        self._mw.z_amplitude_doubleSpinBox.setOpts(minStep=0.1)
+        self._mw.x_amplitude.setOpts(minStep=0.1)
+        self._mw.y_amplitude.setOpts(minStep=0.1)
+        self._mw.z_amplitude.setOpts(minStep=0.1)
+
+        # connect actions
+        self._mw.read_hardware_pushButton.clicked.connect(self.measure_stepper_hardware_values)
+        self._mw.update_hardware_pushButton.clicked.connect(self.update_stepper_hardware_values)
+
+        # get current step values
+        self.measure_stepper_hardware_values()
 
     def init_step_parameters_UI(self):
 
+        self._mw.x_steps_InputWidget.setValue(self._stepper_logic.axis_class["x"].steps_direction)
+        self._mw.y_steps_InputWidget.setValue(self._stepper_logic.axis_class["y"].steps_direction)
+        self._mw.z_steps_InputWidget.setValue(self._stepper_logic.axis_class["z"].steps_direction)
+
+        self._mw.x_steps_InputWidget.valueChanged.connect(self.change_x_steps_range)
+        self._mw.y_steps_InputWidget.valueChanged.connect(self.change_y_steps_range)
+        self._mw.z_steps_InputWidget.valueChanged.connect(self.change_z_steps_range)
+
         # These connect to confocal logic such that the piezos are moved
         # Setup the Sliders:
-        # Calculate the needed Range for the sliders. The image ranges comming
+        # Calculate the needed Range for the sliders. The image ranges coming
         # from the Logic module must be in meters.
         # 1 nanometer resolution per one change, units are meters
         self.slider_res = 1e-9
@@ -375,13 +391,15 @@ class ConfocalStepperGui(GUIBase):
         self._mw.step_direction_comboBox.addItem("XY", "xy")
         self._mw.step_direction_comboBox.addItem("XZ", "xz")
         self._mw.step_direction_comboBox.addItem("YZ", "yz")
+        self._inverted_axes = {"xy": "yx", "xz": "zx", "yz": "zy"}
         self._mw.step_direction_comboBox.activated.connect(self.update_step_direction)
+        self._mw.inverted_direction_checkBox.clicked.connect(self.update_step_direction)
 
     def init_tilt_correction_UI(self):
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
 
-    def _show(self):
+    def show(self):
         """Make window visible and put it above all other windows. """
         self._mw.show()
         self._mw.activateWindow()
@@ -469,6 +487,28 @@ class ConfocalStepperGui(GUIBase):
         self.cb.refresh_colorbar(cb_range[0], cb_range[1])
 
     ################## Hardware Scan ##################
+    def measure_stepper_hardware_values(self):
+        self._mw.x_amplitude.setValue(self._stepper_logic.axis_class["x"].get_stepper_amplitude())
+        self._mw.y_amplitude.setValue(self._stepper_logic.axis_class["y"].get_stepper_amplitude())
+        self._mw.z_amplitude.setValue(self._stepper_logic.axis_class["z"].get_stepper_amplitude())
+        self._mw.x_frequency_spinBox.setValue(self._stepper_logic.axis_class["x"].get_stepper_frequency())
+        self._mw.y_frequency_spinBox.setValue(self._stepper_logic.axis_class["y"].get_stepper_frequency())
+        self._mw.z_frequency_spinBox.setValue(self._stepper_logic.axis_class["z"].get_stepper_frequency())
+        mode = self._stepper_logic.axis_class["x"].get_stepper_mode()
+        if mode == "Input" or "Stepping":
+            self._mw.x_dcin_checkBox.setCheckState(self._stepper_logic.axis_class["x"].get_dc_mode())
+        else:
+            self._mw.x_dcin_checkBox.setCheckState(False)
+        mode = self._stepper_logic.axis_class["y"].get_stepper_mode()
+        if mode == "Input" or "Stepping":
+            self._mw.y_dcin_checkBox.setCheckState(self._stepper_logic.axis_class["y"].get_dc_mode())
+        else:
+            self._mw.y_dcin_checkBox.setCheckState(False)
+        mode = self._stepper_logic.axis_class["z"].get_stepper_mode()
+        if mode == "Input" or "Stepping":
+            self._mw.z_dcin_checkBox.setCheckState(self._stepper_logic.axis_class["z"].get_dc_mode())
+        else:
+            self._mw.z_dcin_checkBox.setCheckState(False)
 
     ################## Tool bar ##################
     def disable_step_actions(self):
@@ -661,10 +701,12 @@ class ConfocalStepperGui(GUIBase):
         self.step_image.getViewBox().updateAutoRange()
         # Todo: this needs to have a check for the stepping direction and the correct data has to
         #  be chosen
-        if self.count_direction:
-            step_image_data = self._stepper_logic.stepping_raw_data.transpose()
-        else:
-            step_image_data = self._stepper_logic.stepping_raw_data_back
+        # if self.count_direction:
+        # Todo: add count_direction variable
+        step_image_data = self._stepper_logic.image[:, :, 2]
+
+        # else:
+        #    step_image_data = self._stepper_logic.image_back[:, :, 2]
         cb_range = self.get_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -677,14 +719,16 @@ class ConfocalStepperGui(GUIBase):
 
     ################## Step Parameters ##################
     # Todo:
-    def update_step_direction(self, index):
+    def update_step_direction(self):
         """ The user changed the step scan direction, adjust all
             other GUI elements."""
-        self.scan_axes = str(self._mw.count_direction_ComboBox.itemData(index,
-                                                                        QtCore.Qt.UserRole))
 
-        self.set_scan_axes(self.scan_axes)
-        pass
+        direction = self._mw.inverted_direction_checkBox.isChecked()
+        new_axes = self._mw.step_direction_comboBox.itemData(self._mw.step_direction_comboBox.currentIndex())
+        if direction:
+            new_axes = self._inverted_axes[new_axes]
+
+        self._stepper_logic.set_scan_axes(new_axes)
 
     def update_from_input_x_piezo(self):
         """ The user changed the number in the x piezo position spin box, adjust all
@@ -737,7 +781,7 @@ class ConfocalStepperGui(GUIBase):
         @params int sliderValue: slider piezo position, a quantized whole number
         """
         x_pos = self._scanning_logic.x_range[0] + sliderValue * self.slider_res
-        self.update_input_x(x_pos)
+        self.update_input_x_piezo(x_pos)
         self._scanning_logic.set_position('xslider', x=x_pos)
 
     def update_from_piezo_slider_y(self, sliderValue):
@@ -785,17 +829,17 @@ class ConfocalStepperGui(GUIBase):
     def change_x_steps_range(self):
         """ Update the x steps range in the logic according to the GUI.
         """
-        self._stepper_logic.steps_direction['x'] = self._mw.x_steps_InputWidget.value()
+        self._stepper_logic.axis_class['x'].steps_direction = self._mw.x_steps_InputWidget.value()
 
-    def change_z_resolution(self):
+    def change_y_steps_range(self):
         """ Update the y steps range in the logic according to the GUI.
         """
-        self._stepper_logic.steps_direction['y'] = self._mw.y_steps_InputWidget.value()
+        self._stepper_logic.axis_class['y'].steps_direction = self._mw.y_steps_InputWidget.value()
 
-    def change_z_resolution(self):
+    def change_z_steps_range(self):
         """ Update the z steps range in the logic according to the GUI.
         """
-        self._stepper_logic.steps_direction['z'] = self._mw.z_steps_InputWidget.value()
+        self._stepper_logic.axis_class['z'].steps_direction = self._mw.z_steps_InputWidget.value()
 
     # Todo: did not do this yet
     def change_x_image_range(self):
@@ -893,6 +937,19 @@ class ConfocalStepperGui(GUIBase):
         if self._sd.save_purePNG_checkBox.isChecked():
             self.step_image.save(filename + '_raw.png')
 
+    ################## Hardware Changes Line ##################
+    def update_stepper_hardware_values(self):
+        self._stepper_logic.axis_class["x"].set_stepper_amplitude(self._mw.x_amplitude.value())
+        self._stepper_logic.axis_class["y"].set_stepper_amplitude(self._mw.y_amplitude.value())
+        self._stepper_logic.axis_class["z"].set_stepper_amplitude(self._mw.z_amplitude.value())
+        self._stepper_logic.axis_class["x"].set_stepper_frequency(self._mw.x_frequency_spinBox.value())
+        self._stepper_logic.axis_class["y"].set_stepper_frequency(self._mw.y_frequency_spinBox.value())
+        self._stepper_logic.axis_class["z"].set_stepper_frequency(self._mw.z_frequency_spinBox.value())
+
+        self._stepper_logic.axis_class["x"].set_dc_mode(self._mw.x_dcin_checkBox.checkState())
+        self._stepper_logic.axis_class["y"].set_dc_mode(self._mw.y_dcin_checkBox.checkState())
+        self._stepper_logic.axis_class["z"].set_dc_mode(self._mw.z_dcin_checkBox.checkState())
+
     ################## Settings ##################
     def switch_hardware(self):
         """ Switches the hardware state. """
@@ -906,19 +963,19 @@ class ConfocalStepperGui(GUIBase):
         self._mw.scan_control_dockWidget.show()
         self._mw.hardware_dockWidget.show()
         self._mw.tilt_correction_dockWidget.hide()
-        #self._mw.scanLineDockWidget.hide()
+        # self._mw.scanLineDockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.step_dockWidget.setFloating(False)
         self._mw.scan_control_dockWidget.setFloating(False)
         self._mw.hardware_dockWidget.setFloating(False)
         self._mw.tilt_correction_dockWidget.setFloating(False)
-        #self._mw.scanLineDockWidget.setFloating(False)
+        # self._mw.scanLineDockWidget.setFloating(False)
 
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.step_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.scan_control_dockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8), self._mw.tilt_correction_dockWidget)
-        #self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
+        # self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.scanLineDockWidget)
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.hardware_dockWidget)
 
         # Resize window to default size
