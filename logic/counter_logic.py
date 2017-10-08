@@ -42,11 +42,13 @@ class CounterLogic(GenericLogic):
     @return error: 0 is OK, -1 is error
     """
     sigCounterUpdated = QtCore.Signal()
+    sigCountContinuousNext = QtCore.Signal()
+    sigCountGatedNext = QtCore.Signal()
 
-    sigCountDataNext = QtCore.Signal()
-
+    sigCountFiniteGatedNext = QtCore.Signal()
     sigGatedCounterFinished = QtCore.Signal()
     sigGatedCounterContinue = QtCore.Signal(bool)
+
     sigCountingSamplesChanged = QtCore.Signal(int)
     sigCountLengthChanged = QtCore.Signal(int)
     sigCountFrequencyChanged = QtCore.Signal(float)
