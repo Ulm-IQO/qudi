@@ -21,7 +21,6 @@
 
 * Configuration
     * [Using a Config file](@ref config-explanation)
-    * [Remote access to modules)(@red remote_modules)
 
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)

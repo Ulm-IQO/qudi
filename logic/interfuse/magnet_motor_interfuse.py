@@ -23,7 +23,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.module import Connector
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
-from core.module import Base
 
 
 class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
@@ -195,7 +194,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         @return int: error code (0:OK, -1:error)
         """
         if not self._magnet_idle:
-            self._motor_device.set_velocity(param_dict)
+            self._motor_device.set_velocity(param_list)
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "set_velocity" commands. Couple the Motor to '

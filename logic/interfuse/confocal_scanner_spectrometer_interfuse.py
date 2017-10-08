@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -33,44 +33,17 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     """
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
-    # connectors
-<<<<<<< HEAD
-    _in = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
-    _out = {'spectrometerscanner': 'ConfocalScannerInterface'}
-=======
-<<<<<<< HEAD
-    _connectors = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'spectrometer1': 'SpectrometerInterface'}
 
-=======
+    # connectors
     fitlogic = Connector(interface='FitLogic')
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     spectrometer1 = Connector(interface='SpectrometerInterface')
 
     # config options
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
->>>>>>> fc880f6aae4930ddc6d442887ca558c2e0996994
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
-
 
         # Internal parameters
         self._line_length = None
@@ -91,7 +64,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._spectrometer_hw = self.get_connector('spectrometer1')
 
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.reset_hardware()
 
     def reset_hardware(self):
@@ -205,11 +178,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         self._line_length = length
         return 0
 
-
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
+        @param bool pixel_clock: whether we need to output a pixel clock for this line
 
         @return float[]: the photon counts per second
         """
@@ -229,7 +202,7 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         count_data = np.zeros(self._line_length)
 
         for i in xrange(self._line_length):
-            coords = line_path[:,i]
+            coords = line_path[:, i]
             self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2], a=coords[3])
             print(coords)
             print(i)
