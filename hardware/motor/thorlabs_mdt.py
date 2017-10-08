@@ -1,38 +1,47 @@
 import serial
 import sys
 import re
+from numpy import arange
 from time import sleep
 
 
 # Set default port (COM6 for windows locally with USB converter)
-if sys.platform.startswith('win'):
-    DEFAULT_PORT = 'COM6'
-else:
-    DEFAULT_PORT = '/dev/ttyUSB0'
-
+# if sys.platform.startswith('win'):
+#     DEFAULT_PORT = 'COM6'
+# else:
+#     DEFAULT_PORT = '/dev/ttyUSB0'
+import logging
 
 class PiezoController(serial.Serial):
     '''
     Python class for controlling voltages to 3-axis ThorLabs MDT693A
     '''
     
-    MAX_VOLTAGE = 75.0 # This is the maximum voltage the Nanomax can handle!
-    
-    def __init__(self, port=DEFAULT_PORT, baudrate=115200):
+    # Note 75V is the maximum voltage the Nanomax can handle!
+    def __init__(self, MAX_VOLTAGE = 75.0, port='COM4', baudrate=115200):
+        
+        self.MAX_VOLTAGE = MAX_VOLTAGE
+        
         # Initialise the class using super class of (py)serial
-        serial.Serial.__init__(self, port, baudrate, timeout=0.1)
-
+        self.serial.Serial(self, port, baudrate)
+        
+        # Initialise the class x,y,z axes
+        for axis in ['x', 'y', 'z']:
+            self.get_voltage(axis)
+        
         # Close any open connections and open a serial connection
-        self.close()
-        self.open()
+        # self.close()
+        # self.open()
     
-    def cmd(self, command):
+    def cmd(self, command, verbose = False):
         '''
         Send a command to the MDT693A
         '''
         self.write( (str(command)+'\r').encode('utf-8'))
         # Have a timeout so that writing successive strings does not interrupt
         # the last command
+        if verbose:
+            print ('did command:', str(command))
         sleep(0.03)
     
     def response(self):
@@ -67,12 +76,13 @@ class PiezoController(serial.Serial):
         '''
         if axis not in ["x", "y", "z"]:
             self.close_connection()
-            raise RuntimeError("%s axis is not in (x,y,z)" % axis)
-
+            self.logging.error("%s axis is not in (x,y,z)" % axis)
+        self.cmd("{}voltage?".format(axis))
         voltage = self.response()
+        setattr(self, axis, voltage)
         return voltage
     
-    def set_voltage(self, axis, voltage):
+    def set_voltage(self, axis, voltage, step=2.5):
         '''
         set the voltage on the piezo controller
         #=======================================================================
@@ -85,13 +95,30 @@ class PiezoController(serial.Serial):
         '''
         if axis not in ["x", "y", "z"]:
             self.close_connection()
-            raise RuntimeError("%s axis is not in (x,y,z)" % axis)
+            self.logging.error("%s axis is not in (x,y,z)" % axis)
         if not 0.0 <= voltage <= self.MAX_VOLTAGE:
             self.close_connection()
-            raise RuntimeError("The current voltage (%s V) must be between 0V and 75V" % voltage)
+            self.logging.error("The current voltage (%s V) must be between 0V and %s V" % (voltage, self.MAX_VOLTAGE))
+        if step > 5.0:
+            self.logging.error('Step size %s V must be less than %s V'%(voltage, step))
+        
+        # Break down into smaller steps if the change is too large
+        current_voltage = getattr(self, axis)
+
+        if abs(current_voltage - voltage) > step:
+            if (current_voltage - voltage) < 0:
+                intermediate = arange(current_voltage, voltage, step)
+            else:
+                intermediate = arange(voltage, current_voltage, step)[::-1]
+            
+            for i in intermediate:
+                self.cmd("{}v0{}".format(axis, i))
+#                 sleep(0.03)
+            
         
         # This is the string that we send over serial to MDT693A
         self.cmd("{}v0{}".format(axis, voltage))
+        setattr(self, axis, voltage)
     
     
     def jog(self, axis, voltage_increment):
@@ -110,7 +137,7 @@ class PiezoController(serial.Serial):
         
         if not 0.0 <= new_voltage <= self.MAX_VOLTAGE:
             self.close_connection()
-            raise RuntimeError("The current voltage (%s V) must be between 0V and 75V" % new_voltage)
+            raise RuntimeError("The current voltage (%s V) must be between 0V and %s V" % (new_voltage, self.MAX_VOLTAGE))
         
         self.set_voltage(axis, new_voltage)
     
@@ -130,11 +157,12 @@ class PiezoController(serial.Serial):
         '''
         if axis not in ["x", "y", "z"]:
             self.close_connection()
-            raise RuntimeError("%s axis is not in (x,y,z)" % axis)
+            self.log.error("%s axis is not in (x,y,z)" % axis)
         if not 0.0 <= r <= 1.0:
             self.close_connection()
-            raise RuntimeError("The relative voltage must be between 0 and 1")
+            self.log.error("The relative voltage must be between 0 and 1")
         self.set_voltage(axis, r*self.MAX_VOLTAGE)
+        setattr(self, axis, r*self.MAX_VOLTAGE)
     
     def half_xy_axes(self):
         '''
@@ -157,6 +185,19 @@ class PiezoController(serial.Serial):
     
     def close_connection(self):
         self.close()
+
+    def vol2dist(self, voltage):
+
+        self.dist = (20/75)*1e-6*voltage + 0.1e-6
+
+        return self.dist
+
+    def dist2volt(self,dist):
+
+        self.volt = (dist-0.1e-6)/((20/75)*1e-6)
+
+        return self.volt
+
     
     def __del__(self):
         self.close()
@@ -164,22 +205,41 @@ class PiezoController(serial.Serial):
 
 if __name__ == "__main__":
     
-    # COM1 for bench A2, COM17 for SWIR bench ethernet connection
-    pc = PiezoController(port='COM17')
+    pc = PiezoController(port='COM22')
     
 
     # set y-voltage to half of max value
 #     pc.set_voltage_rel('y', 0.5)
     
-    # print x, y, z voltages
-    print ('x',pc.get_voltage("x"))
-    print ('y',pc.get_voltage("y"))
-    print ('z',pc.get_voltage("z"))
-    
-    # Set the x,y,z voltages
-#     pc.set_voltage("z", 0.0)
-#     pc.set_voltage("y", 40.2)
-#     pc.set_voltage("z", 0.0)
+    if True:
+        # Test that we can zero and set the Voltages for x,y,z
+        
+        # Set the x,y,z voltages
+        print ('Setting x,y,z axes to 0V')
+        pc.set_voltage("x", 0.)
+        pc.set_voltage("y", 0.)
+        pc.set_voltage("z", 0.)
+        
+         
+        # print x, y, z voltages
+        print ('x',pc.get_voltage("x"))
+        print ('y',pc.get_voltage("y"))
+        print ('z',pc.get_voltage("z"))
+        
+        print('\nSleeping for 2s \n')
+        sleep(2.0)
+        
+        pc.set_voltage("x", 75.)
+        pc.set_voltage("y", 75.)
+        pc.set_voltage("z", 0.)
+     
+        print ('Setting x, y, z axes to 10V, 20V, 30V')
+        print ('x',pc.get_voltage("x"))
+        print ('y',pc.get_voltage("y"))
+        print ('z',pc.get_voltage("z"))
+    else:
+        # Zero all the axes
+        pc.zero_all_axes()
     
     # Increment the x-y axis by a few volts
 #     pc.jog("y", -5.0)
@@ -188,9 +248,6 @@ if __name__ == "__main__":
     # Set xy to half of max voltage
 #     pc.half_xy_axes()
 
-    # print x, y, z voltages
-#     print ('x',pc.get_voltage("x"))
-#     print ('y',pc.get_voltage("y"))
-#     print ('z',pc.get_voltage("z"))
-
     pc.close_connection()
+    
+    

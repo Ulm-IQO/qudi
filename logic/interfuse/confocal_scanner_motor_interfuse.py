@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -31,13 +31,12 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-    _modclass = 'confocalscannerinterface'
+    _modclass = 'ConfocalScannerMotorInterfuse'
     _modtype = 'hardware'
     # connectors
-    _in = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-           'magnetinterface': 'MagnetInterface'}
-    _out = {'motorscanner': 'ConfocalScannerInterface'}
+    fitlogic = Connector(interface='FitLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    magnetinterface = Connector(interface='MagnetInterface')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,13 +66,13 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         self._num_points = 500
 
-    def on_activate(self, e):
+    def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_in_connector('fitlogic')
-        self._confocal_hw = self.get_in_connector('confocalscanner1')
-        self._motor_hw = self.get_in_connector('magnetinterface')
+        self._fit_logic = self.get_connector('fitlogic')
+        self._confocal_hw = self.get_connector('confocalscanner1')
+        self._motor_hw = self.get_connector('magnetinterface')
 
 
         #have to add these tilt variables for the logic to not give error
@@ -103,7 +102,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         self.position_range.append([0,0])
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         self.reset_hardware()
 
     def reset_hardware(self):
@@ -256,7 +255,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         return 0
 
 
-    def scan_line(self, line_path = None):
+    def scan_line(self, line_path = None,pixel_clock=True):
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
@@ -317,8 +316,8 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
             count_data[i,0] = np.mean(count) # could be say, 10 values
 
-        self._confocal_hw.close_counter(scanner=False)
-        self._confocal_hw.close_clock(scanner=False)
+        self._confocal_hw.close_counter()
+        self._confocal_hw.close_clock()
 
         return count_data
 

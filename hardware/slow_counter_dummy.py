@@ -38,6 +38,9 @@ class SlowCounterDummy(Base, SlowCounterInterface):
     _modclass = 'SlowCounterDummy'
     _modtype = 'hardware'
 
+    # connectors
+    #fitlogic = Connector(interface='FitLogic')
+
     # config
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
     _samples_number = ConfigOption('samples_number', 10, missing='warn')
@@ -106,11 +109,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
         time.sleep(0.1)
         return 0
 
-    def set_up_counter(self,
-                       counter_channels=None,
-                       sources=None,
-                       clock_channel=None,
-                       counter_buffer=None):
+    def set_up_counter(self, counter_channels=None, sources=None, clock_channel=None, counter_buffer=None):
         """ Configures the actual counter with a given clock.
 
         @param string counter_channel: if defined, this is the physical channel of the counter

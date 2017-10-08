@@ -311,6 +311,7 @@ class SpinBox(QtGui.QAbstractSpinBox):
         Return the value of this SpinBox.
 
         """
+
         if self.opts['int']:
             return int(self.val)
         else:
@@ -331,15 +332,21 @@ class SpinBox(QtGui.QAbstractSpinBox):
             value = self.value()
 
         bounds = self.opts['bounds']
-        if bounds[0] is not None and value < bounds[0]:
-            value = bounds[0]
-        if bounds[1] is not None and value > bounds[1]:
-            value = bounds[1]
+
 
         if self.opts['int']:
             value = int(value)
 
         value = D(asUnicode(value))
+
+
+        if bounds[0] is not None and value < bounds[0]:
+            value = bounds[0]
+        if bounds[1] is not None and value > bounds[1]:
+            value = bounds[1]
+
+
+
         if value == self.val:
             return
         prev = self.val
