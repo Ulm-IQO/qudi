@@ -19,13 +19,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
 import datetime
+import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
-from qtpy import QtGui, QtWidgets, QtCore, uic
 
+from core.module import Connector
 from gui.guibase import GUIBase
+from qtpy import QtGui, QtWidgets, QtCore, uic
 
 
 class NuclearOperationsMainWindow(QtWidgets.QMainWindow):
@@ -46,6 +47,7 @@ class NuclearOperationsGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
+<<<<<<< HEAD
     _connectors = {'nuclearoperationslogic': 'NuclearOperationsLogic',
            'savelogic': 'SaveLogic'}
 
@@ -73,7 +75,13 @@ class NuclearOperationsGui(GUIBase):
                          the state before the event happened and the destination
                          of the state which should be reached after the event
                          had happened.
+=======
+    nuclearoperationslogic = Connector(interface='NuclearOperationsLogic')
+    savelogic = Connector(interface='SaveLogic')
+>>>>>>> fc880f6aae4930ddc6d442887ca558c2e0996994
 
+    def on_activate(self):
+        """
         This init connects all the graphic modules, which were created in the
         *.ui file and configures the event handling between the modules.
         """
@@ -181,11 +189,8 @@ class NuclearOperationsGui(GUIBase):
         self._no_logic.sigCurrMeasPointUpdated.connect(self.update_meas_graph)
         self._no_logic.sigCurrMeasPointUpdated.connect(self.update_meas_parameter)
 
-    def deactivation(self, e):
+    def on_deactivate(self):
         """ Reverse steps of activation
-
-        @param object e: Fysom.event object from Fysom class. A more detailed
-                         explanation can be found in the method initUI.
 
         @return int: error code (0:OK, -1:error)
         """

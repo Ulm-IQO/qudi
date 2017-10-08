@@ -35,14 +35,17 @@ import importlib
 from qtpy import QtCore
 from . import config
 
-from .util import ptime
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
 from .util.modules import toposort, isBase
 from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
-from .remote import RemoteObjectManager
-from .base import Base
+# try to import RemoteObjectManager. Might fail if rpyc is not installed.
+try:
+    from .remote import RemoteObjectManager
+except ImportError:
+    RemoteObjectManager = None
+from .module import BaseMixin, Connector
 
 
 class Manager(QtCore.QObject):
@@ -99,7 +102,7 @@ class Manager(QtCore.QObject):
         self.currentDir = None
         self.baseDir = None
         self.alreadyQuit = False
-        self.remoteServer = True
+        self.remote_server = False
 
         try:
             # Initialize parent class QObject
@@ -130,40 +133,59 @@ class Manager(QtCore.QObject):
             self.configDir = os.path.dirname(config_file)
             self.readConfig(config_file)
 
-            # Create remote module server
-            try:
-                if 'serverport' in self.tree['global']:
-                    remotePort = self.tree['global']['serverport']
-                    logger.info('Remote port is configured to {0}'.format(
-                        remotePort))
-                else:
-                    remotePort = 12345
-                    logger.info('Remote port is the standard {0}'.format(
-                        remotePort))
-                serveraddress = 'localhost'
-                if 'serveraddress' in self.tree['global']:
-                    serveraddress = self.tree['global']['serveraddress']
-                else:
-                    # bind to all available interfaces
-                    serveraddress = ''
-                if 'certfile' in self.tree['global']:
-                    certfile = self.tree['global']['certfile']
-                else:
-                    certfile = None
-                if 'keyfile' in self.tree['global']:
-                    keyfile = self.tree['global']['keyfile']
-                else:
-                    keyfile = None
-                self.rm = RemoteObjectManager(
-                    self,
-                    serveraddress,
-                    remotePort,
-                    certfile=certfile,
-                    keyfile=keyfile)
-                self.rm.createServer()
-            except:
-                self.remoteServer = False
-                logger.exception('Remote server could not be started.')
+            # check first if remote support is enabled and if so create RemoteObjectManager
+            if (RemoteObjectManager is None):
+                logger.error('Remote modules disabled. Rpyc not installed.')
+                self.rm = None
+            else:
+                self.rm = RemoteObjectManager(self)
+                # Create remote module server if specified in config file
+                if ('module_server' in self.tree['global']):
+                    if (not isinstance(self.tree['global']['module_server'], dict)):
+                        logger.error('"module_server" entry in "global" section of configuration'
+                                     ' file is not a dictionary.')
+                    else:
+                        # new style
+                        try:
+                            server_address = self.tree['global']['module_server'].get(
+                                'address',
+                                'localhost')
+                            server_port = self.tree['global']['module_server'].get(
+                                'port', 12345)
+                            certfile = self.tree['global']['module_server'].get(
+                                'certfile', None)
+                            keyfile = self.tree['global']['module_server'].get('keyfile', None)
+                            self.rm.createServer(server_address, server_port, certfile, keyfile)
+                            # successfully started remote server
+                            logger.info('Started server rpyc://{0}:{1}'.format(server_address,
+                                                                               server_port))
+                            self.remote_server = True
+                        except:
+                            logger.exception('Rpyc server could not be started.')
+                elif ('serveraddress' in self.tree['global']):
+                    logger.warning('Deprecated remote server settings. Please update to new '
+                                   'style. See documentation.')
+                    server_address = self.tree['global']['serveraddress']
+                    try:
+                        if 'serverport' in self.tree['global']:
+                            remote_port = self.tree['global']['serverport']
+                            logger.info('Remote port is configured to {0}'.format(remote_port))
+                        else:
+                            remote_port = 12345
+                            logger.info('Remote port is the standard {0}'.format(remote_port))
+                        if 'certfile' in self.tree['global']:
+                            certfile = self.tree['global']['certfile']
+                        else:
+                            certfile = None
+                        if 'keyfile' in self.tree['global']:
+                            keyfile = self.tree['global']['keyfile']
+                        else:
+                            keyfile = None
+                        self.rm.createServer(server_address, remote_port, certfile, keyfile)
+                        # successfully started remote server
+                        self.remote_server = True
+                    except:
+                        logger.exception('Remote server could not be started.')
 
             logger.info('Qudi started.')
 
@@ -338,27 +360,25 @@ class Manager(QtCore.QObject):
                                                ' nor list. Ignoring.')
                                 continue
                             # add specified directories
-                            for ii in range(len(dirnames)):
+                            for ii, dir_name in enumerate(dirnames):
                                 path = ''
                                 # absolute or relative path? Existing?
-                                if (os.path.isabs(dirnames[ii]) and
-                                        os.path.isdir(dirnames[ii])):
-                                    path = dirnames[ii]
+                                if (os.path.isabs(dir_name) and os.path.isdir(dir_name)):
+                                    path = dir_name
                                 else:
                                     # relative path?
                                     path = os.path.abspath(
                                         '{0}/{1}'.format(
                                             os.path.dirname(self.configFile),
-                                            dirnames[ii]))
-                                    if (not os.path.isdir(path)):
+                                            dir_name))
+                                    if not os.path.isdir(path):
                                         path = ''
-                                if (path == ''):
+                                if path == '':
                                     logger.warning(
                                         'Error while adding qudi '
                                         'extension: Directory \'{0}\' '
                                         'does not exist.'
-                                        ''.format(
-                                            cfg['global'][m][ii]))
+                                        ''.format(dir_name))
                                     continue
                                 # check for __init__.py files within extension
                                 # and issue warning if existing
@@ -570,7 +590,7 @@ class Manager(QtCore.QObject):
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance
-        if not issubclass(modclass, Base):
+        if not issubclass(modclass, BaseMixin):
             raise Exception('Bad inheritance, for instance {0!s} from {1!s}.{2!s}.'.format(
                 instanceName, baseName, className))
 
@@ -625,21 +645,33 @@ class Manager(QtCore.QObject):
                              'connected but is not declared in the module '
                              'class.'.format(c, base, mkey))
                 continue
-            if (not isinstance(connectors[c], OrderedDict)):
-                logger.error('Connector is no dictionary.')
-                continue
-            if ('class' not in connectors[c]):
-                logger.error('No class key in connection declaration.')
-                continue
-            if (not isinstance(connectors[c]['class'], str)):
-                logger.error('Value for class key is not a string.')
-                continue
-            if ('object' not in connectors[c]):
-                logger.error('No object key in connection declaration.')
-                continue
-            if (connectors[c]['object'] is not None):
-                logger.warning('Connector {0}.{1}.{2} is already connected.'
-                               ''.format(c, base, mkey))
+            # new-style connector
+            if isinstance(connectors[c], Connector):
+                pass
+            # legacy connector
+            elif isinstance(connectors[c], OrderedDict):
+                if ('class' not in connectors[c]):
+                    logger.error('{0}.{1}.{2}: No class key in connection declaration.'
+                        ''.format(c, base, mkey))
+                    continue
+                if (not isinstance(connectors[c]['class'], str)):
+                    logger.error('{0}.{1}.{2}: Value {3} for class key is not a string.'
+                        ''.format(c, base, mkey, connectors[c]['class']))
+                    continue
+                if ('object' not in connectors[c]):
+                    logger.error('{0}.{1}.{2}: No object key in connection declaration.'
+                        ''.format(c, base, mkey))
+                    continue
+                if (connectors[c]['object'] is not None):
+                    logger.warning('Connector {0}.{1}.{2} is already connected.'
+                        ''.format(c, base, mkey))
+                    continue
+                logger.warning('Connector {0} in {1}.{2} is a legacy connector.\n'
+                    'Use core.module.Connector to declare connectors.'
+                    ''.format(c, base, mkey))
+            else:
+                logger.error('{0}.{1}.{2}: Connector is no dictionary or Connector.'
+                    ''.format(c, base, mkey))
                 continue
             if (not isinstance(connections[c], str)):
                 logger.error('Connector configuration {0}.{1}.{2} '
@@ -650,6 +682,9 @@ class Manager(QtCore.QObject):
                 logger.warning('Connector configuration {0}.{1}.{2} has '
                                'legacy format since it contains a dot.'
                                ''.format(base, mkey, c))
+                logger.error('{0}.{1}.{2}: Connector is no dictionary.'
+                    ''.format(c, base, mkey))
+                continue
                 destmod = connections[c].split('.')[0]
             else:
                 destmod = connections[c]
@@ -682,11 +717,27 @@ class Manager(QtCore.QObject):
             # Finally set the connection object
             logger.info('Connecting {0}.{1}.{2} to {3}.{4}'
                         ''.format(base, mkey, c, destbase, destmod))
-            connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
+            # new-style connector
+            if isinstance(connectors[c], Connector):
+                connectors[c].connect(self.tree['loaded'][destbase][destmod])
+            # legacy connector
+            elif isinstance(connectors[c], dict):
+                connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
+            else:
+                logger.error(
+                    'Connector {0} has wrong type even though we checked before.'
+                    ''.format(c))
 
         # check that all connectors are connected
         for c, v in self.tree['loaded'][base][mkey].connectors.items():
-            if (v['object'] is None):
+            # new-style connector
+            if isinstance(v, Connector) and v.obj is None:
+                logger.error('Connector {0} of module {1}.{2} is not '
+                             'connected. Connection not complete.'.format(
+                                 c, base, mkey))
+                return -1
+            # legacy connector
+            elif isinstance(v, dict) and v['object'] is None:
                 logger.error('Connector {0} of module {1}.{2} is not '
                              'connected. Connection not complete.'.format(
                                  c, base, mkey))
@@ -704,16 +755,21 @@ class Manager(QtCore.QObject):
         defined_module = self.tree['defined'][base][key]
         if 'module.Class' in defined_module:
             if 'remote' in defined_module:
-                if not self.remoteServer:
-                    logger.error('Remote functionality not working, check your log.')
+                if self.rm is None:
+                    logger.error('Remote module functionality disabled. Rpyc not installed.')
                     return -1
                 if not isinstance(defined_module['remote'], str):
                     logger.error('Remote URI of {0} module {1} not a string.'.format(base, key))
                     return -1
                 try:
-                    instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
-                    logger.info('Remote module {0} loaded as .{1}.{2}.'
-                        ''.format(defined_module['remote'], base, key))
+                    certfile = defined_module.get('certfile', None)
+                    keyfile = defined_module.get('keyfile', None)
+                    instance = self.rm.getRemoteModuleUrl(
+                        defined_module['remote'],
+                        certfile=certfile,
+                        keyfile=keyfile)
+                    logger.info('Remote module {0} loaded as {1}.{2}.'
+                                ''.format(defined_module['remote'], base, key))
                     with self.lock:
                         if isBase(base):
                             self.tree['loaded'][base][key] = instance
@@ -737,12 +793,27 @@ class Manager(QtCore.QObject):
                         defined_module['module.Class'])
 
                     modObj = self.importModule(base, module_name)
+
+                    # Ensure that the namespace of a module is reloaded before 
+                    # instantiation. That will not harm anything.
+                    # Even if the import is successful an error might occur 
+                    # during instantiation. E.g. in an abc metaclass, 
+                    # methods might be missing in a derived interface file.
+                    # Reloading the namespace will prevent the need to restart 
+                    # Qudi, if a module instantiation was not successful upon 
+                    # load.
+                    importlib.reload(modObj)  # keep the namespace of module up to date
+
                     self.configureModule(modObj, base, class_name, key, defined_module)
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
-                        if not self.remoteServer:
+                        if self.rm is None:
+                            logger.error('Remote module sharing functionality disabled. Rpyc not'
+                                         ' installed.')
+                            return 1
+                        if not self.remote_server:
                             logger.error('Remote module sharing does not work '
-                                         'as server startup failed earlier, check '
-                                         'your log.')
+                                         'as no server configured or server startup failed earlier.'
+                                         ' Check your configuration and log.')
                             return 1
                         self.rm.shareModule(key, self.tree['loaded'][base][key])
                 except:
@@ -765,7 +836,7 @@ class Manager(QtCore.QObject):
         """
         defined_module = self.tree['defined'][base][key]
         if 'remote' in defined_module:
-            if not self.remoteServer:
+            if self.rm is None:
                 logger.error('Remote functionality not working, check your log.')
                 return -1
             if not isinstance(defined_module['remote'], str):
@@ -881,7 +952,7 @@ class Manager(QtCore.QObject):
         if module.getState() != 'deactivated' and (
                 self.isModuleDefined(base, name)
                 and 'remote' in self.tree['defined'][base][name]
-                and self.remoteServer):
+                and self.remote_server):
             logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
             return
         if module.getState() != 'deactivated':
@@ -890,17 +961,18 @@ class Manager(QtCore.QObject):
         try:
             module.setStatusVariables(self.loadStatusVariables(base, name))
             # start main loop for qt objects
-            if base == 'logic':
+            if module.is_module_threaded:
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
                 success = QtCore.QMetaObject.invokeMethod(
                     module,
-                    "_wrap_activation",
+                    "trigger",
                     QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool))
+                    QtCore.Q_RETURN_ARG(bool),
+                    QtCore.Q_ARG(str, 'activate'))
             else:
-                success = module._wrap_activation()
+                success = module.activate() # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(success))
         except:
             logger.exception(
@@ -935,9 +1007,11 @@ class Manager(QtCore.QObject):
             if base == 'logic':
                 success = QtCore.QMetaObject.invokeMethod(
                     module,
-                    '_wrap_deactivation',
+                    "trigger",
                     QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool))
+                    QtCore.Q_RETURN_ARG(bool),
+                    QtCore.Q_ARG(str, 'deactivate'))
+
                 QtCore.QMetaObject.invokeMethod(
                     module,
                     'moveToThread',
@@ -946,7 +1020,8 @@ class Manager(QtCore.QObject):
                 self.tm.quitThread('mod-{0}-{1}'.format(base, name))
                 self.tm.joinThread('mod-{0}-{1}'.format(base, name))
             else:
-                success = module._wrap_deactivation()
+                success = module.deactivate() # runs on_deactivate in main thread
+
             self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
         except:

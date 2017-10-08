@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control SMIQ microwave device.
+This file contains the Qudi hardware file to control Agilent microwave device.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -25,8 +25,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import numpy as np
+import time
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode
@@ -34,43 +35,32 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAgilent(Base, MicrowaveInterface):
-    """ This is the Interface class to define the controls for the simple
-        microwave hardware.
+    """
+    This is the Interface class to define the controls for the simple
+    microwave hardware. Tested for the model N9310A.
     """
 
     _modclass = 'MicrowaveAgilent'
     _modtype = 'hardware'
 
+    _usb_address = ConfigOption('usb_address', missing='error')
+    _usb_timeout = ConfigOption('usb_timeout', 10, missing='warn')
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # checking for the right configuration
-        config = self.getConfiguration()
-        # agilent mw source has USB connection, therefore configuration checks for USB address
-        if 'usb_address' in config.keys():
-            self._usb_address = config['usb_address']
-        else:
-            self.log.error(
-                'This is MWAGILENT: did not find >>usb_address<< in '
-                'configration.')
-
-        if 'usb_timeout' in config.keys():
-            self._usb_timeout = int(config['usb_timeout'])*1000
-        else:
-            self._usb_timeout = 10*1000
-            self.log.error(
-                'This is MWAGILENT: did not find >>usb_timeout<< in '
-                'configration. I will set it to 10 seconds.')
-
+        self._usb_timeout = self._usb_timeout * 1000
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
-        self._usb_connection = self.rm.open_resource(resource_name=self._usb_address,
-                                                            timeout=self._usb_timeout)
-
-
+        self._usb_connection = self.rm.open_resource(
+            resource_name=self._usb_address,
+            timeout=self._usb_timeout)
 
         self.log.info('MWAGILENT initialised and connected to hardware.')
         self.model = self._usb_connection.query('*IDN?').split(',')[1]
+
+        self._FREQ_SWITCH_SPEED = 0.009 # Frequency switching speed in s,
+                                        # according to specs its < 10ms
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -334,3 +324,21 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         except:
             return -1
         return 0
+
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time corresponding to the
+        frequency switching speed.
+        """
+
+        # WARNING:
+        # The manual trigger functionality was not tested for this device!
+        # Might not work well! Please check that!
+
+        self._usb_connection.write(':TRIGger:SSWP')
+        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
+        return

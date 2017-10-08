@@ -145,7 +145,7 @@ def make_poissonianmultiple_model(self, no_of_functions=1):
     return multi_poisson_model, params
 
 def make_poissoniandouble_model(self):
-    return self.make_multiplepoissonian_model(2)
+    return self.make_poissonianmultiple_model(2)
 
 ################################################################################
 #                                                                              #
@@ -187,6 +187,21 @@ def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=No
                          'is a good approximation.')
         result = poissonian_model.fit(data, x=x_axis, params=params)
         print(result.message)
+
+    if units is None:
+        units = ['arb. unit', 'arb. unit']
+
+    result_str_dict = dict()  # create result string for gui   oder OrderedDict()
+
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error': result.params['amplitude'].stderr,
+                                    'unit': units[1]}     # Amplitude
+
+    result_str_dict['Event rate'] = {'value': result.params['mu'].value,
+                                    'error': result.params['mu'].stderr,
+                                    'unit': units[0]}      # event rate
+
+    result.result_str_dict = result_str_dict
 
     return result
 

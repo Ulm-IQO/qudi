@@ -20,19 +20,20 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import pyqtgraph as pg
-import numpy as np
 
-import pyqtgraph.exporters
 import datetime
+import numpy as np
 import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
 
+from core.module import Connector
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
-
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
 
 
 class WavemeterLogWindow(QtWidgets.QMainWindow):
@@ -54,17 +55,18 @@ class WavemeterLogGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = { 'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
-            'savelogic': 'SaveLogic'
-            }
+    wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
+    sigFitChanged = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
@@ -126,30 +128,35 @@ class WavemeterLogGui(GUIBase):
         self._mw.show()
 
         ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1),#, style=QtCore.Qt.DotLine),
-                                       symbol=None
-                                       #symbol='o',
-                                       #symbolPen=palette.c1,
-                                       #symbolBrush=palette.c1,
-                                       #symbolSize=3
-                                       )
+        self.curve_data_points = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c1),
+            symbol=None
+            )
 
-        self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
-                                       symbol=None
-                                       )
+        self.curve_nm_counts = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c2, style=QtCore.Qt.DotLine),
+            symbol=None
+            )
 
-        self._curve3 = pg.PlotDataItem(pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
-                                       symbol=None,
-                                       )
+        self.curve_hz_counts = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c6, style=QtCore.Qt.DotLine),
+            symbol=None
+            )
 
-        self._curve4 = pg.PlotDataItem(pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
-                                       symbol=None,
-                                       )
+        self.curve_envelope = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
+            symbol=None
+            )
 
-        self._pw.addItem(self._curve1)
-        self._pw.addItem(self._curve4)
-        self._right_axis.addItem(self._curve2)
-        self._top_axis.addItem(self._curve3)
+        self.curve_fit = pg.PlotDataItem(
+            pen=pg.mkPen(palette.c2, width=3),
+            symbol=None
+            )
+
+        self._pw.addItem(self.curve_data_points)
+        self._pw.addItem(self.curve_envelope)
+        self._right_axis.addItem(self.curve_nm_counts)
+        self._top_axis.addItem(self.curve_hz_counts)
 
         self._save_PNG = True
 
@@ -164,6 +171,17 @@ class WavemeterLogGui(GUIBase):
         self._wm_logger_logic.sig_new_data_point.connect(self.add_data_point)
 
         self._wm_logger_logic.sig_data_updated.connect(self.updateData)
+
+        # fit settings
+        self._fsd = FitSettingsDialog(self._wm_logger_logic.fc)
+        self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
+        self._fsd.applySettings()
+
+        self._mw.actionFit_settings.triggered.connect(self._fsd.show)
+        self._mw.do_fit_PushButton.clicked.connect(self.doFit)
+        self.sigDoFit.connect(self._wm_logger_logic.do_fit)
+        self.sigFitChanged.connect(self._wm_logger_logic.fc.set_current_fit)
+        self._wm_logger_logic.sig_fit_updated.connect(self.updateFit)
 
     def on_deactivate(self):
         """ Deactivate the module properly.
@@ -185,15 +203,54 @@ class WavemeterLogGui(GUIBase):
         self._mw.autoMaxLabel.setText('Maximum: {0:3.6f} (nm)   '.format(self._wm_logger_logic.intern_xmax))
 
         x_axis = self._wm_logger_logic.histogram_axis
-        x_axis_hz = 3.0e17 / (x_axis) - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
+        x_axis_hz = (
+            3.0e17 / (x_axis) 
+            - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
+            )
 
         plotdata = np.array(self._wm_logger_logic.counts_with_wavelength)
         if len(plotdata.shape) > 1 and plotdata.shape[1] == 3:
-            self._curve1.setData(plotdata[:, 2:0:-1])
+            self.curve_data_points.setData(plotdata[:, 2:0:-1])
 
-        self._curve2.setData(y=self._wm_logger_logic.histogram, x=x_axis)
-        self._curve3.setData(y=self._wm_logger_logic.histogram, x=x_axis_hz)
-        self._curve4.setData(y=self._wm_logger_logic.envelope_histogram, x=x_axis)
+        self.curve_nm_counts.setData(x=x_axis, y=self._wm_logger_logic.histogram)
+        self.curve_hz_counts.setData(x=x_axis_hz, y=self._wm_logger_logic.histogram)
+        self.curve_envelope.setData(x=x_axis, y=self._wm_logger_logic.envelope_histogram)
+
+    @QtCore.Slot()
+    def doFit(self):
+        self.sigFitChanged.emit(self._mw.fit_methods_ComboBox.getCurrentFit()[0])
+        self.sigDoFit.emit()
+
+    @QtCore.Slot()
+    def updateFit(self):
+        """ Do the configured fit and show it in the plot """
+        fit_name = self._wm_logger_logic.fc.current_fit
+        fit_result = self._wm_logger_logic.fc.current_fit_result
+        fit_param = self._wm_logger_logic.fc.current_fit_param
+
+        if fit_result is not None:
+            # display results as formatted text
+            self._mw.fit_results_DisplayWidget.clear()
+            try:
+                formated_results = units.create_formatted_output(fit_result.result_str_dict)
+            except:
+                formated_results = 'this fit does not return formatted results'
+            self._mw.fit_results_DisplayWidget.setPlainText(formated_results)
+
+        if fit_name is not None:
+            self._mw.fit_methods_ComboBox.setCurrentFit(fit_name)
+
+        # check which fit method is used and show the curve in the plot accordingly
+        if fit_name != 'No Fit':
+            self.curve_fit.setData(
+                x=self._wm_logger_logic.wlog_fit_x,
+                y=self._wm_logger_logic.wlog_fit_y)
+
+            if self.curve_fit not in self._mw.plotWidget.listDataItems():
+                self._mw.plotWidget.addItem(self.curve_fit)
+        else:
+            if self.curve_fit in self._mw.plotWidget.listDataItems():
+                self._mw.plotWidget.removeItem(self.curve_fit)
 
     def add_data_point(self, point):
         if len(point) >= 3:

@@ -24,7 +24,7 @@ import numpy as np
 import time
 from qtpy import QtCore
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
@@ -94,31 +94,15 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     _modclass = 'PicoHarp300'
     _modtype = 'hardware'
 
+    _deviceID = ConfigOption('deviceID', 0, missing='warn')
+    _mode = ConfigOption('mode', 0, missing='warn')
+
     sigReadoutPicoharp = QtCore.Signal()
     sigAnalyzeData = QtCore.Signal(object, object)
     sigStart = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        if 'deviceID' in config.keys():
-            self._deviceID = config['deviceID']
-        else:
-            self.log.warning('Picoharp: No deviceID specified in the '
-                    'config!\n'
-                    'Devide ID = 0 will be taken, but without any '
-                    'warranty to be able to connect now correctly to the '
-                    'device.')
-
-            self._deviceID = 0
-
-        if 'mode' in config.keys():
-            self._mode = config['mode']
-        else:
-            self.log.warning('Picoharp: No mode specified in the config!\n'
-                        'Mode will be set to 0 (= Histogram Mode) as a '
-                        'default.')
-            self._mode = 0
 
         self.errorcode = self._create_errorcode()
         self._set_constants()

@@ -3,7 +3,6 @@ from qtpy import QtWidgets
 import numpy as np
 from collections import OrderedDict
 import re
-import copy
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -12,10 +11,12 @@ from logic.pulse_objects import PulseSequence
 from logic.sampling_functions import SamplingFunctions
 
 from .spinbox_delegate import SpinBoxDelegate
-# from .doublespinbox_delegate import DoubleSpinBoxDelegate
 from .scientificspinbox_delegate import ScienDSpinBoxDelegate
 from .combobox_delegate import ComboBoxDelegate
 from .checkbox_delegate import CheckBoxDelegate
+
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BlockEditor:
@@ -223,8 +224,8 @@ class BlockEditor:
 
     def _get_headernames(self):
         """ Get the names of the current header.
-        
-        @return: dict with keys being the header names and items being the column number 
+
+        @return: dict with keys being the header names and items being the column number
         """
         headers = OrderedDict()
         for column in range(self.be_widget.columnCount()):
@@ -235,7 +236,7 @@ class BlockEditor:
     def set_displayed_analog_amplitude(self, ampl_dict):
         """ Update the maximal amplitudes of the current pulse block editor.
 
-        @param dict ampl_dict: 
+        @param dict ampl_dict:
         @return: list, with integers representing the column indices which have
                  changed
         """
@@ -365,10 +366,10 @@ class BlockEditor:
 
     def get_column_delegate(self, column):
         """ Get the delegate object, which is responsible for the specific column
-        
-        @param int column: column index 
-        
-        @return: QDelegate 
+
+        @param int column: column index
+
+        @return: QDelegate
         """
         return self.be_widget.itemDelegate(column)
 
