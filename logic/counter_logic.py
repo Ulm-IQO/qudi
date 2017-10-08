@@ -465,35 +465,6 @@ class CounterLogic(GenericLogic):
                     self.unlock()
                     self.sigCounterUpdated.emit()
                     return
-<<<<<<< HEAD
-
-                # read the current counter value
-                self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-                if self.rawdata[0] < 0:
-                    self.log.error('The counting went wrong, killing the counter.')
-                    self.stopRequested = True
-                else:
-                    if self._counting_mode == CountingMode['CONTINUOUS']:
-                        self._process_data_continous()
-                    elif self._counting_mode == CountingMode['GATED']:
-                        self._process_data_gated()
-                    elif self._counting_mode == CountingMode['FINITE_GATED']:
-                        self._process_data_finite_gated()
-                    else:
-                        self.log.error('No valid counting mode set! Can not process counter data.')
-
-            # call this again from event loop
-            self.sigCounterUpdated.emit()
-            self.sigCountDataNext.emit()
-        return
-
-    def save_current_count_trace(self, name_tag=''):
-        """ The currently displayed counttrace will be saved.
-
-        @param str name_tag: optional, personal description that will be
-                             appended to the file name
-
-=======
 
                 # read the current counter value
                 self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
@@ -521,7 +492,6 @@ class CounterLogic(GenericLogic):
         @param str name_tag: optional, personal description that will be
                              appended to the file name
 
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
         @return: dict data: Data which was saved
                  str filepath: Filepath
                  dict parameters: Experiment parameters
@@ -548,7 +518,6 @@ class CounterLogic(GenericLogic):
         savearr = np.empty((len(chans) + 1, len(x_axis)))
         savearr[0] = x_axis
         datastr = 'Time (s)'
-<<<<<<< HEAD
 
         for i, ch in enumerate(chans):
             savearr[i+1] = self.countdata[i]
@@ -574,33 +543,6 @@ class CounterLogic(GenericLogic):
     def get_channels(self):
         """ Shortcut for hardware get_counter_channels.
 
-=======
-
-        for i, ch in enumerate(chans):
-            savearr[i+1] = self.countdata[i]
-            datastr += ',Signal {0} (counts/s)'.format(i)
-
-        data[datastr] = savearr.transpose()
-
-        # write the parameters:
-        parameters = OrderedDict()
-        timestr = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(time.time()))
-        parameters['Saved at time'] = timestr
-        parameters['Count frequency (Hz)'] = self._count_frequency
-        parameters['Oversampling (Samples)'] = self._counting_samples
-        parameters['Smooth Window Length (# of events)'] = self._smooth_window_length
-
-        filepath = self._save_logic.get_path_for_module(module_name='Counter')
-        self._save_logic.save_data(data, filepath=filepath, parameters=parameters,
-                                   filelabel=filelabel, delimiter='\t')
-
-        self.log.debug('Current Counter Trace saved to: {0}'.format(filepath))
-        return data, filepath, parameters, filelabel
-
-    def get_channels(self):
-        """ Shortcut for hardware get_counter_channels.
-
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
             @return list(str): return list of active counter channel names
         """
         return self._counting_device.get_counter_channels()
@@ -711,8 +653,4 @@ class CounterLogic(GenericLogic):
             if time.time() - start_time >= timeout:
                 self.log.error('Stopping the counter timed out after {0}s'.format(timeout))
                 return -1
-<<<<<<< HEAD
         return 0
-=======
-        return 0
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
