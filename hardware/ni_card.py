@@ -138,7 +138,32 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _modtype = 'NICard'
     _modclass = 'hardware'
 
+<<<<<<< HEAD
     def on_activate(self, e=None):
+=======
+<<<<<<< HEAD
+    def on_activate(self):
+        """ Starts up the NI Card at activation.
+=======
+    # config options
+    _clock_channel = ConfigOption('clock_channel', missing='error')
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
+    _scanner_clock_channel = ConfigOption('scanner_clock_channel')
+    _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
+    _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
+    _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
+    # number of readout samples, mainly used for gated counter
+    _samples_number = ConfigOption('samples_number', 50, missing='warn')
+    _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
+    # used as a default for expected maximum counts
+    _max_counts = ConfigOption('max_counts', 3e7)
+    # timeout for the Read or/and write process in s
+    _RWTimeout = ConfigOption('read_write_timeout', 10)
+    _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn')
+>>>>>>> fc880f6aae4930ddc6d442887ca558c2e0996994
+
+    def on_activate(self):
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
         """ Starts up the NI Card at activation.
 
         @param object e: Event class object from Fysom.
@@ -2054,6 +2079,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             retval = -1
         return retval
 
+<<<<<<< HEAD
+=======
+<<<<<<< HEAD
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
 
 class SlowGatedNICard(NICard):
     """ Enable the usage of the gated counter in the slow counter interface.
@@ -2198,3 +2227,8 @@ class SlowGatedNICard(NICard):
         """
         return 0
 
+<<<<<<< HEAD
+=======
+=======
+>>>>>>> fc880f6aae4930ddc6d442887ca558c2e0996994
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9

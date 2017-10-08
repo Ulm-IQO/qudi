@@ -48,6 +48,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.mw_stop_freq = 3.1e9
         self.mw_step_freq = 2.0e6
 
+        # frequency switching speed by a program in a list mode:
+        self._FREQ_SWITCH_SPEED = 0.008  # Frequency switching speed in s
+
         self.current_output_mode = MicrowaveMode.CW     # Can be MicrowaveMode.CW, MicrowaveMode.LIST or
                                                         # MicrowaveMode.SWEEP
         self.current_trig_pol = TriggerEdge.RISING      # Can be TriggerEdge.RISING or
@@ -81,11 +84,11 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         return limits
 
     def get_status(self):
-        """ 
-        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and 
+        """
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
 
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
         """
         if self.current_output_mode == MicrowaveMode.CW:
             mode = 'cw'
@@ -116,9 +119,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
             return self.mw_sweep_power
 
     def get_frequency(self):
-        """ 
+        """
         Gets the frequency of the microwave output.
-        Returns single float value if the device is in cw mode. 
+        Returns single float value if the device is in cw mode.
         Returns list if the device is in either list or sweep mode.
 
         @return [float, list]: frequency(s) currently set for this device in Hz
@@ -132,8 +135,8 @@ class MicrowaveDummy(Base, MicrowaveInterface):
             return (self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq)
 
     def cw_on(self):
-        """ 
-        Switches on cw microwave output. 
+        """
+        Switches on cw microwave output.
         Must return AFTER the device is actually running.
 
         @return int: error code (0:OK, -1:error)
@@ -145,7 +148,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         return 0
 
     def set_cw(self, frequency=None, power=None):
-        """ 
+        """
         Configures the device for cw-mode and optionally sets frequency and/or power
 
         @param float frequency: frequency to set in Hz
@@ -180,7 +183,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         return 0
 
     def set_list(self, frequency=None, power=None):
-        """ 
+        """
         Configures the device for list-mode and optionally sets frequencies and/or power
 
         @param list frequency: list of frequencies in Hz
@@ -199,7 +202,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         return self.mw_frequency_list, self.mw_cw_power, 'list'
 
     def reset_listpos(self):
-        """ 
+        """
         Reset of MW list mode position to start (first frequency step)
 
         @return int: error code (0:OK, -1:error)
@@ -218,14 +221,14 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
-        """ 
-        Configures the device for sweep-mode and optionally sets frequency start/stop/step 
+        """
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step
         and/or power
 
-        @return float, float, float, float, str: current start frequency in Hz, 
+        @return float, float, float, float, str: current start frequency in Hz,
                                                  current stop frequency in Hz,
                                                  current frequency step in Hz,
-                                                 current power in dBm, 
+                                                 current power in dBm,
                                                  current mode
         """
         self.log.debug('MicrowaveDummy>set_sweep, start: {0:f}, stop: {1:f}, step: {2:f}, '
@@ -242,7 +245,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
                'sweep'
 
     def reset_sweeppos(self):
-        """ 
+        """
         Reset of MW sweep mode position to start (start frequency)
 
         @return int: error code (0:OK, -1:error)
@@ -259,3 +262,15 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         self.log.info('MicrowaveDummy>ext_trigger set')
         self.current_trig_pol = pol
         return self.current_trig_pol
+
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time.
+        """
+
+        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
+        return

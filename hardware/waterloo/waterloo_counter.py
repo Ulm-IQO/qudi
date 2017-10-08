@@ -302,7 +302,11 @@ import numpy
 import numpy.ctypeslib
 
 from collections import OrderedDict
+<<<<<<< HEAD
 from core.module import Base
+=======
+from core.base import Base
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
 from ctypes import *
 
 import __main__
@@ -741,7 +745,11 @@ def deletebuffer(i):
     libttag.tt_deleteMap(i)
 
 
+<<<<<<< HEAD
 from core.module import Base
+=======
+from core.base import Base
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
@@ -889,8 +897,16 @@ class WaterlooCounter(Base, SlowCounterInterface):
         #n = 2/self._count_frequency
         n =self._count_frequency
         time.sleep(2/n)
+<<<<<<< HEAD
         # singles for the last 1/ n seconds of data
         # to convert to counts per second
+=======
+        #self.log.info(n)
+        #self._tagger.stop()
+        #singles = tt_bins2points(buffer, dataindex, timebins) + 1
+        #self.log.info("count duration is {0}".format(1/n))
+        #return self._tagger.singles(1.0/self._count_frequency) * self._count_frequency
+>>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
         return self._tagger.singles(1/n) * n
 
     def close_counter(self):

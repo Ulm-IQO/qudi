@@ -705,8 +705,8 @@ if (__name__=="__main__"):
     assert x.singles(15.0)[1]==2
     
     assert x.coincidences(15.0,0.5,[0,-1,0,0,0,0,0,0,0,0])[1,2]==1
-    print x.coincidences(15.0,0.5,[0,0,0,0,0,0,0,0,0,0])
-    print x.coincidences(15.0,0.5)
+    print(x.coincidences(15.0,0.5,[0,0,0,0,0,0,0,0,0,0]))
+    print(x.coincidences(15.0,0.5))
 
     assert x.multicoincidences(15.0,0.5,[1,2],[-1,0])==1
     assert x.multicoincidences(15.0,0.5,[1,2])==0
