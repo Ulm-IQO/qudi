@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -12,7 +13,7 @@
   <property name="windowTitle">
    <string>qudi: Slow Counter</string>
   </property>
-  <widget class="QWidget" name="centralwidget" />
+  <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
@@ -30,19 +31,19 @@
      <property name="title">
       <string>&amp;Toolbars</string>
      </property>
-     <addaction name="counting_controls_view_Action" />
+     <addaction name="counting_controls_view_Action"/>
     </widget>
-    <addaction name="slow_counter_view_Action" />
-    <addaction name="slow_counter_parameters_view_Action" />
-    <addaction name="separator" />
-    <addaction name="menuToolbars" />
-    <addaction name="separator" />
-    <addaction name="restore_default_view_Action" />
-    <addaction name="actionClose" />
+    <addaction name="slow_counter_view_Action"/>
+    <addaction name="slow_counter_parameters_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
+    <addaction name="actionClose"/>
    </widget>
-   <addaction name="menuView" />
+   <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar" />
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="counter_trace_DockWidget">
    <property name="sizePolicy">
     <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -76,7 +77,7 @@
       </widget>
      </item>
      <item>
-      <widget class="PlotWidget" name="counter_trace_PlotWidget" />
+      <widget class="PlotWidget" name="counter_trace_PlotWidget"/>
      </item>
     </layout>
    </widget>
@@ -188,8 +189,8 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="start_counter_Action" />
-   <addaction name="record_counts_Action" />
+   <addaction name="start_counter_Action"/>
+   <addaction name="record_counts_Action"/>
   </widget>
   <action name="start_counter_Action">
    <property name="checkable">
@@ -273,7 +274,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>slow_counter_view_Action</sender>

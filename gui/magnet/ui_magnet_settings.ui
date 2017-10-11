@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>Dialog</class>
  <widget class="QDialog" name="Dialog">
@@ -13,9 +14,9 @@
    <string>Magnet Settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item column="0" row="0">
+   <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
-     <item column="0" row="0">
+     <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="toolTip">
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Update every time the&lt;br/&gt;position after movement.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -25,7 +26,7 @@
        </property>
       </widget>
      </item>
-     <item column="1" row="0">
+     <item row="0" column="1">
       <widget class="QCheckBox" name="interactive_mode_CheckBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -37,25 +38,25 @@
         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Update every time the&lt;br/&gt;position after movement.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="text">
-        <string />
+        <string/>
        </property>
       </widget>
      </item>
-     <item column="0" row="1">
+     <item row="1" column="0">
       <widget class="QLabel" name="label_2">
        <property name="text">
         <string>z mode</string>
        </property>
       </widget>
      </item>
-     <item column="0" row="2">
+     <item row="2" column="0">
       <widget class="QLabel" name="label_3">
        <property name="text">
         <string>normal mode</string>
        </property>
       </widget>
      </item>
-     <item column="1" row="1">
+     <item row="1" column="1">
       <widget class="QCheckBox" name="z_mode_checkBox">
        <property name="toolTip">
         <string>Mode is only for super conduction magnet and allows for high fields in z-direction</string>
@@ -64,20 +65,20 @@
         <string>Mode is only relevant for super conducting magnet. Field can point in arbitrary direction with magnetic field strength between 1 and 1.2 T.</string>
        </property>
        <property name="text">
-        <string />
+        <string/>
        </property>
       </widget>
      </item>
-     <item column="1" row="2">
+     <item row="2" column="1">
       <widget class="QCheckBox" name="normal_mode_checkBox">
        <property name="text">
-        <string />
+        <string/>
        </property>
       </widget>
      </item>
     </layout>
    </item>
-   <item column="0" row="1">
+   <item row="1" column="0">
     <widget class="QDialogButtonBox" name="ButtonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -89,7 +90,7 @@
    </item>
   </layout>
  </widget>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>ButtonBox</sender>

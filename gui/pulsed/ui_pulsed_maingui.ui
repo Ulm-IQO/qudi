@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -23,7 +24,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item column="0" row="0">
+    <item row="0" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="styleSheet">
        <string notr="true">QTabWidget::tab:disabled { width: 0; height: 0; margin: 0; padding: 0; border: none; }</string>
@@ -48,29 +49,29 @@
     <property name="title">
      <string>Fi&amp;le</string>
     </property>
-    <addaction name="actionSave" />
-    <addaction name="actionClose" />
+    <addaction name="actionSave"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Se&amp;ttings</string>
     </property>
-    <addaction name="action_Settings_Analysis" />
-    <addaction name="action_Settings_Block_Generation" />
-    <addaction name="action_Settings_Sequence_Editor" />
-    <addaction name="action_Predefined_Methods_Config" />
-    <addaction name="action_FitSettings" />
+    <addaction name="action_Settings_Analysis"/>
+    <addaction name="action_Settings_Block_Generation"/>
+    <addaction name="action_Settings_Sequence_Editor"/>
+    <addaction name="action_Predefined_Methods_Config"/>
+    <addaction name="action_FitSettings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
    </widget>
-   <addaction name="menuFile" />
-   <addaction name="menuSettings" />
-   <addaction name="menuView" />
+   <addaction name="menuFile"/>
+   <addaction name="menuSettings"/>
+   <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar" />
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="analysis_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -84,9 +85,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_run_stop" />
-   <addaction name="action_continue_pause" />
-   <addaction name="action_pull_data" />
+   <addaction name="action_run_stop"/>
+   <addaction name="action_continue_pause"/>
+   <addaction name="action_pull_data"/>
   </widget>
   <widget class="QToolBar" name="save_ToolBar">
    <property name="windowTitle">
@@ -98,7 +99,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_save" />
+   <addaction name="action_save"/>
   </widget>
   <widget class="QToolBar" name="control_ToolBar">
    <property name="windowTitle">
@@ -234,7 +235,7 @@
    </property>
   </action>
  </widget>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>actionClose</sender>

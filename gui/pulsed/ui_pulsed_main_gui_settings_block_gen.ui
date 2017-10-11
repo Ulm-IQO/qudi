@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SettingsDialog</class>
  <widget class="QDialog" name="SettingsDialog">
@@ -13,21 +14,21 @@
    <string>qudi: Pulsed - Block Generator Settings</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item column="0" row="0">
+   <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout">
-     <item colspan="2" column="0" row="3">
+     <item row="3" column="0" colspan="2">
       <widget class="QGroupBox" name="groupBox">
        <property name="title">
         <string>Available Functions</string>
        </property>
        <layout class="QGridLayout" name="gridLayout_4">
-        <item column="0" row="0">
-         <layout class="QGridLayout" name="gridLayout_3" />
+        <item row="0" column="0">
+         <layout class="QGridLayout" name="gridLayout_3"/>
         </item>
        </layout>
       </widget>
      </item>
-     <item column="1" row="0">
+     <item row="0" column="1">
       <widget class="QComboBox" name="sampled_file_format_comboBox">
        <item>
         <property name="text">
@@ -51,7 +52,7 @@
        </item>
       </widget>
      </item>
-     <item column="0" row="0">
+     <item row="0" column="0">
       <widget class="QLabel" name="label">
        <property name="text">
         <string>Waveform file format:</string>
@@ -63,7 +64,7 @@
      </item>
     </layout>
    </item>
-   <item column="0" row="2">
+   <item row="2" column="0">
     <widget class="QDialogButtonBox" name="buttonBox">
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
@@ -78,7 +79,7 @@
  <tabstops>
   <tabstop>buttonBox</tabstop>
  </tabstops>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>

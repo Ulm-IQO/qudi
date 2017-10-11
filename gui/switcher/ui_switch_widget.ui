@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SwitchWidget</class>
  <widget class="QWidget" name="SwitchWidget">
@@ -31,21 +32,21 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item column="4" row="1">
+   <item row="1" column="4">
     <widget class="QLabel" name="switchTimeLabel">
      <property name="text">
       <string>Switching Time</string>
      </property>
     </widget>
    </item>
-   <item column="4" row="0">
+   <item row="0" column="4">
     <widget class="QLabel" name="switchTImeLabelLabel">
      <property name="text">
       <string>Switching time</string>
      </property>
     </widget>
    </item>
-   <item column="0" row="1">
+   <item row="1" column="0">
     <widget class="QCheckBox" name="SwitchButton">
      <property name="text">
       <string>On</string>
@@ -58,21 +59,21 @@
      </property>
     </widget>
    </item>
-   <item column="3" row="1">
+   <item row="1" column="3">
     <widget class="QDoubleSpinBox" name="calOnVal">
      <property name="maximum">
       <double>1000000.000000000000000</double>
      </property>
     </widget>
    </item>
-   <item column="2" row="1">
+   <item row="1" column="2">
     <widget class="QDoubleSpinBox" name="calOffVal">
      <property name="maximum">
       <double>1000000.000000000000000</double>
      </property>
     </widget>
    </item>
-   <item column="3" row="0">
+   <item row="0" column="3">
     <widget class="QLabel" name="calOnLabel">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -85,7 +86,7 @@
      </property>
     </widget>
    </item>
-   <item column="2" row="0">
+   <item row="0" column="2">
     <widget class="QLabel" name="calOffLabel">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -100,6 +101,6 @@
    </item>
   </layout>
  </widget>
- <resources />
- <connections />
+ <resources/>
+ <connections/>
 </ui>
