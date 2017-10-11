@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>SettingsDialog</class>
  <widget class="QDialog" name="SettingsDialog">
@@ -179,7 +180,7 @@
         <string>Scan continuously (automatically restart at the end of a scan).  This is useful for photo-bleaching a sample.</string>
        </property>
        <property name="accessibleDescription">
-        <string />
+        <string/>
        </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
@@ -188,7 +189,7 @@
         <bool>false</bool>
        </property>
        <property name="text">
-        <string notr="true" />
+        <string notr="true"/>
        </property>
        <property name="checked">
         <bool>false</bool>
@@ -276,10 +277,10 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the XY scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="accessibleDescription">
-        <string />
+        <string/>
        </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
@@ -288,7 +289,7 @@
         <bool>false</bool>
        </property>
        <property name="text">
-        <string notr="true" />
+        <string notr="true"/>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -335,13 +336,13 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;The aspect ratio will be fixed to 1:1 if checked. If not the scan will be stretched to the available area in the Z scan. &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
        <property name="text">
-        <string />
+        <string/>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -365,7 +366,7 @@
         <enum>Qt::RightToLeft</enum>
        </property>
        <property name="text">
-        <string />
+        <string/>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -394,7 +395,7 @@
      <item>
       <widget class="ScienDSpinBox" name="slider_small_step_DoubleSpinBox">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the small steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="suffix">
         <string>m</string>
@@ -423,7 +424,7 @@
      <item>
       <widget class="ScienDSpinBox" name="slider_big_step_DoubleSpinBox">
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Change the stepsize of a slider if you are using the keyboard to move the slider position. Here you can adjust the big steps for the crosshair move.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="suffix">
         <string>m</string>
@@ -464,13 +465,13 @@
         </size>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;If you use the image_save method in the menu bar of confocal, together with the svg file also a pure image file (without axis and everything, just the datapoints) are saved in a png image.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="layoutDirection">
         <enum>Qt::RightToLeft</enum>
        </property>
        <property name="text">
-        <string />
+        <string/>
        </property>
        <property name="checked">
         <bool>true</bool>
@@ -482,7 +483,7 @@
    <item>
     <widget class="QPushButton" name="hardware_switch">
      <property name="toolTip">
-      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-size:10pt;"&gt;This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This kills everything working on the nidaq. So I made this also more resilient to errors and made it come out of its locked state.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;Even if if throws numerous errors when trying, you can use everything normally after the hardware reset (just restart the counter twice).&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt;&quot;&gt;This also means that you should not touch qudi while running diqo since this will try to put the hardware focus back on qudi and will throw even more errors.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
      </property>
      <property name="text">
       <string>Switch off Hardware</string>
@@ -517,7 +518,7 @@
   <tabstop>hardware_switch</tabstop>
   <tabstop>buttonBox</tabstop>
  </tabstops>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>buttonBox</sender>
