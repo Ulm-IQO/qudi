@@ -140,7 +140,7 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_confocalgui.ui')
-        self.last_click = ""
+        self._doubleclicked = False
 
         # Load it
         super(ConfocalMainWindow, self).__init__()
@@ -152,7 +152,7 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         self.sigPressKeyBoard.emit(event)
 
     def mouseDoubleClickEvent(self, event):
-        self.last_click = "Double Click"
+        self._doubleclicked = True
         self.sigDoubleClick.emit()
 
 
@@ -1961,7 +1961,7 @@ class ConfocalGui(GUIBase):
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
-        if self._mw.last_click == "Double Click":
+        if self._mw._doubleclicked:
             event.ignore()
             return
 
@@ -1982,8 +1982,8 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
-        if self._mw.last_click == "Double Click":
-            self._mw.last_click = "Click"
+        if self._mw._doubleclicked:
+            self._mw._doubleclicked = False
             event.ignore()
             return
 
@@ -2086,7 +2086,7 @@ class ConfocalGui(GUIBase):
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
-        if self._mw.last_click == "Double Click":
+        if self._mw._doubleclicked:
             event.ignore()
             return
         # catch the event if the zoom mode is activated and if the event is
@@ -2106,8 +2106,8 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
-        if self._mw.last_click == "Double Click":
-            self._mw.last_click = "Click"
+        if self._mw._doubleclicked:
+            self._mw._doubleclicked = False
             event.ignore()
             return
 
