@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import socket
-from core.base import Base
+from core.module import Base, ConfigOption
 import numpy as np
 import time
 from interface.magnet_interface import MagnetInterface
@@ -41,6 +41,26 @@ class Magnet(Base, MagnetInterface):
     _modtype = 'Magnet'
     _modclass = 'hardware'
 
+    # config opts
+    port = ConfigOption('magnet_port', missing='error')
+
+    ip_addr_x = ConfigOption('magnet_IP_address_x', missing='error')
+    ip_addr_y = ConfigOption('magnet_IP_address_y', missing='error')
+    ip_addr_z = ConfigOption('magnet_IP_address_z', missing='error')
+
+    # default waiting time of the pc after a message was sent to the magnet
+    waitingtime = ConfigOption('magnet_waitingtime', 0.01)
+
+    # Constraints of the superconducting magnet in T
+    # Normally you should get and set constraints in the
+    # function get_constraints(). The problem is here that
+    # the constraint rho is no constant and is dependent on the
+    # current theta and phi value.
+    x_constr = ConfigOption('magnet_x_constr', 1.0)
+    y_constr = ConfigOption('magnet_y_constr', 1.0)
+    z_constr = ConfigOption('magnet_z_constr', 3.0)
+    rho_constr = ConfigOption('magnet_rho_constr', 1.2)
+
     def __init__(self, **kwargs):
         """Here the connections to the power supplies and to the counter are established"""
         super().__init__(**kwargs)
@@ -58,10 +78,6 @@ class Magnet(Base, MagnetInterface):
         except socket.timeout:
             self.log.error("socket timeout for coil in z-direction")
 
-        # default waiting time of the pc after a message was sent to the magnet
-        # should be set in the config file
-        self.waitingtime = 0.01
-
         # This is saves in which interval the input theta was in the last movement
         self._inter = 1
 
@@ -74,17 +90,6 @@ class Magnet(Base, MagnetInterface):
         # the function switch_mode
         self.mode = "normal_mode"
 
-        # constraints of the superconducting magnet in T
-        # should be set in the config file
-        # Normally you should get and set constraints in the
-        # function get_constraints(). The problem is here that
-        # the constraint rho is no constant and is dependent on the
-        # current theta and phi value.
-        self.x_constr = 1.0
-        self.y_constr = 1.0
-        self.z_constr = 3.0
-        self.rho_constr = 1.2
-
     def on_activate(self):
         """
         loads the config file and extracts the necessary configurations for the
@@ -92,48 +97,9 @@ class Magnet(Base, MagnetInterface):
 
         @return int: (0: Ok, -1:error)
         """
-
-# get necessary information from the config file
-        config = self.getConfiguration()
-
-        if 'magnet_port' in config.keys():
-            port = config['magnet_port']
-        else:
-            self.log.error('No port hs been defined in the config file!')
-            return -1
-
-        if 'magnet_IP_address_x' in config.keys():
-            self.soc_x.connect((config['magnet_IP_address_x'], port))
-        else:
-            self.log.error('No ip-address for connection to x-coil defined!')
-            return -1
-
-        if 'magnet_IP_address_y' in config.keys():
-            self.soc_y.connect((config['magnet_IP_address_y'], port))
-        else:
-            self.log.error('No ip-address for connection to y-coil defined!')
-            return -1
-
-        if 'magnet_IP_address_z' in config.keys():
-            self.soc_z.connect((config['magnet_IP_address_z'], port))
-        else:
-            self.log.error('No ip-address for connection to z-coil defined!')
-            return -1
-
-        if 'magnet_waitingtime' in config.keys():
-            self.waitingtime = config['magnet_waitingtime']
-
-        if 'magnet_x_constr' in config.keys():
-            self.x_constr = config['magnet_x_constr']
-
-        if 'magnet_y_constr' in config.keys():
-            self.y_constr = config['magnet_y_constr']
-
-        if 'magnet_z_constr' in config.keys():
-            self.z_constr = config['magnet_z_constr']
-
-        if 'magnet_rho_constr' in config.keys():
-            self.rho_constr = config['magnet_rho_constr']
+        self.soc_x.connect((self.ip_addr_x, self.port))
+        self.soc_y.connect((self.ip_addr_y, self.port))
+        self.soc_z.connect((self.ip_addr_z, self.port))
 
 #       sending a signal to all coils to receive an answer to cut off the
 #       useless welcome message.

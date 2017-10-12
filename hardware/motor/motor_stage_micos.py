@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import time
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
 class MotorStageMicos(Base, MotorInterface):
@@ -32,6 +32,11 @@ class MotorStageMicos(Base, MotorInterface):
     """
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
+
+    _term_chars_xy = ConfigOption('micos_term_chars_xy', '\n', missing='warn')
+    _term_chars_zphi = ConfigOption('micos_term_chars_zphi', '\n', missing='warn')
+    _baud_rate_xy = ConfigOption('micos_baud_rate_xy', 57600, missing='warn')
+    _baud_rate_zphi = ConfigOption('micos_baud_rate_zphi', 57600, missing='warn')
 
 #Questions:
 #    Are values put in the right way in config????
@@ -61,7 +66,7 @@ class MotorStageMicos(Base, MotorInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
@@ -77,8 +82,6 @@ class MotorStageMicos(Base, MotorInterface):
 #        self.y_store=-1
 #        self.z_store=-1
 #        self.phi_store=-1
-
-
 
         self.rm = visa.ResourceManager()
 
@@ -103,38 +106,6 @@ class MotorStageMicos(Base, MotorInterface):
                     'config.\nCannot connect to motorized stage! Enter the '
                     'parameter with the following scheme:/n'
                     '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
-
-        # here the variables for the terminal character are read in
-        if 'micos_term_chars_xy' in config.keys():
-            self._term_chars_xy = config['micos_term_chars_xy']
-        else:
-            self._term_chars_xy = '\n'
-            self.log.warning('No parameter "micos_term_chars_xy" found in '
-                    'config!\nTaking LF character "\\n" instead.')
-
-        if 'micos_term_chars_zphi' in config.keys():
-            self._term_chars_zphi = config['micos_term_chars_zphi']
-        else:
-            self._term_chars_zphi = '\n'
-            self.log.warning('No parameter "micos_term_chars_zphi" found in '
-                    'config!\nTaking LF character "\\n" instead.')
-
-        # here the variables for the baud rate are read in
-        if 'micos_baud_rate_xy' in config.keys():
-            self._baud_rate_xy = config['micos_baud_rate_xy']
-        else:
-            self._baud_rate_xy = 57600
-            self.log.warning('No parameter "micos_baud_rate_xy" found in '
-                    'config!\nTaking the baud rate {0} '
-                    'instead.'.format(self._baud_rate_xy))
-
-        if 'micos_baud_rate_zphi' in config.keys():
-            self._baud_rate_zphi = config['micos_baud_rate_zphi']
-        else:
-            self._baud_rate_zphi = 57600
-            self.log.warning('No parameter "micos_baud_rate_zphi" found in '
-                    'config!\nTaking the baud rate {0} '
-                    'instead.'.format(self._baud_rate_zphi))
 
         self._micos_a = self.rm.open_resource(self._com_port_xy) # x, y
         self._micos_a.label_x = label_x     # attach a label attribute

@@ -25,7 +25,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from collections import OrderedDict
 
@@ -39,6 +39,10 @@ class PulseStreamer(Base, PulserInterface):
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
+
+    _pulsestreamer_ip = ConfigOption('pulsestreamer_ip', '192.168.1.100', missing='warn')
+    _laser_channel = ConfigOption('laser_channel', 0, missing='warn')
+    _uw_x_channel = ConfigOption('uw_x_channel', 2, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -60,27 +64,6 @@ class PulseStreamer(Base, PulserInterface):
             self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
                              'PulseStreamer as directory for the pulsed files!\nThe default home '
                              'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
-
-        if 'pulsestreamer_ip' in config.keys():
-            self._pulsestreamer_ip = config['pulsestreamer_ip']
-        else:
-            self._pulsestreamer_ip = '192.168.1.100'
-            self.log.warning('No value set for "pulsestreamer_ip" in configuration. The default value '
-                             '"192.168.1.100" will be used.')
-
-        if 'laser_channel' in config.keys():
-            self._laser_channel = config['laser_channel']
-        else:
-            self._laser_channel = 0
-            self.log.warning('No value set for "laser_channel" in configuration. The default value '
-                             'channel 0 will be used.')
-
-        if 'uw_x_channel' in config.keys():
-            self._uw_x_channel = config['uw_x_channel']
-        else:
-            self._uw_x_channel = 2
-            self.log.warning('No value set for "uw_x_channel" in configuration. The default value '
-                             'channel 2 will be used.')
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
 
