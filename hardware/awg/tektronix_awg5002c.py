@@ -28,7 +28,7 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 import re
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -38,6 +38,13 @@ class AWG5002C(Base, PulserInterface):
     _modclass = 'awg5002c'
     _modtype = 'hardware'
 
+    # config options
+    ip_address = ConfigOption('awg_IP_address', missing='error')
+    port = ConfigOption('awg_port', missing='error')
+    _timeout = ConfigOption('timeout', 10, missing='warn')
+    ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', missing='warn')
+    user = ConfigOption('ftp_login', 'anonymous', missing='warn')
+    passwd = ConfigOption('ftp_passwd', 'anonymous@', missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -54,28 +61,7 @@ class AWG5002C(Base, PulserInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
         config = self.getConfiguration()
-
-        if 'awg_IP_address' in config.keys():
-            self.ip_address = config['awg_IP_address']
-        else:
-            self.log.error('No IP address parameter "awg_IP_address" found '
-                    'in the config for the AWG5002C! Correct that!')
-
-        if 'awg_port' in config.keys():
-            self.port = config['awg_port']
-        else:
-            self.log.error('No port parameter "awg_port" found in the config '
-                           'for the AWG5002C! Correct that!')
-
-        if 'timeout' in config.keys():
-            self._timeout = config['timeout']
-        else:
-            self.log.error('No parameter "timeout" found in the config for '
-                         'the AWG5002C! Take a default value of 10s.')
-            self._timeout = 10
-
 
         # Use a socket connection via IPv4 connection and use a the most common
         # stream socket.
@@ -101,17 +87,6 @@ class AWG5002C(Base, PulserInterface):
                     'the config for the AWG5002C! The maximum sample rate is '
                     'used instead.')
             self._sample_rate = self.get_constraints().sample_rate.max
-
-        if 'ftp_root_dir' in config.keys():
-            self.ftp_root_directory = config['ftp_root_dir']
-        else:
-            self.ftp_root_directory = 'C:\\inetpub\\ftproot'
-            self.log.warning('No parameter "ftp_root_dir" was specified in the '
-                             'config for tektronix_AWG5002C as directory for '
-                             'the FTP server root on the AWG!\n'
-                             'The default root directory\n{0}\nwill be assumed '
-                             'instead.'.format(self.ftp_root_directory))
-
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
 
@@ -137,14 +112,6 @@ class AWG5002C(Base, PulserInterface):
                     'will be taken instead.'.format(self.pulsed_file_dir))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        self.user = 'anonymous'
-        self.passwd = 'anonymous@'
-        if 'ftp_login' in config.keys() and 'ftp_passwd' in config.keys():
-            self.user = config['ftp_login']
-            self.passwd = config['ftp_passwd']
-
-
         self.awg_model = self._get_model_ID()[1]
         self.log.debug('Found the following model: {0}'.format(self.awg_model))
 

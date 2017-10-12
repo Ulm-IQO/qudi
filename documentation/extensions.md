@@ -33,8 +33,10 @@ There are two ways to add an extension to Qudi:
 In a configuration file an extension can be added by defining its directory to the `extensions` key in the `global` section.
 
 ```
-[global]
-extensions = ["path_to_extension_1", "path_to_extension_2"]
+global:
+    extensions:
+        - "path_to_extension_1"
+        - "path_to_extension_2"
 ```
 
 The path to the extension can be absolute or relative to the location of the configuration file. If the directory cannot be found an error is thrown and it is ignored.
