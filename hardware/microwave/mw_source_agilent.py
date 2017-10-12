@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control SMIQ microwave device.
+This file contains the Qudi hardware file to control Agilent microwave device.
+The hardware file was tested using the model N9310A.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -37,6 +38,7 @@ from interface.microwave_interface import TriggerEdge
 class MicrowaveAgilent(Base, MicrowaveInterface):
     """ This is the Interface class to define the controls for the simple
         microwave hardware.
+        The hardware file was tested using the model N9310A.
     """
 
     _modclass = 'MicrowaveAgilent'
@@ -44,6 +46,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
     _usb_address = ConfigOption('usb_address', missing='error')
     _usb_timeout = ConfigOption('usb_timeout', 100, missing='warn')
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -58,6 +61,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
             self.log.info('MWAGILENT initialised and connected to hardware.')
             self.model = self._usb_connection.query('*IDN?').split(',')[1]
+            self._FREQ_SWITCH_SPEED = 0.09  # Frequency switching speed in s (acc. to specs)
             #set trigger of Sweep and Point to be FALLING
             self.set_ext_trigger()
         except:
@@ -458,6 +462,22 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         return 0
 
 
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        start_freq = self.get_frequency()
+        self._usb_connection.write(':TRIGger:IMMediate')
+        time.sleep(self._FREQ_SWITCH_SPEED)
+        curr_freq = self.get_frequency()
+        if start_freq == curr_freq:
+            self.log.error('Internal trigger for Agilent MW source did not work!')
+            return -1
+
+        return 0
+
     def get_limits(self):
         limits = MicrowaveLimits()
         limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
@@ -526,7 +546,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         self._usb_connection.write('*WAI')
         while int(float(self._usb_connection.query('*OPC?'))) != 1:
             time.sleep(0.2)
-
 
         return
 
