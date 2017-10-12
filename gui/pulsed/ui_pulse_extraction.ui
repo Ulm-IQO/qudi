@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>pe</class>
  <widget class="QWidget" name="pe">
@@ -13,31 +14,31 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item column="0" row="0">
+   <item row="0" column="0">
     <widget class="QGroupBox" name="groupBox_11">
      <property name="title">
       <string>Error and Signal to Noise</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_27">
-      <item column="0" row="0">
+      <item row="0" column="0">
        <layout class="QGridLayout" name="gridLayout_22">
-        <item column="0" row="0">
-         <widget class="PlotWidget" name="measuring_error_PlotWidget" />
+        <item row="0" column="0">
+         <widget class="PlotWidget" name="measuring_error_PlotWidget"/>
         </item>
        </layout>
       </item>
      </layout>
     </widget>
    </item>
-   <item column="1" row="0">
+   <item row="0" column="1">
     <widget class="QGroupBox" name="groupBox_14">
      <property name="title">
       <string>Parameters for Pulse Extraction</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_34">
-      <item column="1" row="0">
+      <item row="0" column="1">
        <layout class="QGridLayout" name="gridLayout_33">
-        <item column="3" row="1">
+        <item row="1" column="3">
          <spacer name="horizontalSpacer_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -50,14 +51,14 @@
           </property>
          </spacer>
         </item>
-        <item column="0" row="8">
+        <item row="8" column="0">
          <widget class="QLabel" name="label">
           <property name="text">
            <string>Count Threshold</string>
           </property>
          </widget>
         </item>
-        <item colspan="2" column="2" row="6">
+        <item row="6" column="2" colspan="2">
          <widget class="QSlider" name="extract_param_conv_std_dev_slider">
           <property name="minimum">
            <number>1</number>
@@ -79,7 +80,7 @@
           </property>
          </widget>
         </item>
-        <item column="1" row="6">
+        <item row="6" column="1">
          <widget class="QDoubleSpinBox" name="extract_param_conv_std_dev_DSpinBox">
           <property name="minimum">
            <double>1.000000000000000</double>
@@ -92,56 +93,56 @@
           </property>
          </widget>
         </item>
-        <item column="2" row="2">
+        <item row="2" column="2">
          <widget class="QSpinBox" name="extract_param_ana_window_width_SpinBox">
           <property name="maximum">
            <number>10000000</number>
           </property>
          </widget>
         </item>
-        <item column="2" row="1">
+        <item row="1" column="2">
          <widget class="QLabel" name="label_31">
           <property name="text">
            <string>Width bins</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="2">
+        <item row="2" column="1">
          <widget class="QSpinBox" name="extract_param_ana_window_start_SpinBox">
           <property name="maximum">
            <number>10000000</number>
           </property>
          </widget>
         </item>
-        <item column="0" row="9">
+        <item row="9" column="0">
          <widget class="QLabel" name="label_2">
           <property name="text">
            <string>Min. Laser Length (bins)</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="3">
+        <item row="3" column="1">
          <widget class="QSpinBox" name="extract_param_ref_window_start_SpinBox">
           <property name="maximum">
            <number>10000000</number>
           </property>
          </widget>
         </item>
-        <item column="2" row="3">
+        <item row="3" column="2">
          <widget class="QSpinBox" name="extract_param_ref_window_width_SpinBox">
           <property name="maximum">
            <number>10000000</number>
           </property>
          </widget>
         </item>
-        <item column="0" row="2">
+        <item row="2" column="0">
          <widget class="QLabel" name="label_36">
           <property name="text">
            <string>Analysis Window</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="8">
+        <item row="8" column="1">
          <widget class="QSpinBox" name="extract_param_threshold_SpinBox">
           <property name="minimum">
            <number>1</number>
@@ -151,7 +152,7 @@
           </property>
          </widget>
         </item>
-        <item column="2" row="9">
+        <item row="9" column="2">
          <widget class="QLabel" name="label_3">
           <property name="enabled">
            <bool>false</bool>
@@ -161,14 +162,14 @@
           </property>
          </widget>
         </item>
-        <item column="0" row="6">
+        <item row="6" column="0">
          <widget class="QLabel" name="label_18">
           <property name="text">
            <string>Smoothing</string>
           </property>
          </widget>
         </item>
-        <item column="3" row="9">
+        <item row="9" column="3">
          <widget class="QSpinBox" name="extract_param_tolerance_SpinBox">
           <property name="enabled">
            <bool>false</bool>
@@ -178,7 +179,7 @@
           </property>
          </widget>
         </item>
-        <item colspan="4" column="0" row="4">
+        <item row="4" column="0" colspan="4">
          <widget class="Line" name="line">
           <property name="lineWidth">
            <number>4</number>
@@ -188,24 +189,24 @@
           </property>
          </widget>
         </item>
-        <item colspan="4" column="0" row="10">
+        <item row="10" column="0" colspan="4">
          <widget class="Line" name="line_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
-        <item column="0" row="5">
+        <item row="5" column="0">
          <widget class="QLabel" name="label_4">
           <property name="text">
            <string>Extraction Method</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="5">
-         <widget class="QComboBox" name="extract_param_extraction_method_comboBox" />
+        <item row="5" column="1">
+         <widget class="QComboBox" name="extract_param_extraction_method_comboBox"/>
         </item>
-        <item column="1" row="9">
+        <item row="9" column="1">
          <widget class="QSpinBox" name="extract_param_min_laser_length_SpinBox">
           <property name="minimum">
            <number>1</number>
@@ -215,14 +216,14 @@
           </property>
          </widget>
         </item>
-        <item column="1" row="1">
+        <item row="1" column="1">
          <widget class="QLabel" name="label_30">
           <property name="text">
            <string>Start bin</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="13">
+        <item row="13" column="1">
          <spacer name="verticalSpacer_3">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -235,54 +236,54 @@
           </property>
          </spacer>
         </item>
-        <item column="0" row="3">
+        <item row="3" column="0">
          <widget class="QLabel" name="label_37">
           <property name="text">
            <string>Reference Window</string>
           </property>
          </widget>
         </item>
-        <item colspan="4" column="0" row="7">
+        <item row="7" column="0" colspan="4">
          <widget class="Line" name="line_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
         </item>
-        <item column="0" row="0">
+        <item row="0" column="0">
          <widget class="QLabel" name="label_6">
           <property name="text">
            <string>Analysis Method</string>
           </property>
          </widget>
         </item>
-        <item column="1" row="0">
-         <widget class="QComboBox" name="extract_param_analysis_method_comboBox" />
+        <item row="0" column="1">
+         <widget class="QComboBox" name="extract_param_analysis_method_comboBox"/>
         </item>
        </layout>
       </item>
      </layout>
     </widget>
    </item>
-   <item colspan="2" column="0" row="1">
+   <item row="1" column="0" colspan="2">
     <widget class="QGroupBox" name="groupBox_13">
      <property name="title">
       <string>Pulses</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_32">
-      <item column="0" row="0">
+      <item row="0" column="0">
        <layout class="QGridLayout" name="gridLayout_31">
-        <item column="2" row="0">
-         <widget class="QComboBox" name="laserpulses_ComboBox" />
+        <item row="0" column="2">
+         <widget class="QComboBox" name="laserpulses_ComboBox"/>
         </item>
-        <item column="1" row="0">
+        <item row="0" column="1">
          <widget class="QLabel" name="label_38">
           <property name="text">
            <string>Laser Pulse number:</string>
           </property>
          </widget>
         </item>
-        <item column="0" row="0">
+        <item row="0" column="0">
          <widget class="QCheckBox" name="laserpulses_display_raw_CheckBox">
           <property name="enabled">
            <bool>true</bool>
@@ -292,8 +293,8 @@
           </property>
          </widget>
         </item>
-        <item colspan="3" column="0" row="1">
-         <widget class="PlotWidget" name="laserpulses_PlotWidget" />
+        <item row="1" column="0" colspan="3">
+         <widget class="PlotWidget" name="laserpulses_PlotWidget"/>
         </item>
        </layout>
       </item>
@@ -309,6 +310,6 @@
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
- <resources />
- <connections />
+ <resources/>
+ <connections/>
 </ui>

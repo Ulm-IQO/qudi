@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -34,19 +35,19 @@
      <property name="title">
       <string>&amp;Toolbars</string>
      </property>
-     <addaction name="counting_controls_view_Action" />
+     <addaction name="counting_controls_view_Action"/>
     </widget>
-    <addaction name="slow_counter_view_Action" />
-    <addaction name="slow_counter_parameters_view_Action" />
-    <addaction name="separator" />
-    <addaction name="menuToolbars" />
-    <addaction name="separator" />
-    <addaction name="restore_default_view_Action" />
-    <addaction name="actionClose" />
+    <addaction name="slow_counter_view_Action"/>
+    <addaction name="slow_counter_parameters_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
+    <addaction name="actionClose"/>
    </widget>
-   <addaction name="menuView" />
+   <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar" />
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="qdplot_DockWidget">
    <property name="windowTitle">
     <string>Plot</string>
@@ -57,7 +58,7 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="PlotWidget" name="qdplot_PlotWidget" />
+      <widget class="PlotWidget" name="qdplot_PlotWidget"/>
      </item>
     </layout>
    </widget>
@@ -75,7 +76,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="save_Action" />
+   <addaction name="save_Action"/>
   </widget>
   <widget class="QDockWidget" name="plot_parameters_DockWidget">
    <property name="minimumSize">
@@ -115,7 +116,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="vertical_label_lineEdit" />
+        <widget class="QLineEdit" name="vertical_label_lineEdit"/>
        </item>
        <item>
         <widget class="QLabel" name="label_11">
@@ -193,7 +194,7 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="horizontal_label_lineEdit" />
+        <widget class="QLineEdit" name="horizontal_label_lineEdit"/>
        </item>
        <item>
         <widget class="QLabel" name="label_4">
@@ -323,7 +324,7 @@
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>actionClose</sender>

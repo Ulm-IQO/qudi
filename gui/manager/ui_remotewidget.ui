@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>RemoteWidget</class>
  <widget class="QWidget" name="RemoteWidget">
@@ -13,14 +14,14 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item column="0" row="0">
+   <item row="0" column="0">
     <widget class="QLabel" name="hostLabel">
      <property name="text">
       <string>host</string>
      </property>
     </widget>
    </item>
-   <item colspan="2" column="0" row="1">
+   <item row="1" column="0" colspan="2">
     <widget class="QListView" name="sharedModuleListView">
      <property name="alternatingRowColors">
       <bool>true</bool>
@@ -30,7 +31,7 @@
      </property>
     </widget>
    </item>
-   <item column="2" row="1">
+   <item row="1" column="2">
     <widget class="QListView" name="remoteModuleListView">
      <property name="alternatingRowColors">
       <bool>true</bool>
@@ -40,7 +41,7 @@
      </property>
     </widget>
    </item>
-   <item column="2" row="0">
+   <item row="0" column="2">
     <widget class="QLabel" name="portLabel">
      <property name="text">
       <string>port</string>
@@ -49,6 +50,6 @@
    </item>
   </layout>
  </widget>
- <resources />
- <connections />
+ <resources/>
+ <connections/>
 </ui>
