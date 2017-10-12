@@ -134,13 +134,12 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
-    sigDoubleClick = QtCore.Signal(object)
+    sigDoubleClick = QtCore.Signal()
 
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_confocalgui.ui')
-        self.message = ""
         self.last_click = ""
 
         # Load it
@@ -152,29 +151,9 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         """Pass the keyboard press event from the main window further. """
         self.sigPressKeyBoard.emit(event)
 
-    # let's try some double click madness
-
-    def mousePressEvent(self, event):
-        self.last_click = "Click"
-
-    def mouseReleaseEvent(self, event):
-
-        if self.last_click == "Click":
-            QtCore.QTimer.singleShot(QtGui.QGuiApplication.instance().doubleClickInterval(),
-                              self.performSingleClickAction)
-        else:
-            # Perform double click action.
-            self.message = "Double Click"
-            self.update()
-
     def mouseDoubleClickEvent(self, event):
         self.last_click = "Double Click"
-        self.sigDoubleClick.emit(event)
-
-    def performSingleClickAction(self):
-        if self.last_click == "Click":
-            self.message = "Click"
-            self.update()
+        self.sigDoubleClick.emit()
 
 
 class ConfocalSettingDialog(QtWidgets.QDialog):
@@ -1982,6 +1961,10 @@ class ConfocalGui(GUIBase):
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
+        if self._mw.last_click == "Double Click":
+            event.ignore()
+            return
+
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -1989,12 +1972,6 @@ class ConfocalGui(GUIBase):
             return
 
         pos = self.xy_image.getViewBox().mapSceneToView(event.localPos())
-        if self._mw.last_click == "Double Click":
-            self._current_xy_zoom_start = [pos.x(), pos.y()]
-            event.ignore()
-            return
-
-
 
         # store the initial mouse position in a class variable
         self._current_xy_zoom_start = [pos.x(), pos.y()]
@@ -2005,13 +1982,14 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
+        if self._mw.last_click == "Double Click":
+            self._mw.last_click = "Click"
             event.ignore()
             return
 
-        if self._mw.last_click == "Double Click":
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
@@ -2108,6 +2086,9 @@ class ConfocalGui(GUIBase):
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
+        if self._mw.last_click == "Double Click":
+            event.ignore()
+            return
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -2117,10 +2098,6 @@ class ConfocalGui(GUIBase):
         pos = self.depth_image.getViewBox().mapSceneToView(event.localPos())
         self._current_depth_zoom_start = [pos.x(), pos.y()]
 
-        if self._mw.last_click == "Double Click":
-            event.ignore()
-            return
-
         # store the initial mouse position in a class variable
         event.accept()
 
@@ -2129,13 +2106,14 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
+        if self._mw.last_click == "Double Click":
+            self._mw.last_click = "Click"
             event.ignore()
             return
 
-        if self._mw.last_click == "Double Click":
+        # catch the event if the zoom mode is activated and if the event is
+        # coming from a left mouse button.
+        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
             event.ignore()
             return
 
