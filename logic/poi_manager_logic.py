@@ -428,12 +428,18 @@ class PoiManagerLogic(GenericLogic):
             x, y, z = self.get_poi_position(poikey=poikey)
             self._confocal_logic.set_position('poimanager', x=x, y=y, z=z)
         else:
-            self.log.error('F. The given POI ({0}) does not exist.'.format(
+            self.log.error('The given POI ({0}) does not exist.'.format(
                 poikey))
             return -1
-
         # This is now the active POI to send to save logic for naming in any saved filenames.
         self.set_active_poi(poikey)
+
+        #Fixme: After pressing the Go to Poi button the active poi is empty and the following lines do fix this
+        # The time.sleep is somehow needed if not active_poi can not be set
+        time.sleep(0.001)
+        self.active_poi = self.poi_list[poikey]
+        self.signal_poi_updated.emit()
+
 
     def get_poi_position(self, poikey=None):
         """ Returns the current position of the given poi, calculated from the
