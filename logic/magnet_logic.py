@@ -315,7 +315,7 @@ class MagnetLogic(GenericLogic):
         """
         return self._magnet_device.get_constraints()
 
-    def move_rel(self, param_dict):
+    def move_relative(self, param_dict):
         """ Move the specified axis in the param_dict relative with an assigned
             value.
 

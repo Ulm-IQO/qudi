@@ -1002,7 +1002,7 @@ class MagnetGui(GUIBase):
 
         movement = dspinbox.value() * direction
 
-        self._magnet_logic.move_rel({axis_label: movement})
+        self._magnet_logic.move_relative({axis_label: movement})
         # if self._interactive_mode:
         #     self.update_pos()
 
