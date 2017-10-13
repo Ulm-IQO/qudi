@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -15,7 +14,7 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout">
-    <item row="0" column="0">
+    <item column="0" row="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="sizePolicy">
        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -31,7 +30,7 @@
         <string>GUI</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="1" column="0">
+        <item column="0" row="1">
          <widget class="QScrollArea" name="scrollArea">
           <property name="widgetResizable">
            <bool>true</bool>
@@ -55,7 +54,7 @@
         <string>Logic</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QScrollArea" name="scrollArea">
           <property name="widgetResizable">
            <bool>true</bool>
@@ -79,7 +78,7 @@
         <string>Hardware</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
+        <item column="0" row="0">
          <widget class="QScrollArea" name="scrollArea">
           <property name="widgetResizable">
            <bool>true</bool>
@@ -115,44 +114,44 @@
     <property name="title">
      <string>&amp;Menu</string>
     </property>
-    <addaction name="actionLoad_configuration"/>
-    <addaction name="actionReload_current_configuration"/>
-    <addaction name="actionSave_configuration"/>
-    <addaction name="separator"/>
-    <addaction name="action_Load_all_modules"/>
-    <addaction name="separator"/>
-    <addaction name="actionQuit"/>
+    <addaction name="actionLoad_configuration" />
+    <addaction name="actionReload_current_configuration" />
+    <addaction name="actionSave_configuration" />
+    <addaction name="separator" />
+    <addaction name="action_Load_all_modules" />
+    <addaction name="separator" />
+    <addaction name="actionQuit" />
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
      <string>Abo&amp;ut</string>
     </property>
-    <addaction name="actionAbout_Qudi"/>
-    <addaction name="actionAbout_Qt"/>
+    <addaction name="actionAbout_Qudi" />
+    <addaction name="actionAbout_Qt" />
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionConfigurationView"/>
-    <addaction name="actionConsoleView"/>
-    <addaction name="actionLogView"/>
-    <addaction name="actionRemoteView"/>
-    <addaction name="actionThreadsView"/>
-    <addaction name="actionReset_to_default_layout"/>
+    <addaction name="actionConfigurationView" />
+    <addaction name="actionConsoleView" />
+    <addaction name="actionLogView" />
+    <addaction name="actionRemoteView" />
+    <addaction name="actionThreadsView" />
+    <addaction name="actionReset_to_default_layout" />
    </widget>
    <widget class="QMenu" name="menuSettings">
     <property name="title">
      <string>Settings</string>
     </property>
-    <addaction name="actionConsoleSettings"/>
+    <addaction name="actionConsoleSettings" />
    </widget>
-   <addaction name="menuMenu"/>
-   <addaction name="menuView"/>
-   <addaction name="menuSettings"/>
-   <addaction name="menuAbout"/>
+   <addaction name="menuMenu" />
+   <addaction name="menuView" />
+   <addaction name="menuSettings" />
+   <addaction name="menuAbout" />
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
   <widget class="QDockWidget" name="configDisplayDockWidget">
    <property name="enabled">
     <bool>true</bool>
@@ -190,7 +189,7 @@
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="RichJupyterWidget" name="consolewidget"/>
+   <widget class="RichJupyterWidget" name="consolewidget" />
   </widget>
   <widget class="QDockWidget" name="logDockWidget">
    <property name="windowTitle">
@@ -199,7 +198,7 @@
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
-   <widget class="LogWidget" name="logwidget"/>
+   <widget class="LogWidget" name="logwidget" />
   </widget>
   <widget class="QDockWidget" name="remoteDockWidget">
    <property name="windowTitle">
@@ -208,7 +207,7 @@
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
-   <widget class="RemoteWidget" name="remoteWidget"/>
+   <widget class="RemoteWidget" name="remoteWidget" />
   </widget>
   <widget class="QDockWidget" name="threadDockWidget">
    <property name="windowTitle">
@@ -217,7 +216,7 @@
    <attribute name="dockWidgetArea">
     <number>8</number>
    </attribute>
-   <widget class="ThreadWidget" name="threadWidget"/>
+   <widget class="ThreadWidget" name="threadWidget" />
   </widget>
   <widget class="QToolBar" name="configToolBar">
    <property name="windowTitle">
@@ -229,9 +228,9 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionLoad_configuration"/>
-   <addaction name="actionSave_configuration"/>
-   <addaction name="actionReload_current_configuration"/>
+   <addaction name="actionLoad_configuration" />
+   <addaction name="actionSave_configuration" />
+   <addaction name="actionReload_current_configuration" />
   </widget>
   <widget class="QToolBar" name="moduleToolBar">
    <property name="windowTitle">
@@ -243,7 +242,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_Load_all_modules"/>
+   <addaction name="action_Load_all_modules" />
   </widget>
   <action name="actionLoad_configuration">
    <property name="icon">
@@ -266,7 +265,7 @@
   <action name="action_Load_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff/>
+     <normaloff />
     </iconset>
    </property>
    <property name="text">
@@ -276,7 +275,7 @@
   <action name="actionStart_all_modules">
    <property name="icon">
     <iconset theme="media-playback-start">
-     <normaloff/>
+     <normaloff />
     </iconset>
    </property>
    <property name="text">
@@ -292,7 +291,7 @@
     <string>&amp;Quit Qudi</string>
    </property>
    <property name="toolTip">
-    <string>Quit Qudi suite</string>
+    . Shortcut:Ctrl+Q<string>Quit Qudi suite. Shortcut:Ctrl+Q</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Q</string>
@@ -307,7 +306,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff/>
+     <normaloff />
     </iconset>
    </property>
    <property name="text">
@@ -365,7 +364,7 @@
   <action name="actionExport_log_as_HTML">
    <property name="icon">
     <iconset theme="document-save-as">
-     <normaloff/>
+     <normaloff />
     </iconset>
    </property>
    <property name="text">
@@ -433,7 +432,7 @@
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources />
  <connections>
   <connection>
    <sender>actionConsoleView</sender>

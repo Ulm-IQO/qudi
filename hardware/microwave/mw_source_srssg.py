@@ -392,6 +392,23 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
                          'hardware. Method will be skipped.')
         return 0
 
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time corresponding to the
+        frequency switching speed.
+        """
+        # serves as a software trigger
+        self._write('*TRG')
+        # Check whether all pending operation are successful and finished:
+        self._ask('*OPC?')
+
+        time.sleep(self._FREQ_SWITCH_SPEED)     # that is the switching speed
+        return
+
     # ================== Non interface commands: ==================
 
     def _ask(self, question):
@@ -457,16 +474,4 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._write('ENBR 0')   # turn off Type N output
         self._write('ENBL 0')   # turn off BNC output
 
-    def trigger(self):
-        """ Trigger the next element in the list or sweep mode programmatically.
-
-        Ensure that the Frequency was set when the function returns.
-        """
-        # serves as a software trigger
-        self._write('*TRG')
-        # Check whether all pending operation are successful and finished:
-        self._ask('*OPC?')
-
-        time.sleep(self._FREQ_SWITCH_SPEED)     # that is the switching speed
-        return
 
