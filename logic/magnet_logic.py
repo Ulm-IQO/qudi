@@ -229,13 +229,13 @@ class MagnetLogic(GenericLogic):
         # relative movement settings
 
         constraints = self._magnet_device.get_constraints()
-        self.move_rel={}
+        self.move_rel_dict={}
 
         for axis_label in constraints:
             if ('move_rel_' + axis_label) in self._statusVariables:
-                self.move_rel[axis_label] = self._statusVariables[('move_rel_' + axis_label)]
+                self.move_rel_dict[axis_label] = self._statusVariables[('move_rel_' + axis_label)]
             else:
-                self.move_rel[axis_label] = 1e-3
+                self.move_rel_dict[axis_label] = 1e-3
 
         # 2D alignment settings
 
@@ -297,7 +297,7 @@ class MagnetLogic(GenericLogic):
         """
         constraints=self.get_hardware_constraints()
         for axis_label in constraints:
-            self._statusVariables[('move_rel_'+axis_label)] = self.move_rel[axis_label]
+            self._statusVariables[('move_rel_'+axis_label)] = self.move_rel_dict[axis_label]
 
         self._statusVariables['align_2d_axis0_name'] = self.align_2d_axis0_name
         self._statusVariables['align_2d_axis1_name'] = self.align_2d_axis1_name
@@ -1979,9 +1979,9 @@ class MagnetLogic(GenericLogic):
         @return dict: Dictionary with new values
         """
         for axis_label in dict:
-            self.move_rel[axis_label]=dict[axis_label]
+            self.move_rel_dict[axis_label]=dict[axis_label]
             self.sigMoveRelChanged.emit(dict)
-        return self.move_rel
+        return self.move_rel_dict
 
     def get_move_rel_para(self,param_list=None):
         """ Get the move relative parameters
@@ -1991,11 +1991,11 @@ class MagnetLogic(GenericLogic):
         @return dict: Dictionary with new values
         """
         if param_list is None:
-            return self.move_rel
+            return self.move_rel_dict
         else:
             dict={}
             for axis_label in param_list:
-                dict[axis_label] = self.move_rel[axis_label]
+                dict[axis_label] = self.move_rel_dict[axis_label]
             return dict
 
     def set_optimize_pos_freq(self, freq):
