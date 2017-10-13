@@ -1991,7 +1991,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     # ======================== Digital channel control ==========================
 
 
-    def channel_switch(self, channel_name, mode=False):
+    def digital_channel_switch(self, channel_name, mode=True):
         """
         Switches on or off the voltage output (5V) of one of the digital channels, that
         can as an example be used to switch on or off the AOM driver or apply a single
@@ -2024,3 +2024,5 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)
             return 0
+
+
