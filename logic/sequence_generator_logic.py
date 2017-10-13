@@ -582,16 +582,27 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                              'ensembles.\nTherefore nothing is removed.'.format(name))
         return
 
-    def generate_predefined_sequence(self, predefined_sequence_name, args):
+    def generate_predefined_sequence(self, predefined_sequence_name, kwargs_dict):
         """
 
         @param predefined_sequence_name:
-        @param args:
+        @param kwargs_dict:
         @return:
         """
         gen_method = self.generate_methods[predefined_sequence_name]
+        # match parameters to method and throw out unwanted ones
+        method_params = inspect.signature(gen_method).parameters
+        thrown_out_params = list()
+        for param in kwargs_dict:
+            if param not in method_params:
+                thrown_out_params.append(param)
+        for param in thrown_out_params:
+            del kwargs_dict[param]
+        if len(thrown_out_params) > 0:
+            self.log.debug('Unused params during predefined sequence generation "{0}":\n'
+                           '{1}'.format(predefined_sequence_name, thrown_out_params))
         try:
-            gen_method(*args)
+            gen_method(**kwargs_dict)
         except:
             self.log.error('Generation of predefined sequence "{0}" failed.'
                            ''.format(predefined_sequence_name))

@@ -240,6 +240,7 @@ class FastComtec(Base, FastCounterInterface):
         binwidth_s = self.set_binwidth(bin_width_s)
         no_of_bins = record_length_s / binwidth_s
         if sweep_reset:
+            self.load_setup('')
             self.set_length(no_of_bins, preset=preset, cycles=cycles)
         else:
             self.set_length(no_of_bins)
@@ -501,3 +502,8 @@ class FastComtec(Base, FastCounterInterface):
         status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
         return status
+
+
+    def load_setup(self, configname):
+        cmd = 'loadcnf={0}'.format(configname)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))

@@ -508,7 +508,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   fmt='%.6e')
+                                   fmt='%.12e')
 
         filelabel = 'wavemeter_log_wavelength'
 
@@ -530,7 +530,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   fmt='%.6e')
+                                   fmt='%.12e')
 
         filelabel = 'wavemeter_log_counts'
 
@@ -552,7 +552,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    timestamp=timestamp,
-                                   fmt='%.6e')
+                                   fmt='%.12e')
 
         self.log.debug('Laser Scan saved to:\n{0}'.format(filepath))
 
@@ -578,7 +578,7 @@ class WavemeterLoggerLogic(GenericLogic):
                                    filelabel=filelabel,
                                    timestamp=timestamp,
                                    plotfig=fig,
-                                   fmt='%.6e')
+                                   fmt='%.12e')
         plt.close(fig)
         return 0
 
