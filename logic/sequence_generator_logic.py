@@ -436,7 +436,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.saved_pulse_block_ensembles[name] = ensemble
         self._save_ensembles_to_file()
         self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
-        self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
+        #self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
         return
 
     def load_ensemble(self, name):
@@ -538,7 +538,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.saved_pulse_sequences[name] = sequence
         self._save_sequences_to_file()
         self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        self.sigCurrentSequenceUpdated.emit(self.current_sequence)
+        #self.sigCurrentSequenceUpdated.emit(self.current_sequence)
 
     def load_sequence(self, name):
         """
@@ -780,6 +780,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             return np.array([]), np.array([]), -1
 
         number_of_samples, number_of_elements, number_of_states, state_length_bins_arr = self._analyze_block_ensemble(ensemble)
+
+        ensemble.length_bins = number_of_samples
+
         # The time bin offset for each element to be sampled to preserve rotating frame.
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing

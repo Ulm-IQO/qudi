@@ -1325,9 +1325,15 @@ class PulsedMasterLogic(GenericLogic):
         else:
             return_params['sample_rate'] = asset_obj.sample_rate
 
+
         # Get sequence length
-        return_params['sequence_length'] = asset_obj.length_s
-        return_params['sequence_length_bins'] = asset_obj.length_s*self._generator_logic.sample_rate
+        if asset_obj.length_bins is None:
+            return_params['sequence_length_bins'] = asset_obj.length_s*self._generator_logic.sample_rate
+            return_params['sequence_length'] = asset_obj.length_s
+        else:
+            return_params['sequence_length_bins'] = asset_obj.length_bins
+            return_params['sequence_length'] = asset_obj.length_s = (asset_obj.length_bins-1.) / asset_obj.sample_rate
+
 
         # Get number of laser pulses and max laser length
         if asset_obj.laser_channel is None:
