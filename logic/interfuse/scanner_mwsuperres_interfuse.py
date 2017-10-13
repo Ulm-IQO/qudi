@@ -62,7 +62,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         # For MW assisted superresolution scans
         self.superres_scanmode = True
         self.mw_frequencies = [2.77e9, 2.97e9]
-        self.mw_amplitudes = [0.1, 0.1]
+        self.mw_amplitudes = [0.0, 0.0]
         self.pi_pulse_lengths = [100.0e-9, 100e-9]
         self.mw_channel = 'a_ch1'
         return
@@ -190,7 +190,6 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             # self._pulsed_master.toggle_pulse_generator(True)
             # while not self._pulsed_master.status_dict['pulser_running']:
             #     time.sleep(0.5)
-            print('Superres Scanner set up!')
 
         return self._scanning_device.set_up_scanner(counter_channel, photon_source, clock_channel,
                                                     scanner_ao_channels)
@@ -248,7 +247,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return float[]: the photon counts per second
         """
-        if self.superres_scanmode:
+        if self.superres_scanmode and pixel_clock:
             new_path = np.zeros([line_path.shape[0], line_path.shape[1]*3])
             new_path[:][0] = np.linspace(min(line_path[:][0]), max(line_path[:][0]),
                                          new_path.shape[1])
@@ -263,14 +262,14 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             line_path[:][2] += self._calc_dz(line_path[:][0], line_path[:][1])
 
         # apply superresolution mode
-        if self.superres_scanmode:
+        if self.superres_scanmode and pixel_clock:
             # Switch on pulse sequence
             self._pulsed_master.toggle_pulse_generator(True)
             while not self._pulsed_master.status_dict['pulser_running']:
                 time.sleep(0.2)
             # always sample 3 times the same position
             #line_path = np.repeat(line_path, 3, axis=1)
-            tmp_return = self._scanning_device.scan_line(line_path, True)
+            tmp_return = self._scanning_device.scan_line(line_path, pixel_clock)
             linescan_return = np.zeros([int(tmp_return.shape[0] / 3), 3])
             linescan_return[:, 0] = tmp_return[::3, 0]
             linescan_return[:, 1] = tmp_return[1::3, 0]
