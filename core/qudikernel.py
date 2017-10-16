@@ -29,6 +29,8 @@ import atexit
 import shutil
 import tempfile
 
+import config
+
 from parentpoller import ParentPollerUnix, ParentPollerWindows
 
 rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
@@ -36,14 +38,15 @@ rpyc.core.protocol.DEFAULT_CONFIG['allow_pickle'] = True
 class Qudi:
 
     def __init__(self):
-        self.host = 'localhost'
-        self.port = 12345
+        conf = self.getConfigFromFile(self.getConfigFile())
+        self.host, self.port, self.certfile, self.keyfile = conf
         self.conn_config = {'allow_all_attrs': True}
         self.parent_handle = int(os.environ.get('JPY_PARENT_PID') or 0)
         self.interrupt = int(os.environ.get('JPY_INTERRUPT_EVENT') or 0)
         self.kernelid = None
 
     def connect(self, **kwargs):
+        logging.info('Connecting to {}:{}'.format(self.host, self.port))
         self.connection = rpyc.connect(self.host, self.port, config=self.conn_config)
 
     def getModule(self, name):
@@ -51,8 +54,8 @@ class Qudi:
 
     def startKernel(self, connfile):
         m = self.getModule('kernellogic')
-        config = json.loads("".join(open(connfile).readlines()))
-        self.kernelid = m.startKernel(config, self)
+        cfg = json.loads("".join(open(connfile).readlines()))
+        self.kernelid = m.startKernel(cfg, self)
         logging.info('Kernel up: {}'.format(self.kernelid))
 
     def stopKernel(self):
@@ -77,6 +80,75 @@ class Qudi:
     def exit(self):
         sys.exit()
 
+    def getMainDir(self):
+        """Returns the absolut path to the directory of the main software.
+
+             @return string: path to the main tree of the software
+
+        """
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
+    def getConfigFile(self):
+        """ Search all the default locations to find a configuration file.
+
+          @return sting: path to configuration file
+        """
+        path = self.getMainDir()
+        # we first look for config/load.cfg which can point to another
+        # config file using the "configfile" key
+        loadConfigFile = os.path.join(path, 'config', 'load.cfg')
+        if os.path.isfile(loadConfigFile):
+            logging.info('load.cfg config file found at {0}'.format(loadConfigFile))
+            try:
+                confDict = config.load(loadConfigFile)
+                if ('configfile' in confDict and isinstance(confDict['configfile'], str)):
+                    # check if this config file is existing
+                    # try relative filenames
+                    configFile = os.path.join(path, 'config', confDict['configfile'])
+                    if os.path.isfile(configFile):
+                        logging.info('Config file found at {0}'.format(configFile))
+                        return configFile
+                    # try absolute filename or relative to pwd
+                    if os.path.isfile(confDict['configfile']):
+                        logging.info('Config file found at {0}'.format(confDict['configfile']))
+                        return confDict['configfile']
+                    else:
+                        logging.critical('Couldn\'t find config file specified in load.cfg: {0}'
+                            ''.format(confDict['configfile']))
+            except Exception:
+                logging.exception('Error while handling load.cfg.')
+        # try config/example/custom.cfg next
+        cf = os.path.join(path, 'config', 'example', 'custom.cfg')
+        if os.path.isfile(cf):
+            return cf
+        # try config/example/default.cfg
+        cf = os.path.join(path, 'config', 'example', 'default.cfg')
+        if os.path.isfile(cf):
+            return cf
+        raise Exception('Could not find any config file.')
+
+    def getConfigFromFile(self, configfile):
+        cfg = config.load(configfile)
+        if ('module_server' in cfg['global']):
+            if (not isinstance(cfg['global']['module_server'], dict)):
+                raise Exception('"module_server" entry in "global" section of configuration'
+                    ' file is not a dictionary.')
+            else:
+                # new style
+                server_address = cfg['global']['module_server'].get('address', 'localhost')
+                server_port = cfg['global']['module_server'].get('port', 12345)
+                certfile = cfg['global']['module_server'].get('certfile', None)
+                keyfile = cfg['global']['module_server'].get('keyfile', None)
+
+        elif ('serveraddress' in cfg['global']):
+            logging.warning('Deprecated remote server settings. Please update to new style.'
+                ' See documentation.')
+            server_address = cfg['global'].get('serveraddress', 'localhost')
+            server_port = cfg['global'].get('serverport', 12345)
+            certfile = cfg['global'].get('certfile', None)
+            keyfile = cfg['global'].get('keyfile', None)
+
+        return server_address, server_port, certfile, keyfile
 
 def install_kernel():
         from jupyter_client.kernelspec import KernelSpecManager
