@@ -58,12 +58,12 @@ class SamplingFunctions():
 
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
-        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 1.0, 'dec': 10, 'type': float}
+        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
+                    'view_stepsize': 1.0, 'dec': 15, 'type': float}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.01, 'dec': 3, 'type': float}
-        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
-                    'view_stepsize': 0.1, 'dec': 3, 'type': float}
+                    'view_stepsize': 0.01, 'dec': 15, 'type': float}
+        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -360, 'max': 360,
+                     'view_stepsize': 0.1, 'dec': 15, 'type': float}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
@@ -86,7 +86,7 @@ class SamplingFunctions():
 
         self.func_config = OrderedDict()
         self.func_config['Idle'] = OrderedDict()
-        self.func_config['DC'] =  OrderedDict()
+        self.func_config['DC'] = OrderedDict()
         self.func_config['DC']['amplitude1'] = ampl_def
 
         self.func_config['Sin'] = OrderedDict()
