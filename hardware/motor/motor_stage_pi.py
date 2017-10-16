@@ -466,7 +466,7 @@ class MotorStagePI(Base, MotorInterface):
 
         @param axis string: name of the axis that should be moved
 
-        @param float step: step in millimeter
+        @param float step: step in meter
 
         @return str axis: axis which is moved
                 move float: absolute position to move to
@@ -486,7 +486,7 @@ class MotorStagePI(Base, MotorInterface):
 
         @param axis string: name of the axis that should be moved
 
-        @param float move: desired position in millimeter
+        @param float move: desired position in meter
 
         @return str axis: axis which is moved
                 move float: absolute position to move to

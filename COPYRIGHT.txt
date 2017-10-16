@@ -7,7 +7,7 @@ Lachlan J. Rogers  <lachlan.j.rogers@quantum.diamonds>
 Florian Frank <florian.frank@uni-ulm.de>
 Kay D. Jahnke  <kay.jahnke@alumni.uni-ulm.de>
 Ou Wang <ou.wang@uni-ulm.de>
-Nikolas Tomek <nikolas.tomek@uni-ulm.de>
+Nikolas Tomek <tomek.qudi@gmail.com>
 Simon Schmitt <simon.schmitt@uni-ulm.de>
 Thomas Unden <thomas.unden@uni-ulm.de>
 Christoph Mueller <christoph-1.mueller@uni-ulm.de>

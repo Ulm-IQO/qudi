@@ -1987,3 +1987,42 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             retval = -1
         return retval
 
+
+    # ======================== Digital channel control ==========================
+
+
+    def digital_channel_switch(self, channel_name, mode=True):
+        """
+        Switches on or off the voltage output (5V) of one of the digital channels, that
+        can as an example be used to switch on or off the AOM driver or apply a single
+        trigger for ODMR.
+        @param str channel_name: Name of the channel which should be controlled
+                                    for example ('/Dev1/PFI9')
+        @param bool mode: specifies if the voltage output of the chosen channel should be turned on or off
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if channel_name == None:
+            self.log.error('No channel for digital output specified')
+            return -1
+        else:
+
+            self.digital_out_task = daq.TaskHandle()
+            if mode:
+                self.digital_data = daq.c_uint32(0xffffffff)
+            else:
+                self.digital_data = daq.c_uint32(0x0)
+            self.digital_read = daq.c_int32()
+            self.digital_samples_channel = daq.c_int32(1)
+            daq.DAQmxCreateTask('DigitalOut', daq.byref(self.digital_out_task))
+            daq.DAQmxCreateDOChan(self.digital_out_task, channel_name, "", daq.DAQmx_Val_ChanForAllLines)
+            daq.DAQmxStartTask(self.digital_out_task)
+            daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
+                                        self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
+                                        np.array(self.digital_data), self.digital_read, None);
+
+            daq.DAQmxStopTask(self.digital_out_task)
+            daq.DAQmxClearTask(self.digital_out_task)
+            return 0
+
+

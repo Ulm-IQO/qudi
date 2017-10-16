@@ -1005,6 +1005,7 @@ class MagnetGui(GUIBase):
         self._magnet_logic.move_relative({axis_label: movement})
         # if self._interactive_mode:
         #     self.update_pos()
+        return axis_label, direction
 
     def move_abs(self, param_dict=None):
         """ Perform an absolute movement.
@@ -1029,6 +1030,7 @@ class MagnetGui(GUIBase):
 
         # if self._interactive_mode:
         #     self.update_pos()
+            return param_dict
 
 
     def get_ref_curr_pos_ScienDSpinBox(self, label):
