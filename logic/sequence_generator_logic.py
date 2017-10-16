@@ -888,7 +888,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
                         # Toggle the is_last_chunk flag accordingly.
-                        element_count += 1
                         if element_count == number_of_elements:
                             is_last_chunk = True
 
