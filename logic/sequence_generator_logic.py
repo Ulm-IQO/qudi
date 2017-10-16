@@ -669,9 +669,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # variables to keep track of the current timeframe
         current_end_time = 0.0
         current_start_bin = 0
-
+        # lists containing the bins where the digital channels are rising (one for each channel)
+        digital_rising_bins = []
+        for i in range(ensemble.digital_channels):
+            digital_rising_bins.append([])
+        # memorize the channel state of the previous element
+        tmp_digital_high = [False] * ensemble.digital_channels
+        # number of elements including repetitions and the length of each element in bins
         total_elements = 0
         elements_length_bins = np.array([], dtype=int)
+
         for block, reps in ensemble.block_list:
             # Total number of elements in the current block including all repetitions
             unrolled_elements = (reps+1) * len(block.element_list)
@@ -685,6 +692,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_index, block_element in enumerate(block.element_list):
+                    # save bin position if a transition from low to high has occured in a digital
+                    # channel
+                    if tmp_digital_high != block_element.digital_high:
+                        for chnl, is_high in enumerate(block_element.digital_high):
+                            if not tmp_digital_high[chnl] and is_high:
+                                digital_rising_bins[chnl].append(current_start_bin)
+                            tmp_digital_high[chnl] = is_high
+
                     # Get length and increment for this element
                     init_length_s = block_element.init_length_s
                     increment_s = block_element.increment_s
@@ -707,12 +722,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # calculate total number of samples
         number_of_samples = np.sum(elements_length_bins)
+
+        # convert digital rising indices to numpy.ndarrays
+        for chnl in range(len(digital_rising_bins)):
+            digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=int)
+
         # FIXME: Remove debugging prints
         print('current_end_time:', current_end_time)
         print('number_of_samples:', number_of_samples)
         print('binwidth in seconds: {0:.6e}'.format(1.0 / self.sample_rate))
-        print('delta in seconds: {0:.6e}'.format(((current_end_time * self.sample_rate)-number_of_samples)/self.sample_rate))
-        return number_of_samples, total_elements, elements_length_bins
+        print('delta in seconds: {0:.6e}'.format(
+            ((current_end_time * self.sample_rate) - number_of_samples) / self.sample_rate))
+        return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
                                     name_tag=None):
@@ -760,6 +781,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         arrays inside the memory. In other words: The whole sample arrays are never created at any
         time. This results in more function calls and general overhead causing the much longer time
         to complete.
+
+        In addition the pulse_block_ensemble gets analyzed and important parameters used during
+        sampling get stored in the ensemble object itself. Those attributes are:
+        <ensemble>.length_bins
+        <ensemble>.length_elements_bins
+        <ensemble>.number_of_elements
+        <ensemble>.digital_rising_bins
+        <ensemble>.sample_rate
+        <ensemble>.activation_config
+        <ensemble>.amplitude_dict
         """
         # lock module if it's not already locked (sequence sampling in progress)
         if self.getState() == 'idle':
@@ -815,7 +846,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                      ana_channels, dig_channels))
             return np.array([]), np.array([]), -1
 
-        number_of_samples, number_of_elements, length_elements_bins = self._analyze_block_ensemble(ensemble)
+        # get important parameters from the ensemble and save some to the ensemble object
+        number_of_samples, number_of_elements, length_elements_bins, digital_rising_bins = self._analyze_block_ensemble(ensemble)
+        ensemble.length_bins = number_of_samples
+        ensemble.length_elements_bins = length_elements_bins
+        ensemble.number_of_elements = number_of_elements
+        ensemble.digital_rising_bins = digital_rising_bins
+        ensemble.sample_rate = self.sample_rate
+        ensemble.activation_config = self.activation_config
+        ensemble.amplitude_dict = self.amplitude_dict
+        self.save_ensemble(ensemble_name, ensemble)
+
         # The time bin offset for each element to be sampled to preserve rotating frame.
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
@@ -823,8 +864,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             is_last_chunk = False
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
-            analog_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
-            digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
+            analog_samples = np.empty([ana_channels, number_of_samples], dtype='float32')
+            digital_samples = np.empty([dig_channels, number_of_samples], dtype=bool)
             # Starting index for the sample array entrys
             entry_ind = 0
 
