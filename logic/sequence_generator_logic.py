@@ -666,26 +666,53 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param ensemble:
         @return:
         """
-        state_length_bins_arr = np.array([], dtype=int)
-        number_of_elements = 0
+        # variables to keep track of the current timeframe
+        current_end_time = 0.0
+        current_start_bin = 0
+
+        total_elements = 0
+        elements_length_bins = np.array([], dtype=int)
         for block, reps in ensemble.block_list:
-            number_of_elements += (reps+1)*len(block.element_list)
-            num_state_changes = (reps+1) * len(block.element_list)
-            tmp_length_bins = np.zeros(num_state_changes, dtype=int)
+            # Total number of elements in the current block including all repetitions
+            unrolled_elements = (reps+1) * len(block.element_list)
+            # Add this number to the total number of unrolled elements in the ensemble
+            total_elements += unrolled_elements
+            # Temporary array to hold the length for each element (including reps) in bins
+            tmp_length_bins = np.zeros(unrolled_elements, dtype=int)
+
             # Iterate over all repertitions of the current block
-            state_index = 0
+            unrolled_element_index = 0
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_index, block_element in enumerate(block.element_list):
+                    # Get length and increment for this element
                     init_length_s = block_element.init_length_s
                     increment_s = block_element.increment_s
+                    # element length of the current element with current repetition count in sec
                     element_length_s = init_length_s + (rep_no * increment_s)
-                    tmp_length_bins[state_index] = int(np.rint(element_length_s * self.sample_rate))
-                    state_index += 1
-            state_length_bins_arr = np.append(state_length_bins_arr, tmp_length_bins)
-        number_of_samples = np.sum(state_length_bins_arr)
-        number_of_states = len(state_length_bins_arr)
-        return number_of_samples, number_of_elements, number_of_states, state_length_bins_arr
+                    # ideal end time for the sequence up until this point in sec
+                    current_end_time += element_length_s
+                    # Nearest possible match including the discretization in bins
+                    current_end_bin = int(np.rint(current_end_time * self.sample_rate))
+                    # current element length in discrete bins
+                    element_length_bins = current_end_bin - current_start_bin
+                    tmp_length_bins[unrolled_element_index] = element_length_bins
+                    # advance bin offset for next element
+                    current_start_bin += element_length_bins
+                    # increment element counter
+                    unrolled_element_index += 1
+
+            # append element lengths (in bins) to array
+            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
+
+        # calculate total number of samples
+        number_of_samples = np.sum(elements_length_bins)
+        # FIXME: Remove debugging prints
+        print('current_end_time:', current_end_time)
+        print('number_of_samples:', number_of_samples)
+        print('binwidth in seconds: {0:.6e}'.format(1.0 / self.sample_rate))
+        print('delta in seconds: {0:.6e}'.format(((current_end_time * self.sample_rate)-number_of_samples)/self.sample_rate))
+        return number_of_samples, total_elements, elements_length_bins
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
                                     name_tag=None):
@@ -788,13 +815,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                      ana_channels, dig_channels))
             return np.array([]), np.array([]), -1
 
-        number_of_samples, number_of_elements, number_of_states, state_length_bins_arr = self._analyze_block_ensemble(ensemble)
+        number_of_samples, number_of_elements, length_elements_bins = self._analyze_block_ensemble(ensemble)
         # The time bin offset for each element to be sampled to preserve rotating frame.
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
             is_first_chunk = True
             is_last_chunk = False
-            element_count = 0
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
             analog_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
@@ -802,6 +828,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # Starting index for the sample array entrys
             entry_ind = 0
 
+        element_count = 0
         # Iterate over all blocks within the PulseBlockEnsemble object
         for block, reps in ensemble.block_list:
             # Iterate over all repertitions of the current block
@@ -809,12 +836,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 # Iterate over the Block_Elements inside the current block
                 for elem_ind, block_element in enumerate(block.element_list):
                     parameters = block_element.parameters
-                    init_length_s = block_element.init_length_s
-                    increment_s = block_element.increment_s
                     digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
-                    element_length_s = init_length_s + (rep_no*increment_s)
-                    element_length_bins = int(np.rint(element_length_s * self.sample_rate))
+                    element_length_bins = length_elements_bins[element_count]
+                    element_count += 1
 
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
