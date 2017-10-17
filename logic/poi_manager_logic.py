@@ -283,7 +283,7 @@ class PoiManagerLogic(GenericLogic):
             self.poi_list['sample'].set_coords_in_sample(coords=[0, 0, 0])
 
         if position is None:
-            position = self._confocal_logic.get_position()
+            position = self._confocal_logic.get_position()[:3]
         if len(position) != 3:
             self.log.error('Given position is not 3-dimensional.'
                            'Please pass POIManager a 3-dimensional position to set a POI.')
@@ -405,7 +405,7 @@ class PoiManagerLogic(GenericLogic):
         """
 
         if poikey is not None and poikey in self.poi_list.keys():
-            self.poi_list['crosshair'].add_position_to_history(position=self._confocal_logic.get_position())
+            self.poi_list['crosshair'].add_position_to_history(position=self._confocal_logic.get_position()[:3])
             self._current_poi_key = poikey
             self._optimizer_logic.start_refocus(
                 initial_pos=self.get_poi_position(poikey=poikey),
@@ -475,7 +475,7 @@ class PoiManagerLogic(GenericLogic):
 
         # If no new position is given, take the current confocal crosshair position
         if newpos is None:
-            newpos = self._confocal_logic.get_position()
+            newpos = self._confocal_logic.get_position()[:3]
 
         if poikey is not None and poikey in self.poi_list.keys():
             if len(newpos) != 3:
@@ -503,7 +503,7 @@ class PoiManagerLogic(GenericLogic):
         but DOES NOT update the sample position.
         """
         if newpos is None:
-            newpos = self._confocal_logic.get_position()
+            newpos = self._confocal_logic.get_position()[:3]
 
         if poikey is not None and poikey in self.poi_list.keys():
             if len(newpos) != 3:
