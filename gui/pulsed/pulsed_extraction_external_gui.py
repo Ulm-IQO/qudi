@@ -155,8 +155,8 @@ class PulsedExtractionExternalGui(GUIBase):
         ignore_first=self._mw.ignore_first_CheckBox.checkState()
         method=self._mw.analysis_method_ComboBox.currentText()
         param_dict={}
-        if method == 'treshold':
-            param_dict['count_treshold']=self._mw.treshold_SpinBox.value()
+        if method == 'threshold':
+            param_dict['count_threshold']=self._mw.threshold_SpinBox.value()
             param_dict['min_len_laser']=self._mw.min_laser_SpinBox.value()
             param_dict['exception']=self._mw.exception_SpinBox.value()
             self.log.warning(param_dict)
@@ -268,8 +268,8 @@ class PulsedExtractionExternalGui(GUIBase):
         self._mw.number_pulses_SpinBox.setVisible(False)
         self._mw.filter_Label.setVisible(False)
         self._mw.filter_SpinBox.setVisible(False)
-        self._mw.treshold_Label.setVisible(False)
-        self._mw.treshold_SpinBox.setVisible(False)
+        self._mw.threshold_Label.setVisible(False)
+        self._mw.threshold_SpinBox.setVisible(False)
         self._mw.min_laser_Label.setVisible(False)
         self._mw.min_laser_SpinBox.setVisible(False)
         self._mw.exception_Label.setVisible(False)
@@ -287,9 +287,9 @@ class PulsedExtractionExternalGui(GUIBase):
             self._mw.number_pulses_SpinBox.setVisible(True)
             self._mw.filter_Label.setVisible(True)
             self._mw.filter_SpinBox.setVisible(True)
-        elif method == 'treshold':
-            self._mw.treshold_Label.setVisible(True)
-            self._mw.treshold_SpinBox.setVisible(True)
+        elif method == 'threshold':
+            self._mw.threshold_Label.setVisible(True)
+            self._mw.threshold_SpinBox.setVisible(True)
             self._mw.min_laser_Label.setVisible(True)
             self._mw.min_laser_SpinBox.setVisible(True)
             self._mw.exception_Label.setVisible(True)

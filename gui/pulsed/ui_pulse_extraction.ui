@@ -127,7 +127,7 @@
         <item row="9" column="4">
          <widget class="QLabel" name="label_3">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>Tolerance (bins)</string>
@@ -144,7 +144,7 @@
         <item row="9" column="5">
          <widget class="QSpinBox" name="extract_param_tolerance_SpinBox">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="maximum">
            <number>999999999</number>

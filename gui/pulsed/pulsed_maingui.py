@@ -2159,22 +2159,22 @@ class PulsedMeasurementGui(GUIBase):
             conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
 
         method = self._pe.extract_param_extraction_method_comboBox.currentText()
-        count_treshold = self._pe.extract_param_threshold_SpinBox.value()
+        count_threshold = self._pe.extract_param_threshold_SpinBox.value()
         threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
         min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
 
-        self._pulsed_master_logic.extraction_settings_changed(method, conv_std_dev, count_treshold,
+        self._pulsed_master_logic.extraction_settings_changed(method, conv_std_dev, count_threshold,
                                                               threshold_tolerance_bins,
                                                               min_laser_length)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
+    def extraction_settings_updated(self, method, conv_std_dev, count_threshold,
                                     threshold_tolerance_bins, min_laser_length):
         """
 
         @param method:
         @param conv_std_dev:
-        @param count_treshold:
+        @param count_threshold:
         @param threshold_tolerance_bins:
         @param min_laser_length:
         @return:
@@ -2191,7 +2191,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
         self._pe.extract_param_conv_std_dev_DSpinBox.setValue(conv_std_dev)
         self._pe.extract_param_conv_std_dev_slider.setValue(conv_std_dev)
-        self._pe.extract_param_threshold_SpinBox.setValue(count_treshold)
+        self._pe.extract_param_threshold_SpinBox.setValue(count_threshold)
         self._pe.extract_param_tolerance_SpinBox.setValue(threshold_tolerance_bins)
         self._pe.extract_param_min_laser_length_SpinBox.setValue(min_laser_length)
         # unblock signals
