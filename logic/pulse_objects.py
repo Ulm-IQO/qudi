@@ -286,6 +286,10 @@ class PulseSequence:
         self.laser_channel = None
         self.alternating = None
         self.laser_ignore_list = None
+        self.length_bins = None
+        self.length_elements_bins = None
+        self.number_of_elements = None
+        self.digital_rising_bins = None
         return
 
     def _refresh_parameters(self):

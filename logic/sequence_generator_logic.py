@@ -1066,6 +1066,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
                 sequence_param_dict_list.append(temp_dict)
 
+        # get important parameters from the sequence and save some to the sequence object
+        #sequence_obj.length_bins = 0
+        #sequence_obj.length_elements_bins = length_elements_bins
+        #sequence_obj.number_of_elements = number_of_elements
+        #sequence_obj.digital_rising_bins = digital_rising_bins
+        sequence_obj.sample_rate = self.sample_rate
+        sequence_obj.activation_config = self.activation_config
+        sequence_obj.amplitude_dict = self.amplitude_dict
+        self.save_sequence(sequence_name, sequence_obj)
+
         if write_to_file:
             # pass the whole information to the sequence creation method:
             self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
