@@ -316,10 +316,10 @@ def _find_consecutive(self, data):
     return np.split(data, np.where(np.diff(data) != 1)[0]+1)
 
 
-
 def _find_consecutive_tolerance(self, data, tolerance):
     index_list = np.split(data, np.where(np.diff(data) >= tolerance)[0]+1)
     for i, index_group in enumerate(index_list):
-        start, end = index_list[i][0], index_list[i][-1]
-        index_list[i] = np.arange(start, end + 1)
+        if index_group.size > 0:
+            start, end = index_list[i][0], index_list[i][-1]
+            index_list[i] = np.arange(start, end + 1)
     return index_list
