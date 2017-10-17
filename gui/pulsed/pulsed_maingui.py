@@ -1315,7 +1315,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_PlotWidget.addItem(self.sig_end_line)
         self._pe.laserpulses_PlotWidget.addItem(self.ref_start_line)
         self._pe.laserpulses_PlotWidget.addItem(self.ref_end_line)
-        self._pe.laserpulses_PlotWidget.setLabel('bottom', 'bins')
+        self._pe.laserpulses_PlotWidget.setLabel(axis='bottom', text='time', units='s')
 
     def _activate_analysis_ui(self):
         """ Initialize, connect and configure the 'Analysis' Tab.
@@ -1379,21 +1379,21 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configure the lasertrace plot display:
         self.sig_start_line = pg.InfiniteLine(pos=0,
-                                              pen=QtGui.QPen(palette.c3, 2),
+                                              pen=QtGui.QPen(palette.c3, 5e-9),
                                               movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
+        #self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.sig_end_line = pg.InfiniteLine(pos=0,
-                                            pen=QtGui.QPen(palette.c3, 2),
+                                            pen=QtGui.QPen(palette.c3, 5e-9),
                                             movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
+        #self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.ref_start_line = pg.InfiniteLine(pos=0,
-                                              pen=QtGui.QPen(palettedark.c4, 2),
+                                              pen=QtGui.QPen(palettedark.c4, 5e-9),
                                               movable=True)
-        self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
+        #self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         self.ref_end_line = pg.InfiniteLine(pos=0,
-                                            pen=QtGui.QPen(palettedark.c4, 2),
+                                            pen=QtGui.QPen(palettedark.c4, 5e-9),
                                             movable=True)
-        self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
+        #self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         # Configure the measuring error display:
         self.measuring_error_image = pg.PlotDataItem(np.array(range(10)),
                                                      np.zeros(10),
@@ -1478,10 +1478,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulser_sample_freq_DSpinBox.editingFinished.connect(self.pulse_generator_settings_changed)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.connect(self.measurement_sequence_settings_changed)
-        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ana_window_start_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ana_window_width_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_start_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
+        self._pe.extract_param_ref_window_width_DSpinBox.editingFinished.connect(self.analysis_settings_changed)
         self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.connect(self.extraction_settings_changed)
         self._pe.extract_param_threshold_SpinBox.editingFinished.connect(self.extraction_settings_changed)
         self._pe.extract_param_min_laser_length_SpinBox.editingFinished.connect(self.extraction_settings_changed)
@@ -1567,10 +1567,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.pulser_sample_freq_DSpinBox.editingFinished.disconnect()
         self._pa.ana_param_x_axis_start_ScienDSpinBox.editingFinished.disconnect()
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.editingFinished.disconnect()
-        self._pe.extract_param_ana_window_start_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_ana_window_width_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_ref_window_start_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_ref_window_width_SpinBox.editingFinished.disconnect()
+        self._pe.extract_param_ana_window_start_DSpinBox.editingFinished.disconnect()
+        self._pe.extract_param_ana_window_width_DSpinBox.editingFinished.disconnect()
+        self._pe.extract_param_ref_window_start_DSpinBox.editingFinished.disconnect()
+        self._pe.extract_param_ref_window_width_DSpinBox.editingFinished.disconnect()
         self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.disconnect()
         self._pe.extract_param_threshold_SpinBox.editingFinished.disconnect()
         self._pe.extract_param_min_laser_length_SpinBox.editingFinished.disconnect()
@@ -2231,11 +2231,11 @@ class PulsedMeasurementGui(GUIBase):
             norm_start = self.ref_start_line.value()
             norm_end = self.ref_end_line.value()
         else:
-            signal_width = self._pe.extract_param_ana_window_width_SpinBox.value()
-            signal_start = self._pe.extract_param_ana_window_start_SpinBox.value()
+            signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
+            signal_start = self._pe.extract_param_ana_window_start_DSpinBox.value()
             signal_end = signal_start + signal_width
-            norm_width = self._pe.extract_param_ref_window_width_SpinBox.value()
-            norm_start = self._pe.extract_param_ref_window_start_SpinBox.value()
+            norm_width = self._pe.extract_param_ref_window_width_DSpinBox.value()
+            norm_start = self._pe.extract_param_ref_window_start_DSpinBox.value()
             norm_end = norm_start + norm_width
 
         method = self._pe.extract_param_analysis_method_comboBox.currentText()
@@ -2256,19 +2256,19 @@ class PulsedMeasurementGui(GUIBase):
         """
         # block signals
         self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(True)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(True)
+        self._pe.extract_param_ana_window_start_DSpinBox.blockSignals(True)
+        self._pe.extract_param_ana_window_width_DSpinBox.blockSignals(True)
+        self._pe.extract_param_ref_window_start_DSpinBox.blockSignals(True)
+        self._pe.extract_param_ref_window_width_DSpinBox.blockSignals(True)
         self.sig_start_line.blockSignals(True)
         self.sig_end_line.blockSignals(True)
         self.ref_start_line.blockSignals(True)
         self.ref_end_line.blockSignals(True)
         # set widgets
-        self._pe.extract_param_ana_window_start_SpinBox.setValue(sig_start)
-        self._pe.extract_param_ana_window_width_SpinBox.setValue(sig_end - sig_start)
-        self._pe.extract_param_ref_window_start_SpinBox.setValue(norm_start)
-        self._pe.extract_param_ref_window_width_SpinBox.setValue(norm_end - norm_start)
+        self._pe.extract_param_ana_window_start_DSpinBox.setValue(sig_start)
+        self._pe.extract_param_ana_window_width_DSpinBox.setValue(sig_end - sig_start)
+        self._pe.extract_param_ref_window_start_DSpinBox.setValue(norm_start)
+        self._pe.extract_param_ref_window_width_DSpinBox.setValue(norm_end - norm_start)
         index = self._pe.extract_param_analysis_method_comboBox.findText(method)
         self._pe.extract_param_analysis_method_comboBox.setCurrentIndex(index)
         # update plots
@@ -2278,10 +2278,10 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_end_line.setValue(norm_end)
         # unblock signals
         self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
-        self._pe.extract_param_ana_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ana_window_width_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_start_SpinBox.blockSignals(False)
-        self._pe.extract_param_ref_window_width_SpinBox.blockSignals(False)
+        self._pe.extract_param_ana_window_start_DSpinBox.blockSignals(False)
+        self._pe.extract_param_ana_window_width_DSpinBox.blockSignals(False)
+        self._pe.extract_param_ref_window_start_DSpinBox.blockSignals(False)
+        self._pe.extract_param_ref_window_width_DSpinBox.blockSignals(False)
         self.sig_start_line.blockSignals(False)
         self.sig_end_line.blockSignals(False)
         self.ref_start_line.blockSignals(False)
