@@ -324,7 +324,12 @@ class MagnetLogic(GenericLogic):
                                 labeled with 'x' by 23 the dict should have the
                                 form:
                                     param_dict = { 'x' : 23 }
-        @return error code (0:OK, -1:error)        """
+        @return param dict: dictionary, which passes all the relevant
+                                parameters. E.g., for a movement of an axis
+                                labeled with 'x' by 23 the dict should have the
+                                form:
+                                    param_dict = { 'x' : 23 }
+        """
 
 
         self.sigMoveRel.emit(param_dict)
@@ -340,6 +345,12 @@ class MagnetLogic(GenericLogic):
                                  {'axis_label': <a-value>}.
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
+                                 
+        @return param dict: dictionary, which passes all the relevant
+                                parameters. E.g., for a movement of an axis
+                                labeled with 'x' by 23 the dict should have the
+                                form:
+                                    param_dict = { 'x' : 23 }
         """
         #self._magnet_device.move_abs(param_dict)
         # start_pos = self.get_pos(list(param_dict))
