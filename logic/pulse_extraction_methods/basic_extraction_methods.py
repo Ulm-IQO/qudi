@@ -218,12 +218,14 @@ def ungated_threshold(self, count_data):
                                 dimensions: 0: laser number, 1: time bin
 
     Procedure:
-        Treshold detection:
+        Threshold detection:
         ---------------
 
-        All count data from the time trace is compared to a trehold value.
-        Values above the trehold are considered to belong to a laser pulse.
-        If the length of a pulse would be below the minium length the pulse is discarded
+        All count data from the time trace is compared to a threshold value.
+        Values above the threshold are considered to belong to a laser pulse.
+        If the length of a pulse would be below the minimum length the pulse is discarded
+        If a number of bins smaller as threshold_tolerance_bins are below the threshold they are still considered to
+        belong to a laser pulse
     """
     return_dict = dict()
 
@@ -243,9 +245,9 @@ def ungated_threshold(self, count_data):
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
                        'min_laser_length defined in class PulseExtractionLogic.')
         return return_dict
-    if self.count_treshold is None:
+    if self.count_threshold is None:
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
-                       'count_treshold defined in class PulseExtractionLogic.')
+                       'count_threshold defined in class PulseExtractionLogic.')
         return return_dict
     if self.threshold_tolerance_bins is None:
         self.log.error('Pulse extraction method "ungated_threshold" will not work. No '
@@ -253,13 +255,12 @@ def ungated_threshold(self, count_data):
         return return_dict
 
     # get all bin indices with counts > threshold value
-    bigger_indices = np.where(count_data > self.count_treshold)[0]
+    bigger_indices = np.where(count_data >= self.count_threshold)[0]
     # get all indices with consecutive numbering (bin chains not interrupted by values < threshold
-    consecutive_indices = self._find_consecutive(np.array(bigger_indices))
+    consecutive_indices_unfiltered = \
+        self._find_consecutive_tolerance(np.array(bigger_indices), self.threshold_tolerance_bins)
     # sort out all groups shorter than minimum laser length
-    for i, index_group in enumerate(consecutive_indices):
-        if len(index_group) < self.min_laser_length:
-            del consecutive_indices[i]
+    consecutive_indices = [item for item in consecutive_indices_unfiltered if len(item) > self.min_laser_length]
 
     # Check if the number of lasers matches the number of remaining index groups
     if self.number_of_lasers != len(consecutive_indices):
@@ -313,3 +314,12 @@ def _convolve_derive(self, data, std_dev):
 
 def _find_consecutive(self, data):
     return np.split(data, np.where(np.diff(data) != 1)[0]+1)
+
+
+def _find_consecutive_tolerance(self, data, tolerance):
+    index_list = np.split(data, np.where(np.diff(data) >= tolerance)[0]+1)
+    for i, index_group in enumerate(index_list):
+        if index_group.size > 0:
+            start, end = index_list[i][0], index_list[i][-1]
+            index_list[i] = np.arange(start, end + 1)
+    return index_list
