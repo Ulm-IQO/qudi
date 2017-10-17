@@ -38,10 +38,10 @@ class PulseAnalysisLogic(GenericLogic):
 
     # status vars
     current_method = StatusVar('current_method', 'mean_norm')
-    signal_start_s = StatusVar('signal_start_s', 0)
-    signal_end_s = StatusVar('signal_end_s', 200)
-    norm_start_s = StatusVar('norm_start_s', 300)
-    norm_end_s = StatusVar('norm_end_s', 400)
+    signal_start_s = StatusVar('signal_start_s', 0.0)
+    signal_end_s = StatusVar('signal_end_s', 200.0e-9)
+    norm_start_s = StatusVar('norm_start_s', 500.0e-9)
+    norm_end_s = StatusVar('norm_end_s', 700.0e-9)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
