@@ -393,7 +393,7 @@ class OptimizerLogic(GenericLogic):
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian
+            estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
 
