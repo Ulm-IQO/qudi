@@ -267,7 +267,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                              self._pulse_analysis_logic.norm_end_s)
         self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
                                                self._pulse_extraction_logic.conv_std_dev,
-                                               self._pulse_extraction_logic.count_treshold,
+                                               self._pulse_extraction_logic.count_threshold,
                                                self._pulse_extraction_logic.threshold_tolerance_bins,
                                                self._pulse_extraction_logic.min_laser_length)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
@@ -950,13 +950,13 @@ class PulsedMeasurementLogic(GenericLogic):
                                                  norm_start_s, norm_end_s)
         return method, signal_start_s, signal_end_s, norm_start_s, norm_end_s
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
+    def extraction_settings_changed(self, method, conv_std_dev, count_threshold,
                                     threshold_tolerance_bins, min_laser_length):
         """
 
         @param method:
         @param conv_std_dev:
-        @param count_treshold:
+        @param count_threshold:
         @param threshold_tolerance_bins:
         @param min_laser_length:
         @return:
@@ -964,12 +964,12 @@ class PulsedMeasurementLogic(GenericLogic):
         with self.threadlock:
             self._pulse_extraction_logic.current_method = method
             self._pulse_extraction_logic.conv_std_dev = conv_std_dev
-            self._pulse_extraction_logic.count_treshold = count_treshold
+            self._pulse_extraction_logic.count_threshold = count_threshold
             self._pulse_extraction_logic.threshold_tolerance_bins = threshold_tolerance_bins
             self._pulse_extraction_logic.min_laser_length = min_laser_length
-            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
+            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_threshold,
                                                    threshold_tolerance_bins, min_laser_length)
-        return method, conv_std_dev, count_treshold, threshold_tolerance_bins, min_laser_length
+        return method, conv_std_dev, count_threshold, threshold_tolerance_bins, min_laser_length
 
     def _initialize_plots(self):
         """
