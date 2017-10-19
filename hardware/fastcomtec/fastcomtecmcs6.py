@@ -160,13 +160,15 @@ class BOARDSETTING(ctypes.Structure):
 
 class FastComtec(Base, FastCounterInterface):
     """
-    unstable: Jochen Scheuer, Simon Schmitt
+    stable: Jochen Scheuer, Simon Schmitt
 
     Hardware Class for the FastComtec Card.
     """
     _modclass = 'FastComtec'
     _modtype = 'hardware'
     GATED = ConfigOption('gated', False, missing='warn')
+    trigger_safety = ConfigOption('trigger_safety', 200e-9, missing='warn')
+    aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -264,11 +266,11 @@ class FastComtec(Base, FastCounterInterface):
         # subtract 200 ns to make sure no sequence trigger is missed
         record_length_FastComTech_s = record_length_s
         if self.GATED:
-            # add 400 ns to account for AOM delay
-            no_of_bins = int((record_length_FastComTech_s + 400e-9) / self.set_binwidth(bin_width_s))
+            # add time to account for AOM delay
+            no_of_bins = int((record_length_FastComTech_s + self.aom_delay) / self.set_binwidth(bin_width_s))
         else:
-            # subtract 200 ns to make sure no sequence trigger is missed
-            no_of_bins = int((record_length_FastComTech_s - 200e-9) / self.set_binwidth(bin_width_s))
+            # subtract time to make sure no sequence trigger is missed
+            no_of_bins = int((record_length_FastComTech_s - self.trigger_safety) / self.set_binwidth(bin_width_s))
 
         self.set_length(no_of_bins, preset=1, cycles=number_of_gates)
 
@@ -515,25 +517,48 @@ class FastComtec(Base, FastCounterInterface):
             self.GATED = False
         return gated
 
+    def change_save_mode(self, mode):
+        """ Changes the save mode of Mcs6
+
+        @param int mode: Specifies the save mode (0: No Save at Halt, 1: Save at Halt,
+                        2: Write list file, No Save at Halt, 3: Write list file, Save at Halt
+
+        @return int mode: specified save mode
+        """
+        cmd = 'savedata={0}'.format(mode)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return mode
+
+    def set_delay_start(self, delay_s):
+        """ Sets the record delay length
+
+        @param int delay_s: Record delay after receiving a start trigger
+
+        @return int mode: specified save mode
+        """
+
+        # A delay can only be adjusted in steps of 6.4ns
+        delay_bins = np.rint(delay_s / 6.4e-9)
+        cmd = 'fstchan={0}'.format(int(delay_bins))
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return delay_bins
+
+    def get_delay_start(self):
+        """ Returns the current record delay length
+
+        @return float delay_s: current record delay length in seconds
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        delay_s = bsetting.fstchan * 6.4e-9
+        return delay_s
 
     # =========================================================================
     #   The following methods have to be carefully reviewed and integrated as
     #   internal methods/function, because they might be important one day.
     # =========================================================================
 
-    def SetDelay(self, t):
-        #~ setting = AcqSettings()
-        #~ self.dll.GetSettingData(ctypes.byref(setting), 0)
-        #~ setting.fstchan = t/6.4
-        #~ self.dll.StoreSettingData(ctypes.byref(setting), 0)
-        #~ self.dll.NewSetting(0)
-        self.dll.RunCmd(0, 'DELAY={0:f}'.format(t))
-        return self.GetDelay()
 
-    def GetDelay(self):
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return setting.fstchan * 6.4
 
     def SetLevel(self, start, stop):
         setting = AcqSettings()
@@ -552,6 +577,13 @@ class FastComtec(Base, FastCounterInterface):
         def WordToFloat(word):
             return (word & int('ffff',16)) * 4.096 / int('ffff',16) - 2.048
         return WordToFloat(setting.dac0), WordToFloat(setting.dac1)
+
+
+
+
+
+
+
 
 
 
