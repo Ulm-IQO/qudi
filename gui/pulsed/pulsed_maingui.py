@@ -1586,7 +1586,7 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.sigPositionChangeFinished.disconnect()
         self.ref_start_line.sigPositionChangeFinished.disconnect()
         self.ref_end_line.sigPositionChangeFinished.disconnect()
-        self._pe.extract_param_conv_std_dev_slider.sliderReleased.disconnect()
+        self._pe.extract_param_conv_std_dev_slider.valueChanged.disconnect()
         self._fsd.sigFitsUpdated.disconnect()
         return
 
