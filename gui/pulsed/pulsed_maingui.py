@@ -1500,7 +1500,8 @@ class PulsedMeasurementGui(GUIBase):
         self.sig_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
         self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
         self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
-        self._pe.extract_param_conv_std_dev_slider.sliderReleased.connect(self.extraction_settings_changed)
+        self._pe.extract_param_conv_std_dev_slider.valueChanged.connect(self.extraction_settings_changed)
+
 
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
