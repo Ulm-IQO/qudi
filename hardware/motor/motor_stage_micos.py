@@ -325,6 +325,7 @@ class MotorStageMicos(Base, MotorInterface):
             self.log.error('Motor cannot move!')
         return self.get_pos()
 
+    #Todo:_ Add constrain checks in move_abs file, this can be seen here in the old commented version
     # def move_abs(self, param_dict):
     #     """ Moves stage to absolute position (absolute movement)
     #
