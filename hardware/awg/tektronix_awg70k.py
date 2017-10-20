@@ -1236,6 +1236,62 @@ class AWG70K(Base, PulserInterface):
             time.sleep(0.2)
         return 0
 
+
+    def generate_sequence(self, name, steps, tracks=1):
+        """
+        Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
+
+        @param str name: Name of the sequence which should be generated
+        @param int steps: Number of steps
+        @param int track: Number of tracks
+
+        @return 0
+        """
+        self.awg.write('SLISt:SEQuence:DELete ' + '"' + name + '"' + '\n')
+        self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks) + '\n')
+        return 0
+
+    def add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
+        """
+        Add the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name' and repeat it 'repeat' times
+
+        @param str sequence_name: Name of the sequence which should be editted
+        @param str waveform_name: Name of the waveform which should be added
+        @param int step: Position of the added waveform
+        @param int track: track which should be editted
+        @param int repeat: number of repetition of added waveform
+
+        @return 0
+        """
+        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':TASSET' + str(
+            track) + ':WAVEFORM ' + '"' + sequence_name + '", "' + waveform_name + '"' + '\n')
+        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat) + '\n')
+        return 0
+
+    def load_sequence(self, sequencename, track=1):
+        """Load sequence file into RAM.
+
+        @param sequencename:  Name of the sequence to load
+        @param int track: Number of track to load
+
+        return 0
+        """
+        self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track) + '\n')
+        return 0
+
+    def make_sequence_continuous(self, sequencename):
+        """
+        Usually after a run of a sequence the output stops. Many times it is desired that the full sequence is repeated
+         many times. This is achieved here by setting the 'jump to' value of the last element to 'First'
+
+        @param sequencename: Name of the sequence which should be made continous
+
+        @return int last_step: The step number which 'jump to' has to be set to 'First'
+        """
+        last_step = int(self.ask('SLISt:SEQuence:LENGth? ' + '"' + sequencename + '"'))
+        self.awg.write('SLISt:SEQuence:STEP' + str(last_step) + ':GOTO ' + '"' + sequencename + '",  FIRST \n')
+        return last_step
+
     def _init_loaded_asset(self):
         """
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
