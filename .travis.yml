@@ -31,7 +31,7 @@ before_install:
 
 install:
   - python -c "import matplotlib.pyplot" # generate matplotlib font cache
-  - python tools/qudikernel.py install
+  - python core/qudikernel.py install
   - export PATH=$PATH:$HOME/bin
 
 script:

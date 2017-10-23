@@ -268,9 +268,9 @@ class PoiManagerGui(GUIBase):
         if self._poi_manager_logic.active_poi is not None:
             cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self._poi_manager_logic.active_poi.get_key())
             self._mw.poi_distance_label.setText('{0:.2e} ({1:.2e}, {2:.2e})'.format(
-                np.sqrt((mouse_point.x() * 1e-6 - cur_poi_pos[0])**2+(mouse_point.y()* 1e-6 - cur_poi_pos[1])**2),
-                mouse_point.x()* 1e-6 - cur_poi_pos[0],
-                mouse_point.y()* 1e-6 - cur_poi_pos[1]))
+                np.sqrt((mouse_point.x() - cur_poi_pos[0])**2+(mouse_point.y() - cur_poi_pos[1])**2),
+                mouse_point.x() - cur_poi_pos[0],
+                mouse_point.y() - cur_poi_pos[1]))
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the POI Manager GUI.
@@ -393,6 +393,8 @@ class PoiManagerGui(GUIBase):
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
         self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
         self._mw.autofind_pois_Action.triggered.connect(self.do_autofind_poi_procedure)
+        self._mw.optimize_roi_Action.triggered.connect(self.optimize_roi)
+
 
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
@@ -596,42 +598,53 @@ class PoiManagerGui(GUIBase):
 
     def delete_last_point(self):
         """ Delete the last track position of a chosen poi. """
-
-        self._poi_manager_logic.delete_last_point(poikey=self._poi_manager_logic.active_poi.get_key())
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected. No datapoint can be deleted")
+        else:
+            self._poi_manager_logic.delete_last_position(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def delete_poi(self):
         """ Delete the active poi from the list of managed points. """
-        key = self._poi_manager_logic.active_poi.get_key()
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
+        else:
+            key = self._poi_manager_logic.active_poi.get_key()
 
-# todo: this needs to handle the case where the logic deletes a POI.
+            # todo: this needs to handle the case where the logic deletes a POI.
 
-        self._poi_manager_logic.delete_poi(poikey=key)
+            self._poi_manager_logic.delete_poi(poikey=key)
 
     def _remove_poi_marker(self, poikey):
         """ Remove the POI marker for a POI that was deleted.
         """
-
         self._markers[poikey].delete_from_viewwidget()
         del self._markers[poikey]
 
     def manual_update_poi(self):
         """ Manually adds a point to the trace of a given poi without refocussing, and uses that information to update sample position.
         """
-
-        self._poi_manager_logic.set_new_position(poikey=self._poi_manager_logic.active_poi.get_key())
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
+        else:
+            self._poi_manager_logic.set_new_position(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def move_poi(self):
         """Manually move a POI to a new location in the sample map, but WITHOUT changing the sample position.  This moves a POI relative to all the others.
         """
-
-        self._poi_manager_logic.move_coords(poikey=self._poi_manager_logic.active_poi.get_key())
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
+        else:
+            self._poi_manager_logic.move_coords(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def toggle_tracking(self):
-        if self._poi_manager_logic.timer is None:
-            self._poi_manager_logic.start_periodic_refocus(poikey=self._poi_manager_logic.active_poi.get_key())
-
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
         else:
-            self._poi_manager_logic.stop_periodic_refocus()
+            if self._poi_manager_logic.timer is None:
+                self._poi_manager_logic.start_periodic_refocus(poikey=self._poi_manager_logic.active_poi.get_key())
+
+            else:
+                self._poi_manager_logic.stop_periodic_refocus()
 
     def _tracking_started(self):
         self._mw.track_poi_Action.setChecked(True)
@@ -641,7 +654,10 @@ class PoiManagerGui(GUIBase):
 
     def goto_poi(self, key):
         """ Go to the last known position of poi <key>."""
-        self._poi_manager_logic.go_to_poi(poikey=self._poi_manager_logic.active_poi.get_key())
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
+        else:
+            self._poi_manager_logic.go_to_poi(poikey=self._poi_manager_logic.active_poi.get_key())
 
     def populate_poi_list(self):
         """ Populate the dropdown box for selecting a poi. """
@@ -686,6 +702,8 @@ class PoiManagerGui(GUIBase):
         if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
             self._mw.offset_anchor_ComboBox.setEnabled(False)
         elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
+            self.log.error("Anchor method not fully implemented yet. "
+                           "Feel free to fix this method. Using position optimisation instead.")
             self._mw.offset_anchor_ComboBox.setEnabled(True)
         else:
             # TODO: throw an error
@@ -726,14 +744,17 @@ class PoiManagerGui(GUIBase):
 #        self._redraw_poi_markers()
 
     def update_poi_pos(self):
+        if self._poi_manager_logic.active_poi is None:
+            self.log.warning("No POI selected.")
+        else:
+            if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
+                self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key())
 
-        if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
-            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key())
-
-        elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
-            anchor_key = self._mw.offset_anchor_ComboBox.itemData(
-                self._mw.offset_anchor_ComboBox.currentIndex())
-            self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(), anchorkey=anchor_key)
+            elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
+                anchor_key = self._mw.offset_anchor_ComboBox.itemData(
+                    self._mw.offset_anchor_ComboBox.currentIndex())
+                self._poi_manager_logic.optimise_poi(poikey=self._poi_manager_logic.active_poi.get_key(),
+                                                     anchorkey=anchor_key)
 
     def toggle_follow(self):
         if self._mw.goto_poi_after_update_checkBox.isChecked():
@@ -973,7 +994,7 @@ class PoiManagerGui(GUIBase):
                                  self._rrd.ref_c_y_pos_DoubleSpinBox.value(),
                                  self._rrd.ref_c_z_pos_DoubleSpinBox.value()])
 
-        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos
+        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos*1e-6, ref_b_newpos*1e-6, ref_c_newpos*1e-6
 
     def reset_reorientation_dialog(self):
         """ Reset all the values in the reorient roi dialog. """
@@ -1009,11 +1030,19 @@ class PoiManagerGui(GUIBase):
 
     def do_autofind_poi_procedure(self):
         """Run the autofind_pois procedure in the POI Manager Logic to get all the POIs in the current ROI image."""
+        #Fixme: Add here the appropriate functionality
 
-        # Get the thresholds from the user-chosen color bar range
-        cb_min, cb_max = self.determine_cb_range()
+        self.log.error("Has to be implemented properly. Feel free to do it.")
 
-        this_min_threshold = cb_min + 0.3 * (cb_max - cb_min)
-        this_max_threshold = cb_max
+        # # Get the thresholds from the user-chosen color bar range
+        # cb_min, cb_max = self.determine_cb_range()
+        #
+        # this_min_threshold = cb_min + 0.3 * (cb_max - cb_min)
+        # this_max_threshold = cb_max
+        #
+        # self._poi_manager_logic.autofind_pois(neighborhood_size=1, min_threshold=this_min_threshold, max_threshold=this_max_threshold)
 
-        self._poi_manager_logic.autofind_pois(neighborhood_size=1, min_threshold=this_min_threshold, max_threshold=this_max_threshold)
+    def optimize_roi(self):
+        """Run the autofind_pois procedure in the POI Manager Logic to get all the POIs in the current ROI image."""
+        #Fixme: Add here the appropriate functionality
+        self.log.error("Not implemented yet. Feel free to help!")
