@@ -264,10 +264,10 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    for attempt in range(5):
+                    for attempt in range(25):
                         # self.log.debug(attempt)
                         try:
-                            pos = int(self._ask_xyz(axis_label,'TT').split(":",1)[1])
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
@@ -275,11 +275,10 @@ class MotorStagePI(Base, MotorInterface):
                             break
             else:
                 for axis_label in constraints:
-                    for attempt in range(5):
+                    for attempt in range(25):
                         #self.log.debug(attempt)
                         try:
-                            #pos = int(self._ask_xyz(axis_label,'TT')[8:])
-                            pos = int(self._ask_xyz(axis_label, 'TT').split(":",1)[1])
+                            pos = int(self._ask_xyz(axis_label,'TT')[8:])
                             param_dict[axis_label] = pos * 1e-7
                         except:
                             continue
@@ -289,7 +288,6 @@ class MotorStagePI(Base, MotorInterface):
         except:
             self.log.error('Could not find current xyz motor position')
             return -1
-
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -310,11 +308,11 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    status = self._ask_xyz(axis_label,'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label,'TS')[8:]
                     param_dict[axis_label] = status
             else:
                 for axis_label in constraints:
-                    status = self._ask_xyz(axis_label, 'TS').split(":",1)[1]
+                    status = self._ask_xyz(axis_label, 'TS')[8:]
                     param_dict[axis_label] = status
             return param_dict
         except:
@@ -373,11 +371,11 @@ class MotorStagePI(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
                     param_dict[axis_label] = vel * 1e-7
             else:
                 for axis_label in constraints:
-                    vel = int(self._ask_xyz(axis_label, 'TY').split(":",1)[1])
+                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
                     param_dict[axis_label] = vel * 1e-7
             return param_dict
         except:
@@ -468,7 +466,7 @@ class MotorStagePI(Base, MotorInterface):
 
         @param axis string: name of the axis that should be moved
 
-        @param float step: step in meter
+        @param float step: step in millimeter
 
         @return str axis: axis which is moved
                 move float: absolute position to move to
@@ -481,14 +479,14 @@ class MotorStagePI(Base, MotorInterface):
             current_pos = self.get_pos(axis)[axis]
             move = current_pos + step
             self._do_move_abs(axis, move)
-        return axis, move
+        return axis,move
 
     def _do_move_abs(self, axis, move):
         """internal method for the absolute move in meter
 
         @param axis string: name of the axis that should be moved
 
-        @param float move: desired position in meter
+        @param float move: desired position in millimeter
 
         @return str axis: axis which is moved
                 move float: absolute position to move to
@@ -540,10 +538,6 @@ class MotorStagePI(Base, MotorInterface):
             #########################################################################################
 #########################################################################################
 #########################################################################################
-
-
-
-
 
 
 
