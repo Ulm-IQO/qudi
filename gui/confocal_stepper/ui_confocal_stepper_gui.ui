@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>950</width>
-    <height>929</height>
+    <height>932</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -902,6 +902,9 @@
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
+       <property name="accelerated">
+        <bool>true</bool>
+       </property>
        <property name="decimals">
         <number>3</number>
        </property>
@@ -960,6 +963,12 @@
    </widget>
   </widget>
   <widget class="QDockWidget" name="step_dockWidget">
+   <property name="minimumSize">
+    <size>
+     <width>201</width>
+     <height>440</height>
+    </size>
+   </property>
    <property name="floating">
     <bool>false</bool>
    </property>
@@ -1061,7 +1070,7 @@
            <item>
             <widget class="PlotWidget" name="cb_ViewWidget">
              <property name="sizePolicy">
-              <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
                <horstretch>0</horstretch>
                <verstretch>0</verstretch>
               </sizepolicy>
@@ -1169,6 +1178,9 @@
    </widget>
   </widget>
   <widget class="QToolBar" name="scan_ToolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
     <string>Scan toolbar</string>
    </property>
@@ -1189,6 +1201,9 @@
    <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="util_ToolBar">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
    <property name="windowTitle">
     <string>Utilities Toolbar</string>
    </property>
@@ -2259,6 +2274,9 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/zoom-select.png</normaloff>
@@ -2349,6 +2367,9 @@
    </property>
   </action>
   <action name="action_scan_depth_start">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</iconset>
@@ -2361,6 +2382,9 @@
    </property>
   </action>
   <action name="action_scan_depth_resume">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</iconset>
@@ -2373,6 +2397,9 @@
    </property>
   </action>
   <action name="action_optimize_position">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position.png</iconset>
@@ -2448,6 +2475,9 @@
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/correct-tilt.png</normaloff>../../artwork/icons/qudiTheme/22x22/correct-tilt.png</iconset>
@@ -2466,7 +2496,7 @@
   </action>
   <action name="actionForward">
    <property name="enabled">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="icon">
     <iconset>
@@ -2484,7 +2514,7 @@
   </action>
   <action name="actionBack">
    <property name="enabled">
-    <bool>true</bool>
+    <bool>false</bool>
    </property>
    <property name="icon">
     <iconset>
@@ -2512,6 +2542,9 @@
    </property>
   </action>
   <action name="action_full_range_xy">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
@@ -2524,6 +2557,9 @@
    </property>
   </action>
   <action name="action_full_range_z">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>

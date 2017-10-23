@@ -91,6 +91,7 @@ class ConfocalStepperGui(GUIBase):
     sigClearData = QtCore.Signal()
     sigSaveMeasurement = QtCore.Signal(str, list, list)
 
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -109,6 +110,8 @@ class ConfocalStepperGui(GUIBase):
 
         self._stepper_logic = self.get_connector('stepperlogic1')
         self._scanning_logic = self.get_connector('confocallogic1')
+        self._save_logic = self.get_connector('savelogic')
+
 
         self.initMainUI()
 
@@ -222,11 +225,8 @@ class ConfocalStepperGui(GUIBase):
         self.keep_former_settings()
 
     def init_plot_step_UI(self):
-        # Get the image for the display from the logic. Transpose the received
-        # matrix to get the proper scan. The graphic widget displays vector-
-        # wise the lines and the lines are normally columns, but in our
-        # measurement we scan rows per row. That's why it has to be transposed.
-        self.step_image = pg.ImageItem(self._stepper_logic.image[:, :, 2])
+        # Get the image for the display from the logic.
+        self.step_image = pg.ImageItem(image = self._stepper_logic.image[:, :, 2], axisOrder='row-major')
         # Todo: Add option to see data from other counter later
 
         # set up scan line plot
@@ -395,6 +395,8 @@ class ConfocalStepperGui(GUIBase):
         self._mw.step_direction_comboBox.activated.connect(self.update_step_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_step_direction)
 
+        self._stepper_logic.signal_step_scan_stopped.connect(self.enable_step_actions)
+
     def init_tilt_correction_UI(self):
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -529,9 +531,9 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_min_InputWidget.setEnabled(False)
         self._mw.z_piezo_max_InputWidget.setEnabled(False)
 
-        self._mw.x_step_InputWidget.setEnabled(False)
-        self._mw.y_step_InputWidget.setEnabled(False)
-        self._mw.z_step_InputWidget.setEnabled(False)
+        self._mw.x_steps_InputWidget.setEnabled(False)
+        self._mw.y_steps_InputWidget.setEnabled(False)
+        self._mw.z_steps_InputWidget.setEnabled(False)
 
         # Set the zoom button if it was pressed to unpressed and disable it
         self._mw.action_zoom.setChecked(False)
@@ -559,27 +561,27 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_min_InputWidget.setEnabled(True)
         self._mw.z_piezo_max_InputWidget.setEnabled(True)
 
-        self._mw.x_step_InputWidget.setEnabled(True)
-        self._mw.y_step_InputWidget.setEnabled(True)
-        self._mw.z_step_InputWidget.setEnabled(True)
+        self._mw.x_steps_InputWidget.setEnabled(True)
+        self._mw.y_steps_InputWidget.setEnabled(True)
+        self._mw.z_steps_InputWidget.setEnabled(True)
 
-        self._mw.action_zoom.setEnabled(True)
+        #self._mw.action_zoom.setEnabled(True)
 
-        self.set_history_actions(True)
+        #self.set_history_actions(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
 
-        if self._scanning_logic._zscan_continuable is True:
-            self._mw.action_scan_depth_resume.setEnabled(True)
-        else:
-            self._mw.action_scan_depth_resume.setEnabled(False)
+        #if self._scanning_logic._zscan_continuable is True:
+        #    self._mw.action_scan_depth_resume.setEnabled(True)
+        #else:
+        #    self._mw.action_scan_depth_resume.setEnabled(False)
 
-        if self._scanning_logic._xyscan_continuable is True:
-            self._mw.action_scan_xy_resume.setEnabled(True)
-        else:
-            self._mw.action_scan_xy_resume.setEnabled(False)
+        #if self._scanning_logic._xyscan_continuable is True:
+        #    self._mw.action_scan_xy_resume.setEnabled(True)
+        #else:
+        #    self._mw.action_scan_xy_resume.setEnabled(False)
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
@@ -605,11 +607,13 @@ class ConfocalStepperGui(GUIBase):
     def step_start_clicked(self):
         """ Manages what happens if the step scan is started. """
         self.disable_step_actions()
+        self.update_stepper_hardware_values()
         self._stepper_logic.start_stepper()  # tag='gui')
 
     def step_continued_clicked(self):
         """ Continue step scan. """
         self.disable_step_actions()
+        self.update_stepper_hardware_values()
         self._stepper_logic.continue_stepper()  # tag='gui')
 
     def menu_settings(self):
@@ -927,7 +931,7 @@ class ConfocalStepperGui(GUIBase):
             high_centile = self._mw.cb_high_percentile_DoubleSpinBox.value()
             pcile_range = [low_centile, high_centile]
 
-        self._scanning_logic.save_xy_data(colorscale_range=cb_range, percentile_range=pcile_range)
+        self._stepper_logic.save_data(colorscale_range=cb_range, percentile_range=pcile_range)
 
         # TODO: find a way to produce raw image in savelogic.  For now it is saved here.
         # if self._mw.count
