@@ -523,8 +523,20 @@ class MotorStageMicos(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    status = self._ask(axis_label, 'st')
-                    param_dict[axis_label] = status
+                    # the status check takes quite long so if port is checked
+                    # there is no need for second check
+                    if axis_label == 'x' or axis_label == 'y':
+                        if not already_checked_xy:
+                            status_xy = self._ask(axis_label, 'st')
+                            already_checked_xy = True
+                        param_dict[axis_label] = status_xy
+                    elif axis_label == 'z' or axis_label == 'phi':
+                        if not already_checked_zphi:
+                            status_zphi = self._ask(axis_label, 'st')
+                            already_checked_zphi = True
+                        param_dict[axis_label] = status_zphi
+                    else:
+                        self.log.error("Asking question to not defined axis:", axis_label)
             else:
                 for axis_label in constraints:
                     #the status check takes quite long so if port is checked
@@ -612,12 +624,12 @@ class MotorStageMicos(Base, MotorInterface):
         #Todo: Set velocity for each axis seperately
         if 'x' in param_list or 'y' in param_list:
             vel['x'] = float(self._ask('x', 'getvel').split()[0])/self.unit_factor
-            vel['y'] = float(self._ask('y', 'getvel').split()[0])/self.unit_factor
+            vel['y'] = vel['x']
             self.log.warning('Velocity set for x and y axis!')
 
         if 'z' in param_list or 'phi' in param_list:
             vel['z'] = float(self._ask('z', 'getvel').split()[0])/self.unit_factor
-            vel['phi'] = float(self._ask('phi', 'getvel').split()[0])/self.unit_factor
+            vel['phi'] = vel['z']
             self.log.warning('Velocity set for z and phi axis!')
 
         return vel
