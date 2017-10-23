@@ -198,6 +198,8 @@ class OptimizerLogic(GenericLogic):
             @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
+
+
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
@@ -220,7 +222,7 @@ class OptimizerLogic(GenericLogic):
         self.optim_sigma_x = 0.
         self.optim_sigma_y = 0.
         self.optim_sigma_z = 0.
-
+        #
         self._xy_scan_line_count = 0
         self._optimization_step = 0
         self.check_optimization_sequence()
@@ -391,7 +393,7 @@ class OptimizerLogic(GenericLogic):
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian
+            estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
 

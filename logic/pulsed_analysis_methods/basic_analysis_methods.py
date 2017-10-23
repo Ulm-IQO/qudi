@@ -51,3 +51,29 @@ def analyse_mean_norm(self, laser_data):
             measuring_error[jj] = signal_data[jj] * np.sqrt(
                 1 / signal_area[jj] + 1 / reference_area[jj])
     return signal_data, measuring_error
+
+
+def analyse_mean(self, laser_data):
+    """
+
+    @param laser_data:
+    @return:
+    """
+    num_of_lasers = laser_data.shape[0]
+
+    # Initialize the signal and normalization mean data arrays
+    signal_mean = np.zeros(num_of_lasers, dtype=float)
+    measuring_error = np.zeros(num_of_lasers, dtype=float)
+
+    # loop over all laser pulses and analyze them
+    for ii in range(num_of_lasers):
+        # calculate the mean of the data in the signal window
+        signal_tmp_data = laser_data[ii][self.signal_start_bin:self.signal_end_bin]
+        if np.sum(signal_tmp_data) < 1:
+            signal_mean[ii] = 0.0
+            measuring_error[ii] = 0.
+        else:
+            signal_mean[ii] = signal_tmp_data.mean()
+            measuring_error[ii] = np.sqrt(signal_tmp_data.sum())/(self.signal_end_bin-self.signal_start_bin)
+
+    return signal_mean, measuring_error
