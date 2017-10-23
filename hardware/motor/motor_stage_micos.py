@@ -88,30 +88,7 @@ class MotorStageMicos(Base, MotorInterface):
     # _baud_rate_xy = ConfigOption('micos_baud_rate_xy', 57600, missing='warn')
     # _baud_rate_zphi = ConfigOption('micos_baud_rate_zphi', 57600, missing='warn')
 
-#Questions:
-#    Are values put in the right way in config????
-#    change return values to sensible values??? - not so important
-#    After moving files what has to be changed, where?
 
-#Christoph:
-#    make on activate method which asks for values with get_pos()
-#    checks for sensible values???
-#    default parameters should be none
-#    introduce dead-times while waiting?
-#    check if sensible value and check for float!!!! in interface
-#    put together everything to one step???
-
-#Things to be changed in logic:
-#    Name of modules for steps
-#    getpos
-#    kill strgc method
-
-#changes:
-#    change time for waiting until next command is sent
-#    change prints to log messages
-#    wait in calibrate or implement get_cal
-#    make subfolder with __init__ for subfolder check GUI
-#    change format string to new convention
 
     #Todo: add term_char to visa connection
     def on_activate(self):
@@ -481,8 +458,7 @@ class MotorStageMicos(Base, MotorInterface):
 
         constraints = self.get_constraints()
         param_dict = {}
-        # unfortunately, probably due to connection problems this specific command sometimes failing
-        # although it should run.... therefore some retries are added
+
 
         already_checked_xy = False
         already_checked_zphi = False
@@ -490,6 +466,8 @@ class MotorStageMicos(Base, MotorInterface):
         if param_list is None:
             param_list = all_axis_labels
         for axis_label in param_list:
+            # unfortunately, probably due to connection problems this specific command sometimes failing
+            # although it should run.... therefore some retries are added
             for attempt in range(25):
                 if constraints[axis_label]['label'] == 'x' or constraints[axis_label]['label'] == 'y':
                     if already_checked_xy is False:
@@ -522,6 +500,8 @@ class MotorStageMicos(Base, MotorInterface):
         """
         constraints = self.get_constraints()
         param_dict = {}
+        # The information about axes x,y and z,phi are retrieved simultaneously. That is why if one is checked, the
+        # information is saved and returned without another _ask.
         already_checked_xy = False
         already_checked_zphi = False
         try:
@@ -573,7 +553,7 @@ class MotorStageMicos(Base, MotorInterface):
                     self._write('x', '1 ncal')
 
                 if constraints[axis_label]['label'] == 'y' in param_list:
-                    self._write('x', '2 ncal')
+                    self._write('y', '2 ncal')
 
                 if constraints[axis_label]['label'] == 'z' in param_list:
                     self._write('z', '1 ncal')
@@ -616,12 +596,12 @@ class MotorStageMicos(Base, MotorInterface):
         #Todo: Set velocity for each axis seperately
         if 'x' in param_list or 'y' in param_list:
             vel['x'] = float(self._ask('x', 'getvel').split()[0])/self.unit_factor
-            vel['y'] = float(self._ask('x', 'getvel').split()[0])/self.unit_factor
+            vel['y'] = float(self._ask('y', 'getvel').split()[0])/self.unit_factor
             self.log.warning('Velocity set for x and y axis!')
 
         if 'z' in param_list or 'phi' in param_list:
             vel['z'] = float(self._ask('z', 'getvel').split()[0])/self.unit_factor
-            vel['phi'] = float(self._ask('z', 'getvel').split()[0])/self.unit_factor
+            vel['phi'] = float(self._ask('phi', 'getvel').split()[0])/self.unit_factor
             self.log.warning('Velocity set for z and phi axis!')
 
         return vel
