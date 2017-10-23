@@ -239,8 +239,9 @@ class MotorStageMicos(Base, MotorInterface):
         @return dict pos: dictionary with the current magnet position
         """
         # Todo: check if the move is within the range allowed from config
-                # maybe therefore virtual parameters in the hardware file would be good
-                # if not it will take very long
+
+        # Todo: Check if two parameters are changed such that if they are on one com port they can be
+        # changed at the same time
 
         # There are sometimes connections problems therefore up to 3 attempts are started
         for attempt in range(3):
@@ -275,23 +276,34 @@ class MotorStageMicos(Base, MotorInterface):
         # There are sometimes connections problems therefore up to 3 attempts are started
         for attept in range(3):
             try:
+                # x and y are connencted through one com port therefore it is faster if both commands are sent at the
+                # same time therefore there is the check if x and y or only one axis is changed
                 if 'x' in param_dict and 'y' in param_dict:
-                    self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor, param_dict['y']*self.unit_factor))
+                    self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor,
+                                                           param_dict['y']*self.unit_factor))
                 elif 'x' in param_dict or 'y' in param_dict:
                     curr_pos = self.get_pos()
                     if 'x' in param_dict:
-                        self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor, curr_pos['y']*self.unit_factor))
+                        self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor,
+                                                               curr_pos['y']*self.unit_factor))
                     if 'y' in param_dict:
-                        self._write('y', '{} {} 0 move'.format(curr_pos['x']*self.unit_factor, param_dict['y']*self.unit_factor))
+                        self._write('y', '{} {} 0 move'.format(curr_pos['x']*self.unit_factor,
+                                                               param_dict['y']*self.unit_factor))
+
+                # z and phi are connencted through one com port therefore it is faster if both commands are sent at the
+                # same time therefore there is the check if z and phi or only one axis are changed
                 if 'z' in param_dict and 'phi' in param_dict:
-                    self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor, param_dict['phi']*self.unit_factor))
+                    self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor,
+                                                           param_dict['phi']*self.unit_factor))
                 elif 'z' in param_dict or 'phi' in param_dict:
                     if curr_pos is None:
                         curr_pos = self.get_pos()
                     if 'z' in param_dict:
-                        self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor, curr_pos['phi']*self.unit_factor))
+                        self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor,
+                                                               curr_pos['phi']*self.unit_factor))
                     if 'phi' in param_dict:
-                        self._write('phi', '{} {} 0 move'.format(curr_pos['z']*self.unit_factor, param_dict['phi']*self.unit_factor))
+                        self._write('phi', '{} {} 0 move'.format(curr_pos['z']*self.unit_factor,
+                                                                 param_dict['phi']*self.unit_factor))
                 while not self._motor_stopped():
                     time.sleep(0.05)
             except:
@@ -433,6 +445,8 @@ class MotorStageMicos(Base, MotorInterface):
         @return int: error code (0:OK, -1:error)
         """
         try:
+            # only checking sending command to x and z because these
+            # are the two axis and they also abort y and phi
             for axis_label in ['x', 'z']:
                 self._write(axis_label, 'Ctrl-C')
             while not self._motor_stopped():
@@ -459,9 +473,11 @@ class MotorStageMicos(Base, MotorInterface):
         constraints = self.get_constraints()
         param_dict = {}
 
-
+        # The information about axes x,y and z,phi are retrieved simultaneously. That is why if one is checked, the
+        # information is saved and returned without another _ask.
         already_checked_xy = False
         already_checked_zphi = False
+
         all_axis_labels = [axis_label for axis_label in constraints]
         if param_list is None:
             param_list = all_axis_labels
