@@ -294,7 +294,7 @@ class PulseSequence:
         Baiscally, calculate the length_bins and number of analog and digital
         channels.
         """
-        self.length_s = 0
+        self.length_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
         # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
@@ -306,13 +306,13 @@ class PulseSequence:
         # the repetitions of a block is used as the offset_time for the next block.
         offset_tick_bin = 0
         for ensemble, seq_dict in self.ensemble_param_list:
-            reps = 0
             for param in seq_dict:
                 if 'reps' in param.lower() or 'repetition' in param.lower():
                     reps = seq_dict[param]
                     break
-
-            self.length_s += (ensemble.length_s * reps)
+                else:
+                    reps = 0
+            self.length_s += (ensemble.length_s * (reps+1))
 
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels
