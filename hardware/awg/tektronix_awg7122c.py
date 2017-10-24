@@ -27,6 +27,7 @@ import os
 import re
 from collections import OrderedDict
 from fnmatch import fnmatch
+from core.module import StatusVar
 
 from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
@@ -44,6 +45,9 @@ class AWG7122C(Base, PulserInterface):
     port = ConfigOption('awg_port', missing='error')
     ftp_path = ConfigOption('awg_ftp_path', missing='error')
     _timeout = ConfigOption('timeout', 15000, missing='warn')
+
+    # status vars
+    active_channels_local = StatusVar(default={})
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -629,9 +633,6 @@ class AWG7122C(Base, PulserInterface):
         visual display. Unused for digital pulse generators without sequence
         storage capability (PulseBlaster, FPGA).
         """
-
-        #Fixme: After clear_all the pulser loses the channel configuration
-        #channels_temp=self.get_active_channels()
         self.tell('WLIST:WAVEFORM:DELETE ALL\n')
         self.current_loaded_asset = ''
         return
@@ -992,9 +993,15 @@ class AWG7122C(Base, PulserInterface):
 
         return low_val, high_val
 
-    # Todo: rewrite this part! first one has to include that dac resolution is changed when setting up the channels
+
+    # Fixme: rewrite this part! first one has to include that dac resolution is changed when setting up the channels
     #       and then one has to check the channel configuration from the dac resolution. Problem here, how do you know
     #       if ch1 or ch2 is active?
+    #       Here it is done in a way which needs a local variable to save the active channels. It should be in a way
+    #       which checks what is set in the hardware. The problem is that one can not check active channels if no
+    #       channel is loaded. Hence when clear is pressed the information is lost, and can not be restored. Below the
+    #       method one can find old code which describes an old version which almost does the job with the hardware
+    #       communication but the described problem.
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
 
@@ -1012,57 +1019,94 @@ class AWG7122C(Base, PulserInterface):
         If no parameters are passed to this method all channels will be asked
         for their setting.
         """
+
+        # prepare a full channel map
+        max_analog_channels = self._get_max_a_channel_number()
+
         active_ch = {}
+        for a_ch in range(max_analog_channels):
+            active_ch['a_ch' + str(a_ch + 1)] = False
+            active_ch['d_ch' + str((2 * a_ch) + 1)] = False
+            active_ch['d_ch' + str((2 * a_ch) + 2)] = False
 
+        # check what channels are active
+        for channel in active_ch:
+            if channel in self.active_channels_local:
+                active_ch[channel] = self.active_channels_local[channel]
+
+        self.active_channels_local = active_ch
+
+        # return either all channel information or just the one asked for.
         if ch is None:
-            # because 0 = False and 1 = True
-            try:
-                active_ch['a_ch1'] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
-
-                active_ch['a_ch2'] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
-            except:
-                return None
-
-            # For the AWG5000 series, the resolution of the DAC for the analog
-            # channel is fixed to 14bit. Therefore the digital channels are
-            # always active and cannot be deactivated. For other AWG devices the
-            # command
-            #   self.ask('SOURCE1:DAC:RESOLUTION?'))
-            # might be useful from which the active digital channels can be
-            # obtained.
-            active_ch['d_ch1'] = active_ch['a_ch1']
-            active_ch['d_ch2'] = active_ch['a_ch1']
-            active_ch['d_ch3'] = active_ch['a_ch2']
-            active_ch['d_ch4'] = active_ch['a_ch2']
+            return_ch = active_ch
         else:
+            return_ch = dict()
             for channel in ch:
-                if 'a_ch' in channel:
-                    ana_chan = int(channel[4:])
-                    if 0 < ana_chan <= self._get_num_a_ch():
-                        # because 0 = False and 1 = True
-                        active_ch[channel] = bool(int(float(self.ask('OUTPUT{0}:STATE?'.format(ana_chan)))))
-                    else:
-                        self.log.warning('The device does not support that '
-                            'many analog channels! A channel number '
-                            '"{0}" was passed, but only "{1}" channels are available!\n'
-                            'Command will be ignored.'
-                            ''.format(ana_chan, self._get_num_a_ch()))
+                return_ch[channel] = active_ch[channel]
+        return return_ch
 
-                elif 'd_ch' in channel:
-                    digi_chan = int(channel[4:])
-                    if 0 < digi_chan <= self._get_num_d_ch():
-                        if digi_chan == 1 or digi_chan == 2:
-                            active_ch[channel] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
-                        elif digi_chan == 3 or digi_chan == 4:
-                            active_ch[channel] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
-                    else:
-                        self.log.warning('The device does not support that '
-                                'many digital channels! A channel number '
-                                '"{0}" was passed, but only "{1}" channels '
-                                'are available!\n'
-                                'Command will be ignored.'
-                                ''.format(digi_chan, self._get_num_d_ch()))
-        return active_ch
+    #     active_ch = {}
+    #     print('get active channels:', self.active_channels_local)
+    #     if ch is None:
+    #         # because 0 = False and 1 = True
+    #         try:
+    #             active_ch['a_ch1'] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
+    #
+    #             active_ch['a_ch2'] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
+    #         except:
+    #             return None
+    #
+    #         # For the AWG5000 series, the resolution of the DAC for the analog
+    #         # channel is fixed to 14bit. Therefore the digital channels are
+    #         # always active and cannot be deactivated. For other AWG devices the
+    #         # command
+    #         #   self.ask('SOURCE1:DAC:RESOLUTION?'))
+    #         # might be useful from which the active digital channels can be
+    #         # obtained.
+    #         active_ch['d_ch1'] = active_ch['a_ch1']
+    #         active_ch['d_ch2'] = active_ch['a_ch1']
+    #         active_ch['d_ch3'] = active_ch['a_ch2']
+    #         active_ch['d_ch4'] = active_ch['a_ch2']
+    #
+    # #        return self.active_channels_local
+    #
+    #     else:
+    #         for channel in ch:
+    #             if 'a_ch' in channel:
+    #                 ana_chan = int(channel[4:])
+    #                 if 0 < ana_chan <= self._get_num_a_ch():
+    #                     # because 0 = False and 1 = True
+    #                     active_ch[channel] = bool(int(float(self.ask('OUTPUT{0}:STATE?'.format(ana_chan)))))
+    #                     # if channel in self.active_channels_local:
+    #                     #     active_ch[channel] = self.active_channels_local[channel]
+    #                     # else:
+    #                     #     self.log.error('Channel does not exist in channel map: {}'.format(channel))
+    #                 else:
+    #                     self.log.warning('The device does not support that '
+    #                         'many analog channels! A channel number '
+    #                         '"{0}" was passed, but only "{1}" channels are available!\n'
+    #                         'Command will be ignored.'
+    #                         ''.format(ana_chan, self._get_num_a_ch()))
+    #
+    #             elif 'd_ch' in channel:
+    #                 digi_chan = int(channel[4:])
+    #                 if 0 < digi_chan <= self._get_num_d_ch():
+    #                     if digi_chan == 1 or digi_chan == 2:
+    #                         active_ch[channel] = bool(int(float(self.ask('OUTPUT1:STATE?'))))
+    #                     elif digi_chan == 3 or digi_chan == 4:
+    #                         active_ch[channel] = bool(int(float(self.ask('OUTPUT2:STATE?'))))
+    #                     # if channel in self.active_channels_local:
+    #                     #     active_ch[channel] = self.active_channels_local[channel]
+    #                     # else:
+    #                     #     self.log.error('Channel does not exist in channel map: {}'.format(channel))
+    #                 else:
+    #                     self.log.warning('The device does not support that '
+    #                             'many digital channels! A channel number '
+    #                             '"{0}" was passed, but only "{1}" channels '
+    #                             'are available!\n'
+    #                             'Command will be ignored.'
+    #                             ''.format(digi_chan, self._get_num_d_ch()))
+    #     return active_ch
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
@@ -1094,9 +1138,11 @@ class AWG7122C(Base, PulserInterface):
         resolution of the analog channels.
         """
         if ch is None:
-            return self.get_active_channels()
+            return {}
 
         for channel in ch:
+            # saving channel setting in local dictionary
+            self.active_channels_local[channel] = ch[channel]
             chan = int(channel[4:])
             if 'a_ch' in channel:
                 if 0 < chan <= self._get_num_a_ch():
@@ -1518,3 +1564,17 @@ class AWG7122C(Base, PulserInterface):
 
         # count the number of entries in that array
         return len(all_d_ch)
+
+
+    def _get_max_a_channel_number(self):
+        """
+        @return: Returns an integer which represents the number of analog
+                 channels.
+        """
+        constraints = self.get_constraints()
+        config = constraints.activation_config
+        largest_list = config[max(config, key=config.get)]
+        lst = [kk for kk in largest_list if 'a_ch' in kk]
+        analog_channel_lst = [w.replace('a_ch', '') for w in lst]
+        max_number_of_channels = max(map(int, analog_channel_lst))
+        return max_number_of_channels
