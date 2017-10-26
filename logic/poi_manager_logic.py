@@ -650,15 +650,14 @@ class PoiManagerLogic(GenericLogic):
                     self.go_to_poi(poikey=self._current_poi_key)
                 return 0
             else:
-                self.log.error('W. The given POI ({0}) does not exist.'.format(
+                self.log.error('The given POI ({0}) does not exist.'.format(
                     self._current_poi_key))
                 return -1
 
         else:
-            self.log.error('Unknown caller_tag for the optimizer. POI '
-                           'Manager does not know what to do with optimized '
-                           'position, and has done nothing.'
-                           )
+            self.log.warning("Unknown caller_tag for the optimizer. POI "
+                             "Manager does not know what to do with optimized "
+                             "position, and has done nothing.")
 
     def reset_roi(self):
 
