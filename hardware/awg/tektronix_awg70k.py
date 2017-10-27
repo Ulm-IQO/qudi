@@ -418,7 +418,7 @@ class AWG70K(Base, PulserInterface):
             if self._get_max_a_channel_number() > 1:
                 asset_name2 = self.awg.ask('SOUR2:CASS?')
                 asset_name2 = asset_name2[1:-2]
-                if asset_name[-4] == 'ch':
+                if asset_name[-4] == '_ch2':
                     asset_name2 = asset_name2[:-4]
                 if asset_name != asset_name2:
                     self.log.warning('Loaded assetnames for both channels are different! Returning asset_name of channel1')
