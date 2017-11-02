@@ -41,13 +41,14 @@ import platform
 
 
 class APTMotor():
+
     """ Class to control Thorlabs APT motor. This class wrapps the low level
         commands from a dll library in python methods.
     """
 
     # all the possible hardware types that are available to be controlled by
     # the apt.dll
-    hwtype_dict ={}
+    hwtype_dict = {}
     hwtype_dict['HWTYPE_BSC001'] = 11   # 1 Ch benchtop stepper driver
     hwtype_dict['HWTYPE_BSC101'] = 12   # 1 Ch benchtop stepper driver
     hwtype_dict['HWTYPE_BSC002'] = 13   # 2 Ch benchtop stepper driver
@@ -65,7 +66,7 @@ class APTMotor():
 
 
     # the error code is also comparable to the APT server documentation.
-    error_code= {}
+    error_code = {}
     # General Error code:
     error_code[10000] = 'An unknown Server error has occurred. '
     error_code[10001] = 'A Server internal error has occurred. '
@@ -160,7 +161,7 @@ class APTMotor():
     status_code[6] = '0x00000020, 6, in motion, moving reverse, Motor shaft ' \
                      'moving counterclockwise (1 - moving, 0 - stationary).'
     status_code[7] = '0x00000040, 7, in motion, jogging forward, Shaft ' \
-                      'jogging clockwise (1 - moving, 0 - stationary).'
+                     'jogging clockwise (1 - moving, 0 - stationary).'
     status_code[8] = '0x00000080, 8, in motion, jogging reverse, Shaft ' \
                      'jogging counterclockwise (1 - moving, 0 - stationary).'
     status_code[9] = '0x00000100, 9, Motor connected (1 - connected, 0 - ' \
@@ -218,8 +219,6 @@ class APTMotor():
     status_code[31] = '0x40000000, 31, Unspecified, for Future Use.'
     status_code[32] = '0x80000000, Channel enabled (1 – enabled, 0- disabled).'
 
-
-
     def __init__(self, path_dll, serialnumber, hwtype, label='', unit='m'):
         """
         @param str path_dll: the absolute path to the dll of the current
@@ -242,9 +241,11 @@ class APTMotor():
         self.label = label
         self.setSerialNumber(serialnumber)
         self._wait_until_done = True
-        self._unit = unit   # all apt stages are wither in mm or in degree and
-                            # since mm is not an SI unit it has to be converted
-                            # here in this hardware file from m to mm.
+
+        # all apt stages are wither in mm or in degree and
+        # since mm is not an SI unit it has to be converted
+        # here in this hardware file from m to mm.
+        self._unit = unit
 
     def getNumberOfHardwareUnits(self):
         """ Returns the number of connected external hardware (HW) units that
@@ -325,8 +326,8 @@ class APTMotor():
                                          pointer(pitch))
 
         if self._unit == 'm':
-            stageAxisInformation = [minimumPosition.value/1000.0,
-                                    maximumPosition.value/1000.0,
+            stageAxisInformation = [minimumPosition.value / 1000.0,
+                                    maximumPosition.value / 1000.0,
                                     units.value,
                                     pitch.value]
         else:
@@ -336,7 +337,7 @@ class APTMotor():
                                     pitch.value]
         return stageAxisInformation
 
-    def set_stage_axis_info(self, pos_min , pos_max, pitch, unit=1):
+    def set_stage_axis_info(self, pos_min, pos_max, pitch, unit=1):
         """ Set parameter configuration of the stage.
 
         @param float pos_min: minimal position of the axis in m or degree.
@@ -361,8 +362,8 @@ class APTMotor():
 
         if self._unit == 'm':
             # the thorlabs stage takes just mm values, that is really a pity...
-            pos_min_c = c_float(pos_min*1000)
-            pos_max_c = c_float(pos_max*1000)
+            pos_min_c = c_float(pos_min * 1000)
+            pos_max_c = c_float(pos_max * 1000)
         else:
             pos_min_c = c_float(pos_min)
             pos_max_c = c_float(pos_max)
@@ -399,7 +400,6 @@ class APTMotor():
         hardwareLimitSwitches = [reverseLimitSwitch.value, forwardLimitSwitch.value]
         return hardwareLimitSwitches
 
-
     def getVelocityParameters(self):
         """ Retrieve the velocity parameter with the currently used acceleration.
 
@@ -414,9 +414,9 @@ class APTMotor():
         self.aptdll.MOT_GetVelParams(self.SerialNum, pointer(minimumVelocity), pointer(acceleration), pointer(maximumVelocity))
         if self._unit == 'm':
             # the thorlabs stage return a the values in mm/s or mm/s^2, that is really a pity...
-            velocityParameters = [minimumVelocity.value/1000.0,
-                                  acceleration.value/1000.0,
-                                  maximumVelocity.value/1000.0]
+            velocityParameters = [minimumVelocity.value / 1000.0,
+                                  acceleration.value / 1000.0,
+                                  maximumVelocity.value / 1000.0]
         else:
             velocityParameters = [minimumVelocity.value, acceleration.value,
                                   maximumVelocity.value]
@@ -447,9 +447,9 @@ class APTMotor():
               adjusted.
         """
         if self._unit == 'm':
-            minimumVelocity = c_float(minVel*1000.0)
-            acceleration = c_float(acc*1000.0)
-            maximumVelocity = c_float(maxVel*1000.0)
+            minimumVelocity = c_float(minVel * 1000.0)
+            acceleration = c_float(acc * 1000.0)
+            maximumVelocity = c_float(maxVel * 1000.0)
         else:
             minimumVelocity = c_float(minVel)
             acceleration = c_float(acc)
@@ -480,13 +480,12 @@ class APTMotor():
         self.aptdll.MOT_GetVelParamLimits(self.SerialNum, pointer(maximumAcceleration), pointer(maximumVelocity))
 
         if self._unit == 'm':
-            velocityParameterLimits = [maximumAcceleration.value/1000.0,
-                                       maximumVelocity.value/1000.0]
+            velocityParameterLimits = [maximumAcceleration.value / 1000.0,
+                                       maximumVelocity.value / 1000.0]
         else:
             velocityParameterLimits = [maximumAcceleration.value,
                                        maximumVelocity.value]
         return velocityParameterLimits
-
 
         # Controlling the motors:
         # =======================
@@ -496,7 +495,6 @@ class APTMotor():
         #
         # Rel = relative distance from current position.
         # Abs = absolute position
-
 
     def get_home_parameter(self):
         """ Get the home parameter"""
@@ -552,8 +550,8 @@ class APTMotor():
 
         if self._unit == 'm':
             if self.verbose:
-                print('getPos (m)', position.value/1000.0)
-            return position.value/1000.0
+                print('getPos (m)', position.value / 1000.0)
+            return position.value / 1000.0
         else:
             if self.verbose:
                 print('getPos (degree)', position.value)
@@ -571,14 +569,13 @@ class APTMotor():
             print('Please connect first! Use initializeHardwareDevice')
 
         if self._unit == 'm':
-            relativeDistance = c_float(relDistance*1000.0)
+            relativeDistance = c_float(relDistance * 1000.0)
         else:
             relativeDistance = c_float(relDistance)
 
         self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, self._wait_until_done)
         if self.verbose:
             print('move_rel SUCESS')
-
 
     def move_abs(self, absPosition):
         """ Moves the motor to the Absolute position specified
@@ -591,7 +588,7 @@ class APTMotor():
             raise Exception('Please connect first! Use initializeHardwareDevice')
 
         if self._unit == 'm':
-            absolutePosition = c_float(absPosition*1000.0)
+            absolutePosition = c_float(absPosition * 1000.0)
         else:
             absolutePosition = c_float(absPosition)
 
@@ -731,7 +728,7 @@ class APTMotor():
         if not self.Connected:
             raise Exception('Please connect first! Use initializeHardwareDevice')
 
-        #TODO: a proper home position has to be set, not just zero.
+        # TODO: a proper home position has to be set, not just zero.
         self.move_abs(0.0)
 
     def _test_bit(self, int_val, offset):
@@ -756,7 +753,7 @@ class APTMotor():
 
         if self._unit == 'm':
             # controller needs values in mm:
-            c_backlash = c_float(backlash*1000)
+            c_backlash = c_float(backlash * 1000)
         else:
             c_backlash = c_float(backlash)
 
@@ -774,14 +771,16 @@ class APTMotor():
         self.aptdll.MOT_GetBLashDist(self.SerialNum, pointer(backlash))
 
         if self._unit == 'm':
-            self._backlash = backlash.value/1000
+            self._backlash = backlash.value / 1000
         else:
-            self._backlash =  backlash.value
+            self._backlash = backlash.value
 
         return self._backlash
 # ==============================================================================
 
+
 class APTStage(Base, MotorInterface):
+
     """ Control class for an arbitrary collection of axis. Do not use this
         Class directly but inherit this class to a new Class, where also the
         method get_constraints() is specified for that specific set of a
@@ -818,23 +817,22 @@ class APTStage(Base, MotorInterface):
             self._motor_type_serial_label = config['motor_type_serial_label']
         else:
             self.log.error('Motor Hardware-controller-type, serial-number '
-                    'and label for x axis not found in the configuration.\n'
-                    'This numbers are essential, without them no proper '
-                    'communication can be established!\n'
-                    'The Hardware-controller-type depends on the used '
-                    'microcontroller, Serial number can be found at the '
-                    'back of the Step Motor controller and a label for '
-                    'each axis has to be chosen like:\n'
-                    '[("<hw_type>", <serial_num>, "<axis_label>"), '
-                    '("<hw_type>", <serial_num>, "<axis_label>"), ...]\n'
-                    'and assigned to the attribute '
-                    'motor_serial_number_label.')
+                           'and label for x axis not found in the configuration.\n'
+                           'This numbers are essential, without them no proper '
+                           'communication can be established!\n'
+                           'The Hardware-controller-type depends on the used '
+                           'microcontroller, Serial number can be found at the '
+                           'back of the Step Motor controller and a label for '
+                           'each axis has to be chosen like:\n'
+                           '[("<hw_type>", <serial_num>, "<axis_label>"), '
+                           '("<hw_type>", <serial_num>, "<axis_label>"), ...]\n'
+                           'and assigned to the attribute '
+                           'motor_serial_number_label.')
 
         # here are all the references to the different axis are stored:
         self._axis_dict = OrderedDict()
 
         limits_dict = self.get_constraints()
-
 
         # the variable self._motor_type_serial_label is a list, which contains
         # the information about each axis. Three information about each axis
@@ -857,12 +855,11 @@ class APTStage(Base, MotorInterface):
 
             else:
                 self.log.error('The following label "{0}" cannot be found in '
-                        'the constraints method!\nCheck whether label '
-                        'coincide with the label given in the config!\n'
-                        'Restart the program!')
+                               'the constraints method!\nCheck whether label '
+                               'coincide with the label given in the config!\n'
+                               'Restart the program!')
 
         self.custom_activation()
-
 
     def custom_activation(self):
         """ That activation method can be overwritten in the sub-classed file.
@@ -877,7 +874,6 @@ class APTStage(Base, MotorInterface):
             self._axis_dict[label_axis].cleanUpAPT()
 
         self.custom_deactivation()
-
 
     def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
@@ -914,19 +910,21 @@ class APTStage(Base, MotorInterface):
                 move = param_dict[label_axis]
                 curr_pos = curr_pos_dict[label_axis]
 
-                if  (curr_pos + move > constraints[label_axis]['pos_max'] ) or\
-                    (curr_pos + move < constraints[label_axis]['pos_min']):
+                if (curr_pos + move > constraints[label_axis]['pos_max']) or\
+                   (curr_pos + move < constraints[label_axis]['pos_min']):
 
                     self.log.warning('Cannot make further relative movement '
-                            'of the axis "{0}" since the motor is at '
-                            'position {1} and with the step of {2} it would '
-                            'exceed the allowed border [{3},{4}]! Movement '
-                            'is ignored!'.format(
-                                        label_axis,
-                                        move,
-                                        curr_pos,
-                                        constraints[label_axis]['pos_min'],
-                                        constraints[label_axis]['pos_max']))
+                                     'of the axis "{0}" since the motor is at '
+                                     'position {1} and with the step of {2} it would '
+                                     'exceed the allowed border [{3},{4}]! Movement '
+                                     'is ignored!'.format(
+                                         label_axis,
+                                         move,
+                                         curr_pos,
+                                         constraints[label_axis]['pos_min'],
+                                         constraints[label_axis]['pos_max']
+                                     )
+                                     )
                 else:
                     self._save_pos({label_axis: curr_pos + move})
                     self._axis_dict[label_axis].move_rel(move)
@@ -950,14 +948,15 @@ class APTStage(Base, MotorInterface):
                 constr = constraints[label_axis]
                 if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
 
-                    self.log.warning('Cannot make absolute movement of the '
+                    self.log.warning(
+                        'Cannot make absolute movement of the '
                         'axis "{0}" to position {1}, since it exceeds '
                         'the limts [{2},{3}]. Movement is ignored!'
-                        ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max']))
+                        ''.format(label_axis, desired_pos, constr['pos_min'], constr['pos_max'])
+                    )
                 else:
-                    self._save_pos({label_axis:desired_pos})
+                    self._save_pos({label_axis: desired_pos})
                     self._axis_dict[label_axis].move_abs(desired_pos)
-
 
     def abort(self):
         """ Stops movement of the stage. """
@@ -981,7 +980,6 @@ class APTStage(Base, MotorInterface):
         """
         pos = {}
 
-
         if param_list is not None:
             for label_axis in param_list:
                 if label_axis in self._axis_dict:
@@ -991,7 +989,6 @@ class APTStage(Base, MotorInterface):
                 pos[label_axis] = self._axis_dict[label_axis].get_pos()
 
         return pos
-
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -1033,9 +1030,9 @@ class APTStage(Base, MotorInterface):
         """
         raise InterfaceImplementationError('MagnetStageInterface>calibrate')
 
-        #TODO: read out a saved home position in file and compare that with the
-        #      last position saved also in file. The difference between these
-        #      values will determine the absolute home position.
+        # TODO: read out a saved home position in file and compare that with the
+        #       last position saved also in file. The difference between these
+        #       values will determine the absolute home position.
         #
         if param_list is not None:
             for label_axis in param_list:
@@ -1057,8 +1054,9 @@ class APTStage(Base, MotorInterface):
         for label_axis in param_dict:
             if label_axis in self._axis_dict:
                 pos = param_dict[label_axis]
-                filename =  os.path.join(self._magnet_dump_folder,
-                                         label_axis + '.dat')
+                filename = os.path.join(self._magnet_dump_folder,
+                                        label_axis + '.dat'
+                                        )
                 with open(filename, 'w') as f:
                     f.write(str(pos))
 
@@ -1074,10 +1072,8 @@ class APTStage(Base, MotorInterface):
         if not os.path.exists(magnet_path):
             os.makedirs(magnet_path)
             self.log.info('Magnet dump was created in:\n'
-                        '{}'.format(magnet_path))
+                          '{}'.format(magnet_path))
         return magnet_path
-
-
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
@@ -1119,10 +1115,12 @@ class APTStage(Base, MotorInterface):
                 constr = constraints[label_axis]
                 if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
 
-                    self.log.warning('Cannot set velocity of the axis "{0}" '
+                    self.log.warning(
+                        'Cannot set velocity of the axis "{0}" '
                         'to the desired velocity of "{1}", since it '
                         'exceeds the limts [{2},{3}] ! Command is ignored!'
-                        ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max']))
+                        ''.format(label_axis, desired_vel, constr['vel_min'], constr['vel_max'])
+                    )
             else:
                 self._axis_dict[label_axis].set_velocity(desired_vel)
 
@@ -1141,14 +1139,13 @@ class APTOneAxisStage(APTStage):
         #   min_pos, max_pos, unit_read, pitch = self.get_stage_axis_info()
         #   self._axis_dict[label].set_stage_axis_info(min_pos, max_pos, unit, pitch)
 
-
         config = self.getConfiguration()
 
         # my specific settings for the stage:
         limits_dict = self.get_constraints()
 
         # TODO This should check that only one axis label is provided,
-        #      otherwise it should give a warning and choose just the first one, 
+        #      otherwise it should give a warning and choose just the first one,
         #      since it is a one-axis stage.
 
         for label_axis in self._axis_dict:
@@ -1156,7 +1153,7 @@ class APTOneAxisStage(APTStage):
             # adapt the hardware controller to the proper unit set:
             if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
                 unit = 2    # for rotation movement
-                #FIXME: the backlash parameter has to be taken from the config and
+                # FIXME: the backlash parameter has to be taken from the config and
                 #       should not be hardcoded here!!
                 pitch = 7.5
                 backlash_correction = 0.2
@@ -1166,13 +1163,15 @@ class APTOneAxisStage(APTStage):
                 backlash_correction = 0.10e-3
 
             self._axis_dict[label_axis].set_stage_axis_info(
-                                            limits_dict[label_axis]['pos_min'],
-                                            limits_dict[label_axis]['pos_max'],
-                                            pitch=pitch, unit=unit)
+                limits_dict[label_axis]['pos_min'],
+                limits_dict[label_axis]['pos_max'],
+                pitch=pitch, unit=unit
+            )
             self._axis_dict[label_axis].setVelocityParameters(
-                                            limits_dict[label_axis]['vel_min'],
-                                            limits_dict[label_axis]['acc_max'],
-                                            limits_dict[label_axis]['vel_max'])
+                limits_dict[label_axis]['vel_min'],
+                limits_dict[label_axis]['acc_max'],
+                limits_dict[label_axis]['vel_max']
+            )
             self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
@@ -1213,25 +1212,25 @@ class APTOneAxisStage(APTStage):
         # write ones! Check the pitch for the used traveling unit in the file
         # MG17APTServer.ini
 
-        #FIXME: the numbers for the constraints should be obtained from the
-        #       configuration and should be not hardcoded here into this file!
+        # FIXME: the numbers for the constraints should be obtained from the
+        #        configuration and should be not hardcoded here into this file!
 
         # constraints for the axis of type CR1-Z7:
         # set the constraints for the phi axis:
         axis0 = {}
-        axis0['label']     = 'phi'     # That name must coincide with the given
-                                    # name in the config. Otherwise there is no
-                                    # way of identifying the used axes.
-        axis0['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Trapez'] # a possible list of ramps
-        axis0['pos_min']  = 0       # in °
-        axis0['pos_max']  = 360     # that is basically the traveling range
+        axis0['label'] = 'phi'     # That name must coincide with the given
+                                   # name in the config. Otherwise there is no
+                                   # way of identifying the used axes.
+        axis0['unit'] = 'm'    # the SI units, only possible mm or degree
+        axis0['ramp'] = ['Trapez']  # a possible list of ramps
+        axis0['pos_min'] = 0       # in °
+        axis0['pos_max'] = 360     # that is basically the traveling range
         axis0['pos_step'] = 0.01    # in °
-        axis0['vel_min']  = 0.1     # in °/s
-        axis0['vel_max']  = 4.5     # in °/s
+        axis0['vel_min'] = 0.1     # in °/s
+        axis0['vel_max'] = 4.5     # in °/s
         axis0['vel_step'] = 0.1     # in °/s (a rather arbitrary number)
-        axis0['acc_min']  = 4.0     # in °/s^2
-        axis0['acc_max']  = 5.0     # in °/s^2
+        axis0['acc_min'] = 4.0     # in °/s^2
+        axis0['acc_max'] = 5.0     # in °/s^2
         axis0['acc_step'] = 0.01    # in °/s^2 (a rather arbitrary number)
 
         constraints[axis0['label']] = axis0
@@ -1240,6 +1239,7 @@ class APTOneAxisStage(APTStage):
 
 
 class APTThreeAxisStage(APTStage):
+
     """ The module controlles three StepperStage56=NRT150 Enc Stage 150mm
     """
 
@@ -1259,8 +1259,8 @@ class APTThreeAxisStage(APTStage):
             # adapt the hardware controller to the proper unit set:
             if limits_dict[label_axis]['unit'] == '°' or limits_dict[label_axis]['unit'] == 'degree':
                 unit = 2    # for rotation movement
-                #FIXME: the backlash parameter has to be taken from the config and
-                #       should not be hardcoded here!!
+                # FIXME: the backlash parameter has to be taken from the config and
+                #        should not be hardcoded here!!
                 pitch = 7.5
                 backlash_correction = 0.2
             else:
@@ -1269,13 +1269,15 @@ class APTThreeAxisStage(APTStage):
                 backlash_correction = 0.10e-3
 
             self._axis_dict[label_axis].set_stage_axis_info(
-                                            limits_dict[label_axis]['pos_min'],
-                                            limits_dict[label_axis]['pos_max'],
-                                            pitch=pitch, unit=unit)
+                limits_dict[label_axis]['pos_min'],
+                limits_dict[label_axis]['pos_max'],
+                pitch=pitch, unit=unit
+            )
             self._axis_dict[label_axis].setVelocityParameters(
-                                            limits_dict[label_axis]['vel_min'],
-                                            limits_dict[label_axis]['acc_max'],
-                                            limits_dict[label_axis]['vel_max'])
+                limits_dict[label_axis]['vel_min'],
+                limits_dict[label_axis]['acc_max'],
+                limits_dict[label_axis]['vel_max']
+            )
             self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
@@ -1312,58 +1314,58 @@ class APTThreeAxisStage(APTStage):
         hardware files to get an impression.
         """
 
-        #FIXME: the numbers for the constraints should be obtained from the
-        #       configuration and should be not hardcoded here into this file!
+        # FIXME: the numbers for the constraints should be obtained from the
+        #        configuration and should be not hardcoded here into this file!
 
         constraints = OrderedDict()
 
         # set the constraints for the x axis:
         axis0 = {}
-        axis0['label']    = 'x'     # That name must coincide with the given
-                                    # name in the config. Otherwise there is no
-                                    # way of identifying the used axes.
-        axis0['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Trapez'] # a possible list of ramps
-        axis0['pos_min']  = -65e-3  # in m
-        axis0['pos_max']  = 65e-3   # that is basically the traveling range
+        axis0['label'] = 'x'     # That name must coincide with the given
+                                 # name in the config. Otherwise there is no
+                                 # way of identifying the used axes.
+        axis0['unit'] = 'm'    # the SI units, only possible mm or degree
+        axis0['ramp'] = ['Trapez'] # a possible list of ramps
+        axis0['pos_min'] = -65e-3  # in m
+        axis0['pos_max'] = 65e-3   # that is basically the traveling range
         axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis0['vel_min']  = 0.1e-3  # in m/s
-        axis0['vel_max']  = 2.0e-3  # in m/s
+        axis0['vel_min'] = 0.1e-3  # in m/s
+        axis0['vel_max'] = 2.0e-3  # in m/s
         axis0['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis0['acc_min']  =  10e-6  # in m/s^2
-        axis0['acc_max']  = 500e-6  # in m/s^2
+        axis0['acc_min'] =  10e-6  # in m/s^2
+        axis0['acc_max'] = 500e-6  # in m/s^2
         axis0['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # set the constraints for the y axis:
         axis1 = {}
-        axis1['label']    = 'y'     # That name must coincide with the given
-                                    # name in the config. Otherwise there is no
-                                    # way of identifying the used axes.
-        axis1['unit']     = 'm'    # the SI units, only possible mm or degree
-        axis1['ramp']     = ['Trapez'] # a possible list of ramps
-        axis1['pos_min']  = -65e-3  # in m
-        axis1['pos_max']  = 65e-3   # that is basically the traveling range
+        axis1['label'] = 'y'     # That name must coincide with the given
+                                 # name in the config. Otherwise there is no
+                                 # way of identifying the used axes.
+        axis1['unit'] = 'm'    # the SI units, only possible mm or degree
+        axis1['ramp'] = ['Trapez']  # a possible list of ramps
+        axis1['pos_min'] = -65e-3  # in m
+        axis1['pos_max'] = 65e-3   # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis1['vel_min']  = 0.1e-3  # in m/s
-        axis1['vel_max']  = 2.0e-3  # in m/s
+        axis1['vel_min'] = 0.1e-3  # in m/s
+        axis1['vel_max'] = 2.0e-3  # in m/s
         axis1['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis1['acc_min']  =  10e-6  # in m/s^2
-        axis1['acc_max']  = 500e-6  # in m/s^2
+        axis1['acc_min'] = 10e-6  # in m/s^2
+        axis1['acc_max'] = 500e-6  # in m/s^2
         axis1['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # set the constraints for the z axis:
         axis2 = {}
         axis2['label'] = 'z'        # name is just as a sanity included
         axis2['unit'] = 'm'        # the SI units
-        axis2['ramp'] = ['Trapez'] # a possible list of ramps
-        axis2['pos_min']  = -65e-3  # in m
-        axis2['pos_max']  = 65e-3   # that is basically the traveling range
+        axis2['ramp'] = ['Trapez']  # a possible list of ramps
+        axis2['pos_min'] = -65e-3  # in m
+        axis2['pos_max'] = 65e-3   # that is basically the traveling range
         axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis2['vel_min']  = 0.1e-3  # in m/s
-        axis2['vel_max']  = 2.0e-3  # in m/s
+        axis2['vel_min'] = 0.1e-3  # in m/s
+        axis2['vel_max'] = 2.0e-3  # in m/s
         axis2['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis2['acc_min']  =  10e-6  # in m/s^2
-        axis2['acc_max']  = 500e-6  # in m/s^2
+        axis2['acc_min'] = 10e-6  # in m/s^2
+        axis2['acc_max'] = 500e-6  # in m/s^2
         axis2['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # assign the parameter container for x to a name which will identify it
@@ -1371,11 +1373,11 @@ class APTThreeAxisStage(APTStage):
         constraints[axis1['label']] = axis1
         constraints[axis2['label']] = axis2
 
-
         return constraints
 
 
 class APTFourAxisStage(APTStage):
+
     """ The module controls three StepperStage56=NRT150 Enc Stage 150mm
     together with CR1-Z7 rotation stage.
     """
@@ -1392,8 +1394,8 @@ class APTFourAxisStage(APTStage):
 
         for label_axis in self._axis_dict:
 
-            #FIXME: The pitch and backlash_correction has to be set from the
-            #       config and not hardcoded here in the file!
+            # FIXME: The pitch and backlash_correction has to be set from the
+            #        config and not hardcoded here in the file!
 
             # adapt the hardware controller to the proper unit set:
             if (limits_dict[label_axis]['unit'] == '°') or (limits_dict[label_axis]['unit'] == 'degree'):
@@ -1406,9 +1408,10 @@ class APTFourAxisStage(APTStage):
                 backlash_correction = 0.10e-3
 
             self._axis_dict[label_axis].set_stage_axis_info(
-                                            limits_dict[label_axis]['pos_min'],
-                                            limits_dict[label_axis]['pos_max'],
-                                            pitch=pitch, unit=unit)
+                limits_dict[label_axis]['pos_min'],
+                limits_dict[label_axis]['pos_max'],
+                pitch=pitch, unit=unit
+            )
 
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
@@ -1416,14 +1419,15 @@ class APTFourAxisStage(APTStage):
             # preciser than the backward.
             self._axis_dict[label_axis].set_backlash(backlash_correction)
 
-            #FIXME: That is a hardcoded workaround, since the VelocityParameters
-            #       cannot be set with the controller for whatever reasons...
+            # FIXME: That is a hardcoded workaround, since the VelocityParameters
+            #        cannot be set with the controller for whatever reasons...
             if label_axis != 'phi':
                 self._axis_dict[label_axis].setVelocityParameters(
-                                                limits_dict[label_axis]['vel_min'],
-                                                limits_dict[label_axis]['acc_max']/2,
-                                                limits_dict[label_axis]['vel_max'])
-                self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max']/2)
+                    limits_dict[label_axis]['vel_min'],
+                    limits_dict[label_axis]['acc_max'] / 2,
+                    limits_dict[label_axis]['vel_max']
+                )
+                self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'] / 2)
 
     def custom_deactivation(self):
         """ That deactivation method can be overwritten in the sub-classed file.
@@ -1453,45 +1457,45 @@ class APTFourAxisStage(APTStage):
         hardware files to get an impression.
         """
 
-        #FIXME: the numbers for the constraints should be obtained from the
-        #       configuration and should be not hardcoded here into this file!
+        # FIXME: the numbers for the constraints should be obtained from the
+        #        configuration and should be not hardcoded here into this file!
 
         constraints = OrderedDict()
 
         # constraints for the axis of type NRT150M:
         # set the constraints for the x axis:
         axis0 = {}
-        axis0['label']    = 'x'     # That name must coincide with the given
+        axis0['label'] = 'x'     # That name must coincide with the given
                                     # name in the config. Otherwise there is no
                                     # way of identifying the used axes.
-        axis0['unit']     = 'm'     # the SI units, only possible mm or degree
-        axis0['ramp']     = ['Trapez'] # a possible list of ramps
-        axis0['pos_min']  = -65e-3  # in m
-        axis0['pos_max']  = 65e-3   # that is basically the traveling range
+        axis0['unit'] = 'm'     # the SI units, only possible mm or degree
+        axis0['ramp'] = ['Trapez']  # a possible list of ramps
+        axis0['pos_min'] = -65e-3  # in m
+        axis0['pos_max'] = 65e-3   # that is basically the traveling range
         axis0['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis0['vel_min']  = 0.1e-3  # in m/s
-        axis0['vel_max']  = 2.0e-3  # in m/s
+        axis0['vel_min'] = 0.1e-3  # in m/s
+        axis0['vel_max'] = 2.0e-3  # in m/s
         axis0['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis0['acc_min']  =  10e-6  # in m/s^2
-        axis0['acc_max']  = 500e-6  # in m/s^2
+        axis0['acc_min'] = 10e-6  # in m/s^2
+        axis0['acc_max'] = 500e-6  # in m/s^2
         axis0['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # constraints for the axis of type NRT150M:
         # set the constraints for the y axis:
         axis1 = {}
-        axis1['label']    = 'y'     # That name must coincide with the given
-                                    # name in the config. Otherwise there is no
-                                    # way of identifying the used axes.
-        axis1['unit']     = 'm'     # the SI units, only possible mm or degree
-        axis1['ramp']     = ['Trapez'] # a possible list of ramps
-        axis1['pos_min']  = -65e-3  # in m
-        axis1['pos_max']  = 65e-3   # that is basically the traveling range
+        axis1['label'] = 'y'     # That name must coincide with the given
+                                 # name in the config. Otherwise there is no
+                                 # way of identifying the used axes.
+        axis1['unit'] = 'm'     # the SI units, only possible mm or degree
+        axis1['ramp'] = ['Trapez']  # a possible list of ramps
+        axis1['pos_min'] = -65e-3  # in m
+        axis1['pos_max'] = 65e-3   # that is basically the traveling range
         axis1['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis1['vel_min']  = 0.1e-3  # in m/s
-        axis1['vel_max']  = 2.0e-3  # in m/s
+        axis1['vel_min'] = 0.1e-3  # in m/s
+        axis1['vel_max'] = 2.0e-3  # in m/s
         axis1['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis1['acc_min']  =  10e-6  # in m/s^2
-        axis1['acc_max']  = 500e-6  # in m/s^2
+        axis1['acc_min'] = 10e-6  # in m/s^2
+        axis1['acc_max'] = 500e-6  # in m/s^2
         axis1['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # constraints for the axis of type NRT150M:
@@ -1499,15 +1503,15 @@ class APTFourAxisStage(APTStage):
         axis2 = {}
         axis2['label'] = 'z'        # name is just as a sanity included
         axis2['unit'] = 'm'         # the SI units
-        axis2['ramp'] = ['Trapez'] # a possible list of ramps
-        axis2['pos_min']  = -65e-3  # in m
-        axis2['pos_max']  = 65e-3   # that is basically the traveling range
+        axis2['ramp'] = ['Trapez']  # a possible list of ramps
+        axis2['pos_min'] = -65e-3  # in m
+        axis2['pos_max'] = 65e-3   # that is basically the traveling range
         axis2['pos_step'] = 3.0e-6  # in m (a rather arbitrary number)
-        axis2['vel_min']  = 0.1e-3  # in m/s
-        axis2['vel_max']  = 2.0e-3  # in m/s
+        axis2['vel_min'] = 0.1e-3  # in m/s
+        axis2['vel_max'] = 2.0e-3  # in m/s
         axis2['vel_step'] = 1.0e-6  # in m/s (a rather arbitrary number)
-        axis2['acc_min']  =  10e-6  # in m/s^2
-        axis2['acc_max']  = 500e-6  # in m/s^2
+        axis2['acc_min'] = 10e-6  # in m/s^2
+        axis2['acc_max'] = 500e-6  # in m/s^2
         axis2['acc_step'] = 1.0e-6  # in m/s^2 (a rather arbitrary number)
 
         # constraints for the axis of type CR1-Z7:
@@ -1515,15 +1519,15 @@ class APTFourAxisStage(APTStage):
         axis3 = {}
         axis3['label'] = 'phi'      # name is just as a sanity included
         axis3['unit'] = '°'         # the SI units, possible entries: m or ° or degree
-        axis3['ramp'] = ['Trapez'] # a possible list of ramps
-        axis3['pos_min']  = 0       # in °
-        axis3['pos_max']  = 360     # that is basically the traveling range
+        axis3['ramp'] = ['Trapez']  # a possible list of ramps
+        axis3['pos_min'] = 0       # in °
+        axis3['pos_max'] = 360     # that is basically the traveling range
         axis3['pos_step'] = 0.01    # in ° 2.19 arcsec
-        axis3['vel_min']  = 1/3600*22     # in °/s, 22 arcsec/sec to 6 °/sec, 1 arcsec = 1/1296000  of a circle (1 degree is 1/360 of a cicle)
-        axis3['vel_max']  = 6.0     # in °/s 6 °/sec
+        axis3['vel_min'] = 1 / 3600 * 22     # in °/s, 22 arcsec/sec to 6 °/sec, 1 arcsec = 1/1296000  of a circle (1 degree is 1/360 of a cicle)
+        axis3['vel_max'] = 6.0     # in °/s 6 °/sec
         axis3['vel_step'] = 0.1     # in °/s (a rather arbitrary number)
-        axis3['acc_min']  = 4.0     # in °/s^2
-        axis3['acc_max']  = 5.0     # in °/s^2
+        axis3['acc_min'] = 4.0     # in °/s^2
+        axis3['acc_max'] = 5.0     # in °/s^2
         axis3['acc_step'] = 0.01    # in °/s^2 (a rather arbitrary number)
 
         # assign the parameter container for x to a name which will identify it
