@@ -8,7 +8,7 @@
   * Do `python qudikernel.py install`
   * This should tell you where the kernel specification was installed
 2. Configure Qudi
-  * Ensure that your Qudi configuration file contains the following 
+  * Ensure that your Qudi configuration file contains the following
   entry in the `logic` section:
 
 ~~~~~~~~~~~~~

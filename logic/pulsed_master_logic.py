@@ -87,7 +87,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSampleSequence = QtCore.Signal(str, bool)
     sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
-    sigGeneratePredefinedSequence = QtCore.Signal(str, list)
+    sigGeneratePredefinedSequence = QtCore.Signal(str, dict)
 
     # signals for master module (i.e. GUI)
     sigSavedPulseBlocksUpdated = QtCore.Signal(dict)
@@ -1240,14 +1240,14 @@ class PulsedMasterLogic(GenericLogic):
                                                    self._measurement_logic.interleave_on)
         return
 
-    def generate_predefined_sequence(self, generator_method_name, arg_list):
+    def generate_predefined_sequence(self, generator_method_name, kwarg_dict):
         """
 
         @param generator_method_name:
-        @param arg_list:
+        @param kwarg_dict:
         @return:
         """
-        self.sigGeneratePredefinedSequence.emit(generator_method_name, arg_list)
+        self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
         return
 
     def predefined_sequence_generated(self, generator_method_name):

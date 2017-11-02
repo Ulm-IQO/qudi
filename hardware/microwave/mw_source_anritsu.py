@@ -35,12 +35,18 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu(Base, MicrowaveInterface):
-    """  Hardware controlfile for Anritsu Devices.  """
+    """
+    Hardware control file for Anritsu Devices.
+    Tested for the model MG37022A with Option 4.
+    """
 
     _modclass = 'MicrowaveAnritsu'
     _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+
+    # Indicate how fast frequencies within a list or sweep mode can be changed:
+    _FREQ_SWITCH_SPEED = 0.009  # Frequency switching speed in s (acc. to specs)
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -67,7 +73,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
     def _command_wait(self, command_str):
         """
-        Writes the command in command_str via GPIB and waits until the device has finished 
+        Writes the command in command_str via GPIB and waits until the device has finished
         processing it.
 
         @param command_str: The command to be written
@@ -99,7 +105,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return limits
 
     def off(self):
-        """ 
+        """
         Switches off any microwave output.
         Must return AFTER the device is actually stopped.
 
@@ -111,11 +117,11 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def get_status(self):
-        """ 
-        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and 
+        """
+        Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
 
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False] 
+        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
         """
         is_running = bool(int(float(self._gpib_connection.query('OUTP:STAT?'))))
         mode = self._gpib_connection.query(':FREQ:MODE?').strip('\n').lower()
@@ -124,17 +130,17 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return mode, is_running
 
     def get_power(self):
-        """ 
-        Gets the microwave output power. 
+        """
+        Gets the microwave output power.
 
         @return float: the power set at the device in dBm
         """
         return float(self._gpib_connection.query(':POW?'))
 
     def get_frequency(self):
-        """ 
+        """
         Gets the frequency of the microwave output.
-        Returns single float value if the device is in cw mode. 
+        Returns single float value if the device is in cw mode.
         Returns list like [start, stop, step] if the device is in sweep mode.
         Returns list of frequencies if the device is in list mode.
 
@@ -181,7 +187,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def set_cw(self, frequency=None, power=None):
-        """ 
+        """
         Configures the device for cw-mode and optionally sets frequency and/or power
 
         @param float frequency: frequency to set in Hz
@@ -235,7 +241,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def set_list(self, frequency=None, power=None):
-        """ 
+        """
         Configures the device for list-mode and optionally sets frequencies and/or power
 
         @param list frequency: list of frequencies in Hz
@@ -277,7 +283,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
-        """ 
+        """
         Reset of MW list mode position to start (first frequency step)
 
         @return int: error code (0:OK, -1:error)
@@ -308,14 +314,14 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return 0
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
-        """ 
-        Configures the device for sweep-mode and optionally sets frequency start/stop/step 
+        """
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step
         and/or power
-        
-        @return float, float, float, float, str: current start frequency in Hz, 
+
+        @return float, float, float, float, str: current start frequency in Hz,
                                                  current stop frequency in Hz,
                                                  current frequency step in Hz,
-                                                 current power in dBm, 
+                                                 current power in dBm,
                                                  current mode
         """
         mode, is_running = self.get_status()
@@ -346,7 +352,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
 
     def reset_sweeppos(self):
-        """ 
+        """
         Reset of MW sweep mode position to start (start frequency)
 
         @return int: error code (0:OK, -1:error)
@@ -377,3 +383,21 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             return TriggerEdge.FALLING
         else:
             return TriggerEdge.RISING
+
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time.
+        """
+
+        # WARNING:
+        # The manual trigger functionality was not tested for this device!
+        # Might not work well! Please check that!
+
+        self._gpib_connection.write('*TRG')
+        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
+        return 0
+

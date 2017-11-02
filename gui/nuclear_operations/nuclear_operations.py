@@ -47,8 +47,38 @@ class NuclearOperationsGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
+<<<<<<< HEAD
+    _connectors = {'nuclearoperationslogic': 'NuclearOperationsLogic',
+           'savelogic': 'SaveLogic'}
+
+    def __init__(self, manager, name, config, **kwargs):
+        # declare actions for state transitions
+        c_dict = {'onactivate': self.initUI, 'ondeactivate':self.deactivation}
+        super().__init__(manager,
+                         name,
+                         config,
+                         c_dict)
+
+        self.log.info('The following configuration was found.')
+
+        # checking for the right configuration
+        for key in config.keys():
+            self.log.info('{0}: {1}'.format(key,config[key]))
+
+    def initUI(self):
+        """ Definition, configuration and initialisation of the ODMR GUI.
+
+        @param object e: Fysom.event object from Fysom class.
+                         An object created by the state machine module Fysom,
+                         which is connected to a specific event (have a look in
+                         the Base Class). This object contains the passed event,
+                         the state before the event happened and the destination
+                         of the state which should be reached after the event
+                         had happened.
+=======
     nuclearoperationslogic = Connector(interface='NuclearOperationsLogic')
     savelogic = Connector(interface='SaveLogic')
+>>>>>>> fc880f6aae4930ddc6d442887ca558c2e0996994
 
     def on_activate(self):
         """

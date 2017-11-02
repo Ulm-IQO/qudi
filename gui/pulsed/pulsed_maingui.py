@@ -257,6 +257,21 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.rejected.connect(self.keep_former_predefined_methods_config)
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.apply_predefined_methods_config)
+        # Set ranges for the global parameters and default values
+        self._pm.pm_mw_amp_Widget.setRange(0.0, np.inf)
+        self._pm.pm_mw_freq_Widget.setRange(0.0, np.inf)
+        self._pm.pm_channel_amp_Widget.setRange(0.0, np.inf)
+        self._pm.pm_delay_length_Widget.setRange(0.0, np.inf)
+        self._pm.pm_wait_time_Widget.setRange(0.0, np.inf)
+        self._pm.pm_laser_length_Widget.setRange(0.0, np.inf)
+        self._pm.pm_rabi_period_Widget.setRange(0.0, np.inf)
+        self._pm.pm_mw_amp_Widget.setValue(0.125)
+        self._pm.pm_mw_freq_Widget.setValue(2.87e6)
+        self._pm.pm_channel_amp_Widget.setValue(0.0)
+        self._pm.pm_delay_length_Widget.setValue(500.0e-9)
+        self._pm.pm_wait_time_Widget.setValue(1.5e-6)
+        self._pm.pm_laser_length_Widget.setValue(3.0e-6)
+        self._pm.pm_rabi_period_Widget.setValue(200.0e-9)
 
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
@@ -421,60 +436,71 @@ class PulsedMeasurementGui(GUIBase):
             sauplo_button.setText('GenSaUpLo')
             sauplo_button.setObjectName('sauplo_' + method_name)
             sauplo_button.clicked.connect(self.generate_sauplo_predefined_clicked)
+            gridLayout.addWidget(gen_button, 0, 0, 1, 1)
+            gridLayout.addWidget(sauplo_button, 1, 0, 1, 1)
             # inspect current method to extract the parameters
             inspected = inspect.signature(methods_dict[method_name])
             # run through all parameters of the current method and create the widgets
             for param_index, param_name in enumerate(inspected.parameters):
-                # get default value of the parameter
-                default_val = inspected.parameters[param_name].default
-                if default_val is inspect._empty:
-                    self.log.error('The method "{0}" in the logic has an argument "{1}" without a '
-                                   'default value!\nAssign a default value to that, otherwise a '
-                                   'type estimation is not possible!\nCreation of the viewbox '
-                                   'aborted.'.format('generate_' + method_name, param_name))
-                    return
-                # create a label for the parameter
-                param_label = QtWidgets.QLabel(groupBox)
-                param_label.setText(param_name)
-                # create proper input widget for the parameter depending on the type of default_val
-                if type(default_val) is bool:
-                    input_obj = QtWidgets.QCheckBox(groupBox)
-                    input_obj.setChecked(default_val)
-                elif type(default_val) is float:
-                    input_obj = ScienDSpinBox(groupBox)
-                    input_obj.setMaximum(np.inf)
-                    input_obj.setMinimum(-np.inf)
-                    if 'amp' in param_name:
-                        input_obj.setSuffix('V')
-                    elif 'freq' in param_name:
-                        input_obj.setSuffix('Hz')
-                    elif 'length' in param_name or 'time' in param_name or 'period' in param_name or 'tau' in param_name:
-                        input_obj.setSuffix('s')
-                    input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                    input_obj.setValue(default_val)
-                elif type(default_val) is int:
-                    input_obj = ScienSpinBox(groupBox)
-                    input_obj.setMaximum(2**31 - 1)
-                    input_obj.setMinimum(-2**31 + 1)
-                    input_obj.setValue(default_val)
-                elif type(default_val) is str:
-                    input_obj = QtWidgets.QLineEdit(groupBox)
-                    input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                    input_obj.setText(default_val)
-                else:
-                    self.log.error('The method "{0}" in the logic has an argument "{1}" with is not'
-                                   ' of the valid types str, float, int or bool!\nChoose one of '
-                                   'those default values! Creation of the viewbox aborted.'
-                                   ''.format('generate_' + method_name, param_name))
-                gridLayout.addWidget(param_label, 0, param_index, 1, 1)
-                gridLayout.addWidget(input_obj, 1, param_index, 1, 1)
-                setattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget', input_obj)
+                if param_name not in ['mw_channel', 'gate_count_channel', 'sync_trig_channel',
+                                      'mw_amp', 'mw_freq', 'channel_amp', 'delay_length',
+                                      'wait_time', 'laser_length', 'rabi_period']:
+                    # get default value of the parameter
+                    default_val = inspected.parameters[param_name].default
+                    if default_val is inspect._empty:
+                        self.log.error('The method "{0}" in the logic has an argument "{1}" without'
+                                       ' a default value!\nAssign a default value to that, '
+                                       'otherwise a type estimation is not possible!\n'
+                                       'Creation of the viewbox aborted.'
+                                       ''.format('generate_' + method_name, param_name))
+                        return
+                    # create a label for the parameter
+                    param_label = QtWidgets.QLabel(groupBox)
+                    param_label.setText(param_name)
+                    # create proper input widget for the parameter depending on the type of default_val
+                    if type(default_val) is bool:
+                        input_obj = QtWidgets.QCheckBox(groupBox)
+                        input_obj.setChecked(default_val)
+                    elif type(default_val) is float:
+                        input_obj = ScienDSpinBox(groupBox)
+                        input_obj.setMaximum(np.inf)
+                        input_obj.setMinimum(-np.inf)
+                        if 'amp' in param_name:
+                            input_obj.setSuffix('V')
+                        elif 'freq' in param_name:
+                            input_obj.setSuffix('Hz')
+                        elif 'length' in param_name or 'time' in param_name or 'period' in param_name or 'tau' in param_name:
+                            input_obj.setSuffix('s')
+                        input_obj.setMinimumSize(QtCore.QSize(80, 0))
+                        input_obj.setValue(default_val)
+                    elif type(default_val) is int:
+                        input_obj = ScienSpinBox(groupBox)
+                        input_obj.setMaximum(2**31 - 1)
+                        input_obj.setMinimum(-2**31 + 1)
+                        input_obj.setValue(default_val)
+                    elif type(default_val) is str:
+                        input_obj = QtWidgets.QLineEdit(groupBox)
+                        input_obj.setMinimumSize(QtCore.QSize(80, 0))
+                        input_obj.setText(default_val)
+                    else:
+                        self.log.error('The method "{0}" in the logic has an argument "{1}" with is not'
+                                       ' of the valid types str, float, int or bool!\nChoose one of '
+                                       'those default values! Creation of the viewbox aborted.'
+                                       ''.format('generate_' + method_name, param_name))
+                    # Adjust size policy
+                    input_obj.setMinimumWidth(75)
+                    input_obj.setMaximumWidth(100)
+                    gridLayout.addWidget(param_label, 0, param_index+1, 1, 1)
+                    gridLayout.addWidget(input_obj, 1, param_index+1, 1, 1)
+                    setattr(self._pm, method_name + '_param_' + param_name + '_Widget', input_obj)
+            h_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding,
+                                             QtWidgets.QSizePolicy.Minimum)
+            gridLayout.addItem(h_spacer, 1, param_index+2, 1, 1)
 
-            gridLayout.addWidget(gen_button, 0, len(inspected.parameters), 1, 1)
-            gridLayout.addWidget(sauplo_button, 1, len(inspected.parameters), 1, 1)
             # attach the GroupBox widget to the predefined methods widget.
             setattr(self._pm, method_name + '_GroupBox', groupBox)
             self._pm.verticalLayout.addWidget(groupBox)
+        self._pm.verticalLayout.addStretch()
         return
 
     def keep_former_predefined_methods_config(self):
@@ -886,6 +912,8 @@ class PulsedMeasurementGui(GUIBase):
 
     def load_block_in_editor(self, block_obj):
         self.block_editor.load_pulse_block(block_obj)
+        if block_obj is not None:
+            self._pg.curr_block_name_LineEdit.setText(block_obj.name)
         return
 
     def load_ensemble_in_editor(self, ensemble_obj, ensemble_params):
@@ -902,6 +930,8 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.curr_ensemble_bins_SpinBox.setValue(0)
             self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+        if ensemble_obj is not None:
+            self._pg.curr_ensemble_name_LineEdit.setText(ensemble_obj.name)
         return
 
     def load_sequence_in_editor(self, sequence_obj, sequence_params):
@@ -916,6 +946,8 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._sg.curr_sequence_bins_SpinBox.setValue(0)
             self._sg.curr_sequence_size_DSpinBox.setValue(0.0)
+        if sequence_obj is not None:
+            self._sg.curr_sequence_name_LineEdit.setText(sequence_obj.name)
         return
 
     def update_block_dict(self, block_dict):
@@ -937,6 +969,16 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
+        # Check if an ensemble has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(ensemble_dict) == self._pg.gen_ensemble_ComboBox.count() + 1:
+            for key in ensemble_dict:
+                if self._pg.gen_ensemble_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._pg.gen_ensemble_ComboBox.currentText()
+
         self.sequence_editor.set_ensemble_dict(ensemble_dict)
         # block signals
         self._pg.gen_ensemble_ComboBox.blockSignals(True)
@@ -946,6 +988,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_ensemble_ComboBox.addItems(list(ensemble_dict))
         self._pg.saved_ensembles_ComboBox.clear()
         self._pg.saved_ensembles_ComboBox.addItems(list(ensemble_dict))
+        if text_to_set is not None:
+            index = self._pg.gen_ensemble_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._pg.gen_ensemble_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._pg.gen_ensemble_ComboBox.blockSignals(False)
         self._pg.saved_ensembles_ComboBox.blockSignals(False)
@@ -957,6 +1003,16 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_dict:
         @return:
         """
+        # Check if a sequence has been added. In that case set the current index to the new one.
+        # In all other cases try to maintain the current item and if it was removed, set the first.
+        text_to_set = None
+        if len(sequence_dict) == self._sg.gen_sequence_ComboBox.count() + 1:
+            for key in sequence_dict:
+                if self._sg.gen_sequence_ComboBox.findText(key) == -1:
+                    text_to_set = key
+        else:
+            text_to_set = self._sg.gen_sequence_ComboBox.currentText()
+
         # block signals
         self._sg.gen_sequence_ComboBox.blockSignals(True)
         self._sg.saved_sequences_ComboBox.blockSignals(True)
@@ -965,6 +1021,10 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.gen_sequence_ComboBox.addItems(list(sequence_dict))
         self._sg.saved_sequences_ComboBox.clear()
         self._sg.saved_sequences_ComboBox.addItems(list(sequence_dict))
+        if text_to_set is not None:
+            index = self._sg.gen_sequence_ComboBox.findText(text_to_set)
+            if index != -1:
+                self._sg.gen_sequence_ComboBox.setCurrentIndex(index)
         # unblock signals
         self._sg.gen_sequence_ComboBox.blockSignals(False)
         self._sg.saved_sequences_ComboBox.blockSignals(False)
@@ -1060,27 +1120,43 @@ class PulsedMeasurementGui(GUIBase):
             return
 
         # get parameters from input widgets
-        param_index = 0
-        param_list = []
-        while True:
-            if not hasattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget'):
-                break
+        param_searchstr = method_name + '_param_'
+        param_widgets = [widget for widget in dir(self._pm) if widget.startswith(param_searchstr)]
+        # Store parameters together with the parameter names in a dictionary
+        param_dict = dict()
+        for widget_name in param_widgets:
+            input_obj = getattr(self._pm, widget_name)
+            param_name = widget_name.replace(param_searchstr, '').replace('_Widget', '')
 
-            input_obj = getattr(self._pm, method_name + '_param_' + str(param_index) + '_Widget')
             if hasattr(input_obj, 'isChecked'):
-                param_list.append(input_obj.isChecked())
+                param_dict[param_name] = input_obj.isChecked()
             elif hasattr(input_obj, 'value'):
-                param_list.append(input_obj.value())
+                param_dict[param_name] = input_obj.value()
             elif hasattr(input_obj, 'text'):
-                param_list.append(input_obj.text())
+                param_dict[param_name] = input_obj.text()
             else:
                 self.log.error('Not possible to get the value from the widgets, since it does not '
                                'have one of the possible access methods!')
                 return
 
-            param_index += 1
+        # get global parameters and add them to the dictionary
+        for param_name in ['mw_channel', 'gate_count_channel', 'sync_trig_channel', 'mw_amp',
+                           'mw_freq', 'channel_amp', 'delay_length', 'wait_time', 'laser_length',
+                           'rabi_period']:
+            input_obj = getattr(self._pm, 'pm_' + param_name + '_Widget')
 
-        self._pulsed_master_logic.generate_predefined_sequence(method_name, param_list)
+            if hasattr(input_obj, 'isChecked'):
+                param_dict[param_name] = input_obj.isChecked()
+            elif hasattr(input_obj, 'value'):
+                param_dict[param_name] = input_obj.value()
+            elif hasattr(input_obj, 'text'):
+                param_dict[param_name] = input_obj.text()
+            else:
+                self.log.error('Not possible to get the value from the widgets, since it does not '
+                               'have one of the possible access methods!')
+                return
+
+        self._pulsed_master_logic.generate_predefined_sequence(method_name, param_dict)
         return
 
     def generate_sauplo_predefined_clicked(self):
@@ -1088,19 +1164,25 @@ class PulsedMeasurementGui(GUIBase):
         method_name = button_obj.objectName()[7:]
         self.generate_predefined_clicked(button_obj)
         # get name of the generated ensemble
-        input_obj = getattr(self._pm, method_name + '_param_0_Widget')
+        if not hasattr(self._pm, method_name + '_param_name_Widget'):
+            self.log.error('Predefined sequence methods must have an argument called "name" in '
+                           'order to use the sample/upload/load functionality. It must be the '
+                           'naming of the generated asset.\n"{0}" has probably been generated '
+                           'but not sampled/uploaded/loaded'.format(method_name))
+            return
+        input_obj = getattr(self._pm, method_name + '_param_name_Widget')
         if not hasattr(input_obj, 'text'):
             self.log.error('Predefined sequence methods must have as first argument the name of '
                            'the asset to be generated.')
             return
-        name = input_obj.text()
+        asset_name = input_obj.text()
 
         # disable buttons
         self._pg.saup_ensemble_PushButton.setEnabled(False)
         self._pg.sauplo_ensemble_PushButton.setEnabled(False)
         self._pg.load_ensemble_PushButton.setEnabled(False)
 
-        self._pulsed_master_logic.sample_block_ensemble(name, True)
+        self._pulsed_master_logic.sample_block_ensemble(asset_name, True)
         return
 
     ###########################################################################
@@ -1251,52 +1333,92 @@ class PulsedMeasurementGui(GUIBase):
         self._fsd.applySettings()
 
         # Configure the main pulse analysis display:
-        self.signal_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
+        self.signal_image = pg.PlotDataItem(np.array(range(10)),
+                                            np.zeros(10),
+                                            pen=pg.mkPen(palette.c1,
+                                                         style=QtCore.Qt.DotLine),
+                                            style=QtCore.Qt.DotLine,
+                                            symbol='o',
+                                            symbolPen=palette.c1,
+                                            symbolBrush=palette.c1,
+                                            symbolSize=7)
+
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image)
-        self.signal_image2 = pg.PlotDataItem(pen=palette.c3)
+        self.signal_image2 = pg.PlotDataItem(pen=pg.mkPen(palette.c4,
+                                                          style=QtCore.Qt.DotLine),
+                                             style=QtCore.Qt.DotLine,
+                                             symbol='o',
+                                             symbolPen=palette.c4,
+                                             symbolBrush=palette.c4,
+                                             symbolSize=7)
         self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
         self._pa.pulse_analysis_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         # Configure the fit of the data in the main pulse analysis display:
-        self.fit_image = pg.PlotDataItem(pen=palette.c2)
+        self.fit_image = pg.PlotDataItem(pen=palette.c3)
         self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
 
         # Configure the errorbars of the data in the main pulse analysis display:
-        self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
-                                                       top=0., bottom=0., pen=palette.c1)
-        self.signal_image_error_bars2 = pg.ErrorBarItem(x=np.array(range(10)), y=np.zeros(10),
-                                                        top=0., bottom=0., pen=palette.c3)
+        self.signal_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)),
+                                                       y=np.zeros(10),
+                                                       top=0., bottom=0.,
+                                                       pen=palette.c2)
+        self.signal_image_error_bars2 = pg.ErrorBarItem(x=np.array(range(10)),
+                                                        y=np.zeros(10),
+                                                        top=0., bottom=0.,
+                                                        pen=palette.c5)
 
         # Configure the second pulse analysis display:
-        self.second_plot_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10), pen=palette.c1)
+        self.second_plot_image = pg.PlotDataItem(np.array(range(10)),
+                                                 np.zeros(10), pen=palette.c1)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
-        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c3)
+        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c4)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
-        self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True,
+                                                           alpha=0.8)
 
         # Configure the lasertrace plot display:
-        self.sig_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
-        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3))
-        self.sig_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palette.c3, 2), movable=True)
-        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3))
-        self.ref_start_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.sig_start_line = pg.InfiniteLine(pos=0,
+                                              pen=QtGui.QPen(palette.c3, 2),
+                                              movable=True)
+        self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
+        self.sig_end_line = pg.InfiniteLine(pos=0,
+                                            pen=QtGui.QPen(palette.c3, 2),
+                                            movable=True)
+        self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
+        self.ref_start_line = pg.InfiniteLine(pos=0,
+                                              pen=QtGui.QPen(palettedark.c4, 2),
+                                              movable=True)
         self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
-        self.ref_end_line = pg.InfiniteLine(pos=0, pen=QtGui.QPen(palettedark.c4, 2), movable=True)
+        self.ref_end_line = pg.InfiniteLine(pos=0,
+                                            pen=QtGui.QPen(palettedark.c4, 2),
+                                            movable=True)
         self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         # Configure the measuring error display:
-        self.measuring_error_image = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
+        self.measuring_error_image = pg.PlotDataItem(np.array(range(10)),
+                                                     np.zeros(10),
                                                      pen=palette.c1)
-        self.measuring_error_image2 = pg.PlotDataItem(np.array(range(10)), np.zeros(10),
+        self.measuring_error_image2 = pg.PlotDataItem(np.array(range(10)),
+                                                      np.zeros(10),
                                                       pen=palette.c3)
         self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image)
         self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
-        self._pe.measuring_error_PlotWidget.setLabel('left', 'measuring error', units='a.u.')
+        self._pe.measuring_error_PlotWidget.setLabel('left', 'measuring error',
+                                                     units='a.u.')
         #self._pe.measuring_error_PlotWidget.setLabel('bottom', 'tau', units='s')
 
 
         # set boundaries
         self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
         self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setRange(0, 1.0e99)
+        self._pa.ana_param_num_laser_pulse_SpinBox.setRange(1, 1e6)
+        self._pa.ana_param_record_length_SpinBox.setRange(0, 1.0e99)
+        self._pa.time_param_ana_periode_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pe.extract_param_threshold_SpinBox.setRange(1, 2**31-1)
 
         # ---------------------------------------------------------------------
         #                         Connect signals

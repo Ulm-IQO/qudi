@@ -70,7 +70,7 @@ class GatedCounterGui(GUIBase):
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
 
-    def on_activate(self, e=None):
+    def on_activate(self):
         """ Definition and initialisation of the GUI.
 
         @param object e: Fysom.event object from Fysom class.
