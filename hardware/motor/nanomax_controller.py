@@ -8,7 +8,6 @@ from scipy.optimize import minimize
 from collections import OrderedDict
 import serial
 
-
 from numpy import arange
 
 import re
@@ -22,8 +21,8 @@ class NanomaxStage(Base, MotorInterface):
     This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-    #_modclass = 'MotorStageNanomax'
-    #_modtype = 'hardware'
+    # _modclass = 'MotorStageNanomax'
+    # _modtype = 'hardware'
 
     _com_port_nano_xyz = ConfigOption('com_port_nano_xyz', 'COM4')
     _nano_xyz_baud_rate = ConfigOption('nano_xyz_baud_rate', 115200)
@@ -37,14 +36,11 @@ class NanomaxStage(Base, MotorInterface):
     _third_axis_ID = ConfigOption('nano_third_axis_ID', 'z')
 
     constraints = {}
-    axis0 ={}
-    axis1={}
-    axis2={}
+    axis0 = {}
+    axis1 = {}
+    axis2 = {}
 
-
-
-
-    _min_first = ConfigOption('nano_first_min', -10e-6) #Values in m
+    _min_first = ConfigOption('nano_first_min', -10e-6)  # Values in m
     _max_first = ConfigOption('nano_first_max', 10e-6)
     _min_second = ConfigOption('nano_second_min', -10e-6)
     _max_second = ConfigOption('nano_second_max', 10e-6)
@@ -66,31 +62,23 @@ class NanomaxStage(Base, MotorInterface):
     _vel_step_second = ConfigOption('vel_second_axis_step', 1e-5)
     _vel_step_third = ConfigOption('vel_third_axis_step', 1e-5)
 
-
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         @return: error code
         """
-        # self.log.info(self._com_port_nano_xyz)
-        # print('will_test')
-       # self._serial_connection_xyz = serial.Serial(self._com_port_nano_xyz, self._nano_xyz_baud_rate, timeout=self._nano_xyz_timeout)
-        # print('this')
-        # Close any open connections and open a serial connection
-        #self._serial_connection_xyz.close()
-        #self._serial_connection_xyz.open()
-        self.piezo = PiezoController(port = self._com_port_nano_xyz)
+        self.piezo = PiezoController(port=self._com_port_nano_xyz)
+        self.vel = {}
+        self.vel['x-axis'] = 1e-5
+        self.vel['y-axis'] = 1e-5
+        self.vel['z-axis'] = 1e-5
         return 0
-
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         @return: error code
         """
         self.piezo.close_connection()
-        #self.rm.close()
         return 0
-
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -107,7 +95,7 @@ class NanomaxStage(Base, MotorInterface):
         axis0 = {}
         axis0['label'] = self._first_axis_label
         axis0['ID'] = self._first_axis_ID
-        axis0['unit'] = 'm'                 # the SI units
+        axis0['unit'] = 'm'  # the SI units
         # axis0['ramp'] = None # a possible list of ramps
         axis0['pos_min'] = self._min_first
         axis0['pos_max'] = self._max_first
@@ -145,8 +133,8 @@ class NanomaxStage(Base, MotorInterface):
         # axis2['ramp'] = None # a possible list of ramps
         axis2['pos_min'] = self._min_third
         axis2['pos_max'] = self._max_third
-        axis2['scan_min'] = -20e-6
-        axis2['scan_max'] = 20e-6
+        axis2['scan_min'] = -10e-6
+        axis2['scan_max'] = 10e-6
         # axis2['pos_step'] = self.step_third_axis
         # axis2['vel_min'] = self._vel_min_third
         # axis2['vel_max'] = self._vel_max_third
@@ -163,7 +151,6 @@ class NanomaxStage(Base, MotorInterface):
 
         return constraints
 
-
     def move_rel(self, param_dict):
         """Moves stage in given direction (relative movement)
 
@@ -177,24 +164,11 @@ class NanomaxStage(Base, MotorInterface):
         @return dict pos: dictionary with the current magnet position
         """
 
-        # There are sometimes connections problems therefore up to 3 attempts are started
-        for attempt in range(3):
-            try:
+        for axis_label in param_dict:
+            # self.log.info(axis_label)
+            step = param_dict[axis_label]
+            self._do_move_rel(axis_label, step)
 
-                for axis_label in param_dict:
-                    #self.log.info(axis_label)
-                    step = param_dict[axis_label]
-                    self._do_move_rel(axis_label, step)
-            except:
-                self.log.warning('Motor connection problem! Try again...')
-            else:
-                break
-        else:
-            self.log.error('Motor cannot move!')
-
-        #The following two lines have been commented out to speed up
-        #pos = self.get_pos()
-        #return pos
         return param_dict
 
     def move_abs(self, param_dict):
@@ -210,44 +184,20 @@ class NanomaxStage(Base, MotorInterface):
 
         @return dict pos: dictionary with the current axis position
         """
-        # There are sometimes connections problems therefore up to 3 attempts are started
-        for attept in range(3):
-            try:
-                for axis_label in param_dict:
-                    #self.log.info(axis_label)
-                    move = param_dict[axis_label]
-                    self._do_move_abs(axis_label, move)
-                while not self._motor_stopped():
-                    time.sleep(0.02)
+        for axis_label in param_dict:
+            move = param_dict[axis_label]
+            self._do_move_abs(axis_label, move)
 
-            except:
-                self.log.warning('Motor connection problem! Try again...')
-            else:
-                break
-        else:
-            self.log.error('Motor cannot move!')
-
-        #The following two lines have been commented out to speed up
-        #pos = self.get_pos()
-        #return pos
         return param_dict
-
 
     def abort(self):
         """Stops movement of the stage
 
         @return int: error code (0:OK, -1:error)
         """
-        # constraints = self.get_constraints()
-        # try:
-        #     for axis_label in constraints:
-        #         self._write_xyz(axis_label,'AB')
-        #     while not self._motor_stopped():
-        #         time.sleep(0.2)
+
+        self.piezo.close_connection()
         return 0
-        # except:
-        #     self.log.error('MOTOR MOVEMENT NOT STOPPED!!!)')
-        #     return -1
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
@@ -263,8 +213,7 @@ class NanomaxStage(Base, MotorInterface):
 
         constraints = self.get_constraints()
         param_dict = {}
-        # unfortunately, probably due to connection problems this specific command sometimes failing
-        # although it should run.... therefore some retries are added
+
 
         try:
             if param_list is not None:
@@ -272,21 +221,23 @@ class NanomaxStage(Base, MotorInterface):
                     for attempt in range(25):
                         # self.log.debug(attempt)
                         try:
-                            pos = self._do_get_pos()
-                            param_dict[axis_label] = pos #* 1e-7
-                            #self.log.info('Position is {}'.format(pos))
+                            # self.log.info('here')
+                            pos = self._do_get_pos(axis_label)
+                            param_dict[axis_label] = pos  # * 1e-7
+                            # self.log.info('Position is {}'.format(pos))
                         except:
-                            continue
+                            param_dict[axis_label] = 0
                         else:
                             break
             else:
                 for axis_label in constraints:
                     for attempt in range(25):
-                        #self.log.debug(attempt)
+                        # self.log.debug(attempt)
                         try:
+                            # self.log.info('now here')
                             pos = self._do_get_pos(axis_label)
-                            param_dict[axis_label] = pos #* 1e-7
-                            #self.log.info('Position is {}'.format(pos))
+                            param_dict[axis_label] = pos  # * 1e-7
+                            # self.log.info('Position is {}'.format(pos))
                         except:
                             continue
                         else:
@@ -306,26 +257,9 @@ class NanomaxStage(Base, MotorInterface):
                                 status is asked.
 
         @return dict: with the axis label as key and the status number as item.
-        The meaning of the return value is:
-        Bit 0: Ready Bit 1: On target Bit 2: Reference drive active Bit 3: Joystick ON
-        Bit 4: Macro running Bit 5: Motor OFF Bit 6: Brake ON Bit 7: Drive current active
-        """
+         """
         constraints = self.get_constraints()
-        param_dict = {}
-        try:
-            if param_list is not None:
-                for axis_label in param_list:
-                    status = self._ask_xyz(axis_label,'TS')[8:]
-                    param_dict[axis_label] = status
-            else:
-                for axis_label in constraints:
-                    status = self._ask_xyz(axis_label, 'TS')[8:]
-                    param_dict[axis_label] = status
-            return param_dict
-        except:
-            self.log.error('Status request unsuccessful')
-            return -1
-
+        return 0
 
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
@@ -342,25 +276,7 @@ class NanomaxStage(Base, MotorInterface):
         @return dict pos: dictionary with the current position of the ac#xis
         """
 
-
-        #constraints = self.get_constraints()
-        param_dict = {}
-        try:
-            for axis_label in param_list:
-                self._write_xyz(axis_label,'FE2')
-            while not self._motor_stopped():
-                time.sleep(0.2)
-            for axis_label in param_list:
-                self._write_xyz(axis_label,'DH')
-        except:
-            self.log.error('Calibration did not work')
-
-        for axis_label in param_list:
-            param_dict[axis_label] = 0.0
-        self.move_abs(param_dict)
-
-        pos = self.get_pos()
-        return pos
+        return 0
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes in m/s.
@@ -378,12 +294,10 @@ class NanomaxStage(Base, MotorInterface):
         try:
             if param_list is not None:
                 for axis_label in param_list:
-                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
-                    param_dict[axis_label] = vel * 1e-7
+                    param_dict[axis_label] = self.vel[axis_label]
             else:
                 for axis_label in constraints:
-                    vel = int(self._ask_xyz(axis_label, 'TY')[8:])
-                    param_dict[axis_label] = vel * 1e-7
+                    param_dict[axis_label] = self.vel[axis_label]
             return param_dict
         except:
             self.log.error('Could not find current axis velocity')
@@ -400,16 +314,11 @@ class NanomaxStage(Base, MotorInterface):
 
         @return dict param_dict2: dictionary with the updated axis velocity
         """
-        #constraints = self.get_constraints()
+        # constraints = self.get_constraints()
         try:
             for axis_label in param_dict:
-                vel = int(param_dict[axis_label] * 1.0e7)
-                #cannot currently set velocity
-                #self._write_xyz(axis_label, 'SV{0:d}'.format((vel)))
+                self.vel[axis_label] = int(param_dict[axis_label])
 
-            #The following two lines have been commented out to speed up
-            #param_dict2 = self.get_velocity()
-            #retrun param_dict2
             return param_dict
 
         except:
@@ -418,88 +327,13 @@ class NanomaxStage(Base, MotorInterface):
 
 
 
-########################## internal methods ##################################
-
-    def _response(self):
-        '''
-        Get response and convert to a float if there's a match
-        '''
-        resp = self.read()
-        if resp == b'':
-            return
-
-        # Loop until we hit the end line character
-        while resp[-1] != '\r':
-            r = self.read()
-            resp = resp + r
-            if r == b'':
-                break
-
-        # Search the response to extract the number
-        match = re.search('\[(.*)\]', str(resp))
-        if match:
-            # If the match has square brackets then we convert this to a float
-            result = float(match.group(1))
-            return result
-        else:
-            return
+            ########################## internal methods ##################################
 
 
-    def _write_xyz(self,axis,command):
-        '''this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
-        @param axis string: name of the axis that should be asked
-
-        @param command string: command
-
-        @return error code (0:OK, -1:error)
-        '''
+    def _do_get_pos(self, axis):
         constraints = self.get_constraints()
-        try:
-            #self.log.info(constraints[axis]['ID'] + command + '\n')
-            #self.cmd("{}r?".format(axis))
-            self._serial_connection_xyz.write(constraints[axis]['ID'] + command + '\n')
-            trash=self._read_answer_xyz()   # deletes possible answers
-            return 0
-        except:
-            self.log.error('Command {0} was not accepted by the device on axis {1}'.format(command,axis))
-            return -1
-
-    def _read_answer_xyz(self):
-        '''this method reads the answer from the motor!
-        @return answer string: answer of motor
-        '''
-
-        still_reading = True
-        answer=''
-        while still_reading == True:
-            try:
-                answer = answer + self._serial_connection_xyz.read()[:-1]
-            except:
-                still_reading = False
-        #self.log.info(answer)
-        return answer
-
-    def _ask_xyz(self,axis,question):
-        '''this method combines writing a command and reading the answer
-        @param axis string: name of the axis that should be asked
-
-        @param command string: command
-
-        @return answer string: answer of motor
-        '''
-        #constraints = self.get_constraints()
-        #self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
-
-        #voltage = self.piezo.get_voltage(axis)
-        #pos = self.volt2dist(voltage)
-        # convert voltage answer to position
-        answer = 'is blowing in the wind'
-        return answer
-
-    def _do_get_pos(self,axis):
-        constraints = self.get_constraints()
-        voltage = self.piezo.get_voltage(constraints[axis]['ID'])
-        #self.log.info('Voltage is {} V'.format(voltage))
+        voltage = self.piezo.get_voltage(axis)
+        # self.log.info('Voltage is {} V'.format(voltage))
         pos = self.piezo.vol2dist(voltage)
         return pos
 
@@ -514,15 +348,15 @@ class NanomaxStage(Base, MotorInterface):
                 move float: absolute position to move to
         """
         constraints = self.get_constraints()
-        if not(abs(constraints[axis]['pos_step']) < abs(step)):
+        if not (abs(constraints[axis]['pos_step']) < abs(step)):
             self.log.warning('Cannot make the movement of the axis "{0}"'
-                'since the step is too small! Ignore command!')
+                             'since the step is too small! Ignore command!')
         else:
             current_pos = self.get_pos(axis)[axis]
             move = current_pos + step
-            #self.log.info('Move is {0} '.format(move))
+            # self.log.info('Move is {0} '.format(move))
             self._do_move_abs(axis, move)
-        return axis,move
+        return axis, move
 
     def _do_convert_volt(self, value):
 
@@ -533,7 +367,7 @@ class NanomaxStage(Base, MotorInterface):
         :return:
         """
 
-        volt =(value-0.1e-6)/((20/75)*1e-6)
+        volt = (value - 0.1e-6) / ((20 / 75) * 1e-6)
 
         if volt > 75:
             self.log.error("Voltage is beyond range of piezo")
@@ -547,7 +381,7 @@ class NanomaxStage(Base, MotorInterface):
         :param value:
         :return:
         """
-        unit = (20/75)*1e-6*value + 0.1e-6
+        unit = (20 / 75) * 1e-6 * value + 0.1e-6
 
         return unit
 
@@ -562,22 +396,20 @@ class NanomaxStage(Base, MotorInterface):
                 move float: absolute position to move to
         """
 
-
-        #get voltage from position in SI units
-        move_volt = self.piezo.vol2dist(move)
+        # get voltage from position in SI units
+        move_volt = self.piezo.dist2volt(move)
         # move to voltage
 
-        #self.log.info('Move volt is {0}'.format(move_volt))
+        # self.log.info('Move volt is {0}'.format(move_volt))
         constraints = self.get_constraints()
-        #self.log.info(axis + 'MA{0}'.format(int(move*1e8)))
-        if not(constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
+        if not (constraints[axis]['pos_min'] <= move <= constraints[axis]['pos_max']):
             self.log.warning('Cannot make the movement of the axis "{0}" to {1}'
-                'since the border [{2},{3}] would be crossed! Ignore command!'
-                ''.format(axis, move, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
+                             'since the border [{2},{3}] would be crossed! Ignore command!'
+                             ''.format(axis, move, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
+
             self.piezo.set_voltage(axis, move_volt)  # 1e7 to convert meter to SI units
         return axis, move
-
 
     def _in_movement_xyz(self):
         '''this method checks if the magnet is still moving and returns
@@ -586,11 +418,11 @@ class NanomaxStage(Base, MotorInterface):
         @return: dict param_dict: Dictionary displaying if axis are moving:
         0 for immobile and 1 for moving
         '''
-        constraints=self.get_constraints()
+        constraints = self.get_constraints()
         param_dict = {}
         for axis_label in constraints:
-            tmp0 = 0 #dunno if moving
-            param_dict[axis_label] = tmp0%2
+            tmp0 = 0  # dunno if moving
+            param_dict[axis_label] = tmp0 % 2
 
         return param_dict
 
@@ -600,15 +432,17 @@ class NanomaxStage(Base, MotorInterface):
 
             @return: bool stopped: False for immobile and True for moving
                 '''
-        param_dict=self._in_movement_xyz()
-        stopped=True
+        param_dict = self._in_movement_xyz()
+        stopped = True
         for axis_label in param_dict:
             if param_dict[axis_label] != 0:
                 self.log.info('Dunno if the stage is stopped')
-                stopped=False
+                stopped = False
         return stopped
 
-import logging
+
+import logging, time
+
 
 class PiezoController(serial.Serial):
     '''
@@ -621,11 +455,8 @@ class PiezoController(serial.Serial):
         self.MAX_VOLTAGE = MAX_VOLTAGE
 
         # Initialise the class using super class of (py)serial
-        serial.Serial.__init__(self, port, baudrate, timeout=0.1)
-
-        # Initialise the class x,y,z axes
-        for axis in ['x', 'y', 'z']:
-            self.get_voltage(axis)
+        serial.Serial.__init__(self, port, baudrate, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
+                               stopbits=serial.STOPBITS_ONE, timeout=0.3)
 
             # Close any open connections and open a serial connection
             # self.close()
@@ -635,36 +466,54 @@ class PiezoController(serial.Serial):
         '''
         Send a command to the MDT693A
         '''
-        self.write((str(command) + '\r').encode('utf-8'))
+        # logging.info(str(command))
+        #tick = time.perf_counter()
+        self.write((bytes(command + '\n', 'utf8')))
         # Have a timeout so that writing successive strings does not interrupt
         # the last command
-        if verbose:
-            print('did command:', str(command))
-        sleep(0.03)
+        #logging.info(command)
+        num = 1
+        while (num < 1):
+            num = self.out_waiting()
+        #tock = time.perf_counter() - tick
+        #logging.info(tock)
 
     def response(self):
         '''
         Get response and convert to a float if there's a match
         '''
-        resp = self.read()
-        if resp == b'':
-            return
 
-        # Loop until we hit the end line character
-        while resp[-1] != '\r':
-            r = self.read()
-            resp = resp + r
-            if r == b'':
-                break
+        # resp = self.read()
+        # # logging.info(resp)
+        # if resp is b'':
+        #     return
+        #
+        # # Loop until we hit the end line character
+        # while resp[-1] is not '\r':
+        #     r = self.read()
+        #     # logging.info(r)
+        #     resp.append(r)
+        #     if r == b'':
+        #         break
 
+        resp = []
+        bytesToRead = 1
+        while (bytesToRead > 0) :
+            bytesToRead = self.inWaiting()
+            resp.append( self.read(bytesToRead))
+
+        #logging.info(resp)
         # Search the response to extract the number
-        match = re.search('\[(.*)\]', str(resp))
-        if match:
-            # If the match has square brackets then we convert this to a float
-            result = float(match.group(1))
+        regex = r'[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?'
+
+        found = re.findall(regex, str(resp))
+        # print found
+        if len(found) > 0:
+            result = float(found[0][0])
             return result
         else:
-            return
+            return 0
+
 
     def get_voltage(self, axiso):
         '''
@@ -674,12 +523,13 @@ class PiezoController(serial.Serial):
         '''
 
         axis = axiso.replace("-axis", "")
+        #logging.info(axis)
         if axis not in ["x", "y", "z"]:
             self.close_connection()
-            logging.error("%s axis is not in (x,y,z)" % axis)
-        self.cmd("{}voltage?".format(axis))
+            logging.error("%s axis is not in (X,Y,Z)" % axis)
+        # logging.info("{}voltage?".format(axis))
+        self.cmd('{}voltage?'.format(axis))
         voltage = self.response()
-        setattr(self, axis, voltage)
         return voltage
 
     def set_voltage(self, axiso, voltage, step=2.5):
@@ -696,29 +546,36 @@ class PiezoController(serial.Serial):
         axis = axiso.replace("-axis", "")
         if axis not in ["x", "y", "z"]:
             self.close_connection()
-            logging.error("%s axis is not in (x,y,z)" % axis)
+            logging.error("%s axis is not in (X,Y,Z)" % axis)
         if not 0.0 <= voltage <= self.MAX_VOLTAGE:
             self.close_connection()
             logging.error("The current voltage (%s V) must be between 0V and %s V" % (voltage, self.MAX_VOLTAGE))
         if step > 5.0:
             logging.error('Step size %s V must be less than %s V' % (voltage, step))
 
-        # Break down into smaller steps if the change is too large
-        current_voltage = getattr(self, axis)
+        # Check value
+        #current_voltage = self.get_voltage(axiso)
 
-        if abs(current_voltage - voltage) > step:
-            if (current_voltage - voltage) < 0:
-                intermediate = arange(current_voltage, voltage, step)
-            else:
-                intermediate = arange(voltage, current_voltage, step)[::-1]
+        # logging.info('Current voltage is {}'.format(current_voltage))
+        # logging.info('Wanted voltage is {}'.format(voltage))
 
-            for i in intermediate:
-                self.cmd("{}v0{}".format(axis, i))
-                #                 sleep(0.03)
+        # if abs(current_voltage - voltage) > step:
+        #     if (current_voltage - voltage) < 0:
+        #         intermediate = arange(current_voltage, voltage, step)
+        #     else:
+        #         intermediate = arange(voltage, current_voltage, step)[::-1]
+        #
+        #     for i in intermediate:
+        #         logging.info("{}voltage={}".format(axis, round(i,5)))
+        #         self.cmd("{}voltage={}".format(axis, round(i,5)))
+        #         #                 sleep(0.03)
 
         # This is the string that we send over serial to MDT693A
-        self.cmd("{}v0{}".format(axis, voltage))
-        setattr(self, axis, voltage)
+        value = round(voltage,3)
+        #if value is not current_voltage:
+            #logging.info(current_voltage)
+            #logging.info("{}voltage={}".format(axis, value))
+        self.cmd("{}voltage={}".format(axis, value))
 
     def jog(self, axis, voltage_increment):
         '''
@@ -759,7 +616,6 @@ class PiezoController(serial.Serial):
             self.close_connection()
             logging.error("The relative voltage must be between 0 and 1")
         self.set_voltage(axis, r * self.MAX_VOLTAGE)
-        setattr(self, axis, r * self.MAX_VOLTAGE)
 
     def half_xy_axes(self):
         '''
@@ -784,15 +640,19 @@ class PiezoController(serial.Serial):
 
     def vol2dist(self, voltage):
 
-        self.dist = (20 / 75) * 1e-6 * voltage + 0.1e-6
+        self.dist = (20 / 75) * 1e-6 * voltage - 10e-6
 
         return self.dist
 
     def dist2volt(self, dist):
 
-        self.volt = (dist - 0.1e-6) / ((20 / 75) * 1e-6)
+        self.volt = float((dist + 10e-6) / ((20 / 75) * 1e-6))
+
+        # resolution is 3 mV
+        self.volt = round(self.volt, 5)
 
         return self.volt
 
     def __del__(self):
         self.close()
+

@@ -129,7 +129,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._scanning_device.tilt_reference_x = self.tilt_reference_x
         confocal._scanning_device.tilt_reference_y = self.tilt_reference_y
         confocal._scanning_device.tiltcorrection = self.tilt_correction
-
+        #print(self.image_x_range)
         confocal.initialize_image()
         try:
             if confocal.xy_image.shape == self.xy_image.shape:
@@ -422,6 +422,7 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.log.warn('Stop requested: must wait for hardware')
         with self.threadlock:
             if self.getState() == 'locked':
                 self.stopRequested = True
@@ -439,7 +440,9 @@ class ConfocalLogic(GenericLogic):
         y1, y2 = self.image_y_range[0], self.image_y_range[1]
         # z1: x-start-value, z2: x-end-value
         z1, z2 = self.image_z_range[0], self.image_z_range[1]
-
+        #self.log.info('x-range {0} and {1}'.format(self.image_x_range[0], self.image_x_range[1]))
+        #self.log.info('y-range {0} and {1}'.format(self.image_y_range[0], self.image_y_range[1]))
+        #self.log.info('z-range {0} and {1}'.format(self.image_z_range[0], self.image_z_range[1]))
         # Checks if the x-start and x-end value are ok
         if x2 < x1:
             self.log.error(
@@ -585,7 +588,7 @@ class ConfocalLogic(GenericLogic):
             self.unlock()
             self.set_position('scanner')
             return -1
-
+        #self.log.info('next emit')
         self.signal_scan_lines_next.emit()
         return 0
 
@@ -596,7 +599,7 @@ class ConfocalLogic(GenericLogic):
         """
         self.lock()
         self._scanning_device.lock()
-
+        #self.log.info('continue')
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
 
@@ -623,6 +626,7 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.log.info('killing scanner')
         try:
             self._scanning_device.close_scanner()
         except Exception as e:

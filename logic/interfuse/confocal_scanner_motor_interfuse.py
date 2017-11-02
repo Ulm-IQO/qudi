@@ -21,8 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 import numpy as np
+import math
 
-from core.module import Base, Connector, ConfigOption
+from core.module import Base, Connector
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -31,18 +32,13 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-    _modclass = 'ConfocalScannerMotorInterfuse'
+    _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
     # connectors
-<<<<<<< HEAD
+
     fitlogic = Connector(interface='FitLogic')
-    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
-    magnetinterface = Connector(interface='MagnetInterface')
-=======
-    _connectors = {'fitlogic': 'FitLogic',
-           'confocalscanner1': 'ConfocalScannerInterface',
-                   'magnetinterface': 'MagnetInterface'}
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
+    confocalscanner1 =  Connector(interface='ConfocalScannerInterface')
+    magnetinterface =  Connector(interface='MagnetInterface')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -88,7 +84,10 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         self.tilt_reference_x = 0
         self.tilt_reference_y = 0
 
-
+        self.move_dict = {}
+        self.move_dict['x-axis'] = 0
+        self.move_dict['y-axis'] = 0
+        self.move_dict['z-axis'] = 0
         #Goto reference of motors
 
         #self._motor_hw.calibrate()
@@ -105,8 +104,9 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         self.position_range = []
         for label_axis in constraints:
             self.position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
-
-        self.position_range.append([0,0])
+            #self.log.info(label_axis)
+        #self.log.info('Position range is {0}'.format(self.position_range))
+        #self.position_range.append([0,0e-6])
 
     def on_deactivate(self):
         self.reset_hardware()
@@ -117,7 +117,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('Scanning Device will be reset.')
-
+        self._motor_hw.abort()
         return 0
 
     def get_position_range(self):
@@ -142,10 +142,6 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('Setting position range not currently implemented')
-
-
-
-
 
 
         return 0
@@ -211,15 +207,25 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         """
 
         #self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
-
-        # TODO: make this not hardcoded to axis name?
         move_dict = {}
+        # TODO: make this not hardcoded to axis name?
         if x is not None:
-            move_dict.update({'x-axis': x})
-        if y is not None:
-            move_dict.update({'y-axis': y})
+            current = float(self._motor_hw.get_pos({'x-axis'})['x-axis'])
+            # round to 2 nm precision
+            if not math.isclose(x, current, abs_tol=1e-9):
+                move_dict.update({'x-axis': x})
+        #self.log.info('wanted {}'.format(float(y)))
+        #self.log.info(float(self.move_dict['y-axis']))
+        if (y is not None) and not math.isclose(y, float(self.move_dict['y-axis']),abs_tol=1e-9): # stop all those y calls
+            current = float(self._motor_hw.get_pos({'y-axis'})['y-axis'])
+            if not math.isclose(y ,current, abs_tol=1e-9):
+                move_dict.update({'y-axis': y})
+                self.move_dict.update({'y-axis': y})
+                #self.log.info('how did I get in here?')
         if z is not None:
-            move_dict.update({'z-axis': z})
+            current = float(self._motor_hw.get_pos({'z-axis'})['z-axis'])
+            if round(float(z) * 2, 9) is not round(current * 2, 9):
+                move_dict.update({'z-axis': z})
 
         #self.log.info(move_dict)
         self._motor_hw.move_abs(move_dict)
@@ -261,11 +267,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         return 0
 
 
-<<<<<<< HEAD
-    def scan_line(self, line_path = None,pixel_clock=True):
-=======
     def scan_line(self, line_path = None, pixel_clock = False):
->>>>>>> 775c223f83e2713d48ee1c82090b647336271ae9
         """ Scans a line and returns the counts on that line.
 
         @param float[][4] line_path: array of 4-part tuples defining the voltage points
@@ -301,18 +303,16 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #        (len(self.get_scanner_count_channels()), self._line_length),
         #       dtype=np.uint32)
 
-        count_data = np.empty(
-                (self._line_length, 1),
-        dtype = np.uint32)
+        count_data = np.empty((self._line_length, 1), dtype = np.uint32)
 
         #if dir == 1:
          #   line_path
           #  dir = -1
 
+
         for i in range(self._line_length):
             coords = line_path[:, i]
 
-            #self.log.info('x is {0} and y is {1}'.format(coords[0],coords[1]))
             if len(coords) == 2: #  xy scan
                 self.scanner_set_position(x=coords[0], y=coords[1])
 
@@ -326,17 +326,17 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
             count_data[i,0] = np.mean(count) # could be say, 10 values
 
-        self._confocal_hw.close_counter()
-        self._confocal_hw.close_clock()
+        self._confocal_hw.close_counter(scanner=False)
+        self._confocal_hw.close_clock(scanner=False)
 
         return count_data
 
-    def close_scanner(self):
+    def close_scanner(self, scanner=False):
         """ Closes the scanner and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-        self._motor_hw.abort()
+        #self._motor_hw.abort()
         #self._scanner_hw.close_scanner()
 
         return 0

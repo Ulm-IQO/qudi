@@ -25,18 +25,17 @@ from core.module import Base
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
-
 import socket
 import json
-
+import time
 
 class mysocket:
     '''demonstration class only
       - coded for clarity, not efficiency
     '''
 
-    def __init__(self, sock=None, channels=[], biases=[], delays=[], coincidences=[], window=0, histogram_channels=[],
-                 histogram_windows_ns=[]):
+    def __init__(self, sock=None, channels=[1], biases=[], delays=[], coincidences=[], window=0, histogram_channels=[],
+                 histogram_windows_ns=[], n = 0):
         if sock is None:
             self.sock = socket.socket(
                 socket.AF_INET, socket.SOCK_STREAM)
@@ -50,6 +49,7 @@ class mysocket:
         self.window = 0
         self.histogram_channels = histogram_channels
         self.histogram_windows_ns = histogram_windows_ns
+        self.name = "trapping_pc" +str(n)
 
     def send_setup(self):
         #logging.info("------------------- sending setup ----------------------")
@@ -60,6 +60,7 @@ class mysocket:
         #logging.info("--------------------------------------------------------")
 
     def connect(self, host, port):
+        #print('connecting')
         self.sock.connect((host, port))
 
     def send(self, msg):
@@ -109,6 +110,9 @@ class mysocket:
         return chunks
 
     def close(self):
+        #print('connecting')
+        self.send('disconnect')
+        #self.sock.shutdown(socket.SHUT_RDWR)
         self.sock.close()
 
     def set_channels(self, channels, input_threshold_volts, delay_ns):
@@ -142,8 +146,9 @@ class mysocket:
         self.current_setup = setup_object
 
         if (self.need_setup):
-            self.current_setup["user_name"] = "trapping_pc"
+            self.current_setup["user_name"] = self.name
             self.current_setup["user_platform"] = "python"
+            self.current_setup["poll_time"] = 0
             self.need_setup = 0
 
             # "I want data from channels 7, 15 and 16, with voltages -0.1 and delay 0ns"
@@ -290,17 +295,18 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         """ Start up TimeTagger interface
         """
 
-        TCP_IP = 'localhost'
-        TCP_PORT = 5001
+        self.TCP_IP = 'localhost'
+        self.TCP_PORT = 5001
         window = 256
-
         self.ms = mysocket(sock=None, channels=[1], biases=[1.1], delays=[0], coincidences=[0], window=window,
                   histogram_channels=[1], histogram_windows_ns=50)
-        self.ms.connect(TCP_IP, TCP_PORT)
-        self.ms.update_timing_window(window)
+        self.ms.connect(self.TCP_IP, self.TCP_PORT)
+        self.ms.update_timing_window(0)
         self._channel_apd = 1
         message = 'setup'
         self.ms.send(message)
+
+        self.n_connects = 0
 
         self._count_frequency = 100  # Hz
 
@@ -337,13 +343,17 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         else:
             self._mode = 2
 
+        #self.ms.sock.shutdown(socket.SHUT_RDWR)
+        self.ms.close()
+
     def on_deactivate(self):
         """ Shut down the TimeTagger.
         """
         #self.reset_hardware()
         #message = 'disconnect'
         #self.ms.send(message)
-        self.ms.close()
+        #print('deactivate')
+        #self.ms.close()
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the TimeTagger for timing
@@ -356,9 +366,14 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self._count_frequency = clock_frequency
-        self.ms.update_timing_window(1/self._count_frequency)
+
+        #self._count_frequency = clock_frequency
+
+        #self.ms.send('setup')
+        #self.ms.update_timing_window(1/self._count_frequency)
+
         return 0
+
 
     def set_up_counter(self,
                        counter_channels=None,
@@ -382,8 +397,26 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        self.ms.channels = counter_channels
 
+
+        self.ms.channels = counter_channels
+        #tick = time.perf_counter()
+        window = 0
+        # (1 / self._count_frequency)
+        self.ms.sock = socket.socket(
+            socket.AF_INET, socket.SOCK_STREAM)
+        self.ms.sock.connect((self.TCP_IP, self.TCP_PORT))
+        self.ms.sock.send(bytes('setup', 'utf8'))
+        data = self.ms.sock.recv(2048)
+        #print(data)
+        decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
+        decrypted["poll_time"] = 1 / self._count_frequency
+        decrypted["user_name"] = 'qudi'
+        decrypted["user_platform"] = 'python'
+        send_dat = json.dumps(decrypted) + '\x00'
+        self.ms.sock.send(bytes(send_dat, 'utf8'))
+        # data = self.ms.sock.recv(2048) #receive back again
+        time.sleep(0.2)
 
         return 0
 
@@ -412,33 +445,79 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
         @return numpy.array(uint32): the photon counts per second
         """
-        #self._tagger.start()
-        #n = 2/self._count_frequency
-        #n =self._count_frequency
-        #time.sleep(2/n)
-        # singles for the last 1/ n seconds of data
-        # to convert to counts per second
 
-        #self.log.info(data)
-        singles = self.ms.singles(self.get_counter_channels(), inttime=1/self._count_frequency)
+        #tick = time.perf_counter()
 
-        return singles
+        if samples is None:
+            samples = 1
+        #print(samples)
+        data = self.ms.recv(2048*(samples))
+
+        #print(data)
+        #print(data[0])
+
+
+        #tock = time.perf_counter() - tick
+        # print(counts)
+        #print(tock)
+
+        counts_out = []#0 for x in range(0, len(data))]
+        #print(len(data))
+        for x in range(0, len(data)):
+            #if 'counts' in data[x]['type']:
+            try:
+                counts = data[x]['counts']
+                #dt = data[x]['span_time']
+                #print(counts)
+                #print(dt)
+                deltatime = data[x]['delta_time']
+                counts_out.append(counts[0]/ deltatime) # channel
+            except KeyError:
+                pass
+                # setup variable
+
+        #self.ms.sock.shutdown()
+        #tock = time.perf_counter() - tick
+        #print(counts)
+        #print(tock)
+
+        if not counts_out:
+            counts_out = [0]
+
+        return counts_out
         #data = data[0]
         #self.log.info(data)
 
 
-    def close_counter(self):
+    def close_counter(self, scanner=False):
         """ Closes the counter and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
+        #message = 'disconnect'
+        #self.ms.send(message)
+        self.ms.sock.close()
 
+
+        #self.ms.send('disconnect')
+
+
+        #self.ms.close()
         return 0
 
-    def close_clock(self):
+    def close_clock(self, scanner=False):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
+
+        #message = 'setup'
+        #self.ms.send('disconnect')
+
+        # Try to make the server not hang by sending the setup
+        #message = 'setup'
+        #self.ms.send(message)
+        #self.ms.recv(1)
+
         return 0
 
