@@ -307,7 +307,7 @@ class APTMotor():
                         float min_pos: Minimum position in m or degree
                         float max_pos: Maximum position in m or degree
                         int units: 1=m and 2=degree
-                        float pinch: The angular distance to the next teeth in
+                        float pitch: The angular distance to the next teeth in
                                      the stepper motor. That determines
                                      basically the precision of the movement of
                                      the stepper motor.
@@ -1138,12 +1138,18 @@ class APTOneAxisStage(APTStage):
         # my specific settings for the stage can be set here.
         # remember to set the units to degree if you want to use it as a
         # rotation stage, like that:
-        #   min_pos, max_pos, unit_read, pinch = self.get_stage_axis_info()
-        #   self._axis_dict[label].set_stage_axis_info(min_pos, max_pos, unit, pinch)
+        #   min_pos, max_pos, unit_read, pitch = self.get_stage_axis_info()
+        #   self._axis_dict[label].set_stage_axis_info(min_pos, max_pos, unit, pitch)
 
+
+        config = self.getConfiguration()
 
         # my specific settings for the stage:
         limits_dict = self.get_constraints()
+
+        # TODO This should check that only one axis label is provided,
+        #      otherwise it should give a warning and choose just the first one, 
+        #      since it is a one-axis stage.
 
         for label_axis in self._axis_dict:
 
@@ -1203,8 +1209,8 @@ class APTOneAxisStage(APTStage):
         """
         constraints = {}
 
-        # be careful, if the pinch is not set correctly, the units are not the
-        # write ones! Check the pinch for the used traveling unit in the file
+        # be careful, if the pitch is not set correctly, the units are not the
+        # write ones! Check the pitch for the used traveling unit in the file
         # MG17APTServer.ini
 
         #FIXME: the numbers for the constraints should be obtained from the
