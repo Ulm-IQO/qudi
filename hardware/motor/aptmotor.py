@@ -49,20 +49,20 @@ class APTMotor():
     # all the possible hardware types that are available to be controlled by
     # the apt.dll
     hwtype_dict = {}
-    hwtype_dict['HWTYPE_BSC001'] = 11   # 1 Ch benchtop stepper driver
-    hwtype_dict['HWTYPE_BSC101'] = 12   # 1 Ch benchtop stepper driver
-    hwtype_dict['HWTYPE_BSC002'] = 13   # 2 Ch benchtop stepper driver
-    hwtype_dict['HWTYPE_BDC101'] = 14   # 1 Ch benchtop DC servo driver
-    hwtype_dict['HWTYPE_SCC001'] = 21   # 1 Ch stepper driver card (used within BSC102,103 units)
-    hwtype_dict['HWTYPE_DCC001'] = 22   # 1 Ch DC servo driver card (used within BDC102,103 units)
-    hwtype_dict['HWTYPE_ODC001'] = 24   # 1 Ch DC servo driver cube
-    hwtype_dict['HWTYPE_OST001'] = 25   # 1 Ch stepper driver cube
-    hwtype_dict['HWTYPE_MST601'] = 26   # 2 Ch modular stepper driver module
-    hwtype_dict['HWTYPE_TST001'] = 29   # 1 Ch Stepper driver T-Cube
-    hwtype_dict['HWTYPE_TDC001'] = 31   # 1 Ch DC servo driver T-Cube
-    hwtype_dict['HWTYPE_LTSXXX'] = 42   # LTS300/LTS150 Long Travel Integrated Driver/Stages
-    hwtype_dict['HWTYPE_L490MZ'] = 43   # L490MZ Integrated Driver/Labjack
-    hwtype_dict['HWTYPE_BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
+    hwtype_dict['BSC001'] = 11   # 1 Ch benchtop stepper driver
+    hwtype_dict['BSC101'] = 12   # 1 Ch benchtop stepper driver
+    hwtype_dict['BSC002'] = 13   # 2 Ch benchtop stepper driver
+    hwtype_dict['BDC101'] = 14   # 1 Ch benchtop DC servo driver
+    hwtype_dict['SCC001'] = 21   # 1 Ch stepper driver card (used within BSC102,103 units)
+    hwtype_dict['DCC001'] = 22   # 1 Ch DC servo driver card (used within BDC102,103 units)
+    hwtype_dict['ODC001'] = 24   # 1 Ch DC servo driver cube
+    hwtype_dict['OST001'] = 25   # 1 Ch stepper driver cube
+    hwtype_dict['MST601'] = 26   # 2 Ch modular stepper driver module
+    hwtype_dict['TST001'] = 29   # 1 Ch Stepper driver T-Cube
+    hwtype_dict['TDC001'] = 31   # 1 Ch DC servo driver T-Cube
+    hwtype_dict['LTSXXX'] = 42   # LTS300/LTS150 Long Travel Integrated Driver/Stages
+    hwtype_dict['L490MZ'] = 43   # L490MZ Integrated Driver/Labjack
+    hwtype_dict['BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
 
 
     # the error code is also comparable to the APT server documentation.
@@ -781,13 +781,34 @@ class APTMotor():
 
 class APTStage(Base, MotorInterface):
 
-    """ Control class for an arbitrary collection of axis. Do not use this
-        Class directly but inherit this class to a new Class, where also the
-        method get_constraints() is specified for that specific set of a
-        hardware.
-        If it is really necessary to change an already existing interface
-        module, then overwrite it in the class, which inherited that class.
-     """
+    """ Control class for an arbitrary collection of APTmotor axes.
+
+    The required config file entries are based around a few key ideas:
+      - There needs to be a list of axes, so that everything can be "iterated" across this list.
+      - There are some config options for each axis that are all in sub-dictionary of the config file.
+        The key is the axis label.
+      - One of the config parameters is the constraints, which are given in a sub-sub-dictionary,
+        which has the key 'constraints'.
+
+    For example, a config file entry for a single-axis rotating half-wave-plate stage would look like
+
+    hwp_motor:
+        module.Class: 'motor.aptmotor.APTStage'
+        axis_labels:
+            - phi
+        phi:
+            hw_type: 'TDC001'
+            serial_num: 27500136
+            pitch: 17.87
+            unit: 'degree'
+            constraints:
+                pos_min: -360
+                pos_max: 720
+                vel_min: 1.0
+                vel_max: 10.0
+                acc_min: 4.0
+                acc_max: 10.0
+    """
 
     def on_activate(self):
         """ Initialize instance variables and connect to hardware as configured.
@@ -898,7 +919,7 @@ class APTStage(Base, MotorInterface):
             {'<label_axis0>': axis0 }
 
         where axis0 is again a dict with the possible values defined below. The
-        possible keys in the constraint are defined here in the interface file.
+        possible keys in the constraint are defined in the interface file.
         If the hardware does not support the values for the constraints, then
         insert just None. If you are not sure about the meaning, look in other
         hardware files to get an impression.
