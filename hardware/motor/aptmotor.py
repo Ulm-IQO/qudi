@@ -242,7 +242,7 @@ class APTMotor():
         self.setSerialNumber(serialnumber)
         self._wait_until_done = True
 
-        # all apt stages are wither in mm or in degree and
+        # all apt stages are either in mm or in degree and
         # since mm is not an SI unit it has to be converted
         # here in this hardware file from m to mm.
         self._unit = unit
@@ -839,10 +839,12 @@ class APTStage(Base, MotorInterface):
         if 'axis_labels' in config.keys():
             axis_label_list = config['axis_labels']
         else:
-            self.log.error('No axis labels were specified for the APTmotor stage.'
-                           'It is impossible to proceed.'
-                           # TODO: give a link to the documentation about config for APT motor stages
-                           )
+            self.log.error(
+                'No axis labels were specified for the APTmotor stage.'
+                'It is impossible to proceed. You might need to read more about how to configure the APTStage'
+                'in the config file, and you can find this information (with example) at'
+                'https://ulm-iqo.github.io/qudi-generated-docs/html-docs/classaptmotor_1_1APTStage.html#details'
+            )
 
         # The references to the different axis are stored in this dictionary:
         self._axis_dict = OrderedDict()
@@ -1166,6 +1168,7 @@ class APTStage(Base, MotorInterface):
             for label_axis in self._axis_dict:
                 self._axis_dict[label_axis].go_home()
 
+    # TODO: This seems to relate specifically to magnet applications, maybe should move
     def _save_pos(self, param_dict):
         """ Save after each move the parameters to file, since the motor stage
         looses any information if it is initialized. That might be a way to
@@ -1184,6 +1187,7 @@ class APTStage(Base, MotorInterface):
                 with open(filename, 'w') as f:
                     f.write(str(pos))
 
+    # TODO: This seems to relate specifically to magnet applications, maybe should move
     def _get_magnet_dump(self):
         """ Create the folder where the position file is saved, and check
         whether it exists.
@@ -1296,7 +1300,7 @@ class APTStage(Base, MotorInterface):
             if 'unit' in axis_config.keys():
                 this_axis['unit'] = axis_config['unit']
             else:
-                self.log.warning('aptmotor has no unit specified in config file,'
+                self.log.warning('APTmotor has no unit specified in config file,'
                                  'taking degree by default.'
                                  )
                 this_axis['unit'] = 'degree'  # TODO what is the best default?
