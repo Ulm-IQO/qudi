@@ -284,7 +284,7 @@ def generate_pulsedodmr(self, name='pulsedODMR', rabi_period=1.0e-6, mw_freq_sta
 def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                     tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
                     laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
-                    alternating=True, sync_trig_channel='', gate_count_channel=''):
+                    sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -373,7 +373,7 @@ def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, m
 def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                       tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
                       laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
-                      alternating=True, sync_trig_channel='', gate_count_channel=''):
+                      sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -729,7 +729,7 @@ def generate_HHpol(self, name='hh_pol', rabi_period=1.0e-6, spinlock_length=20.0
 def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                      start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, xy8_order=4,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
-                     wait_time=1.0e-6, alternating=True, sync_trig_channel='', gate_count_channel=''):
+                     wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -872,7 +872,7 @@ def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
 def generate_xy8_freq(self, name='xy8_freq', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                       start_freq=0.1e6, incr_freq=0.01e6, num_of_points=50, xy8_order=4,
                       mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
-                      wait_time=1.0e-6, alternating=True, sync_trig_channel='', gate_count_channel=''):
+                      wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
