@@ -407,21 +407,24 @@ class AWG70K(Base, PulserInterface):
         # Figure out if a sequence or just a waveform is loaded by splitting after the comma
         splitted = asset_name.split(',')
         # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
-        if len(splitted) == 2:
-            asset_name =  splitted[0]
-        elif len(splitted) == 1:
-            asset_name =  splitted[0]
+        asset_name = splitted[0]
+        if len(splitted) == 1:
             # check if the file contains the '_ch1'-ending and remove it
-            if asset_name[-4:] == '_ch1':
-                asset_name = asset_name[:-4]
+            tmp = asset_name.rsplit('_', 1)
+            if len(tmp) == 2:
+                if tmp[1].startswith('ch'):
+                    asset_name = tmp[0]
             # check if there is a second channel
             if self._get_max_a_channel_number() > 1:
                 asset_name2 = self.awg.ask('SOUR2:CASS?')
                 asset_name2 = asset_name2[1:-2]
-                if asset_name[-4] == '_ch2':
-                    asset_name2 = asset_name2[:-4]
+                tmp = asset_name2.rsplit('_', 1)
+                if len(tmp) == 2:
+                    if tmp[1].startswith('ch'):
+                        asset_name2 = tmp[0]
                 if asset_name != asset_name2:
-                    self.log.warning('Loaded assetnames for both channels are different! Returning asset_name of channel1')
+                    self.log.warning('Loaded assetnames for both channels are different! '
+                                     'Returning asset_name of channel1')
         else:
             self.log.error('Unknown answer. Cannot determine the name of the loaded asset!')
         self.current_loaded_asset = asset_name
