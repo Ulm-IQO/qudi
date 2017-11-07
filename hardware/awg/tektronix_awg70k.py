@@ -1266,7 +1266,7 @@ class AWG70K(Base, PulserInterface):
         return 0
 
 
-    def generate_sequence(self, name, steps, tracks=1):
+    def _generate_sequence(self, name, steps, tracks=1):
         """
         Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
 
@@ -1280,7 +1280,7 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks) + '\n')
         return 0
 
-    def add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
+    def _add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
         """
         Add the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name' and repeat it 'repeat' times
 
@@ -1297,7 +1297,7 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat) + '\n')
         return 0
 
-    def load_sequence(self, sequencename, track=1):
+    def _load_sequence(self, sequencename, track=1):
         """Load sequence file into RAM.
 
         @param sequencename:  Name of the sequence to load
@@ -1308,7 +1308,7 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track) + '\n')
         return 0
 
-    def make_sequence_continuous(self, sequencename):
+    def _make_sequence_continuous(self, sequencename):
         """
         Usually after a run of a sequence the output stops. Many times it is desired that the full sequence is repeated
          many times. This is achieved here by setting the 'jump to' value of the last element to 'First'
