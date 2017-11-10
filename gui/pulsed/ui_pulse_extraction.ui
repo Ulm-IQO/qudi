@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>911</width>
+    <width>799</width>
     <height>686</height>
    </rect>
   </property>
@@ -38,7 +38,21 @@
      <layout class="QGridLayout" name="gridLayout_34">
       <item row="0" column="1">
        <layout class="QGridLayout" name="gridLayout_33">
-        <item row="1" column="3">
+        <item row="1" column="4">
+         <widget class="QLabel" name="label_31">
+          <property name="text">
+           <string>Width</string>
+          </property>
+         </widget>
+        </item>
+        <item row="9" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Min. Laser Length (bins)</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="5">
          <spacer name="horizontalSpacer_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -51,14 +65,30 @@
           </property>
          </spacer>
         </item>
-        <item row="8" column="0">
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Count Threshold</string>
+        <item row="8" column="2">
+         <widget class="QSpinBox" name="extract_param_threshold_SpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999999999</number>
           </property>
          </widget>
         </item>
-        <item row="6" column="2" colspan="2">
+        <item row="6" column="2">
+         <widget class="QDoubleSpinBox" name="extract_param_conv_std_dev_DSpinBox">
+          <property name="minimum">
+           <double>1.000000000000000</double>
+          </property>
+          <property name="maximum">
+           <double>200.000000000000000</double>
+          </property>
+          <property name="value">
+           <double>10.000000000000000</double>
+          </property>
+         </widget>
+        </item>
+        <item row="6" column="4" colspan="2">
          <widget class="QSlider" name="extract_param_conv_std_dev_slider">
           <property name="minimum">
            <number>1</number>
@@ -80,61 +110,6 @@
           </property>
          </widget>
         </item>
-        <item row="6" column="1">
-         <widget class="QDoubleSpinBox" name="extract_param_conv_std_dev_DSpinBox">
-          <property name="minimum">
-           <double>1.000000000000000</double>
-          </property>
-          <property name="maximum">
-           <double>200.000000000000000</double>
-          </property>
-          <property name="value">
-           <double>10.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="2">
-         <widget class="QSpinBox" name="extract_param_ana_window_width_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="label_31">
-          <property name="text">
-           <string>Width bins</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QSpinBox" name="extract_param_ana_window_start_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="9" column="0">
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Min. Laser Length (bins)</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QSpinBox" name="extract_param_ref_window_start_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="2">
-         <widget class="QSpinBox" name="extract_param_ref_window_width_SpinBox">
-          <property name="maximum">
-           <number>10000000</number>
-          </property>
-         </widget>
-        </item>
         <item row="2" column="0">
          <widget class="QLabel" name="label_36">
           <property name="text">
@@ -142,20 +117,17 @@
           </property>
          </widget>
         </item>
-        <item row="8" column="1">
-         <widget class="QSpinBox" name="extract_param_threshold_SpinBox">
-          <property name="minimum">
-           <number>1</number>
-          </property>
-          <property name="maximum">
-           <number>999999999</number>
+        <item row="8" column="0">
+         <widget class="QLabel" name="label">
+          <property name="text">
+           <string>Count Threshold</string>
           </property>
          </widget>
         </item>
-        <item row="9" column="2">
+        <item row="9" column="4">
          <widget class="QLabel" name="label_3">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="text">
            <string>Tolerance (bins)</string>
@@ -169,27 +141,24 @@
           </property>
          </widget>
         </item>
-        <item row="9" column="3">
+        <item row="9" column="5">
          <widget class="QSpinBox" name="extract_param_tolerance_SpinBox">
           <property name="enabled">
-           <bool>false</bool>
+           <bool>true</bool>
           </property>
           <property name="maximum">
            <number>999999999</number>
           </property>
          </widget>
         </item>
-        <item row="4" column="0" colspan="4">
-         <widget class="Line" name="line">
-          <property name="lineWidth">
-           <number>4</number>
-          </property>
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_37">
+          <property name="text">
+           <string>Reference Window</string>
           </property>
          </widget>
         </item>
-        <item row="10" column="0" colspan="4">
+        <item row="10" column="0" colspan="6">
          <widget class="Line" name="line_3">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
@@ -203,10 +172,20 @@
           </property>
          </widget>
         </item>
-        <item row="5" column="1">
+        <item row="4" column="0" colspan="6">
+         <widget class="Line" name="line">
+          <property name="lineWidth">
+           <number>4</number>
+          </property>
+          <property name="orientation">
+           <enum>Qt::Horizontal</enum>
+          </property>
+         </widget>
+        </item>
+        <item row="5" column="2">
          <widget class="QComboBox" name="extract_param_extraction_method_comboBox"/>
         </item>
-        <item row="9" column="1">
+        <item row="9" column="2">
          <widget class="QSpinBox" name="extract_param_min_laser_length_SpinBox">
           <property name="minimum">
            <number>1</number>
@@ -216,14 +195,14 @@
           </property>
          </widget>
         </item>
-        <item row="1" column="1">
+        <item row="1" column="2">
          <widget class="QLabel" name="label_30">
           <property name="text">
-           <string>Start bin</string>
+           <string>Start</string>
           </property>
          </widget>
         </item>
-        <item row="13" column="1">
+        <item row="13" column="2">
          <spacer name="verticalSpacer_3">
           <property name="orientation">
            <enum>Qt::Vertical</enum>
@@ -236,19 +215,15 @@
           </property>
          </spacer>
         </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_37">
-          <property name="text">
-           <string>Reference Window</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="0" colspan="4">
+        <item row="7" column="0" colspan="6">
          <widget class="Line" name="line_2">
           <property name="orientation">
            <enum>Qt::Horizontal</enum>
           </property>
          </widget>
+        </item>
+        <item row="0" column="2">
+         <widget class="QComboBox" name="extract_param_analysis_method_comboBox"/>
         </item>
         <item row="0" column="0">
          <widget class="QLabel" name="label_6">
@@ -257,8 +232,60 @@
           </property>
          </widget>
         </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="extract_param_analysis_method_comboBox"/>
+        <item row="2" column="2">
+         <widget class="ScienDSpinBox" name="extract_param_ana_window_start_DSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+          <property name="decimals">
+           <number>6</number>
+          </property>
+          <property name="maximum">
+           <double>999999999.990000009536743</double>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="4">
+         <widget class="ScienDSpinBox" name="extract_param_ana_window_width_DSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+          <property name="decimals">
+           <number>6</number>
+          </property>
+          <property name="maximum">
+           <double>999999999.990000009536743</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="ScienDSpinBox" name="extract_param_ref_window_start_DSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+          <property name="decimals">
+           <number>6</number>
+          </property>
+          <property name="maximum">
+           <double>999999999.990000009536743</double>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="4">
+         <widget class="ScienDSpinBox" name="extract_param_ref_window_width_DSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+          <property name="decimals">
+           <number>6</number>
+          </property>
+          <property name="maximum">
+           <double>999999999.990000009536743</double>
+          </property>
+          <property name="singleStep">
+           <double>0.000001000000000</double>
+          </property>
+         </widget>
         </item>
        </layout>
       </item>
@@ -307,7 +334,12 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <header location="global">pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

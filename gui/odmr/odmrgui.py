@@ -654,6 +654,18 @@ class ODMRGui(GUIBase):
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
             self._sd.clock_frequency_DoubleSpinBox.setValue(param)
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('cw_mw_frequency')
+        if param is not None:
+            self._mw.cw_frequency_DoubleSpinBox.blockSignals(True)
+            self._mw.cw_frequency_DoubleSpinBox.setValue(param)
+            self._mw.cw_frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('cw_mw_power')
+        if param is not None:
+            self._mw.cw_power_DoubleSpinBox.blockSignals(True)
+            self._mw.cw_power_DoubleSpinBox.setValue(param)
+            self._mw.cw_power_DoubleSpinBox.blockSignals(False)
         return
 
     ############################################################################

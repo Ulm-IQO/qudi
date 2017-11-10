@@ -591,15 +591,15 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     result_str_dict = dict()
 
-    period = 1/result.params['frequency'].value
-    period_err = 1/result.params['frequency'].stderr
+    period = 1 / result.params['frequency'].value
+    period_err = 1 / result.params['frequency'].stderr
 
-    result_str_dict['Period'] = {'value': 1/period if period else 0.0,
-                                 'error': 1/period_err if period_err else 0.0,
-                                 'unit': '1/'+units[0]}
-    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
-                                    'error': result.params['amplitude'].stderr,
-                                    'unit': units[1]}
+    result_str_dict['Period'] = {'value': period if period else 0.0,
+                                 'error': period_err if period_err else 0.0,
+                                 'unit': units[0]}
+    result_str_dict['Frequency'] = {'value': result.params['frequency'].value,
+                                    'error': result.params['frequency'].stderr,
+                                    'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
     result_str_dict['Phase'] = {'value': result.params['phase'].value,
                                 'error': result.params['phase'].stderr,
                                 'unit': 'deg'}
@@ -682,12 +682,12 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
     period = 1/result.params['frequency'].value
     period_err = 1/result.params['frequency'].stderr
 
-    result_str_dict['Period'] = {'value': 1/period if period else 0.0,
-                                 'error': 1/period_err if period_err else 0.0,
-                                 'unit': '1/'+units[0]}
+    result_str_dict['Period'] = {'value': period if period else 0.0,
+                                 'error': period_err if period_err else 0.0,
+                                 'unit': units[0]}
     result_str_dict['Frequency'] = {'value': result.params['frequency'].value,
                                     'error': result.params['frequency'].stderr,
-                                    'unit': units[0]}
+                                    'unit': 'Hz' if units[0] == 's' else '1/'+units[0]}
     result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
                                     'error': result.params['amplitude'].stderr,
                                     'unit': units[1]}
@@ -836,15 +836,15 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
 
     result_str_dict = dict()
 
-    period = 1/result.params['frequency'].value
-    period_err = 1/result.params['frequency'].stderr
+    period = 1 / result.params['frequency'].value
+    period_err = 1 / result.params['frequency'].stderr
 
-    result_str_dict['Period'] = {'value': 1/period if period else 0.0,
-                                 'error': 1/period_err if period_err else 0.0,
-                                 'unit': '1/'+units[0]}
+    result_str_dict['Period'] = {'value': period if period else 0.0,
+                                 'error': period_err if period_err else 0.0,
+                                 'unit': units[0]}
     result_str_dict['Frequency'] = {'value': result.params['frequency'].value,
                                     'error': result.params['frequency'].stderr,
-                                    'unit': units[0]}
+                                    'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
     result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
                                     'error': result.params['amplitude'].stderr,
                                     'unit': units[1]}
