@@ -595,7 +595,7 @@ class Manager(QtCore.QObject):
                 instanceName, baseName, className))
 
         # Create object from class
-        instance = modclass(manager=self, name=instanceName, config=configuration)
+        instance = modclass(manager=self, base=baseName, name=instanceName, config=configuration)
 
         with self.lock:
             self.tree['loaded'][baseName][instanceName] = instance
@@ -959,7 +959,6 @@ class Manager(QtCore.QObject):
             logger.error('{0} module {1} not deactivated'.format(base, name))
             return
         try:
-            module.setStatusVariables(self.loadStatusVariables(base, name))
             # start main loop for qt objects
             if module.is_module_threaded:
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
@@ -1022,7 +1021,6 @@ class Manager(QtCore.QObject):
             else:
                 success = module.deactivate() # runs on_deactivate in main thread
 
-            self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
         except:
             logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
@@ -1279,60 +1277,12 @@ class Manager(QtCore.QObject):
             os.makedirs(appStatusDir)
         return appStatusDir
 
-    @QtCore.Slot(str, str, dict)
-    def saveStatusVariables(self, base, module, variables):
-        """ If a module has status variables, save them to a file in the application status directory.
-
-          @param str base: the module category
-          @param str module: the unique module name
-          @param dict variables: a dictionary of status variable names and values
-        """
-        if len(variables) > 0:
-            try:
-                statusdir = self.getStatusDir()
-                classname = self.tree['loaded'][base][module].__class__.__name__
-                filename = os.path.join(statusdir,
-                    'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
-                config.save(filename, variables)
-            except:
-                print(variables)
-                logger.exception('Failed to save status variables of module '
-                        '{0}.{1}:\n{2}'.format(base, module, repr(variables)))
-
-    def loadStatusVariables(self, base, module):
-        """ If a status variable file exists for a module, load it into a dictionary.
-
-          @param str base: the module category
-          @param str module: the unique mduel name
-
-          @return dict: dictionary of satus variable names and values
-        """
-        try:
-            statusdir = self.getStatusDir()
-            classname = self.tree['loaded'][base][module].__class__.__name__
-            filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
-            if os.path.isfile(filename):
-                variables = config.load(filename)
-            else:
-                variables = OrderedDict()
-        except:
-            logger.exception('Failed to load status variables.')
-            variables = OrderedDict()
-        return variables
-
     @QtCore.Slot(str, str)
     def removeStatusFile(self, base, module):
         try:
-            statusdir = self.getStatusDir()
-            classname = self.tree['defined'][base][
-                module]['module.Class'].split('.')[-1]
-            filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
-            if os.path.isfile(filename):
-                os.remove(filename)
-        except:
-            logger.exception('Failed to remove module status file.')
+            self.tree['loaded'][base][module].remove_status_file()
+        except KeyError:
+            self.log.error('Could not find {0} module {1}'.format(base, module))
 
     @QtCore.Slot()
     def quit(self):
