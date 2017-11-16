@@ -84,6 +84,8 @@ class QdplotterGui(GUIBase):
         ## Create an empty plot curve to be filled later, set its pen
         self._curve1 = self._pw.plot()
         self._curve1.setPen('g')
+        self._curve2 = self._pw.plot()
+        self._curve2.setPen('b')
 
         #####################
         # Setting default parameters
@@ -137,7 +139,9 @@ class QdplotterGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        self._curve1.setData(y=self._qdplot_logic.depen_vals, x=self._qdplot_logic.indep_vals)
+        self._curve1.setData(y=self._qdplot_logic.depen_vals[0], x=self._qdplot_logic.indep_vals[0])
+        if len(self._qdplot_logic.depen_vals) == 2:
+            self._curve2.setData(y=self._qdplot_logic.depen_vals[1], x=self._qdplot_logic.indep_vals[1])
 
     def updatePlot(self):
         self._pw.setXRange(self._qdplot_logic.plot_domain[0], self._qdplot_logic.plot_domain[1])
