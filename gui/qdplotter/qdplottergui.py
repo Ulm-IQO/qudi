@@ -21,6 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import numpy as np
+from itertools import cycle
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
@@ -81,11 +83,17 @@ class QdplotterGui(GUIBase):
         self._pw.setLabel('left', 'Dependent variable', units='?')
         self._pw.setLabel('bottom', 'Independent variable', units='?')
 
-        ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen('g')
-        self._curve2 = self._pw.plot()
-        self._curve2.setPen('b')
+        # Create an empty plot curve to be filled later, set its pen
+        #self.curves = []
+        #if np.size(np.shape(self._qdplot_logic.indep_vals)) == 1:
+        #    self.curves.append(self._pw.plot())
+        #    self.curves[0].setPen('g')
+        #    self.log.info('1 plot')
+        #else:
+        #    for ii in range(np.shape(self._qdplot_logic.indep_vals)[0]):
+        #        self.curves.append(self._pw.plot())
+        #        self.curves[ii].setPen('g')
+        #    self.log.info('more plots')
 
         #####################
         # Setting default parameters
@@ -139,9 +147,15 @@ class QdplotterGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        self._curve1.setData(y=self._qdplot_logic.depen_vals[0], x=self._qdplot_logic.indep_vals[0])
-        if len(self._qdplot_logic.depen_vals) == 2:
-            self._curve2.setData(y=self._qdplot_logic.depen_vals[1], x=self._qdplot_logic.indep_vals[1])
+        if self._qdplot_logic.clear_old:
+            self._pw.clear()
+
+        self.curves = []
+        pen_colors = cycle(['g', 'b', 'y'])
+        for ii in range(np.shape(self._qdplot_logic.indep_vals)[0]):
+            self.curves.append(self._pw.plot())
+            self.curves[ii].setPen(next(pen_colors))
+            self.curves[ii].setData(y=self._qdplot_logic.depen_vals[ii], x=self._qdplot_logic.indep_vals[ii])
 
     def updatePlot(self):
         self._pw.setXRange(self._qdplot_logic.plot_domain[0], self._qdplot_logic.plot_domain[1])
