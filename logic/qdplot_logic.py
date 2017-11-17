@@ -202,20 +202,17 @@ class QdplotLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        data['indep_label1'] = self.indep_vals[0]
-        data['depen_label1'] = self.depen_vals[0]
-        #if len(self.indep_vals) == 2:  # Do not include second curve if there is none.
-        #    data['indep_label2'] = self.indep_vals[1]
-        #    data['depen_label2'] = self.depen_vals[1]
+        for ii in range(np.shape(self.indep_vals)[0]):
+            data['indep_label'+str(ii+1)] = self.indep_vals[ii]
+            data['depen_label'+str(ii+1)] = self.depen_vals[ii]
 
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
 
         fig, ax1 = plt.subplots()
 
-        ax1.plot(self.indep_vals[0], self.depen_vals[0], linestyle=':', linewidth=0.5)
-        if len(self.indep_vals) == 2: # Do not include second curve if there is none.
-            ax1.plot(self.indep_vals[1], self.depen_vals[1], marker='None')
+        for ii in range(np.shape(self.indep_vals)[0]):
+            ax1.plot(self.indep_vals[ii], self.depen_vals[ii], linestyle=':', linewidth=1)
 
         ax1.set_xlabel(indep_label)
         ax1.set_ylabel(depen_label)
