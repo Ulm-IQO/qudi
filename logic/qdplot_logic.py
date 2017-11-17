@@ -84,6 +84,7 @@ class QdplotLogic(GenericLogic):
         @param np.ndarray or list of np.ndarrays y: data array of dep variable(s)
         @param bool clear_old: clear old plots in GUI if True
         """
+
         if x is None:
             self.log.error('No x-values provided, cannot set plot data.')
             return -1
@@ -93,6 +94,7 @@ class QdplotLogic(GenericLogic):
             return -1
 
         self.clear_old = clear_old
+        # check if input is only an array (single plot) or a list of arrays (several plots)
         if np.size(np.shape(x)) == 1:
             self.indep_vals = np.array([x])
             self.depen_vals = np.array([y])

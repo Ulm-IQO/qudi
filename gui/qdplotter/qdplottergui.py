@@ -83,17 +83,8 @@ class QdplotterGui(GUIBase):
         self._pw.setLabel('left', 'Dependent variable', units='?')
         self._pw.setLabel('bottom', 'Independent variable', units='?')
 
-        # Create an empty plot curve to be filled later, set its pen
-        #self.curves = []
-        #if np.size(np.shape(self._qdplot_logic.indep_vals)) == 1:
-        #    self.curves.append(self._pw.plot())
-        #    self.curves[0].setPen('g')
-        #    self.log.info('1 plot')
-        #else:
-        #    for ii in range(np.shape(self._qdplot_logic.indep_vals)[0]):
-        #        self.curves.append(self._pw.plot())
-        #        self.curves[ii].setPen('g')
-        #    self.log.info('more plots')
+        # Create an empty plot curve to be filled later...
+        # --> shifted down to where plot curves are set because on activation don't know number of curves
 
         #####################
         # Setting default parameters
@@ -144,7 +135,7 @@ class QdplotterGui(GUIBase):
         self._mw.close()
 
     def updateData(self):
-        """ The function that grabs the data and sends it to the plot.
+        """ Function creates empty plots, grabs the data and sends it to them.
         """
 
         if self._qdplot_logic.clear_old:
