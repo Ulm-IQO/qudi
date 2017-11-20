@@ -23,6 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import time
 
+from collections import OrderedDict
+
 from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
@@ -33,98 +35,111 @@ class MotorStageMicos(Base, MotorInterface):
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
 
-    _term_chars_xy = ConfigOption('micos_term_chars_xy', '\n', missing='warn')
-    _term_chars_zphi = ConfigOption('micos_term_chars_zphi', '\n', missing='warn')
-    _baud_rate_xy = ConfigOption('micos_baud_rate_xy', 57600, missing='warn')
-    _baud_rate_zphi = ConfigOption('micos_baud_rate_zphi', 57600, missing='warn')
+    unit_factor = 1000. # This factor converts the values given in m to mm.
+    ### !!!!! Attention the units can be changed by setunit
 
-#Questions:
-#    Are values put in the right way in config????
-#    change return values to sensible values??? - not so important
-#    After moving files what has to be changed, where?
+    _com_port_xy = ConfigOption('com_port_xy', 'COM4', missing='warn')
+    _baud_rate_xy = ConfigOption('baud_rate_xy', 57600, missing='warn')
+    _timeout_xy = ConfigOption('timeout_xy', 1000, missing='warn')
+    _term_char_xy = ConfigOption('term_char_xy', '\n', missing='warn')
+    _com_port_zphi = ConfigOption('com_port_zphi', 'COM2', missing='warn')
+    _baud_rate_zphi = ConfigOption('baud_rate_zphi', 57600, missing='warn')
+    _timeout_zphi = ConfigOption('timeout_zphi', 1000, missing='warn')
+    _term_char_zphi = ConfigOption('term_char_zphi', '\n', missing='warn')
 
-#Christoph:
-#    make on activate method which asks for values with get_pos()
-#    checks for sensible values???
-#    default parameters should be none
-#    introduce dead-times while waiting?
-#    check if sensible value and check for float!!!! in interface
-#    put together everything to one step???
+    _first_axis_label = ConfigOption('first_axis_label', 'x', missing='warn')
+    _second_axis_label = ConfigOption('second_axis_label', 'y', missing='warn')
+    _third_axis_label = ConfigOption('third_axis_label', 'z', missing='warn')
+    _fourth_axis_label = ConfigOption('fourth_axis_label', 'phi', missing='warn')
+    _first_axis_ID = ConfigOption('first_axis_ID', '0', missing='warn')
+    _second_axis_ID = ConfigOption('second_axis_ID', '1', missing='warn')
+    _third_axis_ID = ConfigOption('third_axis_ID', '0', missing='warn')
+    _fourth_axis_ID = ConfigOption('fourth_axis_ID', '1', missing='warn')
 
-#Things to be changed in logic:
-#    Name of modules for steps
-#    getpos
-#    kill strgc method
+    _min_first = ConfigOption('first_min', -0.1, missing='warn')
+    _max_first = ConfigOption('first_max', 0.1, missing='warn')
+    _min_second = ConfigOption('second_min', -0.1, missing='warn')
+    _max_second = ConfigOption('second_max', 0.1, missing='warn')
+    _min_third = ConfigOption('third_min', -0.1, missing='warn')
+    _max_third = ConfigOption('third_max', 0.1, missing='warn')
+    _min_fourth = ConfigOption('fourth_min', -0.1, missing='warn')
+    _max_fourth = ConfigOption('fourth_max', 0.1, missing='warn')
 
-#changes:
-#    change time for waiting until next command is sent
-#    change prints to log messages
-#    wait in calibrate or implement get_cal
-#    make subfolder with __init__ for subfolder check GUI
-#    change format string to new convention
+    step_first_axis = ConfigOption('first_axis_step', 1e-7, missing='warn')
+    step_second_axis = ConfigOption('second_axis_step', 1e-7, missing='warn')
+    step_third_axis = ConfigOption('third_axis_step', 1e-7, missing='warn')
+    step_fourth_axis = ConfigOption('fourth_axis_step', 1e-7, missing='warn')
 
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
+    _vel_min_first = ConfigOption('vel_first_min', 1e-5, missing='warn')
+    _vel_max_first = ConfigOption('vel_first_max', 5e-2, missing='warn')
+    _vel_min_second = ConfigOption('vel_second_min', 1e-5, missing='warn')
+    _vel_max_second = ConfigOption('vel_second_max', 5e-2, missing='warn')
+    _vel_min_third = ConfigOption('vel_third_min', 1e-5, missing='warn')
+    _vel_max_third = ConfigOption('vel_third_max', 5e-2, missing='warn')
+    _vel_min_fourth = ConfigOption('vel_fourth_min', 1e-5, missing='warn')
+    _vel_max_fourth = ConfigOption('vel_fourth_max', 5e-2, missing='warn')
 
-        self.log.debug('The following configuration was found.')
+    _vel_step_first = ConfigOption('vel_first_axis_step', 1e-5, missing='warn')
+    _vel_step_second = ConfigOption('vel_second_axis_step', 1e-5, missing='warn')
+    _vel_step_third = ConfigOption('vel_third_axis_step', 1e-5, missing='warn')
+    _vel_step_fourth = ConfigOption('vel_fourth_axis_step', 1e-5, missing='warn')
+    # _term_chars_xy = ConfigOption('micos_term_chars_xy', '\n', missing='warn')
+    # _term_chars_zphi = ConfigOption('micos_term_chars_zphi', '\n', missing='warn')
+    # _baud_rate_xy = ConfigOption('micos_baud_rate_xy', 57600, missing='warn')
+    # _baud_rate_zphi = ConfigOption('micos_baud_rate_zphi', 57600, missing='warn')
 
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
 
+
+    #Todo: add term_char to visa connection
     def on_activate(self):
-
-
-        # ALEX COMMENT: Why are the values stored? In general that is not a
-        #               good idea.
-
-#        self.x_store=-1
-#        self.y_store=-1
-#        self.z_store=-1
-#        self.phi_store=-1
-
+        """ Initialisation performed during activation of the module.
+        @return: error code
+        """
         self.rm = visa.ResourceManager()
+        self._serial_connection_xy = self.rm.open_resource(
+            resource_name=self._com_port_xy,
+            baud_rate=self._baud_rate_xy,
+            timeout=self._timeout_xy)
+        self._serial_connection_zphi = self.rm.open_resource(
+            resource_name=self._com_port_zphi,
+            baud_rate=self._baud_rate_zphi,
+            timeout=self._timeout_zphi)
 
-        # Read HW from config
-        config = self.getConfiguration()
+        constraints = self.get_constraints()
+        all_axis_labels = [axis_label for axis_label in constraints]
 
-        # here the COM port is read from the config file
-        if 'com_port_micos_xy' in config.keys():
-            self._com_port_xy, label_x, label_y  = config['com_port_micos_xy']
-        else:
-            self.log.error('No parameter "com_port_micos_xy" found in '
-                    'config.\n'
-                    'Cannot connect to motorized stage! Enter the '
-                    'parameter with the following scheme:/n'
-                    '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
+        for axis_label in all_axis_labels:
+            if int(self._ask(axis_label, '{} getunit'.format(int(constraints[axis_label]['ID'])+1))) == 2:
+                self.log.info('As supposed the micos stage axis {} is set to the unit mm! '.format(axis_label))
+            else:
+                self.log.error('The micos stage is NOT set to the unit mm!!!! '
+                               'DANGER of damaging stage or periphery!!!!')
 
+        # Setting hardware limits to the stage. The stage will not move further these limits!
+        self._write('x', '{} {} 0 {} {} 0 setlimit'.format(constraints['x']['pos_min']*self.unit_factor,
+                                                           constraints['y']['pos_min']*self.unit_factor,
+                                                           constraints['x']['pos_max']*self.unit_factor,
+                                                           constraints['y']['pos_max']*self.unit_factor,
+                                                           ))
 
-        if 'com_port_micos_zphi' in config.keys():
-            self._com_port_zphi, label_z, label_phi  = config['com_port_micos_zphi']
-        else:
-            self.log.error('No parameter "com_port_micos_zphi" found in '
-                    'config.\nCannot connect to motorized stage! Enter the '
-                    'parameter with the following scheme:/n'
-                    '("<COM-PORT>","<lable_x_axis>","label_y_axis")')
+        self._write('z', '{} {} 0 {} {} 0 setlimit'.format(constraints['z']['pos_min'] * self.unit_factor,
+                                                           constraints['z']['pos_min'] * self.unit_factor,
+                                                           constraints['phi']['pos_max'] * self.unit_factor,
+                                                           constraints['phi']['pos_max'] * self.unit_factor,
+                                                           ))
 
-        self._micos_a = self.rm.open_resource(self._com_port_xy) # x, y
-        self._micos_a.label_x = label_x     # attach a label attribute
-        self._micos_a.label_y = label_y     # attach a label attribute
-        self._micos_b = self.rm.open_resource(self._com_port_zphi) # z, phi
-        self._micos_b.label_z = label_z     # attach a label attribute
-        self._micos_b.label_phi = label_phi # attach a label attribute
+        self.log.info("Hardware limits were set to micos stage. To change the limits adjust the config file.")
 
-        self._micos_a.term_chars = self._term_chars_xy
-        self._micos_a.term_chars = self._term_chars_zphi
-        self._micos_a.baud_rate = self._baud_rate_xy
-        self._micos_b.baud_rate = self._baud_rate_zphi
-
+        return 0
 
     def on_deactivate(self):
-        """ Disconnect from hardware and clean up """
-        self._micos_a.close()
-        self._micos_b.close()
+        """ Deinitialisation performed during deactivation of the module.
+        @return: error code
+        """
+        self._serial_connection_xy.close()
+        self._serial_connection_zphi.close()
         self.rm.close()
+        return 0
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
@@ -142,68 +157,67 @@ class MotorStageMicos(Base, MotorInterface):
         If you are not sure about the meaning, look in other hardware files
         to get an impression.
         """
-        constraints = {}
-
-        # ALEX COMMENT: Please find all the needed parameter in the manual.
-        #               In principle, all should be available. If still not
-        #               available use None as an assignment.
+        constraints = OrderedDict()
 
         axis0 = {}
-        axis0['label'] = self._micos_a.label_x # name is just as a sanity included
-        axis0['unit'] = 'm'                 # the SI units
-        axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis0['pos_min'] = 0
-        axis0['pos_max'] = 95  # that is basically the traveling range
-        axis0['pos_step'] = 0.01
-        axis0['vel_min'] = 0
-        axis0['vel_max'] = 10
-        axis0['vel_step'] = 0.01
-        axis0['acc_min'] = 0.1
-        axis0['acc_max'] = 100.0
-        axis0['acc_step'] = 0.0
+        axis0['label'] = self._first_axis_label
+        axis0['ID'] = self._first_axis_ID
+        axis0['unit'] = 'm'  # the SI units
+        axis0['ramp'] = None  # a possible list of ramps
+        axis0['pos_min'] = self._min_first
+        axis0['pos_max'] = self._max_first
+        axis0['pos_step'] = self.step_first_axis
+        axis0['vel_min'] = self._vel_min_first
+        axis0['vel_max'] = self._vel_max_first
+        axis0['vel_step'] = self._vel_step_first
+        axis0['acc_min'] = None
+        axis0['acc_max'] = None
+        axis0['acc_step'] = None
 
         axis1 = {}
-        axis1['label'] = self._micos_a.label_y        # that axis label should be obtained from config
-        axis1['unit'] = 'm'        # the SI units
-        axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis1['pos_min'] = 0
-        axis1['pos_max'] = 95  # that is basically the traveling range
-        axis1['pos_step'] = 0.01
-        axis1['vel_min'] = 0
-        axis1['vel_max'] = 10
-        axis1['vel_step'] = 0.01
-        axis1['acc_min'] = 0.1
-        axis1['acc_max'] = 0.0
-        axis1['acc_step'] = 0.0
+        axis1['label'] = self._second_axis_label
+        axis1['ID'] = self._second_axis_ID
+        axis1['unit'] = 'm'  # the SI units
+        axis1['ramp'] = None  # a possible list of ramps
+        axis1['pos_min'] = self._min_second
+        axis1['pos_max'] = self._max_second
+        axis1['pos_step'] = self.step_second_axis
+        axis1['vel_min'] = self._vel_min_second
+        axis1['vel_max'] = self._vel_max_second
+        axis1['vel_step'] = self._vel_step_second
+        axis1['acc_min'] = None
+        axis1['acc_max'] = None
+        axis1['acc_step'] = None
 
         axis2 = {}
-        axis2['label'] = self._micos_b.label_z        # that axis label should be obtained from config
-        axis2['unit'] = 'm'        # the SI units
-        axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis2['pos_min'] = 0
-        axis2['pos_max'] = 60  # that is basically the traveling range
-        axis2['pos_step'] = 0.01
-        axis2['vel_min'] = 0
-        axis2['vel_max'] = 100
-        axis2['vel_step'] = 0.01
-        axis2['acc_min'] = 0.1
-        axis2['acc_max'] = 0.0
-        axis2['acc_step'] = 0.0
+        axis2['label'] = self._third_axis_label
+        axis2['ID'] = self._third_axis_ID
+        axis2['unit'] = 'm'  # the SI units
+        axis2['ramp'] = None  # a possible list of ramps
+        axis2['pos_min'] = self._min_third
+        axis2['pos_max'] = self._max_third
+        axis2['pos_step'] = self.step_third_axis
+        axis2['vel_min'] = self._vel_min_third
+        axis2['vel_max'] = self._vel_max_third
+        axis2['vel_step'] = self._vel_step_third
+        axis2['acc_min'] = None
+        axis2['acc_max'] = None
+        axis2['acc_step'] = None
 
         axis3 = {}
-        axis3['label'] = self._micos_b.label_phi      # that axis label should be obtained from config
-        axis3['unit'] = '°'        # the SI units
-        axis3['ramp'] = ['Sinus','Trapez'] # a possible list of ramps
-        axis3['pos_min'] = 0
-        axis3['pos_max'] = 330  # that is basically the traveling range
-        axis3['pos_step'] = 0.01
-        axis3['vel_min'] = 1
-        axis3['vel_max'] = 20
-        axis3['vel_step'] = 0.1
+        axis3['label'] = self._fourth_axis_label
+        axis3['ID'] = self._fourth_axis_ID
+        axis3['unit'] = 'm'  # the SI units
+        axis3['ramp'] = None  # a possible list of ramps
+        axis3['pos_min'] = self._min_fourth
+        axis3['pos_max'] = self._max_fourth
+        axis3['pos_step'] = self.step_fourth_axis
+        axis3['vel_min'] = self._vel_min_fourth
+        axis3['vel_max'] = self._vel_max_fourth
+        axis3['vel_step'] = self._vel_step_fourth
         axis3['acc_min'] = None
         axis3['acc_max'] = None
         axis3['acc_step'] = None
-
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
@@ -212,219 +226,216 @@ class MotorStageMicos(Base, MotorInterface):
 
         return constraints
 
-    def move_rel(self,  param_dict):
-        """ Moves stage in given direction (relative movement)
-
-        @param dict param_dict: dictionary, which passes all the relevant
-                                parameters, which should be changed.
-                                With get_constraints() you can obtain all
-                                possible parameters of that stage. According to
-                                this parameter set you have to pass a dictionary
-                                with keys that are called like the parameters
-                                from get_constraints() and assign a SI value to
-                                that. For a movement in x the param_dict should
-                                e.g. have the form:
-                                    dict = { 'x' : 23 }
-                                where the label 'x' corresponds to the chosen
-                                axis label.
-
-        A smart idea would be to ask the position after the movement.
-        """
-        curr_pos_dict = self.get_pos()
-        constraints = self.get_constraints()
-
-        # Check if value for the new x position is valid and move to the new x position, else return an error msg
-
-        if param_dict.get(self._micos_a.label_x) is not None:
-            move_x = param_dict[self._micos_a.label_x]
-            curr_pos_x = curr_pos_dict[self._micos_a.label_x]
-
-            if  (curr_pos_x + move_x > constraints[self._micos_a.label_x]['pos_max'] ) or\
-                (curr_pos_x + move_x < constraints[self._micos_a.label_x]['pos_min']):
-
-                self.log.warning('Cannot make further movement of the axis '
-                        '"{0}" with the step {1}, since the border [{2},{3}] '
-                        'was reached! Ignore command!'.format(
-                            self._micos_a.label_x, move_x,
-                            constraints[self._micos_a.label_x]['pos_min'],
-                            constraints[self._micos_a.label_x]['pos_max']))
-            else:
-                self._micos_a.write('{0:f} 0.0 0.0 r'.format(move_x))
-
-        # Check if value for the new y position is valid and move to the new y position, else return an error msg
-
-        if param_dict.get(self._micos_a.label_y) is not None:
-            move_y = param_dict[self._micos_a.label_y]
-            curr_pos_y = curr_pos_dict[self._micos_a.label_y]
-
-            if  (curr_pos_y + move_y > constraints[self._micos_a.label_y]['pos_max'] ) or\
-                (curr_pos_y + move_y < constraints[self._micos_a.label_y]['pos_min']):
-
-                self.log.warning('Cannot make further movement of the axis '
-                        '"{0}" with the step {1}, since the border [{2},{3}] '
-                        'was reached! Ignore command!'.format(
-                            self._micos_a.label_y, move_y,
-                            constraints[self._micos_a.label_y]['pos_min'],
-                            constraints[self._micos_a.label_y]['pos_max']))
-            else:
-                self._micos_a.write('0.0 {0:f} 0.0 r'.format(move_y))
-
-        # Check if value for the new z position is valid and move to the new z position, else return an error msg
-
-        if param_dict.get(self._micos_b.label_z) is not None:
-            move_z = param_dict[self._micos_b.label_z]
-            curr_pos_z = curr_pos_dict[self._micos_b.label_z]
-
-            if  (curr_pos_z + move_z > constraints[self._micos_b.label_z]['pos_max'] ) or\
-                (curr_pos_z + move_z < constraints[self._micos_b.label_z]['pos_min']):
-
-                self.log.warning('Cannot make further movement of the axis '
-                        '"{0}" with the step {1}, since the border [{2},{3}] '
-                        'was reached! Ignore command!'.format(
-                            self._micos_b.label_z, move_z,
-                            constraints[self._micos_b.label_z]['pos_min'],
-                            constraints[self._micos_b.label_z]['pos_max']))
-            else:
-                self._micos_b.write('{0:f} 0.0 0.0 r'.format(move_z))
-
-        # Check if value for the new phi position is valid and move to the new phi position, else return an error msg
-
-        if param_dict.get(self._micos_b.label_phi) is not None:
-            move_phi = param_dict[self._micos_b.label_phi]
-            curr_pos_phi = curr_pos_dict[self._micos_b.label_phi]
-
-            if  (curr_pos_phi + move_phi > constraints[self._micos_b.label_phi]['pos_max'] ) or\
-                (curr_pos_phi + move_phi < constraints[self._micos_b.label_phi]['pos_min']):
-
-                self.log.warning('Cannot make further movement of the axis '
-                        '"{0}" with the step {1}, since the border [{2},{3}] '
-                        'was reached! Ignore command!'.format(
-                            self._micos_b.label_phi, move_phi,
-                            constraints[self._micos_b.label_phi]['pos_min'],
-                            constraints[self._micos_b.label_phi]['pos_max']))
-            else:
-                self._micos_b.write('0.0 {0:f} 0.0 r'.format(move_phi))
-
-    def move_abs(self, param_dict):
-        """ Moves stage to absolute position (absolute movement)
+    def move_rel(self, param_dict):
+        """Moves stage in given direction (relative movement)
 
         @param dict param_dict: dictionary, which passes all the relevant
                                 parameters, which should be changed. Usage:
-                                 {'axis_label': <a-value>}.
+                                 {'axis_label': <the-abs-pos-value>}.
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
-        A smart idea would be to ask the position after the movement.
+
+
+        @return dict pos: dictionary with the current magnet position
         """
-        constraints = self.get_constraints()
+        # Todo: check if the move is within the range allowed from config
 
-        # ALEX COMMENT: I am not quite sure whether one has to call each
-        #               axis, i.e. _micos_a and _micos_b only once, and then
-        #               wait until they are finished.
-        #               You have either to restructure the axis call and find
-        #               out how to block any signal until the stage is not
-        #               finished with the movement. Maybe you have also to
-        #               increase the visa timeout number, because if the device
-        #               does not react on a command after the timeout an error
-        #               will be raised by the visa protocol itself!
+        # Todo: Check if two parameters are changed such that if they are on one com port they can be
+        # changed at the same time
 
-        if param_dict.get(self._micos_a.label_x) is not None:
-            desired_pos = param_dict[self._micos_a.label_x]
-            constr = constraints[self._micos_a.label_x]
-
-            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                    '"{0}" to possition {1}, since it exceeds the limts '
-                    '[{2},{3}] ! Command is ignored!'
-                    ''.format(self._micos_a.label_x, desired_pos,
-                         constr['pos_min'], constr['pos_max']))
-            else:
-                self._micos_a.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
-                self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+        # There are sometimes connections problems therefore up to 3 attempts are started
+        for attempt in range(3):
             try:
-                statusA = int(self._micos_a.ask('st'))
+                for axis_label in param_dict:
+                    step = param_dict[axis_label]
+                    self._do_move_rel(axis_label, step*self.unit_factor)
             except:
-                statusA = 0
+                self.log.warning('Motor connection problem! Try again...')
+            else:  # try worked
+                break
+        else:  # for ended without break
+            self.log.error('Motor cannot move!')
 
+        return self.get_pos()
 
-        if param_dict.get(self._micos_a.label_y) is not None:
-            desired_pos = param_dict[self._micos_a.label_y]
-            constr = constraints[self._micos_a.label_y]
+    def move_abs(self, param_dict):
+        """Moves stage to absolute position
 
-            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_a.label_y, desired_pos,
-                            constr['pos_min'],
-                            constr['pos_max']))
-            else:
-                self._micos_a.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
-                self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-abs-pos-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+                                The values for the axes are in millimeter,
+                                the value for the rotation is in degrees.
+
+        @return dict pos: dictionary with the current axis position
+        """
+
+        curr_pos = None
+        # There are sometimes connections problems therefore up to 3 attempts are started
+        for attept in range(3):
             try:
-                statusA = int(self._micos_a.ask('st'))
+                # x and y are connencted through one com port therefore it is faster if both commands are sent at the
+                # same time therefore there is the check if x and y or only one axis is changed
+                if 'x' in param_dict and 'y' in param_dict:
+                    self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor,
+                                                           param_dict['y']*self.unit_factor))
+                elif 'x' in param_dict or 'y' in param_dict:
+                    curr_pos = self.get_pos()
+                    if 'x' in param_dict:
+                        self._write('x', '{} {} 0 move'.format(param_dict['x']*self.unit_factor,
+                                                               curr_pos['y']*self.unit_factor))
+                    if 'y' in param_dict:
+                        self._write('y', '{} {} 0 move'.format(curr_pos['x']*self.unit_factor,
+                                                               param_dict['y']*self.unit_factor))
+
+                # z and phi are connencted through one com port therefore it is faster if both commands are sent at the
+                # same time therefore there is the check if z and phi or only one axis are changed
+                if 'z' in param_dict and 'phi' in param_dict:
+                    self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor,
+                                                           param_dict['phi']*self.unit_factor))
+                elif 'z' in param_dict or 'phi' in param_dict:
+                    if curr_pos is None:
+                        curr_pos = self.get_pos()
+                    if 'z' in param_dict:
+                        self._write('z', '{} {} 0 move'.format(param_dict['z']*self.unit_factor,
+                                                               curr_pos['phi']*self.unit_factor))
+                    if 'phi' in param_dict:
+                        self._write('phi', '{} {} 0 move'.format(curr_pos['z']*self.unit_factor,
+                                                                 param_dict['phi']*self.unit_factor))
+                while not self._motor_stopped():
+                    time.sleep(0.05)
             except:
-                statusA = 0
-
-        if param_dict.get(self._micos_b.label_z) is not None:
-            desired_pos = param_dict[self._micos_b.label_z]
-            constr = constraints[self._micos_b.label_z]
-
-            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_b.label_z, desired_pos,
-                            constr['pos_min'],
-                            constr['pos_max']))
+                self.log.warning('Motor connection problem! Try again...')
             else:
-                self._micos_b.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
-                self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
-            try:
-                statusB = int(self._micos_b.ask('st'))
-            except:
-                statusB = 0
+                break
+        else:
+            self.log.error('Motor cannot move!')
+        return self.get_pos()
 
-        if param_dict.get(self._micos_b.label_phi) is not None:
-            desired_pos = param_dict[self._micos_b.label_phi]
-            constr = constraints[self._micos_b.label_phi]
-
-            if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_b.label_phi, desired_pos,
-                            constr['pos_min'],
-                            constr['pos_max']))
-            else:
-                self._micos_b.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
-                self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
-            try:
-                statusB = int(self._micos_b.ask('st'))
-            except:
-                statusB = 0
-
-
-        # ALEX COMMENT: Is there not a nicer way for that? If the axis does not
-        #               reply during the movement, then it is not good to ask
-        #               all the time the status. Because then the visa timeout
-        #               would kill your connection to the axis.
-        #               If the axis replies during movement, then think about
-        #               a nicer way in waiting until the movement is done,
-        #               because it will block the whole program.
-        # while True:
-        #     try:
-        #         statusA = int(self._micos_a.ask('st'))
-        #         statusB = int(self._micos_b.ask('st'))
-        #     except:
-        #         statusA = 0
-        #         statusA = 0
-        #
-        #     if statusA ==0 or statusB == 0:
-        #         time.sleep(0.2)
-        #
-        #         break
-        #     time.sleep(0.2)
-        # return 0
+    #Todo:_ Add constrain checks in move_abs file, this can be seen here in the old commented version
+    # def move_abs(self, param_dict):
+    #     """ Moves stage to absolute position (absolute movement)
+    #
+    #     @param dict param_dict: dictionary, which passes all the relevant
+    #                             parameters, which should be changed. Usage:
+    #                              {'axis_label': <a-value>}.
+    #                              'axis_label' must correspond to a label given
+    #                              to one of the axis.
+    #     A smart idea would be to ask the position after the movement.
+    #     """
+    #     constraints = self.get_constraints()
+    #
+    #     # ALEX COMMENT: I am not quite sure whether one has to call each
+    #     #               axis, i.e. _micos_a and _micos_b only once, and then
+    #     #               wait until they are finished.
+    #     #               You have either to restructure the axis call and find
+    #     #               out how to block any signal until the stage is not
+    #     #               finished with the movement. Maybe you have also to
+    #     #               increase the visa timeout number, because if the device
+    #     #               does not react on a command after the timeout an error
+    #     #               will be raised by the visa protocol itself!
+    #
+    #     if param_dict.get(self._micos_a.label_x) is not None:
+    #         desired_pos = param_dict[self._micos_a.label_x]
+    #         constr = constraints[self._micos_a.label_x]
+    #
+    #         if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
+    #             self.log.warning('Cannot make absolute movement of the axis '
+    #                 '"{0}" to possition {1}, since it exceeds the limts '
+    #                 '[{2},{3}] ! Command is ignored!'
+    #                 ''.format(self._micos_a.label_x, desired_pos,
+    #                      constr['pos_min'], constr['pos_max']))
+    #         else:
+    #             self._micos_a.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
+    #             self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+    #         try:
+    #             statusA = int(self._micos_a.ask('st'))
+    #         except:
+    #             statusA = 0
+    #
+    #
+    #     if param_dict.get(self._micos_a.label_y) is not None:
+    #         desired_pos = param_dict[self._micos_a.label_y]
+    #         constr = constraints[self._micos_a.label_y]
+    #
+    #         if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
+    #             self.log.warning('Cannot make absolute movement of the axis '
+    #                     '"{0}" to possition {1}, since it exceeds the limts '
+    #                     '[{2},{3}] ! Command is ignored!'.format(
+    #                         self._micos_a.label_y, desired_pos,
+    #                         constr['pos_min'],
+    #                         constr['pos_max']))
+    #         else:
+    #             self._micos_a.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
+    #             self._micos_a.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+    #         try:
+    #             statusA = int(self._micos_a.ask('st'))
+    #         except:
+    #             statusA = 0
+    #
+    #     if param_dict.get(self._micos_b.label_z) is not None:
+    #         desired_pos = param_dict[self._micos_b.label_z]
+    #         constr = constraints[self._micos_b.label_z]
+    #
+    #         if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
+    #             self.log.warning('Cannot make absolute movement of the axis '
+    #                     '"{0}" to possition {1}, since it exceeds the limts '
+    #                     '[{2},{3}] ! Command is ignored!'.format(
+    #                         self._micos_b.label_z, desired_pos,
+    #                         constr['pos_min'],
+    #                         constr['pos_max']))
+    #         else:
+    #             self._micos_b.write('{0:f} 0.0 0.0 move'.format(desired_pos) )
+    #             self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+    #         try:
+    #             statusB = int(self._micos_b.ask('st'))
+    #         except:
+    #             statusB = 0
+    #
+    #     if param_dict.get(self._micos_b.label_phi) is not None:
+    #         desired_pos = param_dict[self._micos_b.label_phi]
+    #         constr = constraints[self._micos_b.label_phi]
+    #
+    #         if not(constr['pos_min'] <= desired_pos <= constr['pos_max']):
+    #             self.log.warning('Cannot make absolute movement of the axis '
+    #                     '"{0}" to possition {1}, since it exceeds the limts '
+    #                     '[{2},{3}] ! Command is ignored!'.format(
+    #                         self._micos_b.label_phi, desired_pos,
+    #                         constr['pos_min'],
+    #                         constr['pos_max']))
+    #         else:
+    #             self._micos_b.write('0.0 {0:f} 0.0 move'.format(desired_pos) )
+    #             self._micos_b.write('0.0 0.0 0.0 r')    # This should block further commands until the movement is finished
+    #         try:
+    #             statusB = int(self._micos_b.ask('st'))
+    #         except:
+    #             statusB = 0
+    #
+    #
+    #     # ALEX COMMENT: Is there not a nicer way for that? If the axis does not
+    #     #               reply during the movement, then it is not good to ask
+    #     #               all the time the status. Because then the visa timeout
+    #     #               would kill your connection to the axis.
+    #     #               If the axis replies during movement, then think about
+    #     #               a nicer way in waiting until the movement is done,
+    #     #               because it will block the whole program.
+    #     # while True:
+    #     #     try:
+    #     #         statusA = int(self._micos_a.ask('st'))
+    #     #         statusB = int(self._micos_b.ask('st'))
+    #     #     except:
+    #     #         statusA = 0
+    #     #         statusA = 0
+    #     #
+    #     #     if statusA ==0 or statusB == 0:
+    #     #         time.sleep(0.2)
+    #     #
+    #     #         break
+    #     #     time.sleep(0.2)
+    #     # return 0
+    #
 
 
 
@@ -433,57 +444,63 @@ class MotorStageMicos(Base, MotorInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._micos_a.write(chr(3))
-        self._micos_b.write(chr(3))
-#        self._micos_a.write('abort')
-#        self._micos_b.write('abort')
-        self.log.warning('Movement of all the axis aborted! Stage stopped.')
-        return 0
+        try:
+            # only checking sending command to x and z because these
+            # are the two axis and they also abort y and phi
+            for axis_label in ['x', 'z']:
+                self._write(axis_label, 'Ctrl-C')
+            while not self._motor_stopped():
+                time.sleep(0.2)
+            self.log.warning('MOTOR MOVEMENT STOPPED!!!')
+
+            return 0
+        except:
+            self.log.error('MOTOR MOVEMENT NOT STOPPED!!!')
+            return -1
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
 
         @param list param_list: optional, if a specific position of an axis
                                 is desired, then the labels of the needed
-                                axis should be passed as the param_list.
+                                axis should be passed in the param_list.
                                 If nothing is passed, then from each axis the
                                 position is asked.
 
         @return dict: with keys being the axis labels and item the current
-                      position.
-        """
+                      position.        """
 
-        pos = {}
+        constraints = self.get_constraints()
+        param_dict = {}
 
-        # ALEX COMMENT: Is here the try statement necessary?
+        # The information about axes x,y and z,phi are retrieved simultaneously. That is why if one is checked, the
+        # information is saved and returned without another _ask.
+        already_checked_xy = False
+        already_checked_zphi = False
 
-        try:
-            if param_list is not None:
-                if self._micos_a.label_x in param_list:
-                    pos[self._micos_a.label_x] = float(self._micos_a.ask('pos').split()[0])
-
-                if self._micos_a.label_y in param_list:
-                    pos[self._micos_a.label_y] = float(self._micos_a.ask('pos').split()[1])
-
-                if self._micos_b.label_z in param_list:
-                    pos[self._micos_b.label_z] = float(self._micos_b.ask('pos').split()[0])
-
-                if self._micos_b.label_phi in param_list:
-                    pos[self._micos_b.label_phi] = float(self._micos_b.ask('pos').split()[1])
-
-            else:
-                xy_pos = self._micos_a.ask('pos')
-                pos[self._micos_a.label_x] = float(xy_pos.split()[0])
-                pos[self._micos_a.label_y] = float(xy_pos.split()[1])
-
-                zphi_pos = self._micos_b.ask('pos')
-                pos[self._micos_b.label_z] = float(zphi_pos.split()[0])
-                pos[self._micos_b.label_phi] = float(zphi_pos.split()[1])
-
-        except:
-            self.log.error('Get pos routine has failed!')
-
-        return pos
+        all_axis_labels = [axis_label for axis_label in constraints]
+        if param_list is None:
+            param_list = all_axis_labels
+        for axis_label in param_list:
+            # unfortunately, probably due to connection problems this specific command sometimes failing
+            # although it should run.... therefore some retries are added
+            for attempt in range(25):
+                if constraints[axis_label]['label'] == 'x' or constraints[axis_label]['label'] == 'y':
+                    if already_checked_xy is False:
+                        pos_xy = self._ask(axis_label, 'pos').split()
+                        already_checked_xy = True
+                    param_dict[axis_label] = float(pos_xy[int(constraints[axis_label]['ID'])])/self.unit_factor
+                elif constraints[axis_label]['label'] == 'z' or constraints[axis_label]['label'] == 'phi':
+                    if already_checked_zphi is False:
+                        pos_zphi = self._ask(axis_label, 'pos').split()
+                        already_checked_zphi = True
+                    param_dict[axis_label] = float(pos_zphi[int(constraints[axis_label]['ID'])])/self.unit_factor
+                else:
+                    self.log.error("Asking question to not defined axis:", axis_label)
+                # check if all required parameters are known
+                if set(param_dict.keys()).issubset(set(param_list)):
+                    break
+        return param_dict
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -495,43 +512,51 @@ class MotorStageMicos(Base, MotorInterface):
                                 status is asked.
 
         @return dict: with the axis label as key and the status number as item.
+        The meaning of the return value is:
         """
-
-        status = {}
-
-        # ALEX COMMENT: Is the try statement really necessary?
-        #               Is is possible to get the status of each axis and not
-        #                only of the stage objects _micos_a and _micos_b ?
-
+        constraints = self.get_constraints()
+        param_dict = {}
+        # The information about axes x,y and z,phi are retrieved simultaneously. That is why if one is checked, the
+        # information is saved and returned without another _ask.
+        already_checked_xy = False
+        already_checked_zphi = False
         try:
             if param_list is not None:
-                if self._micos_a.label_x in param_list:
-                    status[self._micos_a.label_x] = self._micos_a.ask('st')
-
-                if self._micos_a.label_y in param_list:
-                    status[self._micos_a.label_y] = self._micos_a.ask('st')
-
-                if self._micos_b.label_z in param_list:
-                    status[self._micos_b.label_z] = self._micos_b.ask('st')
-
-                if self._micos_b.label_phi in param_list:
-                    status[self._micos_b.label_phi] = self._micos_b.ask('st')
-
+                for axis_label in param_list:
+                    # the status check takes quite long so if port is checked
+                    # there is no need for second check
+                    if axis_label == 'x' or axis_label == 'y':
+                        if not already_checked_xy:
+                            status_xy = self._ask(axis_label, 'st')
+                            already_checked_xy = True
+                        param_dict[axis_label] = status_xy
+                    elif axis_label == 'z' or axis_label == 'phi':
+                        if not already_checked_zphi:
+                            status_zphi = self._ask(axis_label, 'st')
+                            already_checked_zphi = True
+                        param_dict[axis_label] = status_zphi
+                    else:
+                        self.log.error("Asking question to not defined axis:", axis_label)
             else:
-                message_xy = self._micos_a.ask('st')
-                status[self._micos_a.label_x] = message_xy
-                status[self._micos_a.label_y] = message_xy
-
-                message_zphi = self._micos_b.ask('st')
-                status[self._micos_b.label_z] = message_zphi
-                status[self._micos_b.label_phi] = message_zphi
-
+                for axis_label in constraints:
+                    #the status check takes quite long so if port is checked
+                    # there is no need for second check
+                    if constraints[axis_label]['label'] == 'x' or constraints[axis_label]['label'] == 'y':
+                        if not already_checked_xy:
+                            status_xy = self._ask(axis_label, 'st')
+                            already_checked_xy = True
+                        param_dict[axis_label] = status_xy
+                    elif constraints[axis_label]['label'] == 'z' or constraints[axis_label]['label'] == 'phi':
+                        if not already_checked_zphi:
+                            status_zphi = self._ask(axis_label, 'st')
+                            already_checked_zphi = True
+                        param_dict[axis_label] = status_zphi
+                    else:
+                        self.log.error("Asking question to not defined axis:", axis_label)
+            return param_dict
         except:
-            self.log.error('Get_status routine has failed!')
-
-        return status
-
-
+            self.log.error('Status request unsuccessful')
+            return -1
 
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
@@ -548,43 +573,35 @@ class MotorStageMicos(Base, MotorInterface):
         zero point for the passed axis. The calibration procedure will be
         different for each stage.
         """
+        constraints = self.get_constraints()
 
         if param_list is not None:
-            if self._micos_a.label_x in param_list:
-                # self._micos_a.write('1 1 setaxis')
-                # self._micos_a.write('4 2 setaxis')
-                # self._micos_a.write('cal')
-                self._micos_a.write('1 ncal')
+            for axis_label in constraints:
+                if constraints[axis_label]['label'] == 'x' in param_list:
+                    self._write('x', '1 ncal')
 
-            if self._micos_a.label_y in param_list:
-                # self._micos_a.write('4 1 setaxis')
-                # self._micos_a.write('1 2 setaxis')
-                # self._micos_a.write('cal')
-                self._micos_a.write('2 ncal')
+                if constraints[axis_label]['label'] == 'y' in param_list:
+                    self._write('y', '2 ncal')
 
-            if self._micos_b.label_z in param_list:
-                # self._micos_b.write('1 1 setaxis')
-                # self._micos_b.write('4 2 setaxis')
-                # self._micos_b.write('cal')
-                self._micos_b.write('1 ncal')
+                if constraints[axis_label]['label'] == 'z' in param_list:
+                    self._write('z', '1 ncal')
 
-            if self._micos_b.label_phi in param_list:
-                # self._micos_b.write('4 1 setaxis')
-                # self._micos_b.write('1 2 setaxis')
-                # self._micos_b.write('cal')
-                self._micos_b.write('2 ncal')
+                if constraints[axis_label]['label'] == 'phi' in param_list:
+                    self._write('phi', '2 ncal')
 
         else:
+            # setting axes active
+            self._write('x', '1 1 setaxis')
+            self._write('y', '1 2 setaxis')
+            # execute calibration
+            self._write('x', 'cal')
 
-            # ALEX COMMENT: Is that a valid way of calibrating both axis at once?
+            # setting axes active
+            self._write('z', '1 1 setaxis')
+            self._write('phi', '1 2 setaxis')
+            # setting axes active
+            self._write('z', 'cal')
 
-            self._micos_a.write('1 1 setaxis')
-            self._micos_a.write('1 2 setaxis')
-            self._micos_a.write('cal')
-
-            self._micos_b.write('1 1 setaxis')
-            self._micos_b.write('1 2 setaxis')
-            self._micos_b.write('cal')
 
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
@@ -597,29 +614,23 @@ class MotorStageMicos(Base, MotorInterface):
 
         @return dict : with the axis label as key and the velocity as item.
         """
+        constraints = self.get_constraints()
         vel = {}
 
-        if param_list is not None:
-            if self._micos_a.label_x in param_list:
-                vel[self._micos_a.label_x] = float(self._micos_a.ask('getvel').split()[0])
+        if param_list is None:
+            # if no axis is selected set it to all
+            param_list = [axis_label for axis_label in constraints]
 
-            if self._micos_a.label_y in param_list:
-                vel[self._micos_a.label_y] = float(self._micos_a.ask('getvel').split()[1])
+        #Todo: Set velocity for each axis seperately
+        if 'x' in param_list or 'y' in param_list:
+            vel['x'] = float(self._ask('x', 'getvel').split()[0])/self.unit_factor
+            vel['y'] = vel['x']
+            self.log.warning('Velocity set for x and y axis!')
 
-            if self._micos_b.label_z in param_list:
-                vel[self._micos_b.label_z] = float(self._micos_b.ask('getvel').split()[0])
-
-            if self._micos_b.label_phi in param_list:
-                vel[self._micos_b.label_phi] = float(self._micos_b.ask('getvel').split()[1])
-
-        else:
-            vel_xy = self._micos_a.ask('getvel')
-            vel[self._micos_a.label_x] = float(vel_xy.split()[0])
-            vel[self._micos_a.label_y] = float(vel_xy.split()[1])
-
-            vel_zphi = self._micos_b.ask('getvel')
-            vel[self._micos_b.label_z] = float(vel_zphi.split()[0])
-            vel[self._micos_b.label_phi] = float(vel_zphi.split()[1])
+        if 'z' in param_list or 'phi' in param_list:
+            vel['z'] = float(self._ask('z', 'getvel').split()[0])/self.unit_factor
+            vel['phi'] = vel['z']
+            self.log.warning('Velocity set for z and phi axis!')
 
         return vel
 
@@ -634,59 +645,136 @@ class MotorStageMicos(Base, MotorInterface):
         """
         constraints = self.get_constraints()
 
-        if param_dict.get(self._micos_a.label_x) is not None:
-            desired_vel = param_dict[self._micos_a.label_x]
-            constr = constraints[self._micos_a.label_x]
+        for axis_label in param_dict:
+            desired_vel = param_dict[constraints[axis_label]['label']]
+            constr = constraints[constraints[axis_label]['label']]
 
             if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
+                self.log.warning('Cannot set velocity of the axis '
+                        '"{0}" to {1}, since it exceeds the limts '
                         '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_a.label_x, desired_vel,
+                            axis_label, desired_vel,
                             constr['vel_min'],
                             constr['vel_max']))
             else:
-                self._micos_a.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
+                self._write(axis_label, '{0:f} sv'.format(desired_vel*self.unit_factor))
+                self.log.info('Velocity set for z and phi  or x and y axis, it is not possible'
+                                 'to set the velocity to individual axes!')
 
-        if param_dict.get(self._micos_a.label_y) is not None:
-            desired_vel = param_dict[self._micos_a.label_y]
-            constr = constraints[self._micos_a.label_y]
+########################## internal methods ##################################
 
-            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_a.label_y, desired_vel,
-                            constr['vel_min'],
-                            constr['vel_max']))
+    def _write(self, axis, command):
+        """this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
+        @param axis string: name of the axis that should be asked
+
+        @param command string: command
+
+        @return error code (0:OK, -1:error)
+        """
+        constraints = self.get_constraints()
+        try:
+            if constraints[axis]['label'] == 'x' or constraints[axis]['label'] == 'y':
+                self._serial_connection_xy.write(command + '\n')
+                trash = self._read_answer(axis)  # deletes possible answers
+            elif constraints[axis]['label'] == 'z' or constraints[axis]['label'] == 'phi':
+                self._serial_connection_zphi.write(command + '\n')
+                trash = self._read_answer(axis)  # deletes possible answers
             else:
-                self._micos_a.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
+                self.log.error("Asking question to not defined axis:", axis)
+            return 0
+        except:
+            self.log.error('Command was not accepted')
+            return -1
 
-        if param_dict.get(self._micos_b.label_z) is not None:
-            desired_vel = param_dict[self._micos_b.label_z]
-            constr = constraints[self._micos_b.label_z]
+    def _read_answer(self, axis):
+        """this method reads the answer from the motor!
+        @return answer string: answer of motor
+        """
+        constraints = self.get_constraints()
 
-            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_b.label_z, desired_vel,
-                            constr['vel_min'],
-                            constr['vel_max']))
-            else:
-                self._micos_b.write('{0:f} 0.0 0.0 sv'.format(desired_vel))
+        still_reading = True
+        answer = ''
+        while still_reading == True:
+            try:
+                if constraints[axis]['label'] == 'x' or constraints[axis]['label'] == 'y':
+                    answer = answer + self._serial_connection_xy.read()[:-2]
+                elif constraints[axis]['label'] == 'z' or constraints[axis]['label'] == 'phi':
+                    answer = answer + self._serial_connection_zphi.read()[:-2]
+                else:
+                    self.log.error("Asking question to not defined axis:", axis)
+            except:
+                still_reading = False
+        return answer
 
-        if param_dict.get(self._micos_b.label_phi) is not None:
-            desired_vel = param_dict[self._micos_b.label_phi]
-            constr = constraints[self._micos_b.label_phi]
+    def _ask(self, axis, question):
+        """this method combines writing a command and reading the answer
+        @param axis string: name of the axis that should be asked
 
-            if not(constr['vel_min'] <= desired_vel <= constr['vel_max']):
-                self.log.warning('Cannot make absolute movement of the axis '
-                        '"{0}" to possition {1}, since it exceeds the limts '
-                        '[{2},{3}] ! Command is ignored!'.format(
-                            self._micos_b.label_phi, desired_vel,
-                            constr['vel_min'],
-                            constr['vel_max']))
-            else:
-                self._micos_b.write('0.0 {0:f} 0.0 sv'.format(desired_vel))
+        @param command string: command
 
+        @return answer string: answer of motor
+        """
+        constraints = self.get_constraints()
+        if constraints[axis]['label'] == 'x' or constraints[axis]['label'] == 'y':
+            self._serial_connection_xy.write(question+'\n')
+            answer = self._read_answer(axis)
+        elif constraints[axis]['label'] == 'z' or constraints[axis]['label'] == 'phi':
+            self._serial_connection_zphi.write(question+'\n')
+            answer = self._read_answer(axis)
+        else:
+            self.log.error("Asking question to not defined axis:", axis)
+        return answer
+
+    def _in_movement(self):
+        """
+        this method checks if the magnet is still moving and returns
+        a dictionary which of the axis are moving.
+
+        @return: dict param_dict: Dictionary displaying if axis are moving:
+        0 for immobile and 1 for moving
+        """
+        constraints = self.get_constraints()
+        param_dict = {}
+        status = self.get_status()
+        for axis_label in constraints:
+            param_dict[axis_label] = int(status[axis_label]) % 2
+        return param_dict
+
+    def _motor_stopped(self):
+        """this method checks if the magnet is still moving and returns
+            False if it is moving and True of it is immobile
+
+            @return: bool stopped: False for immobile and True for moving
+        """
+        param_dict = self._in_movement()
+        stopped = True
+        for axis_label in param_dict:
+            if param_dict[axis_label] != 0:
+                self.log.info(axis_label + ' is moving')
+                stopped = False
+        return stopped
+
+    def _do_move_rel(self, axis, step):
+        """internal method for the relative move
+
+        @param axis string: name of the axis that should be moved
+
+        @param float step: step in millimeter
+
+        @return str axis: axis which is moved
+                move float: absolute position to move to
+        """
+        constraints = self.get_constraints()
+        if not (abs(constraints[axis]['pos_step']) < abs(step)):
+            self.log.warning('Cannot make the movement of the axis "{0}"'
+                             'since the step is too small! Ignore command!')
+        else:
+            if axis == 'x':
+                self._write('x', '{} 0 0 rmove'.format(step))
+            elif axis == 'y':
+                self._write('y', '0 {} 0 rmove'.format(step))
+            elif axis == 'z':
+                self._write('z', '{} 0 0 rmove'.format(step))
+            elif axis == 'phi':
+                self._write('phi', '0 {} 0 rmove'.format(step))
+        return 0

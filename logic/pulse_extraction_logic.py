@@ -37,7 +37,7 @@ class PulseExtractionLogic(GenericLogic):
     _modtype = 'logic'
 
     conv_std_dev = StatusVar(default=10.0)
-    count_treshold = StatusVar(default=10)
+    count_threshold = StatusVar(default=10)
     threshold_tolerance_bins = StatusVar(default=20)
     min_laser_length = StatusVar(default=200)
     #self.number_of_lasers = StatusVar(default=50)
@@ -106,44 +106,5 @@ class PulseExtractionLogic(GenericLogic):
             return_dict = self.ungated_extraction_methods[self.current_method](count_data)
         return return_dict
 
-    # FIXME: What's that???
-    # def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
-    #
-    #     return_dict = {}
-    #     laser_x = []
-    #     laser_y = []
-    #
-    #     x_data = np.linspace(initial_offset,initial_offset+laser_length,laser_length+1)
-    #     y_data = count_data[initial_offset:initial_offset+laser_length]
-    #     laser_x.append(x_data)
-    #     laser_y.append(y_data)
-    #
-    #     time = initial_length + initial_offset
-    #
-    #     for laser in range(int(num_lasers)-1):
-    #
-    #         x_data = np.linspace(time,time+laser_length,laser_length+1)
-    #         y_data = count_data[time:(time+laser_length)]
-    #         laser_x.append(np.array(x_data))
-    #         laser_y.append(np.array(y_data))
-    #
-    #
-    #         time = time + initial_length + (laser+1)*increment
-    #
-    #
-    #
-    #
-    #     laser_y = np.asarray(laser_y)
-    #     laser_x = np.asarray(laser_x)
-    #
-    #     self.log.debug(laser_y)
-    #
-    #     rising_ind = np.array([i[0] for i in laser_x])
-    #     falling_ind = np.array([i[-1] for i in laser_y])
-    #
-    #     return_dict['laser_rising'] = rising_ind
-    #     return_dict['laser_falling'] = falling_ind
-    #     return_dict['laser_arr_y'] = laser_y.astype(int)
-    #
-    #     return return_dict
+
 
