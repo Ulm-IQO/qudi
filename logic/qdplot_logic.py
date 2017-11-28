@@ -80,8 +80,8 @@ class QdplotLogic(GenericLogic):
     def set_data(self, x=None, y=None, clear_old=True):
         """Set the data to plot
 
-        @param np.ndarray or list of np.ndarrays x: data array of indep variable(s)
-        @param np.ndarray or list of np.ndarrays y: data array of dep variable(s)
+        @param np.ndarray/list or list of np.ndarrays/lists x: data of independents variable(s)
+        @param np.ndarray/list or list of np.ndarrays/lists y: data of dependent variable(s)
         @param bool clear_old: clear old plots in GUI if True
         """
 
@@ -95,12 +95,12 @@ class QdplotLogic(GenericLogic):
 
         self.clear_old = clear_old
         # check if input is only an array (single plot) or a list of arrays (several plots)
-        if np.size(np.shape(x)) == 1:
-            self.indep_vals = np.array([x])
-            self.depen_vals = np.array([y])
+        if len(x) == 1:
+            self.indep_vals = [x]
+            self.depen_vals = [y]
         else:
-            self.indep_vals = np.array(x)
-            self.depen_vals = np.array(y)
+            self.indep_vals = x
+            self.depen_vals = y
 
         self.sigPlotDataUpdated.emit()
         self.sigPlotParamsUpdated.emit()
@@ -118,8 +118,8 @@ class QdplotLogic(GenericLogic):
         if newdomain is not None:
             self.plot_domain = newdomain
         else:
-            domain_min = np.min(self.indep_vals)
-            domain_max = np.max(self.indep_vals)
+            domain_min = np.min([np.min(values) for values in self.indep_vals])
+            domain_max = np.max([np.max(values) for values in self.indep_vals])
             domain_range = domain_max - domain_min
             self.plot_domain = [domain_min - 0.02*domain_range, domain_max + 0.02*domain_range]
 
@@ -135,8 +135,8 @@ class QdplotLogic(GenericLogic):
         if newrange is not None:
             self.plot_range = newrange
         else:
-            range_min = np.min(self.depen_vals)
-            range_max = np.max(self.depen_vals)
+            range_min = np.min([np.min(values) for values in self.depen_vals])
+            range_max = np.max([np.max(values) for values in self.depen_vals])
             range_range = range_max - range_min
             self.plot_range = [range_min - 0.02*range_range, range_max + 0.02*range_range]
 
@@ -202,7 +202,7 @@ class QdplotLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        for ii in range(np.shape(self.indep_vals)[0]):
+        for ii in range(len(self.indep_vals)):
             data['indep_label'+str(ii+1)] = self.indep_vals[ii]
             data['depen_label'+str(ii+1)] = self.depen_vals[ii]
 
@@ -211,7 +211,7 @@ class QdplotLogic(GenericLogic):
 
         fig, ax1 = plt.subplots()
 
-        for ii in range(np.shape(self.indep_vals)[0]):
+        for ii in range(len(self.indep_vals)):
             ax1.plot(self.indep_vals[ii], self.depen_vals[ii], linestyle=':', linewidth=1)
 
         ax1.set_xlabel(indep_label)
