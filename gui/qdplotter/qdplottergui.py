@@ -143,7 +143,7 @@ class QdplotterGui(GUIBase):
 
         self.curves = []
         pen_colors = cycle(['b', 'y', 'm', 'g'])
-        for ii in range(np.shape(self._qdplot_logic.indep_vals)[0]):
+        for ii in range(len(self._qdplot_logic.indep_vals)):
             self.curves.append(self._pw.plot())
             self.curves[ii].setPen(next(pen_colors))
             self.curves[ii].setData(y=self._qdplot_logic.depen_vals[ii], x=self._qdplot_logic.indep_vals[ii])
