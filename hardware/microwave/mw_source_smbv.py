@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control SMIQ microwave device.
+This file contains the Qudi hardware file to control R&S SMBV100A microwave device.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -56,11 +56,10 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
             self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                           timeout=self._gpib_timeout)
         except:
-            self.log.error('This is MWSMIQ: could not connect to GPIB address >>{}<<.'
-                           ''.format(self._gpib_address))
+            self.log.error('Could not connect to GPIB address >>{}<<.'.format(self._gpib_address))
             raise
 
-        self.log.info('MWSMIQ initialised and connected to hardware.')
+        self.log.info('MW SMBV100A initialised and connected to hardware.')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
         self._command_wait('*CLS')
         self._command_wait('*RST')
