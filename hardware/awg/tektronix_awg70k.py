@@ -99,7 +99,6 @@ class AWG70K(Base, PulserInterface):
         self.amplitude_list, self.offset_list = self.get_analog_level()
         self.markers_low, self.markers_high = self.get_digital_level()
         self.is_output_enabled = self._is_output_on()
-        self.use_sequencer = self.has_sequence_mode()
         self.active_channel = self.get_active_channels()
         self.interleave = self.get_interleave()
         self.current_loaded_asset = ''
