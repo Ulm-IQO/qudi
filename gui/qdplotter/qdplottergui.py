@@ -21,6 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
+import numpy as np
+from itertools import cycle
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
@@ -81,9 +83,8 @@ class QdplotterGui(GUIBase):
         self._pw.setLabel('left', 'Dependent variable', units='?')
         self._pw.setLabel('bottom', 'Independent variable', units='?')
 
-        ## Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen('g')
+        # Create an empty plot curve to be filled later...
+        # --> shifted down to where plot curves are set because on activation don't know number of curves
 
         #####################
         # Setting default parameters
@@ -134,10 +135,18 @@ class QdplotterGui(GUIBase):
         self._mw.close()
 
     def updateData(self):
-        """ The function that grabs the data and sends it to the plot.
+        """ Function creates empty plots, grabs the data and sends it to them.
         """
 
-        self._curve1.setData(y=self._qdplot_logic.depen_vals, x=self._qdplot_logic.indep_vals)
+        if self._qdplot_logic.clear_old:
+            self._pw.clear()
+
+        self.curves = []
+        pen_colors = cycle(['b', 'y', 'm', 'g'])
+        for ii in range(len(self._qdplot_logic.indep_vals)):
+            self.curves.append(self._pw.plot())
+            self.curves[ii].setPen(next(pen_colors))
+            self.curves[ii].setData(y=self._qdplot_logic.depen_vals[ii], x=self._qdplot_logic.indep_vals[ii])
 
     def updatePlot(self):
         self._pw.setXRange(self._qdplot_logic.plot_domain[0], self._qdplot_logic.plot_domain[1])
