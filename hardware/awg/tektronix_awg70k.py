@@ -99,7 +99,6 @@ class AWG70K(Base, PulserInterface):
         self.amplitude_list, self.offset_list = self.get_analog_level()
         self.markers_low, self.markers_high = self.get_digital_level()
         self.is_output_enabled = self._is_output_on()
-        self.use_sequencer = self.has_sequence_mode()
         self.active_channel = self.get_active_channels()
         self.interleave = self.get_interleave()
         self.current_loaded_asset = ''
@@ -463,7 +462,8 @@ class AWG70K(Base, PulserInterface):
         # self._activate_awg_mode()
 
         self.awg.write('WLIS:WAV:DEL ALL')
-        self.awg.write('SLIS:SEQ:DEL ALL')
+        if self.has_sequence_mode():
+            self.awg.write('SLIS:SEQ:DEL ALL')
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.25)
         self.current_loaded_asset = ''
@@ -1214,6 +1214,11 @@ class AWG70K(Base, PulserInterface):
 
         @return:
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
         active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
         num_tracks = len(active_analog)
@@ -1265,7 +1270,6 @@ class AWG70K(Base, PulserInterface):
             time.sleep(0.2)
         return 0
 
-
     def _generate_sequence(self, name, steps, tracks=1):
         """
         Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
@@ -1276,6 +1280,11 @@ class AWG70K(Base, PulserInterface):
 
         @return 0
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         self.awg.write('SLISt:SEQuence:DELete ' + '"' + name + '"' + '\n')
         self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks) + '\n')
         return 0
@@ -1292,6 +1301,11 @@ class AWG70K(Base, PulserInterface):
 
         @return 0
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':TASSET' + str(
             track) + ':WAVEFORM ' + '"' + sequence_name + '", "' + waveform_name + '"' + '\n')
         self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat) + '\n')
@@ -1305,6 +1319,11 @@ class AWG70K(Base, PulserInterface):
 
         return 0
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track) + '\n')
         return 0
 
@@ -1317,6 +1336,11 @@ class AWG70K(Base, PulserInterface):
 
         @return int last_step: The step number which 'jump to' has to be set to 'First'
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         last_step = int(self.ask('SLISt:SEQuence:LENGth? ' + '"' + sequencename + '"'))
         self.awg.write('SLISt:SEQuence:STEP' + str(last_step) + ':GOTO ' + '"' + sequencename + '",  FIRST \n')
         return last_step
@@ -1356,6 +1380,9 @@ class AWG70K(Base, PulserInterface):
         Gets all sequence names currently loaded into the AWG workspace
         @return: list of names
         """
+        if not self.has_sequence_mode():
+            return []
+
         number_of_seq = int(self.awg.query('SLIS:SIZE?'))
         sequence_list = [None] * number_of_seq
         for i in range(number_of_seq):
