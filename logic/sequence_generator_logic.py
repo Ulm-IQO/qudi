@@ -727,12 +727,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         for chnl in range(len(digital_rising_bins)):
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=int)
 
-        # FIXME: Remove debugging prints
-        print('current_end_time:', current_end_time)
-        print('number_of_samples:', number_of_samples)
-        print('binwidth in seconds: {0:.6e}'.format(1.0 / self.sample_rate))
-        print('delta in seconds: {0:.6e}'.format(
-            ((current_end_time * self.sample_rate) - number_of_samples) / self.sample_rate))
         return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
