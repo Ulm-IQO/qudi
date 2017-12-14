@@ -36,12 +36,19 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
-    conv_std_dev = StatusVar(default=10.0)
-    count_threshold = StatusVar(default=10)
-    threshold_tolerance_bins = StatusVar(default=20)
-    min_laser_length = StatusVar(default=200)
-    #self.number_of_lasers = StatusVar(default=50)
-    current_method = StatusVar(default='conv_deriv')
+    #conv_std_dev = StatusVar(default=10.0)
+    #count_threshold = StatusVar(default=10)
+    #threshold_tolerance_bins = StatusVar(default=20)
+    #min_laser_length = StatusVar(default=200)
+    ##self.number_of_lasers = StatusVar(default=50)
+    #current_method = StatusVar(default='conv_deriv')
+
+    extraction_settings = dict()
+    extraction_settings['conv_std_dev'] = StatusVar(default=10.0)
+    extraction_settings['count_threshold'] = StatusVar(default=10)
+    extraction_settings['threshold_tolerance_bins'] = StatusVar(default=20)
+    extraction_settings['min_laser_length'] = StatusVar(default=200)
+    extraction_settings['current_method'] = StatusVar(default='conv_deriv')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -101,9 +108,9 @@ class PulseExtractionLogic(GenericLogic):
         @return:
         """
         if is_gated:
-            return_dict = self.gated_extraction_methods[self.current_method](count_data)
+            return_dict = self.gated_extraction_methods[self.extraction_settings['current_method']](count_data)
         else:
-            return_dict = self.ungated_extraction_methods[self.current_method](count_data)
+            return_dict = self.ungated_extraction_methods[self.extraction_settings['current_method']](count_data)
         return return_dict
 
 

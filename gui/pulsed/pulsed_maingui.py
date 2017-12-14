@@ -2153,24 +2153,22 @@ class PulsedMeasurementGui(GUIBase):
         """
         Uodate new value of standard deviation of gaussian filter
         """
+        extraction_settings = dict()
         # determine if one of the conv_std_dev widgets (SpinBox or slider) has emitted the signal
         if self.sender().objectName() == 'extract_param_conv_std_dev_slider':
-            conv_std_dev = self._pe.extract_param_conv_std_dev_slider.value()
+            extraction_settings['conv_std_dev'] = self._pe.extract_param_conv_std_dev_slider.value()
         else:
-            conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
+            extraction_settings['conv_std_dev'] = self._pe.extract_param_conv_std_dev_DSpinBox.value()
 
-        method = self._pe.extract_param_extraction_method_comboBox.currentText()
-        count_threshold = self._pe.extract_param_threshold_SpinBox.value()
-        threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
-        min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
+        extraction_settings['method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
+        extraction_settings['count_threshold'] = self._pe.extract_param_threshold_SpinBox.value()
+        extraction_settings['threshold_tolerance_bins'] = self._pe.extract_param_tolerance_SpinBox.value()
+        extraction_settings['min_laser_length'] = self._pe.extract_param_min_laser_length_SpinBox.value()
 
-        self._pulsed_master_logic.extraction_settings_changed(method, conv_std_dev, count_threshold,
-                                                              threshold_tolerance_bins,
-                                                              min_laser_length)
+        self._pulsed_master_logic.extraction_settings_changed(extraction_settings)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_updated(self, extraction_settings):
         """
 
         @param method:
@@ -2180,6 +2178,32 @@ class PulsedMeasurementGui(GUIBase):
         @param min_laser_length:
         @return:
         """
+        # take settings from dict, otherwise take setting which is set before
+        if 'current_method' in extraction_settings:
+            method = extraction_settings['current_method']
+        else:
+            method = self._pe.extract_param_extraction_method_comboBox.currentText()
+
+        if 'conv_std_dev' in extraction_settings:
+            conv_std_dev = extraction_settings['conv_std_dev']
+        else:
+            conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
+
+        if 'count_threshold' in extraction_settings:
+            count_threshold = extraction_settings['count_threshold']
+        else:
+            count_threshold = self._pe.extract_param_threshold_SpinBox.value()
+
+        if 'threshold_tolerance_bins' in extraction_settings:
+            threshold_tolerance_bins = extraction_settings['threshold_tolerance_bins']
+        else:
+            threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
+
+        if 'min_laser_length' in extraction_settings:
+            min_laser_length = extraction_settings['min_laser_length']
+        else:
+            min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
+
         # block signals
         self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
         self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
