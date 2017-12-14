@@ -1055,7 +1055,15 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Signal end (bin)'] = self._pulse_analysis_logic.signal_end_bin
         parameters['Normalization start (bin)'] = self._pulse_analysis_logic.norm_start_bin
         parameters['Normalization end (bin)'] = self._pulse_analysis_logic.norm_end_bin
-        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.extraction_settings['conv_std_dev']
+        parameters['Extraction_method'] = self._pulse_extraction_logic.extraction_settings['current_method']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'conv_deriv':
+            parameters['Standard deviation of gaussian convolution'] = \
+                self._pulse_extraction_logic.extraction_settings['conv_std_dev']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'threshold':
+            parameters['Count threshold'] = self._pulse_extraction_logic.extraction_settings['count_threshold']
+            parameters['threshold_tolerance_bins'] =\
+                self._pulse_extraction_logic.extraction_settings['threshold_tolerance_bins']
+            parameters['min_laser_length'] = self._pulse_extraction_logic.extraction_settings['min_laser_length']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
 

@@ -43,12 +43,6 @@ class PulseExtractionLogic(GenericLogic):
     ##self.number_of_lasers = StatusVar(default=50)
     #current_method = StatusVar(default='conv_deriv')
 
-    extraction_settings = dict()
-    extraction_settings['conv_std_dev'] = StatusVar(default=10.0)
-    extraction_settings['count_threshold'] = StatusVar(default=10)
-    extraction_settings['threshold_tolerance_bins'] = StatusVar(default=20)
-    extraction_settings['min_laser_length'] = StatusVar(default=200)
-    extraction_settings['current_method'] = StatusVar(default='conv_deriv')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -93,11 +87,38 @@ class PulseExtractionLogic(GenericLogic):
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'PulseExtractionLogic.'.format(method, filename))
+
+        self.extraction_settings = dict()
+        if 'conv_std_dev' in self._statusVariables:
+            self.extraction_settings['conv_std_dev'] = self._statusVariables['conv_std_dev']
+        else:
+            self.extraction_settings['conv_std_dev'] = 10.0
+        if 'count_threshold' in self._statusVariables:
+            self.extraction_settings['count_threshold'] = self._statusVariables['count_threshold']
+        else:
+            self.extraction_settings['count_threshold'] = 10
+        if 'threshold_tolerance_bins' in self._statusVariables:
+            self.extraction_settings['threshold_tolerance_bins'] = self._statusVariables['threshold_tolerance_bins']
+        else:
+            self.extraction_settings['threshold_tolerance_bins'] = 20
+        if 'min_laser_length' in self._statusVariables:
+            self.extraction_settings['min_laser_length'] = self._statusVariables['min_laser_length']
+        else:
+            self.extraction_settings['min_laser_length'] = 200
+        if 'current_method' in self._statusVariables:
+            self.extraction_settings['current_method'] = self._statusVariables['current_method']
+        else:
+            self.extraction_settings['current_method'] = 'conv_deriv'
         return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
+        self._statusVariables['conv_std_dev'] = self.extraction_settings['conv_std_dev']
+        self._statusVariables['count_threshold'] = self.extraction_settings['count_threshold']
+        self._statusVariables['threshold_tolerance_bins'] = self.extraction_settings['threshold_tolerance_bins']
+        self._statusVariables['min_laser_length'] = self.extraction_settings['min_laser_length']
+        self._statusVariables['current_method'] = self.extraction_settings['current_method']
         return
 
     def extract_laser_pulses(self, count_data, is_gated=False):

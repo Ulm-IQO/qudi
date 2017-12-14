@@ -2171,62 +2171,41 @@ class PulsedMeasurementGui(GUIBase):
     def extraction_settings_updated(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings: dictionary with parameters to update
         @return:
         """
-        # take settings from dict, otherwise take setting which is set before
+
         if 'current_method' in extraction_settings:
-            method = extraction_settings['current_method']
-        else:
-            method = self._pe.extract_param_extraction_method_comboBox.currentText()
+            self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+            index = self._pe.extract_param_extraction_method_comboBox.findText(extraction_settings['current_method'])
+            self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
+            self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
 
         if 'conv_std_dev' in extraction_settings:
-            conv_std_dev = extraction_settings['conv_std_dev']
-        else:
-            conv_std_dev = self._pe.extract_param_conv_std_dev_DSpinBox.value()
+            self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
+            self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
+            self._pe.extract_param_conv_std_dev_DSpinBox.setValue(extraction_settings['conv_std_dev'])
+            self._pe.extract_param_conv_std_dev_slider.setValue(extraction_settings['conv_std_dev'])
+            self._pe.extract_param_conv_std_dev_slider.blockSignals(False)
+            self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(False)
 
         if 'count_threshold' in extraction_settings:
-            count_threshold = extraction_settings['count_threshold']
-        else:
-            count_threshold = self._pe.extract_param_threshold_SpinBox.value()
+            self._pe.extract_param_threshold_SpinBox.blockSignals(True)
+            self._pe.extract_param_threshold_SpinBox.setValue(extraction_settings['count_threshold'])
+            self._pe.extract_param_threshold_SpinBox.blockSignals(False)
 
         if 'threshold_tolerance_bins' in extraction_settings:
-            threshold_tolerance_bins = extraction_settings['threshold_tolerance_bins']
-        else:
-            threshold_tolerance_bins = self._pe.extract_param_tolerance_SpinBox.value()
+            self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
+            self._pe.extract_param_tolerance_SpinBox.setValue(extraction_settings['threshold_tolerance_bins'])
+            self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
 
         if 'min_laser_length' in extraction_settings:
-            min_laser_length = extraction_settings['min_laser_length']
-        else:
-            min_laser_length = self._pe.extract_param_min_laser_length_SpinBox.value()
+            self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
+            self._pe.extract_param_min_laser_length_SpinBox.setValue(extraction_settings['min_laser_length'])
+            self._pe.extract_param_min_laser_length_SpinBox.blockSignals(False)
 
-        # block signals
-        self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
-        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
-        self._pe.extract_param_threshold_SpinBox.blockSignals(True)
-        self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
-        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
-        # set widgets
-        index = self._pe.extract_param_extraction_method_comboBox.findText(method)
-        self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
-        self._pe.extract_param_conv_std_dev_DSpinBox.setValue(conv_std_dev)
-        self._pe.extract_param_conv_std_dev_slider.setValue(conv_std_dev)
-        self._pe.extract_param_threshold_SpinBox.setValue(count_threshold)
-        self._pe.extract_param_tolerance_SpinBox.setValue(threshold_tolerance_bins)
-        self._pe.extract_param_min_laser_length_SpinBox.setValue(min_laser_length)
-        # unblock signals
-        self._pe.extract_param_conv_std_dev_slider.blockSignals(False)
-        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(False)
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
-        self._pe.extract_param_threshold_SpinBox.blockSignals(False)
-        self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
-        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(False)
         return
+
 
     def extraction_methods_updated(self, methods_dict):
         """
