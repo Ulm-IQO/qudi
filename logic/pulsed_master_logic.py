@@ -71,7 +71,7 @@ class PulsedMasterLogic(GenericLogic):
     sigAnalysisSettingsChanged = QtCore.Signal(str, float, float, float, float)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
-    sigExtractionSettingsChanged = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsChanged = QtCore.Signal(dict)
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -120,7 +120,7 @@ class PulsedMasterLogic(GenericLogic):
     sigTimerIntervalUpdated = QtCore.Signal(float)
     sigAnalysisSettingsUpdated = QtCore.Signal(str, float, float, float, float)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
@@ -889,8 +889,7 @@ class PulsedMasterLogic(GenericLogic):
                                        error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_changed(self, extraction_settings):
         """
 
         @param method:
@@ -900,12 +899,10 @@ class PulsedMasterLogic(GenericLogic):
         @param min_laser_length:
         @return:
         """
-        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_threshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsChanged.emit(extraction_settings)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_updated(self, extraction_settings):
         """
 
         @param method:
@@ -915,8 +912,7 @@ class PulsedMasterLogic(GenericLogic):
         @param min_laser_length:
         @return:
         """
-        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_threshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsUpdated.emit(extraction_settings)
         return
 
     def extraction_methods_updated(self, methods_dict):
