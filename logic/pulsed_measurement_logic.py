@@ -93,7 +93,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigTimerIntervalUpdated = QtCore.Signal(float)
     sigAnalysisSettingsUpdated = QtCore.Signal(str, float, float, float, float)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
@@ -265,11 +265,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                              self._pulse_analysis_logic.signal_end_s,
                                              self._pulse_analysis_logic.norm_start_s,
                                              self._pulse_analysis_logic.norm_end_s)
-        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
-                                               self._pulse_extraction_logic.conv_std_dev,
-                                               self._pulse_extraction_logic.count_threshold,
-                                               self._pulse_extraction_logic.threshold_tolerance_bins,
-                                               self._pulse_extraction_logic.min_laser_length)
+        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.extraction_settings)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
@@ -950,8 +946,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                  norm_start_s, norm_end_s)
         return method, signal_start_s, signal_end_s, norm_start_s, norm_end_s
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_changed(self, extraction_settings):
         """
 
         @param method:
@@ -962,14 +957,10 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         with self.threadlock:
-            self._pulse_extraction_logic.current_method = method
-            self._pulse_extraction_logic.conv_std_dev = conv_std_dev
-            self._pulse_extraction_logic.count_threshold = count_threshold
-            self._pulse_extraction_logic.threshold_tolerance_bins = threshold_tolerance_bins
-            self._pulse_extraction_logic.min_laser_length = min_laser_length
-            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_threshold,
-                                                   threshold_tolerance_bins, min_laser_length)
-        return method, conv_std_dev, count_threshold, threshold_tolerance_bins, min_laser_length
+            for parameter in extraction_settings:
+                self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
+            self.sigExtractionSettingsUpdated.emit(extraction_settings)
+        return extraction_settings
 
     def _initialize_plots(self):
         """
@@ -1064,7 +1055,7 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Signal end (bin)'] = self._pulse_analysis_logic.signal_end_bin
         parameters['Normalization start (bin)'] = self._pulse_analysis_logic.norm_start_bin
         parameters['Normalization end (bin)'] = self._pulse_analysis_logic.norm_end_bin
-        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.conv_std_dev
+        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.extraction_settings['conv_std_dev']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
 
