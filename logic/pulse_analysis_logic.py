@@ -37,11 +37,11 @@ class PulseAnalysisLogic(GenericLogic):
     _modtype = 'logic'
 
     # status vars
-    current_method = StatusVar('current_method', 'mean_norm')
-    signal_start_s = StatusVar('signal_start_s', 0.0)
-    signal_end_s = StatusVar('signal_end_s', 200.0e-9)
-    norm_start_s = StatusVar('norm_start_s', 500.0e-9)
-    norm_end_s = StatusVar('norm_end_s', 700.0e-9)
+    #current_method = StatusVar('current_method', 'mean_norm')
+    #signal_start_s = StatusVar('signal_start_s', 0.0)
+    #signal_end_s = StatusVar('signal_end_s', 200.0e-9)
+    #norm_start_s = StatusVar('norm_start_s', 500.0e-9)
+    #norm_end_s = StatusVar('norm_end_s', 700.0e-9)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -74,6 +74,28 @@ class PulseAnalysisLogic(GenericLogic):
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'PulseAnalysisLogic.'.format(method, filename))
+
+        self.analysis_settings = dict()
+        if 'current_method' in self._statusVariables:
+            self.analysis_settings['current_method'] = self._statusVariables['current_method']
+        else:
+            self.analysis_settings['current_method'] = 'mean_norm'
+        if 'signal_start_s' in self._statusVariables:
+            self.analysis_settings['signal_start_s'] = self._statusVariables['signal_start_s']
+        else:
+            self.analysis_settings['signal_start_s'] = 0.0
+        if 'signal_end_s' in self._statusVariables:
+            self.analysis_settings['signal_end_s'] = self._statusVariables['signal_end_s']
+        else:
+            self.analysis_settings['signal_end_s'] = 200.0e-9
+        if 'norm_start_s' in self._statusVariables:
+            self.analysis_settings['norm_start_s'] = self._statusVariables['norm_start_s']
+        else:
+            self.analysis_settings['norm_start_s'] = 500.0e-9
+        if 'norm_end_s' in self._statusVariables:
+            self.analysis_settings['norm_end_s'] = self._statusVariables['norm_end_s']
+        else:
+            self.analysis_settings['norm_end_s'] = 700.0e-9
         return
 
     def on_deactivate(self):
@@ -89,12 +111,12 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array measuring_error: Array with the computed signal error
         """
-
+#
         # convert time to bin
-        self.signal_start_bin = round(self.signal_start_s / self.fast_counter_binwidth)
-        self.signal_end_bin = round(self.signal_end_s / self.fast_counter_binwidth)
-        self.norm_start_bin = round(self.norm_start_s / self.fast_counter_binwidth)
-        self.norm_end_bin = round(self.norm_end_s / self.fast_counter_binwidth)
+        self.signal_start_bin = round(self.analysis_settings['signal_start_s'] / self.fast_counter_binwidth)
+        self.signal_end_bin = round(self.analysis_settings['signal_end_s'] / self.fast_counter_binwidth)
+        self.norm_start_bin = round(self.analysis_settings['norm_start_s'] / self.fast_counter_binwidth)
+        self.norm_end_bin = round(self.analysis_settings['norm_end_s'] / self.fast_counter_binwidth)
 
         signal_data, measuring_error = self.analysis_methods[self.current_method](laser_data)
         return signal_data, measuring_error
