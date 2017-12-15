@@ -91,7 +91,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, float, float, float, float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
@@ -260,11 +260,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigTimerIntervalUpdated.emit(self.timer_interval)
         self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
         self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.extraction_methods)
-        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.current_method,
-                                             self._pulse_analysis_logic.signal_start_s,
-                                             self._pulse_analysis_logic.signal_end_s,
-                                             self._pulse_analysis_logic.norm_start_s,
-                                             self._pulse_analysis_logic.norm_end_s)
+        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.analysis_settings)
         self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.extraction_settings)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
@@ -919,8 +915,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
-    def analysis_settings_changed(self, method, signal_start_s, signal_end_s, norm_start_s,
-                                  norm_end_s):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
         @param method:
@@ -931,29 +926,26 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         with self.threadlock:
-            self._pulse_analysis_logic.current_method = method
-            self._pulse_analysis_logic.signal_start_s = signal_start_s
-            self._pulse_analysis_logic.signal_end_s = signal_end_s
-            self._pulse_analysis_logic.norm_start_s = norm_start_s
-            self._pulse_analysis_logic.norm_end_s = norm_end_s
+            for parameter in analysis_settings:
+                self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
 
             # forward to the GUI the exact timing
-            signal_start_s = round(signal_start_s / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            signal_end_s = round(signal_end_s / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            norm_start_s = round(norm_start_s / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            norm_end_s = round(norm_end_s / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            self.sigAnalysisSettingsUpdated.emit(method, signal_start_s, signal_end_s,
-                                                 norm_start_s, norm_end_s)
-        return method, signal_start_s, signal_end_s, norm_start_s, norm_end_s
+            if 'signal_start_s' in analysis_settings:
+                analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'signal_end_s' in analysis_settings:
+                analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_start_s' in analysis_settings:
+                analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_end_s' in analysis_settings:
+                analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            self.sigAnalysisSettingsUpdated.emit(analysis_settings)
+
+        return analysis_settings
 
     def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
         with self.threadlock:

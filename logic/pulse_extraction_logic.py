@@ -36,13 +36,6 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
-    #conv_std_dev = StatusVar(default=10.0)
-    #count_threshold = StatusVar(default=10)
-    #threshold_tolerance_bins = StatusVar(default=20)
-    #min_laser_length = StatusVar(default=200)
-    ##self.number_of_lasers = StatusVar(default=50)
-    #current_method = StatusVar(default='conv_deriv')
-
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
