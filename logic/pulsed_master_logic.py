@@ -68,7 +68,7 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
     sigExtMicrowaveStartStop = QtCore.Signal(bool)
     sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisSettingsChanged = QtCore.Signal(str, float, float, float, float)
+    sigAnalysisSettingsChanged = QtCore.Signal(dict)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
     sigExtractionSettingsChanged = QtCore.Signal(dict)
@@ -118,7 +118,7 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, float, float, float, float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
@@ -522,34 +522,22 @@ class PulsedMasterLogic(GenericLogic):
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_settings_changed(self, method, signal_start_s, signal_end_s, norm_start_s,
-                                  norm_end_s):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings
         @return:
         """
-        self.sigAnalysisSettingsChanged.emit(method, signal_start_s, signal_end_s,
-                                             norm_start_s, norm_end_s)
+        self.sigAnalysisSettingsChanged.emit(analysis_settings)
         return
 
-    def analysis_settings_updated(self, method, signal_start_s, signal_end_s, norm_start_s,
-                                  norm_end_s):
+    def analysis_settings_updated(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict: analysis_settings:
         @return:
         """
-        self.sigAnalysisSettingsUpdated.emit(method, signal_start_s, signal_end_s,
-                                             norm_start_s, norm_end_s)
+        self.sigAnalysisSettingsUpdated.emit(analysis_settings)
         return
 
     def analysis_methods_updated(self, methods_dict):
@@ -892,11 +880,7 @@ class PulsedMasterLogic(GenericLogic):
     def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
         self.sigExtractionSettingsChanged.emit(extraction_settings)
@@ -905,11 +889,7 @@ class PulsedMasterLogic(GenericLogic):
     def extraction_settings_updated(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
         self.sigExtractionSettingsUpdated.emit(extraction_settings)
