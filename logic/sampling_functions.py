@@ -24,6 +24,75 @@ import numpy as np
 from collections import OrderedDict
 
 
+class Idle(object):
+    """
+    Object representing an idle element (zero voltage)
+    """
+    params = OrderedDict()
+
+    def __init__(self):
+        return
+
+    def get_samples(self, time_array):
+        samples_arr = np.zeros(len(time_array)) + self.test
+        return samples_arr
+
+
+class DC(object):
+    """
+    Object representing an DC element (constant voltage)
+    """
+    params = OrderedDict()
+    params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
+
+    def __init__(self, voltage):
+        self.voltage = voltage
+        return
+
+    def get_samples(self, time_array):
+        samples_arr = np.zeros(len(time_array)) + self.test
+        return samples_arr
+
+
+class Sin(object):
+    """
+    Object representing a sine wave element
+    """
+    params = OrderedDict()
+    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+
+    def __init__(self, amplitude, frequency, phase):
+        self.amplitude = amplitude
+        self.frequency = frequency
+        self.phase = phase
+        return
+
+    def get_samples(self, time_array):
+        samples_arr = np.zeros(len(time_array)) + self.test
+        return samples_arr
+
+class DoubleSin(object):
+    """
+    Object representing a sine wave element
+    """
+    params = OrderedDict()
+    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+
+    def __init__(self, amplitude, frequency, phase):
+        self.amplitude = amplitude
+        self.frequency = frequency
+        self.phase = phase
+        return
+
+    def get_samples(self, time_array):
+        samples_arr = np.zeros(len(time_array)) + self.test
+        return samples_arr
+
+
 class SamplingFunctions():
     """ Collection of mathematical functions used for sampling of the pulse
         sequences.
