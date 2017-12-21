@@ -2243,7 +2243,7 @@ class PulsedMeasurementGui(GUIBase):
             analysis_settings['norm_start_s'] = self._pe.extract_param_ref_window_start_DSpinBox.value()
             analysis_settings['norm_end_s'] = analysis_settings['norm_start_s'] + norm_width
 
-            analysis_settings['current_method'] = self._pe.extract_param_analysis_method_comboBox.currentText()
+        analysis_settings['current_method'] = self._pe.extract_param_analysis_method_comboBox.currentText()
 
         self._pulsed_master_logic.analysis_settings_changed(analysis_settings)
         return
