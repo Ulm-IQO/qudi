@@ -111,5 +111,5 @@ class PulseAnalysisLogic(GenericLogic):
         self.norm_start_bin = round(self.analysis_settings['norm_start_s'] / self.fast_counter_binwidth)
         self.norm_end_bin = round(self.analysis_settings['norm_end_s'] / self.fast_counter_binwidth)
 
-        signal_data, measuring_error = self.analysis_methods[self.current_method](laser_data)
+        signal_data, measuring_error = self.analysis_methods[self.analysis_settings['current_method'](laser_data)
         return signal_data, measuring_error
