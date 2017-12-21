@@ -918,11 +918,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings:
         @return:
         """
         with self.threadlock:
