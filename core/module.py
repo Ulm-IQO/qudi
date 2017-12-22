@@ -183,7 +183,8 @@ class Connector:
     def __init__(self, *, name=None, interface=None):
         """
             @param name: name of the connector
-            @param interface: interface class or name of the interface for this connector
+            @param interface: interface class or name of the interface for this connector, or
+                              list of interface classes
         """
         self.name = name
         self.interface = interface
@@ -198,16 +199,21 @@ class Connector:
         return self.obj
 
     def connect(self, target):
-        """ Check if target is connectable this connector and connect."""
+        """ Check that target is implementing correct interface(s) and connect."""
+        # checks are only performed if interface is not a string
         if not isinstance(self.interface, str):
-            if isinstance(target, self.interface):
-                self.obj = target
-            else:
-                raise Exception(
-                    'Module {0} connected to connector {1} does not implement interface {2}.'
-                    ''.format(target, self.name, self.interface))
-        else:
-            self.obj = target
+            # loop through all interfaces
+            if (not isinstance(self.interface, list)):
+                interfaces = [self.interface]
+            for interface in interfaces:
+                # check that the particular interface is implemented
+                if not isinstance(target, interface):
+                    raise Exception(
+                        'Module {0} connected to connector {1} does not implement interface {2}.'
+                        ''.format(target, self.name, interface))
+        # we made it through without exception, so all interfaces are implemented (or no checks
+        # were performed)
+        self.obj = target
 
     def disconnect(self):
         """ Disconnect connector. """

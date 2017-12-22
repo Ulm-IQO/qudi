@@ -683,7 +683,7 @@ class Manager(QtCore.QObject):
                                'legacy format since it contains a dot.'
                                ''.format(base, mkey, c))
                 logger.error('{0}.{1}.{2}: Connector is no dictionary.'
-                    ''.format(c, base, mkey))
+                            ''.format(c, base, mkey))
                 continue
                 destmod = connections[c].split('.')[0]
             else:
