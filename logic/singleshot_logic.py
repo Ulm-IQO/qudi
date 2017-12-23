@@ -484,7 +484,7 @@ class SingleShotLogic(GenericLogic):
         self._optimizer_logic.start_refocus(curr_pos, caller_tag='singleshot_logic')
 
         # check just the state of the optimizer
-        while self._optimizer_logic.getState() != 'idle':
+        while self._optimizer_logic.module_state() != 'idle':
             time.sleep(0.5)
 
         # use the position to move the scanner
