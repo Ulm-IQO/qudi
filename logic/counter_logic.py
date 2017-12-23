@@ -137,7 +137,7 @@ class CounterLogic(GenericLogic):
         self._statusVariables['counting_mode'] = self._counting_mode.name
 
         # Stop measurement
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self._stopCount_wait()
 
         self.sigCountDataNext.disconnect()
@@ -161,7 +161,7 @@ class CounterLogic(GenericLogic):
         @return int: oversampling in units of bins.
         """
         # Determine if the counter has to be restarted after setting the parameter
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             restart = True
         else:
             restart = False
@@ -186,7 +186,7 @@ class CounterLogic(GenericLogic):
 
         This makes sure, the counter is stopped first and restarted afterwards.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             restart = True
         else:
             restart = False
@@ -213,7 +213,7 @@ class CounterLogic(GenericLogic):
         """
         constraints = self.get_hardware_constraints()
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             restart = True
         else:
             restart = False
@@ -272,7 +272,7 @@ class CounterLogic(GenericLogic):
         self._saving = True
 
         # If the counter is not running, then it should start running so there is data to save
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             self.startCount()
 
         self.sigSavingStatusChanged.emit(self._saving)
@@ -359,7 +359,7 @@ class CounterLogic(GenericLogic):
         @return str: counting mode
         """
         constraints = self.get_hardware_constraints()
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             if CountingMode[mode] in constraints.counting_mode:
                 self._counting_mode = CountingMode[mode]
                 self.log.debug('New counting mode: {}'.format(self._counting_mode))
@@ -397,8 +397,8 @@ class CounterLogic(GenericLogic):
 
         with self.threadlock:
             # Lock module
-            if self.getState() != 'locked':
-                self.lock()
+            if self.module_state() != 'locked':
+                self.module_state.lock()
             else:
                 self.log.warning('Counter already running. Method call ignored.')
                 return 0
@@ -406,7 +406,7 @@ class CounterLogic(GenericLogic):
             # Set up clock
             clock_status = self._counting_device.set_up_clock(clock_frequency=self._count_frequency)
             if clock_status < 0:
-                self.unlock()
+                self.module_state.unlock()
                 self.sigCountStatusChanged.emit(False)
                 return -1
 
@@ -419,7 +419,7 @@ class CounterLogic(GenericLogic):
                 counter_status = self._counting_device.set_up_counter()
             if counter_status < 0:
                 self._counting_device.close_clock()
-                self.unlock()
+                self.module_state.unlock()
                 self.sigCountStatusChanged.emit(False)
                 return -1
 
@@ -440,7 +440,7 @@ class CounterLogic(GenericLogic):
     def stopCount(self):
         """ Set a flag to request stopping counting.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             with self.threadlock:
                 self.stopRequested = True
         return
@@ -451,7 +451,7 @@ class CounterLogic(GenericLogic):
         It runs repeatedly in the logic module event loop by being connected
         to sigCountContinuousNext and emitting sigCountContinuousNext through a queued connection.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             with self.threadlock:
                 # check for aborts of the thread in break if necessary
                 if self.stopRequested:
@@ -462,7 +462,7 @@ class CounterLogic(GenericLogic):
                         self.log.error('Could not even close the hardware, giving up.')
                     # switch the state variable off again
                     self.stopRequested = False
-                    self.unlock()
+                    self.module_state.unlock()
                     self.sigCounterUpdated.emit()
                     return
 
@@ -648,7 +648,7 @@ class CounterLogic(GenericLogic):
         """
         self.stopCount()
         start_time = time.time()
-        while self.getState() == 'locked':
+        while self.module_state() == 'locked':
             time.sleep(0.1)
             if time.time() - start_time >= timeout:
                 self.log.error('Stopping the counter timed out after {0}s'.format(timeout))
