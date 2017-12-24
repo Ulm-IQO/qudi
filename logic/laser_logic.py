@@ -86,8 +86,8 @@ class LaserLogic(GenericLogic):
     def check_laser_loop(self):
         """ Get power, current, shutter state and temperatures from laser. """
         if self.stopRequest:
-            if self.can('stop'):
-                self.stop()
+            if self.module_state.can('stop'):
+                self.module_state.stop()
             self.stopRequest = False
             return
         qi = self.queryInterval
@@ -120,7 +120,7 @@ class LaserLogic(GenericLogic):
     @QtCore.Slot()
     def start_query_loop(self):
         """ Start the readout loop. """
-        self.run()
+        self.module_state.run()
         self.queryTimer.start(self.queryInterval)
 
     @QtCore.Slot()

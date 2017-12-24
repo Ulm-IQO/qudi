@@ -83,7 +83,7 @@ class HardwarePull(QtCore.QObject):
 
         if (
             (not self._parentclass._counter_logic.get_saving_state()) or
-            self._parentclass._counter_logic.getState() == 'idle'
+            self._parentclass._counter_logic.module_state() == 'idle'
         ):
 
             self._parentclass.stop_scanning()
@@ -210,7 +210,7 @@ class WavemeterLoggerLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        if self.getState() != 'idle' and self.getState() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_scanning()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
@@ -284,9 +284,9 @@ class WavemeterLoggerLogic(GenericLogic):
             @param bool resume: whether to resume measurement
         """
 
-        self.run()
+        self.module_state.run()
 
-        if self._counter_logic.getState() == 'idle':
+        if self._counter_logic.module_state() == 'idle':
             self._counter_logic.startCount()
 
         if self._counter_logic.get_saving_state():
@@ -323,12 +323,12 @@ class WavemeterLoggerLogic(GenericLogic):
         """ Set a flag to request stopping counting.
         """
 
-        if not self.getState() == 'idle':
+        if not self.module_state() == 'idle':
             # self._wavemeter_device.stop_acqusition()
             # stop the measurement thread
             self.sig_handle_timer.emit(False)
             # set status to idle again
-            self.stop()
+            self.module_state.stop()
 
         if self._counter_logic.get_saving_state():
             self._counter_logic.save_data(to_file=False)
@@ -395,7 +395,7 @@ class WavemeterLoggerLogic(GenericLogic):
         # Wait and repeat if measurement is ongoing
         time.sleep(self._logic_update_timing * 1e-3)
 
-        if self.getState() == 'running':
+        if self.module_state() == 'running':
             self.sig_update_histogram_next.emit(False)
 
     def _update_histogram(self, complete_histogram):

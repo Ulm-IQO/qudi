@@ -189,7 +189,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
                     ''.format(myrange))
             return -1
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
@@ -231,7 +231,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
         self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
 
-        #if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
+        #if self.module_state() == 'locked' or self._scanner_counter_daq_task != None:
         #    self.log.error('Another scanner is already running, close this one first.')
         #    return -1
 
@@ -251,7 +251,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
@@ -320,7 +320,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
 #        self.log.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
 
-        #self.unlock()
+        #self.module_state.unlock()
 
         # update the scanner position instance variable
         self._current_position = list(line_path[:,-1])
