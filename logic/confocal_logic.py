@@ -564,7 +564,7 @@ class ConfocalLogic(GenericLogic):
 
         self._scanning_device.module_state.lock()
         if self.initialize_image() < 0:
-            self._scanning_device.module_state.unlock(lock()
+            self._scanning_device.module_state.unlock()
             self.module_state.unlock()
             return -1
 
