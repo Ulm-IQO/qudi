@@ -25,7 +25,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 import os
 
 
-def get_main_dir(self):
+def get_main_dir():
     """ Returns the absolut path to the directory of the main software.
 
          @return string: path to the main tree of the software
@@ -35,7 +35,7 @@ def get_main_dir(self):
         os.path.join(os.path.dirname(__file__), '../..'))
 
 
-def get_home_dir(self):
+def get_home_dir():
     """ Returns the path to the home directory, which should definitely
         exist.
         @return string: absolute path to the home directory
