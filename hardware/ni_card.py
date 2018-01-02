@@ -2822,7 +2822,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # *1.1 to have an extra (10%) short waiting time.
         timeout = (samples * 1.1) / self._analogue_clock_frequency
         # Count data will be written here
-        _analogue_count_data = np.zeros((samples * len(analogue_channels)), dtype=np.float64)
+        _analogue_count_data = np.zeros(samples * len(analogue_channels), dtype=np.float64)
         # Number of samples which were read will be stored here
         n_read_samples = daq.int32()
         task = self._analogue_input_daq_tasks[analogue_channels[0]]
@@ -2901,6 +2901,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel in self._analogue_input_daq_tasks.keys():
             # retrieve task from dictionary and erase from dictionary
             task = self._analogue_input_daq_tasks.pop(analogue_channel)
+            self._analogue_input_samples.pop(analogue_channel, None)
 
             # removes channels from task list that used the same task
             key_list = []
@@ -2909,6 +2910,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     key_list.append(task_key)
             for item in key_list:
                 self._analogue_input_daq_tasks.pop(item)
+                self._analogue_input_samples.pop(item)
 
             try:
                 # stop the counter task
@@ -2934,7 +2936,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int: error code (0:OK, -1:error)
         """
         self._analog_clock_status = False
-        if self._analogue_input_samples.any() > 1:
+        if True:
+            #Todo: Fix this if
             return self.close_clock(scanner=True)
         else:
             # no clock was running as it is only started for samples>2

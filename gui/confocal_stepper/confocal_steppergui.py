@@ -91,7 +91,6 @@ class ConfocalStepperGui(GUIBase):
     sigClearData = QtCore.Signal()
     sigSaveMeasurement = QtCore.Signal(str, list, list)
 
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -111,7 +110,6 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic = self.get_connector('stepperlogic1')
         self._scanning_logic = self.get_connector('confocallogic1')
         self._save_logic = self.get_connector('savelogic')
-
 
         self.initMainUI()
 
@@ -226,7 +224,7 @@ class ConfocalStepperGui(GUIBase):
 
     def init_plot_step_UI(self):
         # Get the image for the display from the logic.
-        self.step_image = pg.ImageItem(image = self._stepper_logic.image[:, :, 2], axisOrder='row-major')
+        self.step_image = pg.ImageItem(image=self._stepper_logic.image[:, :, 2], axisOrder='row-major')
         # Todo: Add option to see data from other counter later
 
         # set up scan line plot
@@ -565,22 +563,22 @@ class ConfocalStepperGui(GUIBase):
         self._mw.y_steps_InputWidget.setEnabled(True)
         self._mw.z_steps_InputWidget.setEnabled(True)
 
-        #self._mw.action_zoom.setEnabled(True)
+        # self._mw.action_zoom.setEnabled(True)
 
-        #self.set_history_actions(True)
+        # self.set_history_actions(True)
 
         # Enable the resume scan buttons if scans were unfinished
         # TODO: this needs to be implemented properly.
         # For now they will just be enabled by default
 
-        #if self._scanning_logic._zscan_continuable is True:
+        # if self._scanning_logic._zscan_continuable is True:
         #    self._mw.action_scan_depth_resume.setEnabled(True)
-        #else:
+        # else:
         #    self._mw.action_scan_depth_resume.setEnabled(False)
 
-        #if self._scanning_logic._xyscan_continuable is True:
+        # if self._scanning_logic._xyscan_continuable is True:
         #    self._mw.action_scan_xy_resume.setEnabled(True)
-        #else:
+        # else:
         #    self._mw.action_scan_xy_resume.setEnabled(False)
 
     def set_history_actions(self, enable):

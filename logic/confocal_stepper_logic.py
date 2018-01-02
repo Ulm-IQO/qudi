@@ -746,7 +746,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # check if scan positions should be saved and if it is possible
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
-                self._second_scan_axis].closed_loop:
+                    self._second_scan_axis].closed_loop:
                 # initialise arrays
                 self._scan_positions = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 self._scan_positions_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
@@ -985,6 +985,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # self._stepping_device.unlock()
                 self.update_image_data_line(self._step_counter - 1)
                 self.signal_image_updated.emit()
+                self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+                self._position_feedback_device.close_analogue_voltage_reader_clock()
 
                 # add new history entry
                 # new_history = ConfocalHistoryEntry(self)
@@ -1026,21 +1028,24 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.stepping_raw_data[self._step_counter] = new_counts[0]
         self.stepping_raw_data_back[self._step_counter] = np.flipud(new_counts[1])
         if self.map_scan_position:
-            self._scan_positions[self._step_counter] = new_counts[2]
-            self._scan_positions_back[self._step_counter] = np.flipud(new_counts[3])
+            self._scan_positions[self._step_counter, :, 0] = new_counts[2][:self._steps_scan_first_line]
+            self._scan_positions[self._step_counter, :, 1] = new_counts[2][self._steps_scan_first_line:]
+            self._scan_positions_back[self._step_counter, :, 0] = np.flipud(
+                new_counts[3][ :self._steps_scan_first_line])
+            self._scan_positions_back[self._step_counter, :, 1] = np.flipud(new_counts[3][ self._steps_scan_first_line:])
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
-        self._step_counter += 1
+
 
         # check starting position of fast scan direction
-        if self.axis_class[self._first_scan_axis].closed_loop and self._step_counter > 0:
+        if self.axis_class[self._first_scan_axis].closed_loop:
             if self.map_scan_position:
                 # Todo: how is the position data saved for the backward direction?
-                new_position = self._scan_positions_back[self._step_counter, -1, 0]
+                new_position = [self._scan_positions_back[self._step_counter, -1, 0]]
             else:
                 new_position = self.get_position([self._first_scan_axis])
             if abs(self._start_position[0] - new_position[0]) > self.axis_class[
-                self._first_scan_axis].feedback_precision_position:
+                    self._first_scan_axis].feedback_precision_position:
                 steps_res = int(
                     self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
                 # steps would be over correcting
@@ -1058,6 +1063,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                             self._steps_scan_first_line, self._first_scan_axis)
                         self._position_feedback_device.add_analogue_reader_channel_to_measurement(
                             self._first_scan_axis, [self._second_scan_axis])
+        self._step_counter += 1
         if self._step_counter > self._steps_scan_second_line - 1:
             self.stopRequested = True
             self.log.info("Stepping scan at end position")
