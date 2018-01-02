@@ -284,7 +284,7 @@ def generate_pulsedodmr(self, name='pulsedODMR', rabi_period=1.0e-6, mw_freq_sta
 def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                     tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
                     laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
-                    sync_trig_channel='', gate_count_channel=''):
+                    sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -336,12 +336,13 @@ def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, m
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
-    element_list.append(pihalf_element)
-    element_list.append(tau_element)
-    element_list.append(pi3half_element)
-    element_list.append(laser_element)
-    element_list.append(delay_element)
-    element_list.append(waiting_element)
+    if alternating:
+        element_list.append(pihalf_element)
+        element_list.append(tau_element)
+        element_list.append(pi3half_element)
+        element_list.append(laser_element)
+        element_list.append(delay_element)
+        element_list.append(waiting_element)
 
     # Create PulseBlock object
     ramsey_block = PulseBlock(name, element_list)
@@ -361,7 +362,7 @@ def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, m
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = alternating
     block_ensemble.laser_ignore_list = []
     block_ensemble.controlled_vals_array = tau_array
     # save ensemble
@@ -372,7 +373,7 @@ def generate_ramsey(self, name='ramsey', rabi_period=1.0e-6, mw_freq=2870.0e6, m
 def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                       tau_start=1.0e-6, tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1',
                       laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6,
-                      sync_trig_channel='', gate_count_channel=''):
+                      sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -428,14 +429,15 @@ def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0
     element_list.append(delay_element)
     element_list.append(waiting_element)
 
-    element_list.append(pihalf_element)
-    element_list.append(tau_element)
-    element_list.append(pi_element)
-    element_list.append(tau_element)
-    element_list.append(pi3half_element)
-    element_list.append(laser_element)
-    element_list.append(delay_element)
-    element_list.append(waiting_element)
+    if alternating:
+        element_list.append(pihalf_element)
+        element_list.append(tau_element)
+        element_list.append(pi_element)
+        element_list.append(tau_element)
+        element_list.append(pi3half_element)
+        element_list.append(laser_element)
+        element_list.append(delay_element)
+        element_list.append(waiting_element)
 
     # Create PulseBlock object
     hahn_block = PulseBlock(name, element_list)
@@ -455,7 +457,7 @@ def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = alternating
     block_ensemble.laser_ignore_list = []
     block_ensemble.controlled_vals_array = tau_array
     # save ensemble
@@ -727,8 +729,7 @@ def generate_HHpol(self, name='hh_pol', rabi_period=1.0e-6, spinlock_length=20.0
 def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                      start_tau=0.5e-6, incr_tau=0.01e-6, num_of_points=50, xy8_order=4,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
-                     wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='',
-                     alternating=True):
+                     wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -860,7 +861,7 @@ def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = alternating
     block_ensemble.laser_ignore_list = []
     block_ensemble.controlled_vals_array = tau_array
     # save ensemble
@@ -871,7 +872,7 @@ def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
 def generate_xy8_freq(self, name='xy8_freq', rabi_period=1.0e-6, mw_freq=2870.0e6, mw_amp=0.1,
                       start_freq=0.1e6, incr_freq=0.01e6, num_of_points=50, xy8_order=4,
                       mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
-                      wait_time=1.0e-6, sync_trig_channel='', gate_count_channel=''):
+                      wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='', alternating=True):
     """
 
     """
@@ -953,37 +954,38 @@ def generate_xy8_freq(self, name='xy8_freq', rabi_period=1.0e-6, mw_freq=2870.0e
             xy8_elem_list.append(pix_element)
             if n != xy8_order-1:
                 xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(tauhalf_element)
-        xy8_elem_list.append(pihalf_element)
-        xy8_elem_list.append(laser_element)
-        xy8_elem_list.append(delay_element)
-        xy8_elem_list.append(waiting_element)
+        if alternating:
+            xy8_elem_list.append(tauhalf_element)
+            xy8_elem_list.append(pihalf_element)
+            xy8_elem_list.append(laser_element)
+            xy8_elem_list.append(delay_element)
+            xy8_elem_list.append(waiting_element)
 
-        xy8_elem_list.append(pihalf_element)
-        xy8_elem_list.append(tauhalf_element)
-        for n in range(xy8_order):
-            xy8_elem_list.append(pix_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(piy_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(pix_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(piy_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(piy_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(pix_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(piy_element)
-            xy8_elem_list.append(tau_element)
-            xy8_elem_list.append(pix_element)
-            if n != xy8_order - 1:
+            xy8_elem_list.append(pihalf_element)
+            xy8_elem_list.append(tauhalf_element)
+            for n in range(xy8_order):
+                xy8_elem_list.append(pix_element)
                 xy8_elem_list.append(tau_element)
-        xy8_elem_list.append(tauhalf_element)
-        xy8_elem_list.append(pi3half_element)
-        xy8_elem_list.append(laser_element)
-        xy8_elem_list.append(delay_element)
-        xy8_elem_list.append(waiting_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(piy_element)
+                xy8_elem_list.append(tau_element)
+                xy8_elem_list.append(pix_element)
+                if n != xy8_order - 1:
+                    xy8_elem_list.append(tau_element)
+            xy8_elem_list.append(tauhalf_element)
+            xy8_elem_list.append(pi3half_element)
+            xy8_elem_list.append(laser_element)
+            xy8_elem_list.append(delay_element)
+            xy8_elem_list.append(waiting_element)
 
     # create XY8-N block object
     xy8_block = PulseBlock(name, xy8_elem_list)
@@ -1001,7 +1003,7 @@ def generate_xy8_freq(self, name='xy8_freq', rabi_period=1.0e-6, mw_freq=2870.0e
     block_ensemble.activation_config = self.activation_config
     block_ensemble.amplitude_dict = self.amplitude_dict
     block_ensemble.laser_channel = self.laser_channel
-    block_ensemble.alternating = True
+    block_ensemble.alternating = alternating
     block_ensemble.laser_ignore_list = []
     block_ensemble.controlled_vals_array = freq_array
     # save ensemble
