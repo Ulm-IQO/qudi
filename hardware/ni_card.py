@@ -2089,9 +2089,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             retval = -1
         return retval
 
-
     # ======================== Digital channel control ==========================
-
 
     def digital_channel_switch(self, channel_name, mode=True):
         """
@@ -2120,13 +2118,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmxCreateDOChan(self.digital_out_task, channel_name, "", daq.DAQmx_Val_ChanForAllLines)
             daq.DAQmxStartTask(self.digital_out_task)
             daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
-                                        self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
-                                        np.array(self.digital_data), self.digital_read, None);
+                                     self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
+                                     np.array(self.digital_data), self.digital_read, None);
 
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)
             return 0
-
 
     # ================ FiniteCounterInterface Commands =======================
 
@@ -2799,6 +2796,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return np.array([-1.]), 0
         else:
             samples = read_samples
+        # Todo: here we need a better option to test if the clock is running for this specific task.
+        # As the bool here is not task specific
         if not self._analog_clock_status and samples > 1:
             self.log.error("Analog input clock is not running. Start clock if you wnt to acquire multiple samples")
             error = 0
@@ -2937,13 +2936,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         self._analog_clock_status = False
         if True:
-            #Todo: Fix this if
+            # Todo: Fix this if
             return self.close_clock(scanner=True)
         else:
             # no clock was running as it is only started for samples>2
             return 0
-
-            # ================ End AnalogReaderInterface Commands  =======================
 
     def get_ai_resolution(self):
         """"Returns the resolution of the analog input of the NIDAQ in bits
@@ -2964,13 +2961,19 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel in self._analogue_input_daq_tasks:
             if 0 > self.start_finite_counter():
                 return -1
+            # As self.start_finite_counter starts the clock, which is the same for analog input and finite counter
+            # the analogue clock was started. Therefore the clock status can be changed
+            self._analog_clock_status = True
             try:
                 daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
             except:
                 self.log.exception('Error while starting up analogue voltage reader and counter.')
                 return -1
+            self._analog_clock_status = True
             return 0
         self.log.error(
             'Cannot start analogue voltage reader since it is not configured!\n'
             'Run the or set_up_analogue_voltage_reader_scanner routine first.')
         return -1
+
+    # =============================== End AnalogReaderInterface Commands  =======================

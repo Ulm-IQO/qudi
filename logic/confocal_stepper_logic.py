@@ -402,7 +402,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # Step values definitions
 
-
         # Sets connections between signals and functions
         self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
@@ -476,7 +475,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # the NIDAQ has a resolution of res and only use 95% of the range giving the following voltage resolution.
         # If any other device might be used one day this needs to be passed as a variable
         precision_voltage = ((voltage_range[1] - voltage_range[0]) / (
-            2 ** self._position_feedback_device.get_ai_resolution())) * 1.05
+                2 ** self._position_feedback_device.get_ai_resolution())) * 1.05
         precision_voltage = float(truncate(precision_voltage, 6))
         # Todo: the position voltage should also be calculated depending on the readout and the value given by the
         # stepper. This is only a short time solution
@@ -746,7 +745,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # check if scan positions should be saved and if it is possible
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
-                    self._second_scan_axis].closed_loop:
+                self._second_scan_axis].closed_loop:
                 # initialise arrays
                 self._scan_positions = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 self._scan_positions_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
@@ -971,7 +970,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: Think about the question whether we actually step the same amount of steps as we
         # count or is we might be off by one, as we are not counting when moving up on in "y"
 
-
         # If the stepping measurement is not running do nothing
         if self.getState() != 'locked':
             return
@@ -980,14 +978,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.stopRequested:
             with self.threadlock:
                 self.kill_counter()
+                # it is not necessary to stop the analogue input reader. It is closed after each line scan
                 self.stopRequested = False
                 self.unlock()
                 # self._stepping_device.unlock()
                 self.update_image_data_line(self._step_counter - 1)
                 self.signal_image_updated.emit()
-                self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
-                self._position_feedback_device.close_analogue_voltage_reader_clock()
-
+                self._position_feedback_device._analog_clock_status = False
                 # add new history entry
                 # new_history = ConfocalHistoryEntry(self)
                 # new_history.snapshot(self)
@@ -1031,11 +1028,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._scan_positions[self._step_counter, :, 0] = new_counts[2][:self._steps_scan_first_line]
             self._scan_positions[self._step_counter, :, 1] = new_counts[2][self._steps_scan_first_line:]
             self._scan_positions_back[self._step_counter, :, 0] = np.flipud(
-                new_counts[3][ :self._steps_scan_first_line])
-            self._scan_positions_back[self._step_counter, :, 1] = np.flipud(new_counts[3][ self._steps_scan_first_line:])
+                new_counts[3][:self._steps_scan_first_line])
+            self._scan_positions_back[self._step_counter, :, 1] = np.flipud(new_counts[3][self._steps_scan_first_line:])
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
-
 
         # check starting position of fast scan direction
         if self.axis_class[self._first_scan_axis].closed_loop:
@@ -1045,7 +1041,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             else:
                 new_position = self.get_position([self._first_scan_axis])
             if abs(self._start_position[0] - new_position[0]) > self.axis_class[
-                    self._first_scan_axis].feedback_precision_position:
+                self._first_scan_axis].feedback_precision_position:
                 steps_res = int(
                     self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
                 # steps would be over correcting
@@ -1058,11 +1054,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         self.stopRequested = True
                         self.log.warning('Optimisation of position failed. Step Scan stopped.')
                         # restart position readout for scanning
-                    if self.map_scan_position:
+                        # the second if ensures that the analogue scanner is  s not started when
+                        # the stepping scan is already finished
+                    if self.map_scan_position and self._step_counter < self._steps_scan_second_line - 1:
                         self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
                             self._steps_scan_first_line, self._first_scan_axis)
                         self._position_feedback_device.add_analogue_reader_channel_to_measurement(
                             self._first_scan_axis, [self._second_scan_axis])
+                elif self._step_counter == self._steps_scan_second_line - 1 and self.map_scan_position:
+                    self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+
         self._step_counter += 1
         if self._step_counter > self._steps_scan_second_line - 1:
             self.stopRequested = True
@@ -1214,8 +1215,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("main axis %s is not an axis %s of the stepper", main_axis, self.axis)
             return [-1], []
 
-            ##################################### Acquire Data ###########################################
-
+    ##################################### Acquire Data ###########################################
     def kill_counter(self):
         """Closing the counting device.
 
@@ -1249,7 +1249,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return self._step_counter
 
     ##################################### Handle Data ########################################
-
     def initialize_image(self):
         """Initialization of the image.
 
@@ -1399,6 +1398,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
         data_back = OrderedDict()
+        # Todo: it still saves the voltage and not the actual position
         if self.map_scan_position:
             data['x position (mm)'] = self.image[:, :, 0].flatten()
             data['y position (mm)'] = self.image[:, :, 1].flatten()
@@ -1409,7 +1409,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             data['y step'] = self.image[:, :, 1].flatten()
             data_back['x step'] = self.image_back[:, :, 0].flatten()
             data_back['y step'] = self.image_back[:, :, 1].flatten()
-
 
             # Todo: for this both counters must actually be implemented
         #        for n, ch in enumerate(self.get_scanner_count_channels()):
