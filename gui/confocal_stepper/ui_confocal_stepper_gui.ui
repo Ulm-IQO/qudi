@@ -2590,7 +2590,21 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>x_steps_InputWidget</tabstop>
+  <tabstop>x_amplitude</tabstop>
+  <tabstop>x_frequency_spinBox</tabstop>  
+  <tabstop>y_amplitude</tabstop>
+  <tabstop>y_frequency_spinBox</tabstop>
+  <tabstop>z_amplitude</tabstop>
+  <tabstop>z_frequency_spinBox</tabstop>
+  <tabstop>x_dcin_checkBox</tabstop>
+  <tabstop>clean_x_axis_pushButton</tabstop>
+  <tabstop>show_image_x_checkBox</tabstop>  
+  <tabstop>y_dcin_checkBox</tabstop>
+  <tabstop>clean_y_axis_pushButton</tabstop>
+  <tabstop>show_image_y_checkBox</tabstop>  
+  <tabstop>z_dcin_checkBox</tabstop>
+  <tabstop>clean_z_axis_pushButton</tabstop>
+  <tabstop>show_image_z_checkBox</tabstop>  
   <tabstop>z_steps_InputWidget</tabstop>
   <tabstop>x_piezo_min_InputWidget</tabstop>
   <tabstop>x_piezo_max_InputWidget</tabstop>
@@ -2601,6 +2615,8 @@
   <tabstop>x_piezo_InputWidget</tabstop>
   <tabstop>y_piezo_InputWidget</tabstop>
   <tabstop>z_piezo_InputWidget</tabstop>
+  <tabstop>step_direction_comboBox</tabstop>
+  <tabstop>inverted_direction_checkBox</tabstop>  
   <tabstop>tilt_set_01_pushButton</tabstop>
   <tabstop>tilt_set_02_pushButton</tabstop>
   <tabstop>tilt_set_03_pushButton</tabstop>

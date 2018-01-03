@@ -1329,6 +1329,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
 
+        # convert voltage to position for saving the data
+        if self.map_scan_position:
+            full_image = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+            full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+            for i in range(self._steps_scan_first_line):
+                for j in range(self._steps_scan_second_line):
+                    full_image[j, i, 0] = self.convert_voltage_to_position("x", self.image[j, i, 0])
+                    full_image[j, i, 1] = self.convert_voltage_to_position("y", self.image[j, i, 1])
+                    full_image_back[j, i, 0] = self.convert_voltage_to_position("y", self.image_back[j, i, 0])
+                    full_image_back[j, i, 1] = self.convert_voltage_to_position("y", self.image_back[j, i, 1])
+            for n, ch in enumerate(self.get_counter_count_channels()):
+                full_image[:, :, 2 + n] = self.image[:, :, 2 + n]
+                full_image_back[:, :, 2 + n] = self.image_back[:, :, 2 + n]
+        else:
+            full_image = None
+            full_image_back = None
+
         axis_list = []
         for axis_name in self.axis_class.keys():
             if self.axis_class[axis_name].closed_loop:
@@ -1347,8 +1364,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 parameters['Start position second axis'] = self._start_position[counter]
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data,
+                                     full_data=full_image,
                                      cbar_range=colorscale_range,
-                                     percentile_range=percentile_range)
+                                     percentile_range=percentile_range,
+                                     ch=n)
                 for n, ch in enumerate(self.get_counter_count_channels())}
 
         # Save the image data and figure
@@ -1361,7 +1380,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                        'of entries where the Signal is in counts/s:'.format(
                 self._first_scan_axis, self._second_scan_axis)] = self.stepping_raw_data
 
-            filelabel = 'confocal_xy_image_{0}'.format(ch.replace('/', ''))
+            filelabel = 'confocal_image_{0}'.format(ch.replace('/', ''))
             self._save_logic.save_data(image_data,
                                        filepath=filepath,
                                        timestamp=timestamp,
@@ -1369,10 +1388,22 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                        filelabel=filelabel,
                                        fmt='%.6e',
                                        delimiter='\t',
-                                       plotfig=figs[ch])
+                                       plotfig=figs[ch][0])
+            if self.map_scan_position:  # also save image data for positions of steppers
+                self._save_logic.save_data(image_data,
+                                           filepath=filepath,
+                                           timestamp=timestamp,
+                                           parameters=parameters,
+                                           filelabel=filelabel + "_position",
+                                           fmt='%.6e',
+                                           delimiter='\t',
+                                           plotfig=figs[ch][1])
+
         figs = {ch: self.draw_figure(data=self.stepping_raw_data_back,
+                                     full_data=full_image_back,
                                      cbar_range=colorscale_range,
-                                     percentile_range=percentile_range)
+                                     percentile_range=percentile_range,
+                                     ch=n)
                 for n, ch in enumerate(self.get_counter_count_channels())}
 
         # Save the image data and figure
@@ -1393,28 +1424,34 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                        filelabel=filelabel,
                                        fmt='%.6e',
                                        delimiter='\t',
-                                       plotfig=figs[ch])
+                                       plotfig=figs[ch][0])
+            if self.map_scan_position:  # also plot image data for positions of steppers
+                self._save_logic.save_data(image_data,
+                                           filepath=filepath,
+                                           timestamp=timestamp,
+                                           parameters=parameters,
+                                           filelabel=filelabel + "_position",
+                                           fmt='%.6e',
+                                           delimiter='\t',
+                                           plotfig=figs[ch][1])
 
             # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
         data_back = OrderedDict()
-        # Todo: it still saves the voltage and not the actual position
         if self.map_scan_position:
-            data['x position (mm)'] = self.image[:, :, 0].flatten()
-            data['y position (mm)'] = self.image[:, :, 1].flatten()
-            data_back['x position (mm)'] = self.image_back[:, :, 0].flatten()
-            data_back['y position (mm)'] = self.image_back[:, :, 1].flatten()
+            data['x position (mm)'] = full_image[:, :, 0].flatten()
+            data['y position (mm)'] = full_image[:, :, 1].flatten()
+            data_back['x position (mm)'] = full_image_back[:, :, 0].flatten()
+            data_back['y position (mm)'] = full_image_back[:, :, 1].flatten()
         else:
             data['x step'] = self.image[:, :, 0].flatten()
             data['y step'] = self.image[:, :, 1].flatten()
             data_back['x step'] = self.image_back[:, :, 0].flatten()
             data_back['y step'] = self.image_back[:, :, 1].flatten()
 
-            # Todo: for this both counters must actually be implemented
-        #        for n, ch in enumerate(self.get_scanner_count_channels()):
-        #            data['count rate {0} (Hz)'.format(ch)] = self.xy_image[:, :, 3 + n].flatten()
-        data['count rate (Hz)'] = self.image[:, :, 2].flatten()
-        data_back['count rate (Hz)'] = self.image_back[:, :, 2].flatten()
+        for n, ch in enumerate(self.get_counter_count_channels()):
+            data['count rate {0} (Hz)'.format(ch)] = self.image[:, :, 2 + n].flatten()
+            data_back['count rate {0} (Hz)'.format(ch)] = self.image_back[:, :, 2 + n].flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_stepper_data'
@@ -1440,11 +1477,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo Ask if it is possible to write only one save with options for which lines were scanned
         return
 
-    def draw_figure(self, data, scan_axis=None, cbar_range=None,
-                    percentile_range=None):  # crosshair_pos=None):
+    def draw_figure(self, data, full_data=None, scan_axis=None, cbar_range=None,
+                    percentile_range=None, ch=0):  # crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image for saving
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
+
+        @param: array full_data: The NxMx3 numpy ndarray
+                                containing the full image information with counts per position
 
         @param: list image_extent: The scan range in the form [hor_min, hor_max, ver_min, ver_max]
 
@@ -1457,6 +1497,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @param: list crosshair_pos: (optional) crosshair position as [hor, vert] in the chosen
                                     image axes.
+
+        @param: int ch: The channel number that is to be plotted. Default 0
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
@@ -1471,7 +1513,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Scale color values using SI prefix
         prefix = ['', 'k', 'M', 'G']
         prefix_count = 0
-        image_data = data
         draw_cb_range = np.array(cbar_range)
 
         while draw_cb_range[1] > 1000:
@@ -1500,11 +1541,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                             origin="lower",
                             vmin=draw_cb_range[0],
                             vmax=draw_cb_range[1],
-                            interpolation='none',
+                            interpolation='none'
                             )
 
         ax.set_aspect(1)
-        ax.set_xlabel(self._first_scan_axis + ' steps (')
+        ax.set_xlabel(self._first_scan_axis + ' steps ')
         ax.set_ylabel(self._second_scan_axis + ' steps ')
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
@@ -1522,8 +1563,93 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # remove ticks from colorbar for cleaner image
         cbar.ax.tick_params(which=u'both', length=0)
+
+        # If we have percentile information, draw that to the figure
+        if percentile_range is not None:
+            cbar.ax.annotate(str(percentile_range[0]),
+                             xy=(-0.3, 0.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate(str(percentile_range[1]),
+                             xy=(-0.3, 1.0),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+            cbar.ax.annotate('(percentile)',
+                             xy=(-0.3, 0.5),
+                             xycoords='axes fraction',
+                             horizontalalignment='right',
+                             verticalalignment='center',
+                             rotation=90
+                             )
+
+        # redo for the full image information if is exists
+        if full_data is not None:
+            # Adjust data format
+            xdata = full_data[:, :, 0]
+            ydata = full_data[:, :, 1]
+            zdata = full_data[:, :, 2+ch]
+            # Create figure
+            fig2, ax2 = plt.subplots()
+
+            # Create image plot
+            cfimage2 = ax2.pcolor(xdata, ydata, zdata,
+                                  cmap=plt.get_cmap('inferno')  # reference the right place in qd
+                                  )
+
+            ax2.set_aspect(1)
+            ax2.set_xlabel(self._first_scan_axis + ' steps ')
+            ax2.set_ylabel(self._second_scan_axis + ' steps ')
+            ax2.spines['bottom'].set_position(('outward', 10))
+            ax2.spines['left'].set_position(('outward', 10))
+            ax2.spines['top'].set_visible(False)
+            ax2.spines['right'].set_visible(False)
+            ax2.get_xaxis().tick_bottom()
+            ax2.get_yaxis().tick_left()
+
+            # Adjust subplots to make room for colorbar
+            fig2.subplots_adjust(right=0.8)
+
+            # Draw the colorbar
+            cbar2 = plt.colorbar(cfimage2, shrink=0.8)  # , fraction=0.046, pad=0.08, shrink=0.75)
+            cbar2.set_label('Fluorescence (' + c_prefix + 'c/s)')
+
+            # remove ticks from colorbar for cleaner image
+            cbar2.ax.tick_params(which=u'both', length=0)
+            cbar.ax.tick_params(which=u'both', length=0)
+
+            # If we have percentile information, draw that to the figure
+            if percentile_range is not None:
+                cbar2.ax.annotate(str(percentile_range[0]),
+                                 xy=(-0.3, 0.0),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90
+                                 )
+                cbar2.ax.annotate(str(percentile_range[1]),
+                                 xy=(-0.3, 1.0),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90
+                                 )
+                cbar2.ax.annotate('(percentile)',
+                                 xy=(-0.3, 0.5),
+                                 xycoords='axes fraction',
+                                 horizontalalignment='right',
+                                 verticalalignment='center',
+                                 rotation=90
+                                 )
+            return fig, fig2
+
         self.signal_draw_figure_completed.emit()
-        return fig
+        return fig, None
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
 
     #################################### Tilt correction ########################################
