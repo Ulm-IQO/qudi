@@ -147,7 +147,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _scanner_clock_channel = ConfigOption('scanner_clock_channel')
     _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')
     _finite_clock_frequency = ConfigOption('finite_clock_frequency', 100, missing='warn')
-    _analogue_clock_frequency = ConfigOption('analogue_input_clock_frequency', 100, missing='warn')
+    _analogue_input_clock_frequency = ConfigOption('analogue_input_clock_frequency', 100, missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
@@ -2508,7 +2508,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 my_clock_channel + 'InternalOutput',
                 # The sampling rate in samples per second per channel. Set this value to the
                 # maximum expected rate of that clock.
-                self._analogue_clock_frequency * 2,
+                self._analogue_input_clock_frequency * 2,
                 # the edge off the clock on which to acquire the sample
                 daq.DAQmx_Val_Rising,
                 # Sample Mode: set the task to read a specified number of samples
@@ -2656,7 +2656,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 my_clock_channel + 'InternalOutput',
                 # The sampling rate in samples per second per channel. Set this value to the
                 # maximum expected rate of that clock.
-                self._analogue_clock_frequency * 2,
+                self._analogue_input_clock_frequency * 2,
                 # the edge off the clock on which to acquire the sample
                 daq.DAQmx_Val_Rising,
                 # Sample Mode: set the task to read a specified number of samples
@@ -2714,9 +2714,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # task, this might not be a problem for the programmer, so he can call the function
         # anyway but set set_up to False and the function does nothing.
         if clock_frequency is None:
-            clock_frequency = self._analogue_clock_frequency
+            clock_frequency = self._analogue_input_clock_frequency
         else:
-            self._analogue_clock_frequency = clock_frequency
+            self._analogue_input_clock_frequency = clock_frequency
         if not set_up:
             # this exists, so that one can "set up" the clock that is used in parallel in the
             # code but not in reality and serves readability in the logic code
@@ -2779,7 +2779,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @param int read_samples: The amount of samples to be read from the buffer for a continuous mode acquisition. Not
                                         needed for finite amount of samples
 
-        @return np.array, int:The photon counts per second (array) and the amount of samples read (int). For
+        @return np.array, int: The input voltage (array) and the amount of samples read (int). For
                                 error array with length 2 and entry -1, 0
         """
         # check variable type
@@ -2819,7 +2819,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if error: return np.array([-1.]), 0
 
         # *1.1 to have an extra (10%) short waiting time.
-        timeout = (samples * 1.1) / self._analogue_clock_frequency
+        timeout = (samples * 1.1) / self._analogue_input_clock_frequency
         # Count data will be written here
         _analogue_count_data = np.zeros(samples * len(analogue_channels), dtype=np.float64)
         # Number of samples which were read will be stored here
