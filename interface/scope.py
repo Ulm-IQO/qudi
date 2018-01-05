@@ -1,8 +1,5 @@
 """
 Missing extensions:
- - IviScopeWaveformMeasurement
- - IviScopeMinMaxWaveform
- - IviScopeProbeAttenuationAuto
  - IviScopeSampleMode
  - IviScopeTriggerModifier
 """
@@ -294,10 +291,81 @@ class ChannelInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
+    @abc.abstractmethod
+    def measurement(self):
+        """
+        Returns an instance of an object implementing the ChannelMeasurementInterface.
+        """
+        pass
+
 
 class MeasurementInterface(metaclass=InterfaceMetaclass):
     """
     IVI Methods for Measurement
+    """
+    @property
+    @abc.abstractmethod
+    def status(self):
+        """
+        Acquisition status indicates whether an acquisition is in progress,
+        complete, or if the status is unknown.
+
+        Acquisition status is not the same as instrument status, and does not
+        necessarily check for instrument errors. To make sure that the instrument
+        is checked for errors after getting the acquisition status, call the Error
+        Query method. (Note that the end user may want to call Error Query at the
+        end of a sequence of other calls which include getting the acquisition
+        status - it does not necessarily need to be called immediately.)
+
+        If the driver cannot determine whether the acquisition is complete or not,
+        it returns the Acquisition Status Unknown value.
+
+        Values:
+        * 'compete'
+        * 'in_progress'
+        * 'unknown'
+        """
+        pass
+
+    @abc.abstractmethod
+    def abort(self):
+        """
+        This function aborts an acquisition and returns the oscilloscope to the
+        Idle state. This function does not check the instrument status.
+
+        Typically, the end-user calls this function only in a sequence of calls to
+        other low-level driver functions. The sequence performs one operation. The
+        end-user uses the low-level functions to optimize one or more aspects of
+        interaction with the instrument. Call the Error Query function at the
+        conclusion of the sequence to check the instrument status.
+
+        If the instrument cannot abort an initiated acquisition, the driver shall
+        return the Function Not Supported error.
+        """
+        pass
+
+    @abc.abstractmethod
+    def initiate(self):
+        """
+        This function initiates a waveform acquisition. After calling this
+        function, the oscilloscope leaves the idle state and waits for a trigger.
+        The oscilloscope acquires a waveform for each channel the end-user has
+        enabled with the Configure Channel function.
+
+        This function does not check the instrument status. Typically, the
+        end-user calls this function only in a sequence of calls to other
+        low-level driver functions. The sequence performs one operation. The
+        end-user uses the low-level functions to optimize one or more aspects of
+        interaction with the instrument. Call the Error Query function at the
+        conclusion of the sequence to check the instrument status.
+        """
+        pass
+
+
+class ChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+    """
+    IVI Methods for channel[].measurement
     """
 
     @abc.abstractmethod
@@ -380,64 +448,6 @@ class MeasurementInterface(metaclass=InterfaceMetaclass):
         numpy.isnan(). Check an entire array with
 
         any(any(math.isnan(b) for b in a) for a in waveform)
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def status(self):
-        """
-        Acquisition status indicates whether an acquisition is in progress,
-        complete, or if the status is unknown.
-
-        Acquisition status is not the same as instrument status, and does not
-        necessarily check for instrument errors. To make sure that the instrument
-        is checked for errors after getting the acquisition status, call the Error
-        Query method. (Note that the end user may want to call Error Query at the
-        end of a sequence of other calls which include getting the acquisition
-        status - it does not necessarily need to be called immediately.)
-
-        If the driver cannot determine whether the acquisition is complete or not,
-        it returns the Acquisition Status Unknown value.
-
-        Values:
-        * 'compete'
-        * 'in_progress'
-        * 'unknown'
-        """
-        pass
-
-    @abc.abstractmethod
-    def abort(self):
-        """
-        This function aborts an acquisition and returns the oscilloscope to the
-        Idle state. This function does not check the instrument status.
-
-        Typically, the end-user calls this function only in a sequence of calls to
-        other low-level driver functions. The sequence performs one operation. The
-        end-user uses the low-level functions to optimize one or more aspects of
-        interaction with the instrument. Call the Error Query function at the
-        conclusion of the sequence to check the instrument status.
-
-        If the instrument cannot abort an initiated acquisition, the driver shall
-        return the Function Not Supported error.
-        """
-        pass
-
-    @abc.abstractmethod
-    def initiate(self):
-        """
-        This function initiates a waveform acquisition. After calling this
-        function, the oscilloscope leaves the idle state and waits for a trigger.
-        The oscilloscope acquires a waveform for each channel the end-user has
-        enabled with the Configure Channel function.
-
-        This function does not check the instrument status. Typically, the
-        end-user calls this function only in a sequence of calls to other
-        low-level driver functions. The sequence performs one operation. The
-        end-user uses the low-level functions to optimize one or more aspects of
-        interaction with the instrument. Call the Error Query function at the
-        conclusion of the sequence to check the instrument status.
         """
         pass
 
@@ -670,6 +680,10 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @trigger_event.setter
+    def trigger_event(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def line_number(self):
@@ -683,6 +697,12 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @line_number.setter
+    def line_number(self, value):
+        pass
+
+    @property
+    @abc.abstractmethod
     def polarity(self):
         """
         Specifies the polarity of the TV signal.
@@ -691,6 +711,10 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         * 'positive'
         * 'negative'
         """
+        pass
+
+    @polarity.setter
+    def polarity(self, value):
         pass
 
     @property
@@ -706,8 +730,12 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @signal_format.setter
+    def signal_format(self, value):
+        pass
+
     @abc.abstractmethod
-    def configure(self):
+    def configure(self, source, signal_format, event, polarity):
         """
         This function configures the oscilloscope for TV triggering. It configures
         the TV signal format, the event and the signal polarity.
@@ -716,6 +744,8 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         Trigger. Set the Trigger Type and Trigger Coupling before calling this
         function.
         """
+        pass
+
 
 class RuntTriggerInterface(metaclass=InterfaceMetaclass):
     """
@@ -731,6 +761,10 @@ class RuntTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @threshold_high.setter
+    def threshold_high(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def threshold_low(self):
@@ -738,6 +772,10 @@ class RuntTriggerInterface(metaclass=InterfaceMetaclass):
         Specifies the low threshold the oscilloscope uses for runt triggering.
         The units are volts.
         """
+        pass
+
+    @threshold_low.setter
+    def threshold_low(self, value):
         pass
 
     @property
@@ -753,8 +791,12 @@ class RuntTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @polarity.setter
+    def polarity(self, value):
+        pass
+
     @abc.abstractmethod
-    def configure(self):
+    def configure(self, source, threshold_low, threshold_high, polarity):
         """
         This function configures the runt trigger. A runt trigger occurs when the
         trigger signal crosses one of the runt thresholds twice without crossing
@@ -788,6 +830,10 @@ class GlitchTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @condition.setter
+    def condition(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def polarity(self):
@@ -801,6 +847,10 @@ class GlitchTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @polarity.setter
+    def polarity(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def width(self):
@@ -811,8 +861,12 @@ class GlitchTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @width.setter
+    def width(self, value):
+        pass
+
     @abc.abstractmethod
-    def configure(self):
+    def configure(self, source, level, width, polarity, condition):
         """
         This function configures the glitch trigger. A glitch trigger occurs when
         the trigger signal has a pulse with a width that is less than or greater
@@ -851,6 +905,10 @@ class WidthTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @condition.setter
+    def condition(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def threshold_high(self):
@@ -859,12 +917,20 @@ class WidthTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @threshold_high.setter
+    def threshold_high(self, value):
+        pass
+
     @property
     @abc.abstractmethod
     def threshold_low(self):
         """
         Specifies the low width threshold time. Units are seconds.
         """
+        pass
+
+    @threshold_low.setter
+    def threshold_low(self, value):
         pass
 
     @property
@@ -880,8 +946,12 @@ class WidthTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @polarity.setter
+    def polarity(self, value):
+        pass
+
     @abc.abstractmethod
-    def configure(self):
+    def configure(self, source, level, threshold_low, threshold_high, polarity, condition):
         """
         This function configures the width trigger. A width trigger occurs when
         the oscilloscope detects a positive or negative pulse with a width
@@ -921,8 +991,346 @@ class AcLineTriggerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @slope.setter
+    def slope(self, value):
+        pass
 
-class ContinuousAcquisitionTriggerInterface(metaclass=InterfaceMetaclass):
+
+class WaveformMeasurementReferenceLevelInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting waveform measurements
+
+    Implement as reference_level in main class.
+    """
+
+    @property
+    @abc.abstractmethod
+    def high(self):
+        """
+        Specifies the high reference the oscilloscope uses for waveform
+        measurements. The value is a percentage of the difference between the
+        Voltage High and Voltage Low.
+        """
+        pass
+
+    @high.setter
+    def high(self, value):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def middle(self):
+        """
+        Specifies the middle reference the oscilloscope uses for waveform
+        measurements. The value is a percentage of the difference between the
+        Voltage High and Voltage Low.
+        """
+        pass
+
+    @middle.setter
+    def middle(self, value):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def low(self):
+        """
+        Specifies the low reference the oscilloscope uses for waveform
+        measurements. The value is a percentage of the difference between the
+        Voltage High and Voltage Low.
+        """
+        pass
+
+    @low.setter
+    def low(self, value):
+        pass
+
+    @abc.abstractmethod
+    def configure(self, low, middle, high):
+        """
+        This function configures the reference levels for waveform measurements.
+        Call this function before calling the Read Waveform Measurement or Fetch
+        Waveform Measurement to take waveform measurements.
+        """
+        pass
+
+
+class WaveformMeasurementChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting waveform measurements
+
+    Implement as mixin for ChannelMeasurement class.
+    """
+
+    @abc.abstractmethod
+    def fetch_waveform_measurement(self, measurement_function):
+        """
+        This function fetches a specified waveform measurement from a specific
+        channel from a previously initiated waveform acquisition. If the channel
+        is not enabled for the acquisition, this function returns the Channel Not
+        Enabled error.
+
+        This function obtains a waveform measurement and returns the measurement
+        value. The end-user specifies a particular measurement type, such as rise
+        time, frequency, and voltage peak-to-peak. The waveform on which the
+        oscilloscope calculates the waveform measurement is from an acquisition
+        that was previously initiated.
+
+        Use the Initiate Acquisition function to start an acquisition on the
+        channels that were enabled with the Configure Channel function. The
+        oscilloscope acquires waveforms for the enabled channels concurrently. Use
+        the Acquisition Status function to determine when the acquisition is
+        complete. Call this function separately for each waveform measurement on a
+        specific channel.
+
+        The end-user can call the Read Waveform Measurement function instead of
+        the Initiate Acquisition function. The Read Waveform Measurement function
+        starts an acquisition on all enabled channels. It then waits for the
+        acquisition to complete, obtains a waveform measurement on the specified
+        channel, and returns the measurement value. Call this function separately
+        to obtain any other waveform measurements on a specific channel.
+
+        Configure the appropriate reference levels before calling this function to
+        take a rise time, fall time, width negative, width positive, duty cycle
+        negative, or duty cycle positive measurement.
+
+        The end-user can configure the low, mid, and high references either by
+        calling the Configure Reference Levels function or by setting the
+        following attributes.
+
+        * Measurement High Reference
+        * Measurement Low Reference
+        * Measurement Mid Reference
+
+        This function does not check the instrument status. Typically, the
+        end-user calls this function only in a sequence of calls to other
+        low-level driver functions. The sequence performs one operation. The
+        end-user uses the low-level functions to optimize one or more aspects of
+        interaction with the instrument. Call the Error Query function at the
+        conclusion of the sequence to check the instrument status.
+
+        Values for measurement_function:
+        * 'rise_time'
+        * 'fall_time'
+        * 'frequency'
+        * 'period'
+        * 'voltage_rms'
+        * 'voltage_peak_to_peak'
+        * 'voltage_max'
+        * 'voltage_min'
+        * 'voltage_high'
+        * 'voltage_low'
+        * 'voltage_average'
+        * 'width_negative'
+        * 'width_positive'
+        * 'duty_cycle_negative'
+        * 'duty_cycle_positive'
+        * 'amplitude'
+        * 'voltage_cycle_rms'
+        * 'voltage_cycle_average'
+        * 'overshoot'
+        * 'preshoot'
+        """
+        pass
+
+    @abc.abstractmethod
+    def read_waveform_measurement(self, measurement_function, maximum_time):
+        """
+        This function initiates a new waveform acquisition and returns a specified
+        waveform measurement from a specific channel.
+
+        This function initiates an acquisition on the channels that the end-user
+        enables with the Configure Channel function. If the channel is not enabled
+        for the acquisition, this function returns Channel Not Enabled error. It
+        then waits for the acquisition to complete, obtains a waveform measurement
+        on the channel the end-user specifies, and returns the measurement value.
+        The end-user specifies a particular measurement type, such as rise time,
+        frequency, and voltage peak-to-peak.
+
+        If the oscilloscope did not complete the acquisition within the time
+        period the user specified with the MaxTimeMilliseconds parameter, the
+        function returns the Max Time Exceeded error.
+
+        The end-user can call the Fetch Waveform Measurement function separately
+        to obtain any other waveform measurement on a specific channel without
+        initiating another acquisition.
+
+        The end-user must configure the appropriate reference levels before
+        calling this function. Configure the low, mid, and high references either
+        by calling the Configure Reference Levels function or by setting the
+        following attributes.
+
+        * Measurement High Reference
+        * Measurement Low Reference
+        * Measurement Mid Reference
+        """
+        pass
+
+
+class MinMaxWaveformAcquisitionInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
+
+    Implement in acquisition.
+    """
+
+    @property
+    @abc.abstractmethod
+    def number_of_envelopes(self):
+        """
+        When the end-user sets the Acquisition Type attribute to Envelope, the
+        oscilloscope acquires multiple waveforms. After each waveform acquisition,
+        the oscilloscope keeps the minimum and maximum values it finds for each
+        point in the waveform record. This attribute specifies the number of
+        waveforms the oscilloscope acquires and analyzes to create the minimum and
+        maximum waveforms. After the oscilloscope acquires as many waveforms as
+        this attribute specifies, it returns to the idle state. This attribute
+        affects instrument operation only when the Acquisition Type attribute is
+        set to Envelope.
+        """
+        pass
+
+    @number_of_envelopes.setter
+    def number_of_envelopes(self, value):
+        pass
+
+
+class MinMaxWaveformChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
+
+    Implement in channels[].measurement
+    """
+
+    @abc.abstractmethod
+    def fetch_waveform_min_max(self):
+        """
+        This function returns the minimum and maximum waveforms that the
+        oscilloscope acquires for the specified channel. If the channel is not
+        enabled for the acquisition, this function returns the Channel Not Enabled
+        error.
+
+        The waveforms are from a previously initiated acquisition. Use this
+        function to fetch waveforms when the acquisition type is set to Peak
+        Detect or Envelope. If the acquisition type is not one of the listed
+        types, the function returns the Invalid Acquisition Type error.
+
+        Use the Initiate Acquisition function to start an acquisition on the
+        enabled channels. The oscilloscope acquires the min/max waveforms for the
+        enabled channels concurrently. Use the Acquisition Status function to
+        determine when the acquisition is complete. The end-user must call this
+        function separately for each enabled channel to obtain the min/max
+        waveforms.
+
+        The end-user can call the Read Min Max Waveform function instead of the
+        Initiate Acquisition function. The Read Min Max Waveform function starts
+        an acquisition on all enabled channels, waits for the acquisition to
+        complete, and returns the min/max waveforms for the specified channel. You
+        call this function to obtain the min/max waveforms for each of the
+        remaining channels.
+
+        After this function executes, each element in the MinWaveform and
+        MaxWaveform parameters is either a voltage or a value indicating that the
+        oscilloscope could not sample a voltage.
+
+        The return value is a list of (x, y_min, y_max) tuples that represent the
+        time and voltage of each data point.  Either of the y points may be NaN in
+        the case that the oscilloscope could not sample the voltage.
+
+        The end-user configures the interpolation method the oscilloscope uses
+        with the Acquisition.Interpolation property. If interpolation is disabled,
+        the oscilloscope does not interpolate points in the waveform. If the
+        oscilloscope cannot sample a value for a point in the waveform, the driver
+        sets the corresponding element in the waveformArray to an IEEE-defined NaN
+        (Not a Number) value. Check for this value with math.isnan() or
+        numpy.isnan(). Check an entire array with
+
+        any(any(math.isnan(b) for b in a) for a in waveform)
+
+        This function does not check the instrument status. Typically, the
+        end-user calls this function only in a sequence of calls to other
+        low-level driver functions. The sequence performs one operation. The
+        end-user uses the low-level functions to optimize one or more aspects of
+        interaction with the instrument. Call the Error Query function at the
+        conclusion of the sequence to check the instrument status.
+        """
+        pass
+
+    @abc.abstractmethod
+    def read_waveform_min_max(self):
+        """
+        This function initiates new waveform acquisition and returns minimum and
+        maximum waveforms from a specific channel. If the channel is not enabled
+        for the acquisition, this function returns the Channel Not Enabled error.
+
+        This function is used when the Acquisition Type is Peak Detect or
+        Envelope. If the acquisition type is not one of the listed types, the
+        function returns the Invalid Acquisition Type error.
+
+        This function initiates an acquisition on the enabled channels. It then
+        waits for the acquisition to complete, and returns the min/max waveforms
+        for the specified channel. Call the Fetch Min Max Waveform function to
+        obtain the min/max waveforms for each of the remaining enabled channels
+        without initiating another acquisition. If the oscilloscope did not
+        complete the acquisition within the time period the user specified with
+        the max_time parameter, the function returns the Max Time Exceeded error.
+
+        The return value is a list of (x, y_min, y_max) tuples that represent the
+        time and voltage of each data point.  Either of the y points may be NaN in
+        the case that the oscilloscope could not sample the voltage.
+
+        The end-user configures the interpolation method the oscilloscope uses
+        with the Acquisition.Interpolation property. If interpolation is disabled,
+        the oscilloscope does not interpolate points in the waveform. If the
+        oscilloscope cannot sample a value for a point in the waveform, the driver
+        sets the corresponding element in the waveformArray to an IEEE-defined NaN
+        (Not a Number) value. Check for this value with math.isnan() or
+        numpy.isnan(). Check an entire array with
+
+        any(any(math.isnan(b) for b in a) for a in waveform)
+
+        This function does not check the instrument status. Typically, the
+        end-user calls this function only in a sequence of calls to other
+        low-level driver functions. The sequence performs one operation. The
+        end-user uses the low-level functions to optimize one or more aspects of
+        interaction with the instrument. Call the Error Query function at the
+        conclusion of the sequence to check the instrument status.
+        """
+        pass
+
+
+class ProbeAutoSenseInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting probe attenuation sensing
+
+    Implement as Mixin for channels[]
+    """
+
+    @property
+    @abc.abstractmethod
+    def probe_attenuation_auto(self):
+        """
+        If this attribute is True, the driver configures the oscilloscope to sense
+        the attenuation of the probe automatically.
+
+        If this attribute is False, the driver disables the automatic probe sense
+        and configures the oscilloscope to use the value of the Probe Attenuation
+        attribute.
+
+        The actual probe attenuation the oscilloscope is currently using can be
+        determined from the Probe Attenuation attribute.
+
+        Setting the Probe Attenuation attribute also sets the Probe Attenuation
+        Auto attribute to false.
+        """
+        pass
+
+    @probe_attenuation_auto.setter
+    def probe_attenuation_auto(self, value):
+        pass
+
+
+class ContinuousAcquisitionInterface(metaclass=InterfaceMetaclass):
     """
     The IviScopeContinuousAcquisition extension group provides support for oscilloscopes that can
     perform a continuous acquisition.
@@ -967,6 +1375,56 @@ class AverageAcquisitionInterface(metaclass=InterfaceMetaclass):
 
     @number_of_averages.setter
     def number_of_averages(self, value):
+        pass
+
+
+class SampleModeInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting equivalent and real time acquisition
+
+    Implement as mixin to AcquisitionInterface
+    """
+
+    @property
+    @abc.abstractmethod
+    def sample_mode(self):
+        """
+        Returns the sample mode the oscilloscope is currently using.
+
+        Values:
+        * 'real_time'
+        * 'equivalent_time'
+        """
+        pass
+
+    @sample_mode.setter
+    def sample_mode(self, value):
+        pass
+
+
+class TriggerModifierInterface(metaclass=InterfaceMetaclass):
+    """
+    Extension IVI methods for oscilloscopes supporting specific triggering subsystem behavior in the absence of a trigger
+
+    Implement as mixin to TriggerInterface
+    """
+
+    @property
+    @abc.abstractmethod
+    def modifier(self):
+        """
+        Specifies the trigger modifier. The trigger modifier determines the
+        oscilloscope's behavior in the absence of the configured trigger.
+
+        Values:
+        * 'none'
+        * 'auto'
+        * 'auto_level'
+        """
+        pass
+
+    @modifier.setter
+    def modifier(self, value):
         pass
 
 
