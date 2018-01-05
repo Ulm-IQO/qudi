@@ -32,11 +32,12 @@ from interface.slow_counter_interface import CountingMode
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.finite_counter_interface import FiniteCounterInterface
-from interface.analog_reader_interface import AnalogReaderInterface
+from interface.analogue_reader_interface import AnalogueReaderInterface
+from interface.analogue_output_interface import AnalogueOutputInterface
 
 
 class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface,
-             FiniteCounterInterface, AnalogReaderInterface):
+             FiniteCounterInterface, AnalogueReaderInterface, AnalogueOutputInterface):
     """ stable: Kay Jahnke, Alexander Stark
 
     A National Instruments device that can count and control microwave generators.
@@ -170,8 +171,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._scanner_ao_task = None
         self._scanner_counter_daq_tasks = []
         self._analogue_input_daq_tasks = {}
+        self._analogue_output_daq_tasks = {}
         self._line_length = None
         self._odmr_length = None
+
         self._gated_counter_daq_task = None
         self._analog_clock_status = False
 
@@ -181,7 +184,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         self._scanner_ao_channels = []
         self._analogue_input_channels = {}
+        self._analogue_output_channels = {}
         self._ai_voltage_range = {}
+        self._ao_voltage_range = {}
         self._voltage_range = []
         self._position_range = []
         self._current_position = []
@@ -199,11 +204,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     self._ai_voltage_range["x"] = [vlow, vhigh]
                 else:
                     self.log.warning(
-                        'Configuration ({0}) of ai_range_x_1 incorrect, taking [0 , '
-                        '2] instead.'.format(config['ai_range_x_1']))
+                        'Configuration (%s) of ai_range_x_1 incorrect, taking [0 , '
+                        '2] instead.', config['ai_range_x_1'])
+                    self._ai_voltage_range["x"] = [0, 2]
             else:
                 self.log.warning(
                     'No ai_range_x_1 configured, taking [0, 2] instead.')
+                self._ai_voltage_range["x"] = [0, 2]
 
         if 'ai_y_1' in config.keys():
             self._analogue_input_channels["y"] = config['ai_y_1']
@@ -214,11 +221,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     self._ai_voltage_range["y"] = [vlow, vhigh]
                 else:
                     self.log.warning(
-                        'Configuration ({0}) of ai_range_y_1 incorrect, taking [0 , '
-                        '2] instead.'.format(config['ai_range_y_1']))
+                        'Configuration (%s) of ai_range_y_1 incorrect, taking [0 , '
+                        '2] instead.', config['ai_range_y_1'])
+                    self._ai_voltage_range["y"] = [0, 2]
+
             else:
                 self.log.warning(
                     'No ai_range_y_1 configured, taking [0, 2] instead.')
+                self._ai_voltage_range["y"] = [0, 2]
 
         if 'ai_z_1' in config.keys():
             self._analogue_input_channels["z"] = config['ai_z_1']
@@ -229,11 +239,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     self._ai_voltage_range["z"] = [vlow, vhigh]
                 else:
                     self.log.warning(
-                        'Configuration ({0}) of ai_range_z_1 incorrect, taking [0 , '
-                        '2] instead.'.format(config['ai_range_z_1']))
+                        'Configuration (%s) of ai_range_z_1 incorrect, taking [0 , '
+                        '2] instead.', config['ai_range_z_1'])
+                    self._ai_voltage_range["z"] = [0, 2]
+
             else:
                 self.log.warning(
                     'No ai_range_z_1 configured, taking [0, 2] instead.')
+                self._ai_voltage_range["z"] = [0, 2]
 
         if 'ai_z_2' in config.keys():
             self._analogue_input_channels["z_2"] = config['ai_z_2']
@@ -285,6 +298,54 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 self.log.warning(
                     'No cavity_scanner_range configured, taking [0, 6] instead.')
                 self._ai_voltage_range["Scanner"] = [0, 6]
+
+        if 'ao_range_x' in config.keys():
+            self._analogue_output_channels["x"] = config['ao_x']
+            if 'ao_range_x' in config.keys():
+                if float(config['ao_range_x'][0]) < float(config['ao_range_x'][1]):
+                    vlow = float(config['ao_range_x'][0])
+                    vhigh = float(config['ao_range_x'][1])
+                    self._ao_voltage_range["x"] = [vlow, vhigh]
+                else:
+                    self.log.warning(
+                        'Configuration (%s) of ao_range_x incorrect, taking [0 , '
+                        '2] instead.', config['ao_range_x'])
+            else:
+                self.log.warning(
+                    'No ao_range_x configured, taking [0, 6] instead.')
+                self._ao_voltage_range["x"] = [0, 6]
+
+        if 'ao_range_y' in config.keys():
+            self._analogue_output_channels["y"] = config['ao_y']
+            if 'ao_range_y' in config.keys():
+                if float(config['ao_range_y'][0]) < float(config['ao_range_y'][1]):
+                    vlow = float(config['ao_range_y'][0])
+                    vhigh = float(config['ao_range_y'][1])
+                    self._ao_voltage_range["y"] = [vlow, vhigh]
+                else:
+                    self.log.warning(
+                        'Configuration (%s) of ao_range_y incorrect, taking [0 , '
+                        '2] instead.', config['ao_range_y'])
+            else:
+                self.log.warning(
+                    'No ao_range_y configured, taking [0, 6] instead.')
+                self._ao_voltage_range["y"] = [0, 6]
+
+        if 'ao_range_z' in config.keys():
+            self._analogue_output_channels["z"] = config['ao_z']
+            if 'ao_range_z' in config.keys():
+                if float(config['ao_range_z'][0]) < float(config['ao_range_z'][1]):
+                    vlow = float(config['ao_range_z'][0])
+                    vhigh = float(config['ao_range_z'][1])
+                    self._ao_voltage_range["z"] = [vlow, vhigh]
+                else:
+                    self.log.warning(
+                        'Configuration (%s) of ao_range_z incorrect, taking [0 , '
+                        '2] instead.', config['ao_range_z'])
+            else:
+                self.log.warning(
+                    'No ao_range_z configured, taking [0, 6] instead.')
+                self._ao_voltage_range["z"] = [0, 6]
 
         if 'scanner_x_ao' in config.keys():
             self._scanner_ao_channels.append(config['scanner_x_ao'])
@@ -1273,7 +1334,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @param float[][n] voltages: array of n-part tuples defining the voltage
                                     points
         @param int length: number of tuples to write
-        @param bool start: write imediately (True)
+        @param bool start: write immediately (True)
                            or wait for start of task (False)
 
         n depends on how many channels are configured for analog output
@@ -2271,9 +2332,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'Run the set_up_finite_counter routine.')
             return -1
         elif len(self._scanner_counter_daq_tasks) > 1:
-            self.log.error('To many ({}) Scanner Counter Tasks defined. Close all scanner '
-                           'counters. \n Then re-setup the finite counter. '.format(
-                len(self._scanner_counter_daq_tasks)))
+            self.log.error('To many (%s) Scanner Counter Tasks defined. Close all scanner '
+                           'counters. \n Then re-setup the finite counter. ', len(self._scanner_counter_daq_tasks))
             return -1
 
         try:
@@ -2395,8 +2455,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel in self._analogue_input_channels.keys():
             channel = self._analogue_input_channels[analogue_channel]
         else:
-            self.log.error("The given analogue input channel {} is not defined. Please define the "
-                           "input channel".format(analogue_channel))
+            self.log.error("The given analogue input channel %s is not defined. Please define the "
+                           "input channel", analogue_channel)
             return -1
 
         if analogue_channel in self._analogue_input_daq_tasks:
@@ -2429,11 +2489,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 # must be None unless units is set to "DAQmx_Val_FromCustomScale"
                 None)
             self._analogue_input_daq_tasks[analogue_channel] = task
+            self._analogue_input_samples[analogue_channel] = 1
         except:
             self.log.exception('Error while setting up analogue voltage reader for channel '
                                '{}.'.format(analogue_channel))
             return -1
-        self._analogue_input_samples[analogue_channel] = 1
         return 0
 
     def set_up_analogue_voltage_reader_scanner(self, samples,
@@ -2454,8 +2514,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int: error code (0:OK, -1:error)
         """
         if analogue_channel not in self._analogue_input_channels.keys():
-            self.log.error("The given analogue input channel {} is not defined. Please define the "
-                           "input channel".format(analogue_channel))
+            self.log.error("The given analogue input channeln %s is not defined. Please define the "
+                           "input channel", analogue_channel)
             return -1
 
         if self._scanner_clock_daq_task is None and clock_channel is None:
@@ -2538,8 +2598,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         # Check if channel exists
         if analogue_channel_orig not in self._analogue_input_channels.keys():
-            self.log.error("The given analogue input task channel{} to which the channel was to "
-                           "be added did not exist.".format(analogue_channel_orig))
+            self.log.error("The given analogue input task channel %s to which the channel was to "
+                           "be added did not exist.", analogue_channel_orig)
             return -1
         # check variable type
         if not isinstance(analogue_channels, (frozenset, list, set, tuple, np.ndarray,)):
@@ -2548,13 +2608,13 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         for channel in analogue_channels:
             if channel not in self._analogue_input_channels.keys():
-                self.log.error("The given analogue input channel {} is not defined. Please define the "
-                               "input channel".format(channel))
+                self.log.error("The given analogue input channel %s is not defined. Please define the "
+                               "input channel", channel)
                 return -1
             # check if no task for channel to be added is configured
             if channel in self._analogue_input_daq_tasks:
-                self.log.error('The same channel {} already has an existing input task running, '
-                               'close this one first.'.format(channel))
+                self.log.error('The same channel %s already has an existing input task running, '
+                               'close this one first.', channel)
                 return -1
 
         # check if task to which channel is added exists
@@ -2562,9 +2622,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # if existing use this task
             task = self._analogue_input_daq_tasks[analogue_channel_orig]
         else:
-            self.log.error("The given analogue input task channel{} to which the channel was to "
-                           "be added did not exist yet. Create this one first.".format(
-                analogue_channel_orig))
+            self.log.error("The given analogue input task channel %s to which the channel was to "
+                           "be added did not exist yet. Create this one first.", analogue_channel_orig)
             return -1
 
         # check if clock is running in case clock is needed (samples >1)
@@ -2605,8 +2664,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
     def set_up_continuous_analog_reader(self, analogue_channel, clock_channel=None):
         if analogue_channel not in self._analogue_input_channels.keys():
-            self.log.error("The given analogue input channel {} is not defined. Please define the "
-                           "input channel".format(analogue_channel))
+            self.log.error("The given analogue input channel %s is not defined. Please define the "
+                           "input channel", analogue_channel)
             return -1
 
         if self._scanner_clock_daq_task is None and clock_channel is None:
@@ -2741,7 +2800,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         if type(analogue_channel) != str:
             self.log.error("analogue channel needs to be passed as a string. A different "
-                           "variable type ({}) was used".format(type(analogue_channel)))
+                           "variable type (%s) was used", type(analogue_channel))
             return -1
         if analogue_channel in self._analogue_input_daq_tasks:
             if start_clock:
@@ -2792,7 +2851,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channels[0] in self._analogue_input_samples.keys() and read_samples is None:
             samples = self._analogue_input_samples[analogue_channels[0]]
         elif read_samples is None:
-            self.log.error("The given channel {} is not properly defined".format(analogue_channels[0]))
+            self.log.error("The given channel %s is not properly defined", analogue_channels[0])
             return np.array([-1.]), 0
         else:
             samples = read_samples
@@ -2805,8 +2864,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             if channel not in self._analogue_input_channels.keys():
                 error = True
                 self.log.error(
-                    "The given channel {} is not part of the possible channels. Configure this channel first".format(
-                        channel))
+                    "The given channel %s is not part of the possible channels. Configure this channel first", channel)
             elif self._analogue_input_samples[channel] != samples and read_samples is None:
                 error = True
                 self.log.error(
@@ -2814,8 +2872,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     "They can not be from the same task. Recheck task configuration")
             elif channel not in self._analogue_input_daq_tasks.keys():
                 error = True
-                self.log.error("No task was specified for the given channel {}. Add this channel first to the analogue"
-                               " reader task".format(channel))
+                self.log.error("No task was specified for the given channel %s. Add this channel first to the analogue"
+                               " reader task", channel)
         if error: return np.array([-1.]), 0
 
         # *1.1 to have an extra (10%) short waiting time.
@@ -2861,7 +2919,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # check if correct type was specified
         if type(analogue_channel) != str:
             self.log.error("analogue channel needs to be passed as a string. A different "
-                           "variable type ({}) was used".format(type(analogue_channel)))
+                           "variable type (%s) was used", type(analogue_channel))
             return -1
         # check if task for channel exists
         if analogue_channel in self._analogue_input_daq_tasks.keys():
@@ -2893,9 +2951,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         # check if correct type was specified
         if type(analogue_channel) != str:
             self.log.error("analogue channel needs to be passed as a string. A different "
-                           "variable type ({}) was used".format(type(analogue_channel)))
+                           "variable type (%s) was used", type(analogue_channel))
             return -1
-        error = 0
+
         # check if task for channel exists
         if analogue_channel in self._analogue_input_daq_tasks.keys():
             # retrieve task from dictionary and erase from dictionary
@@ -2956,7 +3014,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         if type(analogue_channel) != str:
             self.log.error("analogue channel needs to be passed as a string. A different "
-                           "variable type ({}) was used".format(type(analogue_channel)))
+                           "variable type (%s) was used", type(analogue_channel))
             return -1
         if analogue_channel in self._analogue_input_daq_tasks:
             if 0 > self.start_finite_counter():
@@ -2977,3 +3035,225 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         return -1
 
     # =============================== End AnalogReaderInterface Commands  =======================
+
+    # =============================== Start AnalogOutputInterface Commands  =======================
+
+    def set_up_analogue_output(self, analogue_channels=None, scanner=False):
+        """ Starts or restarts the analog output.
+
+        @param List(string) analogue_channels: the representative names  of the analogue channel for
+                                        which the task is created in a list
+
+        @param Bool scanner: Defines if a scanner analogue output is to be setup of if single
+                                    channels are to be configured
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            # If an analog task is already running, kill that one first
+            if scanner:
+                if self._scanner_ao_task is not None:
+                    # stop the analog output task
+                    daq.DAQmxStopTask(self._scanner_ao_task)
+
+                    # delete the configuration of the analog output
+                    daq.DAQmxClearTask(self._scanner_ao_task)
+
+                    # set the task handle to None as a safety
+                    self._scanner_ao_task = None
+
+                # initialize ao channels / task for scanner, should always be active.
+                # Define at first the type of the variable as a Task:
+                self._scanner_ao_task = daq.TaskHandle()
+
+                # create the actual analog output task on the hardware device. Via
+                # byref you pass the pointer of the object to the TaskCreation function:
+                daq.DAQmxCreateTask('ScannerAO', daq.byref(self._scanner_ao_task))
+                for n, chan in enumerate(self._scanner_ao_channels):
+                    # Assign and configure the created task to an analog output voltage channel.
+                    daq.DAQmxCreateAOVoltageChan(
+                        # The AO voltage operation function is assigned to this task.
+                        self._scanner_ao_task,
+                        # use (all) scanner ao_channels for the output
+                        chan,
+                        # assign a name for that channel
+                        'Scanner AO Channel {0}'.format(n),
+                        # minimum possible voltage
+                        self._voltage_range[n][0],
+                        # maximum possible voltage
+                        self._voltage_range[n][1],
+                        # units is Volt
+                        daq.DAQmx_Val_Volts,
+                        # scale for channel, if unit is custom. Therefore here its Null (None)
+                        None)
+            else:
+                if analogue_channels is None:
+                    self.log.error("If you do not initialise a scanner "
+                                   "you need to pass the analogue channels to be initialised.")
+                else:
+                    # check if channels exist:
+                    for channel in analogue_channels:
+                        if channel not in self._analogue_output_channels.keys():
+                            self.log.error("The given analogue output channel %s is not defined. Please define the "
+                                           "output channel", channel)
+                            return -1
+                        # check if no task for channel to be added is configured
+                        if channel in self._analogue_input_daq_tasks.keys():
+                            self.log.error('The same analogue output channel %s already has '
+                                           'an existing output task running, close this one first.', channel)
+                            return -1
+                        # Todo: This needs to have check if the channel is already used in the scanner.
+                        # However this is not possible in a sensible way right now, because the scanner channels are
+                        # passed as a full list and not a dictionary and it is not possible to find out which two/three
+                        # of the 3/4 possible options are used at the moment.
+                        # elif channel in ["x", "y", "z"]:
+                        #    self.log.error('The same channel %s already has an existing output task running, '
+                        #                   'close this one first.',channel)
+                        #    return -1
+
+                    # create the actual analog output task on the hardware device. Via
+                    # byref you pass the pointer of the object to the TaskCreation function:
+                    task = daq.TaskHandle()
+                    # the analogue output get the name of the first channel
+                    daq.DAQmxCreateTask('Analogue Output {}'.format(analogue_channels[0]), daq.byref(task))
+
+                    for chan in analogue_channels:
+                        # Assign and configure the created task to an analog output voltage channel.
+                        daq.DAQmxCreateAOVoltageChan(
+                            # The AO voltage operation function is assigned to this task.
+                            task,
+                            # channel to use for output
+                            self._analogue_output_channels[chan],
+                            # assign a name for that channel
+                            'AO Channel '+chan,
+                            # minimum possible voltage
+                            self._ao_voltage_range[chan][0],
+                            # maximum possible voltage
+                            self._ao_voltage_range[chan][1],
+                            # units is Volt
+                            daq.DAQmx_Val_Volts,
+                            # scale for channel, if unit is custom. Therefore here its Null (None)
+                            None)
+                        self._analogue_output_daq_tasks[chan] = task
+                #daq.DAQmxSetSampTimingType(self._analogue_output_channels[self._analogue_output_daq_tasks[
+                #    analogue_channels[0]]], daq.DAQmx_Val_OnDemand)
+
+
+        except:
+            self.log.exception('Error starting analog output task.')
+            return -1
+        return 0
+
+    def close_analogue_output(self, analogue_channel=None, scanner=False):
+        """ Stops the analog output task.
+
+        @analogue_channel str: one of the analogue channels for which the task to be stopped is
+                            configured. If more than one channel uses this task,
+                            all channel readings will be stopped.
+
+        @param Bool scanner: Defines if a scanner analogue output is to be setup of if single
+                                channels are to be configured
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if scanner:
+            retval = 0
+            if self._scanner_ao_task is None:
+                return -1
+
+            try:
+                # stop the analog output task
+                daq.DAQmxStopTask(self._scanner_ao_task)
+            except:
+                self.log.exception('Error stopping analog output.')
+                retval = -1
+            try:
+                daq.DAQmxClearTask(self._scanner_ao_task)
+            except:
+                self.log.exception('Error closing analog output mode.')
+                retval = -1
+            return retval
+
+        else:
+            # check if correct type was specified
+            if type(analogue_channel) != str:
+                self.log.error("Analogue channel needs to be passed as a string. A different "
+                               "variable type (%s) was used", type(analogue_channel))
+                return -1
+            # check if task for channel exists
+            if analogue_channel in self._analogue_output_daq_tasks.keys():
+                # retrieve task from dictionary and erase from dictionary
+                task = self._analogue_output_daq_tasks.pop(analogue_channel)
+
+                # removes channels from task list that used the same task
+                key_list = []
+                for task_key, value in self._analogue_output_daq_tasks.items():
+                    if value == task:
+                        key_list.append(task_key)
+                for item in key_list:
+                    self._analogue_output_daq_tasks.pop(item)
+
+                try:
+                    # stop the counter task
+                    daq.DAQmxStopTask(task)
+                    # after stopping delete all the configuration of the counter
+                    daq.DAQmxClearTask(task)
+                except:
+                    self.log.exception('Could not close analogue output reader.')
+                    # re append task as closing did not work
+                    self._analogue_output_daq_tasks[analogue_channel] = task
+                    for key in key_list:
+                        self._analogue_output_daq_tasks[key] = task
+                    return -1
+                return 0
+            else:
+                self.log.error(
+                    'Cannot close Analogue Input Reader Task since it is not running or configured!')
+                return -1
+
+    def write_ao(self, analogue_channel, voltages, length=1, start=False, time_out=0):
+        """Writes a set of voltages to the analog outputs.
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the voltages are written
+
+        @param List[float] voltages: array of n-part tuples defining the voltage points
+
+        @param int length: number of tuples to write
+
+        @param bool start: write immediately (True) or wait for start of task (False)
+
+        @param float time_out: default 0, value how long the program should maximally take two write the samples
+                                0 returns an error if program fails to write immediately.
+
+        @return int: how many values were actually written
+        """
+
+        # check if task for channel is configured
+        if analogue_channel not in self._analogue_output_daq_tasks:
+            self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
+            return -1
+        # Number of samples which were actually written, will be stored here.
+        # The error code of this variable can be asked with .value to check
+        # whether all channels have been written successfully.
+        samples_written = daq.int32()
+        # write the voltage instructions for the analog output to the hardware
+        daq.DAQmxWriteAnalogF64(
+            # write to this task
+            self._analogue_output_daq_tasks[analogue_channel],
+            # length of the command (points)
+            length,
+            # start task immediately (True), or wait for software start (False)
+            start,
+            # maximal timeout in seconds for the write process
+            time_out,
+            # Specify how the samples are arranged: each pixel is grouped by channel number
+            daq.DAQmx_Val_GroupByChannel,
+            # the voltages to be written
+            voltages,
+            # The actual number of samples per channel successfully written to the buffer
+            daq.byref(samples_written),
+            # Reserved for future use. Pass NULL(here None) to this parameter
+            None)
+        return samples_written.value
+    # =============================== End AnalogOutputInterface Commands  =======================

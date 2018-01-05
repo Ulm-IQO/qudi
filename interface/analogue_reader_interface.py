@@ -24,7 +24,7 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-class AnalogReaderInterface(metaclass=InterfaceMetaclass):
+class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
     """ This is the Interface class to define the controls for a simple
     analogue input hardware with single or multiple channels.
     """

@@ -68,7 +68,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     confocalstepper1 = Connector(interface='ConfocalStepperInterface')
     savelogic = Connector(interface='SaveLogic')
     confocalcounter = Connector(interface='FiniteCounterInterface')
-    analoguereader = Connector(interface='AnalogReaderInterface')
+    analoguereader = Connector(interface='AnalogueReaderInterface')
 
     # Todo: add connectors and QTCore Signals
     # signals
