@@ -195,7 +195,7 @@ class CounterGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        if self._counting_logic.getState() == 'locked':
+        if self._counting_logic.module_state() == 'locked':
             self._mw.count_value_Label.setText(
                 '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[0, -1]))
 
@@ -218,7 +218,7 @@ class CounterGui(GUIBase):
             self._mw.count_freq_SpinBox.setEnabled(True)
             self._mw.oversampling_SpinBox.setEnabled(True)
 
-        if self._counting_logic.getState() == 'locked':
+        if self._counting_logic.module_state() == 'locked':
             self._mw.start_counter_Action.setText('Stop counter')
             self._mw.start_counter_Action.setChecked(True)
         else:
@@ -229,13 +229,13 @@ class CounterGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._counting_logic.getState() == 'locked':
+        if self._counting_logic.module_state() == 'locked':
             self._mw.start_counter_Action.setText('Start counter')
             self.sigStopCounter.emit()
         else:
             self._mw.start_counter_Action.setText('Stop counter')
             self.sigStartCounter.emit()
-        return self._counting_logic.getState()
+        return self._counting_logic.module_state()
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
