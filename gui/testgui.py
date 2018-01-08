@@ -87,4 +87,4 @@ class TestGui(GUIBase):
         if hasattr(self, 'checkbutton') and self.checkbutton.isChecked():
             raise Exception('Fail.')
         else:
-            return super().getState()
+            return super().module_state()
