@@ -34,6 +34,8 @@ which can be obtained directly from
 from collections import OrderedDict
 
 from core.module import Base
+from core.util.modules import get_home_dir
+from core.util.modules import get_main_dir
 from ctypes import c_long, c_buffer, c_float, windll, pointer
 from interface.motor_interface import MotorInterface
 import os
@@ -799,15 +801,17 @@ class APTStage(Base, MotorInterface):
 
         # Load DLL
         if platform.architecture()[0] == '64bit':
-            path_dll = os.path.join(self.get_main_dir(),  'thirdparty',
-                                                          'thorlabs',
-                                                          'win64',
-                                                          'APT.dll')
+            path_dll = os.path.join(get_main_dir(),
+                                    'thirdparty',
+                                    'thorlabs',
+                                    'win64',
+                                    'APT.dll')
         elif platform.architecture()[0] == '32bit':
-            path_dll = os.path.join(self.get_main_dir(),  'thirdparty',
-                                                          'thorlabs',
-                                                          'win64',
-                                                          'APT.dll')
+            path_dll = os.path.join(get_main_dir(),
+                                    'thirdparty',
+                                    'thorlabs',
+                                    'win64',
+                                    'APT.dll')
         else:
             self.log.error('Unknown platform, cannot load the Thorlabs dll.')
 
@@ -1068,7 +1072,7 @@ class APTStage(Base, MotorInterface):
 
         @return str: the path to the created folder."""
 
-        path = self.get_home_dir()
+        path = get_home_dir()
         magnet_path = os.path.join(path, 'magnet')
 
         if not os.path.exists(magnet_path):

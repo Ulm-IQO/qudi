@@ -1088,10 +1088,10 @@ class ConfocalGui(GUIBase):
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
-        if self._scanning_logic.getState() == 'locked':
+        if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
-        if self._optimizer_logic.getState() == 'locked':
+        if self._optimizer_logic.module_state() == 'locked':
             self._optimizer_logic.stop_refocus()
 
         self.enable_scan_actions()
@@ -1574,7 +1574,7 @@ class ConfocalGui(GUIBase):
         self.refresh_xy_colorbar()
 
         # Unlock state widget if scan is finished
-        if self._scanning_logic.getState() != 'locked':
+        if self._scanning_logic.module_state() != 'locked':
             self.enable_scan_actions()
 
     def refresh_depth_image(self):
@@ -1594,7 +1594,7 @@ class ConfocalGui(GUIBase):
         self.refresh_depth_colorbar()
 
         # Unlock state widget if scan is finished
-        if self._scanning_logic.getState() != 'locked':
+        if self._scanning_logic.module_state() != 'locked':
             self.enable_scan_actions()
 
     def refresh_refocus_image(self):
