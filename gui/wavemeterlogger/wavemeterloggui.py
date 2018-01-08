@@ -261,7 +261,7 @@ class WavemeterLogGui(GUIBase):
         """ Handling the Start button to stop and restart the counter.
         """
         # If running, then we stop the measurement and enable inputs again
-        if self._wm_logger_logic.getState() == 'running':
+        if self._wm_logger_logic.module_state() == 'running':
             self._mw.actionStop_resume_scan.setText('Resume')
             self._wm_logger_logic.stop_scanning()
             self._mw.actionStop_resume_scan.setEnabled(True)
@@ -277,7 +277,7 @@ class WavemeterLogGui(GUIBase):
     def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
         """
-        if self._wm_logger_logic.getState() == 'idle':
+        if self._wm_logger_logic.module_state() == 'idle':
             self._scatterplot.clear()
             self._wm_logger_logic.start_scanning()
 
