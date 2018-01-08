@@ -662,9 +662,26 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     #---------------------------------------------------------------------------
     def _analyze_block_ensemble(self, ensemble):
         """
+        This helper method runs through each element of a PulseBlockEnsemble object and extracts
+        important information about the Waveform that can be created out of this object.
+        Especially the discretization due to the set self.sample_rate is taken into account.
+        The positions in time (as integer time bins) of the PulseBlockElement transitions are
+        determined here (all the "rounding-to-best-match-value").
+        Additional information like the total number of samples, total number of PulseBlockElements
+        and the timebins for digital channel low-to-high transitions get returned as well.
 
-        @param ensemble:
-        @return:
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @return: number_of_samples (int): The total number of samples in a Waveform provided the
+                                              current sample_rate and PulseBlockEnsemble object.
+                 total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
+                                       the provided PulseBlockEnsemble.
+                 elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
+                                                               PulseBlockElement in chronological
+                                                               order (incl. repetitions).
+                 digital_rising_bins (2D numpy.ndarray[int]): Array of chronological low-to-high
+                                                              transition positions
+                                                              (in timebins; incl. repetitions)
+                                                              for each digital channel.
         """
         # variables to keep track of the current timeframe
         current_end_time = 0.0
@@ -687,7 +704,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # Temporary array to hold the length for each element (including reps) in bins
             tmp_length_bins = np.zeros(unrolled_elements, dtype=int)
 
-            # Iterate over all repertitions of the current block
+            # Iterate over all repetitions of the current block
             unrolled_element_index = 0
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
