@@ -21,9 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import copy
 import logging
-import os
-import qtpy
-import sys
+import warnings
 from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
@@ -104,7 +102,7 @@ class ConfigOption:
     """
 
     def __init__(self, name=None, default=None, *, var_name=None, missing='nothing',
-                    constructor=None, checker=None, converter=None):
+                 constructor=None, checker=None, converter=None):
         """ Create a ConfigOption object.
 
             @param name: identifier of the option in the configuration file
@@ -278,7 +276,88 @@ class ModuleMeta(type(QtCore.QObject)):
         return new_class
 
 
-class BaseMixin(Fysom, metaclass=ModuleMeta):
+class ModuleStateMachine(QtCore.QObject, Fysom):
+    """
+    FIXME
+    """
+    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
+    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
+
+    # signals
+    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
+
+    def __init__(self, parent, callbacks=None, **kwargs):
+        self._parent = parent
+        if callbacks is None:
+            callbacks = {}
+
+        # State machine definition
+        # the abbreviations for the event list are the following:
+        #   name:   event name,
+        #   src:    source state,
+        #   dst:    destination state
+        _baseStateList = {
+            'initial': 'deactivated',
+            'events': [
+                {'name': 'activate', 'src': 'deactivated', 'dst': 'idle'},
+                {'name': 'deactivate', 'src': 'idle', 'dst': 'deactivated'},
+                {'name': 'deactivate', 'src': 'running', 'dst': 'deactivated'},
+                {'name': 'deactivate', 'src': 'locked', 'dst': 'deactivated'},
+                {'name': 'run', 'src': 'idle', 'dst': 'running'},
+                {'name': 'stop', 'src': 'running', 'dst': 'idle'},
+                {'name': 'lock', 'src': 'idle', 'dst': 'locked'},
+                {'name': 'lock', 'src': 'running', 'dst': 'locked'},
+                {'name': 'unlock', 'src': 'locked', 'dst': 'idle'},
+                {'name': 'runlock', 'src': 'locked', 'dst': 'running'},
+            ],
+            'callbacks': callbacks
+        }
+
+        # Initialise state machine:
+        super().__init__(parent=parent, cfg=_baseStateList, **kwargs)
+
+    def __call__(self):
+        """
+        Returns the current state.
+        """
+        return self.current
+
+    def _build_event(self, event):
+        """
+        Overrides fysom _build_event to wrap on_activate and on_deactivate to
+        catch and log exceptios.
+        """
+        base_event = super()._build_event(event)
+        if (event in ['activate', 'deactivate']):
+            if (event == 'activate'):
+                noun = 'activation'
+            else:
+                noun = 'deactivation'
+
+            def wrap_event(*args, **kwargs):
+                self._parent.log.debug('{0} in thread {1}'.format(
+                    noun.capitalize(),
+                    QtCore.QThread.currentThreadId()))
+                try:
+                    base_event(*args, **kwargs)
+                except:
+                    self._parent.log.exception('Error during {0}'.format(noun))
+                    return False
+                return True
+
+            return wrap_event
+        else:
+            return base_event
+
+    def onchangestate(self, e):
+        """ Fysom callback for state transition.
+
+        @param object e: Fysom state transition description
+        """
+        self.sigStateChanged.emit(e)
+
+
+class BaseMixin(metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -300,16 +379,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
     _threaded = False
     _connectors = dict()
 
-    # do not copy declaration of trigger(self, event, *args, **kwargs), just apply Slot decorator
-    trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
-
-    # signals
-    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
-
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
-          @param object self: tthe object being initialised
+          @param object self: the object being initialised
           @param object manager: the manager object that
           @param str name: unique name for this object
           @param dict configuration: parameters from the configuration file
@@ -317,6 +390,8 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                                  on state machine transitions
 
         """
+        super().__init__(**kwargs)
+
         if config is None:
             config = {}
         if callbacks is None:
@@ -328,30 +403,7 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             }
         default_callbacks.update(callbacks)
 
-        # State machine definition
-        # the abbrivations for the event list are the following:
-        #   name:   event name,
-        #   src:    source state,
-        #   dst:    destination state
-        _baseStateList = {
-            'initial': 'deactivated',
-            'events': [
-                {'name': 'activate',    'src': 'deactivated',   'dst': 'idle'},
-                {'name': 'deactivate',  'src': 'idle',          'dst': 'deactivated'},
-                {'name': 'deactivate',  'src': 'running',       'dst': 'deactivated'},
-                {'name': 'deactivate',  'src': 'locked',       'dst': 'deactivated'},
-                {'name': 'run',         'src': 'idle',          'dst': 'running'},
-                {'name': 'stop',        'src': 'running',       'dst': 'idle'},
-                {'name': 'lock',        'src': 'idle',          'dst': 'locked'},
-                {'name': 'lock',        'src': 'running',       'dst': 'locked'},
-                {'name': 'unlock',      'src': 'locked',        'dst': 'idle'},
-                {'name': 'runlock',     'src': 'locked',        'dst': 'running'},
-            ],
-            'callbacks': default_callbacks
-        }
-
-        # Initialise state machine:
-        super().__init__(cfg=_baseStateList, **kwargs)
+        self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
 
         # add connectors
         self.connectors = OrderedDict()
@@ -393,7 +445,6 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         self._name = name
         self._configuration = config
         self._statusVariables = OrderedDict()
-        # self.sigStateChanged.connect(lambda x: print(x.event, x.fsm._name))
 
     def __load_status_vars_activate(self, event):
         """ Restore status variables before activation.
@@ -433,31 +484,6 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
                                                             self,
                                                             getattr(self, var.var_name))
 
-    def _build_event(self, event):
-        """
-        Overrides fysom _build_event to wrap on_activate and on_deactivate to
-        catch and log exceptios.
-        """
-        base_event = super()._build_event(event)
-        if (event in ['activate', 'deactivate']):
-            if (event == 'activate'):
-                noun = 'activation'
-            else:
-                noun = 'deactivation'
-            def wrap_event(*args, **kwargs):
-                self.log.debug('{0} in thread {1}'.format(
-                    noun.capitalize(),
-                    QtCore.QThread.currentThreadId()))
-                try:
-                    base_event(*args, **kwargs)
-                except:
-                    self.log.exception('Error during {0}'.format(noun))
-                    return False
-                return True
-            return wrap_event
-        else:
-            return base_event
-
     @property
     def log(self):
         """
@@ -488,21 +514,16 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
         self.log.error('Please implement and specify the deactivation '
                          'method {0}.'.format(self.__class__.__name__))
 
-    # Do not replace these in subclasses
-    def onchangestate(self, e):
-        """ Fysom callback for state transition.
-
-        @param object e: Fysom state transition description
-        """
-        self.sigStateChanged.emit(e)
-
     def getStatusVariables(self):
         """ Return a dict of variable names and their content representing
             the module state for saving.
 
         @return dict: variable names and contents.
 
+        @deprecated
         """
+        warnings.warn('getStatusVariables is deprecated and will be removed in future versions. Use '
+                      'StatusVar instead.', DeprecationWarning)
         return self._statusVariables
 
     def setStatusVariables(self, variableDict):
@@ -511,7 +532,10 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
 
           @param OrderedDict dict: variable names and contents.
 
+          @deprecated
         """
+        warnings.warn('setStatusVariables is deprecated and will be removed in future versions. Use '
+                      'StatusVar instead.', DeprecationWarning)
         if not isinstance(variableDict, (dict, OrderedDict)):
             self.log.error('Did not pass a dict or OrderedDict to '
                            'setStatusVariables in {0}.'.format(
@@ -519,64 +543,25 @@ class BaseMixin(Fysom, metaclass=ModuleMeta):
             return
         self._statusVariables = variableDict
 
-    def getState(self):
-        """Return the state of the state machine implemented in this class.
-
-          @return str: state of state machine
-
-          Valid return values are: 'deactivated', 'idle', 'running', 'locked',
-                                   'blocked'
-        """
-        return self.current
-
     def getConfiguration(self):
         """ Return the configration dictionary for this module.
 
           @return dict: confiuration dictionary
-
+          @deprecated
         """
+        warnings.warn('getConfiguration is deprecated and will be removed in future versions. Use '
+                      'ConfigOptions instead.', DeprecationWarning)
         return self._configuration
-
-    def getConfigDirectory(self):
-        """ Return the configuration directory for the manager this module
-            belongs to.
-
-          @return str: path of configuration directory
-
-        """
-        return self._manager.configDir
-
-    @staticmethod
-    def identify():
-        """ Return module id.
-
-          @return dict: id dictionary with modclass and modtype keys.
-        """
-        return {moduleclass: _class, moduletype: _modtype}
-
-    def get_main_dir(self):
-        """ Returns the absolut path to the directory of the main software.
-
-             @return string: path to the main tree of the software
-
-        """
-        mainpath = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), ".."))
-        return mainpath
-
-    def get_home_dir(self):
-        """ Returns the path to the home directory, which should definitely
-            exist.
-            @return string: absolute path to the home directory
-        """
-        return os.path.abspath(os.path.expanduser('~'))
 
     def get_connector(self, connector_name):
         """ Return module connected to the given named connector.
           @param str connector_name: name of the connector
 
           @return obj: module that is connected to the named connector
+          @deprecated
         """
+        warnings.warn('get_connector is deprecated and will be removed in future versions. Use '
+                      'Connector() callable instead.', DeprecationWarning)
         if connector_name in self.connectors:
             connector = self.connectors[connector_name]
             # new style connector

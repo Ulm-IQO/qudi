@@ -26,6 +26,7 @@ import os
 
 from collections import OrderedDict
 from core.module import StatusVar
+from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
@@ -36,12 +37,11 @@ class PulseAnalysisLogic(GenericLogic):
     _modclass = 'PulseAnalysisLogic'
     _modtype = 'logic'
 
-    # status vars
-    current_method = StatusVar('current_method', 'mean_norm')
-    signal_start_s = StatusVar('signal_start_s', 0.0)
-    signal_end_s = StatusVar('signal_end_s', 200.0e-9)
-    norm_start_s = StatusVar('norm_start_s', 500.0e-9)
-    norm_end_s = StatusVar('norm_end_s', 700.0e-9)
+    analysis_settings = StatusVar('analysis_settings', default={'signal_start_s': 0.0,
+                                                                'signal_end_s': 200.0e-9,
+                                                                'norm_start_s': 500.0e-9,
+                                                                'norm_end_s': 700.0e-9,
+                                                                'current_method': 'mean_norm'})
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -54,7 +54,7 @@ class PulseAnalysisLogic(GenericLogic):
         filename_list = []
         # The assumption is that in the directory pulsed_analysis_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'pulsed_analysis_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'pulsed_analysis_methods')
         for entry in os.listdir(path):
             if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
                 filename_list.append(entry[:-3])
@@ -89,12 +89,12 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array measuring_error: Array with the computed signal error
         """
-
+#
         # convert time to bin
-        self.signal_start_bin = round(self.signal_start_s / self.fast_counter_binwidth)
-        self.signal_end_bin = round(self.signal_end_s / self.fast_counter_binwidth)
-        self.norm_start_bin = round(self.norm_start_s / self.fast_counter_binwidth)
-        self.norm_end_bin = round(self.norm_end_s / self.fast_counter_binwidth)
+        self.signal_start_bin = round(self.analysis_settings['signal_start_s'] / self.fast_counter_binwidth)
+        self.signal_end_bin = round(self.analysis_settings['signal_end_s'] / self.fast_counter_binwidth)
+        self.norm_start_bin = round(self.analysis_settings['norm_start_s'] / self.fast_counter_binwidth)
+        self.norm_end_bin = round(self.analysis_settings['norm_end_s'] / self.fast_counter_binwidth)
 
-        signal_data, measuring_error = self.analysis_methods[self.current_method](laser_data)
+        signal_data, measuring_error = self.analysis_methods[self.analysis_settings['current_method']](laser_data)
         return signal_data, measuring_error
