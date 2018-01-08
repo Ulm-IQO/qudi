@@ -26,6 +26,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 from core.module import Base, ConfigOption
+from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
@@ -419,7 +420,7 @@ class FastComtec(Base, FastCounterInterface):
 
     def get_data_testfile(self):
         ''' Load data test file '''
-        data = np.loadtxt(os.path.join(self.get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
+        data = np.loadtxt(os.path.join(get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
 

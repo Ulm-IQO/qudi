@@ -1128,7 +1128,7 @@ class MagnetLogic(GenericLogic):
         self._optimizer_logic.start_refocus(curr_pos, caller_tag='magnet_logic')
 
         # check just the state of the optimizer
-        while self._optimizer_logic.getState() != 'idle' and not self._stop_measure:
+        while self._optimizer_logic.module_state() != 'idle' and not self._stop_measure:
             time.sleep(0.5)
 
         # use the position to move the scanner
@@ -1388,7 +1388,7 @@ class MagnetLogic(GenericLogic):
         #       display, which need to be solved.
         diff = (abs(odmr_high_freq_meas - odmr_low_freq_meas)/2)/self.norm
 
-        while self._odmr_logic.getState() != 'idle' and not self._stop_measure:
+        while self._odmr_logic.module_state() != 'idle' and not self._stop_measure:
             time.sleep(0.5)
 
         return diff, store_dict
@@ -1514,7 +1514,7 @@ class MagnetLogic(GenericLogic):
 
         self.odmr_2d_low_center_freq = odmr_freq_meas
 
-        while self._odmr_logic.getState() != 'idle' and not self._stop_measure:
+        while self._odmr_logic.module_state() != 'idle' and not self._stop_measure:
             time.sleep(0.5)
 
         return cont_meas, param
@@ -1650,7 +1650,7 @@ class MagnetLogic(GenericLogic):
         time.sleep(2)
 
         # wait until the gated counter is done
-        while self._gc_logic.getState() != 'idle' and not self._stop_measure:
+        while self._gc_logic.module_state() != 'idle' and not self._stop_measure:
             # print('in SSR measure')
             time.sleep(1)
 

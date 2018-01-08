@@ -27,6 +27,7 @@ import time
 
 from interface.fast_counter_interface import FastCounterInterface
 from core.module import Base, ConfigOption
+from core.util.modules import get_main_dir
 import okfrontpanel as ok
 from core.util.mutex import Mutex
 
@@ -197,7 +198,7 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         # upload the proper fast counter configuration bitfile to the FPGA
         bitfile_name = 'fastcounter_' + self._fpga_type + '.bit'
         # Load on the FPGA a configuration file (bit file).
-        self._fpga.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga',
+        self._fpga.ConfigureFPGA(os.path.join(get_main_dir(), 'thirdparty', 'qo_fpga',
                                               bitfile_name))
 
         # Check if the upload was successful and the Opal Kelly FrontPanel is
