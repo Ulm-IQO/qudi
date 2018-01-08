@@ -20,41 +20,60 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import abc
 import numpy as np
 from collections import OrderedDict
 
 
-class Idle(object):
+class PulseBlockElement(object, metaclass=abc.ABCMeta):
+    """
+    Base class representing the atomic element of a pulse block.
+    """
+    params = OrderedDict()
+    params['length'] = {'unit': 's', 'init': 0.0, 'min': 0.0, 'max': +np.inf, 'type': float}
+    params['increment'] = {'unit': 's', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
+
+    def __init__(self, **kwargs):
+        if 'length' in kwargs:
+            self.length_s = kwargs['length_s']
+        if 'increment' in kwargs:
+            self.increment_s = kwargs['increment_s']
+        return
+
+    @abc.abstractmethod
+    def get_samples(self, time_array):
+        pass
+
+
+class Idle(PulseBlockElement):
     """
     Object representing an idle element (zero voltage)
     """
-    params = OrderedDict()
 
     def __init__(self):
         return
 
     def get_samples(self, time_array):
-        samples_arr = np.zeros(len(time_array)) + self.test
+        samples_arr = np.zeros(len(time_array))
         return samples_arr
 
 
-class DC(object):
+class DC(PulseBlockElement):
     """
     Object representing an DC element (constant voltage)
     """
-    params = OrderedDict()
-    params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
 
     def __init__(self, voltage):
+        self.params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
         self.voltage = voltage
         return
 
     def get_samples(self, time_array):
-        samples_arr = np.zeros(len(time_array)) + self.test
+        samples_arr = np.zeros(len(time_array)) + self.voltage
         return samples_arr
 
 
-class Sin(object):
+class Sin(PulseBlockElement):
     """
     Object representing a sine wave element
     """
@@ -70,222 +89,78 @@ class Sin(object):
         return
 
     def get_samples(self, time_array):
-        samples_arr = np.zeros(len(time_array)) + self.test
+        phase_rad = np.pi * self.phase / 180
+        amp_conv = 2 * self.amplitude  # conversion for AWG to actually output the specified voltage
+        samples_arr = amp_conv * np.sin(2 * np.pi * self.frequency * time_array + phase_rad)
         return samples_arr
 
 class DoubleSin(object):
     """
-    Object representing a sine wave element
+    Object representing a double sine wave element (Superposition of two sine waves; NOT normalized)
     """
     params = OrderedDict()
-    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+    params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
+    params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
 
-    def __init__(self, amplitude, frequency, phase):
-        self.amplitude = amplitude
-        self.frequency = frequency
-        self.phase = phase
+    def __init__(self, amplitude_1, frequency_1, phase_1, amplitude_2, frequency_2, phase_2):
+        self.amplitude = [amplitude_1, amplitude_2]
+        self.frequency = [frequency_1, frequency_2]
+        self.phase = [phase_1, phase_2]
         return
 
     def get_samples(self, time_array):
-        samples_arr = np.zeros(len(time_array)) + self.test
+        # First sine wave
+        phase_rad = np.pi * self.phase[0] / 180
+        amp_conv = 2 * self.amplitude[0]  # conversion for AWG to actually output the specified voltage
+        samples_arr = amp_conv * np.sin(2 * np.pi * self.frequency[0] * time_array + phase_rad)
+
+        # Second sine wave (add on first sine)
+        phase_rad = np.pi * self.phase[1] / 180
+        amp_conv = 2 * self.amplitude[1]  # conversion for AWG to actually output the specified voltage
+        samples_arr += amp_conv * np.sin(2 * np.pi * self.frequency[1] * time_array + phase_rad)
         return samples_arr
 
 
-class SamplingFunctions():
-    """ Collection of mathematical functions used for sampling of the pulse
-        sequences.
+class TripleSin(object):
     """
-    def __init__(self):
-        # If you want to define a new function, make a new method and add the
-        # reference to this function to the _math_func dictionary:
-        self._math_func = OrderedDict()
-        self._math_func['Idle']             = self._idle
-        self._math_func['DC']               = self._dc
-        self._math_func['Sin']              = self._sin
-        self._math_func['Cos']              = self._cos
-        self._math_func['DoubleSin']        = self._doublesin
-        self._math_func['TripleSin']        = self._triplesin
+    Object representing a triple sine wave element
+    (Superposition of three sine waves; NOT normalized)
+    """
+    params = OrderedDict()
+    params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
+    params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+    params['amplitude_3'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['frequency_3'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
 
-        self._math_func['SinGauss']         = self._singauss
-        self._math_func['CosGauss']         = self._cosgauss
-        self._math_func['DoubleSinGauss']   = self._doublesingauss
-        self._math_func['TripleSinGauss']   = self._triplesingauss
+    def __init__(self, amplitude_1, frequency_1, phase_1, amplitude_2, frequency_2, phase_2,
+                 amplitude_3, frequency_3, phase_3):
+        self.amplitude = [amplitude_1, amplitude_2, amplitude_3]
+        self.frequency = [frequency_1, frequency_2, frequency_3]
+        self.phase = [phase_1, phase_2, phase_3]
+        return
 
-        # Definition of constraints for the parameters
-        # --------------------------------------------
-        # Mathematical parameters may be subjected to certain constraints
-        # (e.g. a range within the function is defined). These contraints can
-        # be set here individually for each parameter. There exist some
-        # predefined lists of constraints for the common parameters like
-        # frequency, amplitude, phase. If your functions do not desire special
-        # limitations, then use these.
-        # Moreover, the display Widget in the GUI will depend on the
-        # contraints you are setting here.
-        # FIXME: This GUI dependancy has to move to other places
+    def get_samples(self, time_array):
+        # First sine wave
+        phase_rad = np.pi * self.phase[0] / 180
+        amp_conv = 2 * self.amplitude[0]  # conversion for AWG to actually output the specified voltage
+        samples_arr = amp_conv * np.sin(2 * np.pi * self.frequency[0] * time_array + phase_rad)
 
-        # predefine a general range for the frequency, amplitude and phase
-        # <general_parameter> = {}
-        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                    'view_stepsize': 1.0, 'dec': 15, 'type': float}
-        ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.01, 'dec': 15, 'type': float}
-        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -360, 'max': 360,
-                     'view_stepsize': 0.1, 'dec': 15, 'type': float}
+        # Second sine wave (add on first sine)
+        phase_rad = np.pi * self.phase[1] / 180
+        amp_conv = 2 * self.amplitude[1]  # conversion for AWG to actually output the specified voltage
+        samples_arr += amp_conv * np.sin(2 * np.pi * self.frequency[1] * time_array + phase_rad)
 
-        # the following keywords are known to the GUI elements, and you should
-        # use only those to define you own limitation. Here is an explanation
-        # for the used keywords:
-
-        # 'unit' : string for the SI unit.
-        # 'init_val' : initial value the parameter should have
-        # 'min' : minimal value of the parameter
-        # 'max' : maximal value of the parameter
-        # 'view_stepsize' : optional, the corresponding ViewWidget will have
-        #                   buttons to increment and decrement the current
-        #                   value.
-        # 'hard_stepsize' : optional, the accepted value will be a multiple of
-        #                   this. Normally, this will be dictate by hardware.
-        # 'type' : the type of the parameter, either int, float, bool
-
-
-        # Configure also the parameter for the defined functions so that it is
-        # know which input parameters the function desires:
-
-        self.func_config = OrderedDict()
-        self.func_config['Idle'] = OrderedDict()
-        self.func_config['DC'] = OrderedDict()
-        self.func_config['DC']['amplitude1'] = ampl_def
-
-        self.func_config['Sin'] = OrderedDict()
-        self.func_config['Sin']['frequency1'] = freq_def
-        self.func_config['Sin']['amplitude1'] = ampl_def
-        self.func_config['Sin']['phase1'] = phase_def
-
-        self.func_config['Cos'] = OrderedDict()
-        self.func_config['Cos']['frequency1'] = freq_def
-        self.func_config['Cos']['amplitude1'] = ampl_def
-        self.func_config['Cos']['phase1'] = phase_def
-
-        self.func_config['DoubleSin'] = OrderedDict()
-        self.func_config['DoubleSin']['frequency1'] = freq_def
-        self.func_config['DoubleSin']['frequency2'] = freq_def
-        self.func_config['DoubleSin']['amplitude1'] = ampl_def
-        self.func_config['DoubleSin']['amplitude2'] = ampl_def
-        self.func_config['DoubleSin']['phase1']     = phase_def
-        self.func_config['DoubleSin']['phase2']     = phase_def
-
-        self.func_config['TripleSin'] = OrderedDict()
-        self.func_config['TripleSin']['frequency1'] = freq_def
-        self.func_config['TripleSin']['frequency2'] = freq_def
-        self.func_config['TripleSin']['frequency3'] = freq_def
-        self.func_config['TripleSin']['amplitude1'] = ampl_def
-        self.func_config['TripleSin']['amplitude2'] = ampl_def
-        self.func_config['TripleSin']['amplitude3'] = ampl_def
-        self.func_config['TripleSin']['phase1']     = phase_def
-        self.func_config['TripleSin']['phase2']     = phase_def
-        self.func_config['TripleSin']['phase3']     = phase_def
-
-
-    def _idle(self, time_arr, parameters=None):
-        result_arr = np.zeros(len(time_arr))
-        return result_arr
-
-    def _dc(self, time_arr, parameters):
-        amp = parameters['amplitude1']
-        result_arr = np.full(len(time_arr), amp, dtype='float64')
-        return result_arr
-
-    def _sin(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        freq = parameters['frequency1']
-        phase = np.pi * parameters['phase1'] / 180
-        result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
-        return result_arr
-
-    def _cos(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        freq = parameters['frequency1']
-        phase = np.pi * parameters['phase1'] / 180
-        result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase)
-        return result_arr
-
-    def _doublesin(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
-        freq1 = parameters['frequency1']
-        freq2 = parameters['frequency2']
-        phase1 = np.pi * parameters['phase1'] / 180
-        phase2 = np.pi * parameters['phase2'] / 180
-        result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1)
-        result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
-        return result_arr
-
-    def _triplesin(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
-        amp3 = 2*parameters['amplitude3'] #conversion so that the AWG actually outputs the specified voltage
-        freq1 = parameters['frequency1']
-        freq2 = parameters['frequency2']
-        freq3 = parameters['frequency3']
-        phase1 = np.pi * parameters['phase1'] / 180
-        phase2 = np.pi * parameters['phase2'] / 180
-        phase3 = np.pi * parameters['phase3'] / 180
-        result_arr = amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1)
-        result_arr += amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)
-        result_arr += amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)
-        return result_arr
-
-    def _singauss(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        freq = parameters['frequency1']
-        phase = np.pi * parameters['phase1'] / 180
-        length_s = time_arr[-1]-time_arr[0]
-        sigma = length_s / 6
-        mu = time_arr[time_arr.size//2]
-        result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase) * np.exp(-(((time_arr-mu)/sigma)**2)/2)
-        return result_arr
-
-    def _cosgauss(self, time_arr, parameters):
-        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        freq = parameters['frequency1']
-        phase = np.pi * parameters['phase1'] / 180
-        length_s = time_arr[-1]-time_arr[0]
-        sigma = length_s / 6
-        mu = time_arr[time_arr.size//2]
-        result_arr = amp * np.cos(2*np.pi * freq * time_arr + phase) * np.exp(-(((time_arr-mu)/sigma)**2)/2)
-        return result_arr
-
-    def _doublesingauss(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
-        freq1 = parameters['frequency1']
-        freq2 = parameters['frequency2']
-        phase1 = np.pi * parameters['phase1'] / 180
-        phase2 = np.pi * parameters['phase2'] / 180
-        length_s = time_arr[-1]-time_arr[0]
-        sigma = length_s / 6
-        mu = time_arr[time_arr.size//2]
-        result_arr = (amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) + amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2)) * np.exp(-(((time_arr-mu)/sigma)**2)/2)
-        return result_arr
-
-    def _triplesingauss(self, time_arr, parameters):
-        amp1 = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
-        amp2 = 2*parameters['amplitude2'] #conversion so that the AWG actually outputs the specified voltage
-        amp3 = 2*parameters['amplitude3'] #conversion so that the AWG actually outputs the specified voltage
-        freq1 = parameters['frequency1']
-        freq2 = parameters['frequency2']
-        freq3 = parameters['frequency3']
-        phase1 = np.pi * parameters['phase1'] / 180
-        phase2 = np.pi * parameters['phase2'] / 180
-        phase3 = np.pi * parameters['phase3'] / 180
-        length_s = time_arr[-1]-time_arr[0]
-        sigma = length_s / 6
-        mu = time_arr[time_arr.size//2]
-        result_arr = (amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) + amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2) + amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)) * np.exp(-(((time_arr-mu)/sigma)**2)/2)
-        return result_arr
-
-
-
-
+        # Second sine wave (add on sum of first and second)
+        phase_rad = np.pi * self.phase[2] / 180
+        amp_conv = 2 * self.amplitude[2]  # conversion for AWG to actually output the specified voltage
+        samples_arr += amp_conv * np.sin(2 * np.pi * self.frequency[2] * time_array + phase_rad)
+        return samples_arr
