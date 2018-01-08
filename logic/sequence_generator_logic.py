@@ -664,30 +664,89 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     #---------------------------------------------------------------------------
     def _analyze_block_ensemble(self, ensemble):
         """
+        This helper method runs through each element of a PulseBlockEnsemble object and extracts
+        important information about the Waveform that can be created out of this object.
+        Especially the discretization due to the set self.sample_rate is taken into account.
+        The positions in time (as integer time bins) of the PulseBlockElement transitions are
+        determined here (all the "rounding-to-best-match-value").
+        Additional information like the total number of samples, total number of PulseBlockElements
+        and the timebins for digital channel low-to-high transitions get returned as well.
 
-        @param ensemble:
-        @return:
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @return: number_of_samples (int): The total number of samples in a Waveform provided the
+                                              current sample_rate and PulseBlockEnsemble object.
+                 total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
+                                       the provided PulseBlockEnsemble.
+                 elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
+                                                               PulseBlockElement in chronological
+                                                               order (incl. repetitions).
+                 digital_rising_bins (2D numpy.ndarray[int]): Array of chronological low-to-high
+                                                              transition positions
+                                                              (in timebins; incl. repetitions)
+                                                              for each digital channel.
         """
-        state_length_bins_arr = np.array([], dtype=int)
-        number_of_elements = 0
+        # variables to keep track of the current timeframe
+        current_end_time = 0.0
+        current_start_bin = 0
+        # lists containing the bins where the digital channels are rising (one for each channel)
+        digital_rising_bins = []
+        for i in range(ensemble.digital_channels):
+            digital_rising_bins.append([])
+        # memorize the channel state of the previous element
+        tmp_digital_high = [False] * ensemble.digital_channels
+        # number of elements including repetitions and the length of each element in bins
+        total_elements = 0
+        elements_length_bins = np.array([], dtype=int)
+
         for block, reps in ensemble.block_list:
-            number_of_elements += (reps+1)*len(block.element_list)
-            num_state_changes = (reps+1) * len(block.element_list)
-            tmp_length_bins = np.zeros(num_state_changes, dtype=int)
-            # Iterate over all repertitions of the current block
-            state_index = 0
+            # Total number of elements in the current block including all repetitions
+            unrolled_elements = (reps+1) * len(block.element_list)
+            # Add this number to the total number of unrolled elements in the ensemble
+            total_elements += unrolled_elements
+            # Temporary array to hold the length for each element (including reps) in bins
+            tmp_length_bins = np.zeros(unrolled_elements, dtype=int)
+
+            # Iterate over all repetitions of the current block
+            unrolled_element_index = 0
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_index, block_element in enumerate(block.element_list):
+                    # save bin position if a transition from low to high has occured in a digital
+                    # channel
+                    if tmp_digital_high != block_element.digital_high:
+                        for chnl, is_high in enumerate(block_element.digital_high):
+                            if not tmp_digital_high[chnl] and is_high:
+                                digital_rising_bins[chnl].append(current_start_bin)
+                            tmp_digital_high[chnl] = is_high
+
+                    # Get length and increment for this element
                     init_length_s = block_element.init_length_s
                     increment_s = block_element.increment_s
+                    # element length of the current element with current repetition count in sec
                     element_length_s = init_length_s + (rep_no * increment_s)
-                    tmp_length_bins[state_index] = int(np.rint(element_length_s * self.sample_rate))
-                    state_index += 1
-            state_length_bins_arr = np.append(state_length_bins_arr, tmp_length_bins)
-        number_of_samples = np.sum(state_length_bins_arr)
-        number_of_states = len(state_length_bins_arr)
-        return number_of_samples, number_of_elements, number_of_states, state_length_bins_arr
+                    # ideal end time for the sequence up until this point in sec
+                    current_end_time += element_length_s
+                    # Nearest possible match including the discretization in bins
+                    current_end_bin = int(np.rint(current_end_time * self.sample_rate))
+                    # current element length in discrete bins
+                    element_length_bins = current_end_bin - current_start_bin
+                    tmp_length_bins[unrolled_element_index] = element_length_bins
+                    # advance bin offset for next element
+                    current_start_bin += element_length_bins
+                    # increment element counter
+                    unrolled_element_index += 1
+
+            # append element lengths (in bins) to array
+            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
+
+        # calculate total number of samples
+        number_of_samples = np.sum(elements_length_bins)
+
+        # convert digital rising indices to numpy.ndarrays
+        for chnl in range(len(digital_rising_bins)):
+            digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=int)
+
+        return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
                                     name_tag=None):
@@ -735,6 +794,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         arrays inside the memory. In other words: The whole sample arrays are never created at any
         time. This results in more function calls and general overhead causing the much longer time
         to complete.
+
+        In addition the pulse_block_ensemble gets analyzed and important parameters used during
+        sampling get stored in the ensemble object itself. Those attributes are:
+        <ensemble>.length_bins
+        <ensemble>.length_elements_bins
+        <ensemble>.number_of_elements
+        <ensemble>.digital_rising_bins
+        <ensemble>.sample_rate
+        <ensemble>.activation_config
+        <ensemble>.amplitude_dict
         """
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
@@ -790,20 +859,30 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                                      ana_channels, dig_channels))
             return np.array([]), np.array([]), -1
 
-        number_of_samples, number_of_elements, number_of_states, state_length_bins_arr = self._analyze_block_ensemble(ensemble)
+        # get important parameters from the ensemble and save some to the ensemble object
+        number_of_samples, number_of_elements, length_elements_bins, digital_rising_bins = self._analyze_block_ensemble(ensemble)
+        ensemble.length_bins = number_of_samples
+        ensemble.length_elements_bins = length_elements_bins
+        ensemble.number_of_elements = number_of_elements
+        ensemble.digital_rising_bins = digital_rising_bins
+        ensemble.sample_rate = self.sample_rate
+        ensemble.activation_config = self.activation_config
+        ensemble.amplitude_dict = self.amplitude_dict
+        self.save_ensemble(ensemble_name, ensemble)
+
         # The time bin offset for each element to be sampled to preserve rotating frame.
         if chunkwise and write_to_file:
             # Flags and counter for chunkwise writing
             is_first_chunk = True
             is_last_chunk = False
-            element_count = 0
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
-            analog_samples = np.empty([ana_channels, number_of_samples], dtype = 'float32')
-            digital_samples = np.empty([dig_channels, number_of_samples], dtype = bool)
+            analog_samples = np.empty([ana_channels, number_of_samples], dtype='float32')
+            digital_samples = np.empty([dig_channels, number_of_samples], dtype=bool)
             # Starting index for the sample array entrys
             entry_ind = 0
 
+        element_count = 0
         # Iterate over all blocks within the PulseBlockEnsemble object
         for block, reps in ensemble.block_list:
             # Iterate over all repertitions of the current block
@@ -811,12 +890,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 # Iterate over the Block_Elements inside the current block
                 for elem_ind, block_element in enumerate(block.element_list):
                     parameters = block_element.parameters
-                    init_length_s = block_element.init_length_s
-                    increment_s = block_element.increment_s
                     digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
-                    element_length_s = init_length_s + (rep_no*increment_s)
-                    element_length_bins = int(np.rint(element_length_s * self.sample_rate))
+                    element_length_bins = length_elements_bins[element_count]
+                    element_count += 1
 
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
@@ -824,7 +901,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
                         # Toggle the is_last_chunk flag accordingly.
-                        element_count += 1
                         if element_count == number_of_elements:
                             is_last_chunk = True
 
@@ -1002,6 +1078,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 temp_dict.update(seq_param)
 
                 sequence_param_dict_list.append(temp_dict)
+
+        # get important parameters from the sequence and save some to the sequence object
+        #sequence_obj.length_bins = 0
+        #sequence_obj.length_elements_bins = length_elements_bins
+        #sequence_obj.number_of_elements = number_of_elements
+        #sequence_obj.digital_rising_bins = digital_rising_bins
+        sequence_obj.sample_rate = self.sample_rate
+        sequence_obj.activation_config = self.activation_config
+        sequence_obj.amplitude_dict = self.amplitude_dict
+        self.save_sequence(sequence_name, sequence_obj)
 
         if write_to_file:
             # pass the whole information to the sequence creation method:
