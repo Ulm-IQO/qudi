@@ -26,6 +26,7 @@ import numpy as np
 
 from collections import OrderedDict
 from core.module import StatusVar
+from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
 
 
@@ -61,7 +62,7 @@ class PulseExtractionLogic(GenericLogic):
         filename_list = []
         # The assumption is that in the directory pulse_extraction_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'pulse_extraction_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'pulse_extraction_methods')
         for entry in os.listdir(path):
             if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
                 filename_list.append(entry[:-3])

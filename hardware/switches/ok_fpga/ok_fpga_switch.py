@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import okfrontpanel as ok
 from core.module import Base
+from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 
@@ -42,7 +43,7 @@ class OkFpgaTtlSwitch(Base, SwitchInterface):
         self.fp = ok.FrontPanel()
         self.fp.GetDeviceCount()
         self.fp.OpenBySerial(self.fp.GetDeviceListSerial(0))
-        self.fp.ConfigureFPGA(os.path.join(self.get_main_dir(), 'thirdparty', 'qo_fpga', 'switch_top.bit'))
+        self.fp.ConfigureFPGA(os.path.join(get_main_dir(), 'thirdparty', 'qo_fpga', 'switch_top.bit'))
         if not self.fp.IsFrontPanelEnabled():
             self.log.error('FrontPanel is not enabled in FPGA switch!')
             return

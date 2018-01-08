@@ -31,6 +31,8 @@ import time
 from qtpy import QtCore
 from collections import OrderedDict
 from core.module import StatusVar
+from core.util.modules import get_home_dir
+from core.util.modules import get_main_dir
 
 from logic.pulse_objects import PulseBlockElement
 from logic.pulse_objects import PulseBlock
@@ -116,14 +118,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
             if not os.path.exists(self.pulsed_file_dir):
-                homedir = self.get_home_dir()
+                homedir = get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.log.warning('The directort defined in "pulsed_file_dir" in the config for '
                                  'SequenceGeneratorLogic class does not exist! The default home '
                                  'directory\n{0}'
                                  '\nwill be taken instead.'.format(self.pulsed_file_dir))
         else:
-            homedir = self.get_home_dir()
+            homedir = get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.log.warning('No directory with the attribute "pulsed_file_dir" is defined for the '
                              'SequenceGeneratorLogic! The default home directory\n{0}\nwill be '
@@ -197,7 +199,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         additional_filenames_list = []
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'predefined_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'predefined_methods')
         for entry in os.listdir(path):
             filepath = os.path.join(path, entry)
             if os.path.isfile(filepath) and entry.endswith('.py'):
@@ -735,8 +737,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         to complete.
         """
         # lock module if it's not already locked (sequence sampling in progress)
-        if self.getState() == 'idle':
-            self.lock()
+        if self.module_state() == 'idle':
+            self.module_state.lock()
             sequence_sampling_in_progress = False
         else:
             sequence_sampling_in_progress = True
@@ -866,7 +868,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           'whole: {0} sec.'.format(int(np.rint(time.time() - start_time))))
             # return the sample arrays for write_to_file was set to FALSE
             if not sequence_sampling_in_progress:
-                self.unlock()
+                self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, analog_samples, digital_samples)
             return analog_samples, digital_samples, offset_bin
         elif chunkwise:
@@ -875,7 +877,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.info('Time needed for sampling and writing to file chunkwise: {0} sec'
                           ''.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
-                self.unlock()
+                self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
             return np.array([]), np.array([]), offset_bin
         else:
@@ -892,7 +894,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
 
             if not sequence_sampling_in_progress:
-                self.unlock()
+                self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
             return np.array([]), np.array([]), offset_bin
 
@@ -919,8 +921,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         More sophisticated sequence sampling method can be implemented here.
         """
         # lock module
-        if self.getState() == 'idle':
-            self.lock()
+        if self.module_state() == 'idle':
+            self.module_state.lock()
         else:
             self.log.error('Cannot sample sequence "{0}" because the sequence generator logic is '
                            'still busy (locked).\nFunction call ignored.'.format(sequence_name))
@@ -1010,7 +1012,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.info('Time needed for sampling Pulse Sequence: {0} sec.'
                           ''.format(int(np.rint(time.time() - start_time))))
         # unlock module
-        self.unlock()
+        self.module_state.unlock()
         self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
         return
 
