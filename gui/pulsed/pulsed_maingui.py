@@ -2160,7 +2160,7 @@ class PulsedMeasurementGui(GUIBase):
         else:
             extraction_settings['conv_std_dev'] = self._pe.extract_param_conv_std_dev_DSpinBox.value()
 
-        extraction_settings['method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
+        extraction_settings['current_method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
         extraction_settings['count_threshold'] = self._pe.extract_param_threshold_SpinBox.value()
         extraction_settings['threshold_tolerance_bins'] = self._pe.extract_param_tolerance_SpinBox.value()
         extraction_settings['min_laser_length'] = self._pe.extract_param_min_laser_length_SpinBox.value()
