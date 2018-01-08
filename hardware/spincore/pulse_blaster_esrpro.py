@@ -27,6 +27,7 @@ import numpy as np
 
 from interface.pulser_interface import PulserInterface
 from core.module import Base
+from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
@@ -80,11 +81,11 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         elif arch == ('64bit', 'WindowsPE'):
             libname = 'spinapi64.dll'
         elif arch == ('32bit', 'ELF'):
-            folderpath = os.path.join(self.get_main_dir(), 'hardware',
+            folderpath = os.path.join(get_main_dir(), 'hardware',
                                       'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi.so')
         elif arch == ('64bit', 'ELF'):
-            folderpath = os.path.join(self.get_main_dir(), 'hardware',
+            folderpath = os.path.join(get_main_dir(), 'hardware',
                                       'SpinCore')
             libname = os.path.join(folderpath, 'libspinapi64.so')
 

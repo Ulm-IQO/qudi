@@ -228,7 +228,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Deactivate the module properly.
         """
 
-        if self.getState() != 'idle' and self.getState() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_pulsed_measurement()
 
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
@@ -670,8 +670,8 @@ class PulsedMeasurementLogic(GenericLogic):
         if stashed_raw_data_tag == '':
             stashed_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'idle':
-                self.lock()
+            if self.module_state() == 'idle':
+                self.module_state.lock()
                 self.elapsed_time = 0.0
                 self.elapsed_time_str = '00:00:00:00'
                 self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
@@ -717,7 +717,7 @@ class PulsedMeasurementLogic(GenericLogic):
             calculates fluorescence signal and creates plots.
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
@@ -833,7 +833,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if stash_raw_data_tag == '':
             stash_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #stopping and disconnecting the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -852,7 +852,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self.recalled_raw_data = None
 
-                self.unlock()
+                self.module_state.unlock()
                 self.sigMeasurementRunningUpdated.emit(False, False)
         return
 
@@ -861,7 +861,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #pausing the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -879,7 +879,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 if self.use_ext_microwave:
                     self.microwave_on_off(True)
                 self.fast_counter_continue()
@@ -911,7 +911,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def manually_pull_data(self):
         """ Analyse and display the data
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self._pulsed_analysis_loop()
         return
 
