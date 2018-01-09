@@ -21,10 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from collections import OrderedDict
 
 
-class PulseBlockElement:
+class PulseBlockElement(object):
     """
     Object representing a single atomic element in a pulse block.
 
@@ -33,44 +32,33 @@ class PulseBlockElement:
     a GUI as single rows of a Pulse_Block.
     """
     def __init__(self, init_length_s, increment_s=0, pulse_function=None, digital_high=None,
-                 parameters=None, use_as_tick=False):
+                 use_as_tick=False):
         """
         The constructor for a Pulse_Block_Element needs to have:
 
-        @param int init_length_s: an initial length of the element, this
-                                 parameters should not be zero but must have a
-                                 finite value.
-        @param int increment_s: the number which will be incremented during
-                               each repetition of this object
-        @param list pulse_function: list of strings with name of the sampling
-                                    function how to alter the points, the name
-                                    of the function will be one of the sampling
-                                    functions
-        @param list digital_high: list of digital channels, which are for the
-                              length of this Pulse_Block_Element are set either
-                              to True (high) or to False (low). The length of
-                              the marker list depends on the number of (active)
-                              digital channels. For 4 digital channel it may
-                              look like:
-                              [True, False, False, False]
-        @param list parameters: a list of dictionaries. The number of dictionaries
-                           depends on the number of analog channels. The
-                           number of entries within a dictionary depends on the
-                           chosen sampling function. The key words of the
-                           dictionary for the parameters will be those of the
-                           sampling functions.
-        @param bool use_as_tick: bool, indicates, whether the set length should
-                           be used as a tick (i.e. the parameter for the x axis)
-                           for the later plot in the analysis.
+        @param float init_length_s: an initial length of the element, this parameters should not be
+                                    zero but must have a finite value.
+        @param float increment_s: the number which will be incremented during each repetition of
+                                  this element.
+        @param dict pulse_function: dictionary with keys being the qudi analog channel string
+                                    descriptors ('a_ch1', 'a_ch2' etc.) and the corresponding
+                                    objects being instances of the mathematical function objects
+                                    found in "sampling_functions.py".
+        @param dict digital_high: dictionary with keys being the qudi digital channel string
+                                  descriptors ('d_ch1', 'd_ch2' etc.) and the corresponding objects
+                                  being boolean values describing if the channel should be logical
+                                  low (False) or high (True).
+                                  For 3 digital channel it may look like:
+                                  {'d_ch1': True, 'd_ch2': False, 'd_ch5': False}
+        @param bool use_as_tick: Indicates, whether the set length should be used as a tick
+                                 (i.e. the parameter for the x axis) for the later plot in the
+                                 pulse analysis.
         """
-        if parameters is None:
-            parameters = []
         # FIXME: Sanity checks need to be implemented here
         self.init_length_s  = init_length_s
         self.increment_s    = increment_s
         self.pulse_function = pulse_function
         self.digital_high   = digital_high
-        self.parameters     = parameters
         self.use_as_tick    = use_as_tick
         # calculate number of digital and analogue channels
         if pulse_function is not None:
@@ -83,7 +71,7 @@ class PulseBlockElement:
             self.digital_channels = 0
 
 
-class PulseBlock:
+class PulseBlock(object):
     """
     Collection of Pulse_Block_Elements which is called a Pulse_Block.
     """
@@ -113,8 +101,8 @@ class PulseBlock:
         # the Pulse_Block parameter
         self.init_length_s = 0.0
         self.increment_s = 0.0
-        self.analog_channels = 0
-        self.digital_channels = 0
+        self.analog_channels = None
+        self.digital_channels = None
         self.use_as_tick = False
 
         # calculate the tick value for the whole block. Basically sum all the
@@ -132,31 +120,53 @@ class PulseBlock:
                 self.controlled_vals_start += elem.init_length_s
                 self.controlled_vals_increment += elem.increment_s
 
-            if elem.analog_channels > self.analog_channels:
-                self.analog_channels = elem.analog_channels
-            if elem.digital_channels > self.digital_channels:
-                self.digital_channels = elem.digital_channels
+            if self.analog_channels is None:
+                self.analog_channels = list(elem.pulse_function)
+            elif self.analog_channels != list(elem.pulse_function):
+                raise ValueError('Usage of different sets of analog channels in the same PulseBlock'
+                                 ' is prohibited.\nPulseBlock creation failed!\nUsed analog channel'
+                                 ' sets are:\n{0}\n{1}'.format(self.analog_channels,
+                                                               list(elem.pulse_function)))
+                return
+
+            if self.digital_channels is None:
+                self.digital_channels = list(elem.digital_high)
+            elif self.digital_channels != list(elem.digital_high):
+                raise ValueError('Usage of different sets of digital channels in the same '
+                                 'PulseBlock is prohibited.\nPulseBlock creation failed!\n'
+                                 'Used digital channel sets are:\n'
+                                 '{0}\n{1}'.format(self.digital_channels, list(elem.digital_high)))
+                return
 
     def replace_element(self, position, element):
-        self.element_list[position] = element
-        self._refresh_parameters()
-        return
+        if isinstance(element, PulseBlockElement) and (len(self.element_list) > position):
+            self.element_list[position] = element
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
     def delete_element(self, position):
-        del(self.element_list[position])
-        self._refresh_parameters()
-        return
+        if len(self.element_list) > position:
+            del(self.element_list[position])
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
     def append_element(self, element, at_beginning=False):
-        if at_beginning:
-            self.element_list.insert(0, element)
+        if isinstance(element, PulseBlockElement):
+            if at_beginning:
+                self.element_list.insert(0, element)
+            else:
+                self.element_list.append(element)
+            self._refresh_parameters()
+            return 0
         else:
-            self.element_list.append(element)
-        self._refresh_parameters()
-        return
+            return -1
 
 
-class PulseBlockEnsemble:
+class PulseBlockEnsemble(object):
     """
     Represents a collection of Pulse_Block objects which is called a Pulse_Block_Ensemble.
 
@@ -166,9 +176,9 @@ class PulseBlockEnsemble:
         """
         The constructor for a Pulse_Block_Ensemble needs to have:
 
-        @param str name: chosen name for the Pulse_Block_Ensemble
-        @param list block_list: contains the Pulse_Block Objects with their number of repetitions,
-                                e.g. [(Pulse_Block, repetitions), (Pulse_Block, repetitions), ...])
+        @param str name: chosen name for the PulseBlockEnsemble
+        @param list block_list: contains the PulseBlock objects with their number of repetitions,
+                                e.g. [(PulseBlock, repetitions), (PulseBlock, repetitions), ...])
         @param bool rotating_frame: indicates whether the phase should be preserved for all the
                                     functions.
         """
@@ -177,36 +187,57 @@ class PulseBlockEnsemble:
         self.block_list = block_list
         self.rotating_frame = rotating_frame
         self.length_s = 0
-        self.analog_channels = 0
-        self.digital_channels = 0
+        self.analog_channels = None
+        self.digital_channels = None
         self.controlled_vals_array = np.array([])
         self._refresh_parameters()
-        # these parameters can be set manually by the logic to recall the pulser settings upon
-        # loading into channels. They are not crucial for waveform generation.
-        self.sample_rate = None
-        self.activation_config = None
-        self.amplitude_dict = None
-        self.laser_channel = None
-        self.alternating = None
-        self.laser_ignore_list = None
-        self.length_bins = None
-        self.length_elements_bins = None
-        self.number_of_elements = None
-        self.digital_rising_bins = None
+
+        # Dictionary container to store information related to the actually sampled
+        # Waveform like pulser settings used during sampling (sample_rate, activation_config etc.)
+        # and additional information about the discretization of the waveform (timebin positions of
+        # the PulseBlockElement transitions etc.)
+        # This container is not necessary for the sampling process but serves only the purpose of
+        # holding optional information for different modules.
+        self.sampling_information = dict()
+        # self.sample_rate = None
+        # self.activation_config = None
+        # self.amplitude_dict = None
+        # self.laser_channel = None
+        # self.alternating = None
+        # self.laser_ignore_list = None
+        # self.length_bins = None
+        # self.length_elements_bins = None
+        # self.number_of_elements = None
+        # self.digital_rising_bins = None
         return
 
     def _refresh_parameters(self):
         self.length_s = 0
-        self.analog_channels = 0
-        self.digital_channels = 0
+        self.analog_channels = None
+        self.digital_channels = None
         # calculate the tick values for the whole block_ensemble.
         self.controlled_vals_array = np.array([])
         for block, reps in self.block_list:
-            # Get number of channels from the block information
-            if block.analog_channels > self.analog_channels:
+            # Get channels from the block information
+            if self.analog_channels is None:
                 self.analog_channels = block.analog_channels
-            if block.digital_channels > self.digital_channels:
+            elif self.analog_channels != block.analog_channels:
+                raise ValueError('Usage of different sets of analog channels in the same '
+                                 'PulseBlockEnsemble is prohibited.\n'
+                                 'PulseBlockEnsemble creation failed!\n'
+                                 'Used analog channel sets are:\n'
+                                 '{0}\n{1}'.format(self.analog_channels, block.analog_channels))
+                return
+
+            if self.digital_channels is None:
                 self.digital_channels = block.digital_channels
+            elif self.digital_channels != block.digital_channels:
+                raise ValueError('Usage of different sets of digital channels in the same '
+                                 'PulseBlockEnsemble is prohibited.\n'
+                                 'PulseBlockEnsemble creation failed!\n'
+                                 'Used digital channel sets are:\n'
+                                 '{0}\n{1}'.format(self.digital_channels, block.digital_channels))
+                return
 
             # Get and set information about the length of the ensemble
             self.length_s += (block.init_length_s * (reps+1) + block.increment_s * (reps*(reps+1)/2))
@@ -222,109 +253,156 @@ class PulseBlockEnsemble:
                 self.controlled_vals_array = np.append(self.controlled_vals_array, arr)
         return
 
-    def replace_block(self, position, block):
-        self.block_list[position] = block
-        self._refresh_parameters()
-        return
+    def replace_block(self, position, block, reps=0):
+        if isinstance(block, PulseBlock) and (len(self.block_list) > position):
+            self.block_list[position] = (block, reps)
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
     def delete_block(self, position):
-        del(self.block_list[position])
-        self._refresh_parameters()
-        return
-
-    def append_block(self, block, at_beginning=False):
-        if at_beginning:
-            self.block_list.insert(0, block)
+        if len(self.block_list) > position:
+            del(self.block_list[position])
+            self._refresh_parameters()
+            return 0
         else:
-            self.block_list.append(block)
-        self._refresh_parameters()
-        return
+            return -1
+
+    def append_block(self, block, reps=0, at_beginning=False):
+        if isinstance(block, PulseBlock):
+            if at_beginning:
+                self.block_list.insert(0, (block, reps))
+            else:
+                self.block_list.append((block, reps))
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
 
-class PulseSequence:
+class PulseSequence(object):
     """
     Higher order object for sequence capability.
 
-    Represents a playback procedure for a number of Pulse_Block_Ensembles. Unused for pulse
+    Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
-    def __init__(self, name, ensemble_param_list, rotating_frame=True):
+    def __init__(self, name, ensemble_list, rotating_frame=True):
         """
-        The constructor for a Pulse_Sequence objects needs to have:
+        The constructor for a PulseSequence objects needs to have:
 
         @param str name: the actual name of the sequence
-        @param list ensemble_param_list: list containing a tuple of two entries:
-                    (Pulse_Block_Ensemble, seq_param), (Pulse_Block_Ensemble, seq_param), ...
+        @param list ensemble_list: list containing a tuple of two entries:
+                    [(PulseBlockEnsemble, seq_param), (PulseBlockEnsemble, seq_param), ...]
                                           The seq_param is a dictionary, where the various sequence
                                           parameters are saved with their keywords and the
-                                          according parameter (as item). What parameter will be in
-                                          this dictionary will completely depend on the sequence
-                                          parameter set of the pulsing device. But most certain the
-                                          parameter 'reps' meaning repetitions will be presesnt in
-                                          the sequence parameters.
-                                          If only 'reps' are in the dictionary, than the dict will
-                                          look like
-                                                seq_param = {'reps': 12}
-                                          if 12 was chosen as the number of repetitions.
+                                          according parameter (as item).
+                                          Available parameters are:
+                                          'repetitions': The number of repetitions for that sequence
+                                                         step. (Default 0)
+                                                         0 meaning the step is played once.
+                                                         Set to -1 for infinite looping.
+                                          'jump_to': The sequence step index to jump to after
+                                                     having played all repetitions or receiving a
+                                                     jump trigger. (Default -1)
+                                                     Indices starting at 0 for first step.
+                                                     Set to -1 to follow up with the next step.
+                                          'jump_trigger': The input trigger channel index used to
+                                                          jump to the step defined in 'jump_to'.
+                                                          (Default -1)
+                                                          Indices starting at 0 for first trigger
+                                                          input channel.
+                                                          Set to -1 for not listening to triggers.
+
+                                          If only 'repetitions' are in the dictionary, then the dict
+                                          will look like:
+                                            seq_param = {'reps': 12}
+                                          and so the respective sequence step will play 13 times.
         @param bool rotating_frame: indicates, whether the phase has to be preserved in all
                                     oscillating functions.
         """
         self.name = name
-        self.ensemble_param_list = ensemble_param_list
+        self.ensemble_list = ensemble_list
         self.rotating_frame = rotating_frame
         self.length_s = 0.0
-        self.analog_channels = 0
-        self.digital_channels = 0
+        self.analog_channels = None
+        self.digital_channels = None
         self.controlled_vals_array = np.array([])
+        # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
+        self.different_ensembles = dict()
         self._refresh_parameters()
-        self.sampled_ensembles = OrderedDict()
-        # these parameters can be set manually by the logic to recall the pulser settings upon
-        # loading into channels. They are not crucial for waveform generation.
-        self.sample_rate = None
-        self.activation_config = None
-        self.amplitude_dict = None
-        self.laser_channel = None
-        self.alternating = None
-        self.laser_ignore_list = None
-        self.length_bins = None
-        self.length_elements_bins = None
-        self.number_of_elements = None
-        self.digital_rising_bins = None
+        # self.sampled_ensembles = OrderedDict()
+        # Dictionary container to store information related to the actually sampled
+        # Waveforms like pulser settings used during sampling (sample_rate, activation_config etc.)
+        # and additional information about the discretization of the waveform (timebin positions of
+        # the PulseBlockElement transitions etc.)
+        # This container is not necessary for the sampling process but serves only the purpose of
+        # holding optional information for different modules.
+        self.sampling_information = dict()
+        # self.sample_rate = None
+        # self.activation_config = None
+        # self.amplitude_dict = None
+        # self.laser_channel = None
+        # self.alternating = None
+        # self.laser_ignore_list = None
+        # self.length_bins = None
+        # self.length_elements_bins = None
+        # self.number_of_elements = None
+        # self.digital_rising_bins = None
         return
 
     def _refresh_parameters(self):
-        """ Generate the needed parameters from the passed object.
-
-        Baiscally, calculate the length_bins and number of analog and digital
-        channels.
         """
-        self.length_bins = 0
-        self.analog_channels = 0
-        self.digital_channels = 0
-        # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
-        self.different_ensembles_dict = dict()
-        # here the measurement ticks will be saved:
+
+        @return:
+        """
+        self.length_s = 0
+        self.analog_channels = None
+        self.digital_channels = None
+        self.different_ensembles = dict()
         self.controlled_vals_array = np.array([])
 
-        # to make a resonable measurement tick list, the last biggest tick value after all
+        # to make a reasonable measurement tick list, the last biggest tick value after all
         # the repetitions of a block is used as the offset_time for the next block.
         offset_tick_bin = 0
-        for ensemble, seq_dict in self.ensemble_param_list:
-            for param in seq_dict:
-                if 'reps' in param.lower() or 'repetition' in param.lower():
-                    reps = seq_dict[param]
-                    break
+        for ensemble, seq_dict in self.ensemble_list:
+            if self.length_s >= 0:
+                if 'repetitions' in seq_dict:
+                    reps = seq_dict['repetitions']
                 else:
                     reps = 0
-            self.length_s += (ensemble.length_s * (reps+1))
 
-            if ensemble.analog_channels > self.analog_channels:
+                if reps == -1:
+                    self.length_s = -1
+                else:
+                    self.length_s += (ensemble.length_s * (reps+1))
+
+            # Get channels from the block ensemble information
+            if self.analog_channels is None:
                 self.analog_channels = ensemble.analog_channels
-            if ensemble.digital_channels > self.digital_channels:
-                self.digital_channels = ensemble.digital_channels
+            elif self.analog_channels != ensemble.analog_channels:
+                raise ValueError('Usage of different sets of analog channels in the same '
+                                 'PulseSequence is prohibited.\n'
+                                 'PulseSequence creation failed!\n'
+                                 'Used analog channel sets are:\n'
+                                 '{0}\n{1}'.format(self.analog_channels,
+                                                   ensemble.analog_channels))
+                return
 
-            if self.different_ensembles_dict.get(ensemble.name) is None:
-                self.different_ensembles_dict[ensemble.name] = ensemble
+            if self.digital_channels is None:
+                self.digital_channels = ensemble.digital_channels
+            elif self.digital_channels != ensemble.digital_channels:
+                raise ValueError('Usage of different sets of digital channels in the same '
+                                 'PulseSequence is prohibited.\n'
+                                 'PulseSequence creation failed!\n'
+                                 'Used digital channel sets are:\n'
+                                 '{0}\n{1}'.format(self.digital_channels,
+                                                   ensemble.digital_channels))
+                return
+
+            if ensemble.name not in self.different_ensembles:
+                self.different_ensembles[ensemble.name] = ensemble
 
             if hasattr(ensemble, 'controlled_vals_array'):
                 self.controlled_vals_array = np.append(self.controlled_vals_array,
@@ -338,40 +416,49 @@ class PulseSequence:
                 offset_tick_bin = self.controlled_vals_array[-1]
         return
 
-    def replace_ensemble(self, position, ensemble_param):
-        """ Replace an ensemble at a given position.
+    def replace_ensemble(self, position, ensemble, seq_param=None):
+        """ Replace a sequence step at a given position.
 
-        @param int position: position in a the ensemble list
-        @param list ensemble_param: with entries
-                                        (Pulse_Block_Ensemble, seq_param)
-                                    which will replace the old one.
+        @param int position: position in the ensemble list
+        @param object ensemble: PulseBlockEnsemble instance
+        @param dict seq_param: Sequence step parameter dictionary. Use present one if None.
         """
-        self.ensemble_param_list[position] = ensemble_param
-        self._refresh_parameters()
-        return
+        if isinstance(ensemble, PulseBlockEnsemble) and (len(self.ensemble_list) > position):
+            if seq_param is None:
+                self.ensemble_list[position][0] = ensemble
+            else:
+                self.ensemble_list[position] = (ensemble, seq_param)
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
     def delete_ensemble(self, position):
         """ Delete an ensemble at a given position
 
-        @param int position: position within the list self.ensemble_param_list.
+        @param int position: position within the list self.ensemble_list.
         """
-        del(self.ensemble_list[position])
-        self._refresh_parameters()
+        if len(self.ensemble_list) > position:
+            del(self.ensemble_list[position])
+            self._refresh_parameters()
+            return 0
+        else:
+            return -1
 
-    def append_ensemble(self, ensemble_param, at_beginning=False):
+    def append_ensemble(self, ensemble, seq_param, at_beginning=False):
         """ Append either at the front or at the back an ensemble_param
 
-        @param tuple ensemble_param: containing two entries:
-                                        (Pulse_Block_Ensemble, seq_param)
-                                     where Pulse_Block_Ensemble is the object
-                                     and seq_param is the parameter set for that
-                                     ensemble.
+        @param object ensemble: PulseBlockEnsemble instance
+        @param dict seq_param: Sequence step parameter dictionary.
         @param bool at_beginning: If flase append to end (default), if true then
                                   inset at beginning.
         """
-
-        if at_beginning:
-            self.ensemble_list.insert(0, ensemble_param)
+        if isinstance(ensemble, PulseBlockEnsemble):
+            if at_beginning:
+                self.ensemble_list.insert((ensemble, seq_param))
+            else:
+                self.ensemble_list.append((ensemble, seq_param))
+            self._refresh_parameters()
+            return 0
         else:
-            self.ensemble_list.append(ensemble_param)
-        self._refresh_parameters()
+            return -1
