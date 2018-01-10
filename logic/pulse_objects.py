@@ -303,12 +303,12 @@ class PulseSequence(object):
                                                          step. (Default 0)
                                                          0 meaning the step is played once.
                                                          Set to -1 for infinite looping.
-                                          'jump_to': The sequence step index to jump to after
+                                          'go_to':   The sequence step index to jump to after
                                                      having played all repetitions or receiving a
                                                      jump trigger. (Default -1)
                                                      Indices starting at 0 for first step.
                                                      Set to -1 to follow up with the next step.
-                                          'jump_trigger': The input trigger channel index used to
+                                          'event_jump_to': The input trigger channel index used to
                                                           jump to the step defined in 'jump_to'.
                                                           (Default -1)
                                                           Indices starting at 0 for first trigger

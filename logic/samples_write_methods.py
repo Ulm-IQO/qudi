@@ -27,7 +27,7 @@ from collections import OrderedDict
 from lxml import etree as ET
 
 
-class SamplesWriteMethods():
+class SamplesWriteMethods:
     """
     Collection of write-to-file methods used to create hardware compatible files for the pulse
     generator out of sample arrays.
@@ -53,14 +53,14 @@ class SamplesWriteMethods():
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
+        @param analog_samples: dict containing float32 numpy ndarrays, contains the
                                        samples for the analog channels that
                                        are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
+        @param digital_samples: dict containing bool numpy ndarrays, contains the samples
                                       for the digital channels that
                                       are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the
-                                        entire waveform. Has to be known it advance.
+                                        entire waveform. Has to be known in advance.
         @param is_first_chunk: bool, indicates if the current chunk is the
                                first write to this file.
         @param is_last_chunk: bool, indicates if the current chunk is the last
@@ -79,12 +79,6 @@ class SamplesWriteMethods():
         # The overhead of the write process in number of samples
         write_overhead_samples = write_overhead_bytes//4
 
-        # analyze the activation_config and extract analogue and digital channel numbers
-        ana_chnl_numbers = [int(chnl.split('ch')[-1]) for chnl in self.activation_config if
-                            'a_ch' in chnl]
-        digi_chnl_numbers = [int(chnl.split('ch')[-1]) for chnl in self.activation_config if
-                            'd_ch' in chnl]
-
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
             # create header
@@ -96,8 +90,8 @@ class SamplesWriteMethods():
             os.remove(temp_file)
 
             # create wfmx-file for each analog channel
-            for channel in ana_chnl_numbers:
-                filename = name + '_ch' + str(channel) + '.wfmx'
+            for channel in analog_samples:
+                filename = name + channel[1:] + '.wfmx'
                 created_files.append(filename)
 
                 filepath = os.path.join(self.waveform_dir, filename)
@@ -109,9 +103,13 @@ class SamplesWriteMethods():
 
         # append analog samples to the .WFMX files of each channel. Write
         # digital samples in temporary files.
-        for i, channel in enumerate(ana_chnl_numbers):
+        for channel in analog_samples:
+            # get analog channel number as integer from string
+            a_chnl_number = int(channel.strip('a_ch'))
+            # get marker string descriptors for this analog channel
+            markers = ['d_ch'+str((a_chnl_number*2)-1), 'd_ch'+str(channel*2)]
             # append analog samples chunk to .WFMX file
-            filepath = os.path.join(self.waveform_dir, name + '_ch' + str(channel) + '.wfmx')
+            filepath = os.path.join(self.waveform_dir, name + channel[1:] + '.wfmx')
             with open(filepath, 'ab') as wfmxfile:
                 # append analog samples in binary format. One sample is 4
                 # bytes (np.float32). Write in chunks if array is very big to
@@ -120,69 +118,63 @@ class SamplesWriteMethods():
                 for start_ind in np.arange(0, number_of_full_chunks * write_overhead_samples,
                                            write_overhead_samples):
                     stop_ind = start_ind+write_overhead_samples
-                    wfmxfile.write(analog_samples[i][start_ind:stop_ind])
+                    wfmxfile.write(analog_samples[channel][start_ind:stop_ind])
                 # write rest
                 rest_start_ind = number_of_full_chunks*write_overhead_samples
-                wfmxfile.write(analog_samples[i][rest_start_ind:])
+                wfmxfile.write(analog_samples[channel][rest_start_ind:])
 
             # create the byte values corresponding to the marker states
             # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
             # and write them into a temporary file
-            filepath = os.path.join(self.temp_dir, name + '_ch' + str(channel) + '_digi' + '.tmp')
+            filepath = os.path.join(self.temp_dir, name + channel[1:] + '_digi' + '.tmp')
             with open(filepath, 'ab') as tmpfile:
-                if (channel*2)-1 not in digi_chnl_numbers and channel*2 not in digi_chnl_numbers:
+                if markers[0] not in digital_samples and markers[1] not in digital_samples:
                     # no digital channels to write for this analog channel
                     pass
-                elif (channel*2)-1 in digi_chnl_numbers and channel*2 not in digi_chnl_numbers:
+                elif markers[0] in digital_samples and markers[1] not in digital_samples:
                     # Only marker one is active for this channel
-                    digi_chnl_index = digi_chnl_numbers.index((channel * 2) - 1)
                     for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
                                                write_overhead_bytes):
                         stop_ind = start_ind + write_overhead_bytes
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
-                        tmpfile.write(digital_samples[digi_chnl_index][start_ind:stop_ind])
+                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                        tmpfile.write(digital_samples[markers[0]][start_ind:stop_ind])
                     # write rest of digital samples
                     rest_start_ind = number_of_full_chunks * write_overhead_bytes
-                    tmpfile.write(digital_samples[digi_chnl_index][rest_start_ind:])
-                elif (channel*2)-1 not in digi_chnl_numbers and channel*2 in digi_chnl_numbers:
+                    tmpfile.write(digital_samples[markers[0]][rest_start_ind:])
+                elif markers[0] not in digital_samples and markers[1] in digital_samples:
                     # Only marker two is active for this channel
-                    digi_chnl_index = digi_chnl_numbers.index(channel * 2)
                     for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
                                                write_overhead_bytes):
                         stop_ind = start_ind + write_overhead_bytes
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
+                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
                         tmpfile.write(np.left_shift(
-                            digital_samples[digi_chnl_index][start_ind:stop_ind].astype('uint8'),
+                            digital_samples[markers[1]][start_ind:stop_ind].astype('uint8'),
                             1))
                     # write rest of digital samples
                     rest_start_ind = number_of_full_chunks * write_overhead_bytes
                     tmpfile.write(np.left_shift(
-                        digital_samples[digi_chnl_index][rest_start_ind:].astype('uint8'), 1))
+                        digital_samples[markers[1]][rest_start_ind:].astype('uint8'), 1))
                 else:
                     # Both markers are active for this channel
-                    digi_chnl_index = digi_chnl_numbers.index(channel * 2)
                     for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
                                                write_overhead_bytes):
                         stop_ind = start_ind + write_overhead_bytes
-                        # append digital samples in binary format. One sample
-                        # is 1 byte (np.uint8).
+                        # append digital samples in binary format. One sample is 1 byte (np.uint8).
                         tmpfile.write(np.add(np.left_shift(
-                            digital_samples[digi_chnl_index][start_ind:stop_ind].astype('uint8'),
-                            1), digital_samples[digi_chnl_index - 1][start_ind:stop_ind]))
+                            digital_samples[markers[1]][start_ind:stop_ind].astype('uint8'), 1),
+                            digital_samples[markers[0]][start_ind:stop_ind]))
                     # write rest of digital samples
                     rest_start_ind = number_of_full_chunks * write_overhead_bytes
                     tmpfile.write(np.add(np.left_shift(
-                        digital_samples[digi_chnl_index][rest_start_ind:].astype('uint8'), 1),
-                                         digital_samples[digi_chnl_index - 1][rest_start_ind:]))
+                        digital_samples[markers[1]][rest_start_ind:].astype('uint8'), 1),
+                        digital_samples[markers[0]][rest_start_ind:]))
 
         # append the digital sample tmp file to the .WFMX file and delete the
         # .tmp files if it was the last chunk to write.
         if is_last_chunk:
-            for channel in ana_chnl_numbers:
-                tmp_filepath = os.path.join(self.temp_dir, name + '_ch' + str(channel) + '_digi' + '.tmp')
-                wfmx_filepath = os.path.join(self.waveform_dir, name + '_ch' + str(channel) + '.wfmx')
+            for channel in analog_samples:
+                tmp_filepath = os.path.join(self.temp_dir, name + channel[1:] + '_digi' + '.tmp')
+                wfmx_filepath = os.path.join(self.waveform_dir, name + channel[1:] + '.wfmx')
                 with open(wfmx_filepath, 'ab') as wfmxfile:
                     with open(tmp_filepath, 'rb') as tmpfile:
                         # read and write files in max. write_overhead_bytes chunks to reduce
@@ -205,10 +197,10 @@ class SamplesWriteMethods():
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
+        @param analog_samples: dict containing float32 numpy ndarrays, contains the
                                        samples for the analog channels that
                                        are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
+        @param digital_samples: dict containing bool numpy ndarrays, contains the samples
                                       for the digital channels that
                                       are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the
@@ -224,12 +216,6 @@ class SamplesWriteMethods():
         # record the name of the created files
         created_files = []
 
-        # analyze the activation_config and extract analogue and digital channel numbers
-        ana_chnl_numbers = [int(chnl.split('ch')[-1]) for chnl in self.activation_config if
-                            'a_ch' in chnl]
-        digi_chnl_numbers = [int(chnl.split('ch')[-1]) for chnl in self.activation_config if
-                             'd_ch' in chnl]
-
         # IMPORTANT: These numbers build the header in the wfm file. Needed
         # by the device program to understand wfm file. If it is wrong,
         # AWG will not be able to understand the written file.
@@ -242,8 +228,13 @@ class SamplesWriteMethods():
         # waveform file.
         # After this number a 14bit binary representation of the channel
         # and the marker are followed.
-        for channel_index, channel_number in enumerate(ana_chnl_numbers):
-            filename = name + '_ch' + str(channel_number) + '.wfm'
+        for channel in analog_samples:
+            # get analog channel number as integer from string
+            a_chnl_number = int(channel.strip('a_ch'))
+            # get marker string descriptors for this analog channel
+            markers = ['d_ch' + str((a_chnl_number * 2) - 1), 'd_ch' + str(channel * 2)]
+
+            filename = name + channel[1:] + '.wfm'
             created_files.append(filename)
             filepath = os.path.join(self.waveform_dir, filename)
 
@@ -258,30 +249,26 @@ class SamplesWriteMethods():
             # now write the samples chunk in binary representation:
             # First we create a structured numpy array representing one byte (numpy uint8)
             # for the markers and 4 byte (numpy float32) for the analog samples.
-            write_array = np.empty(digital_samples.shape[1], dtype='float32, uint8')
+            write_array = np.empty(analog_samples[channel].size, dtype='float32, uint8')
 
             # now we determine which markers are active for this channel and write them to
             # write_array.
-            if (channel_number * 2) - 1 in digi_chnl_numbers and (channel_number * 2) in digi_chnl_numbers:
+            if markers[0] in digital_samples and markers[1] in digital_samples:
                 # both markers active for this channel
-                digi_index = digi_chnl_numbers.index(channel_number * 2)
                 write_array['f1'] = np.add(
-                    np.left_shift(digital_samples[digi_index][:].astype('uint8'), 1),
-                    digital_samples[digi_index - 1][:].astype('uint8'))
-            elif (channel_number * 2) - 1 in digi_chnl_numbers and (channel_number * 2) not in digi_chnl_numbers:
+                    np.left_shift(digital_samples[markers[1]][:].astype('uint8'), 1),
+                    digital_samples[markers[0]][:].astype('uint8'))
+            elif markers[0] in digital_samples and markers[1] not in digital_samples:
                 # only marker 1 active for this channel
-                digi_index = digi_chnl_numbers.index((channel_number * 2) - 1)
-                write_array['f1'] = digital_samples[digi_index][:].astype('uint8')
-            elif (channel_number * 2) - 1 not in digi_chnl_numbers and (channel_number * 2) in digi_chnl_numbers:
+                write_array['f1'] = digital_samples[markers[0]][:].astype('uint8')
+            elif markers[0] not in digital_samples and markers[1] in digital_samples:
                 # only marker 2 active for this channel
-                digi_index = digi_chnl_numbers.index(channel_number * 2)
-                write_array['f1'] = np.left_shift(
-                    digital_samples[digi_index][:].astype('uint8'), 1)
+                write_array['f1'] = np.left_shift(digital_samples[markers[1]][:].astype('uint8'), 1)
             else:
                 # no markers active for this channel
-                write_array['f1'] = np.zeros(digital_samples.shape[1], dtype='uint8')
+                write_array['f1'] = np.zeros(analog_samples[channel].size, dtype='uint8')
             # Write analog samples into the write_array
-            write_array['f0'] = analog_samples[channel_index][:]
+            write_array['f0'] = analog_samples[channel][:]
 
             # Write write_array to file
             with open(filepath, 'ab') as wfm_file:
@@ -322,13 +309,13 @@ class SamplesWriteMethods():
         # record the name of the created files
         created_files = []
 
-        chunk_length_bins = digital_samples.shape[1]
-        channel_number = digital_samples.shape[0]
-        # FIXME: Also allow for single channel to be specified. Set all others to zero.
-        if channel_number != 8:
-            self.log.error('FPGA pulse generator needs 8 digital channels. {0} is not allowed!'
-                           ''.format(channel_number))
+        if len(digital_samples) != 8:
+            self.log.warning('FPGA pulse generator needs 8 digital channels. ({0} given)\n'
+                             'All not specified channels will be set to logical low.'
+                             ''.format(len(digital_samples)))
             return -1
+
+        chunk_length_bins = len(digital_samples[list(digital_samples)[0]])
 
         # encode channels into FPGA samples (bytes)
         # check if the sequence length is an integer multiple of 32 bins
@@ -341,9 +328,11 @@ class SamplesWriteMethods():
         else:
             encoded_samples = np.zeros(chunk_length_bins, dtype='uint8')
 
-        for channel in range(channel_number):
-            encoded_samples[:chunk_length_bins] += (2 ** channel) * np.uint8(
-                digital_samples[channel])
+        for chnl_num in range(1, 9):
+            chnl_str = 'd_ch' + str(chnl_num)
+            if chnl_str in digital_samples:
+                encoded_samples[:chunk_length_bins] += (2 ** chnl_num) * np.uint8(
+                    digital_samples[chnl_str])
 
         del digital_samples  # no longer needed
 
@@ -358,7 +347,7 @@ class SamplesWriteMethods():
         return created_files
 
     def _write_pstream(self, name, analog_samples, digital_samples, total_number_of_samples,
-                    is_first_chunk, is_last_chunk):
+                       is_first_chunk, is_last_chunk):
         """
         Appends a sampled chunk of a whole waveform to a fpga-file. Create the file
         if it is the first chunk.
@@ -413,21 +402,12 @@ class SamplesWriteMethods():
 
         return created_files
 
-    def _write_seq(self, name, sequence_param):
+    def _write_seq(self, sequence_obj):
         """
         Write a sequence to a seq-file.
 
         @param str name: name of the sequence to be created
-        @param list sequence_param: a list of dict, which contains all the information, which
-                                    parameters are to be taken to create a sequence. The dict will
-                                    have at least the entry
-                                        {'name': [<list_of_sampled_file_names>] }
-                                    All other parameters, which can be used in the sequence are
-                                    determined in the get_constraints method in the category
-                                    'sequence_param'.
-
-        In order to write sequence files a completely new method with respect to
-        write_samples_to_file is needed.
+        @param object sequence_obj: PulseSequence instance after sampling.
 
         for AWG5000/7000 Series the following parameter will be used (are also present in the
         hardware constraints for the pulser):
@@ -437,46 +417,48 @@ class SamplesWriteMethods():
               'go_to': 0=Nothing happens; int_num in [1:8000]
               'event_jump_to' : -1=to next; 0= nothing happens; int_num in [1:8000]
         """
-        filename = name + '.seq'
-        filepath = os.path.join(self.waveform_dir, filename)
+        filepath = os.path.join(self.waveform_dir, sequence_obj.name + '.seq')
 
         with open(filepath, 'wb') as seq_file:
             # write the header:
-            # determine the used channels according to how much files where created:
-            channels = len(sequence_param[0]['name'])
-            lines = len(sequence_param)
+            # determine the used channels according to how much files were created:
+            channels = len(sequence_obj.analog_samples)
+            lines = len(sequence_obj.ensemble_list)
             seq_file.write('MAGIC 300{0:d}\r\n'.format(channels).encode('UTF-8'))
             seq_file.write('LINES {0:d}\r\n'.format(lines).encode('UTF-8'))
 
             # write main part:
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
-            for seq_param_dict in sequence_param:
-                print(seq_param_dict)
-                repeat = seq_param_dict['repetitions']
-                trigger_wait = seq_param_dict['trigger_wait']
-                go_to = seq_param_dict['go_to']
-                event_jump_to = seq_param_dict['event_jump_to']
+            for step_num, (ensemble_name, seq_param) in enumerate(sequence_obj.ensemble_list):
+                repeat = seq_param['repetitions']
+                event_jump_to = seq_param['event_jump_to']
+                go_to = seq_param['go_to']
+                trigger_wait = -1
 
-                # for one channel:
-                if len(seq_param_dict['name']) == 1:
-                    seq_file.write('"{0}", {1:d}, {2:d}, {3:d}, {4:d}\r\n'
-                                   ''.format(seq_param_dict['name'][0], repeat, trigger_wait, go_to,
-                                             event_jump_to).encode('UTF-8'))
-                # for two channel:
-                else:
-                    seq_file.write('"{0}", "{1}", {2:d}, {3:d}, {4:d}, {5:d}\r\n'
-                                   ''.format(seq_param_dict['name'][0], seq_param_dict['name'][1],
-                                             repeat, trigger_wait, go_to,
-                                             event_jump_to).encode('UTF-8'))
+
+                line_str = ''
+                # Put waveform names in the line string for the current sequence step
+                # In case of rotating frame preservation the waveforms are not named after the
+                # ensemble but after the sequence with a running number suffix.
+                for chnl in sequence_obj.analog_samples:
+                    if sequence_obj.rotating_frame:
+                        line_str += '"{0}", '.format(
+                            sequence_obj.name + '_' + str(step_num).zfill(3) + chnl[1:])
+                    else:
+                        line_str += '"{0}", '.format(ensemble_name + chnl[1:])
+
+                # append sequence step parameters to line string
+                line_str += '{0:d}, {1:d}, {3:d}, {4:d}\r\n'.format(repeat, trigger_wait, go_to,
+                                                                    event_jump_to)
+                seq_file.write(line_str.encode('UTF-8'))
 
             # write the footer:
-            table_jump = 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
-            logic_jump = 'LOGIC_JUMP -1, -1, -1, -1,\r\n'
-            jump_mode = 'JUMP_MODE TABLE\r\n'
-            jump_timing = 'JUMP_TIMING ASYNC\r\n'
-            strobe_option = 'STROBE 0\r\n'
-
-            footer = table_jump + logic_jump + jump_mode + jump_timing + strobe_option
+            footer = ''
+            footer += 'TABLE_JUMP' + 16 * ' 0,' + '\r\n'
+            footer += 'LOGIC_JUMP -1, -1, -1, -1,\r\n'
+            footer += 'JUMP_MODE TABLE\r\n'
+            footer += 'JUMP_TIMING ASYNC\r\n'
+            footer += 'STROBE 0\r\n'
 
             seq_file.write(footer.encode('UTF-8'))
 
