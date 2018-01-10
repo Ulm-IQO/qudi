@@ -39,11 +39,11 @@ from logic.pulse_objects import PulseBlock
 from logic.pulse_objects import PulseBlockEnsemble
 from logic.pulse_objects import PulseSequence
 from logic.generic_logic import GenericLogic
-from logic.sampling_functions import SamplingFunctions
+# from logic.sampling_functions import SamplingFunctions
 from logic.samples_write_methods import SamplesWriteMethods
 
 
-class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethods):
+class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFunctions
     """unstable: Nikolas Tomek
     This is the Logic class for the pulse (sequence) generation.
 
@@ -79,7 +79,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigSampleEnsembleComplete = QtCore.Signal(str, np.ndarray, np.ndarray)
+    sigSampleEnsembleComplete = QtCore.Signal(str, dict, dict)
     sigSampleSequenceComplete = QtCore.Signal(str, list)
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
@@ -97,8 +97,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        # Get all the attributes from the SamplingFunctions module:
-        SamplingFunctions.__init__(self)
+        # # Get all the attributes from the SamplingFunctions module:
+        # SamplingFunctions.__init__(self)
         # Get all the attributes from the SamplesWriteMethods module:
         SamplesWriteMethods.__init__(self)
 
@@ -680,20 +680,23 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                  elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
                                                                PulseBlockElement in chronological
                                                                order (incl. repetitions).
-                 digital_rising_bins (2D numpy.ndarray[int]): Array of chronological low-to-high
-                                                              transition positions
-                                                              (in timebins; incl. repetitions)
-                                                              for each digital channel.
+                 digital_rising_bins (dict): Dictionary with keys being the digital channel
+                                             descriptor string and items being arrays of
+                                             chronological low-to-high transition positions
+                                             (in timebins; incl. repetitions) for each digital
+                                             channel.
         """
         # variables to keep track of the current timeframe
         current_end_time = 0.0
         current_start_bin = 0
-        # lists containing the bins where the digital channels are rising (one for each channel)
-        digital_rising_bins = []
-        for i in range(ensemble.digital_channels):
-            digital_rising_bins.append([])
+        # dict containing the bins where the digital channels are rising (one arr for each channel)
+        digital_rising_bins = dict()
         # memorize the channel state of the previous element
-        tmp_digital_high = [False] * ensemble.digital_channels
+        tmp_digital_high = dict()
+        for chnl in ensemble.digital_channels:
+            digital_rising_bins[chnl] = list()
+            # memorize the channel state of the previous element
+            tmp_digital_high[chnl] = False
         # number of elements including repetitions and the length of each element in bins
         total_elements = 0
         elements_length_bins = np.array([], dtype=int)
@@ -713,11 +716,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 for elem_index, block_element in enumerate(block.element_list):
                     # save bin position if a transition from low to high has occured in a digital
                     # channel
-                    if tmp_digital_high != block_element.digital_high:
-                        for chnl, is_high in enumerate(block_element.digital_high):
-                            if not tmp_digital_high[chnl] and is_high:
+                    for chnl in block_element.digital_high:
+                        if tmp_digital_high[chnl] != block_element.digital_high[chnl]:
+                            if not tmp_digital_high[chnl] and block_element.digital_high[chnl]:
                                 digital_rising_bins[chnl].append(current_start_bin)
-                            tmp_digital_high[chnl] = is_high
+                            tmp_digital_high[chnl] = block_element.digital_high[chnl]
 
                     # Get length and increment for this element
                     init_length_s = block_element.init_length_s
@@ -743,10 +746,37 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         number_of_samples = np.sum(elements_length_bins)
 
         # convert digital rising indices to numpy.ndarrays
-        for chnl in range(len(digital_rising_bins)):
+        for chnl in digital_rising_bins:
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=int)
 
         return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
+
+    def _analyze_pulse_sequence(self, sequence):
+        """
+        This helper method runs through each step of a PulseSequence object and extracts
+        important information about the Sequence that can be created out of this object.
+        Especially the discretization due to the set self.sample_rate is taken into account.
+        The positions in time (as integer time bins) of the PulseBlockElement transitions are
+        determined here (all the "rounding-to-best-match-value").
+        Additional information like the total number of samples, total number of PulseBlockElements
+        and the timebins for digital channel low-to-high transitions get returned as well.
+
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @return: number_of_samples (int): The total number of samples in a Waveform provided the
+                                              current sample_rate and PulseBlockEnsemble object.
+                 total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
+                                       the provided PulseBlockEnsemble.
+                 elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
+                                                               PulseBlockElement in chronological
+                                                               order (incl. repetitions).
+                 digital_rising_bins (dict): Dictionary with keys being the digital channel
+                                             descriptor string and items being arrays of
+                                             chronological low-to-high transition positions
+                                             (in timebins; incl. repetitions) for each digital
+                                             channel.
+        """
+        # TODO: Implement _analyze_pulse_sequence method.
+        pass
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
                                     name_tag=None):
@@ -822,10 +852,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         if write_to_file:
             # get sampled filenames on host PC referring to the same ensemble
 
-            # be careful, in contrast to linux os, windows os is in general case
-            # insensitive! Therefore one needs to check and remove all files
-            # matching the case insensitive case for windows os.
-
+            # be careful, in contrast to linux os, windows os is in general case insensitive!
+            # Therefore one needs to check and remove all files matching the case insensitive
+            # case for windows os.
             if 'win' in sys.platform:
                 # make it simple and make everything lowercase.
                 filename_list = [f for f in os.listdir(self.waveform_dir) if
@@ -849,25 +878,31 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # Ensemble parameters to determine the shape of sample arrays
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
-        ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-        dig_chnl_names = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-        if self.digital_channels != dig_channels or self.analog_channels != ana_channels:
+        if self.digital_channels != len(dig_channels) or self.analog_channels != len(ana_channels):
             self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
                            'analog and digital channels between logic ({1}, {2}) and '
                            'PulseBlockEnsemble ({3}, {4}).'
                            ''.format(ensemble_name, self.analog_channels, self.digital_channels,
-                                     ana_channels, dig_channels))
+                                     len(ana_channels), len(dig_channels)))
+            return np.array([]), np.array([]), -1
+        elif set(ana_channels + dig_channels) != set(self.activation_config):
+            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in activation '
+                           'config in logic ({1}) and active channels in PulseBlockEnsemble ({2}).'
+                           ''.format(ensemble_name, self.activation_config,
+                                     ana_channels + dig_channels))
             return np.array([]), np.array([]), -1
 
-        # get important parameters from the ensemble and save some to the ensemble object
+        # get important parameters from the ensemble and save some to the ensemble objects
+        # sampling_information container.
         number_of_samples, number_of_elements, length_elements_bins, digital_rising_bins = self._analyze_block_ensemble(ensemble)
-        ensemble.length_bins = number_of_samples
-        ensemble.length_elements_bins = length_elements_bins
-        ensemble.number_of_elements = number_of_elements
-        ensemble.digital_rising_bins = digital_rising_bins
-        ensemble.sample_rate = self.sample_rate
-        ensemble.activation_config = self.activation_config
-        ensemble.amplitude_dict = self.amplitude_dict
+        ensemble.sampling_information = dict()
+        ensemble.sampling_information['length_bins'] = number_of_samples
+        ensemble.sampling_information['length_elements_bins'] = length_elements_bins
+        ensemble.sampling_information['number_of_elements'] = number_of_elements
+        ensemble.sampling_information['digital_rising_bins'] = digital_rising_bins
+        ensemble.sampling_information['sample_rate'] = self.sample_rate
+        ensemble.sampling_information['activation_config'] = self.activation_config
+        ensemble.sampling_information['amplitude_dict'] = self.amplitude_dict
         self.save_ensemble(ensemble_name, ensemble)
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
@@ -876,9 +911,15 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             is_first_chunk = True
             is_last_chunk = False
         else:
+            is_first_chunk = True
+            is_last_chunk = True
             # Allocate huge sample arrays if chunkwise writing is disabled.
-            analog_samples = np.empty([ana_channels, number_of_samples], dtype='float32')
-            digital_samples = np.empty([dig_channels, number_of_samples], dtype=bool)
+            analog_samples = dict()
+            digital_samples = dict()
+            for chnl in ana_channels:
+                analog_samples[chnl] = np.empty(number_of_samples, dtype='float32')
+            for chnl in dig_channels:
+                digital_samples[chnl] = np.empty(number_of_samples, dtype=bool)
             # Starting index for the sample array entrys
             entry_ind = 0
 
@@ -888,8 +929,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # Iterate over all repertitions of the current block
             for rep_no in range(reps+1):
                 # Iterate over the Block_Elements inside the current block
-                for elem_ind, block_element in enumerate(block.element_list):
-                    parameters = block_element.parameters
+                for block_element in block.element_list:
                     digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
                     element_length_bins = length_elements_bins[element_count]
@@ -904,15 +944,16 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         if element_count == number_of_elements:
                             is_last_chunk = True
 
-                        # allocate temporary sample arrays to contain the current element
-                        analog_samples = np.empty([ana_channels, element_length_bins], dtype='float32')
-                        digital_samples = np.empty([dig_channels, element_length_bins], dtype=bool)
+                        # allocate temporary sample dictionaries to contain the current elements.
+                        analog_samples = dict()
+                        digital_samples = dict()
 
-                        # actually fill the allocated sample arrays with values.
-                        for i, state in enumerate(digital_high):
-                            digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
-                        for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
+                        # actually fill the sample dictionaries with arrays.
+                        for chnl in digital_high:
+                            digital_samples[chnl] = np.full(element_length_bins, digital_high[chnl],
+                                                            dtype=bool)
+                        for chnl in pulse_function:
+                            analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.amplitude_dict[chnl])
                         # write temporary sample array to file
                         self._write_to_file[self.waveform_format](filename, analog_samples,
                                                                   digital_samples,
@@ -923,10 +964,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     else:
                         # if the ensemble should be sampled as a whole (chunkwise = False) fill the
                         # entries in the huge sample arrays
-                        for i, state in enumerate(digital_high):
-                            digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
-                        for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
+                        for chnl in digital_high:
+                            digital_samples[chnl][entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, digital_high[chnl], dtype=bool)
+                        for chnl in pulse_function:
+                            analog_samples[chnl][entry_ind:entry_ind+element_length_bins] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.amplitude_dict[chnl])
 
                         # increment the index offset of the overall sample array for the next
                         # element
@@ -954,13 +995,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                           ''.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
-            self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
-            return np.array([]), np.array([]), offset_bin
+            self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
+            return dict(), dict(), offset_bin
         else:
             # If the sampling should not be chunkwise and write to file is enabled call the
-            # write_to_file method only once with both flags set to TRUE
-            is_first_chunk = True
-            is_last_chunk = True
+            # write_to_file method only once.
             self._write_to_file[self.waveform_format](filename, analog_samples, digital_samples,
                                                       number_of_samples, is_first_chunk,
                                                       is_last_chunk)
@@ -971,8 +1010,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
-            self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
-            return np.array([]), np.array([]), offset_bin
+            self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
+            return dict(), dict(), offset_bin
 
     def sample_pulse_sequence(self, sequence_name, write_to_file=True):
         """ Samples the PulseSequence object, which serves as the construction plan.
@@ -1004,7 +1043,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                            'still busy (locked).\nFunction call ignored.'.format(sequence_name))
             return
         if write_to_file:
-            # get sampled filenames on host PC referring to the same ensemble
+            # get sampled filenames on host PC referring to the same sequence
             filename_list = [f for f in os.listdir(self.sequence_dir) if
                              f.startswith(sequence_name + '.seq')]
             # delete all filenames in the list
@@ -1017,12 +1056,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         start_time = time.time()
 
-        ana_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-        ana_chnl_num = [int(chnl.split('ch')[-1]) for chnl in ana_chnl_names]
+
 
         # get ensemble
         sequence_obj = self.saved_pulse_sequences[sequence_name]
         sequence_param_dict_list = []
+        ana_chnl_names = sequence_obj.analog_channels
 
         # if all the Pulse_Block_Ensembles should be in the rotating frame, then each ensemble
         # will be created in general with a different offset_bin. Therefore, in order to keep track
@@ -1045,8 +1084,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 # the temp_dict is a format how the sequence parameter will be saved
                 temp_dict = dict()
                 name_list = []
-                for ch_num in ana_chnl_num:
-                    name_list.append(name_tag + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                for chnl in ana_chnl_names:
+                    name_list.append(name_tag + chnl[1:] + '.' + self.waveform_format)
                 temp_dict['name'] = name_list
 
                 # update the sequence parameter to the temp dict:
@@ -1062,17 +1101,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         else:
             # if phase prevervation between the sequence entries is not needed, then only the
             # different ensembles will be sampled, since the offset_bin does not matter for them:
-            for ensemble_name in sequence_obj.different_ensembles_dict:
+            for ensemble_name in sequence_obj.different_ensembles:
                 self.sample_pulse_block_ensemble(ensemble_name, write_to_file=write_to_file,
                                                  offset_bin=0, name_tag=None)
 
             # go now through the sequence list and replace all the entries with the output of the
             # sampled ensemble file:
-            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
+            for ensemble_obj, seq_param in sequence_obj.ensemble_list:
                 temp_dict = dict()
                 name_list = []
-                for ch_num in ana_chnl_num:
-                    name_list.append(ensemble_obj.name + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                for chnl in ana_chnl_names:
+                    name_list.append(ensemble_obj.name + chnl[1:] + '.' + self.waveform_format)
                 temp_dict['name'] = name_list
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
@@ -1080,18 +1119,17 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 sequence_param_dict_list.append(temp_dict)
 
         # get important parameters from the sequence and save some to the sequence object
-        #sequence_obj.length_bins = 0
-        #sequence_obj.length_elements_bins = length_elements_bins
-        #sequence_obj.number_of_elements = number_of_elements
-        #sequence_obj.digital_rising_bins = digital_rising_bins
-        sequence_obj.sample_rate = self.sample_rate
-        sequence_obj.activation_config = self.activation_config
-        sequence_obj.amplitude_dict = self.amplitude_dict
+        # TODO: Get information from _analyze_pulse_sequence as soon as it's implemented.
+        # self._analyze_pulse_sequence(sequence_obj)
+        sequence_obj.sampling_information = dict()
+        sequence_obj.sampling_information['sample_rate'] = self.sample_rate
+        sequence_obj.sampling_information['activation_config'] = self.activation_config
+        sequence_obj.sampling_information['amplitude_dict'] = self.amplitude_dict
         self.save_sequence(sequence_name, sequence_obj)
 
         if write_to_file:
             # pass the whole information to the sequence creation method:
-            self._write_to_file[self.sequence_format](sequence_name, sequence_param_dict_list)
+            self._write_to_file[self.sequence_format](sequence_obj)
             self.log.info('Time needed for sampling and writing Pulse Sequence to file: {0} sec.'
                           ''.format(int(np.rint(time.time() - start_time))))
         else:
