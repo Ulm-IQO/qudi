@@ -163,7 +163,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_ai_resolution(self):
+    def get_analogue_resolution(self):
         """"Returns the resolution of the analogue input resolution in bits
         @return int: input bit resolution """
         pass

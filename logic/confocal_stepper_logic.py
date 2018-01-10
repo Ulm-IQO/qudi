@@ -103,7 +103,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.mode = None
             self.dc_mode = None
 
-            self.steps_direction = 50
+            self.steps_direction = 5
 
             self.hardware = hardware
             self.voltage_range = []
@@ -412,7 +412,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        self.switch_hardware(False)# restarts NIDAQ
+        self.switch_hardware(True)
+        #Todo: This method needs to be implemented
 
     ########################### Stepper Counter Control Methods##################################
 
@@ -475,7 +477,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # the NIDAQ has a resolution of res and only use 95% of the range giving the following voltage resolution.
         # If any other device might be used one day this needs to be passed as a variable
         precision_voltage = ((voltage_range[1] - voltage_range[0]) / (
-                2 ** self._position_feedback_device.get_ai_resolution())) * 1.05
+                2 ** self._position_feedback_device.get_analogue_resolution())) * 1.05
         precision_voltage = float(truncate(precision_voltage, 6))
         # Todo: the position voltage should also be calculated depending on the readout and the value given by the
         # stepper. This is only a short time solution

@@ -159,7 +159,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', 10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn')
-    _ai_resolution = ConfigOption('ai_resolution', 16, missing='warn')
+    _analogue_resolution = ConfigOption('analogue_resolution', 16, missing='warn')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
@@ -2514,7 +2514,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @return int: error code (0:OK, -1:error)
         """
         if analogue_channel not in self._analogue_input_channels.keys():
-            self.log.error("The given analogue input channeln %s is not defined. Please define the "
+            self.log.error("The given analogue input channel %s is not defined. Please define the "
                            "input channel", analogue_channel)
             return -1
 
@@ -2876,8 +2876,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                                " reader task", channel)
         if error: return np.array([-1.]), 0
 
+        # Fixme: this timeout might really hurt for cavity stabilisation. make optional
         # *1.1 to have an extra (10%) short waiting time.
-        timeout = (samples * 1.1) / self._analogue_input_clock_frequency
+        if samples != 1:
+            timeout = (samples * 1.1) / self._analogue_input_clock_frequency
+        else:
+            timeout = -1
         # Count data will be written here
         _analogue_count_data = np.zeros(samples * len(analogue_channels), dtype=np.float64)
         # Number of samples which were read will be stored here
@@ -3000,10 +3004,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # no clock was running as it is only started for samples>2
             return 0
 
-    def get_ai_resolution(self):
+    def get_analogue_resolution(self):
         """"Returns the resolution of the analog input of the NIDAQ in bits
         @return int: input bit resolution """
-        return self._ai_resolution
+        return self._analogue_resolution
 
     def start_ai_counter_reader(self, analogue_channel):
         """Starts task of reading analogue voltage and finite counts synchronised.
@@ -3125,7 +3129,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                             # channel to use for output
                             self._analogue_output_channels[chan],
                             # assign a name for that channel
-                            'AO Channel '+chan,
+                            'AO Channel ' + chan,
                             # minimum possible voltage
                             self._ao_voltage_range[chan][0],
                             # maximum possible voltage
@@ -3135,7 +3139,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                             # scale for channel, if unit is custom. Therefore here its Null (None)
                             None)
                         self._analogue_output_daq_tasks[chan] = task
-                #daq.DAQmxSetSampTimingType(self._analogue_output_channels[self._analogue_output_daq_tasks[
+                # daq.DAQmxSetSampTimingType(self._analogue_output_channels[self._analogue_output_daq_tasks[
                 #    analogue_channels[0]]], daq.DAQmx_Val_OnDemand)
 
 

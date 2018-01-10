@@ -115,5 +115,11 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @abc.abstractmethod
+    def get_analogue_resolution(self):
+        """"Returns the resolution of the analogue input resolution in bits
+        @return int: input bit resolution """
+        pass
+
 
 

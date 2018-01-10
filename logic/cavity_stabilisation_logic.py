@@ -31,6 +31,11 @@ from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
 
 
+def round_to_2(x):
+    """Rounds to the second significant figure of a number"""
+    return round(x, -int(math.floor(math.log10(abs(x)))) + 1)
+
+
 def truncate(f, n):
     """Truncates/pads a float f to n decimal places without rounding"""
     # necessary to avoid floating point conversion errors
@@ -41,12 +46,12 @@ def truncate(f, n):
     return float('.'.join([i, (d + '0' * n)[:n]]))
 
 
-def float_rounding(n, r):
+def float_rounding(rounded_number, divisor):
     """"This methods rounds values n to the nearest multiple of b (floor)
-    @param float n: The number to be rounded
-    @param float r: The number which multiple it should be rounded
+    @param float rounded_number: The number to be rounded
+    @param float divisor: The number which multiple it should be rounded
     """
-    return n - math.fmod(n, r)
+    return rounded_number - math.fmod(rounded_number, divisor)
 
 
 def in_range(x, min, max):
@@ -71,6 +76,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
     stepper = Connector(interface='ConfocalStepperInterface')
+    voltage_adjustment_steps = ConfigOption('voltage_adjustment_steps', 1, missing='warn')
+    reflection = ConfigOption('cavitymode_reflection', True, missing='warn')
+    _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
+    threshold = ConfigOption('threshold', 0.1, missing='error')
 
     # Todo: add connectors and QTCore Signals
     # signals
@@ -97,7 +106,9 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.input_voltage_range = []
             self.output_voltage_range = []
             self.feedback_precision_volt = None
+            self.output_precision_volt = None
             self.output_voltage = 0
+            self.voltage_adjustment_steps = 1  # in mV
 
             self.log = log
 
@@ -191,6 +202,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._stepping_device = self.get_connector('stepper')
         self._feedback_device = self.get_connector('analoguereader')
         self._output_device = self.get_connector('analogueoutput')
+        # Fixme: This is very specific
         # Initialises hardware values
         self.axis = self.get_stepper_axes_use()
         self.axis["APD"] = "APD"
@@ -198,16 +210,16 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         self.axis_class = dict()
 
-        # Todo: Add Offset dictionary and update all offset uses accordingly.
         for name in self.axis.keys():
             self.axis_class[name] = self.Axis(name, self._stepping_device, self._feedback_device,
                                               self._output_device, self.log)
             # Todo: Add error check here or in method else it tries to write non existing value into itself
             if self.axis_class[name].feedback:
                 self.axis_class[name].input_voltage_range = self._get_feedback_voltage_range(name)
-                self.axis_class[name].feedback_precision_volt = self.calculate_precision_feedback(name)
+                self.axis_class[name].feedback_precision_volt = self.calculate_feedback_precision(name)
             if self.axis_class[name].output:
                 self.axis_class[name].output_voltage_range = self._get_output_voltage_range(name)
+                self.axis_class[name].output_precision_volt = self.calculate_control_precision(name)
 
         self.controll_axis = "z"  # The axis  along which the cavity is to be stabilised
         self.feedback_axis = "APD"  # The "axis", that is the channel, which give the feedback for the stabilisation
@@ -220,10 +232,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error(
                 "The chosen feedback axis has not feedback read. The feedback axis is not possible")
 
-        self.threshold = 0.01  # in V
-        float_rounding(self.threshold, self.axis_class[self.feedback_axis].feedback_precision_volt)
+        # This is done in order to have a sensible threshold and step_size
+        self.threshold = float_rounding(self.threshold, self.axis_class[self.feedback_axis].feedback_precision_volt)
+        self.voltage_adjustment_steps = float_rounding(self.voltage_adjustment_steps,
+                                                       self.axis_class[self.controll_axis].output_precision_volt)
         self.stopRequested = False
-        self.reflection = True
 
         # Sets connections between signals and functions
         self.signal_stabilise_cavity.connect(self._stabilise_cavity_length, QtCore.Qt.QueuedConnection)
@@ -277,14 +290,14 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 "initialising the cavity stabilisation process failed.\ The analog output could not be initialised")
             return -1
 
-        self._stabilise_cavity_length()
+        self.signal_stabilise_cavity.emit()
 
     def _stabilise_cavity_length(self):
         """Stabilises the cavity length via a software feedback loop"""
         if self.stopRequested:
             # set voltage to 0
             # fixMe: This is only necessary for attocubes. this needs to be depended on which hardware is used!
-            self._output_device.write_ao(self.controll_axis, np.array(0.0), start=True)
+            self.close_analogue_output()
             try:
                 self.close_analogue_stabilisation()
             except Exception as e:
@@ -293,21 +306,25 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 self.close_readout()
             except Exception as e:
                 self.log.exception('Could not close the analogue input reader.')
-                self.stopRequested = False
+            self.stopRequested = False
             self.log.info("Cavity stabilisation stopped successfully")
             return
 
-        result = self._feedback_device.get_analogue_voltage_reader(self.feedback_axis)
-        if result[1] == 0:
-            self.stopRequested = True
-            self.log.error("reading the axis voltage failed")
-            return -1
-        voltage_result = result[0][0]
+        # fixme: This needs to be dione with analgou voltage scanner. this is only a quick fix
+        voltage_list = []
+        for i in range(self._average_number):
+            result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis], read_samples=1)
+            if result[1] == 0:
+                self.stopRequested = True
+                self.log.error("reading the axis voltage failed")
+                return -1
+            voltage_list.append(result[0][0])
+        voltage_result = sum(voltage_list) / self._average_number
 
         # checks if the measured values lie outside the threshold
         if self.reflection:
             if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
-                    self.axis_class[self.feedback_axis].feedback_precision_voltage:
+                    self.axis_class[self.feedback_axis].feedback_precision_volt:
                 self._optimize_cavity_length(voltage_result)
                 # Todo: it might make sense to make an intelligent optimisation algorithm, that remembers the direction
                 # that worked at the last optimisation. this is especially sensible for drift ins one direction,
@@ -330,33 +347,47 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int:  not clear yet
         """
-        precision = self.axis_class[self.feedback_axis].feedback_precision_position
-        new_voltage = 0  # Todo: put realistic value
+        precision = self.axis_class[self.feedback_axis].feedback_precision_volt
 
         # Todo: Maybe it is sensible to make a safety net of: it can only be repeated 500 times or something
         # before it has to stop
         if self.stopRequested:
             return 0
 
-        voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis, voltage=new_voltage,
+        voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+                                                 voltage=self.voltage_adjustment_steps,
                                                  direction=direction)
         if voltage_result < 0:
             self.stopRequested = True
             return -1
+
+        if self.reflection:
+            # check if resonances has been reached
+            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
+                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+                # the optimisation has been successful. Stop method
+                return 0
+        else:
+            # check if resonances has been reached
+            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
+                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+                return 0
 
         # update position and leave algorithm if position was reached.
         if abs(voltage_result - previous_voltage) < precision:  # comparing floats
             # redo stepping. If nothing happens again we are either on resonance or completely off resonance
             # or the values were chosen wrong.
             # In any case this has to be optimised by user
-            voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis, voltage=new_voltage,
+            voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+                                                     voltage=self.voltage_adjustment_steps,
                                                      direction=direction)
             if voltage_result < 0:
                 self.stopRequested = True
                 return -1
             if abs(voltage_result - previous_voltage) < precision:  # comparing floats
                 # move back to previous position. This is a safety precaution
-                voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis, voltage=new_voltage,
+                voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+                                                         voltage=self.voltage_adjustment_steps,
                                                          direction=not direction)
                 if voltage_result < 0:
                     self.stopRequested = True
@@ -364,22 +395,27 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 return 0
 
         if self.reflection:
+            # check if resonances has been reached
+            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
+                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+                # the optimisation has been successful. Stop method
+                return 0
+            # else check if stepping direction was sensible
             if voltage_result > previous_voltage:
-                if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
-                        self.axis_class[self.feedback_axis].feedback_precision_voltage:
-                    # the optimisation has been successful. Stop method
-                    return 0
                 # change direction
                 direction = not direction
                 # else: keep direction
         else:
+            # check if resonances has been reached
+            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
+                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+                return 0
+            # else check if stepping direction was sensible
             if voltage_result > previous_voltage:
-                if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
-                        self.axis_class[self.feedback_axis].feedback_precision_voltage:
-                    return 0
                 # change direction
                 direction = not direction
                 # else: keep direction
+
         self.signal_optimize_length.emit(voltage_result, direction)
 
     def stop_cavity_stabilisation(self):
@@ -429,12 +465,16 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: Do we even need this here?
 
         # compare new voltage to threshold
-        result = self._feedback_device.get_analogue_voltage_reader([feedback_axis])
-        if result[1] == 0:
-            self.stopRequested = True
-            self.log.error("reading the axis voltage failed")
-            return -1
-        return result[0][0]
+        voltage_list = []
+        for i in range(self._average_number):
+            result = self._feedback_device.get_analogue_voltage_reader([feedback_axis], read_samples=1)
+            if result[1] == 0:
+                self.stopRequested = True
+                self.log.error("reading the axis voltage failed")
+                return -1
+            voltage_list.append(result[0][0])
+        voltage_result = sum(voltage_list) / self._average_number
+        return voltage_result
 
     def _get_feedback_voltage_range(self, axis_name):
         """Gets the voltage range of the position feedback device for a specific axis that can be converted to positions
@@ -452,7 +492,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         @ return list: min and max possible voltage in feedback for given axis"""
         return self._output_device._ao_voltage_range[axis_name]
 
-    def calculate_precision_feedback(self, axis_name):
+    def calculate_control_precision(self, axis_name):
         """Calculates the position feedback devices precision for a given axis
 
         @param str axis_name: The name of the axis for which the precision is to be calculated
@@ -463,14 +503,41 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
             return -1
 
-        voltage_range = self.axis_class[axis_name].input_voltage_range
+        return self.calculate_resolution(self._output_device.get_analogue_resolution(),
+                                         self.axis_class[axis_name].output_voltage_range)
 
-        # the NIDAQ has a resolution of res and only use 95% of the range giving the following voltage resolution.
-        # If any other device might be used one day this needs to be passed as a variable
-        precision_voltage = ((voltage_range[1] - voltage_range[0]) / (
-                2 ** self._feedback_device.get_ai_resolution())) * 1.05
-        precision_voltage = float(truncate(precision_voltage, 6))
-        return precision_voltage
+    def calculate_feedback_precision(self, axis_name):
+        """Calculates the position feedback devices precision for a given axis
+
+        @param str axis_name: The name of the axis for which the precision is to be calculated
+
+        @return float: precision of the feedback device volt  (-1.0 for error)
+        """
+        if axis_name not in self.axis_class.keys():
+            self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
+            return -1
+
+        return self.calculate_resolution(self._feedback_device.get_analogue_resolution(),
+                                         self.axis_class[axis_name].input_voltage_range)
+
+    def calculate_resolution(self, bit_resolution, my_range):
+        """Calculates the resolution in a range for a given bit resolution
+
+         @param str bit_resolution: the bit resolution of the channel
+
+         @param list(float,float) my_range: the minimum and maximum of the range for which the resolution is
+                                to be calculated
+
+         @return float: resolution on the given scale  (-1.0 for error)
+         """
+        if not isinstance(my_range, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Given range is no array type.')
+            return -1
+
+        precision = ((my_range[1] - my_range[0]) / (
+                2 ** bit_resolution)) * 1.05
+        precision = round_to_2(precision)
+        return precision
 
     def get_stepper_axes_use(self):
         """ Find out how the axes of the stepping device are named.
@@ -484,3 +551,26 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
           use get_stepper_axes
         """
         return self._stepping_device.get_stepper_axes_use()
+
+    def close_analogue_output(self):
+        """Sets the analogue voltage for the control axis to zero in a step vice manner
+        """
+        end_voltage = 0.0
+        start_voltage = self.axis_class[self.controll_axis].output_voltage
+        step = 1e-4  # (0.1mV)
+        voltage = start_voltage - step
+        while voltage > step:
+            if voltage < 0:
+                break
+            self._output_device.write_ao(self.controll_axis, np.array(voltage), length=1, start=True)
+            voltage -= step
+        self._output_device.write_ao(self.controll_axis, np.array(end_voltage), length=1, start=True)
+
+    def change_voltage_adjustment_steps(self, step_size):
+        """Changes the adjustment step size of the algorithm setting it to a value compatible with the hardware
+
+        @return: The actual new adjustment step size
+        """
+        self.voltage_adjustment_steps = float_rounding(step_size,
+                                                       self.axis_class[self.controll_axis].output_precision_volt)
+        return self.voltage_adjustment_steps

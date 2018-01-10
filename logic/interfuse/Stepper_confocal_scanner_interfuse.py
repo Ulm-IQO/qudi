@@ -25,7 +25,7 @@ import numpy as np
 from core.base import Base
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.piezo_stepper_interface import PiezoStepperInterface
-from interface.analog_reader_interface import AnalogReaderInterface
+from interface.analogue_reader_interface import AnalogReaderInterface
 from interface.slow_counter_interface import SlowCounterInterface
 
 #TODO: Discuss how to implement switch between scan modes. That is scanner and stepper.
