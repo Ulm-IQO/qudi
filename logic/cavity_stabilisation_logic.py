@@ -75,32 +75,23 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     # declare connectors
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
-    stepper = Connector(interface='ConfocalStepperInterface')
     voltage_adjustment_steps = ConfigOption('voltage_adjustment_steps', 1, missing='warn')
     reflection = ConfigOption('cavitymode_reflection', True, missing='warn')
     _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
     threshold = ConfigOption('threshold', 0.1, missing='error')
+    _axis = ConfigOption('axis', "APD", missing='error')
 
     # Todo: add connectors and QTCore Signals
     # signals
-    signal_start_stepping = QtCore.Signal()
-    signal_stop_stepping = QtCore.Signal()
-    signal_continue_stepping = QtCore.Signal()
-
     # signals
     signal_stabilise_cavity = QtCore.Signal()
     signal_optimize_length = QtCore.Signal(float, bool)
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
         # Todo: I am not sure fi this inheritance is sensible (Generic logic)
-        def __init__(self, name, hardware, feedback_device, output_device, log):
+        def __init__(self, name, feedback_device, output_device, log):
             self.name = name
-            self.mode = None
-            self.dc_mode = None
 
-            self.steps_direction = 5
-
-            self.hardware = hardware
             self.feedback_device = feedback_device
             self.output_device = output_device
             self.input_voltage_range = []
@@ -113,8 +104,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log = log
 
             # initialise values
-            self.get_stepper_mode()
-            self.get_dc_mode()
             if name in self.output_device._analogue_output_channels.keys():
                 self.output = True
             else:
@@ -124,94 +113,21 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             else:
                 self.feedback = False
 
-        def _check_mode(self):
-            """ Checks if the voltage in the device is the same as set by the program
-            If the voltages are different the voltage in the device is changed to the set voltage
-
-            @return int: error code (0:OK, -1:error)
-            """
-            mode = self.hardware.get_axis_mode(self.name)
-            if mode == -1:
-                return -1
-            elif mode != self.mode:
-                self.log.warning(
-                    "The device has different mode ({}) compared the assumed mode {}. "
-                    "The mode of the device will be changed to the programs mode".format(mode, self.mode))
-                # checks if stepper is still running
-                if False:  # self.getState() == 'locked':
-                    #    self.log.warning("The stepper is still running")
-                    return -1
-                else:
-                    if self.mode == "ground":
-                        retval = self.set_mode_ground()
-                    elif self.mode == "stepping":
-                        retval = self.set_mode_stepping()
-                    else:
-                        self.log.error(
-                            "The mode set by the program %s does not exist or can not be accessed by this program.\n"
-                            "Please change it to one of the possible modes", self.mode)
-                        retval = -1
-                    return retval
-            return 0
-
-        def set_mode_ground(self):
-            """Sets the mode of the stepping device to grounded for the specified axis
-
-            @return int: error code (0:OK, -1:error)
-            """
-            retval = self.hardware.set_axis_mode(self.name, "ground")
-            if retval < 0:
-                return retval
-            self.mode = "ground"
-            return retval
-
-        def get_stepper_mode(self):
-            """Gets the mode of the stepping device for the specified axis
-
-            @return int: error code (0:OK, -1:error)
-            """
-            mode = self.hardware.get_axis_mode(self.name)
-            if mode == -1:
-                return mode
-            else:
-                self.mode = mode
-                return mode
-
-        def get_dc_mode(self):
-            """Reads the DC input status from the stepper hardware
-            @return bool: True for on, False for off or error
-            """
-            self.dc_mode = self.hardware.get_DC_in(self.name)
-            return self.dc_mode
-
-        def set_dc_mode(self, On=False):
-            """Set the DC input status of the stepper hardware
-
-            @param bool On: if True is turned on, False is turned off, default False
-            @return int: error code (0: OK, -1:error)
-            """
-            return self.hardware.set_DC_in(self.name, On)
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
 
         # Todo: Add initialisation from _statusVariable
         # Connectors
-        # Fixme: This does only work for steppers yet, not for only piezo devices (scanners)...
-        self._stepping_device = self.get_connector('stepper')
         self._feedback_device = self.get_connector('analoguereader')
         self._output_device = self.get_connector('analogueoutput')
         # Fixme: This is very specific
-        # Initialises hardware values
-        self.axis = self.get_stepper_axes_use()
-        self.axis["APD"] = "APD"
         # first steps to get a to a better handling of axes parameters
 
         self.axis_class = dict()
 
-        for name in self.axis.keys():
-            self.axis_class[name] = self.Axis(name, self._stepping_device, self._feedback_device,
+        for name in self._axis:
+            self.axis_class[name] = self.Axis(name, self._feedback_device,
                                               self._output_device, self.log)
             # Todo: Add error check here or in method else it tries to write non existing value into itself
             if self.axis_class[name].feedback:
@@ -538,19 +454,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 2 ** bit_resolution)) * 1.05
         precision = round_to_2(precision)
         return precision
-
-    def get_stepper_axes_use(self):
-        """ Find out how the axes of the stepping device are named.
-
-        @return dict: {axis_name:axis_id}
-
-        Example:
-          For 3D confocal microscopy in Cartesian coordinates, ['x':1, 'y':2, 'z':3] is a sensible
-          value.
-          If you only care about the number of axes and not the assignment and names
-          use get_stepper_axes
-        """
-        return self._stepping_device.get_stepper_axes_use()
 
     def close_analogue_output(self):
         """Sets the analogue voltage for the control axis to zero in a step vice manner
