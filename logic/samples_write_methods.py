@@ -107,14 +107,14 @@ class SamplesWriteMethods:
             # get analog channel number as integer from string
             a_chnl_number = int(channel.strip('a_ch'))
             # get marker string descriptors for this analog channel
-            markers = ['d_ch'+str((a_chnl_number*2)-1), 'd_ch'+str(channel*2)]
+            markers = ['d_ch'+str((a_chnl_number*2)-1), 'd_ch'+str(a_chnl_number*2)]
             # append analog samples chunk to .WFMX file
             filepath = os.path.join(self.waveform_dir, name + channel[1:] + '.wfmx')
             with open(filepath, 'ab') as wfmxfile:
                 # append analog samples in binary format. One sample is 4
                 # bytes (np.float32). Write in chunks if array is very big to
                 # avoid large temporary copys in memory
-                number_of_full_chunks = int(analog_samples.shape[1]//write_overhead_samples)
+                number_of_full_chunks = int(analog_samples[channel].size//write_overhead_samples)
                 for start_ind in np.arange(0, number_of_full_chunks * write_overhead_samples,
                                            write_overhead_samples):
                     stop_ind = start_ind+write_overhead_samples
@@ -232,7 +232,7 @@ class SamplesWriteMethods:
             # get analog channel number as integer from string
             a_chnl_number = int(channel.strip('a_ch'))
             # get marker string descriptors for this analog channel
-            markers = ['d_ch' + str((a_chnl_number * 2) - 1), 'd_ch' + str(channel * 2)]
+            markers = ['d_ch' + str((a_chnl_number * 2) - 1), 'd_ch' + str(a_chnl_number * 2)]
 
             filename = name + channel[1:] + '.wfm'
             created_files.append(filename)
@@ -422,33 +422,35 @@ class SamplesWriteMethods:
         with open(filepath, 'wb') as seq_file:
             # write the header:
             # determine the used channels according to how much files were created:
-            channels = len(sequence_obj.analog_samples)
+            channels = len(sequence_obj.analog_channels)
             lines = len(sequence_obj.ensemble_list)
             seq_file.write('MAGIC 300{0:d}\r\n'.format(channels).encode('UTF-8'))
             seq_file.write('LINES {0:d}\r\n'.format(lines).encode('UTF-8'))
 
             # write main part:
             # in this order: 'waveform_name', repeat, wait, Goto, ejump
-            for step_num, (ensemble_name, seq_param) in enumerate(sequence_obj.ensemble_list):
-                repeat = seq_param['repetitions']
+            for step_num, (ensemble_obj, seq_param) in enumerate(sequence_obj.ensemble_list):
+                repeat = seq_param['repetitions'] + 1
                 event_jump_to = seq_param['event_jump_to']
                 go_to = seq_param['go_to']
-                trigger_wait = -1
+                trigger_wait = 0
 
 
                 line_str = ''
-                # Put waveform names in the line string for the current sequence step
+                # Put waveform filenames in the line string for the current sequence step
                 # In case of rotating frame preservation the waveforms are not named after the
                 # ensemble but after the sequence with a running number suffix.
-                for chnl in sequence_obj.analog_samples:
+                for chnl in sequence_obj.analog_channels:
                     if sequence_obj.rotating_frame:
-                        line_str += '"{0}", '.format(
-                            sequence_obj.name + '_' + str(step_num).zfill(3) + chnl[1:])
+                        line_str += '"{0}", '.format(sequence_obj.name + '_' +
+                                                     str(step_num).zfill(3) + chnl[1:] + '.' +
+                                                     self.waveform_format)
                     else:
-                        line_str += '"{0}", '.format(ensemble_name + chnl[1:])
+                        line_str += '"{0}", '.format(
+                            ensemble_obj.name + chnl[1:] + '.' + self.waveform_format)
 
                 # append sequence step parameters to line string
-                line_str += '{0:d}, {1:d}, {3:d}, {4:d}\r\n'.format(repeat, trigger_wait, go_to,
+                line_str += '{0:d}, {1:d}, {2:d}, {3:d}\r\n'.format(repeat, trigger_wait, go_to,
                                                                     event_jump_to)
                 seq_file.write(line_str.encode('UTF-8'))
 
