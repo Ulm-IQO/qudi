@@ -290,10 +290,10 @@ class SamplesWriteMethods:
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
+        @param analog_samples: dict containing float32 numpy ndarrays, contains the
                                        samples for the analog channels that
                                        are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
+        @param digital_samples: dict containing bool numpy ndarrays, contains the samples
                                       for the digital channels that
                                       are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the
@@ -355,10 +355,10 @@ class SamplesWriteMethods:
         that the whole ensemble is written as a whole in one big chunk.
 
         @param name: string, represents the name of the sampled ensemble
-        @param analog_samples: float32 numpy ndarray, contains the
+        @param analog_samples: dict containing float32 numpy ndarrays, contains the
                                        samples for the analog channels that
                                        are to be written by this function call.
-        @param digital_samples: bool numpy ndarray, contains the samples
+        @param digital_samples: dict containing bool numpy ndarrays, contains the samples
                                       for the digital channels that
                                       are to be written by this function call.
         @param total_number_of_samples: int, The total number of samples in the
@@ -371,13 +371,13 @@ class SamplesWriteMethods:
         @return list: the list contains the string names of the created files for the passed
                       presampled arrays
         """
+        # FIXME: This method needs to be adapted to "digital_samples" now being a dictionary
         import dill
 
         # record the name of the created files
         created_files = []
 
-        channel_number = digital_samples.shape[0]
-        digital_samples = np.transpose(digital_samples)
+        channel_number = len(digital_samples)
 
         if channel_number != 8:
             self.log.error('Pulse streamer needs 8 digital channels. {0} is not allowed!'
@@ -407,7 +407,7 @@ class SamplesWriteMethods:
         Write a sequence to a seq-file.
 
         @param str name: name of the sequence to be created
-        @param object sequence_obj: PulseSequence instance after sampling.
+        @param object sequence_obj: PulseSequence instance
 
         for AWG5000/7000 Series the following parameter will be used (are also present in the
         hardware constraints for the pulser):
