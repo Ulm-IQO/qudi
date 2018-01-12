@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import re
+from collections import OrderedDict
 
 import PyDAQmx as daq
 
@@ -160,6 +161,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _RWTimeout = ConfigOption('read_write_timeout', 10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn')
     _analogue_resolution = ConfigOption('analogue_resolution', 16, missing='warn')
+    _a_o_channels = ConfigOption('Analogue_output_channels', {}, missing='error')
+    _a_o_ranges = ConfigOption('Analogue_output_ranges', {}, missing='error')
+    _a_i_channels = ConfigOption('Analogue_input_channels', {}, missing='error')
+    _a_i_ranges = ConfigOption('Analogue_input_ranges', {}, missing='error')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
@@ -194,159 +199,55 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._scanner_counter_channels = []
         self._photon_sources = []
 
-        # handle all the parameters given by the config
-        if 'ai_x_1' in config.keys():
-            self._analogue_input_channels["x"] = config['ai_x_1']
-            if 'ai_range_x_1' in config.keys():
-                if float(config['ai_range_x_1'][0]) < float(config['ai_range_x_1'][1]):
-                    vlow = float(config['ai_range_x_1'][0])
-                    vhigh = float(config['ai_range_x_1'][1])
-                    self._ai_voltage_range["x"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ai_range_x_1 incorrect, taking [0 , '
-                        '2] instead.', config['ai_range_x_1'])
-                    self._ai_voltage_range["x"] = [0, 2]
+        for i in self._a_o_channels:
+            for j in dict(i).items():
+                self._analogue_output_channels[j[0]] = j[1]
+        ao_list = []
+        for i in self._a_o_ranges.keys():
+            if i not in self._analogue_output_channels.keys():
+                self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
+                               "an analogue output range for it. The range will be omitted", j[0])
+                continue
+            vlow, vhigh = float(self._a_o_ranges[i][0]), float(self._a_o_ranges[i][1])
+            if vlow < vhigh:
+                self._ao_voltage_range[i] = [vlow, vhigh]
             else:
-                self.log.warning(
-                    'No ai_range_x_1 configured, taking [0, 2] instead.')
-                self._ai_voltage_range["x"] = [0, 2]
+                self.log.warn('Configuration %s  of analogue output range for %s incorrect, taking [0 , '
+                              '6.] instead.', self._ao_voltage_range[i], i)
+                self._ao_voltage_range[i] = [0, 6.]
+            ao_list.append(i)
 
-        if 'ai_y_1' in config.keys():
-            self._analogue_input_channels["y"] = config['ai_y_1']
-            if 'ai_range_y_1' in config.keys():
-                if float(config['ai_range_y_1'][0]) < float(config['ai_range_y_1'][1]):
-                    vlow = float(config['ai_range_y_1'][0])
-                    vhigh = float(config['ai_range_y_1'][1])
-                    self._ai_voltage_range["y"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ai_range_y_1 incorrect, taking [0 , '
-                        '2] instead.', config['ai_range_y_1'])
-                    self._ai_voltage_range["y"] = [0, 2]
+        # check if all analogue input channels have a voltage range defined:
+        for i in self._analogue_output_channels.keys():
+            if i not in ao_list:
+                self.log.error("%s channel has no analogue output range defined. Taking default [0,6.] instead.")
+                self._ao_voltage_range["i"] = [0, 6.]
 
+        for i in self._a_i_channels:
+            for j in i.items():
+                self._analogue_input_channels[j[0]] = j[1]
+        ai_list = []
+        for i in self._a_i_ranges.keys():
+            if i not in self._analogue_input_channels.keys():
+                self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
+                               "an analogue input range for it. The range will be omitted", j[0])
+                continue
+            vlow, vhigh = float(self._a_i_ranges[i][0]), float(self._a_i_ranges[i][1])
+            if vlow < vhigh:
+                self._ai_voltage_range[i] = [vlow, vhigh]
             else:
-                self.log.warning(
-                    'No ai_range_y_1 configured, taking [0, 2] instead.')
-                self._ai_voltage_range["y"] = [0, 2]
+                self.log.warn('Configuration %s  of analogue input range for %s incorrect, taking [0 , '
+                              '2.] instead.', self._a_i_ranges[i], i)
+                self._ai_voltage_range[i] = [0, 2.]
+            ai_list.append(i)
 
-        if 'ai_z_1' in config.keys():
-            self._analogue_input_channels["z"] = config['ai_z_1']
-            if 'ai_range_z_1' in config.keys():
-                if float(config['ai_range_z_1'][0]) < float(config['ai_range_z_1'][1]):
-                    vlow = float(config['ai_range_z_1'][0])
-                    vhigh = float(config['ai_range_z_1'][1])
-                    self._ai_voltage_range["z"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ai_range_z_1 incorrect, taking [0 , '
-                        '2] instead.', config['ai_range_z_1'])
-                    self._ai_voltage_range["z"] = [0, 2]
+        # check if all analogue input channels have a voltage range defined:
+        for i in self._analogue_input_channels.keys():
+            if i not in ai_list:
+                self.log.error("%s channel has no analogue input range defined. Taking default [0,2.] instead.", i)
+                self._ai_voltage_range[i] = [0, 2.]
 
-            else:
-                self.log.warning(
-                    'No ai_range_z_1 configured, taking [0, 2] instead.')
-                self._ai_voltage_range["z"] = [0, 2]
-
-        if 'ai_z_2' in config.keys():
-            self._analogue_input_channels["z_2"] = config['ai_z_2']
-            if 'ai_range_z_2' in config.keys():
-                if float(config['ai_range_z_2'][0]) < float(config['ai_range_z_2'][1]):
-                    vlow = float(config['ai_range_z_2'][0])
-                    vhigh = float(config['ai_range_z_2'][1])
-                    self._ai_voltage_range["z_2"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration ({0}) of ai_range_y_1 incorrect, taking [0 , '
-                        '2] instead.'.format(config['ai_range_z_2']))
-                    self._ai_voltage_range["z_2"] = [0, 2]
-            else:
-                self.log.warning(
-                    'No ai_range_z_2 configured, taking [0, 2] instead.')
-                self._ai_voltage_range["z_2"] = [0, 2]
-
-        if 'APD_Diode' in config.keys():
-            self._analogue_input_channels['APD'] = config['APD_Diode']
-            if 'APD_Diode_range' in config.keys():
-                if float(config['APD_Diode_range'][0]) < float(config['APD_Diode_range'][1]):
-                    vlow = float(config['APD_Diode_range'][0])
-                    vhigh = float(config['APD_Diode_range'][1])
-                    self._ai_voltage_range["APD"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of APD_Diode_range incorrect, taking [0 , '
-                        '1.8] instead.', config['APD_Diode_range'])
-                    self._ai_voltage_range["APD"] = [0, 1.8]
-            else:
-                self.log.warning(
-                    'No APD_Diode_range configured, taking [0, 1.8] instead.')
-                self._ai_voltage_range["APD"] = [0, 1.8]
-
-        if 'cavity_scanner' in config.keys():
-            self._analogue_input_channels['Scanner'] = config['cavity_scanner']
-            if 'cavity_scanner_range' in config.keys():
-                if float(config['cavity_scanner_range'][0]) < float(config['cavity_scanner_range'][1]):
-                    vlow = float(config['cavity_scanner_range'][0])
-                    vhigh = float(config['cavity_scanner_range'][1])
-                    self._ai_voltage_range["Scanner"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of cavity_scanner_range incorrect, taking [0 , '
-                        '6] instead.', config['cavity_scanner_range'])
-                    self._ai_voltage_range["Scanner"] = [0, 6]
-            else:
-                self.log.warning(
-                    'No cavity_scanner_range configured, taking [0, 6] instead.')
-                self._ai_voltage_range["Scanner"] = [0, 6]
-
-        if 'ao_range_x' in config.keys():
-            self._analogue_output_channels["x"] = config['ao_x']
-            if 'ao_range_x' in config.keys():
-                if float(config['ao_range_x'][0]) < float(config['ao_range_x'][1]):
-                    vlow = float(config['ao_range_x'][0])
-                    vhigh = float(config['ao_range_x'][1])
-                    self._ao_voltage_range["x"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ao_range_x incorrect, taking [0 , '
-                        '2] instead.', config['ao_range_x'])
-            else:
-                self.log.warning(
-                    'No ao_range_x configured, taking [0, 6] instead.')
-                self._ao_voltage_range["x"] = [0, 6]
-
-        if 'ao_range_y' in config.keys():
-            self._analogue_output_channels["y"] = config['ao_y']
-            if 'ao_range_y' in config.keys():
-                if float(config['ao_range_y'][0]) < float(config['ao_range_y'][1]):
-                    vlow = float(config['ao_range_y'][0])
-                    vhigh = float(config['ao_range_y'][1])
-                    self._ao_voltage_range["y"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ao_range_y incorrect, taking [0 , '
-                        '2] instead.', config['ao_range_y'])
-            else:
-                self.log.warning(
-                    'No ao_range_y configured, taking [0, 6] instead.')
-                self._ao_voltage_range["y"] = [0, 6]
-
-        if 'ao_range_z' in config.keys():
-            self._analogue_output_channels["z"] = config['ao_z']
-            if 'ao_range_z' in config.keys():
-                if float(config['ao_range_z'][0]) < float(config['ao_range_z'][1]):
-                    vlow = float(config['ao_range_z'][0])
-                    vhigh = float(config['ao_range_z'][1])
-                    self._ao_voltage_range["z"] = [vlow, vhigh]
-                else:
-                    self.log.warning(
-                        'Configuration (%s) of ao_range_z incorrect, taking [0 , '
-                        '2] instead.', config['ao_range_z'])
-            else:
-                self.log.warning(
-                    'No ao_range_z configured, taking [0, 6] instead.')
-                self._ao_voltage_range["z"] = [0, 6]
-
+        # handle other the parameters given by the config
         if 'scanner_x_ao' in config.keys():
             self._scanner_ao_channels.append(config['scanner_x_ao'])
             self._current_position.append(0)
