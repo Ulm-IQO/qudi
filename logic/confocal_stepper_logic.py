@@ -137,7 +137,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     "The frequency will be changed to the set frequency".format(freq,
                                                                                 self.step_freq))
                 # checks if stepper is still running
-                # if self.getState() == 'locked':
+                # if self.module_state() == 'locked':
                 #    self.log.warning("The stepper is still running")
                 #    return -1
                 return self.set_stepper_frequency(self.step_freq)
@@ -158,7 +158,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     "The device has different voltage of {} then the set voltage {}. "
                     "The voltage will be changed to the set voltage".format(amp, self.step_amplitude))
                 # checks if stepper is still running
-                # if self.getState() == 'locked':
+                # if self.module_state() == 'locked':
                 #    self.log.warning("The stepper is still running")
                 #    return -1
                 return self.set_stepper_amplitude(self.step_amplitude)
@@ -178,7 +178,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     "The device has different mode ({}) compared the assumed mode {}. "
                     "The mode of the device will be changed to the programs mode".format(mode, self.mode))
                 # checks if stepper is still running
-                if False:  # self.getState() == 'locked':
+                if False:  # self.module_state() == 'locked':
                     #    self.log.warning("The stepper is still running")
                     return -1
                 else:
@@ -204,7 +204,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             """
 
             # checks if stepper is still running
-            # if self.getState() == 'locked':
+            # if self.module_state() == 'locked':
             #    return -1
 
             if frequency is not None:
@@ -244,7 +244,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             @return int: error code (0:OK, -1:error)
             """
             # checks if stepper is still running
-            # if self.getState() == 'locked':
+            # if self.module_state() == 'locked':
             #    return -1
             if amplitude is not None:
                 range_a = self.get_amplitude_range()
@@ -441,7 +441,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         self._clock_frequency = int(clock_frequency)
         # checks if stepper is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             return -1
         else:
             return 0
@@ -774,7 +774,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         # Todo: Make sure attocube axis are set back to ground if deemed sensible
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.stopRequested = True
         self.signal_stop_stepping.emit()
         return 0
@@ -973,7 +973,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # count or is we might be off by one, as we are not counting when moving up on in "y"
 
         # If the stepping measurement is not running do nothing
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             return
 
             # stop stepping

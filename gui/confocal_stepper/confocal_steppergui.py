@@ -595,7 +595,7 @@ class ConfocalStepperGui(GUIBase):
 
     def ready_clicked(self):
         """ Stop the scan if the state has switched to ready. """
-        if self._stepper_logic.getState() == 'locked':
+        if self._stepper_logic.module_state() == 'locked':
             # Todo: Needs to be implemented when option in logic exists
             # self._stepper_logic.permanent_scan = False
             self._stepper_logic.stop_stepper()
@@ -716,7 +716,7 @@ class ConfocalStepperGui(GUIBase):
         self.refresh_colorbar()
 
         # Unlock state widget if scan is finished
-        if self._stepper_logic.getState() != 'locked':
+        if self._stepper_logic.module_state() != 'locked':
             self.enable_step_actions()
 
     ################## Step Parameters ##################
