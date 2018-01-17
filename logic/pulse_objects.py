@@ -120,23 +120,25 @@ class PulseBlock(object):
                 self.controlled_vals_start += elem.init_length_s
                 self.controlled_vals_increment += elem.increment_s
 
-            if self.analog_channels is None:
-                self.analog_channels = list(elem.pulse_function)
-            elif self.analog_channels != list(elem.pulse_function):
-                raise ValueError('Usage of different sets of analog channels in the same PulseBlock'
-                                 ' is prohibited.\nPulseBlock creation failed!\nUsed analog channel'
-                                 ' sets are:\n{0}\n{1}'.format(self.analog_channels,
-                                                               list(elem.pulse_function)))
-                return
+            if elem.pulse_function is not None:
+                if self.analog_channels is None:
+                    self.analog_channels = list(elem.pulse_function)
+                elif self.analog_channels != list(elem.pulse_function):
+                    raise ValueError('Usage of different sets of analog channels in the same PulseBlock'
+                                     ' is prohibited.\nPulseBlock creation failed!\nUsed analog channel'
+                                     ' sets are:\n{0}\n{1}'.format(self.analog_channels,
+                                                                   list(elem.pulse_function)))
+                    return
 
-            if self.digital_channels is None:
-                self.digital_channels = list(elem.digital_high)
-            elif self.digital_channels != list(elem.digital_high):
-                raise ValueError('Usage of different sets of digital channels in the same '
-                                 'PulseBlock is prohibited.\nPulseBlock creation failed!\n'
-                                 'Used digital channel sets are:\n'
-                                 '{0}\n{1}'.format(self.digital_channels, list(elem.digital_high)))
-                return
+            if elem.digital_high is not None:
+                if self.digital_channels is None:
+                    self.digital_channels = list(elem.digital_high)
+                elif self.digital_channels != list(elem.digital_high):
+                    raise ValueError('Usage of different sets of digital channels in the same '
+                                     'PulseBlock is prohibited.\nPulseBlock creation failed!\n'
+                                     'Used digital channel sets are:\n'
+                                     '{0}\n{1}'.format(self.digital_channels, list(elem.digital_high)))
+                    return
 
     def replace_element(self, position, element):
         if isinstance(element, PulseBlockElement) and (len(self.element_list) > position):
