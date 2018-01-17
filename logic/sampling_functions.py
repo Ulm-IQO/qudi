@@ -22,12 +22,15 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from collections import OrderedDict
+# Specify here all classes that are actually sampling functions
+__all__ = ['Idle', 'DC', 'Sin', 'DoubleSin', 'TripleSin']
 
 
 class Idle(object):
     """
     Object representing an idle element (zero voltage)
     """
+    params = OrderedDict()
 
     def __init__(self):
         return
