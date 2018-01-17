@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+from collections import OrderedDict
 
 
 class PulseBlockElement(object):
@@ -55,11 +56,18 @@ class PulseBlockElement(object):
                                  pulse analysis.
         """
         # FIXME: Sanity checks need to be implemented here
-        self.init_length_s  = init_length_s
-        self.increment_s    = increment_s
-        self.pulse_function = pulse_function
-        self.digital_high   = digital_high
-        self.use_as_tick    = use_as_tick
+        self.init_length_s = init_length_s
+        self.increment_s = increment_s
+        self.use_as_tick = use_as_tick
+        if pulse_function is None:
+            self.pulse_function = OrderedDict()
+        else:
+            self.pulse_function = pulse_function
+        if digital_high is None:
+            self.digital_high = OrderedDict()
+        else:
+            self.digital_high = digital_high
+
         # calculate number of digital and analogue channels
         if pulse_function is not None:
             self.analog_channels = len(pulse_function)
