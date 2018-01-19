@@ -181,10 +181,9 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._odmr_length = None
 
         self._gated_counter_daq_task = None
-        self._analog_clock_status = False
 
         self._analogue_input_samples = {}
-
+        self._analogue_output_clock_frequency = self._scanner_clock_frequency
         config = self.getConfiguration()
 
         self._scanner_ao_channels = []
@@ -2399,7 +2398,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
     def set_up_analogue_voltage_reader_scanner(self, samples,
                                                analogue_channel,
-                                               clock_channel=None):
+                                               clock_channel=None, clock_frequency=None):
         """Initializes task for reading an analogue input voltage with the Nidaq for a finite
         number of samples at a given frequency.
 
@@ -2433,6 +2432,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             my_clock_channel = clock_channel
         else:
             my_clock_channel = self._scanner_clock_channel
+
+        if clock_frequency is not None:
+            self._analogue_input_clock_frequency = clock_frequency
+        else:
+            clock_frequency = self._analogue_input_clock_frequency
 
         # value defined for readout and wait until done
         self._analogue_input_samples[analogue_channel] = samples
@@ -2714,7 +2718,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 except:
                     self.log.error('Error while starting up analogue voltage reader clock')
                     return -1
-                self._analog_clock_status = True
             try:
                 daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
             except:
@@ -2758,9 +2761,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             samples = read_samples
         # Todo: here we need a better option to test if the clock is running for this specific task.
         # As the bool here is not task specific
-        if not self._analog_clock_status and samples > 1:
-            self.log.error("Analog input clock is not running. Start clock if you wnt to acquire multiple samples")
-            error = 0
         for channel in analogue_channels:
             if channel not in self._analogue_input_channels.keys():
                 error = True
@@ -2897,9 +2897,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
         @return int: error code (0:OK, -1:error)
         """
-        self._analog_clock_status = False
         if True:
-            # Todo: Fix this if
+            # Todo: Fix this
             return self.close_clock(scanner=True)
         else:
             # no clock was running as it is only started for samples>2
@@ -2926,13 +2925,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 return -1
             # As self.start_finite_counter starts the clock, which is the same for analog input and finite counter
             # the analogue clock was started. Therefore the clock status can be changed
-            self._analog_clock_status = True
             try:
                 daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
             except:
                 self.log.exception('Error while starting up analogue voltage reader and counter.')
                 return -1
-            self._analog_clock_status = True
             return 0
         self.log.error(
             'Cannot start analogue voltage reader since it is not configured!\n'
@@ -3042,8 +3039,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                         self._analogue_output_daq_tasks[chan] = task
                 # daq.DAQmxSetSampTimingType(self._analogue_output_channels[self._analogue_output_daq_tasks[
                 #    analogue_channels[0]]], daq.DAQmx_Val_OnDemand)
-
-
         except:
             self.log.exception('Error starting analog output task.')
             return -1

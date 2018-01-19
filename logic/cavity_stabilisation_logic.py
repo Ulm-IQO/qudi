@@ -80,12 +80,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
     threshold = ConfigOption('threshold', 0.1, missing='error')
     _axis = ConfigOption('axis', "APD", missing='error')
+    feedback_axis = ConfigOption('feedback', 'APD', missing='error')
+    control_axis = ConfigOption('control', 'z', missing='error')
+    _scan_frequency = ConfigOption('scan_frequency', 1, missing="warn")
+    _scan_resolution = ConfigOption('scan_resolution', 1e-6, missing="warn")
+    _smoothing_steps = ConfigOption('smoothing_parameter', 0, missing="info")
+    number_of_lines = StatusVar('number_of_lines', 50)
 
-    # Todo: add connectors and QTCore Signals
-    # signals
+
     # signals
     signal_stabilise_cavity = QtCore.Signal()
     signal_optimize_length = QtCore.Signal(float, bool)
+    signal_scan_next_line = QtCore.Signal()
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
         # Todo: I am not sure fi this inheritance is sensible (Generic logic)
@@ -123,6 +129,15 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._output_device = self.get_connector('analogueoutput')
         # Fixme: This is very specific
         # first steps to get a to a better handling of axes parameters
+        if self.control_axis not in self._axis:
+            self.log.error("The given control %s axis is not a axis of the initialised module.",
+                           self.control_axis)
+            raise Exception('Failed to initialise cavity scanner module due to analogue output failure.')
+
+        if self.control_axis not in self._axis:
+            self.log.error("The given feedback %s axis is not a axis of the initialised module.",
+                           self.feedback_axis)
+            raise Exception('Failed to initialise cavity scanner module due to analogue output failure.')
 
         self.axis_class = dict()
 
@@ -137,9 +152,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 self.axis_class[name].output_voltage_range = self._get_output_voltage_range(name)
                 self.axis_class[name].output_precision_volt = self.calculate_control_precision(name)
 
-        self.controll_axis = "z"  # The axis  along which the cavity is to be stabilised
-        self.feedback_axis = "APD"  # The "axis", that is the channel, which give the feedback for the stabilisation
-        if not self.axis_class[self.controll_axis].output:
+        if not self.axis_class[self.control_axis].output:
             self.log.error(
                 "The chosen stabilisation axis has not analogue output channel. The axis can not be stabilised")
         if self.feedback_axis not in self.axis_class.keys():
@@ -151,12 +164,27 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # This is done in order to have a sensible threshold and step_size
         self.threshold = float_rounding(self.threshold, self.axis_class[self.feedback_axis].feedback_precision_volt)
         self.voltage_adjustment_steps = float_rounding(self.voltage_adjustment_steps,
-                                                       self.axis_class[self.controll_axis].output_precision_volt)
+                                                       self.axis_class[self.control_axis].output_precision_volt)
         self.stopRequested = False
 
         # Sets connections between signals and functions
         self.signal_stabilise_cavity.connect(self._stabilise_cavity_length, QtCore.Qt.QueuedConnection)
         self.signal_optimize_length.connect(self._optimize_cavity_length, QtCore.Qt.QueuedConnection)
+        self.signal_scan_next_line.connect(self._do_next_line, QtCore.Qt.QueuedConnection)
+
+        # Cavity_scanning
+        self.smoothing = False  # defines if smoothing at beginning and end of ramp should be done to protect piezo
+        self._start_voltage = 0.0
+        self._end_voltage = 1.0
+        self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
+        self.scan_direction = True
+        self._clock_frequency = self._scan_frequency * len(self.ramp)
+        self.input = 0
+        self.scan_raw_data = np.zeros([self.number_of_lines, len(self.ramp)])
+        self.elapsed_sweeps = 0
+        self.start_time = time.time()
+        self.stop_time = time.time()
+
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -166,6 +194,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         pass
         # Todo: This method nees to be implemented
 
+    # =============================== start cavity stabilisation Commands  =======================
     def initialise_readout(self):
         """Sets up the continuous analogue input reader
 
@@ -187,13 +216,13 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         """Sets up the analog output channel used to stabilise the length of the cavity
 
         @return int: error code (0:OK, -1:error)"""
-        return self._output_device.set_up_analogue_output([self.controll_axis])
+        return self._output_device.set_up_analogue_output([self.control_axis])
 
     def close_analogue_stabilisation(self):
         """Closes up the analog output channel used to stabilise the length of the cavity
 
         @return int: error code (0:OK, -1:error)"""
-        return self._output_device.close_analogue_output(self.controll_axis)
+        return self._output_device.close_analogue_output(self.control_axis)
 
     def start_cavity_stabilisation(self):
         """Starts the process of cavity stabilisation"""
@@ -213,7 +242,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if self.stopRequested:
             # set voltage to 0
             # fixMe: This is only necessary for attocubes. this needs to be depended on which hardware is used!
-            self.close_analogue_output()
+            self.change_analogue_output_voltage(0.0)
             try:
                 self.close_analogue_stabilisation()
             except Exception as e:
@@ -270,7 +299,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if self.stopRequested:
             return 0
 
-        voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+        voltage_result = self.change_and_measure(self.feedback_axis, self.control_axis,
                                                  voltage=self.voltage_adjustment_steps,
                                                  direction=direction)
         if voltage_result < 0:
@@ -294,7 +323,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             # redo stepping. If nothing happens again we are either on resonance or completely off resonance
             # or the values were chosen wrong.
             # In any case this has to be optimised by user
-            voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+            voltage_result = self.change_and_measure(self.feedback_axis, self.control_axis,
                                                      voltage=self.voltage_adjustment_steps,
                                                      direction=direction)
             if voltage_result < 0:
@@ -302,7 +331,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 return -1
             if abs(voltage_result - previous_voltage) < precision:  # comparing floats
                 # move back to previous position. This is a safety precaution
-                voltage_result = self.change_and_measure(self.feedback_axis, self.controll_axis,
+                voltage_result = self.change_and_measure(self.feedback_axis, self.control_axis,
                                                          voltage=self.voltage_adjustment_steps,
                                                          direction=not direction)
                 if voltage_result < 0:
@@ -455,19 +484,31 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         precision = round_to_2(precision)
         return precision
 
-    def close_analogue_output(self):
-        """Sets the analogue voltage for the control axis to zero in a step vice manner
+    def change_analogue_output_voltage(self, end_voltage):
+        """Sets the analogue voltage for the control axis to desired voltage in a smooth step vice manner
         """
-        end_voltage = 0.0
-        start_voltage = self.axis_class[self.controll_axis].output_voltage
-        step = 1e-4  # (0.1mV)
-        voltage = start_voltage - step
-        while voltage > step:
-            if voltage < 0:
-                break
-            self._output_device.write_ao(self.controll_axis, np.array(voltage), length=1, start=True)
-            voltage -= step
-        self._output_device.write_ao(self.controll_axis, np.array(end_voltage), length=1, start=True)
+        start_voltage = self.axis_class[self.control_axis].output_voltage
+        v_range = self.axis_class[self.control_axis].output_voltage_range
+        if not in_range(end_voltage, v_range[0], v_range[1]):
+            self.log.error("not possible to go to voltage %s outside of voltage range (%s)", end_voltage, v_range)
+            return -1
+        if abs(start_voltage - end_voltage) > self._scan_resolution:
+            step = self._scan_resolution
+            if end_voltage < start_voltage:
+                direction = 1
+            else:
+                direction = -1
+            voltage = start_voltage - step * direction
+            while True:
+                if not in_range(voltage, v_range[0], v_range[1]):
+                    break
+                self._output_device.write_ao(self.control_axis, np.array(voltage), length=1, start=True)
+                voltage -= step * direction
+                if direction == 1 and voltage < end_voltage:
+                    break
+                elif direction == -1 and voltage > end_voltage:
+                    break
+        self._output_device.write_ao(self.control_axis, np.array(end_voltage), length=1, start=True)
 
     def change_voltage_adjustment_steps(self, step_size):
         """Changes the adjustment step size of the algorithm setting it to a value compatible with the hardware
@@ -475,5 +516,243 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         @return: The actual new adjustment step size
         """
         self.voltage_adjustment_steps = float_rounding(step_size,
-                                                       self.axis_class[self.controll_axis].output_precision_volt)
+                                                       self.axis_class[self.control_axis].output_precision_volt)
         return self.voltage_adjustment_steps
+
+    # =============================== stop cavity stabilisation Commands  =======================
+
+    # =============================== start cavity scanning Commands  =======================
+    def _initialise_scanner(self):
+        """Initialise the clock and locks for a scan"""
+        # Fixme: Do error catch/test
+        # generate voltage ramp
+        self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
+        if self.ramp[0] == -1:
+            self.log.error("Not possible to initialise scanner as ramp was not generated")
+            return 0
+        # move piezo to desired start position to go easy on piezo
+        if 0 < self.initialise_analogue_stabilisation():
+            return -1
+
+        if self._start_voltage < self._end_voltage:
+            voltage = self._start_voltage
+        else:
+            voltage = self._end_voltage
+        self.change_analogue_output_voltage(voltage)
+        if 0 < self.close_analogue_stabilisation():
+            return -1
+
+        # do the actual initialisation of the scanner
+        self._clock_frequency = self._scan_frequency * len(self.ramp)
+        if 0 > self.initialise_analogue_stabilisation():
+            self.log.error("Setting up analogue output for scanning failed.")
+            return -1
+
+        if 0 > self._output_device.set_up_analogue_output_clock(clock_frequency=self._clock_frequency):
+            # Fixme: I do not think this is necessary. However it should be checked.
+            # self.set_position('scanner')
+            self.log.error("Problems setting up analogue output clock.")
+            return -1
+
+        self._output_device.configure_analogue_timing(self.control_axis, len(self.ramp))
+
+        # Initialise analogue input readout
+        # The clock needs double peed because internally only halve the clock speed is taken
+        if 0 < self._feedback_device.set_up_analogue_voltage_reader_clock(clock_frequency=self._clock_frequency/2,
+                                                                          set_up=False):
+            self.log.error("Setting up analogue input clock for scanning failed.")
+            self._close_scanner()
+            return -1
+        if 0 < self._feedback_device.set_up_analogue_voltage_reader_scanner(len(self.ramp),
+                                                                            self.feedback_axis,
+                                                                            clock_channel=None):
+            self.log.error("Setting up analogue input for scanning failed.")
+            self._close_scanner()
+            return -1
+        # This task can run all the time as samples will only be acquired while clock is running
+#        if 0 < self._feedback_device.start_analogue_voltage_reader(self.feedback_axis):
+#            self.log.error("Starting analogue input for scanning failed.")
+#            self._close_scanner()
+#            return -1
+
+        #initalise data recording
+        #Fixme: Estimatd number of lines
+        estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
+        self.log.debug('Estimated number of raw data lines: {0:d}'
+                       ''.format(estimated_number_of_lines))
+        self.scan_raw_data = np.zeros([estimated_number_of_lines, len(self.ramp)])
+        self.elapsed_sweeps = 0
+        self.histo_count = 0
+        self._initialise_data_matrix(len(self.ramp))
+        self.down_ramp = self.ramp[::-1]
+
+        return 0
+
+    def _close_scanner(self):
+        try:
+            retval1 = self._output_device.close_analogue_output_clock()
+            retval2 = self._output_device.close_analogue_output(self.control_axis)
+            retval3 = self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
+        except:
+            self.log.warn("Closing the Scanner did not work")
+        return min(retval1, retval2, retval3)
+
+    def _generate_ramp(self, start_voltage, end_voltage):
+        """Generate a ramp from start_voltage to end_voltage that
+        satisfies the general step resolution and smoothing_steps parameters.
+        Smoothing_steps=0 means that the ramp is just linear.
+
+        @param float start_voltage: voltage at start of ramp.
+
+        @param float end_voltage: voltage at end of ramp.
+
+
+        @return  array(float): the calculated voltage ramp
+        """
+
+        voltage_range = self.axis_class[self.control_axis].output_voltage_range
+        # check if given voltages are allowed:
+        if not in_range(start_voltage, self.axis_class[self.control_axis].output_voltage_range[0],
+                        self.axis_class[self.control_axis].output_voltage_range[1]):
+            self.log.error("The given start voltage %s is not within the possible output voltages %s", start_voltage,
+                           voltage_range)
+            return [-1]
+        elif not in_range(start_voltage, self.axis_class[self.control_axis].output_voltage_range[0],
+                          self.axis_class[self.control_axis].output_voltage_range[1]):
+            self.log.error("The given end voltage %s is not within the possible output voltages %s", end_voltage,
+                           voltage_range)
+            return [-1]
+        # It is much easier to calculate the smoothed ramp for just one direction (upwards),
+        # and then to reverse it if a downwards ramp is required.
+        v_min = min(start_voltage, end_voltage)
+        v_max = max(start_voltage, end_voltage)
+
+        if v_min == v_max:
+            ramp = np.array([v_min, v_max])
+
+        else:
+            smoothing_range = self._smoothing_steps + 1
+
+            # Sanity check in case the range is too short
+            # The voltage range covered while accelerating in the smoothing steps
+            v_range_of_accel = sum(n * self._scan_resolution / smoothing_range
+                                   for n in range(0, smoothing_range)
+                                   )
+
+            # Obtain voltage bounds for the linear part of the ramp
+            v_min_linear = v_min + v_range_of_accel
+            v_max_linear = v_max - v_range_of_accel
+
+            # calculate smooth ramp if needed and possible
+            if self.smoothing and v_min_linear < v_max_linear:
+
+                num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / self._scan_resolution)
+                # Calculate voltage step values for smooth acceleration part of ramp
+                smooth_curve = np.array([sum(n * self._scan_resolution / smoothing_range
+                                             for n in range(1, N)
+                                             )
+                                         for N in range(1, smoothing_range)
+                                         ]
+                                        )
+                # generate parts of the smoothed ramp
+                accel_part = v_min + smooth_curve
+                decel_part = v_max - smooth_curve[::-1]
+                # generate linear part of ramp
+                linear_part = np.linspace(v_min_linear, v_max_linear, num_of_linear_steps)
+                # combine different part of ramp
+                ramp = np.hstack((accel_part, linear_part, decel_part))
+            else:
+                num_of_linear_steps = np.rint((v_max - v_min) / self._scan_resolution)
+                ramp = np.linspace(v_min, v_max, num_of_linear_steps)
+                if v_min_linear > v_max_linear and self.smoothing:
+                    # print out info for use
+                    self.log.warning('Voltage ramp too short to apply the '
+                                     'configured smoothing_steps. A simple linear ramp '
+                                     'was created instead.')
+
+        # Reverse if downwards ramp is required
+        if end_voltage < start_voltage:
+            ramp = ramp[::-1]
+
+        return ramp
+
+    def _scan_line(self, voltages):
+        try:
+            if 0 < self._feedback_device.start_analogue_voltage_reader(self.feedback_axis):
+                return -1
+            self._output_device.analogue_scan_line(self.control_axis, voltages)
+            self.input = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
+            if 0 < self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
+                return -1
+            return self.input
+
+        except Exception as e:
+            self.log.error('The scan went wrong, killing the scanner.')
+            self.stop_scanning()
+            # if self.hold_max is True:
+            #   self.signal_scan_next_line.emit()
+            raise e
+
+    def _do_next_line(self):
+        """If stopRequested then finish the scan, otherwise perform next repeat of the scan line
+
+        """
+
+        if self.stopRequested:
+            self._close_scanner()
+            #     self._scan_counter = 0
+            #     self.number_of_repeats = 1
+            #     self.stop_histo_time = time.time()
+            self.stopRequested = False
+            if self.scan_direction:
+                final_voltage = self._end_voltage
+            else:
+                final_voltage = self._start_voltage
+            self.axis_class[self.control_axis].output_voltage = final_voltage
+            return 0
+
+        if self.elapsed_sweeps == 0:
+            # move from current voltage to start of scan range.
+            self.start_histo_time = time.time()
+            #self._goto_during_scan(self.scan_range[0])
+
+        if self.scan_direction:
+            self.start_time = time.time()
+            counts = self._scan_line(self.ramp)
+            #self.scan_matrix[1] = np.add(self.scan_matrix[1], counts)
+            self.stop_time = time.time()
+        else:
+            self.start_time = time.time()
+            counts = self._scan_line(self.down_ramp)
+            # self.scan_matrix[1] = np.add(self.scan_matrix[1], couts[::-1])
+            # counts = counts[::-1]n
+            self.stop_time = time.time()
+
+        if self.elapsed_sweeps == (self.scan_raw_data.shape[0] - 1):
+            expanded_array = np.zeros([self.scan_raw_data.shape[0] + self.number_of_lines,
+                                       self.scan_raw_data.shape[1]])
+            expanded_array[:self.elapsed_sweeps, :] = self.scan_raw_data[
+                                                      :self.elapsed_sweeps, :]
+            self.scan_raw_data = expanded_array
+#            #self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
+#            #                 'measurement. Array will be expanded.\nOld array shape was '
+            #                 '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
+            #                 ''.format(self.scan_raw_data.shape[0] - self.number_of_lines,
+            #                           self.scan_raw_data.shape[1],
+            #                           self.scan_raw_data.shape[0],
+            #                           self.scan_raw_data.shape[1]))
+        self.scan_direction = not self.scan_direction
+
+        # self.scan_matrix[0] = counts
+        # self.data_to_save = True
+        # self.histo_save = True
+        self.elapsed_sweeps += 1
+        self.histo_count += 1
+        # self.sigCounterUpdated.emit()
+        # self.sigHistoUpdated.emit()
+        self.signal_scan_next_line.emit()
+
+    def _initialise_data_matrix(self, scan_length):
+        """ Initializing the ODMR matrix plot. """
+
+        self.scan_matrix = np.zeros((self.number_of_lines, scan_length))
