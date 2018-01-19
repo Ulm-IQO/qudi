@@ -3049,6 +3049,224 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
         return 0
 
+    def write_ao(self, analogue_channel, voltages, length=1, start=False, time_out=0):
+        """Writes a set of voltages to the analog outputs.
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the voltages are written
+
+        @param List[float] voltages: array of n-part tuples defining the voltage points
+
+        @param int length: number of tuples to write
+
+        @param bool start: write immediately (True) or wait for start of task (False)
+
+        @param float time_out: default 0, value how long the program should maximally take two write the samples
+                                0 returns an error if program fails to write immediately.
+
+        @return int: how many values were actually written
+        """
+
+        # check if task for channel is configured
+        if analogue_channel not in self._analogue_output_daq_tasks:
+            self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
+            return -1
+        # Number of samples which were actually written, will be stored here.
+        # The error code of this variable can be asked with .value to check
+        # whether all channels have been written successfully.
+        samples_written = daq.int32()
+        # write the voltage instructions for the analog output to the hardware
+        daq.DAQmxWriteAnalogF64(
+            # write to this task
+            self._analogue_output_daq_tasks[analogue_channel],
+            # length of the command (points)
+            length,
+            # start task immediately (True), or wait for software start (False)
+            start,
+            # maximal timeout in seconds for the write process
+            time_out,
+            # Specify how the samples are arranged: each pixel is grouped by channel number
+            daq.DAQmx_Val_GroupByChannel,
+            # the voltages to be written
+            voltages,
+            # The actual number of samples per channel successfully written to the buffer
+            daq.byref(samples_written),
+            # Reserved for future use. Pass NULL(here None) to this parameter
+            None)
+        return samples_written.value
+
+    def set_up_analogue_output_clock(self, clock_frequency=None, clock_channel=None,
+                                     set_up=True):
+        """ Configures the hardware clock of the NiDAQ card to give the timing.
+
+        @param float clock_frequency: if defined, this sets the frequency of
+                                      the clock (in Hz). If not defined the scanner clock frequency will be used.
+        @param string clock_channel: if defined, this is the physical channel
+                                     of the clock
+        @param bool set_up: If True, the function does nothing and assumes clock is already set up from different task
+                                    using the same clock
+
+        @return int: error code (0:OK, -1:error)
+        """
+        # The clock for the analogue clock is created on the same principle as it is
+        # for the counter. Just to keep consistency, this function is a wrapper
+        # around the set_up_clock. However if a clock might already be configured for a different
+        # task, this might not be a problem for the programmer, so he can call the function
+        # anyway but set set_up to False and the function does nothing.
+        if clock_frequency is None:
+            clock_frequency = self._analogue_output_clock_frequency
+        else:
+            self._analogue_output_clock_frequency = clock_frequency
+        if not set_up:
+            # this exists, so that one can "set up" the clock that is used in parallel in the
+            # code but not in reality and serves readability in the logic code
+            return 0
+
+        # Todo: Check if this divided by 2 is sensible
+        return self.set_up_clock(
+            clock_frequency=clock_frequency,  # because it will be multiplied by 2 in the setup
+            clock_channel=clock_channel,
+            scanner=True)
+
+    def configure_analogue_timing(self, analogue_channel, length):
+
+        if analogue_channel not in self._analogue_output_daq_tasks:
+            self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
+            return -1
+
+        daq.DAQmxCfgSampClkTiming(
+            # add to this task
+            self._analogue_output_daq_tasks[analogue_channel],
+            # use this channel as clock
+            self._scanner_clock_channel + 'InternalOutput',
+            # Maximum expected clock frequency
+            self._scanner_clock_frequency,
+            # Generate sample on falling edge
+            daq.DAQmx_Val_Falling,
+            # generate finite number of samples
+            daq.DAQmx_Val_FiniteSamps,
+            # number of samples to generate
+            length)
+        daq.DAQmxCfgImplicitTiming(
+            # define task
+            self._scanner_clock_daq_task,
+            # only a limited number of# counts
+            daq.DAQmx_Val_FiniteSamps,
+            # count twice for each voltage +1 for safety
+            length)
+
+    def analogue_scan_line(self, analogue_channel, voltages):
+        # check if task for channel is configured
+        if analogue_channel not in self._analogue_output_daq_tasks:
+            self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
+            return -1
+        # Fixme: When more than one channel can be done at a time this needs to be taken care of here by deviding the
+        # number of samples by the number of channels to get an accurate length of passed samples per channel
+        length = len(voltages)  # convert to np array
+        voltages_array = np.array(voltages)
+
+        try:
+            # write the positions to the analog output
+            written_voltages = self.write_ao(analogue_channel,
+                                             voltages=voltages_array,
+                                             length=length,
+                                             start=False, time_out=self._RWTimeout)
+
+            # start the timed analog output task
+            self.start_analogue_output(analogue_channel)
+
+            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            daq.DAQmxStartTask(self._scanner_clock_daq_task)
+            time_out = 1. / self._scanner_clock_frequency
+            # wait for the scanner clock to finish
+            daq.DAQmxWaitUntilTaskDone(
+                # define task
+                self._scanner_clock_daq_task,
+                # maximal timeout for the counter times the positions
+                time_out * 2 * length)
+            #output = self.get_analogue_voltage_reader(["APD"])
+            # stop the clock task
+            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+
+            # stop the analog output task
+            self.stop_analogue_output(analogue_channel)
+
+        except:
+            self.log.exception('Error while scanning  voltage output line.')
+            return -1
+        return written_voltages
+
+    def start_analogue_output(self, analogue_channel, start_clock=False):
+        """
+        Starts the preconfigured analogue out task
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the task is created
+        @param  bool start_clock: default value false, bool that defines if clock for the task is
+                                also started.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if type(analogue_channel) != str:
+            self.log.error("analogue channel needs to be passed as a string. A different "
+                           "variable type (%s) was used", type(analogue_channel))
+            return -1
+        if analogue_channel in self._analogue_output_daq_tasks:
+            if start_clock:
+                try:  # Stop clock
+                    daq.DAQmxStopTask(self._scanner_clock_daq_task)
+                except:
+                    self.log.warning('Error while stopping analogue voltage reader clock')
+                try:  # star
+                    daq.DAQmxStartTask(self._scanner_clock_daq_task)
+                except:
+                    self.log.error('Error while starting up analogue voltage reader clock')
+                    return -1
+            try:
+                daq.DAQmxStartTask(self._analogue_output_daq_tasks[analogue_channel])
+            except:
+                self.log.exception('Error while starting up analogue voltage reader.')
+                return -1
+            return 0
+
+        else:
+            self.log.error(
+                'Cannot start analogue voltage reader for channel %s since it is not configured!\n'
+                'Run the set_up_analogue_voltage_reader or set_up_analogue_voltage_reader_scanner routine first.',
+                analogue_channel)
+            return -1
+
+    def stop_analogue_output(self, analogue_channel):
+        """"
+        Stops the analogue voltage output task
+
+        @analogue_channel str: one of the analogue channels for which the task to be stopped is
+                            configured. If more than one channel uses this task,
+                            all channel readings will be stopped.
+        @return int: error code (0:OK, -1:error)
+        """
+        # check if correct type was specified
+        if type(analogue_channel) != str:
+            self.log.error("analogue channel needs to be passed as a string. A different "
+                           "variable type (%s) was used", type(analogue_channel))
+            return -1
+        # check if task for channel exists
+        if analogue_channel in self._analogue_output_daq_tasks.keys():
+            task = self._analogue_output_daq_tasks[analogue_channel]
+            # try to stop task
+            try:
+                daq.DAQmxStopTask(task)
+            except:
+                self.log.exception('Error while stopping analogue output for channel {%s}.', analogue_channel)
+                return -1
+            return 0
+
+        else:
+            self.log.error(
+                'Cannot stop Analogue Output Task for channel %s since it is not running or configured!\n'
+                'Start the Analogue Output Task before you can actually stop it!', analogue_channel)
+            return -1
+
     def close_analogue_output(self, analogue_channel=None, scanner=False):
         """ Stops the analog output task.
 
@@ -3116,49 +3334,16 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Cannot close Analogue Input Reader Task since it is not running or configured!')
                 return -1
 
-    def write_ao(self, analogue_channel, voltages, length=1, start=False, time_out=0):
-        """Writes a set of voltages to the analog outputs.
+    def close_analogue_output_clock(self):
+        """ Closes the analogue output clock and cleans up afterwards.
 
-        @param  string analogue_channel: the representative name of the analogue channel for
-                                        which the voltages are written
-
-        @param List[float] voltages: array of n-part tuples defining the voltage points
-
-        @param int length: number of tuples to write
-
-        @param bool start: write immediately (True) or wait for start of task (False)
-
-        @param float time_out: default 0, value how long the program should maximally take two write the samples
-                                0 returns an error if program fails to write immediately.
-
-        @return int: how many values were actually written
+        @return int: error code (0:OK, -1:error)
         """
+        if True:
+            # Todo: Fix this if
+            return self.close_clock(scanner=True)
+        else:
+            # no clock was running as it is only started for samples>2
+            return 0
 
-        # check if task for channel is configured
-        if analogue_channel not in self._analogue_output_daq_tasks:
-            self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
-            return -1
-        # Number of samples which were actually written, will be stored here.
-        # The error code of this variable can be asked with .value to check
-        # whether all channels have been written successfully.
-        samples_written = daq.int32()
-        # write the voltage instructions for the analog output to the hardware
-        daq.DAQmxWriteAnalogF64(
-            # write to this task
-            self._analogue_output_daq_tasks[analogue_channel],
-            # length of the command (points)
-            length,
-            # start task immediately (True), or wait for software start (False)
-            start,
-            # maximal timeout in seconds for the write process
-            time_out,
-            # Specify how the samples are arranged: each pixel is grouped by channel number
-            daq.DAQmx_Val_GroupByChannel,
-            # the voltages to be written
-            voltages,
-            # The actual number of samples per channel successfully written to the buffer
-            daq.byref(samples_written),
-            # Reserved for future use. Pass NULL(here None) to this parameter
-            None)
-        return samples_written.value
     # =============================== End AnalogOutputInterface Commands  =======================

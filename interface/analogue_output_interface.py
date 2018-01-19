@@ -121,5 +121,63 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         @return int: input bit resolution """
         pass
 
+    @abc.abstractmethod
+    def set_up_analogue_output_clock(self, clock_frequency=None, clock_channel=None,
+                                             set_up=True):
+        """ Configures the hardware clock of the NiDAQ card to give the timing.
+
+        @param float clock_frequency: if defined, this sets the frequency of
+                                      the clock (in Hz). If not defined the scanner clock frequency will be used.
+        @param string clock_channel: if defined, this is the physical channel
+                                     of the clock
+        @param bool set_up: If True, the function does nothing and assumes clock is already set up from different task
+                                    using the same clock
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def analogue_scan_line(self, analogue_channel, voltages):
+        pass
+
+    @abc.abstractmethod
+    def configure_analogue_timing(self, analogue_channel, length):
+        pass
+
+    @abc.abstractmethod
+    def start_analogue_output(self, analogue_channel, start_clock=False):
+        """
+        Starts the preconfigured analogue out task
+
+        @param  string analogue_channel: the representative name of the analogue channel for
+                                        which the task is created
+        @param  bool start_clock: default value false, bool that defines if clock for the task is
+                                also started.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def stop_analogue_output(self, analogue_channel):
+        """"
+        Stops the analogue voltage output task
+
+        @analogue_channel str: one of the analogue channels for which the task to be stopped is
+                            configured. If more than one channel uses this task,
+                            all channel readings will be stopped.
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def close_analogue_output_clock(self):
+        """ Closes the analogue output clock and cleans up afterwards.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
 
 
