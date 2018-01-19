@@ -38,6 +38,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     _host = ConfigOption('host', missing='error')
     tmp = ConfigOption('password', b"123456", missing='warn')
     _port = ConfigOption('port', 7230, missing='warn')
+    _voltage_range_stepper = ConfigOption('voltage_range_stepper', [0, 60], missing='warn')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -62,7 +63,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
 
-
         self._attocube_modes = {"stepping": "stp", "ground": "gnd", "Input": "inp", "off": "off"}
         # Todo finish attocube modes with sensible names
         # mode_list = ["gnd", "inp", "stp", "off", "stp+", "stp-"]
@@ -70,7 +70,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # handle all the parameters given by the config
         self._attocube_axis = {}  # dictionary contains the axes and the specific controller
         self._attocube_axis_range = {}  # dictionary contains the axes stepping range
-        self._position_feedback  = {}
+        self._position_feedback = {}
         default_range = [0, 5]
 
         if 'x' in config.keys():
@@ -99,7 +99,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         if 'y' in config.keys():
             self._attocube_axis["y"] = config['y']
-            #self._position_feedback["y"] = ConfigOption('position_feedback_y')
+            # self._position_feedback["y"] = ConfigOption('position_feedback_y')
             if 'position_feedback_y' in config.keys():
                 self._position_feedback["y"] = config['position_feedback_y']
             else:
@@ -129,7 +129,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             else:
                 self.log.warning("no position feedback defined")
                 self._position_feedback["z"] = False
-            #self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
+            # self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
             if 'z_range' in config.keys():
                 if float(config['z_range'][0]) < float(config['z_range'][1]):
                     self._attocube_axis_range["z"] = [float(config['z_range'][0]),
@@ -146,22 +146,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             self.log.error(
                 'No axis "z" found in configuration!\n'
                 'Assign to that parameter an appropriated channel sorting!')
-
-        # Todo: This needs to be updated to a dictionary for each axis
-        if 'voltage_range_stepper' in config.keys():
-            if float(config['voltage_range_stepper'][0]) < float(
-                    config['voltage_range_stepper'][1]):
-                self._voltage_range_stepper = [float(config['voltage_range_stepper'][0]),
-                                               float(config['voltage_range_stepper'][1])]
-            else:
-                self._voltage_range_stepper = self._voltage_range_stepper_default
-                self.log.warning(
-                    'Configuration ({}) of voltage_range_stepper incorrect, taking [0,60] instead.'
-                    ''.format(config['voltage_range_stepper']))
-        else:
-            self.log.warning('No voltage_range_stepper configured taking [0,60] instead.')
-            self._voltage_range_stepper = [float(config['voltage_range_stepper'][0]),
-                                           float(config['voltage_range_stepper'][1])]
 
         # Todo: this needs to be read from a specifically still to be made text file depending on
         #  the capacitance
@@ -323,8 +307,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             voltage_line = result[1][-3].split()
             self._axis_amplitude[axis] = float(voltage_line[-2])
             if (self._voltage_range_stepper[0] > self._axis_amplitude[axis] or
-                        self._axis_amplitude[axis] >
-                        self._voltage_range_stepper[1]):
+                    self._axis_amplitude[axis] >
+                    self._voltage_range_stepper[1]):
                 self.log.error(
                     "The voltage of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
                         self._axis_amplitde[axis], axis, self._voltage_range_stepper[0],
@@ -385,7 +369,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 frequency_line = result[1][-3].split()
             self._axis_frequency[axis] = float(frequency_line[-2])
             if (self._frequency_range[axis][0] > self._axis_frequency[axis] or self._axis_frequency[axis] >
-                self._frequency_range[axis][1]):
+                    self._frequency_range[axis][1]):
                 self.log.error(
                     "The value of {} V of axis {} in the ANC300 lies outside the defined range{},{]".format(
                         self._axis_frequency[axis], axis, self._frequency_range[axis][0],
