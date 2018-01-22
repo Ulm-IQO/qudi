@@ -395,9 +395,13 @@ class SamplesWriteMethods():
                            ''.format(channel_number))
             return -1
 
+        # fetch locations where digital channel states change, and eliminate duplicates
         new_channel_indices = np.where(digital_samples[:-1,:] != digital_samples[1:,:])[0]
-        new_channel_indices = new_channel_indices[np.where(new_channel_indices[:-1] != new_channel_indices[1:])[0]] #get rid of repeats
+        new_channel_indices = np.unique(new_channel_indices)
+
+        # add in indices for the start and end of the sequence to simplify iteration
         new_channel_indices = np.insert(new_channel_indices, 0, [-1])
+        new_channel_indices = np.insert(new_channel_indices, new_channel_indices.size, [digital_samples.shape[0]-1])
 
         pulses = []
         for new_channel_index in range(1, new_channel_indices.size):
