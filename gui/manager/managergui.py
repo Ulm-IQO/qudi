@@ -26,6 +26,7 @@ import os
 
 from collections import OrderedDict
 from core.module import StatusVar
+from core.util.modules import get_main_dir
 from .errordialog import ErrorDialog
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
@@ -446,7 +447,7 @@ Go, play.
             a git repository.
         """
         try:
-            repo = Repo(self.get_main_dir())
+            repo = Repo(get_main_dir())
             branch = repo.active_branch
             rev = str(repo.head.commit)
             return (rev, str(branch))
@@ -483,7 +484,7 @@ Go, play.
         """ Ask the user for a file where the configuration should be loaded
             from
         """
-        defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
+        defaultconfigpath = os.path.join(get_main_dir(), 'config')
         filename = QtWidgets.QFileDialog.getOpenFileName(
             self._mw,
             'Load Configration',
@@ -504,7 +505,7 @@ Go, play.
         """ Ask the user for a file where the configuration should be saved
             to.
         """
-        defaultconfigpath = os.path.join(self.get_main_dir(), 'config')
+        defaultconfigpath = os.path.join(get_main_dir(), 'config')
         filename = QtWidgets.QFileDialog.getSaveFileName(
             self._mw,
             'Save Configration',
@@ -640,7 +641,7 @@ class ModuleListItem(QtWidgets.QFrame):
             try:
                 if (self.base in self.manager.tree['loaded']
                         and self.name in self.manager.tree['loaded'][self.base]):
-                    state = self.manager.tree['loaded'][self.base][self.name].getState()
+                    state = self.manager.tree['loaded'][self.base][self.name].module_state()
                 else:
                     state = 'not loaded'
             except:
