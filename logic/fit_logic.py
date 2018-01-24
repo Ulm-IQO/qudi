@@ -31,6 +31,7 @@ from collections import OrderedDict
 from distutils.version import LooseVersion
 
 from logic.generic_logic import GenericLogic
+from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from core.config import load, save
 
@@ -60,7 +61,7 @@ class FitLogic(GenericLogic):
 
         filenames = []
         # for path in directories:
-        path = join(self.get_main_dir(), 'logic', 'fitmethods')
+        path = join(get_main_dir(), 'logic', 'fitmethods')
         for f in listdir(path):
             if isfile(join(path, f)):
                 if f[-3:] == '.py':

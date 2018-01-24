@@ -150,7 +150,8 @@ class LaserScannerLogic(GenericLogic):
             self._static_v = volts
 
         # Checks if the scanner is still running
-        if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
+        if (self.module_state() == 'locked'
+                or self._scanning_device.module_state() == 'locked'):
             self.log.error('Cannot goto, because scanner is locked!')
             return -1
         else:
@@ -188,7 +189,7 @@ class LaserScannerLogic(GenericLogic):
         """
         self._clock_frequency = float(clock_frequency)
         # checks if scanner is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             return -1
         else:
             return 0
@@ -237,21 +238,21 @@ class LaserScannerLogic(GenericLogic):
 
     def _initialise_scanner(self):
         """Initialise the clock and locks for a scan"""
-        self.lock()
-        self._scanning_device.lock()
+        self.module_state.lock()
+        self._scanning_device.module_state.lock()
 
         returnvalue = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
         if returnvalue < 0:
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
         returnvalue = self._scanning_device.set_up_scanner()
         if returnvalue < 0:
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
@@ -301,7 +302,7 @@ class LaserScannerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.stopRequested = True
         return 0
 
@@ -310,8 +311,8 @@ class LaserScannerLogic(GenericLogic):
         with self.threadlock:
             self.kill_scanner()
             self.stopRequested = False
-            if self.can('unlock'):
-                self.unlock()
+            if self.module_state.can('unlock'):
+                self.module_state.unlock()
 
     def _do_next_line(self):
         """ If stopRequested then finish the scan, otherwise perform next repeat of the scan line
@@ -450,8 +451,8 @@ class LaserScannerLogic(GenericLogic):
             self.log.exception('Could not even close the scanner, giving up.')
             raise e
         try:
-            if self._scanning_device.can('unlock'):
-                self._scanning_device.unlock()
+            if self._scanning_device.module_state.can('unlock'):
+                self._scanning_device.module_state.unlock()
         except:
             self.log.exception('Could not unlock scanning device.')
         return 0
