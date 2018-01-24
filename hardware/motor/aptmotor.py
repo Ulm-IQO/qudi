@@ -66,7 +66,6 @@ class APTMotor():
     hwtype_dict['L490MZ'] = 43   # L490MZ Integrated Driver/Labjack
     hwtype_dict['BBD10X'] = 44   # 1/2/3 Ch benchtop brushless DC servo driver
 
-
     # the error code is also comparable to the APT server documentation.
     error_code = {}
     # General Error code:
@@ -796,6 +795,7 @@ class APTStage(Base, MotorInterface):
 
     hwp_motor:
         module.Class: 'motor.aptmotor.APTStage'
+        dll_path: 'C:\Program Files\Thorlabs\'
         axis_labels:
             - phi
         phi:
@@ -816,28 +816,35 @@ class APTStage(Base, MotorInterface):
         """ Initialize instance variables and connect to hardware as configured.
         """
 
+        # get the config for this device.
+        config = self.getConfiguration()
+
         # create the magnet dump folder
         # TODO: Magnet stuff needs to move to magnet interfuses. It cannot be in the motor stage class.
         self._magnet_dump_folder = self._get_magnet_dump()
 
         # Path to the Thorlabs APTmotor DLL
-        if platform.architecture()[0] == '64bit':
-            path_dll = os.path.join(get_main_dir(),
-                                    'thirdparty',
-                                    'thorlabs',
-                                    'win64',
-                                    'APT.dll')
-        elif platform.architecture()[0] == '32bit':
-            path_dll = os.path.join(get_main_dir(),
-                                    'thirdparty',
-                                    'thorlabs',
-                                    'win64',
-                                    'APT.dll')
-        else:
-            self.log.error('Unknown platform, cannot load the Thorlabs dll.')
+        # Check the config for the DLL path first
+        if 'dll_path' in config:
+            path_dll = config['dll_path']
 
-        # get the config for this device.
-        config = self.getConfiguration()
+        # Otherwise, look in the "standard form" thirdparty directory
+        else:
+
+            if platform.architecture()[0] == '64bit':
+                path_dll = os.path.join(get_main_dir(),
+                                        'thirdparty',
+                                        'thorlabs',
+                                        'win64',
+                                        'APT.dll')
+            elif platform.architecture()[0] == '32bit':
+                path_dll = os.path.join(get_main_dir(),
+                                        'thirdparty',
+                                        'thorlabs',
+                                        'win64',
+                                        'APT.dll')
+            else:
+                self.log.error('Unknown platform, cannot load the Thorlabs dll.')
 
         # Get the list of axis labels.
         if 'axis_labels' in config.keys():
@@ -864,8 +871,12 @@ class APTStage(Base, MotorInterface):
             pitch = hw_conf_dict[axis_label]['pitch']
             unit = hw_conf_dict[axis_label]['unit']
 
-            self._axis_dict[axis_label] = APTMotor(path_dll, serialnumber,
-                                              hw_type, label, unit)
+            self._axis_dict[axis_label] = APTMotor(path_dll,
+                                                   serialnumber,
+                                                   hw_type,
+                                                   label,
+                                                   unit
+                                                   )
             self._axis_dict[axis_label].initializeHardwareDevice()
 
             # adapt the hardware controller to the proper unit set:
