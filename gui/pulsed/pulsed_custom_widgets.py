@@ -37,6 +37,10 @@ class FloatValidator(QtGui.QValidator):
         r'(\s*([+-]?\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*([YZEPTGMkmµnpfazy]?)\s*)')
 
     def validate(self, string, position):
+        print('text to validate:', string, '\nlength:', len(string), '\nposition:', position)
+        if position > len(string):
+            position = len(string)
+            print(string[position-1])
         if self._is_valid_float_string(string):
             state = self.Acceptable
         elif string == '' or string[position-1] in 'e.-+ ':
@@ -70,23 +74,27 @@ class ScientificDoubleSpinBox(QtGui.QDoubleSpinBox):
         self.setDecimals(1000)
 
     def validate(self, text, position):
-        return self.validator.validate(text, position)
+        # text = text.replace(self.suffix(), '').replace(self.prefix(), '')
+        state, string, position = self.validator.validate(text, position)
+        return state, string, position  #self.prefix() + string + self.suffix(), position
 
     def fixup(self, text):
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
-        return fn.siEval(text.lstrip())  # get rid of leading whitespaces in text
+        text = text.lstrip().rstrip()  # get rid of leading and trailing whitespaces
+        text = text.replace(self.suffix(), '').replace(self.prefix(), '') # get rid of prefix/suffix
+        return fn.siEval(text)
 
     def textFromValue(self, value):
         (scale_factor, suffix) = fn.siScale(value)
         scaled_val = value * scale_factor
         string = ''
-        if scaled_val < 10:
+        if abs(scaled_val) < 10:
             string = fn.siFormat(value, precision=4)
-        elif scaled_val < 100:
+        elif abs(scaled_val) < 100:
             string = fn.siFormat(value, precision=5)
-        elif scaled_val < 1000:
+        elif abs(scaled_val) < 1000:
             string = fn.siFormat(value, precision=6)
         return string
 
