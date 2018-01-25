@@ -3129,6 +3129,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
             return -1
 
+        #Todo: Error catch
         daq.DAQmxCfgSampClkTiming(
             # add to this task
             self._analogue_output_daq_tasks[analogue_channel],
@@ -3149,6 +3150,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             daq.DAQmx_Val_FiniteSamps,
             # count twice for each voltage +1 for safety
             length)
+        return 0
 
     def analogue_scan_line(self, analogue_channel, voltages):
         # check if task for channel is configured

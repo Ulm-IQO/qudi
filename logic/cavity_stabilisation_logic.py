@@ -752,7 +752,55 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # self.sigHistoUpdated.emit()
         self.signal_scan_next_line.emit()
 
-    def _initialise_data_matrix(self, scan_length):
+    def _initialise_data_matrix(self):
         """ Initializing the ODMR matrix plot. """
+        estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
+        self.log.debug('Estimated number of raw data lines: %s'
+                       '', estimated_number_of_lines)
+        self.scan_raw_data = np.zeros([estimated_number_of_lines, len(self.ramp)])
 
-        self.scan_matrix = np.zeros((self.number_of_lines, scan_length))
+    def save_data(self):
+        """ Save the counter trace data and writes it to a file.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        filepath = self._save_logic.get_path_for_module(module_name='CavityScan')
+        filelabel = 'cavity_scan'
+        # filelabel2 = 'pi_scan_histo'
+        timestamp = datetime.datetime.now()
+
+        # prepare the data in a dict or in an OrderedDict:
+        data = OrderedDict()
+        ramp_data = np.tile(np.append(self.ramp, self.down_ramp), int(self.elapsed_sweeps / 2))
+        # if odd # of scans one more ramp needs to be added
+        if (self.elapsed_sweeps % 2) == 1:
+            np.append(ramp_data, self.ramp)
+
+        scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
+        data['Voltage (V)'] = ramp_data.flatten()
+        data['Analogue input (Voltage/bin)'] = scan_data.flatten()
+
+        # write the parameters:
+        parameters = OrderedDict()
+        parameters['Start (m)'] = self._start_voltage
+        parameters['Stop (m)'] = self._end_voltage
+        parameters['Steps per ramp(#)'] = len(self.ramp)
+        parameters['Ramps executed (#)'] = self.elapsed_sweeps
+        parameters['Clock Frequency (Hz)'] = self._clock_frequency
+        parameters['ScanSpeed (Hz)'] = self._scan_frequency
+        parameters['Volts per meter (V/m)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
+        parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
+
+        # fig = self.draw_figure([self.scan_matrix[0], self.ramp])
+
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')  # ,
+        # plotfig=fig)
+        return 0
