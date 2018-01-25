@@ -48,8 +48,11 @@ class DC(object):
     params = OrderedDict()
     params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
 
-    def __init__(self, voltage):
-        self.voltage = voltage
+    def __init__(self, voltage=None):
+        if voltage is None:
+            self.voltage = self.params['voltage']['init']
+        else:
+            self.voltage = voltage
         return
 
     @staticmethod
@@ -69,12 +72,21 @@ class Sin(object):
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
 
-    def __init__(self, amplitude, frequency, phase):
-        self.amplitude = amplitude
-        self.frequency = frequency
-        self.phase = phase
+    def __init__(self, amplitude=None, frequency=None, phase=None):
+        if amplitude is None:
+            self.amplitude = self.params['amplitude']['init']
+        else:
+            self.amplitude = amplitude
+        if frequency is None:
+            self.frequency = self.params['frequency']['init']
+        else:
+            self.frequency = frequency
+        if phase is None:
+            self.phase = self.params['phase']['init']
+        else:
+            self.phase = phase
         return
 
     @staticmethod
@@ -97,15 +109,39 @@ class DoubleSin(object):
     params = OrderedDict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
     params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
 
-    def __init__(self, amplitude_1, frequency_1, phase_1, amplitude_2, frequency_2, phase_2):
-        self.amplitude = [amplitude_1, amplitude_2]
-        self.frequency = [frequency_1, frequency_2]
-        self.phase = [phase_1, phase_2]
+    def __init__(self,
+                 amplitude_1=None, frequency_1=None, phase_1=None,
+                 amplitude_2=None, frequency_2=None, phase_2=None):
+        if amplitude_1 is None:
+            self.amplitude_1 = self.params['amplitude_1']['init']
+        else:
+            self.amplitude_1 = amplitude_1
+        if frequency_1 is None:
+            self.frequency_1 = self.params['frequency_1']['init']
+        else:
+            self.frequency_1 = frequency_1
+        if phase_1 is None:
+            self.phase_1 = self.params['phase_1']['init']
+        else:
+            self.phase_1 = phase_1
+
+        if amplitude_2 is None:
+            self.amplitude_2 = self.params['amplitude_2']['init']
+        else:
+            self.amplitude_2 = amplitude_2
+        if frequency_2 is None:
+            self.frequency_2 = self.params['frequency_2']['init']
+        else:
+            self.frequency_2 = frequency_2
+        if phase_2 is None:
+            self.phase_2 = self.params['phase_2']['init']
+        else:
+            self.phase_2 = phase_2
         return
 
     @staticmethod
@@ -115,16 +151,16 @@ class DoubleSin(object):
 
     def get_samples(self, time_array):
         # First sine wave
-        phase_rad = np.pi * self.phase[0] / 180
+        phase_rad = np.pi * self.phase_1 / 180
         # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude[0]
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency[0], phase_rad)
+        amp_conv = 2 * self.amplitude_1
+        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
-        phase_rad = np.pi * self.phase[1] / 180
+        phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude[1]
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency[1], phase_rad)
+        amp_conv = 2 * self.amplitude_2
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
         return samples_arr
 
 
@@ -136,19 +172,56 @@ class TripleSin(object):
     params = OrderedDict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
     params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2*np.pi, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
     params['amplitude_3'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_3'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': 0.0, 'max': 2 * np.pi, 'type': float}
+    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
 
-    def __init__(self, amplitude_1, frequency_1, phase_1, amplitude_2, frequency_2, phase_2,
-                 amplitude_3, frequency_3, phase_3):
-        self.amplitude = [amplitude_1, amplitude_2, amplitude_3]
-        self.frequency = [frequency_1, frequency_2, frequency_3]
-        self.phase = [phase_1, phase_2, phase_3]
+    def __init__(self,
+                 amplitude_1=None, frequency_1=None, phase_1=None,
+                 amplitude_2=None, frequency_2=None, phase_2=None,
+                 amplitude_3=None, frequency_3=None, phase_3=None):
+        if amplitude_1 is None:
+            self.amplitude_1 = self.params['amplitude_1']['init']
+        else:
+            self.amplitude_1 = amplitude_1
+        if frequency_1 is None:
+            self.frequency_1 = self.params['frequency_1']['init']
+        else:
+            self.frequency_1 = frequency_1
+        if phase_1 is None:
+            self.phase_1 = self.params['phase_1']['init']
+        else:
+            self.phase_1 = phase_1
+
+        if amplitude_2 is None:
+            self.amplitude_2 = self.params['amplitude_2']['init']
+        else:
+            self.amplitude_2 = amplitude_2
+        if frequency_2 is None:
+            self.frequency_2 = self.params['frequency_2']['init']
+        else:
+            self.frequency_2 = frequency_2
+        if phase_2 is None:
+            self.phase_2 = self.params['phase_2']['init']
+        else:
+            self.phase_2 = phase_2
+
+        if amplitude_3 is None:
+            self.amplitude_3 = self.params['amplitude_3']['init']
+        else:
+            self.amplitude_3 = amplitude_3
+        if frequency_3 is None:
+            self.frequency_3 = self.params['frequency_3']['init']
+        else:
+            self.frequency_3 = frequency_3
+        if phase_3 is None:
+            self.phase_3 = self.params['phase_3']['init']
+        else:
+            self.phase_3 = phase_3
         return
 
     @staticmethod
@@ -158,22 +231,22 @@ class TripleSin(object):
 
     def get_samples(self, time_array):
         # First sine wave
-        phase_rad = np.pi * self.phase[0] / 180
+        phase_rad = np.pi * self.phase_1 / 180
         # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude[0]
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency[0], phase_rad)
+        amp_conv = 2 * self.amplitude_1
+        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
-        phase_rad = np.pi * self.phase[1] / 180
+        phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude[1]
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency[1], phase_rad)
+        amp_conv = 2 * self.amplitude_2
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
 
         # Second sine wave (add on sum of first and second)
-        phase_rad = np.pi * self.phase[2] / 180
+        phase_rad = np.pi * self.phase_3 / 180
         # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude[2]
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency[2], phase_rad)
+        amp_conv = 2 * self.amplitude_3
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
         return samples_arr
 
 
