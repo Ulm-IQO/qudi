@@ -26,6 +26,8 @@ from qtpy import QtCore
 import time
 import numpy as np
 import math
+import datetime
+from collections import OrderedDict
 
 from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
@@ -75,6 +77,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     # declare connectors
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
+    savelogic = Connector(interface='SaveLogic')
+
     voltage_adjustment_steps = ConfigOption('voltage_adjustment_steps', 1, missing='warn')
     reflection = ConfigOption('cavitymode_reflection', True, missing='warn')
     _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
@@ -86,7 +90,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     _scan_resolution = ConfigOption('scan_resolution', 1e-6, missing="warn")
     _smoothing_steps = ConfigOption('smoothing_parameter', 0, missing="info")
     number_of_lines = StatusVar('number_of_lines', 50)
-
 
     # signals
     signal_stabilise_cavity = QtCore.Signal()
@@ -127,6 +130,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # Connectors
         self._feedback_device = self.get_connector('analoguereader')
         self._output_device = self.get_connector('analogueoutput')
+        self._save_logic = self.get_connector('savelogic')
+
         # Fixme: This is very specific
         # first steps to get a to a better handling of axes parameters
         if self.control_axis not in self._axis:
@@ -185,7 +190,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.start_time = time.time()
         self.stop_time = time.time()
 
-
     def on_deactivate(self):
         """ Reverse steps of activation
 
@@ -240,9 +244,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     def _stabilise_cavity_length(self):
         """Stabilises the cavity length via a software feedback loop"""
         if self.stopRequested:
-            # set voltage to 0
-            # fixMe: This is only necessary for attocubes. this needs to be depended on which hardware is used!
-            self.change_analogue_output_voltage(0.0)
             try:
                 self.close_analogue_stabilisation()
             except Exception as e:
@@ -255,7 +256,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.info("Cavity stabilisation stopped successfully")
             return
 
-        # fixme: This needs to be dione with analgou voltage scanner. this is only a quick fix
+        # fixme: This needs to be dione with analogue voltage scanner. this is only a quick fix
         voltage_list = []
         for i in range(self._average_number):
             result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis], read_samples=1)
@@ -489,26 +490,37 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         """
         start_voltage = self.axis_class[self.control_axis].output_voltage
         v_range = self.axis_class[self.control_axis].output_voltage_range
+        num_of_linear_steps = np.rint(abs((start_voltage - end_voltage)) / self._scan_resolution)
+        ramp = np.linspace(start_voltage, end_voltage, num_of_linear_steps)
         if not in_range(end_voltage, v_range[0], v_range[1]):
             self.log.error("not possible to go to voltage %s outside of voltage range (%s)", end_voltage, v_range)
             return -1
         if abs(start_voltage - end_voltage) > self._scan_resolution:
-            step = self._scan_resolution
-            if end_voltage < start_voltage:
-                direction = 1
-            else:
-                direction = -1
-            voltage = start_voltage - step * direction
-            while True:
-                if not in_range(voltage, v_range[0], v_range[1]):
-                    break
-                self._output_device.write_ao(self.control_axis, np.array(voltage), length=1, start=True)
-                voltage -= step * direction
-                if direction == 1 and voltage < end_voltage:
-                    break
-                elif direction == -1 and voltage > end_voltage:
-                    break
-        self._output_device.write_ao(self.control_axis, np.array(end_voltage), length=1, start=True)
+            _clock_frequency = self._scan_frequency * len(ramp)
+            if 0 > self.initialise_analogue_stabilisation():
+                self.log.error("Setting up analogue output for scanning failed.")
+                return -1
+
+            if 0 > self._output_device.set_up_analogue_output_clock(clock_frequency=_clock_frequency):
+                # Fixme: I do not think this is necessary. However it should be checked.
+                # self.set_position('scanner')
+                self.log.error("Problems setting up analogue output clock.")
+                return -1
+
+            self._output_device.configure_analogue_timing(self.control_axis, len(ramp))
+
+            retval3 = self._output_device.analogue_scan_line(self.control_axis, ramp)
+            try:
+                retval1 = self._output_device.close_analogue_output_clock()
+                retval2 = self._output_device.close_analogue_output(self.control_axis)
+            except:
+                self.log.warn("Closing the Analogue scanner did not work")
+            if retval3 != -1:
+                self.axis_class[self.control_axis].output_voltage = end_voltage
+            return min(retval1, retval2, retval3)
+        else:
+            self.log.info("The device was already at required output voltage")
+            return 0
 
     def change_voltage_adjustment_steps(self, step_size):
         """Changes the adjustment step size of the algorithm setting it to a value compatible with the hardware
@@ -525,22 +537,16 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     def _initialise_scanner(self):
         """Initialise the clock and locks for a scan"""
         # Fixme: Do error catch/test
+
         # generate voltage ramp
         self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
         if self.ramp[0] == -1:
             self.log.error("Not possible to initialise scanner as ramp was not generated")
             return 0
-        # move piezo to desired start position to go easy on piezo
-        if 0 < self.initialise_analogue_stabilisation():
-            return -1
+        self.down_ramp = self.ramp[::-1]
 
-        if self._start_voltage < self._end_voltage:
-            voltage = self._start_voltage
-        else:
-            voltage = self._end_voltage
-        self.change_analogue_output_voltage(voltage)
-        if 0 < self.close_analogue_stabilisation():
-            return -1
+        # move piezo to desired start position to go easy on piezo
+        self.change_analogue_output_voltage(self._start_voltage)
 
         # do the actual initialisation of the scanner
         self._clock_frequency = self._scan_frequency * len(self.ramp)
@@ -552,13 +558,19 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             # Fixme: I do not think this is necessary. However it should be checked.
             # self.set_position('scanner')
             self.log.error("Problems setting up analogue output clock.")
+            self.close_analogue_stabilisation()
             return -1
 
-        self._output_device.configure_analogue_timing(self.control_axis, len(self.ramp))
+        if 0 > self._output_device.configure_analogue_timing(self.control_axis, len(self.ramp)):
+            self.log.error("Not possible to set appropriate timing for analogue scan.")
+            self.close_analogue_stabilisation()
+            self._output_device.close_analogue_output_clock()
+            return -1
 
         # Initialise analogue input readout
-        # The clock needs double peed because internally only halve the clock speed is taken
-        if 0 < self._feedback_device.set_up_analogue_voltage_reader_clock(clock_frequency=self._clock_frequency/2,
+        # Fixme: This needs still to be verified
+        # The clock needs half speed because internally only halve the clock speed is taken
+        if 0 < self._feedback_device.set_up_analogue_voltage_reader_clock(clock_frequency=self._clock_frequency / 2,
                                                                           set_up=False):
             self.log.error("Setting up analogue input clock for scanning failed.")
             self._close_scanner()
@@ -594,7 +606,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         @param float start_voltage: voltage at start of ramp.
 
         @param float end_voltage: voltage at end of ramp.
-
 
         @return  array(float): the calculated voltage ramp
         """
@@ -694,10 +705,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             #     self.stop_histo_time = time.time()
             self.stopRequested = False
             if self.scan_direction:
-                final_voltage = self._end_voltage
-            else:
                 final_voltage = self._start_voltage
+            else:
+                final_voltage = self._end_voltage
             self.axis_class[self.control_axis].output_voltage = final_voltage
+            self.scan_direction = True
             return 0
 
         if self.elapsed_sweeps == 0:
