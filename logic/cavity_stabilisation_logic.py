@@ -569,22 +569,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("Setting up analogue input for scanning failed.")
             self._close_scanner()
             return -1
-        # This task can run all the time as samples will only be acquired while clock is running
-#        if 0 < self._feedback_device.start_analogue_voltage_reader(self.feedback_axis):
-#            self.log.error("Starting analogue input for scanning failed.")
-#            self._close_scanner()
-#            return -1
 
-        #initalise data recording
-        #Fixme: Estimatd number of lines
-        estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
-        self.log.debug('Estimated number of raw data lines: {0:d}'
-                       ''.format(estimated_number_of_lines))
-        self.scan_raw_data = np.zeros([estimated_number_of_lines, len(self.ramp)])
+        # initialise data recording
         self.elapsed_sweeps = 0
         self.histo_count = 0
-        self._initialise_data_matrix(len(self.ramp))
-        self.down_ramp = self.ramp[::-1]
+        self._initialise_data_matrix()
 
         return 0
 
@@ -679,12 +668,12 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     def _scan_line(self, voltages):
         try:
             if 0 < self._feedback_device.start_analogue_voltage_reader(self.feedback_axis):
-                return -1
+                return [-1]
             self._output_device.analogue_scan_line(self.control_axis, voltages)
             self.input = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
             if 0 < self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
-                return -1
-            return self.input
+                return [-1]
+            return self.input[0]
 
         except Exception as e:
             self.log.error('The scan went wrong, killing the scanner.')
@@ -714,19 +703,23 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if self.elapsed_sweeps == 0:
             # move from current voltage to start of scan range.
             self.start_histo_time = time.time()
-            #self._goto_during_scan(self.scan_range[0])
+            # self._goto_during_scan(self.scan_range[0])
 
         if self.scan_direction:
             self.start_time = time.time()
             counts = self._scan_line(self.ramp)
-            #self.scan_matrix[1] = np.add(self.scan_matrix[1], counts)
+            # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts)
             self.stop_time = time.time()
         else:
             self.start_time = time.time()
             counts = self._scan_line(self.down_ramp)
-            # self.scan_matrix[1] = np.add(self.scan_matrix[1], couts[::-1])
+            # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts[::-1])
             # counts = counts[::-1]n
             self.stop_time = time.time()
+        if len(counts) != len(self.ramp):
+            self.log.error("Something didn't work in the cavity scan. Stopping procedure")
+            self.stopRequested = True
+            return
 
         if self.elapsed_sweeps == (self.scan_raw_data.shape[0] - 1):
             expanded_array = np.zeros([self.scan_raw_data.shape[0] + self.number_of_lines,
@@ -734,14 +727,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             expanded_array[:self.elapsed_sweeps, :] = self.scan_raw_data[
                                                       :self.elapsed_sweeps, :]
             self.scan_raw_data = expanded_array
-#            #self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
-#            #                 'measurement. Array will be expanded.\nOld array shape was '
-            #                 '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
-            #                 ''.format(self.scan_raw_data.shape[0] - self.number_of_lines,
-            #                           self.scan_raw_data.shape[1],
-            #                           self.scan_raw_data.shape[0],
-            #                           self.scan_raw_data.shape[1]))
+            self.log.warning('raw data array in CavityScannerLogic was not big enough for the entire '
+                             'measurement. Array will be expanded.\nOld array shape was '
+                             '(%s, %s), new shape is (%s, %s).'
+                             , self.scan_raw_data.shape[0] - self.number_of_lines,
+                             self.scan_raw_data.shape[1],
+                             self.scan_raw_data.shape[0],
+                             self.scan_raw_data.shape[1])
         self.scan_direction = not self.scan_direction
+
+        self.scan_raw_data[1:self.elapsed_sweeps + 1, :] = self.scan_raw_data[
+                                                           :self.elapsed_sweeps, :]
+        self.scan_raw_data[0, :] = counts
 
         # self.scan_matrix[0] = counts
         # self.data_to_save = True
