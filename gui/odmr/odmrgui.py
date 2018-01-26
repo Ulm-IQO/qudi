@@ -607,17 +607,11 @@ class ODMRGui(GUIBase):
         The update will block the GUI signals from emitting a change back to the
         logic.
         """
-        param = param_dict.get('mw_power')
+        param = param_dict.get('sweep_mw_power')
         if param is not None:
-            self._mw.power_DoubleSpinBox.blockSignals(True)
-            self._mw.power_DoubleSpinBox.setValue(param)
-            self._mw.power_DoubleSpinBox.blockSignals(False)
-
-        param = param_dict.get('mw_frequency')
-        if param is not None:
-            self._mw.frequency_DoubleSpinBox.blockSignals(True)
-            self._mw.frequency_DoubleSpinBox.setValue(param)
-            self._mw.frequency_DoubleSpinBox.blockSignals(False)
+            self._mw.sweep_power_DoubleSpinBox.blockSignals(True)
+            self._mw.sweep_power_DoubleSpinBox.setValue(param)
+            self._mw.sweep_power_DoubleSpinBox.blockSignals(False)
 
         param = param_dict.get('mw_start')
         if param is not None:
