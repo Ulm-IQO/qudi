@@ -365,6 +365,39 @@ class SamplesWriteMethods():
         If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
         that the whole ensemble is written as a whole in one big chunk.
 
+        The PulseStreamer programming interface is based on a sequence of <Pulse> elements,
+        with the following C++ datatype (taken from the documentation available at 
+        https://www.swabianinstruments.com/static/documentation/PulseStreamer/sections/interface.html):
+            struct Pulse {
+                unsigned int ticks; // duration in ns
+                unsigned char digi; // bit mask
+                short ao0;
+                short ao1;
+            };
+
+        Currently the access to the analog channels is not exposed by the Qudi implementation
+        of the PulseStreamer hardware, so we need only deal with the digital side. Thus a new 
+        Pulse element is required every time the digital channels (8 available) change, with a
+        corresponding length computed for that Pulse element. For example, the sequence
+        
+            Channel 01234567
+                    01000000
+                    01000000
+                    01000100
+                    01000100
+                    00000000
+                
+        will be compressed to three Pulse elements with duration 2, 2, 1 and with the correct
+        respective bitmasks for the active channels. 
+        
+        This function traverses the digital_samples array to identify where the active digital
+        channels are modified and compresses it down to a sequence of pulse elements each with 
+        a bitmask and a length. The file is then written to disk. 
+        
+        TODO: This is inefficient, as the original PulseElement representation inside Qudi is
+        first decompressed into a sample stream, then recompressed into the PulseStreamer 
+        representation. Work is required to enable the bypass of the interim stage. 
+
         @param name: string, represents the name of the sampled ensemble
         @param analog_samples: float32 numpy ndarray, contains the
                                        samples for the analog channels that
