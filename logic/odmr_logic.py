@@ -270,7 +270,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.warning('set_runtime failed. Input parameter runtime is no integer or float.')
 
-        update_dict = {'runtime': self.run_time}
+        update_dict = {'run_time': self.run_time}
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
