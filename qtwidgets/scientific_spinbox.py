@@ -33,11 +33,11 @@ class FloatValidator(QtGui.QValidator):
     """
     def __init__(self):
         self.float_re = None
+        self.group_map = dict()  # mapping of the regex groups
         self.set_prefix_suffix()  # Set regular expression
         return
 
     def validate(self, string, position):
-        print('text to validate:', string, '\nlength:', len(string), '\nposition:', position)
 
         match = self.float_re.search(string)
 
@@ -52,17 +52,9 @@ class FloatValidator(QtGui.QValidator):
             if match.groups()[self.group_map['mantissa']] is None or string[position-1] in 'eE.-+ ':
                 return self.Intermediate, string, position
 
-            return self.Intermediate, string, position
-        else:
             return self.Acceptable, string, position
-
-        if self._is_valid_float_string(string):
-            state = self.Acceptable
-        elif string == '' or string[position-1] in 'e.-+ ':
-            state = self.Intermediate
         else:
-            state = self.Invalid
-        return state, string, position
+            return self.Invalid, string, position
 
     def fixup(self, text):
         match = self.float_re.search(text)
@@ -86,7 +78,7 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['si'] = 6
         elif suffix is not None and prefix is None:
             self.float_re = re.compile(
-                r'(([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)({0}))'
+                r'(([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({0}))'
                 r''.format(suffix))
             self.group_map['mantissa'] = 1
             self.group_map['integer'] = 2
@@ -96,7 +88,7 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['suffix'] = 6
         elif suffix is not None and prefix is not None:
             self.float_re = re.compile(
-                r'(({0})\s?([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)({1}))'
+                r'(({0})\s?([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({1}))'
                 r''.format(prefix, suffix))
             self.group_map['prefix'] = 1
             self.group_map['mantissa'] = 2
@@ -114,13 +106,6 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['exponent'] = 4
             self.group_map['si'] = 5
         return
-
-    def _is_valid_float_string(self, string):
-        match = self.float_re.search(string)
-        if match:
-            return match.groups()[0] == string
-        else:
-            return False
 
 
 class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
@@ -140,12 +125,37 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         self.setDecimals(1000)
 
     def validate(self, text, position):
-        # text = text.replace(self.suffix(), '').replace(self.prefix(), '')
         state, string, position = self.validator.validate(text, position)
-        return state, string, position  #self.prefix() + string + self.suffix(), position
+        return state, string, position
 
     def fixup(self, text):
         return self.validator.fixup(text)
+
+    def setPrefix(self, prefix=None):
+        if not prefix:
+            prefix = None
+
+        if self.suffix():
+            suffix = self.suffix()
+        else:
+            suffix = None
+
+        self.validator.set_prefix_suffix(prefix, suffix)
+        super().setPrefix(prefix)
+        return
+
+    def setSuffix(self, suffix=None):
+        if not suffix:
+            suffix = None
+
+        if self.prefix():
+            prefix = self.prefix()
+        else:
+            prefix = None
+
+        self.validator.set_prefix_suffix(prefix, suffix)
+        super().setSuffix(suffix)
+        return
 
     def valueFromText(self, text):
         text = text.lstrip().rstrip()  # get rid of leading and trailing whitespaces
@@ -155,7 +165,6 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
     def textFromValue(self, value):
         (scale_factor, suffix) = fn.siScale(value)
         scaled_val = value * scale_factor
-        string = ''
         if abs(scaled_val) < 10:
             string = fn.siFormat(value, precision=4)
         elif abs(scaled_val) < 100:
@@ -165,17 +174,22 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return string
 
     def stepBy(self, steps):
-        text = self.cleanText()
+        text = self.text()
         groups = self.validator.float_re.search(text).groups()
-        decimal_num = float(groups[1])
+        decimal_num = float(groups[self.validator.group_map['mantissa']])
+        si_prefix = groups[self.validator.group_map['si']]
         decimal_num += steps
-        new_string = '{0:g}'.format(decimal_num) + ((' ' + groups[4]) if groups[4] else '')
+        new_string = '{0:g}'.format(decimal_num) + ((' ' + si_prefix) if si_prefix else '')
         new_value = fn.siEval(new_string)
         if new_value < self.minimum():
             new_value = self.minimum()
         if new_value > self.maximum():
             new_value = self.maximum()
         new_string = self.textFromValue(new_value)
+        if self.prefix():
+            new_string = self.prefix() + new_string
+        if self.suffix():
+            new_string += self.suffix()
         self.lineEdit().setText(new_string)
         return
 
