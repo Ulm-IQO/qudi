@@ -643,11 +643,17 @@ class ModuleListItem(QtWidgets.QFrame):
                         and self.name in self.manager.tree['loaded'][self.base]):
                     state = self.manager.tree['loaded'][self.base][self.name].module_state()
                     self.reloadButton.setEnabled(True)
+                    self.deactivateButton.setEnabled(True)
+                    self.cleanupButton.setEnabled(True)
                 else:
                     state = 'not loaded'
                     self.reloadButton.setEnabled(False)
+                    self.deactivateButton.setEnabled(False)
+                    self.cleanupButton.setEnabled(False)
             except:
                 state = 'exception, cannot get state'
                 self.reloadButton.setEnabled(False)
+                self.deactivateButton.setEnabled(True)
+                self.cleanupButton.setEnabled(True)
 
             self.statusLabel.setText(state)
