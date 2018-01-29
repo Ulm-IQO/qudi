@@ -27,6 +27,8 @@ from interface.simple_laser_interface import LaserState
 from enum import Enum
 import visa
 
+import serial
+import time
 
 class PSUTypes(Enum):
     """ LaserQuantum power supply types.
@@ -72,7 +74,8 @@ communicate('SYSTem:INFormation:POWer?')
 communicate('SOURce:POWer:NOMinal?')
 communicate('SOURce:POWer:LIMit:HIGH?')
 communicate('SOURce:POWer:LEVel?')
-communicate('SOURce:POWer:LEVel:IMMediate:AMPLitude 0.001')
+communicate('SOURce:POWer:LEVel:IMMediate:AMPLitude 0.001'
+communicate('SOURce:POWer:LIMit:LOW?')
 
 """
 
@@ -88,11 +91,17 @@ class OBISLaser(Base, SimpleLaserInterface):
     maxpower = ConfigOption('maxpower', 0.250, missing='warn')
     psu_type = ConfigOption('psu', 'SMD6000', missing='warn')
 
+        
+        eol = '\r'
+
     def on_activate(self):
         """ Activate module.
         """
+        obis = serial.Serial('COM3', timeout=1)
+        communicate('SOUR:AM:STAT ON')
         self.psu = PSUTypes[self.psu_type]
         self.connect_laser(self.serial_interface)
+        
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -106,22 +115,23 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return bool: connection success
         """
-        try:
-            self.rm = visa.ResourceManager()
-            rate = 9600 if self.psu == PSUTypes.SMD6000 else 19200
-            self.inst = self.rm.open_resource(
-                interface,
-                baud_rate=rate,
-                write_termination='\r\n',
-                read_termination='\r\n',
-                send_end=True)
-            # give laser 2 seconds maximum to reply
-            self.inst.timeout = 2000
-        except visa.VisaIOError:
-            self.log.exception('Communication Failure:')
-            return False
-        else:
-            return True
+        # try:
+        #     self.rm = visa.ResourceManager()
+        #     rate = 9600 if self.psu == PSUTypes.SMD6000 else 19200
+        #     self.inst = self.rm.open_resource(
+        #         interface,
+        #         baud_rate=rate,
+        #         write_termination='\r\n',
+        #         read_termination='\r\n',
+        #         send_end=True)
+        #     # give laser 2 seconds maximum to reply
+        #     self.inst.timeout = 2000
+        # except visa.VisaIOError:
+        #     self.log.exception('Communication Failure:')
+        #     return False
+        # else:
+        #     return True
+        communicate('IDN*?')
 
     def disconnect_laser(self):
         """ Close the connection to the instrument.
@@ -177,16 +187,19 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return float: laser power in watts
         """
-        answer = self.inst.query('POWER?')
+        communicate('SOUR:POW:LEV:IMM:AMPL?')
+        return float(response.split('W')[0])
+        
+        
         try:
-            if "mW" in answer:
-                return float(answer.split('mW')[0])/1000
-            elif 'W' in answer:
-                return float(answer.split('W')[0])
+            if "mW" in response:
+                return float(response.split('mW')[0])/1000
+            elif 'W' in response:
+                return float(response.split('W')[0])
             else:
-                return float(answer)
+                return float(response)
         except ValueError:
-            self.log.exception("Answer was {0}.".format(answer))
+            self.log.exception("Answer was {0}.".format(response))
             return -1
 
     def get_power_setpoint(self):
@@ -194,7 +207,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser power setpoint in watts
         """
-        if self.psu == PSUTypes.FPU:
+          if self.psu == PSUTypes.FPU:
             answer = self.inst.query('SETPOWER?')
             try:
                 if "mW" in answer:
@@ -214,13 +227,17 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return tuple(float, float): laser power range
         """
-        return 0, self.maxpower
+        communicate('SOUR:POW:LIM:LOW?')
+        maxpower = 
+        communicate('SOUR:POW:LIM:HIGH?')
+        return ( , ) """direct insert vs inquiry - what is upper power limit. """
 
     def set_power(self, power):
         """ Set laser power
 
         @param float power: desired laser power in watts
         """
+        communicate(SOUR:POW:LEV """this needs fixing - desired set power follows with space"""
         if self.psu == PSUTypes.FPU:
             self.inst.query('POWER={0:f}'.format(power))
         else:
@@ -245,6 +262,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: current laser current
         """
+        communicate()
         if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
         else:
@@ -454,4 +472,19 @@ class OBISLaser(Base, SimpleLaserInterface):
         extra += '\n'.join(self.timers())
         extra += '\n'
         return extra
+    def _send(message):
+            new_message = message + eol
+            obis.write(new_message.encode())
+        def _communicate(message):
+                send(message)
+                time.sleep(0.1)
+                response_len = obis.inWaiting()
+                response = []
+
+                while response_len > 0:
+                    if response_len = 4 and obis.readline().decode().strip() = 'OK':
+                        response.append('')                     
+                    else:
+                        response.append(obis.readline().decode().strip())
+
 
