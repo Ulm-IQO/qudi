@@ -648,5 +648,6 @@ class ModuleListItem(QtWidgets.QFrame):
                     self.reloadButton.setEnabled(False)
             except:
                 state = 'exception, cannot get state'
+                self.reloadButton.setEnabled(False)
 
             self.statusLabel.setText(state)
