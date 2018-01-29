@@ -642,8 +642,10 @@ class ModuleListItem(QtWidgets.QFrame):
                 if (self.base in self.manager.tree['loaded']
                         and self.name in self.manager.tree['loaded'][self.base]):
                     state = self.manager.tree['loaded'][self.base][self.name].module_state()
+                    self.reloadButton.setEnabled(True)
                 else:
                     state = 'not loaded'
+                    self.reloadButton.setEnabled(False)
             except:
                 state = 'exception, cannot get state'
 
