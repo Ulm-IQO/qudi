@@ -132,6 +132,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         # else:
         #     return True
         communicate('IDN*?')
+        if
 
     def disconnect_laser(self):
         """ Close the connection to the instrument.
