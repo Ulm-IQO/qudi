@@ -620,6 +620,9 @@ class ModuleListItem(QtWidgets.QFrame):
         """ Send signal to load and activate this module.
         """
         self.sigLoadThis.emit(self.base, self.name)
+        
+        # Instant return to checked to prevent visual lag before checkModuleState completes
+        self.loadButton.setChecked(True)
 
     def reloadButtonClicked(self):
         """ Send signal to reload this module.
@@ -651,15 +654,24 @@ class ModuleListItem(QtWidgets.QFrame):
                         and self.name in self.manager.tree['loaded'][self.base]):
                     state = self.manager.tree['loaded'][self.base][self.name].module_state()
 
-                    self.reloadButton.setEnabled(True)
-                    self.deactivateButton.setEnabled(True)
-                    self.cleanupButton.setEnabled(False)
-                    self.loadButton.setChecked(True)
+                    if state != 'deactivated':
+                        self.reloadButton.setEnabled(True)
+                        self.deactivateButton.setEnabled(True)
+                        self.cleanupButton.setEnabled(False)
+                        self.loadButton.setChecked(True)
 
-                    if self.base == 'gui':
-                        self.loadButton.setText('Show {0}'.format(self.name))
+                        if self.base == 'gui':
+                            self.loadButton.setText('Show {0}'.format(self.name))
+                        else:
+                            self.loadButton.setText(self.name)
                     else:
-                        self.loadButton.setText(self.name)
+                        self.reloadButton.setEnabled(True)
+                        self.deactivateButton.setEnabled(False)
+                        self.cleanupButton.setEnabled(True)
+                        self.loadButton.setChecked(True)
+
+                        self.loadButton.setText('Activate {0}'.format(self.name))
+
                 else:
                     state = 'not loaded'
                     self.reloadButton.setEnabled(False)
