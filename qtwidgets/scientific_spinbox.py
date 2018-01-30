@@ -227,7 +227,6 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
             if len(float_str.split('.')) == 2:
                 integer, fractional = float_str.split('.')
                 self.precision = len(fractional)
-                print(self.precision)
         return fn.siEval(text)
 
     def textFromValue(self, value):
