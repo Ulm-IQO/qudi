@@ -127,6 +127,8 @@ class FloatValidator(QtGui.QValidator):
 class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
     """
     Wrapper Class from PyQt5 (or QtPy) to display a QDoubleSpinBox in Scientific way.
+    Fully supports prefix and suffix functionality of the QDoubleSpinBox.
+    Has built-in functionality to invoke the displayed number precision from the user input.
 
     This class can be directly used in Qt Designer by promoting the QDoubleSpinBox to ScienDSpinBox.
     State the path to this file (in python style, i.e. dots are separating the directories) as the
@@ -142,13 +144,35 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         self.setDecimals(1000)
 
     def validate(self, text, position):
+        """
+        Access method to the validator. See FloatValidator class for more information.
+
+        @param text: str, string to be validated.
+        @param position: int, current text cursor position
+        @return: (enum QValidator::State) the returned validator state,
+                 (str) the input string, (int) the cursor position
+        """
         state, string, position = self.validator.validate(text, position)
         return state, string, position
 
     def fixup(self, text):
+        """
+        Takes an invalid string and tries to fix it in order to pass validation.
+        The returned string is not guaranteed to pass validation.
+
+        @param text: str, a string that has not passed validation in need to be fixed.
+        @return: str, the resulting string from the fix attempt
+        """
         return self.validator.fixup(text)
 
     def setPrefix(self, prefix=None):
+        """
+        This will add a prefix to the ScienDSpinBox.
+        If empty string or None is passed, remove prefix.
+        Reimplementation of the parent method.
+
+        @param prefix: str, a string containing no whitespaces to be set as prefix.
+        """
         if not prefix:
             prefix = None
 
@@ -162,6 +186,13 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return
 
     def setSuffix(self, suffix=None):
+        """
+        This will add a suffix to the ScienDSpinBox.
+        If empty string or None is passed, remove suffix.
+        Reimplementation of the parent method.
+
+        @param suffix: str, a string containing no whitespaces to be set as suffix.
+        """
         if not suffix:
             suffix = None
 
@@ -175,6 +206,16 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return
 
     def valueFromText(self, text):
+        """
+        This method is responsible for converting a string displayed in the SpinBox into a float
+        value.
+        The input string is already stripped of prefix and suffix.
+        Just the si-prefix may be present.
+
+        @param text: str, the display string to be converted into a numeric value.
+                          This string must be conform with the validator.
+        @return: float, the numeric value converted from the input string.
+        """
         text = text.strip()  # get rid of leading and trailing whitespaces
         text = text.replace(self.suffix(), '')  # get rid of suffix
         text = text.replace(self.prefix(), '')  # get rid of prefix
@@ -190,6 +231,14 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return fn.siEval(text)
 
     def textFromValue(self, value):
+        """
+        This method is responsible for the mapping of the underlying value to a string to display
+        in the SpinBox.
+        Suffix and Prefix must not be handled here, just the si-Prefix.
+
+        @param value: float, the numeric value to be formatted into a string
+        @return: str, the formatted string representing the input value
+        """
         scale_factor, prefix = fn.siScale(value)
         scaled_val = value * scale_factor
         if scaled_val < 10:
@@ -201,6 +250,16 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return string
 
     def stepBy(self, steps):
+        """
+        This method is incrementing the value of the SpinBox when the user triggers a step
+        (by pressing PgUp/PgDown/Up/Down, MouseWheel movement or clicking on the arrows).
+        It should handle the case when the new to-set value is out of bounds.
+        Also the absolute value of a single step increment should be handled here.
+        It is absolutely necessary to avoid accumulating rounding errors and/or discrepancy between
+        self.value and the displayed text.
+
+        @param steps: int, Number of steps to increment (NOT the absolute step size)
+        """
         text = self.text()
         groups = self.validator.float_re.search(text).groups()
         integer_str = groups[self.validator.group_map['integer']]
