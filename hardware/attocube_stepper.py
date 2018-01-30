@@ -38,7 +38,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     _host = ConfigOption('host', missing='error')
     tmp = ConfigOption('password', b"123456", missing='warn')
     _port = ConfigOption('port', 7230, missing='warn')
+
     _voltage_range_stepper = ConfigOption('voltage_range_stepper', [0, 60], missing='warn')
+    axis = ConfigOption('axis', {}, missing='error')
+    _step_range = ConfigOption('step_range', {}, missing='error')
+    _feedback = ConfigOption('position_feedback', {}, missing='error')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -73,79 +77,55 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         self._position_feedback = {}
         default_range = [0, 5]
 
-        if 'x' in config.keys():
-            self._attocube_axis["x"] = config['x']
-            if 'position_feedback_x' in config.keys():
-                self._position_feedback["x"] = config['position_feedback_x']
+        for i in self.axis:
+            for j in dict(i).items():
+                self._attocube_axis[j[0]] = j[1]
+        axis_list = []
+        feedback_list = []
+        for i in self._step_range.keys():
+            if i not in self._attocube_axis.keys():
+                self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
+                               "the attocube step range for it. This range will be omitted", i)
+                continue
+            step_min, step_max = float(self._step_range[i][0]), float(self._step_range[i][1])
+            if step_min < step_max:
+                self._attocube_axis_range[i] = [step_min, step_max]
             else:
-                self.log.warning("no position feedback defined")
-                self._position_feedback["x"] = False
-            if 'x_range' in config.keys():
-                if float(config['x_range'][0]) < float(config['x_range'][1]):
-                    self._attocube_axis_range["x"] = [float(config['x_range'][0]),
-                                                      float(config['x_range'][1])]
-                else:
-                    self.log.warning(
-                        'Configuration ({}) of x_range incorrect, taking [0,5] instead.'
-                        ''.format(config['x_range']))
-                    self._attocube_axis_range["x"] = default_range
-            else:
-                self.log.warning('No x_range configured taking [0,5] instead.')
-                self._attocube_axis_range["x"] = default_range
-        else:
-            self.log.error(
-                'No axis "x" found in configuration!\n'
-                'The "x" axis it not accessible this way!')
+                self.log.warn('Configuration %s  of attocube step range for %s incorrect, taking [0 , '
+                              '5.] (mm) instead.', self._step_range[i], i)
+                self._attocube_axis_range[i] = [0, 5.]
+            axis_list.append(i)
 
-        if 'y' in config.keys():
-            self._attocube_axis["y"] = config['y']
-            # self._position_feedback["y"] = ConfigOption('position_feedback_y')
-            if 'position_feedback_y' in config.keys():
-                self._position_feedback["y"] = config['position_feedback_y']
-            else:
-                self.log.warning("no position feedback defined")
-                self._position_feedback["y"] = False
-            if 'y_range' in config.keys():
-                if float(config['y_range'][0]) < float(config['y_range'][1]):
-                    self._attocube_axis_range["y"] = [float(config['y_range'][0]),
-                                                      float(config['y_range'][1])]
+        for i in self._feedback:
+            for j in dict(i).items():
+                if j[0] not in self._attocube_axis.keys():
+                    self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
+                                   "a feedback status for it. This feedback option will be omitted", i)
+                    continue
+                if isinstance(j[1], bool):
+                    self._position_feedback[j[0]] = j[1]
                 else:
-                    self.log.warning(
-                        'Configuration ({}) of y_range incorrect, taking [0,5] instead.'
-                        ''.format(config['y_range']))
-                    self._attocube_axis_range["y"] = default_range
-            else:
-                self.log.warning('No y_range configured taking [0,5] instead.')
-                self._attocube_axis_range["y"] = default_range
-        else:
-            self.log.error(
-                'No axis "y" found in configuration!\n'
-                'Assign to that parameter an appropriated channel sorting!')
+                    self.log.warn(
+                        'Configuration type %s  of feedback status for %s incorrect, taking default (False) instead',
+                        type(j[1]), j[0])
+                    self._position_feedback[j[0]] = False
+                feedback_list.append(j[0])
 
-        if 'z' in config.keys():
-            self._attocube_axis["z"] = config['z']
-            if 'position_feedback_z' in config.keys():
-                self._position_feedback["z"] = config['position_feedback_z']
-            else:
-                self.log.warning("no position feedback defined")
-                self._position_feedback["z"] = False
-            # self._position_feedback["z"] = ConfigOption('position_feedback_z', False, missing='warn')
-            if 'z_range' in config.keys():
-                if float(config['z_range'][0]) < float(config['z_range'][1]):
-                    self._attocube_axis_range["z"] = [float(config['z_range'][0]),
-                                                      float(config['z_range'][1])]
-                else:
-                    self.log.warning(
-                        'Configuration ({}) of z_range incorrect, taking [0,5] instead.'
-                        ''.format(config['z_range']))
-                    self._attocube_axis_range["z"] = default_range
-            else:
-                self.log.warning('No z_range configured taking [0,5] instead.')
-                self._attocube_axis_range["z"] = default_range
-        else:
-            self.log.error(
-                'No axis "z" found in configuration!\n'
-                'Assign to that parameter an appropriated channel sorting!')
+        # check if all axis have a step range defined:
+        for i in self._attocube_axis.keys():
+            if i not in axis_list:
+                self.log.error("%s channel has no attocube step range defined. Taking default [0,5.] (mm) instead.")
+                self._attocube_axis_range[i] = [0, 5.]
+        # check if all axis have a feedback status defined:
+        for i in self._attocube_axis.keys():
+            if i not in feedback_list:
+                self.log.error(
+                    "%s channel has no feedback status defined. Taking default (False) instead.")
+                self._position_feedback[i] = False
+
+        # clean up variables
+        del self._feedback
+        del self.axis
 
         # Todo: this needs to be read from a specifically still to be made text file depending on
         #  the capacitance

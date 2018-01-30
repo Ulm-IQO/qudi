@@ -205,7 +205,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         for i in self._a_o_ranges.keys():
             if i not in self._analogue_output_channels.keys():
                 self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
-                               "an analogue output range for it. The range will be omitted", j[0])
+                               "an analogue output range for it. The range will be omitted", i)
                 continue
             vlow, vhigh = float(self._a_o_ranges[i][0]), float(self._a_o_ranges[i][1])
             if vlow < vhigh:
@@ -229,7 +229,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         for i in self._a_i_ranges.keys():
             if i not in self._analogue_input_channels.keys():
                 self.log.error("%s is not a possible axis.\n Therefore it is not possible to define "
-                               "an analogue input range for it. The range will be omitted", j[0])
+                               "an analogue input range for it. The range will be omitted", i)
                 continue
             vlow, vhigh = float(self._a_i_ranges[i][0]), float(self._a_i_ranges[i][1])
             if vlow < vhigh:
