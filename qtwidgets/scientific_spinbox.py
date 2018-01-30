@@ -23,7 +23,9 @@ from qtpy import QtGui, QtWidgets
 import numpy as np
 import re
 from pyqtgraph import functions as fn
-__all__=['ScienDSpinBox']
+
+__all__ = ['ScienDSpinBox']
+
 
 class FloatValidator(QtGui.QValidator):
     """
@@ -38,17 +40,31 @@ class FloatValidator(QtGui.QValidator):
         return
 
     def validate(self, string, position):
+        """
+        This is the actual validator. It checks whether the current user input is a valid string
+        every time the user types a character. There are 3 states that are possible.
+        1) Invalid: The current input string is invalid. The user input will not accept the last
+                    typed character.
+        2) Acceptable: The user input in conform with the regular expression and will be accepted.
+        3) Intermediate: The user input is not a valid string yet but on the right track. Use this
+                         return value to allow the user to type fill-characters needed in order to
+                         complete an expression (i.e. the decimal point of a float value).
+        @param string: The current input string (from a QLineEdit for example)
+        @param position: The current position of the text cursor
+        @return: enum QValidator::State: the returned validator state,
+                 str: the input string, int: the cursor position
+        """
+        # Return intermediate status when empty string is passed or cursor is at index 0
+        if not string.strip() or position < 1:
+            return self.Intermediate, string, position
 
         match = self.float_re.search(string)
-
         if match:
             if match.groups()[self.group_map['match']] != string:
                 return self.Invalid, string, position
 
             if position > len(string):
                 position = len(string)
-            elif position < 1:
-                position = 1
             if match.groups()[self.group_map['mantissa']] is None or string[position-1] in 'eE.-+ ':
                 return self.Intermediate, string, position
 
@@ -59,7 +75,7 @@ class FloatValidator(QtGui.QValidator):
     def fixup(self, text):
         match = self.float_re.search(text)
         if match:
-            return match.groups()[0].lstrip().rstrip()
+            return match.groups()[0].strip()
         else:
             return ''
 
@@ -68,7 +84,7 @@ class FloatValidator(QtGui.QValidator):
         self.group_map['match'] = 0
         if suffix is None and prefix is not None:
             self.float_re = re.compile(
-                r'(({0})\s?([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))'
+                r'(({0})\s?(([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))'
                 r''.format(prefix))
             self.group_map['prefix'] = 1
             self.group_map['mantissa'] = 2
@@ -78,7 +94,7 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['si'] = 6
         elif suffix is not None and prefix is None:
             self.float_re = re.compile(
-                r'(([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({0}))'
+                r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({0}))'
                 r''.format(suffix))
             self.group_map['mantissa'] = 1
             self.group_map['integer'] = 2
@@ -88,7 +104,7 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['suffix'] = 6
         elif suffix is not None and prefix is not None:
             self.float_re = re.compile(
-                r'(({0})\s?([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({1}))'
+                r'(({0})\s?(([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({1}))'
                 r''.format(prefix, suffix))
             self.group_map['prefix'] = 1
             self.group_map['mantissa'] = 2
@@ -99,7 +115,7 @@ class FloatValidator(QtGui.QValidator):
             self.group_map['suffix'] = 7
         else:
             self.float_re = re.compile(
-                r'(([+-]?(\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+                r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
             self.group_map['mantissa'] = 1
             self.group_map['integer'] = 2
             self.group_map['fractional'] = 3
@@ -121,6 +137,7 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         super().__init__(*args, **kwargs)
         self.setMinimum(-np.inf)
         self.setMaximum(np.inf)
+        self.precision = 6
         self.validator = FloatValidator()
         self.setDecimals(1000)
 
@@ -158,39 +175,66 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return
 
     def valueFromText(self, text):
-        text = text.lstrip().rstrip()  # get rid of leading and trailing whitespaces
-        text = text.replace(self.suffix(), '').replace(self.prefix(), '') # get rid of prefix/suffix
+        text = text.strip()  # get rid of leading and trailing whitespaces
+        text = text.replace(self.suffix(), '')  # get rid of suffix
+        text = text.replace(self.prefix(), '')  # get rid of prefix
+
+        # Try to extract the precision the user intends to use
+        split_text = text.split()
+        if 0 < len(split_text) < 3:
+            float_str = split_text[0]
+            if len(float_str.split('.')) == 2:
+                integer, fractional = float_str.split('.')
+                self.precision = len(fractional)
+                print(self.precision)
         return fn.siEval(text)
 
     def textFromValue(self, value):
-        (scale_factor, suffix) = fn.siScale(value)
+        scale_factor, prefix = fn.siScale(value)
         scaled_val = value * scale_factor
-        if abs(scaled_val) < 10:
-            string = fn.siFormat(value, precision=4)
-        elif abs(scaled_val) < 100:
-            string = fn.siFormat(value, precision=5)
-        elif abs(scaled_val) < 1000:
-            string = fn.siFormat(value, precision=6)
+        if scaled_val < 10:
+            string = fn.siFormat(value, precision=self.precision + 1)
+        elif scaled_val < 100:
+            string = fn.siFormat(value, precision=self.precision + 2)
+        else:
+            string = fn.siFormat(value, precision=self.precision + 3)
         return string
 
     def stepBy(self, steps):
         text = self.text()
         groups = self.validator.float_re.search(text).groups()
-        decimal_num = float(groups[self.validator.group_map['mantissa']])
+        integer_str = groups[self.validator.group_map['integer']]
+        fractional_str = groups[self.validator.group_map['fractional']]
         si_prefix = groups[self.validator.group_map['si']]
-        decimal_num += steps
-        new_string = '{0:g}'.format(decimal_num) + ((' ' + si_prefix) if si_prefix else '')
-        new_value = fn.siEval(new_string)
-        if new_value < self.minimum():
-            new_value = self.minimum()
-        if new_value > self.maximum():
-            new_value = self.maximum()
-        new_string = self.textFromValue(new_value)
+
+        if not integer_str:
+            integer_str = '0'
+        elif not fractional_str:
+            fractional_str = '0'
+
+        integer_value = int(integer_str)
+        integer_str = integer_str.strip('+-')  # remove plus/minus sign
+        if len(integer_str) < 3:
+            integer_value += steps
+        else:
+            integer_value += steps * 10**(len(integer_str) - 2)
+
+        float_str = '{0:d}.{1}'.format(integer_value, fractional_str)
+        if si_prefix:
+            float_str += ' {0}'.format(si_prefix)
+
+        # constraint new value to allowed min/max range
+        if fn.siEval(float_str) > self.maximum():
+            float_str = self.textFromValue(self.maximum())
+        elif fn.siEval(float_str) < self.minimum():
+            float_str = self.textFromValue(self.minimum())
+
         if self.prefix():
-            new_string = self.prefix() + new_string
+            float_str = self.prefix() + float_str
         if self.suffix():
-            new_string += self.suffix()
-        self.lineEdit().setText(new_string)
+            float_str += self.suffix()
+
+        self.lineEdit().setText(float_str)
         return
 
 
