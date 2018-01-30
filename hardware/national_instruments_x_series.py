@@ -627,7 +627,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         all_data[0:len(real_data)] = np.array(real_data * self._clock_frequency, np.float64)
 
         if len(self._counter_ai_channels) > 0:
-            all_data[len(self._counter_ai_channels):] = analog_data
+            all_data[-len(self._counter_ai_channels):] = analog_data
 
         return all_data
 
