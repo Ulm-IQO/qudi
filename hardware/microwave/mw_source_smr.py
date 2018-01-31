@@ -49,6 +49,9 @@ class MicrowaveSMR(Base, MicrowaveInterface):
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
+    # Indicate how fast frequencies within a list or sweep mode can be changed:
+    _FREQ_SWITCH_SPEED = 0.01  # Frequency switching speed in s (acc. to specs)
+
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
 
@@ -576,9 +579,15 @@ class MicrowaveSMR(Base, MicrowaveInterface):
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
 
-        Ensure that the Frequency was set when the function returns.
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time.
         """
-        self._write(':TRIG')
+
+        self._gpib_connection.write('*TRG')
+        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
+        return 0
 
     def reset_device(self):
         """ Resets the device and sets the default values."""

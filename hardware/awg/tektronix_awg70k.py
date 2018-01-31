@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from core.util.modules import get_home_dir
 import os
 import time
 import re
@@ -57,14 +58,14 @@ class AWG70K(Base, PulserInterface):
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
             if not os.path.exists(self.pulsed_file_dir):
-                homedir = self.get_home_dir()
+                homedir = get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.log.warning('The directory defined in parameter "pulsed_file_dir" in the '
                                  'config for SequenceGeneratorLogic class does not exist!\n'
                                  'The default home directory\n{0}\n will be taken instead.'
                                  ''.format(self.pulsed_file_dir))
         else:
-            homedir = self.get_home_dir()
+            homedir = get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
                              'SequenceGeneratorLogic as directory for the pulsed files!\nThe '
@@ -99,7 +100,6 @@ class AWG70K(Base, PulserInterface):
         self.amplitude_list, self.offset_list = self.get_analog_level()
         self.markers_low, self.markers_high = self.get_digital_level()
         self.is_output_enabled = self._is_output_on()
-        self.use_sequencer = self.has_sequence_mode()
         self.active_channel = self.get_active_channels()
         self.interleave = self.get_interleave()
         self.current_loaded_asset = ''
@@ -399,6 +399,35 @@ class AWG70K(Base, PulserInterface):
         @return str: Name of the current asset, that can be either a filename
                      a waveform, a sequence ect.
         """
+        # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will look like '"waveformname"\n'
+        # and for a sequence '"sequencename,1"\n' (where the number is the current track)
+        asset_name = self.awg.ask('SOUR1:CASS?')
+        # Get rid of "" and \n
+        asset_name = asset_name[1:-2]
+        # Figure out if a sequence or just a waveform is loaded by splitting after the comma
+        splitted = asset_name.split(',')
+        # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
+        asset_name = splitted[0]
+        if len(splitted) == 1:
+            # check if the file contains the '_ch1'-ending and remove it
+            tmp = asset_name.rsplit('_', 1)
+            if len(tmp) == 2:
+                if tmp[1].startswith('ch'):
+                    asset_name = tmp[0]
+            # check if there is a second channel
+            if self._get_max_a_channel_number() > 1:
+                asset_name2 = self.awg.ask('SOUR2:CASS?')
+                asset_name2 = asset_name2[1:-2]
+                tmp = asset_name2.rsplit('_', 1)
+                if len(tmp) == 2:
+                    if tmp[1].startswith('ch'):
+                        asset_name2 = tmp[0]
+                if asset_name != asset_name2:
+                    self.log.warning('Loaded assetnames for both channels are different! '
+                                     'Returning asset_name of channel1')
+        else:
+            self.log.error('Unknown answer. Cannot determine the name of the loaded asset!')
+        self.current_loaded_asset = asset_name
         return self.current_loaded_asset
 
     def _send_file(self, filename):
@@ -434,7 +463,8 @@ class AWG70K(Base, PulserInterface):
         # self._activate_awg_mode()
 
         self.awg.write('WLIS:WAV:DEL ALL')
-        self.awg.write('SLIS:SEQ:DEL ALL')
+        if self.has_sequence_mode():
+            self.awg.write('SLIS:SEQ:DEL ALL')
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.25)
         self.current_loaded_asset = ''
@@ -1185,6 +1215,11 @@ class AWG70K(Base, PulserInterface):
 
         @return:
         """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
         trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
         active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
         num_tracks = len(active_analog)
@@ -1236,6 +1271,81 @@ class AWG70K(Base, PulserInterface):
             time.sleep(0.2)
         return 0
 
+    def _generate_sequence(self, name, steps, tracks=1):
+        """
+        Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
+
+        @param str name: Name of the sequence which should be generated
+        @param int steps: Number of steps
+        @param int track: Number of tracks
+
+        @return 0
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        self.awg.write('SLISt:SEQuence:DELete ' + '"' + name + '"' + '\n')
+        self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks) + '\n')
+        return 0
+
+    def _add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
+        """
+        Add the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name' and repeat it 'repeat' times
+
+        @param str sequence_name: Name of the sequence which should be editted
+        @param str waveform_name: Name of the waveform which should be added
+        @param int step: Position of the added waveform
+        @param int track: track which should be editted
+        @param int repeat: number of repetition of added waveform
+
+        @return 0
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':TASSET' + str(
+            track) + ':WAVEFORM ' + '"' + sequence_name + '", "' + waveform_name + '"' + '\n')
+        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat) + '\n')
+        return 0
+
+    def _load_sequence(self, sequencename, track=1):
+        """Load sequence file into RAM.
+
+        @param sequencename:  Name of the sequence to load
+        @param int track: Number of track to load
+
+        return 0
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track) + '\n')
+        return 0
+
+    def _make_sequence_continuous(self, sequencename):
+        """
+        Usually after a run of a sequence the output stops. Many times it is desired that the full sequence is repeated
+         many times. This is achieved here by setting the 'jump to' value of the last element to 'First'
+
+        @param sequencename: Name of the sequence which should be made continous
+
+        @return int last_step: The step number which 'jump to' has to be set to 'First'
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        last_step = int(self.ask('SLISt:SEQuence:LENGth? ' + '"' + sequencename + '"'))
+        self.awg.write('SLISt:SEQuence:STEP' + str(last_step) + ':GOTO ' + '"' + sequencename + '",  FIRST \n')
+        return last_step
+
     def _init_loaded_asset(self):
         """
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
@@ -1271,6 +1381,9 @@ class AWG70K(Base, PulserInterface):
         Gets all sequence names currently loaded into the AWG workspace
         @return: list of names
         """
+        if not self.has_sequence_mode():
+            return []
+
         number_of_seq = int(self.awg.query('SLIS:SIZE?'))
         sequence_list = [None] * number_of_seq
         for i in range(number_of_seq):
