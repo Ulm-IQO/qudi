@@ -165,6 +165,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     _a_o_ranges = ConfigOption('Analogue_output_ranges', {}, missing='error')
     _a_i_channels = ConfigOption('Analogue_input_channels', {}, missing='error')
     _a_i_ranges = ConfigOption('Analogue_input_ranges', {}, missing='error')
+    _dummy_frequency = ConfigOption('dummy_frequency', 100, missing='error')
+    _clock_channels = ConfigOption('clock_channels', [], missing='error')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
@@ -185,6 +187,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         self._analogue_input_samples = {}
         self._analogue_output_clock_frequency = self._scanner_clock_frequency
         config = self.getConfiguration()
+
+        self._clock_daq_task_new = {}
+        self._clock_frequency_new = {}
+        self._clock_channel_new = {}
 
         self._scanner_ao_channels = []
         self._analogue_input_channels = {}
@@ -3344,3 +3350,195 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return 0
 
     # =============================== End AnalogOutputInterface Commands  =======================
+
+    # =============================== Start Clock Commands  =======================
+
+    def set_up_clock_new(self, name, clock_frequency=None, clock_channel=None, idle=False, start=False):
+        """ Configures the hardware clock of the NiDAQ card to give the timing.
+
+        @param key name: the pointer for the configured task
+
+        @param float clock_frequency: if defined, this sets the frequency of
+                                      the clock in Hz
+        @param string clock_channel: if defined, this is the physical channel
+                                     of the clock within the NI card.
+        @param bool idle: set whether idle situation of the counter (where
+                          counter is doing nothing) is defined as
+                                True  = 'Voltage High/Rising Edge'
+                                False = 'Voltage Low/Falling Edge'
+        @param bool start: sets whether clock is started right away
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        if name in self._clock_daq_task_new:
+            self.log.error('A clock task for this axis is already running, close this one first.')
+            return -1
+
+        # assign the clock frequency, if given
+        if clock_frequency is None:
+            self._clock_frequency_new[name] = float(self._dummy_frequency)
+            self.log.info("no clock frequency given, using dummy frequency (%s Hz)instead.", self._dummy_frequency)
+        else:
+            self._clock_frequency_new[name] = float(clock_frequency)
+
+        # use the correct clock in this method
+        my_clock_frequency = self._clock_frequency_new[name]
+
+        # assign the clock channel, if given
+        if clock_channel is not None:
+            my_clock_channel = clock_channel
+        else:
+            for i in self._clock_channels:
+                if i not in self._clock_channel_new.values():
+                    my_clock_channel = i
+                    break
+
+        if my_clock_channel in self._clock_channel_new.values():
+            self.log.warn("This clock channel (%s) is already being used. This might lead to clashes. "
+                          "Therefore method ist stopped", my_clock_channel)
+            return -1
+        # Fixme: The line above tries to mimic the old lines below.
+        # check whether only one clock pair is available, since some NI cards
+        # only one clock channel pair.
+        # if self._scanner_clock_channel == self._clock_channel:
+        #    if not ((self._clock_daq_task is None) and (self._scanner_clock_daq_task is None)):
+        #        self.log.error(
+        #            'Only one clock channel is available!\n'
+        #            'Another clock is already running, close this one first '
+        #            'in order to use it for your purpose!')
+        #        return -1
+
+        self._clock_channel_new[name] = my_clock_channel
+        # Adjust the idle state if necessary
+        my_idle = daq.DAQmx_Val_High if idle else daq.DAQmx_Val_Low
+        try:
+            # Create handle for task
+            my_clock_daq_task = daq.TaskHandle()
+
+            # create task for clock
+            task_name = str(name)
+            daq.DAQmxCreateTask(task_name, daq.byref(my_clock_daq_task))
+
+            # create a digital clock channel with specific clock frequency:
+            daq.DAQmxCreateCOPulseChanFreq(
+                # The task to which to add the channels
+                my_clock_daq_task,
+                # which channel is used?
+                my_clock_channel,
+                # Name to assign to task (NIDAQ uses by # default the physical channel name as
+                # the virtual channel name. If name is specified, then you must use the name
+                # when you refer to that channel in other NIDAQ functions)
+                'Clock Producer ' + task_name,
+                # units, Hertz in our case
+                daq.DAQmx_Val_Hz,
+                # idle state
+                my_idle,
+                # initial delay
+                0,
+                # pulse frequency
+                my_clock_frequency,
+                # duty cycle of pulses, 0.5 such that high and low duration are both
+                # equal to count_interval
+                0.5)
+
+            # Configure Implicit Timing.
+            # Set timing to continuous, i.e. set only the number of samples to
+            # acquire or generate without specifying timing:
+            daq.DAQmxCfgImplicitTiming(
+                # Define task
+                my_clock_daq_task,
+                # Sample Mode: set the task to generate a continuous amount of running samples
+                daq.DAQmx_Val_ContSamps,
+                # buffer length which stores temporarily the number of generated samples
+                1000)
+
+            self._clock_daq_task_new[name] = my_clock_daq_task
+            if start:
+                # actually start the preconfigured clock task
+                daq.DAQmxStartTask(my_clock_daq_task)
+        except:
+            self.log.exception('Error while setting up clock %s.', name)
+            return -1
+        return 0
+
+    def add_clock_task_to_channel(self, task_name, channels):
+        """
+        This function adds additional pointer to an already existing clock task.
+        Thereby many pointers can control this task. this is helpful if the same clock is used for different purposes
+        or synchronisation.
+        For this method another method needed to setup the clock task already.
+        Use set_up_clock_new
+
+        @param key task_name: the representative name of the analogue channel
+                                    task to which this channel is to be added
+        @param List(keys) channels: The new channels to be added to the task
+
+        @return int: error code (0:OK, -1:error)
+        """
+        if not (channels, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Channels are not given in array type.')
+            return -1
+        if task_name not in self._clock_daq_task_new:
+            self.log.error("The given clock task pointer %s to which the channel was to "
+                           "be added did not exist yet. Create this one first.", task_name)
+            return -1
+        my_task = self._clock_daq_task_new[task_name]
+        my_channel = self._clock_channel_new[task_name]
+        my_frequency = self._clock_frequency_new[task_name]
+
+        for channel in channels:
+            # check if no task for channel to be added is configured
+            if channel in self._clock_daq_task_new:
+                self.log.error('The same channel %s already has an existing clock task running, '
+                               'close this one first.', channel)
+                return -1
+            self._clock_daq_task_new[channel] = my_task
+            self._clock_channel_new[channel] = my_channel
+            self._clock_frequency_new[channel] = my_frequency
+        return 0
+
+    def close_clock_new(self, name):
+        """ Closes the clock and cleans up afterwards.
+
+        @param key name: specifies the task name for which the clock is to be turned off
+
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        if name in self._clock_daq_task_new:
+            my_task = self._clock_daq_task_new.pop(name)
+            my_channel = self._clock_channel_new.pop(name)
+            my_frequency = self._clock_frequency_new.pop(name)
+        else:
+            self.log.error("There was no task specified for the clock (%s) that was tried to be closed.", name)
+            return -1
+
+        # removes channels from task list that used the same task
+        key_list = []
+        for task_key, value in self._clock_daq_task_new.items():
+            if value == my_task:
+                key_list.append(task_key)
+        for item in key_list:
+            self._clock_daq_task_new.pop(item)
+            self._clock_channel_new.pop(item)
+            self._clock_frequency_new.pop(item)
+
+        try:
+            # stop the clock task
+            daq.DAQmxStopTask(my_task)
+            # after stopping delete all the configuration of the counter
+            daq.DAQmxClearTask(my_task)
+        except:
+            self.log.exception('Could not close clock %s.', name)
+            self._clock_daq_task_new[name] = my_task
+            for key in key_list:
+                self._clock_daq_task_new[key] = my_task
+                self._clock_channel_new[key] = my_channel
+                self._clock_frequency_new[key] = my_frequency
+
+            return -1
+        return 0
+
+    # =============================== End Clock Commands  =======================
