@@ -249,7 +249,7 @@ class NuclearOperationsLogic(GenericLogic):
         self.set_mw_on_odmr_freq(self.mw_cw_freq, self.mw_cw_power)
         self.mw_on()
 
-        self.lock()
+        self.module_state.lock()
 
         self.sigMeasStarted.emit()
         self.sigNextMeasPoint.emit()
@@ -261,7 +261,7 @@ class NuclearOperationsLogic(GenericLogic):
             with self.threadlock:
                 # end measurement and switch all devices off
                 self.stopRequested = False
-                self.unlock()
+                self.module_state.unlock()
 
                 self.mw_off()
                 self._pulser_off()
@@ -418,7 +418,7 @@ class NuclearOperationsLogic(GenericLogic):
         time.sleep(2)
 
         # wait until the gated counter is done or available to start:
-        while self._gc_logic.getState() != 'idle' and not self._stop_requested:
+        while self._gc_logic.module_state() != 'idle' and not self._stop_requested:
             # print('in SSR measure')
             time.sleep(1)
 
@@ -450,7 +450,7 @@ class NuclearOperationsLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self._stop_requested = True
         return 0
 
@@ -760,7 +760,7 @@ class NuclearOperationsLogic(GenericLogic):
         self._optimizer_logic.start_refocus(curr_pos, caller_tag='nuclear_operations_logic')
 
         # check just the state of the optimizer
-        while self._optimizer_logic.getState() != 'idle' and not self._stop_requested:
+        while self._optimizer_logic.module_state() != 'idle' and not self._stop_requested:
             time.sleep(0.5)
 
         # use the position to move the scanner
@@ -835,7 +835,7 @@ class NuclearOperationsLogic(GenericLogic):
                                         self.odmr_meas_freq1,
                                         self.odmr_meas_freq2])
 
-        while self._odmr_logic.getState() != 'idle' and not self._stop_requested:
+        while self._odmr_logic.module_state() != 'idle' and not self._stop_requested:
             time.sleep(0.5)
 
     def mw_on(self):

@@ -44,6 +44,8 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
+    # Indicate how fast frequencies within a list or sweep mode can be changed:
+    _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
 
     def on_activate(self):
         """ Initialisation performed during activation of the module. """
@@ -440,3 +442,20 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             return TriggerEdge.FALLING
         else:
             return TriggerEdge.RISING
+
+    def trigger(self):
+        """ Trigger the next element in the list or sweep mode programmatically.
+
+        @return int: error code (0:OK, -1:error)
+
+        Ensure that the Frequency was set AFTER the function returns, or give
+        the function at least a save waiting time.
+        """
+
+        # WARNING:
+        # The manual trigger functionality was not tested for this device!
+        # Might not work well! Please check that!
+
+        self._gpib_connection.write('*TRG')
+        time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
+        return 0

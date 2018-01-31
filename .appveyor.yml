@@ -19,7 +19,7 @@ install:
     - 'conda env remove --yes --name qudi || exit 0'
     - "conda env create -f %APPVEYOR_BUILD_FOLDER%\\tools\\conda-env-win8-qt5.yml"
     - "activate qudi"
-    - "python %APPVEYOR_BUILD_FOLDER%\\tools\\qudikernel.py install"
+    - "python %APPVEYOR_BUILD_FOLDER%\\core\\qudikernel.py install"
 
 # Not a .NET project, we build in the install step instead
 build: false
