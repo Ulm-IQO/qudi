@@ -23,6 +23,7 @@ from qtpy import QtGui, QtWidgets
 import numpy as np
 import re
 from pyqtgraph import functions as fn
+from qtwidgets.pyqtgraphmod.SpinBox import SpinBox
 
 __all__ = ['ScienDSpinBox']
 
@@ -60,15 +61,18 @@ class FloatValidator(QtGui.QValidator):
 
         match = self.float_re.search(string)
         if match:
-            if match.groups()[self.group_map['match']] != string:
-                return self.Invalid, string, position
+            groups = match.groups()
+            if groups[self.group_map['match']] == string:
+                return self.Acceptable, string, position
 
             if position > len(string):
                 position = len(string)
-            if match.groups()[self.group_map['mantissa']] is None or string[position-1] in 'eE.-+ ':
+            if string[position-1] in 'eE.-+':
+                if string.count('.') > 1:
+                    return self.Invalid, string, position
                 return self.Intermediate, string, position
 
-            return self.Acceptable, string, position
+            return self.Invalid, string, position
         else:
             return self.Invalid, string, position
 
@@ -216,9 +220,12 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
                           This string must be conform with the validator.
         @return: float, the numeric value converted from the input string.
         """
+        # Extract si-notation number string
         text = text.strip()  # get rid of leading and trailing whitespaces
         text = text.replace(self.suffix(), '')  # get rid of suffix
         text = text.replace(self.prefix(), '')  # get rid of prefix
+        if text.startswith('+'):
+            text = text[1:]
 
         # Try to extract the precision the user intends to use
         split_text = text.split()
@@ -296,7 +303,7 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         return
 
 
-# class ScienDSpinBox(SpinBox):
+# class ScienD2SpinBox(SpinBox):
 #     """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific
 #         way.
 #
