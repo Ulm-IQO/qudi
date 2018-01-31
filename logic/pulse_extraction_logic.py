@@ -26,6 +26,7 @@ import numpy as np
 
 from collections import OrderedDict
 from core.module import StatusVar
+from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
 
 
@@ -36,12 +37,11 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
-    conv_std_dev = StatusVar(default=10.0)
-    count_treshold = StatusVar(default=10)
-    threshold_tolerance_bins = StatusVar(default=20)
-    min_laser_length = StatusVar(default=200)
-    #self.number_of_lasers = StatusVar(default=50)
-    current_method = StatusVar(default='conv_deriv')
+    extraction_settings = StatusVar('extraction_settings', default={'conv_std_dev': 10.0,
+                                                                    'count_threshold': 10,
+                                                                    'threshold_tolerance_bins': 20,
+                                                                    'min_laser_length': 200,
+                                                                    'current_method': 'conv_deriv'})
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -62,7 +62,7 @@ class PulseExtractionLogic(GenericLogic):
         filename_list = []
         # The assumption is that in the directory pulse_extraction_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'pulse_extraction_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'pulse_extraction_methods')
         for entry in os.listdir(path):
             if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
                 filename_list.append(entry[:-3])
@@ -101,49 +101,10 @@ class PulseExtractionLogic(GenericLogic):
         @return:
         """
         if is_gated:
-            return_dict = self.gated_extraction_methods[self.current_method](count_data)
+            return_dict = self.gated_extraction_methods[self.extraction_settings['current_method']](count_data)
         else:
-            return_dict = self.ungated_extraction_methods[self.current_method](count_data)
+            return_dict = self.ungated_extraction_methods[self.extraction_settings['current_method']](count_data)
         return return_dict
 
-    # FIXME: What's that???
-    # def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
-    #
-    #     return_dict = {}
-    #     laser_x = []
-    #     laser_y = []
-    #
-    #     x_data = np.linspace(initial_offset,initial_offset+laser_length,laser_length+1)
-    #     y_data = count_data[initial_offset:initial_offset+laser_length]
-    #     laser_x.append(x_data)
-    #     laser_y.append(y_data)
-    #
-    #     time = initial_length + initial_offset
-    #
-    #     for laser in range(int(num_lasers)-1):
-    #
-    #         x_data = np.linspace(time,time+laser_length,laser_length+1)
-    #         y_data = count_data[time:(time+laser_length)]
-    #         laser_x.append(np.array(x_data))
-    #         laser_y.append(np.array(y_data))
-    #
-    #
-    #         time = time + initial_length + (laser+1)*increment
-    #
-    #
-    #
-    #
-    #     laser_y = np.asarray(laser_y)
-    #     laser_x = np.asarray(laser_x)
-    #
-    #     self.log.debug(laser_y)
-    #
-    #     rising_ind = np.array([i[0] for i in laser_x])
-    #     falling_ind = np.array([i[-1] for i in laser_y])
-    #
-    #     return_dict['laser_rising'] = rising_ind
-    #     return_dict['laser_falling'] = falling_ind
-    #     return_dict['laser_arr_y'] = laser_y.astype(int)
-    #
-    #     return return_dict
+
 

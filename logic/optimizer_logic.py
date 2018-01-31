@@ -167,7 +167,7 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # checks if scanner is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             return -1
         else:
             self._clock_frequency = int(clock_frequency)
@@ -198,6 +198,8 @@ class OptimizerLogic(GenericLogic):
             @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
+
+
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
@@ -220,7 +222,7 @@ class OptimizerLogic(GenericLogic):
         self.optim_sigma_x = 0.
         self.optim_sigma_y = 0.
         self.optim_sigma_z = 0.
-
+        #
         self._xy_scan_line_count = 0
         self._optimization_step = 0
         self.check_optimization_sequence()
@@ -391,7 +393,7 @@ class OptimizerLogic(GenericLogic):
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian
+            estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
 
@@ -581,17 +583,17 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.lock()
+        self.module_state.lock()
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
         if clock_status < 0:
-            self.unlock()
+            self.module_state.unlock()
             return -1
 
         scanner_status = self._scanning_device.set_up_scanner()
         if scanner_status < 0:
             self._scanning_device.close_scanner_clock()
-            self.unlock()
+            self.module_state.unlock()
             return -1
 
         return 0
@@ -611,7 +613,7 @@ class OptimizerLogic(GenericLogic):
         except:
             self.log.exception('Closing refocus scanner clock failed.')
             return -1
-        self.unlock()
+        self.module_state.unlock()
         return rv + rv2
 
     def _do_next_optimization_step(self):

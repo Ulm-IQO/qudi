@@ -55,7 +55,7 @@ import os
 
 #matplotlib.rcParams.update({'font.size': 12})
 
-from core.util.units import compute_dft
+from core.util.units import compute_ft
 
 
 class FitLogic():
@@ -1864,7 +1864,7 @@ def lorentziandip_testing2():
 
     data_nice = mod.eval(x=x_axis,params=params)
     data_noisy = data_nice + 2.0*np.random.normal(size=x_axis.shape)
-    
+
     print(qudi_fitting.estimate_lorentzian_dip)
 
 
@@ -1880,7 +1880,7 @@ def lorentziandip_testing2():
 
     print(result.fit_report())
     print(result.result_str_dict)
-    
+
 
 def lorentzianpeak_testing2():
     """ Test the lorentzian fit directy with simulated data. """
@@ -2142,7 +2142,7 @@ def sine_testing():
 
     # calculate dft with zeropadding to obtain nicer interpolation between the
     # appearing peaks.
-    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data_level, zeropad_num=1)
 
     plt.figure()
     plt.plot(dft_x, dft_y, label='dft of data')
@@ -2307,7 +2307,7 @@ def sine_testing_data():
     # estimate amplitude
     ampl_val = max(np.abs(data_level.min()), np.abs(data_level.max()))
 
-    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data_level, zeropad_num=1)
 
     stepsize = x_axis[1]-x_axis[0]  # for frequency axis
 #            freq = np.fft.fftfreq(data_level_zeropaded.size, stepsize)
@@ -2675,10 +2675,10 @@ def double_poissonian_testing_data():
 
 
 ###############################################################################
-    
+
 def exponentialdecay_testing():
     """ Implementation of the estimator for exponential decay fitting. """
-    
+
     x_axis = np.linspace(1, 51, 30)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
     mod, params = qudi_fitting.make_decayexponential_model()
@@ -2694,7 +2694,7 @@ def exponentialdecay_testing():
     data = mod.eval(x=x_axis, params=params)
     data_nice = mod.eval(x=x_nice, params=params)
     data_noisy = data + 5* np.random.normal(size=x_axis.shape)
-    
+
     plt.figure()
     plt.plot(x_axis, data_noisy, 'ob', label='noisy data')
     plt.plot(x_nice, data_nice, '-g', label='nice data')
@@ -2712,28 +2712,28 @@ def exponentialdecay_testing():
         data_level = offset - data_noisy
     else:
         data_level = data_noisy - offset
-        
+
     # check if the data level contain still negative values and correct
     # the data level therefore. Otherwise problems in the logarithm appear.
     if data_level.min() <= 0:
         data_level = data_level - data_level.min()
-        
+
     for i in range(0, len(x_axis)):
         if data_level[i] <= data_level.std():
             break
     print('Index stopped at "{0}" from total {1}'.format(i, len(x_axis)))
-    
+
     # values and bound of parameter.
     ampl = data_noisy[-max(1, int(len(x_axis) / 10)):].std()
     min_lifetime = 2 * (x_axis[1] - x_axis[0])
-    
+
     data_level_log = np.log(data_level[0:i])
     linear_result = qudi_fitting.make_linear_fit(
-                        x_axis=x_axis[0:i], 
-                        data=data_level_log, 
-                        estimator=qudi_fitting.estimate_linear, 
+                        x_axis=x_axis[0:i],
+                        data=data_level_log,
+                        estimator=qudi_fitting.estimate_linear,
                         add_params=None)
-    
+
     plt.figure()
     plt.plot(x_axis[0:i], data_level_log, 'ob', label='logarithmic data')
     plt.plot(x_axis[0:i], linear_result.best_fit,'-r', label='best fit')
@@ -2752,11 +2752,11 @@ def exponentialdecay_testing():
         params['amplitude'].set(value=-np.exp(linear_result.params['offset'].value), max=-ampl)
     else:
         params['amplitude'].set(value=np.exp(linear_result.params['offset'].value), min=ampl)
-    
+
     params['offset'].set(value=offset)
-    
+
     result = mod.fit(data_noisy, x=x_axis, params=params)
-    
+
 
     plt.figure()
     plt.plot(x_axis, data_noisy, 'ob', label='noisy data')
@@ -2767,13 +2767,13 @@ def exponentialdecay_testing():
                ncol=2, mode="expand", borderaxespad=0.,
                prop={'size':12})
     plt.show()
-    
+
     print(result.fit_report())
-    
-    
+
+
 def exponentialdecay_testing2():
     """ Check the implemented estimator directly from fitlogic"""
-    
+
     #generation of data for testing
     x_axis = np.linspace(1, 51, 20)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
@@ -2790,12 +2790,12 @@ def exponentialdecay_testing2():
     data = mod.eval(x=x_axis, params=params)
     data_nice = mod.eval(x=x_nice, params=params)
     data_noisy = data + 5* np.random.normal(size=x_axis.shape)
-    
+
     # perform fit
     result = qudi_fitting.make_decayexponential_fit(
-                x_axis=x_axis, 
-                data=data_noisy, 
-                estimator=qudi_fitting.estimate_decayexponential, 
+                x_axis=x_axis,
+                data=data_noisy,
+                estimator=qudi_fitting.estimate_decayexponential,
                 add_params=None)
 
     plt.figure()
@@ -2807,12 +2807,12 @@ def exponentialdecay_testing2():
                ncol=2, mode="expand", borderaxespad=0.,
                prop={'size':12})
     plt.show()
-    
+
     print(result.fit_report())
 ###########################################################################################
 def bareexponentialdecay_testing():
     """ Implement the estimator for the bare exponential testing. """
-    
+
     #generation of data for testing
     x_axis = np.linspace(1, 51, 20)
     x_nice = np.linspace(x_axis[0], x_axis[-1], 100)
@@ -2833,7 +2833,7 @@ def bareexponentialdecay_testing():
     for i in range(0, len(x_axis)):
         if data[i] <= data.std():
             break
-        
+
     print('Index stopped at "{0}" from total {1}'.format(i, len(x_axis)))
 
     offset = data_noisy.min()
@@ -2860,9 +2860,9 @@ def bareexponentialdecay_testing():
     data_log = np.log(leveled_data)
 
     linear_result = qudi_fitting.make_linear_fit(
-                        x_axis=x_axis[0:i], 
-                        data=data_log[0:i], 
-                        estimator=qudi_fitting.estimate_linear, 
+                        x_axis=x_axis[0:i],
+                        data=data_log[0:i],
+                        estimator=qudi_fitting.estimate_linear,
                         add_params=None)
 
     plt.figure()
@@ -2876,10 +2876,10 @@ def bareexponentialdecay_testing():
     plt.show()
 
     mod, params = qudi_fitting.make_bareexponentialdecay_model()
-    
+
     min_lifetime = 2 * (x_axis[1] - x_axis[0])
     params['lifetime'].set(value=-1/linear_result.params['slope'].value, min=min_lifetime)
-    
+
     result = mod.fit(data_noisy, x=x_axis, params=params)
 #
     plt.figure()
@@ -2982,7 +2982,7 @@ def sineexponentialdecay_testing_data():
     # estimate amplitude
     ampl_val = max(np.abs(data_level.min()),np.abs(data_level.max()))
 
-    dft_x, dft_y = compute_dft(x_axis, data_level, zeropad_num=1)
+    dft_x, dft_y = compute_ft(x_axis, data_level, zeropad_num=1)
 
     stepsize = x_axis[1] - x_axis[0]  # for frequency axis
 
@@ -3717,7 +3717,7 @@ def three_sine_offset_testing():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*3
 
-    x_dft1, y_dft1 = compute_dft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
+    x_dft1, y_dft1 = compute_ft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
@@ -3731,14 +3731,14 @@ def three_sine_offset_testing():
     res1 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
-    x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
+    x_dft2, y_dft2 = compute_ft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
     res2 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
     res3 = qudi_fitting.make_sine_fit(x_axis=x_axis, data=data_sub2)
 
-    x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
+    x_dft3, y_dft3 = compute_ft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_dft1, y_dft1, '-', label='noisy_data (3 peaks)')
@@ -3845,7 +3845,7 @@ def three_sine_exp_decay_offset_testing():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
 
-    x_dft1, y_dft1 = compute_dft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
+    x_dft1, y_dft1 = compute_ft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
@@ -3859,14 +3859,14 @@ def three_sine_exp_decay_offset_testing():
     res1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
-    x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
+    x_dft2, y_dft2 = compute_ft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
     res2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
     res3 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
 
-    x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
+    x_dft3, y_dft3 = compute_ft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_dft1, y_dft1, '-', label='noisy_data (3 peaks)')
@@ -3984,7 +3984,7 @@ def three_sine_three_exp_decay_offset_testing():
 
     noisy_data = data + data.mean() * np.random.normal(size=x_axis.shape)*1
 
-    x_dft1, y_dft1 = compute_dft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
+    x_dft1, y_dft1 = compute_ft(x_val=x_axis, y_val=noisy_data, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_axis, noisy_data, 'o--', label='noisy_data')
@@ -3998,14 +3998,14 @@ def three_sine_three_exp_decay_offset_testing():
     res1 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=noisy_data)
     data_sub1 = noisy_data - res1.best_fit
 
-    x_dft2, y_dft2 = compute_dft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
+    x_dft2, y_dft2 = compute_ft(x_val=x_axis, y_val=data_sub1, zeropad_num=1)
 
     res2 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub1)
     data_sub2 = data_sub1 - res2.best_fit
 
     res3 = qudi_fitting.make_sineexponentialdecay_fit(x_axis=x_axis, data=data_sub2)
 
-    x_dft3, y_dft3 = compute_dft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
+    x_dft3, y_dft3 = compute_ft(x_val=x_axis, y_val=data_sub2, zeropad_num=1)
 
     plt.figure()
     plt.plot(x_dft1, y_dft1, '-', label='noisy_data (3 peaks)')

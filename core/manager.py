@@ -793,6 +793,17 @@ class Manager(QtCore.QObject):
                         defined_module['module.Class'])
 
                     modObj = self.importModule(base, module_name)
+
+                    # Ensure that the namespace of a module is reloaded before 
+                    # instantiation. That will not harm anything.
+                    # Even if the import is successful an error might occur 
+                    # during instantiation. E.g. in an abc metaclass, 
+                    # methods might be missing in a derived interface file.
+                    # Reloading the namespace will prevent the need to restart 
+                    # Qudi, if a module instantiation was not successful upon 
+                    # load.
+                    importlib.reload(modObj)  # keep the namespace of module up to date
+
                     self.configureModule(modObj, base, class_name, key, defined_module)
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
                         if self.rm is None:
@@ -913,7 +924,7 @@ class Manager(QtCore.QObject):
         if not self.isModuleLoaded(base, name):
             logger.error('{0} module {1} not loaded.'.format(base, name))
             return False
-        return self.tree['loaded'][base][name].getState() in ('idle', 'running', 'locked')
+        return self.tree['loaded'][base][name].module_state() in ('idle', 'running', 'locked')
 
     def findBase(self, name):
         """ Find base for a given module name.
@@ -938,13 +949,12 @@ class Manager(QtCore.QObject):
             logger.error('{0} module {1} not loaded.'.format(base, name))
             return
         module = self.tree['loaded'][base][name]
-        if module.getState() != 'deactivated' and (
+        if module.module_state() != 'deactivated' and (
                 self.isModuleDefined(base, name)
-                and 'remote' in self.tree['defined'][base][name]
-                and self.remote_server):
+                and 'remote' in self.tree['defined'][base][name]):
             logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
             return
-        if module.getState() != 'deactivated':
+        if module.module_state() != 'deactivated':
             logger.error('{0} module {1} not deactivated'.format(base, name))
             return
         try:
@@ -955,13 +965,13 @@ class Manager(QtCore.QObject):
                 module.moveToThread(modthread)
                 modthread.start()
                 success = QtCore.QMetaObject.invokeMethod(
-                    module,
-                    "trigger",
+                    module.module_state,
+                    'trigger',
                     QtCore.Qt.BlockingQueuedConnection,
                     QtCore.Q_RETURN_ARG(bool),
                     QtCore.Q_ARG(str, 'activate'))
             else:
-                success = module.activate() # runs on_activate in main thread
+                success = module.module_state.activate() # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(success))
         except:
             logger.exception(
@@ -983,7 +993,7 @@ class Manager(QtCore.QObject):
         module = self.tree['loaded'][base][name]
         try:
             if not self.isModuleActive(base, name):
-                logger.error('{0} module {1} not isModuleActive.'.format(base, name))
+                logger.error('{0} module {1} is not activated.'.format(base, name))
                 return
         except:
             logger.exception(
@@ -993,10 +1003,10 @@ class Manager(QtCore.QObject):
                 self.tree['loaded'][base].pop(name)
             return
         try:
-            if base == 'logic':
+            if module.is_module_threaded:
                 success = QtCore.QMetaObject.invokeMethod(
-                    module,
-                    "trigger",
+                    module.module_state,
+                    'trigger',
                     QtCore.Qt.BlockingQueuedConnection,
                     QtCore.Q_RETURN_ARG(bool),
                     QtCore.Q_ARG(str, 'deactivate'))
@@ -1009,7 +1019,7 @@ class Manager(QtCore.QObject):
                 self.tm.quitThread('mod-{0}-{1}'.format(base, name))
                 self.tm.joinThread('mod-{0}-{1}'.format(base, name))
             else:
-                success = module.deactivate() # runs on_deactivate in main thread
+                success = module.module_state.deactivate() # runs on_deactivate in main thread
 
             self.saveStatusVariables(base, name, module.getStatusVariables())
             logger.debug('Deactivation success: {}'.format(success))
@@ -1165,9 +1175,10 @@ class Manager(QtCore.QObject):
                     if mkey in self.tree['loaded'][mbase]:
                         self.activateModule(mbase, mkey)
                 elif mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
-                    if self.tree['loaded'][mbase][mkey].getState() == 'deactivated':
+                    if self.tree['loaded'][mbase][mkey].module_state() == 'deactivated':
                         self.activateModule(mbase, mkey)
-                    elif self.tree['loaded'][mbase][mkey].getState() != 'deactivated' and mbase == 'gui':
+                    elif (self.tree['loaded'][mbase][mkey].module_state() != 'deactivated' and
+                          mbase == 'gui'):
                         self.tree['loaded'][mbase][mkey].show()
         return 0
 
@@ -1188,7 +1199,7 @@ class Manager(QtCore.QObject):
             for mbase in ('hardware', 'logic', 'gui'):
                 if mkey in self.tree['defined'][mbase] and mkey in self.tree['loaded'][mbase]:
                     try:
-                        deact = self.tree['loaded'][mbase][mkey].can('deactivate')
+                        deact = self.tree['loaded'][mbase][mkey].module_state.can('deactivate')
                     except:
                         deact = True
                     if deact:
@@ -1331,7 +1342,7 @@ class Manager(QtCore.QObject):
         for base, mods in self.tree['loaded'].items():
             for name, module in mods.items():
                 try:
-                    state = module.getState()
+                    state = module.module_state()
                     if state == 'locked':
                         lockedmodules = True
                 except:

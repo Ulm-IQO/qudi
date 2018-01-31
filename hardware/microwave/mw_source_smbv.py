@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware file to control Anritsu Microwave Device.
+This file contains the Qudi hardware file to control R&S SMBV100A microwave device.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -34,42 +34,42 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveAnritsu(Base, MicrowaveInterface):
-    """
-    Hardware control file for Anritsu Devices.
-    Tested for the model MG37022A with Option 4.
+class MicrowaveSmbv(Base, MicrowaveInterface):
+    """ This is the Interface class to define the controls for the simple
+        microwave hardware.
     """
 
-    _modclass = 'MicrowaveAnritsu'
+    _modclass = 'MicrowaveSmbv'
     _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
     # Indicate how fast frequencies within a list or sweep mode can be changed:
-    _FREQ_SWITCH_SPEED = 0.009  # Frequency switching speed in s (acc. to specs)
+    _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
+        self._gpib_timeout = self._gpib_timeout * 1000
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(
-                self._gpib_address,
-                timeout=self._gpib_timeout*1000)
+            self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                          timeout=self._gpib_timeout)
         except:
-            self.log.error('This is MWanritsu: could not connect to the GPIB '
-                        'address >>{}<<.'.format(self._gpib_address))
+            self.log.error('Could not connect to GPIB address >>{}<<.'.format(self._gpib_address))
             raise
+
+        self.log.info('MW SMBV100A initialised and connected to hardware.')
         self.model = self._gpib_connection.query('*IDN?').split(',')[1]
-        self.log.info('MicrowaveAnritsu initialised and connected to '
-                'hardware.')
+        self._command_wait('*CLS')
+        self._command_wait('*RST')
+        return
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
-        self._gpib_connection.close()
-        self.rm.close()
+        """ Cleanup performed during deactivation of the module. """
+        #self._gpib_connection.close()
+        #self.rm.close()
+        return
 
     def _command_wait(self, command_str):
         """
@@ -85,23 +85,30 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         return
 
     def get_limits(self):
-        """ Right now, this is for Anritsu MG37022A with Option 4 only."""
+        """ Create an object containing parameter limits for this microwave source.
+
+            @return MicrowaveLimits: device-specific parameter limits
+        """
         limits = MicrowaveLimits()
-        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.LIST, MicrowaveMode.SWEEP)
+        limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.SWEEP)
 
-        limits.min_frequency = 10e6
-        limits.max_frequency = 20e9
-
-        limits.min_power = -105
+        limits.min_power = -145
         limits.max_power = 30
 
-        limits.list_minstep = 0.001
-        limits.list_maxstep = 20e9
-        limits.list_maxentries = 10001
+        limits.min_frequency = 9e3
+        limits.max_frequency = 6e9
 
-        limits.sweep_minstep = 0.001
-        limits.sweep_maxstep = 20e9
+        limits.list_minstep = 0.1
+        limits.list_maxstep = 5.991e9
+        limits.list_maxentries = 1
+
+        limits.sweep_minstep = 0.1
+        limits.sweep_maxstep = 5.991e9
         limits.sweep_maxentries = 10001
+
+        if self.model != 'SMBV100A':
+            self.log.warning('Model string unknown, hardware limits may be wrong.')
+
         return limits
 
     def off(self):
@@ -111,7 +118,12 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        mode, is_running = self.get_status()
+        if not is_running:
+            return 0
+
         self._gpib_connection.write('OUTP:STAT OFF')
+        self._gpib_connection.write('*WAI')
         while int(float(self._gpib_connection.query('OUTP:STAT?'))) != 0:
             time.sleep(0.2)
         return 0
@@ -135,6 +147,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
+        # This case works for cw AND sweep mode
         return float(self._gpib_connection.query(':POW?'))
 
     def get_frequency(self):
@@ -152,34 +165,29 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         elif 'sweep' in mode:
             start = float(self._gpib_connection.query(':FREQ:STAR?'))
             stop = float(self._gpib_connection.query(':FREQ:STOP?'))
-            step = float(self._gpib_connection.query(':SWE:FREQ:STEP?'))
+            step = float(self._gpib_connection.query(':SWE:STEP?'))
             return_val = [start+step, stop, step]
-        elif 'list' in mode:
-            stop_index = int(float(self._gpib_connection.query(':LIST:STOP?')))
-            self._gpib_connection.write(':LIST:IND {0:d}'.format(stop_index))
-            stop = float(self._gpib_connection.query(':LIST:FREQ?'))
-            self._gpib_connection.write(':LIST:IND 0')
-            start = float(self._gpib_connection.query(':LIST:FREQ?'))
-            step = (stop - start) / (stop_index-1)
-            return_val = np.arange(start, stop + step, step)
         return return_val
 
     def cw_on(self):
-        """ Switches on any preconfigured microwave output.
+        """
+        Switches on cw microwave output.
+        Must return AFTER the device is actually running.
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        current_mode, is_running = self.get_status()
         if is_running:
-            if mode == 'cw':
+            if current_mode == 'cw':
                 return 0
             else:
                 self.off()
 
-        if mode != 'cw':
+        if current_mode != 'cw':
             self._command_wait(':FREQ:MODE CW')
 
         self._gpib_connection.write(':OUTP:STAT ON')
+        self._gpib_connection.write('*WAI')
         dummy, is_running = self.get_status()
         while not is_running:
             time.sleep(0.2)
@@ -192,25 +200,29 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
-        @return float, float, str: current frequency in Hz, current power in dBm, current mode
-
-        Interleave option is used for arbitrary waveform generator devices.
+        @return tuple(float, float, str): with the relation
+            current frequency in Hz,
+            current power in dBm,
+            current mode
         """
         mode, is_running = self.get_status()
         if is_running:
             self.off()
 
+        # Activate CW mode
         if mode != 'cw':
             self._command_wait(':FREQ:MODE CW')
 
+        # Set CW frequency
         if frequency is not None:
             self._command_wait(':FREQ {0:f}'.format(frequency))
 
+        # Set CW power
         if power is not None:
             self._command_wait(':POW {0:f}'.format(power))
 
+        # Return actually set values
         mode, dummy = self.get_status()
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
@@ -223,22 +235,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
-        if is_running:
-            if mode == 'list':
-                return 0
-            else:
-                self.off()
-
-        if mode != 'list':
-            self._command_wait(':FREQ:MODE LIST')
-
-        self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
-        while not is_running:
-            time.sleep(0.2)
-            dummy, is_running = self.get_status()
-        return 0
+        self.log.error('List mode not available for this microwave hardware!')
+        return -1
 
     def set_list(self, frequency=None, power=None):
         """
@@ -247,40 +245,14 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @param list frequency: list of frequencies in Hz
         @param float power: MW power of the frequency list in dBm
 
-        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        @return tuple(list, float, str):
+            current frequencies in Hz,
+            current power in dBm,
+            current mode
         """
-        mode, is_running = self.get_status()
-
-        if is_running:
-            self.off()
-
-        if mode != 'list':
-            self._command_wait(':FREQ:MODE LIST')
-
-        self._gpib_connection.write(':LIST:TYPE FREQ')
-        self._gpib_connection.write(':LIST:IND 0')
-
-        if frequency is not None:
-            s = ' {0:f},'.format(frequency[0])
-            for f in frequency[:-2]:
-                s += ' {0:f},'.format(f)
-            s += ' {0:f}'.format(frequency[-1])
-            self._gpib_connection.write(':LIST:FREQ' + s)
-            self._gpib_connection.write(':LIST:STAR 0')
-            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)))
-            self._gpib_connection.write(':LIST:MODE MAN')
-            self._gpib_connection.write('*WAI')
-            self._command_wait(':LIST:IND 0')
-
-        if power is not None:
-            self._command_wait(':POW {0:f}'.format(power))
-
-        self._command_wait(':TRIG:SOUR EXT')
-
-        actual_power = self.get_power()
-        actual_freq = self.get_frequency()
+        self.log.error('List mode not available for this microwave hardware!')
         mode, dummy = self.get_status()
-        return actual_freq, actual_power, mode
+        return self.get_frequency(), self.get_power(), mode
 
     def reset_listpos(self):
         """
@@ -288,22 +260,22 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._command_wait(':LIST:IND 0')
-        return 0
+        self.log.error('List mode not available for this microwave hardware!')
+        return -1
 
     def sweep_on(self):
         """ Switches on the sweep mode.
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        current_mode, is_running = self.get_status()
         if is_running:
-            if mode == 'sweep':
+            if current_mode == 'sweep':
                 return 0
             else:
                 self.off()
 
-        if mode != 'sweep':
+        if current_mode != 'sweep':
             self._command_wait(':FREQ:MODE SWEEP')
 
         self._gpib_connection.write(':OUTP:STAT ON')
@@ -325,26 +297,26 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                                                  current mode
         """
         mode, is_running = self.get_status()
-
         if is_running:
             self.off()
 
         if mode != 'sweep':
             self._command_wait(':FREQ:MODE SWEEP')
 
-        self._gpib_connection.write(':SWE:GEN STEP')
-        self._gpib_connection.write('*WAI')
-
         if (start is not None) and (stop is not None) and (step is not None):
-            self._gpib_connection.write(':FREQ:START {0}'.format(start - step))
-            self._gpib_connection.write(':FREQ:STOP {0}'.format(stop))
-            self._gpib_connection.write(':SWE:FREQ:STEP {0}'.format(step))
+            self._gpib_connection.write(':SWE:MODE STEP')
+            self._gpib_connection.write(':SWE:SPAC LIN')
+            self._gpib_connection.write('*WAI')
+            self._gpib_connection.write(':FREQ:START {0:f}'.format(start - step))
+            self._gpib_connection.write(':FREQ:STOP {0:f}'.format(stop))
+            self._gpib_connection.write(':SWE:STEP:LIN {0:f}'.format(step))
             self._gpib_connection.write('*WAI')
 
         if power is not None:
-            self._command_wait(':POW {0:f}'.format(power))
+            self._gpib_connection.write(':POW {0:f}'.format(power))
+            self._gpib_connection.write('*WAI')
 
-        self._command_wait(':TRIG:SOUR EXT')
+        self._command_wait('TRIG:FSW:SOUR EXT')
 
         actual_power = self.get_power()
         freq_list = self.get_frequency()
@@ -357,7 +329,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._command_wait(':ABORT')
+        self._command_wait(':ABOR:SWE')
         return 0
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
@@ -367,6 +339,10 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
         """
+        mode, is_running = self.get_status()
+        if is_running:
+            self.off()
+
         if pol == TriggerEdge.RISING:
             edge = 'POS'
         elif pol == TriggerEdge.FALLING:
@@ -376,9 +352,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             edge = None
 
         if edge is not None:
-            self._command_wait(':TRIG:SEQ3:SLOP {0}'.format(edge))
+            self._command_wait(':TRIG1:SLOP {0}'.format(edge))
 
-        polarity = self._gpib_connection.query(':TRIG:SEQ3:SLOPE?')
+        polarity = self._gpib_connection.query(':TRIG1:SLOP?')
         if 'NEG' in polarity:
             return TriggerEdge.FALLING
         else:
@@ -400,4 +376,3 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write('*TRG')
         time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
         return 0
-
