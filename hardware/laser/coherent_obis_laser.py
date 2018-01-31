@@ -99,8 +99,8 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         obis = serial.Serial('COM3', timeout=1)
         
-        """self.psu = PSUTypes[self.psu_type]
-        self.connect_laser(self.serial_interface)"""
+        self.psu = PSUTypes[self.psu_type]
+        self.connect_laser(self.serial_interface)
         
 
     def on_deactivate(self):
@@ -141,6 +141,7 @@ class OBISLaser(Base, SimpleLaserInterface):
     def disconnect_laser(self):
         """ Close the connection to the instrument.
         """
+        self.off()
         self.obis.close()
         """self.inst.close()
         self.rm.close()"""
@@ -149,24 +150,24 @@ class OBISLaser(Base, SimpleLaserInterface):
     def allowed_control_modes(self):
         """ Control modes for this laser
         """
-        if self.psu == PSUTypes.FPU:
+        """if self.psu == PSUTypes.FPU:
             return [ControlMode.MIXED]
         elif self.psu == PSUTypes.SMD6000:
             return [ControlMode.POWER]
         else:
-            return [ControlMode.POWER, ControlMode.CURRENT]
+            return [ControlMode.POWER, ControlMode.CURRENT]"""
 
     def get_control_mode(self):
         """ Get current laser control mode.
 
         @return ControlMode: current laser control mode
         """
-        if self.psu == PSUTypes.FPU:
+       """ if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
         elif self.psu == PSUTypes.SMD6000:
             return ControlMode.POWER
         else:
-            return ControlMode[self.inst.query('CONTROL?')]
+            return ControlMode[self.inst.query('CONTROL?')]"""
 
     def set_control_mode(self, mode):
         """ Set laser control mode.
@@ -235,9 +236,9 @@ class OBISLaser(Base, SimpleLaserInterface):
         @return tuple(float, float): laser power range
         """
         self._communicate('SOUR:POW:LIM:LOW?')
-        maxpower = float(response[0])
-        self._communicate('SOUR:POW:LIM:HIGH?')
         minpower = float(response[0])
+        self._communicate('SOUR:POW:LIM:HIGH?')
+        maxpower = float(response[0])
         return (minpower, maxpower) """direct insert vs inquiry - what is upper power limit. """
 
     def set_power(self, power):
@@ -245,7 +246,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @param float power: desired laser power in watts
         """
-        self._communicate('SOUR:POW:LEV {POWER}' )"""this needs fixing - desired set power follows with space"""
+        self._communicate('SOUR:POW:LEV {POWER}' )
         
         '''if self.psu == PSUTypes.FPU:
             self.inst.query('POWER={0:f}'.format(power))
@@ -421,9 +422,9 @@ class OBISLaser(Base, SimpleLaserInterface):
         actstat = self.get_laser_state()
         if actstat != status:
             if status == LaserState.ON:
-                self.inst.query('ON')
+                self._communicate(SOUR:AM:STAT)
             elif status == LaserState.OFF:
-                self.inst.query('OFF')
+                self._communicate(SOUR:AM:STAT)
         return self.get_laser_state()
 
     def on(self):
