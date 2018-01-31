@@ -121,15 +121,15 @@ class ODMRGui(GUIBase):
         self._mw.start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.step_freq_DoubleSpinBox.setMaximum(100e9)
-        self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0)  # set the minimal step to 1Hz
+        # self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0)  # set the minimal step to 1Hz
         self._mw.stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.cw_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
-        self._mw.cw_power_DoubleSpinBox.setOpts(minStep=0.1)
+        # self._mw.cw_power_DoubleSpinBox.setOpts(minStep=0.1)
         self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.sweep_power_DoubleSpinBox.setMinimum(constraints.min_power)
-        self._mw.sweep_power_DoubleSpinBox.setOpts(minStep=0.1)
+        # self._mw.sweep_power_DoubleSpinBox.setOpts(minStep=0.1)
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
