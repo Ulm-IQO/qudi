@@ -122,10 +122,11 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def set_up_analogue_output_clock(self, clock_frequency=None, clock_channel=None,
-                                             set_up=True):
+    def set_up_analogue_output_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
+                                     set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
+        @param key analogue_channel: The channel for which the clock is to be setup
         @param float clock_frequency: if defined, this sets the frequency of
                                       the clock (in Hz). If not defined the scanner clock frequency will be used.
         @param string clock_channel: if defined, this is the physical channel
@@ -172,8 +173,12 @@ class AnalogueOutputInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def close_analogue_output_clock(self):
+    def close_analogue_output_clock(self, analogue_channel, close=True):
         """ Closes the analogue output clock and cleans up afterwards.
+
+        @param key analogue_channel: The channel for which the clock is to be closed.
+        @param bool close: decides if the clock is actually closed. If True closes and cleans up clock,
+            else dummy method for logic
 
         @return int: error code (0:OK, -1:error)
         """

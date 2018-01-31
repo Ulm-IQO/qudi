@@ -195,7 +195,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        pass
+        self.change_analogue_output_voltage(0.0)
         # Todo: This method nees to be implemented
 
     # =============================== start cavity stabilisation Commands  =======================
@@ -501,7 +501,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 self.log.error("Setting up analogue output for scanning failed.")
                 return -1
 
-            if 0 > self._output_device.set_up_analogue_output_clock(clock_frequency=_clock_frequency):
+            if 0 > self._output_device.set_up_analogue_output_clock(self.control_axis,
+                                                                    clock_frequency=_clock_frequency):
                 # Fixme: I do not think this is necessary. However it should be checked.
                 # self.set_position('scanner')
                 self.log.error("Problems setting up analogue output clock.")
@@ -511,7 +512,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
             retval3 = self._output_device.analogue_scan_line(self.control_axis, ramp)
             try:
-                retval1 = self._output_device.close_analogue_output_clock()
+                retval1 = self._output_device.close_analogue_output_clock(self.control_axis)
                 retval2 = self._output_device.close_analogue_output(self.control_axis)
             except:
                 self.log.warn("Closing the Analogue scanner did not work")
@@ -554,7 +555,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("Setting up analogue output for scanning failed.")
             return -1
 
-        if 0 > self._output_device.set_up_analogue_output_clock(clock_frequency=self._clock_frequency):
+        if 0 > self._output_device.set_up_analogue_output_clock(self.control_axis,
+                                                                clock_frequency=self._clock_frequency):
             # Fixme: I do not think this is necessary. However it should be checked.
             # self.set_position('scanner')
             self.log.error("Problems setting up analogue output clock.")
@@ -564,20 +566,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if 0 > self._output_device.configure_analogue_timing(self.control_axis, len(self.ramp)):
             self.log.error("Not possible to set appropriate timing for analogue scan.")
             self.close_analogue_stabilisation()
-            self._output_device.close_analogue_output_clock()
+            self._output_device.close_analogue_output_clock(self.control_axis)
             return -1
 
         # Initialise analogue input readout
         # Fixme: This needs still to be verified
         # The clock needs half speed because internally only halve the clock speed is taken
-        if 0 < self._feedback_device.set_up_analogue_voltage_reader_clock(clock_frequency=self._clock_frequency / 2,
-                                                                          set_up=False):
-            self.log.error("Setting up analogue input clock for scanning failed.")
+        if 0 < self._feedback_device.add_clock_task_to_channel(self.control_axis, [self.feedback_axis]):
+            self.log.error("Adding up analogue input clock for scanning failed.")
             self._close_scanner()
             return -1
         if 0 < self._feedback_device.set_up_analogue_voltage_reader_scanner(len(self.ramp),
-                                                                            self.feedback_axis,
-                                                                            clock_channel=None):
+                                                                            self.feedback_axis):
             self.log.error("Setting up analogue input for scanning failed.")
             self._close_scanner()
             return -1
@@ -591,7 +591,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
     def _close_scanner(self):
         try:
-            retval1 = self._output_device.close_analogue_output_clock()
+            retval1 = self._output_device.close_analogue_output_clock(self.control_axis)
             retval2 = self._output_device.close_analogue_output(self.control_axis)
             retval3 = self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
         except:

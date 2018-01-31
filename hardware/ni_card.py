@@ -2369,7 +2369,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             self.log.error('The same analogue input task is already running, close this one '
                            'first.')
             return -1
-
+        # value defined for readout and wait until done
+        self._analogue_input_samples[analogue_channel] = 1
         try:
             # This task will read an analogue voltage with binning defined by a clock
             # Initialize a Task
@@ -2403,8 +2404,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         return 0
 
     def set_up_analogue_voltage_reader_scanner(self, samples,
-                                               analogue_channel,
-                                               clock_channel=None, clock_frequency=None):
+                                               analogue_channel):
         """Initializes task for reading an analogue input voltage with the Nidaq for a finite
         number of samples at a given frequency.
 
@@ -2414,8 +2414,6 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         @param int samples: Defines how many values are to be measured
         @param string analogue_channel: the representative name of the analogue channel for
                                         which the task is created
-        @param string clock_channel: if defined, this specifies the clock for
-                                     the analogue reader
 
         @return int: error code (0:OK, -1:error)
         """
@@ -2424,7 +2422,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                            "input channel", analogue_channel)
             return -1
 
-        if self._scanner_clock_daq_task is None and clock_channel is None:
+        if analogue_channel not in self._clock_daq_task_new:
             self.log.error('No clock running, call set_up_clock before starting the analogue '
                            'reader.')
             return -1
@@ -2434,15 +2432,17 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                            'close this one first.')
             return -1
 
-        if clock_channel is not None:
-            my_clock_channel = clock_channel
-        else:
-            my_clock_channel = self._scanner_clock_channel
+        if analogue_channel not in self._clock_channel_new:
+            self.log.error("The clock channel for this task %s is not defined.", analogue_channel)
+            return -1
+        my_clock_channel = self._clock_channel_new[analogue_channel]
 
-        if clock_frequency is not None:
-            self._analogue_input_clock_frequency = clock_frequency
-        else:
-            clock_frequency = self._analogue_input_clock_frequency
+        #Fixme: Is this sensible?
+        if analogue_channel not in self._clock_frequency_new:
+            self.log.error("The clock frequency for this task %s is not defined.", analogue_channel)
+            return -1
+        #Todo: Fins usage of analaogue clock frequency.
+        clock_frequency = self._clock_frequency_new[analogue_channel]
 
         # value defined for readout and wait until done
         self._analogue_input_samples[analogue_channel] = samples
@@ -2479,7 +2479,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 my_clock_channel + 'InternalOutput',
                 # The sampling rate in samples per second per channel. Set this value to the
                 # maximum expected rate of that clock.
-                self._analogue_input_clock_frequency * 2,
+                clock_frequency,
                 # the edge off the clock on which to acquire the sample
                 daq.DAQmx_Val_Rising,
                 # Sample Mode: set the task to read a specified number of samples
@@ -2538,7 +2538,8 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return -1
 
         # check if clock is running in case clock is needed (samples >1)
-        if self._scanner_clock_daq_task is None and self._analogue_input_samples[analogue_channel_orig] != 1:
+        if analogue_channel_orig not in self._clock_daq_task_new and self._analogue_input_samples[
+            analogue_channel_orig] != 1:
             self.log.error('No clock running, call set_up_clock before starting the analogue '
                            'reader.')
             return -1
@@ -2571,15 +2572,29 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 return -1
             # add sample number for this channel
             self._analogue_input_samples[channel] = self._analogue_input_samples[analogue_channel_orig]
+            if analogue_channel_orig in self._clock_daq_task_new:
+                # add channels to clock task if this is a clocked task
+                self.add_clock_task_to_channel(analogue_channel_orig, analogue_channels)
         return 0
 
-    def set_up_continuous_analog_reader(self, analogue_channel, clock_channel=None):
+    def set_up_continuous_analog_reader(self, analogue_channel):
+        """Initializes task for reading an analogue input voltage with the Nidaq continuously
+        at a given frequency.
+
+        It reads a RSE connected voltage from the analogue inputs. For every period of
+        time (given by the frequency) it reads the voltage at the analogue channel.
+
+        @param string analogue_channel: the representative name of the analogue channel for
+                                        which the task is created
+
+        @return int: error code (0:OK, -1:error)
+        """
         if analogue_channel not in self._analogue_input_channels.keys():
             self.log.error("The given analogue input channel %s is not defined. Please define the "
                            "input channel", analogue_channel)
             return -1
 
-        if self._scanner_clock_daq_task is None and clock_channel is None:
+        if analogue_channel not in self._clock_daq_task_new:
             self.log.error('No clock running, call set_up_clock before starting the analogue '
                            'reader.')
             return -1
@@ -2589,10 +2604,17 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                            'close this one first.')
             return -1
 
-        if clock_channel is not None:
-            my_clock_channel = clock_channel
-        else:
-            my_clock_channel = self._scanner_clock_channel
+        if analogue_channel not in self._clock_channel_new:
+            self.log.error("The clock channel for this task %s is not defined.", analogue_channel)
+            return -1
+        my_clock_channel = self._clock_channel_new[analogue_channel]
+
+        if analogue_channel not in self._clock_frequency_new:
+            self.log.error("The clock frequency for this task %s is not defined.", analogue_channel)
+            return -1
+        #Todo: Fins usage of analaogue clock frequency.
+        clock_frequency = self._clock_frequency_new[analogue_channel]
+
 
         try:
             # for i, ch in enumerate(my_counter_channels):
@@ -2626,7 +2648,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 my_clock_channel + 'InternalOutput',
                 # The sampling rate in samples per second per channel. Set this value to the
                 # maximum expected rate of that clock.
-                self._analogue_input_clock_frequency * 2,
+                clock_frequency,
                 # the edge off the clock on which to acquire the sample
                 daq.DAQmx_Val_Rising,
                 # Sample Mode: set the task to read a specified number of samples
@@ -2665,9 +2687,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
 
     # Todo: Add option to keep track of the result per channel as with a dictionary it might change for every channel
     # but it is defined in  a very specific way.
-    def set_up_analogue_voltage_reader_clock(self, clock_frequency=None, clock_channel=None,
+    def set_up_analogue_voltage_reader_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
                                              set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
+        @param key analogue_channel: The channel for which the clock is to be setup
 
         @param float clock_frequency: if defined, this sets the frequency of
                                       the clock (in Hz)
@@ -2692,11 +2715,10 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # code but not in reality and serves readability in the logic code
             return 0
 
-        # Todo: Check if this divided by 2 is sensible
-        return self.set_up_clock(
-            clock_frequency=clock_frequency / 2,  # because it will be multiplied by 2 in the setup
-            clock_channel=clock_channel,
-            scanner=True)
+        # Todo: Check if this divided by 2 is sensible  # because it will be multiplied by 2 in the setup
+        return self.set_up_clock_new(analogue_channel,
+                                     clock_frequency=clock_frequency,
+                                     clock_channel=clock_channel)
 
     def start_analogue_voltage_reader(self, analogue_channel, start_clock=False):
         """
@@ -2716,11 +2738,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel in self._analogue_input_daq_tasks:
             if start_clock:
                 try:  # Stop clock
-                    daq.DAQmxStopTask(self._scanner_clock_daq_task)
+                    daq.DAQmxStopTask(self._clock_daq_task_new[analogue_channel])
                 except:
                     self.log.warning('Error while stopping analogue voltage reader clock')
                 try:  # star
-                    daq.DAQmxStartTask(self._scanner_clock_daq_task)
+                    daq.DAQmxStartTask(self._clock_daq_task_new[analogue_channel])
                 except:
                     self.log.error('Error while starting up analogue voltage reader clock')
                     return -1
@@ -2829,7 +2851,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         # check if correct type was specified
         if type(analogue_channel) != str:
-            self.log.error("analogue channel needs to be passed as a string. A different "
+            self.log.error("Analogue channel needs to be passed as a string. A different "
                            "variable type (%s) was used", type(analogue_channel))
             return -1
         # check if task for channel exists
@@ -2861,12 +2883,12 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         """
         # check if correct type was specified
         if type(analogue_channel) != str:
-            self.log.error("analogue channel needs to be passed as a string. A different "
+            self.log.error("Analogue channel needs to be passed as a string. A different "
                            "variable type (%s) was used", type(analogue_channel))
             return -1
 
         # check if task for channel exists
-        if analogue_channel in self._analogue_input_daq_tasks.keys():
+        if analogue_channel in self._analogue_input_daq_tasks:
             # retrieve task from dictionary and erase from dictionary
             task = self._analogue_input_daq_tasks.pop(analogue_channel)
             self._analogue_input_samples.pop(analogue_channel, None)
@@ -2898,16 +2920,18 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 'Cannot close Analogue Input Reader Task since it is not running or configured!')
             return -1
 
-    def close_analogue_voltage_reader_clock(self):
+    def close_analogue_voltage_reader_clock(self, analogue_channel, close=True):
         """ Closes the analogue voltage input reader clock and cleans up afterwards.
+        @param key analogue_channel: The channel for which the clock is to be closed.
+        @param bool close: decides if the clock is actually closed. If True closes and cleans up clock,
+            else dummy method for logic
 
         @return int: error code (0:OK, -1:error)
         """
-        if True:
-            # Todo: Fix this
-            return self.close_clock(scanner=True)
+        if close:
+            return self.close_clock_new(analogue_channel)
         else:
-            # no clock was running as it is only started for samples>2
+            # this way it is a dummy method to make programming from logic more consistent
             return 0
 
     def get_analogue_resolution(self):
@@ -2931,6 +2955,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                 return -1
             # As self.start_finite_counter starts the clock, which is the same for analog input and finite counter
             # the analogue clock was started. Therefore the clock status can be changed
+            # Fixme: Should this (next) not be done before the clock is started?
             try:
                 daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
             except:
@@ -3096,10 +3121,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             None)
         return samples_written.value
 
-    def set_up_analogue_output_clock(self, clock_frequency=None, clock_channel=None,
+    def set_up_analogue_output_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
                                      set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
+        @param key analogue_channel: The channel for which the clock is to be setup
         @param float clock_frequency: if defined, this sets the frequency of
                                       the clock (in Hz). If not defined the scanner clock frequency will be used.
         @param string clock_channel: if defined, this is the physical channel
@@ -3123,39 +3149,52 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # code but not in reality and serves readability in the logic code
             return 0
 
-        # Todo: Check if this divided by 2 is sensible
-        return self.set_up_clock(
-            clock_frequency=clock_frequency,  # because it will be multiplied by 2 in the setup
-            clock_channel=clock_channel,
-            scanner=True)
+        return self.set_up_clock_new(analogue_channel,
+                                     clock_frequency=clock_frequency,  # because it will be multiplied by 2 in the setup
+                                     clock_channel=clock_channel)
 
     def configure_analogue_timing(self, analogue_channel, length):
+        """
+        Set the timing of this analogue channel to a finite amount of samples (length) with implicit timing
+        @param key analogue_channel: The channel for which the timing is to be configured
+        @param int length: The amount of clock cycles to be set
+
+        @return int: error code (0:OK, -1:error)
+        """
 
         if analogue_channel not in self._analogue_output_daq_tasks:
             self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
             return -1
+        if analogue_channel not in self._clock_daq_task_new:
+            self.log.error('The analogue output channel %s has no clock task configured.', analogue_channel)
+            return -1
+        if not isinstance(length, int):
+            self.log.error("The amount of samples needs to be given as integer, but type %s was given.", type(length))
 
-        #Todo: Error catch
-        daq.DAQmxCfgSampClkTiming(
-            # add to this task
-            self._analogue_output_daq_tasks[analogue_channel],
-            # use this channel as clock
-            self._scanner_clock_channel + 'InternalOutput',
-            # Maximum expected clock frequency
-            self._scanner_clock_frequency,
-            # Generate sample on falling edge
-            daq.DAQmx_Val_Falling,
-            # generate finite number of samples
-            daq.DAQmx_Val_FiniteSamps,
-            # number of samples to generate
-            length)
-        daq.DAQmxCfgImplicitTiming(
-            # define task
-            self._scanner_clock_daq_task,
-            # only a limited number of# counts
-            daq.DAQmx_Val_FiniteSamps,
-            # count twice for each voltage +1 for safety
-            length)
+        try:
+            daq.DAQmxCfgSampClkTiming(
+                # add to this task
+                self._analogue_output_daq_tasks[analogue_channel],
+                # use this channel as clock
+                self._clock_channel + 'InternalOutput',
+                # Maximum expected clock frequency
+                self._analogue_output_clock_frequency,
+                # Generate sample on falling edge
+                daq.DAQmx_Val_Falling,
+                # generate finite number of samples
+                daq.DAQmx_Val_FiniteSamps,
+                # number of samples to generate
+                length)
+            daq.DAQmxCfgImplicitTiming(
+                # define task
+                self._clock_daq_task_new[analogue_channel],
+                # only a limited number of# counts
+                daq.DAQmx_Val_FiniteSamps,
+                # count twice for each voltage +1 for safety
+                length)
+        except:
+            self.log.exception("Not possible to configure timing for analogue channel %s", analogue_channel)
+            return -11
         return 0
 
     def analogue_scan_line(self, analogue_channel, voltages):
@@ -3163,10 +3202,14 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel not in self._analogue_output_daq_tasks:
             self.log.error('The analogue output channel %s has no output task configured.', analogue_channel)
             return -1
-        # Fixme: When more than one channel can be done at a time this needs to be taken care of here by deviding the
+        # Fixme: When more than one channel can be done at a time this needs to be taken care of here by dividing the
         # number of samples by the number of channels to get an accurate length of passed samples per channel
         length = len(voltages)  # convert to np array
         voltages_array = np.array(voltages)
+
+        if analogue_channel not in self._clock_daq_task_new:
+            self.log.error('The analogue output channel %s has no clock task configured.', analogue_channel)
+            return -1
 
         try:
             # write the positions to the analog output
@@ -3178,18 +3221,18 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             # start the timed analog output task
             self.start_analogue_output(analogue_channel)
 
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
-            daq.DAQmxStartTask(self._scanner_clock_daq_task)
-            time_out = 1. / self._scanner_clock_frequency
+            daq.DAQmxStopTask(self._clock_daq_task_new[analogue_channel])
+            daq.DAQmxStartTask(self._clock_daq_task_new[analogue_channel])
+            time_out = 1. / self._analogue_output_clock_frequency
             # wait for the scanner clock to finish
             daq.DAQmxWaitUntilTaskDone(
                 # define task
-                self._scanner_clock_daq_task,
+                self._clock_daq_task_new[analogue_channel],
                 # maximal timeout for the counter times the positions
                 time_out * 2 * length)
-            #output = self.get_analogue_voltage_reader(["APD"])
+            # output = self.get_analogue_voltage_reader(["APD"])
             # stop the clock task
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            daq.DAQmxStopTask(self._clock_daq_task_new[analogue_channel])
 
             # stop the analog output task
             self.stop_analogue_output(analogue_channel)
@@ -3217,11 +3260,11 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
         if analogue_channel in self._analogue_output_daq_tasks:
             if start_clock:
                 try:  # Stop clock
-                    daq.DAQmxStopTask(self._scanner_clock_daq_task)
+                    daq.DAQmxStopTask(self._clock_daq_task_new[analogue_channel])
                 except:
                     self.log.warning('Error while stopping analogue voltage reader clock')
                 try:  # star
-                    daq.DAQmxStartTask(self._scanner_clock_daq_task)
+                    daq.DAQmxStartTask(self._clock_daq_task_new[analogue_channel])
                 except:
                     self.log.error('Error while starting up analogue voltage reader clock')
                     return -1
@@ -3273,7 +3316,7 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
     def close_analogue_output(self, analogue_channel=None, scanner=False):
         """ Stops the analog output task.
 
-        @analogue_channel str: one of the analogue channels for which the task to be stopped is
+        @param key analogue_channel: one of the analogue channels for which the task to be stopped is
                             configured. If more than one channel uses this task,
                             all channel readings will be stopped.
 
@@ -3337,16 +3380,19 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
                     'Cannot close Analogue Input Reader Task since it is not running or configured!')
                 return -1
 
-    def close_analogue_output_clock(self):
+    def close_analogue_output_clock(self, analogue_channel, close=True):
         """ Closes the analogue output clock and cleans up afterwards.
+
+        @param key analogue_channel: The channel for which the clock is to be closed.
+        @param bool close: decides if the clock is actually closed. If True closes and cleans up clock,
+            else dummy method for logic
 
         @return int: error code (0:OK, -1:error)
         """
-        if True:
-            # Todo: Fix this if
-            return self.close_clock(scanner=True)
+        if close:
+            return self.close_clock_new(analogue_channel)
         else:
-            # no clock was running as it is only started for samples>2
+            # this way it is a dummy method to make programming from logic more consistent
             return 0
 
     # =============================== End AnalogOutputInterface Commands  =======================

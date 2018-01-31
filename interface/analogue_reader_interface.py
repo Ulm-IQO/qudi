@@ -33,7 +33,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
     _modclass = 'interface'
 
     @abc.abstractmethod
-    def set_up_analogue_voltage_reader_clock(self, clock_frequency=None, clock_channel=None,
+    def set_up_analogue_voltage_reader_clock(self, analogue_channel, clock_frequency=None, clock_channel=None,
                                              set_up=True):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -155,7 +155,7 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def close_analogue_voltage_reader_clock(self):
+    def close_analogue_voltage_reader_clock(self, analogue_channel):
         """ Closes the analogue voltage input reader clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
@@ -168,11 +168,29 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         @return int: input bit resolution """
         pass
 
+    @abc.abstractmethod
     def start_ai_counter_reader(self, analogue_channel):
         """Starts task of reading analogue voltage and finite counts synchronised.
 
         @param  string analogue_channel: the representative name of the analogue channel for
                                         which the task is created
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def add_clock_task_to_channel(self, task_name, channels):
+        """
+        This function adds additional pointer to an already existing clock task.
+        Thereby many pointers can control this task. this is helpful if the same clock is used for different purposes
+        or synchronisation.
+        For this method another method needed to setup the clock task already.
+        Use set_up_clock_new
+
+        @param key task_name: the representative name of the analogue channel
+                                    task to which this channel is to be added
+        @param List(keys) channels: The new channels to be added to the task
+
         @return int: error code (0:OK, -1:error)
         """
         pass
