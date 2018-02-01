@@ -63,6 +63,9 @@
     <item>
      <layout class="QVBoxLayout" name="verticalLayout">
       <item>
+       <widget class="QComboBox" name="odmr_channel_ComboBox"/>
+      </item>
+      <item>
        <widget class="ScienDSpinBox" name="odmr_cb_max_DoubleSpinBox">
         <property name="maximumSize">
          <size>
