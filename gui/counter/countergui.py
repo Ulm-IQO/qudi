@@ -239,7 +239,7 @@ class CounterGui(GUIBase):
         """
 
         if self._counting_logic.module_state() == 'locked':
-            if 0 < self._counting_logic.countdata_smoothed[(self._display_trace-1), -1] < 1:
+            if 0 < self._counting_logic.countdata_smoothed[(self._display_trace-1), -1] < 10:
                 self._mw.count_value_Label.setText(
                     '{0:,.6f}'.format(self._counting_logic.countdata_smoothed[(self._display_trace-1), -1]))
             else:
@@ -262,6 +262,8 @@ class CounterGui(GUIBase):
                 if ymin > self._counting_logic.countdata[i].min() and self._trace_selection[i]:
                     ymin = self._counting_logic.countdata[i].min()
 
+            if ymin == ymax:
+                ymax += 0.1
             self._pw.setYRange(0.95*ymin, 1.05*ymax)
 
         if self._counting_logic.get_saving_state():
