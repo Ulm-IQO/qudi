@@ -43,7 +43,7 @@ from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
 #FIXME: Display the Pulse
@@ -474,7 +474,7 @@ class PulsedMeasurementGui(GUIBase):
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
                         input_obj.setValue(default_val)
                     elif type(default_val) is int:
-                        input_obj = ScienSpinBox(groupBox)
+                        input_obj = QtWidgets.QSpinBox(groupBox)
                         input_obj.setMaximum(2**31 - 1)
                         input_obj.setMinimum(-2**31 + 1)
                         input_obj.setValue(default_val)

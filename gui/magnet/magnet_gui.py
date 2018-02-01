@@ -663,7 +663,7 @@ class MagnetGui(GUIBase):
             # in the ScienDSpinBox the decimals are actually the number of
             # significant digits, therefore set them here by default:
             dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
@@ -719,7 +719,7 @@ class MagnetGui(GUIBase):
             # in the ScienDSpinBox the decimals are actually the number of
             # significant digits, therefore set them here by default:
             dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
@@ -836,7 +836,7 @@ class MagnetGui(GUIBase):
             # in the ScienDSpinBox the decimals are actually the number of
             # significant digits, therefore set them here by default:
             dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
