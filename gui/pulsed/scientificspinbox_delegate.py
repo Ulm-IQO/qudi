@@ -108,7 +108,6 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         if not isinstance(value, float):
             value = self.item_dict['init_val']
         editor.setValue(value)
-        editor.selectNumber()   # that is specific for the ScientificSpinBox
 
     def setModelData(self, scien_spinBox_ref, model, index):
         """ Save the data of the editor to the model of the QTableWidget.
@@ -129,7 +128,6 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         """
 
         # spinBox_ref.interpretText()
-        scien_spinBox_ref.interpret() # that is specific for the ScientificSpinBox
         value = scien_spinBox_ref.value()
         self.value = value
         # set the data to the table model:
