@@ -174,7 +174,7 @@ class SingleShotLogic(GenericLogic):
 
         # TODO make the type of pulsed extraction adjustable
         self._pe_logic.number_of_lasers = n_laserpulses
-        self._pe_logic.conv_std_dev = smoothing
+        self._pe_logic.extraction_settings['conv_std_dev'] = smoothing
         return_dict = self._pe_logic.ungated_extraction_methods['conv_deriv'](summed_pulses)
         rising_ind = return_dict['laser_indices_rising']
         falling_ind = return_dict['laser_indices_falling']
@@ -484,7 +484,7 @@ class SingleShotLogic(GenericLogic):
         self._optimizer_logic.start_refocus(curr_pos, caller_tag='singleshot_logic')
 
         # check just the state of the optimizer
-        while self._optimizer_logic.getState() != 'idle':
+        while self._optimizer_logic.module_state() != 'idle':
             time.sleep(0.5)
 
         # use the position to move the scanner

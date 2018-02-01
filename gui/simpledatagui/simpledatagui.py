@@ -139,7 +139,7 @@ class SimpleDataGui(GUIBase):
                 x=np.arange(0, len(self._simple_logic.smooth[24:-25-10]))
                 )
 
-        if self._simple_logic.getState() == 'locked':
+        if self._simple_logic.module_state() == 'locked':
             self._mw.startAction.setText('Stop')
         else:
             self._mw.startAction.setText('Start')
@@ -147,7 +147,7 @@ class SimpleDataGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._simple_logic.getState() == 'locked':
+        if self._simple_logic.module_state() == 'locked':
             self._mw.startAction.setText('Start')
             self.sigStop.emit()
         else:
