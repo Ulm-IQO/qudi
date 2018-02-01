@@ -254,7 +254,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 self.log.exception('Could not close the analogue input reader.')
             self.stopRequested = False
             self.log.info("Cavity stabilisation stopped successfully")
-            return
+            return 0
 
         # fixme: This needs to be dione with analogue voltage scanner. this is only a quick fix
         voltage_list = []
@@ -277,16 +277,19 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 # but not helpful for random fluctuations or non directional vibrations. Might help for length changes
                 # during step scanning due to tilted samples. Here we assume now moving in the same direction
                 # will be enough
+            else:
+                self.signal_stabilise_cavity.emit()
         else:
             if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
                     self.axis_class[self.feedback_axis].feedback_precision_voltage:
                 self._optimize_cavity_length(voltage_result)
+            else:
+                self.signal_stabilise_cavity.emit()
+
 
         # if a maximum speed of the readout should be wanted a time.sleep can be added.
         # for this one should measure the time the operation requires. The difference between the minimum time between
         # steps and the time elapsed can then be stayed in the sleep state by the program
-
-        self.signal_stabilise_cavity.emit()
 
     def _optimize_cavity_length(self, previous_voltage, direction=True):
         """ Changes cavity length by a PID loop kind of function to get the voltage value below the threshold again
@@ -298,6 +301,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: Maybe it is sensible to make a safety net of: it can only be repeated 500 times or something
         # before it has to stop
         if self.stopRequested:
+            self.log.info("Stabilisation has been stopped during optimisation")
+            self.signal_stabilise_cavity.emit()
             return 0
 
         voltage_result = self.change_and_measure(self.feedback_axis, self.control_axis,
@@ -305,18 +310,19 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                                                  direction=direction)
         if voltage_result < 0:
             self.stopRequested = True
+            self.signal_stabilise_cavity.emit()
             return -1
 
         if self.reflection:
             # check if resonances has been reached
-            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
-                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > precision:
                 # the optimisation has been successful. Stop method
+                self.signal_stabilise_cavity.emit()
                 return 0
         else:
             # check if resonances has been reached
-            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
-                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > precision:
+                self.signal_stabilise_cavity.emit()
                 return 0
 
         # update position and leave algorithm if position was reached.
@@ -329,6 +335,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                                                      direction=direction)
             if voltage_result < 0:
                 self.stopRequested = True
+                self.signal_stabilise_cavity.emit()
                 return -1
             if abs(voltage_result - previous_voltage) < precision:  # comparing floats
                 # move back to previous position. This is a safety precaution
@@ -337,14 +344,16 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                                                          direction=not direction)
                 if voltage_result < 0:
                     self.stopRequested = True
+                    self.signal_stabilise_cavity.emit()
                     return -1
+                self.signal_stabilise_cavity.emit()
                 return 0
 
         if self.reflection:
             # check if resonances has been reached
-            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > \
-                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+            if voltage_result < self.threshold and abs(self.threshold - voltage_result) > precision:
                 # the optimisation has been successful. Stop method
+                self.signal_stabilise_cavity.emit()
                 return 0
             # else check if stepping direction was sensible
             if voltage_result > previous_voltage:
@@ -353,8 +362,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 # else: keep direction
         else:
             # check if resonances has been reached
-            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
-                    self.axis_class[self.feedback_axis].feedback_precision_volt:
+            if voltage_result > self.threshold and abs(self.threshold - voltage_result) > precision:
+                self.signal_stabilise_cavity.emit()
                 return 0
             # else check if stepping direction was sensible
             if voltage_result > previous_voltage:
