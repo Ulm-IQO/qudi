@@ -194,7 +194,7 @@ class GatedCounterGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter. """
 
-        if self._counter_logic.getState() != 'locked':
+        if self._counter_logic.module_state() != 'locked':
             self.sigStartGatedCounter.emit()
             self._mw.start_counter_Action.setEnabled(False)
             self._mw.stop_counter_Action.setEnabled(True)
@@ -202,7 +202,7 @@ class GatedCounterGui(GUIBase):
     def stop_clicked(self):
         """ Handling the Stop button to stop and restart the counter. """
 
-        if self._counter_logic.getState() == 'locked':
+        if self._counter_logic.module_state() == 'locked':
             self.sigStopGatedCounter.emit()
             self.reset_toolbar_display()
 
@@ -245,7 +245,7 @@ class GatedCounterGui(GUIBase):
     def update_trace(self):
         """ The function that grabs the data and sends it to the plot. """
 
-        if self._counter_logic.getState() == 'locked':
+        if self._counter_logic.module_state() == 'locked':
             self._trace1.setData(x=np.arange(0, self._counter_logic.get_count_length()),
                                  y=self._counter_logic.countdata[0] )
 

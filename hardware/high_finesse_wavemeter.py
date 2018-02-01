@@ -65,7 +65,7 @@ class HardwarePull(QtCore.QObject):
         """
 
         # update as long as the state is busy
-        if self._parentclass.getState() == 'running':
+        if self._parentclass.module_state() == 'running':
             # get the current wavelength from the wavemeter
             temp1=float(self._parentclass._wavemeterdll.GetWavelength(0))
             temp2=float(self._parentclass._wavemeterdll.GetWavelength(0))
@@ -166,7 +166,7 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
 
     def on_deactivate(self):
-        if self.getState() != 'idle' and self.getState() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_acqusition()
         self.hardware_thread.quit()
         self.sig_handle_timer.disconnect()
@@ -200,12 +200,12 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         """
 
         # first check its status
-        if self.getState() == 'running':
+        if self.module_state() == 'running':
             self.log.error('Wavemeter busy')
             return -1
 
 
-        self.run()
+        self.module_state.run()
         # actually start the wavemeter
         self._wavemeterdll.Operation(self._cCtrlStartMeasurment) #starts measurement
 
@@ -220,14 +220,14 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
         @return int: error code (0:OK, -1:error)
         """
         # check status just for a sanity check
-        if self.getState() == 'idle':
+        if self.module_state() == 'idle':
             self.log.warning('Wavemeter was already stopped, stopping it '
                     'anyway!')
         else:
             # stop the measurement thread
             self.sig_handle_timer.emit(True)
             # set status to idle again
-            self.stop()
+            self.module_state.stop()
 
         # Stop the actual wavemeter measurement
         self._wavemeterdll.Operation(self._cCtrlStop)
