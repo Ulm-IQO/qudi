@@ -25,6 +25,7 @@ import time
 from qtpy import QtCore
 
 from core.module import Base, ConfigOption
+from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
@@ -166,7 +167,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         with the appropriate integer value.
         """
 
-        maindir = self.get_main_dir()
+        maindir = get_main_dir()
 
         filename = os.path.join(maindir, 'hardware', 'PicoQuant', 'errorcodes.h')
         try:

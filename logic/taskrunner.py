@@ -250,7 +250,8 @@ class TaskRunner(GenericLogic):
             for moddef, mod in task['needsmodules'].items():
                 if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
                     self._manager.startModule('logic', mod)
-                if mod in self._manager.tree['loaded']['logic'] and not self._manager.tree['loaded']['logic'][mod].isstate('deactivated'):
+                if (mod in self._manager.tree['loaded']['logic']
+                        and not self._manager.tree['loaded']['logic'][mod].module_state.isstate('deactivated')):
                     modok = True
             # print(task['name'], ppok, pok, modok)
             task['ok'] = ppok and pok and modok

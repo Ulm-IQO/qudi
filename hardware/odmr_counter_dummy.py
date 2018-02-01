@@ -86,7 +86,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.log.info('ODMRCounterDummy>set_up_odmr')
 
-        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
+        if self.module_state() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
                     'first.')
             return -1
@@ -118,12 +118,12 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return float[]: the photon counts per second
         """
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A scan_line is already running, close this one '
                            'first.')
             return -1
 
-        self.lock()
+        self.module_state.lock()
 
 
         self._odmr_length = length
@@ -146,7 +146,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         time.sleep(self._odmr_length*1./self._clock_frequency)
 
-        self.unlock()
+        self.module_state.unlock()
 
         return count_data
 

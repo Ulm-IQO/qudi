@@ -133,11 +133,11 @@ class ODMRLogic(GenericLogic):
         """ Deinitialisation performed during deactivation of the module.
         """
         # Stop measurement if it is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.stop_odmr_scan()
         timeout = 30.0
         start_time = time.time()
-        while self.getState() == 'locked':
+        while self.module_state() == 'locked':
             time.sleep(0.5)
             timeout -= (time.time() - start_time)
             if timeout <= 0.0:
@@ -211,7 +211,7 @@ class ODMRLogic(GenericLogic):
 
         @return object: actually set trigger polarity returned from hardware
         """
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             self.mw_trigger_pol = self._mw_device.set_ext_trigger(trigger_pol)
         else:
             self.log.warning('set_trigger_pol failed. Logic is locked.')
@@ -229,7 +229,7 @@ class ODMRLogic(GenericLogic):
         @return int: actually set clock frequency
         """
         # checks if scanner is still running
-        if self.getState() != 'locked' and isinstance(clock_frequency, (int, float)):
+        if self.module_state() != 'locked' and isinstance(clock_frequency, (int, float)):
             self.clock_frequency = int(clock_frequency)
         else:
             self.log.warning('set_clock_frequency failed. Logic is either locked or input value is '
@@ -270,7 +270,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.warning('set_runtime failed. Input parameter runtime is no integer or float.')
 
-        update_dict = {'runtime': self.run_time}
+        update_dict = {'run_time': self.run_time}
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
@@ -282,7 +282,7 @@ class ODMRLogic(GenericLogic):
 
         @return (float, float): actually set frequency in Hz, actually set power in dBm
         """
-        if self.getState() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
+        if self.module_state() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
             constraints = self.get_hw_constraints()
             frequency_to_set = constraints.frequency_in_range(frequency)
             power_to_set = constraints.power_in_range(power)
@@ -308,7 +308,7 @@ class ODMRLogic(GenericLogic):
                                             current freq_step, current power
         """
         limits = self.get_hw_constraints()
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             if isinstance(start, (int, float)):
                 self.mw_start = limits.frequency_in_range(start)
             if isinstance(stop, (int, float)):
@@ -334,7 +334,7 @@ class ODMRLogic(GenericLogic):
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('Can not start microwave in CW mode. ODMRLogic is already locked.')
         else:
             self.cw_mw_frequency, \
@@ -467,11 +467,11 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
 
-            self.lock()
+            self.module_state.lock()
             self._clearOdmrData = False
             self.stopRequested = False
             self.fc.clear_result()
@@ -485,13 +485,13 @@ class ODMRLogic(GenericLogic):
             if odmr_status < 0:
                 mode, is_running = self._mw_device.get_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             mode, is_running = self.mw_sweep_on()
             if not is_running:
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             self._initialize_odmr_plots()
@@ -512,11 +512,11 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
 
-            self.lock()
+            self.module_state.lock()
             self.stopRequested = False
             self.fc.clear_result()
 
@@ -527,13 +527,13 @@ class ODMRLogic(GenericLogic):
             if odmr_status < 0:
                 mode, is_running = self._mw_device.get_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             mode, is_running = self.mw_sweep_on()
             if not is_running:
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             self.sigNextLine.emit()
@@ -545,7 +545,7 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.stopRequested = True
         return 0
 
@@ -555,7 +555,7 @@ class ODMRLogic(GenericLogic):
         The clear operation has to be performed within the method
         _scan_odmr_line. This method just sets the flag for that. """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self._clearOdmrData = True
         return
 
@@ -566,7 +566,7 @@ class ODMRLogic(GenericLogic):
         """
         with self.threadlock:
             # If the odmr measurement is not running do nothing
-            if self.getState() != 'locked':
+            if self.module_state() != 'locked':
                 return
 
             # Stop measurement if stop has been requested
@@ -574,7 +574,7 @@ class ODMRLogic(GenericLogic):
                 self.stopRequested = False
                 self.mw_off()
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return
 
             # if during the scan a clearing of the ODMR data is needed:
@@ -872,7 +872,7 @@ class ODMRLogic(GenericLogic):
         """
         timeout = 30
         start_time = time.time()
-        while self.getState() != 'idle':
+        while self.module_state() != 'idle':
             time.sleep(0.5)
             timeout -= (time.time() - start_time)
             if timeout <= 0:
@@ -889,10 +889,10 @@ class ODMRLogic(GenericLogic):
         self.start_odmr_scan()
 
         # wait until the scan has started
-        while self.getState() != 'locked':
+        while self.module_state() != 'locked':
             time.sleep(1)
         # wait until the scan has finished
-        while self.getState() == 'locked':
+        while self.module_state() == 'locked':
             time.sleep(1)
 
         # Perform fit if requested
