@@ -146,8 +146,17 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         self.precision = 6
         self.validator = FloatValidator()
         self.setDecimals(1000)
+        self.dynamic_stepping = True
         self.setSingleStep(0.0)  # 0.0 is identified as default behaviour and will increment the
                                  # second most significant digit of the integer value.
+
+    def setSingleStep(self, val):
+        if val <= 0.0:
+            self.dynamic_stepping = True
+        else:
+            self.dynamic_stepping = False
+            super().setSingleStep(val)
+        return
 
     def validate(self, text, position):
         """
@@ -268,7 +277,7 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
 
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
-        if self.singleStep() == 0.0:
+        if self.dynamic_stepping:
             text = self.text()
             groups = self.validator.float_re.search(text).groups()
             integer_str = groups[self.validator.group_map['integer']]
@@ -277,7 +286,7 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
 
             if not integer_str:
                 integer_str = '0'
-            elif not fractional_str:
+            if not fractional_str:
                 fractional_str = '0'
 
             integer_value = int(integer_str)
@@ -291,23 +300,29 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
             if si_prefix:
                 float_str += ' {0}'.format(si_prefix)
 
+            # constraint new value to allowed min/max range
+            if fn.siEval(float_str) > self.maximum():
+                float_str = self.textFromValue(self.maximum())
+            elif fn.siEval(float_str) < self.minimum():
+                float_str = self.textFromValue(self.minimum())
+
+            if self.prefix():
+                float_str = self.prefix() + float_str
+            if self.suffix():
+                float_str += self.suffix()
+
+            self.lineEdit().setText(float_str)
         else:
+            text = self.text()
             value = self.value()
-            value += steps * self.singleStep()
-            float_str = self.textFromValue(value)
-
-        # constraint new value to allowed min/max range
-        if fn.siEval(float_str) > self.maximum():
-            float_str = self.textFromValue(self.maximum())
-        elif fn.siEval(float_str) < self.minimum():
-            float_str = self.textFromValue(self.minimum())
-
-        if self.prefix():
-            float_str = self.prefix() + float_str
-        if self.suffix():
-            float_str += self.suffix()
-
-        self.lineEdit().setText(float_str)
+            new_value = value + steps * self.singleStep()
+            self.setValue(new_value)
+            while text == self.text():
+                self.precision += 1
+                self.setValue(value)
+                text = self.text()
+                self.setValue(new_value)
+                # raise UserWarning('The set step size is much smaller than the displayed magnitude.')
         return
 
 
