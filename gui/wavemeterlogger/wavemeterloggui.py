@@ -159,8 +159,6 @@ class WavemeterLogGui(GUIBase):
         self._right_axis.addItem(self.curve_nm_counts)
         self._top_axis.addItem(self.curve_hz_counts)
 
-        self._save_PNG = True
-
         # scatter plot for time series
         self._spw = self._mw.scatterPlotWidget
         self._spi = self._spw.plotItem
