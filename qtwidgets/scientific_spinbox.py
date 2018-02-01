@@ -146,6 +146,8 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         self.precision = 6
         self.validator = FloatValidator()
         self.setDecimals(1000)
+        self.setSingleStep(0.0)  # 0.0 is identified as default behaviour and will increment the
+                                 # second most significant digit of the integer value.
 
     def validate(self, text, position):
         """
@@ -266,27 +268,33 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
 
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
-        text = self.text()
-        groups = self.validator.float_re.search(text).groups()
-        integer_str = groups[self.validator.group_map['integer']]
-        fractional_str = groups[self.validator.group_map['fractional']]
-        si_prefix = groups[self.validator.group_map['si']]
+        if self.singleStep() == 0.0:
+            text = self.text()
+            groups = self.validator.float_re.search(text).groups()
+            integer_str = groups[self.validator.group_map['integer']]
+            fractional_str = groups[self.validator.group_map['fractional']]
+            si_prefix = groups[self.validator.group_map['si']]
 
-        if not integer_str:
-            integer_str = '0'
-        elif not fractional_str:
-            fractional_str = '0'
+            if not integer_str:
+                integer_str = '0'
+            elif not fractional_str:
+                fractional_str = '0'
 
-        integer_value = int(integer_str)
-        integer_str = integer_str.strip('+-')  # remove plus/minus sign
-        if len(integer_str) < 3:
-            integer_value += steps
+            integer_value = int(integer_str)
+            integer_str = integer_str.strip('+-')  # remove plus/minus sign
+            if len(integer_str) < 3:
+                integer_value += steps
+            else:
+                integer_value += steps * 10**(len(integer_str) - 2)
+
+            float_str = '{0:d}.{1}'.format(integer_value, fractional_str)
+            if si_prefix:
+                float_str += ' {0}'.format(si_prefix)
+
         else:
-            integer_value += steps * 10**(len(integer_str) - 2)
-
-        float_str = '{0:d}.{1}'.format(integer_value, fractional_str)
-        if si_prefix:
-            float_str += ' {0}'.format(si_prefix)
+            value = self.value()
+            value += steps * self.singleStep()
+            float_str = self.textFromValue(value)
 
         # constraint new value to allowed min/max range
         if fn.siEval(float_str) > self.maximum():
