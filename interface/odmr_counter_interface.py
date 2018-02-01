@@ -95,3 +95,11 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
+
+    @abc.abstractmethod
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+        @return list(str): channels recorded during ODMR measurement
+        """
+        pass
