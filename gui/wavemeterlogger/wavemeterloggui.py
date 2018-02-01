@@ -300,9 +300,6 @@ class WavemeterLogGui(GUIBase):
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')
 
-        if self._save_PNG:
-            exporter = pg.exporters.ImageExporter(self._pw.plotItem)
-            exporter.export(filename+'.png')
 
         self._wm_logger_logic.save_data(timestamp=timestamp)
 
