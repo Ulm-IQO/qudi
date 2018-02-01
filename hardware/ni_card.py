@@ -2787,24 +2787,30 @@ class NICard(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterIn
             return np.array([-1.]), 0
         else:
             samples = read_samples
-        # Todo: here we need a better option to test if the clock is running for this specific task.
-        # As the bool here is not task specific
+
         for channel in analogue_channels:
             if channel not in self._analogue_input_channels.keys():
                 error = True
                 self.log.error(
                     "The given channel %s is not part of the possible channels. Configure this channel first", channel)
-            elif self._analogue_input_samples[channel] != samples and read_samples is None:
-                error = True
-                self.log.error(
-                    "Error in channel configuration. Not all channels are reading the same amount of samples. "
-                    "They can not be from the same task. Recheck task configuration")
             elif channel not in self._analogue_input_daq_tasks.keys():
                 error = True
                 self.log.error("No task was specified for the given channel %s. Add this channel first to the analogue"
                                " reader task", channel)
+            elif channel in self._analogue_input_samples:
+                if samples != self._analogue_input_samples[channel]:
+                    self.log.error(
+                        "The channel %s is does not have the same number of samples as channel %s. "
+                        "They can not be part of the same task!", analogue_channels[0], channel)
+                    error = True
+
         if error: return np.array([-1.]), 0
 
+        if samples > 1:
+            if analogue_channels[0] not in self._clock_daq_task_new:
+                self.log.error(
+                    "No clock task specified for this analogue reader. If more then one sample is acquired (%s) "
+                    "a clock needs to be implemented.", samples)
         # Fixme: this timeout might really hurt for cavity stabilisation. make optional
         # *1.1 to have an extra (10%) short waiting time.
         if samples != 1:
