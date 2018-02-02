@@ -31,10 +31,10 @@ from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
-from .ni_card import NICard
+from .national_instruments_x_series import NationalInstrumentsXSeries
 
 
-class SlowGatedNICard(NICard):
+class SlowGatedNICard(NationalInstrumentsXSeries):
     """ Enable the usage of the gated counter in the slow counter interface.
     Overwrite in this new class therefore the appropriate methods. """
 
