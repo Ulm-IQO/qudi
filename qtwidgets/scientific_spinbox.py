@@ -144,17 +144,35 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         self.setMaximum(np.inf)
         self.precision = 2
         self.validator = FloatValidator()
-        self.setDecimals(1000)
         self.dynamic_stepping = True
-        self.setSingleStep(0.0)  # 0.0 is identified as default behaviour and will increment the
-                                 # second most significant digit of the integer value.
+        self.dynamic_precision = True
+        super().setDecimals(1000)
 
-    def setSingleStep(self, val):
-        if val <= 0.0:
-            self.dynamic_stepping = True
-        else:
-            self.dynamic_stepping = False
-            super().setSingleStep(val)
+    def setSingleStep(self, val, dynamic_stepping=True):
+        """
+        Pass call to this method to parent implementation.
+        Additionally set flag indicating if the dynamic stepping should be used (default) or not.
+        The specified step size will only be used if the dynamic_stepping is set to False.
+
+        @param val: float, the absolute step size for a single step.
+                           Unused if dynamic_stepping=True.
+        @param dynamic_stepping: bool, Flag indicating if the absolute step size should be used.
+        """
+        super().setSingleStep(val)
+        self.dynamic_stepping = dynamic_stepping
+        return
+
+    def setDecimals(self, digits, dynamic_precision=True):
+        """
+        Overwrite the parent implementation in order to always have max digits available.
+        Set the number of fractional digits to display though.
+
+        @param digits: int, number of fractional digits to show.
+        @param dynamic_precision: Flag to set if dynamic precision should be enabled
+        """
+        super().setDecimals(1000)
+        self.precision = digits
+        self.dynamic_precision = dynamic_precision
         return
 
     def validate(self, text, position):
@@ -238,12 +256,13 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
             text = text[1:]
 
         # Try to extract the precision the user intends to use
-        split_text = text.split()
-        if 0 < len(split_text) < 3:
-            float_str = split_text[0]
-            if len(float_str.split('.')) == 2:
-                integer, fractional = float_str.split('.')
-                self.precision = len(fractional)
+        if self.dynamic_precision:
+            split_text = text.split()
+            if 0 < len(split_text) < 3:
+                float_str = split_text[0]
+                if len(float_str.split('.')) == 2:
+                    integer, fractional = float_str.split('.')
+                    self.precision = len(fractional)
         return fn.siEval(text)
 
     def textFromValue(self, value):
