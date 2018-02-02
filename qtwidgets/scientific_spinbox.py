@@ -23,7 +23,6 @@ from qtpy import QtGui, QtWidgets
 import numpy as np
 import re
 from pyqtgraph import functions as fn
-from qtwidgets.pyqtgraphmod.SpinBox import SpinBox
 
 __all__ = ['ScienDSpinBox']
 
@@ -342,44 +341,3 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
                 self.setValue(new_value)
                 # raise UserWarning('The set step size is much smaller than the displayed magnitude.')
         return
-
-
-# class ScienD2SpinBox(SpinBox):
-#     """ Wrapper Class from PyQtGraph to display a QDoubleSpinBox in Scientific
-#         way.
-#
-#     This class can be directly used in Qt Designer by promoting the
-#     QDoubleSpinBox to ScienDSpinBox. State the path to this file (in python
-#     style, i.e. dots are separating the directories) as the header file and use
-#     the name of the present class.
-#     """
-#
-#     def __init__(self, *args, **kwargs):
-#         SpinBox.__init__(
-#                 self,
-#                 *args,
-#                 int=False,
-#                 #suffix='s',
-#                 siPrefix=True,
-#                 dec=True,
-#                 step=0.1,
-#                 minStep=0.0001,
-#                 bounds=(0.0, 99.99),    # set the bounds to be convenient to the default values of the Qt Designer.
-#                 **kwargs
-#         )
-#
-# class ScienSpinBox(SpinBox):
-#     """ Wrapper Class from PyQtGraph to display a QSpinBox in Scientific way.
-#
-#     This class can be directly used in Qt Designer by promoting the
-#     QSpinBox to ScienSpinBox. State the path to this file (in python style,
-#     i.e. dots are separating the directories) as the header file and use the
-#     name of the present class.
-#     """
-#
-#     def __init__(self, *args, **kwargs):
-#         SpinBox.__init__(self,
-#                          *args,
-#                          int=True,
-#                          bounds=(0, 99), # set the bounds to be convenient to the default values of the Qt Designer.
-#                          **kwargs)
