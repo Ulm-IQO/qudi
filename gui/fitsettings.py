@@ -508,16 +508,10 @@ class FitParametersWidget(QtWidgets.QWidget):
             self.widgets[name + '_max'] = maximumSpinbox = ScienDSpinBox()
             self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
             self.widgets[name + '_vary'] = varyCheckbox = QtWidgets.QCheckBox()
-            valueSpinbox.setDecimals(1000)
-            valueSpinbox.setSingleStep(0.0)  # set dynamic stepping
             valueSpinbox.setMaximum(np.inf)
             valueSpinbox.setMinimum(-np.inf)
-            minimumSpinbox.setDecimals(1000)
-            minimumSpinbox.setSingleStep(0.0)  # set dynamic stepping
             minimumSpinbox.setMaximum(np.inf)
             minimumSpinbox.setMinimum(-np.inf)
-            maximumSpinbox.setDecimals(1000)
-            maximumSpinbox.setSingleStep(0.0)  # set dynamic stepping
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
             if param.value is not None and not math.isnan(param.value):
