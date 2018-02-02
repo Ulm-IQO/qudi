@@ -463,12 +463,6 @@ class ConfocalGui(GUIBase):
         self._mw.z_current_InputWidget.setRange(self._scanning_logic.z_range[0],
                                                 self._scanning_logic.z_range[1])
 
-        # set minimal steps for the current value.
-        # A step of <= 0.0 denotes a dynamic step size dependent on the current order of magnitude.
-        self._mw.x_current_InputWidget.setSingleStep(0.0)
-        self._mw.y_current_InputWidget.setSingleStep(0.0)
-        self._mw.z_current_InputWidget.setSingleStep(0.0)
-
         # set the maximal ranges for the imagerange from the logic:
         self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0],
                                             self._scanning_logic.x_range[1])
@@ -491,15 +485,6 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
         self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
-
-        # set the minimal step size
-        # A step of <= 0.0 denotes a dynamic step size dependent on the current order of magnitude.
-        self._mw.x_min_InputWidget.setSingleStep(0.0)
-        self._mw.x_max_InputWidget.setSingleStep(0.0)
-        self._mw.y_min_InputWidget.setSingleStep(0.0)
-        self._mw.y_max_InputWidget.setSingleStep(0.0)
-        self._mw.z_min_InputWidget.setSingleStep(0.0)
-        self._mw.z_max_InputWidget.setSingleStep(0.0)
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
