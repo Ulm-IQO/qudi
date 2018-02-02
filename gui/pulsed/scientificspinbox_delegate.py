@@ -85,8 +85,6 @@ class ScienDSpinBoxDelegate(QtWidgets.QStyledItemDelegate):
         editor = ScienDSpinBox(parent=parent)
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
-        editor.setSingleStep(0.0)
-        editor.setDecimals(1000)
         editor.installEventFilter(self)
         editor.setValue(self.item_dict['init_val'])
         editor.setMaximumHeight(100)
