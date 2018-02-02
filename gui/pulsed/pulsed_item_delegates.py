@@ -81,7 +81,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         return
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(75, 50)
+        return QtCore.QSize(90, 50)
 
     def setEditorData(self, editor, index):
         """
@@ -177,6 +177,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
         editor.setValue(self.item_dict['init_val'])
+        editor.precision = 6
         # editor.setSuffix(self.item_dict['unit'])
         # editor.installEventFilter(self)
         # editor.setFixedWidth(75)
@@ -192,7 +193,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         return
 
     def sizeHint(self, option, index):
-        return QtCore.QSize(75, 50)
+        return QtCore.QSize(90, 50)
 
     def setEditorData(self, editor, index):
         """
@@ -240,6 +241,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = ScienDSpinBox()
+        widget.precision = 6
         # widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
