@@ -1417,7 +1417,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_record_length_SpinBox.setRange(0, 1.0e99)
         self._pa.time_param_ana_periode_DoubleSpinBox.setRange(0, 1.0e99)
         self._pa.ext_control_mw_freq_DoubleSpinBox.setRange(0, 1.0e99)
-        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(0, 1.0e99)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setRange(-200, 1.0e99)
         self._pe.extract_param_threshold_SpinBox.setRange(1, 2**31-1)
 
         # ---------------------------------------------------------------------
