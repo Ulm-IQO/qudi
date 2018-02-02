@@ -119,7 +119,11 @@ class ODMRLogic(GenericLogic):
         # Initalize the ODMR data arrays (mean signal and sweep matrix)
         self._initialize_odmr_plots()
         # Raw data array
-        self.odmr_raw_data = np.zeros([self.number_of_lines, self.odmr_plot_x.size])
+        self.odmr_raw_data = np.zeros(
+            [self.number_of_lines,
+             len(self._odmr_counter.get_odmr_channels()),
+            self.odmr_plot_x.size]
+            )
 
         # Switch off microwave and set CW frequency and power
         self.mw_off()
@@ -194,10 +198,11 @@ class ODMRLogic(GenericLogic):
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """
         self.odmr_plot_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
-        self.odmr_plot_y = np.zeros(self.odmr_plot_x.size)
+        self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size])
         self.odmr_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
         self.odmr_fit_y = np.zeros(self.odmr_fit_x.size)
-        self.odmr_plot_xy = np.zeros([self.number_of_lines, self.odmr_plot_x.size])
+        self.odmr_plot_xy = np.zeros(
+            [self.number_of_lines, len(self.get_odmr_channels()), self.odmr_plot_x.size])
         self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
         current_fit = self.fc.current_fit
         self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y, {}, current_fit)
@@ -270,7 +275,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.warning('set_runtime failed. Input parameter runtime is no integer or float.')
 
-        update_dict = {'runtime': self.run_time}
+        update_dict = {'run_time': self.run_time}
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
@@ -374,12 +379,11 @@ class ODMRLogic(GenericLogic):
                 self.sigParameterUpdated.emit({'mw_step': self.mw_step})
 
         if self.mw_scanmode == MicrowaveMode.SWEEP:
-            self.mw_start, \
-            self.mw_stop, \
-            self.mw_step, \
-            self.sweep_mw_power, \
-            mode = self._mw_device.set_sweep(self.mw_start, self.mw_stop,
-                                             self.mw_step, self.sweep_mw_power)
+
+            sweep_return = self._mw_device.set_sweep(
+                self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power)
+            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power, mode = sweep_return
+
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         else:
@@ -502,7 +506,11 @@ class ODMRLogic(GenericLogic):
                 estimated_number_of_lines = self.number_of_lines
             self.log.debug('Estimated number of raw data lines: {0:d}'
                            ''.format(estimated_number_of_lines))
-            self.odmr_raw_data = np.zeros([estimated_number_of_lines, self.odmr_plot_x.size])
+            self.odmr_raw_data = np.zeros(
+                [estimated_number_of_lines,
+                 len(self._odmr_counter.get_odmr_channels()),
+                 self.odmr_plot_x.size]
+            )
             self.sigNextLine.emit()
             return 0
 
@@ -587,54 +595,54 @@ class ODMRLogic(GenericLogic):
 
             # Acquire count data
             new_counts = self._odmr_counter.count_odmr(length=self.odmr_plot_x.size)
-            if new_counts[0] == -1:
+
+            if new_counts[0, 0] == -1:
                 self.stopRequested = True
                 self.sigNextLine.emit()
                 return
 
             # Add new count data to mean signal
             if self._clearOdmrData:
-                self.odmr_plot_y[:] = 0
+                self.odmr_plot_y[:, :, :] = 0
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 
             # Add new count data to raw_data array and append if array is too small
             if self._clearOdmrData:
-                self.odmr_raw_data[:, :] = 0
+                self.odmr_raw_data[:, :, :] = 0
                 self._clearOdmrData = False
             if self.elapsed_sweeps == (self.odmr_raw_data.shape[0] - 1):
-                expanded_array = np.zeros([self.odmr_raw_data.shape[0] + self.number_of_lines,
-                                           self.odmr_raw_data.shape[1]])
-                expanded_array[:self.elapsed_sweeps, :] = self.odmr_raw_data[
-                                                          :self.elapsed_sweeps, :]
-                self.odmr_raw_data = expanded_array
+                expanded_array = np.zeros(self.odmr_raw_data.shape)
+                self.odmr_raw_data = np.concatenate((self.odmr_raw_data, expanded_array), axis=0)
                 self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
                                  'measurement. Array will be expanded.\nOld array shape was '
                                  '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
-                                 ''.format(self.odmr_raw_data.shape[0]-self.number_of_lines,
+                                 ''.format(self.odmr_raw_data.shape[0] - self.number_of_lines,
                                            self.odmr_raw_data.shape[1],
                                            self.odmr_raw_data.shape[0],
                                            self.odmr_raw_data.shape[1]))
 
             # shift data in the array "up" and add new data at the "bottom"
-            self.odmr_raw_data[1:self.elapsed_sweeps + 1, :] = self.odmr_raw_data[
-                                                               :self.elapsed_sweeps, :]
-            self.odmr_raw_data[0, :] = new_counts
+            self.odmr_raw_data = np.roll(self.odmr_raw_data, 1, axis=0)
+
+            self.odmr_raw_data[0] = new_counts
 
             # Set plot slice of matrix
-            self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :]
+            self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :, :]
 
             # Update elapsed time/sweeps
             self.elapsed_sweeps += 1
             self.elapsed_time = time.time() - self._startTime
             if self.elapsed_time >= self.run_time:
                 self.stopRequested = True
-
             # Fire update signals
             self.sigOdmrElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_sweeps)
             self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
             self.sigNextLine.emit()
             return
+
+    def get_odmr_channels(self):
+        return self._odmr_counter.get_odmr_channels()
 
     def get_hw_constraints(self):
         """ Return the names of all ocnfigured fit functions.
@@ -672,74 +680,78 @@ class ODMRLogic(GenericLogic):
             result_str_dict = {}
         else:
             result_str_dict = result.result_str_dict
-        self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y,
-                                    result_str_dict, self.fc.current_fit)
+        self.sigOdmrFitUpdated.emit(
+            self.odmr_fit_x, self.odmr_fit_y, result_str_dict, self.fc.current_fit)
         return
 
     def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
-        if tag is None:
-            tag = ''
-
-        # two paths to save the raw data and the odmr scan data.
-        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
-        filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
-
         timestamp = datetime.datetime.now()
 
-        if len(tag) > 0:
-            filelabel = tag + '_ODMR_data'
-            filelabel2 = tag + '_ODMR_data_raw'
-        else:
-            filelabel = 'ODMR_data'
-            filelabel2 = 'ODMR_data_raw'
+        if tag is None:
+            tag = ''
+        for nch, channel in enumerate(self.get_odmr_channels()):
+            # two paths to save the raw data and the odmr scan data.
+            filepath = self._save_logic.get_path_for_module(module_name='ODMR')
+            filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
 
-        # prepare the data in a dict or in an OrderedDict:
-        data = OrderedDict()
-        data2 = OrderedDict()
-        data['frequency (Hz)'] = self.odmr_plot_x
-        data['count data (counts/s)'] = self.odmr_plot_y
-        data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, :]
+            if len(tag) > 0:
+                filelabel = '{0}_ODMR_data_ch{1}'.format(tag, nch)
+                filelabel2 = '{0}_ODMR_data_ch{1}_raw'.format(tag, nch)
+            else:
+                filelabel = 'ODMR_data_ch{0}'.format(nch)
+                filelabel2 = 'ODMR_data_ch{0}_raw'.format(nch)
 
-        parameters = OrderedDict()
-        parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
-        parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
-        parameters['Run Time (s)'] = self.run_time
-        parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
-        parameters['Start Frequency (Hz)'] = self.mw_start
-        parameters['Stop Frequency (Hz)'] = self.mw_stop
-        parameters['Step size (Hz)'] = self.mw_step
-        parameters['Clock Frequency (Hz)'] = self.clock_frequency
-        if self.fc.current_fit != 'No Fit':
-            parameters['Fit function'] = self.fc.current_fit
+            # prepare the data in a dict or in an OrderedDict:
+            data = OrderedDict()
+            data2 = OrderedDict()
+            data['frequency (Hz)'] = self.odmr_plot_x
+            data['count data (counts/s)'] = self.odmr_plot_y[nch]
+            data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, nch, :]
 
-        # add all fit parameter to the saved data:
-        for name, param in self.fc.current_fit_param.items():
-            parameters[name] = str(param)
+            parameters = OrderedDict()
+            parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
+            parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
+            parameters['Run Time (s)'] = self.run_time
+            parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
+            parameters['Start Frequency (Hz)'] = self.mw_start
+            parameters['Stop Frequency (Hz)'] = self.mw_stop
+            parameters['Step size (Hz)'] = self.mw_step
+            parameters['Clock Frequency (Hz)'] = self.clock_frequency
+            parameters['Channel'] = '{0}: {1}'.format(nch, channel)
+            if self.fc.current_fit != 'No Fit':
+                parameters['Fit function'] = self.fc.current_fit
 
-        fig = self.draw_figure(cbar_range=colorscale_range, percentile_range=percentile_range)
+            # add all fit parameter to the saved data:
+            for name, param in self.fc.current_fit_param.items():
+                parameters[name] = str(param)
 
-        self._save_logic.save_data(data,
-                                   filepath=filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp,
-                                   plotfig=fig)
+            fig = self.draw_figure(
+                nch,
+                cbar_range=colorscale_range,
+                percentile_range=percentile_range)
 
-        self._save_logic.save_data(data2,
-                                   filepath=filepath2,
-                                   parameters=parameters,
-                                   filelabel=filelabel2,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp)
+            self._save_logic.save_data(data,
+                                       filepath=filepath,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       timestamp=timestamp,
+                                       plotfig=fig)
 
-        self.log.info('ODMR data saved to:\n{0}'.format(filepath))
+            self._save_logic.save_data(data2,
+                                       filepath=filepath2,
+                                       parameters=parameters,
+                                       filelabel=filelabel2,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       timestamp=timestamp)
+
+            self.log.info('ODMR data saved to:\n{0}'.format(filepath))
         return
 
-    def draw_figure(self, cbar_range=None, percentile_range=None):
+    def draw_figure(self, channel_number, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
 
         @param: list cbar_range: (optional) [color_scale_min, color_scale_max].
@@ -751,10 +763,10 @@ class ODMRLogic(GenericLogic):
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
         freq_data = self.odmr_plot_x
-        count_data = self.odmr_plot_y
+        count_data = self.odmr_plot_y[channel_number]
         fit_freq_vals = self.odmr_fit_x
         fit_count_vals = self.odmr_fit_y
-        matrix_data = self.odmr_plot_xy
+        matrix_data = self.odmr_plot_xy[:, channel_number]
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
@@ -808,18 +820,19 @@ class ODMRLogic(GenericLogic):
         ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
         ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
 
-        matrixplot = ax_matrix.imshow(matrix_data,
-                                      cmap=plt.get_cmap('inferno'),  # reference the right place in qd
-                                      origin='lower',
-                                      vmin=cbar_range[0],
-                                      vmax=cbar_range[1],
-                                      extent=[np.min(freq_data),
-                                              np.max(freq_data),
-                                              0,
-                                              self.number_of_lines
-                                              ],
-                                      aspect='auto',
-                                      interpolation='nearest')
+        matrixplot = ax_matrix.imshow(
+            matrix_data,
+            cmap=plt.get_cmap('inferno'),  # reference the right place in qd
+            origin='lower',
+            vmin=cbar_range[0],
+            vmax=cbar_range[1],
+            extent=[np.min(freq_data),
+                np.max(freq_data),
+                0,
+                self.number_of_lines
+                ],
+            aspect='auto',
+            interpolation='nearest')
 
         ax_matrix.set_xlabel('Frequency (' + mw_prefix + 'Hz)')
         ax_matrix.set_ylabel('Scan #')

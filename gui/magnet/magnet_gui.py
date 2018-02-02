@@ -660,10 +660,9 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(np.inf)
             dspinbox_ref.setMinimum(-np.inf)
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            # in the ScienDSpinBox this should always be as high as possible
+            dspinbox_ref.setDecimals(1000)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
@@ -716,10 +715,8 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setDecimals(1000)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
@@ -833,10 +830,8 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setDecimals(1000)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
             dspinbox_ref.setSingleStep(0.001)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
