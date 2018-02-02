@@ -20,47 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import re
 from qtpy import QtCore, QtGui
 from collections import OrderedDict
 from qtwidgets.scientific_spinbox import ScienDSpinBox
-
-
-class FloatValidator(QtGui.QValidator):
-    """
-    This is a validator for float values represented as strings in scientific notation.
-    (i.e. "1.35e-9", ".24E+8", "14e3" etc.)
-    Also supports SI unit prefix like 'M', 'n' etc.
-    """
-    float_re = re.compile(
-        r'(\s*([+-]?\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?\s*([YZEPTGMkmµnpfazy]?)\s*)')
-
-    def validate(self, string, position):
-        print('text to validate:', string, '\nlength:', len(string), '\nposition:', position)
-        if position > len(string):
-            position = len(string)
-            print(string[position-1])
-        if self._is_valid_float_string(string):
-            state = self.Acceptable
-        elif string == '' or string[position-1] in 'e.-+ ':
-            state = self.Intermediate
-        else:
-            state = self.Invalid
-        return state, string, position
-
-    def fixup(self, text):
-        match = self.float_re.search(text)
-        if match:
-            return match.groups()[0].lstrip().rstrip()
-        else:
-            return ''
-
-    def _is_valid_float_string(self, string):
-        match = self.float_re.search(string)
-        if match:
-            return match.groups()[0] == string
-        else:
-            return False
 
 
 class DigitalChannelsWidget(QtGui.QWidget):
