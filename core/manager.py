@@ -951,8 +951,7 @@ class Manager(QtCore.QObject):
         module = self.tree['loaded'][base][name]
         if module.module_state() != 'deactivated' and (
                 self.isModuleDefined(base, name)
-                and 'remote' in self.tree['defined'][base][name]
-                and self.remote_server):
+                and 'remote' in self.tree['defined'][base][name]):
             logger.debug('No need to activate remote module {0}.{1}.'.format(base, name))
             return
         if module.module_state() != 'deactivated':
@@ -1004,7 +1003,7 @@ class Manager(QtCore.QObject):
                 self.tree['loaded'][base].pop(name)
             return
         try:
-            if base == 'logic':
+            if module.is_module_threaded:
                 success = QtCore.QMetaObject.invokeMethod(
                     module.module_state,
                     'trigger',

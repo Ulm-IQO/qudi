@@ -503,21 +503,21 @@ class FitParametersWidget(QtWidgets.QWidget):
             self.paramUseSettings[name] = False
             self.widgets[name + '_use'] = useCheckbox = QtWidgets.QCheckBox()
             self.widgets[name + '_label'] = parameterNameLabel = QtWidgets.QLabel(str(name))
-            self.widgets[name + '_value'] = valueSpinbox =  ScienDSpinBox()
+            self.widgets[name + '_value'] = valueSpinbox = ScienDSpinBox()
             self.widgets[name + '_min'] = minimumSpinbox = ScienDSpinBox()
             self.widgets[name + '_max'] = maximumSpinbox = ScienDSpinBox()
             self.widgets[name + '_expr'] = expressionLineEdit = QtWidgets.QLineEdit()
             self.widgets[name + '_vary'] = varyCheckbox = QtWidgets.QCheckBox()
-            valueSpinbox.setDecimals(3)
-            valueSpinbox.setSingleStep(0.01)
+            valueSpinbox.setDecimals(1000)
+            valueSpinbox.setSingleStep(0.0)  # set dynamic stepping
             valueSpinbox.setMaximum(np.inf)
             valueSpinbox.setMinimum(-np.inf)
-            minimumSpinbox.setDecimals(3)
-            minimumSpinbox.setSingleStep(0.01)
+            minimumSpinbox.setDecimals(1000)
+            minimumSpinbox.setSingleStep(0.0)  # set dynamic stepping
             minimumSpinbox.setMaximum(np.inf)
             minimumSpinbox.setMinimum(-np.inf)
-            maximumSpinbox.setDecimals(3)
-            maximumSpinbox.setSingleStep(0.01)
+            maximumSpinbox.setDecimals(1000)
+            maximumSpinbox.setSingleStep(0.0)  # set dynamic stepping
             maximumSpinbox.setMaximum(np.inf)
             maximumSpinbox.setMinimum(-np.inf)
             if param.value is not None and not math.isnan(param.value):
