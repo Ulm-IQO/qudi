@@ -290,8 +290,8 @@ class PoiManagerGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        # self._mw.roi_cb_high_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
-        # self._mw.roi_cb_low_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=2)
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.setSingleStep(0.0)  # set dynamic step size
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.setSingleStep(0.0)  # set dynamic step size
         #####################
         # Setting up display of ROI map xy image
         #####################
