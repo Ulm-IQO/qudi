@@ -87,20 +87,20 @@ class OBISLaser(Base, SimpleLaserInterface):
     _modclass = 'lqlaser'
     _modtype = 'hardware'
 
-    serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
-    maxpower = ConfigOption('maxpower', 0.250, missing='warn')
-    psu_type = ConfigOption('psu', 'SMD6000', missing='warn')
+    # serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
+    # maxpower = ConfigOption('maxpower', 0.250, missing='warn')
+    # psu_type = ConfigOption('psu', 'SMD6000', missing='warn')
 
         
-        eol = '\r'
+    eol = '\r'
 
     def on_activate(self):
         """ Activate module.
         """
-        obis = serial.Serial('COM3', timeout=1)
+        self.obis = serial.Serial('COM3', timeout=1)
         
-        self.psu = PSUTypes[self.psu_type]
-        self.connect_laser(self.serial_interface)
+        # self.psu = PSUTypes[self.psu_type]
+        # self.connect_laser()
         
 
     def on_deactivate(self):
@@ -109,7 +109,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         self.disconnect_laser()
 
-    def connect_laser(self, interface):
+    def connect_laser(self):
         """ Connect to Instrument.
 
             @param str interface: visa interface identifier
@@ -132,10 +132,11 @@ class OBISLaser(Base, SimpleLaserInterface):
         #     return False
         # else:
         #     return True
-        communicate('IDN*?')
-        if response begins.with 'ERR-100'
+        response = self._communicate('*IDN?')
+
+        if response.startswith('ERR-100'):
             return False
-        else 
+        else:
             return True
 
     def disconnect_laser(self):
@@ -162,12 +163,12 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return ControlMode: current laser control mode
         """
-       """ if self.psu == PSUTypes.FPU:
-            return ControlMode.MIXED
-        elif self.psu == PSUTypes.SMD6000:
-            return ControlMode.POWER
-        else:
-            return ControlMode[self.inst.query('CONTROL?')]"""
+    """ if self.psu == PSUTypes.FPU:
+        return ControlMode.MIXED
+    elif self.psu == PSUTypes.SMD6000:
+        return ControlMode.POWER
+    else:
+        return ControlMode[self.inst.query('CONTROL?')]"""
 
     def set_control_mode(self, mode):
         """ Set laser control mode.
@@ -195,40 +196,42 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return float: laser power in watts
         """
-        self._communicate('SOUR:POW:LEV:IMM:AMPL?')
-        return float(response.split('W')[0])
+        response = self._communicate('SOUR:POW:LEV:IMM:AMPL?')
         
-       """ 
-        try:
-            if "mW" in response:
-                return float(response.split('mW')[0])/1000
-            elif 'W' in response:
-                return float(response.split('W')[0])
-            else:
-                return float(response[0])
-        except ValueError:
-            self.log.exception("Answer was {0}.".format(response))
-            return -1"""
+        # return float(response.split('W')[0])
+        return float(response[0])
+        
+    #    """ 
+    #     try:
+    #         if "mW" in response:
+    #             return float(response.split('mW')[0])/1000
+    #         elif 'W' in response:
+    #             return float(response.split('W')[0])
+    #         else:
+    #             return float(response[0])
+    #     except ValueError:
+    #         self.log.exception("Answer was {0}.".format(response))
+    #         return -1"""
 
     def get_power_setpoint(self):
         """ Get the laser power setpoint.
 
         @return float: laser power setpoint in watts
         """
-          """if self.psu == PSUTypes.FPU:
-            answer = self.inst.query('SETPOWER?')
-            try:
-                if "mW" in answer:
-                    return float(answer.split('mW')[0]) / 1000
-                elif 'W' in answer:
-                    return float(answer.split('W')[0])
-                else:
-                    return float(answer)
-            except ValueError:
-                self.log.exception("Answer was {0}.".format(answer))
-                return -1
-        else:
-            return self.get_power()"""
+        #   """if self.psu == PSUTypes.FPU:
+        #     answer = self.inst.query('SETPOWER?')
+        #     try:
+        #         if "mW" in answer:
+        #             return float(answer.split('mW')[0]) / 1000
+        #         elif 'W' in answer:
+        #             return float(answer.split('W')[0])
+        #         else:
+        #             return float(answer)
+        #     except ValueError:
+        #         self.log.exception("Answer was {0}.".format(answer))
+        #         return -1
+        # else:
+        #     return self.get_power()"""
 
     def get_power_range(self):
         """ Get laser power range.
@@ -239,19 +242,20 @@ class OBISLaser(Base, SimpleLaserInterface):
         minpower = float(response[0])
         self._communicate('SOUR:POW:LIM:HIGH?')
         maxpower = float(response[0])
-        return (minpower, maxpower) """direct insert vs inquiry - what is upper power limit. """
+        return (minpower, maxpower)
+        # """direct insert vs inquiry - what is upper power limit. """
 
     def set_power(self, power):
         """ Set laser power
 
         @param float power: desired laser power in watts
         """
-        self._communicate('SOUR:POW:LEV {POWER}' )
+        self._communicate('SOUR:POW:LEV {}'.format(power))
         
-        '''if self.psu == PSUTypes.FPU:
-            self.inst.query('POWER={0:f}'.format(power))
-        else:
-            self.inst.query('POWER={0:f}'.format(power*1000))'''
+        # '''if self.psu == PSUTypes.FPU:
+        #     self.inst.query('POWER={0:f}'.format(power))
+        # else:
+        #     self.inst.query('POWER={0:f}'.format(power*1000))'''
 
     def get_current_unit(self):
         """ Get unit for laser current.
@@ -276,32 +280,32 @@ class OBISLaser(Base, SimpleLaserInterface):
         return float(response.split('%')[0])
 
 
-        """if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
-            return float(self.inst.query('SETCURRENT1?').split('%')[0])
-        else:
-            return float(self.inst.query('CURRENT?').split('%')[0])"""
+        # """if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
+        #     return float(self.inst.query('SETCURRENT1?').split('%')[0])
+        # else:
+        #     return float(self.inst.query('CURRENT?').split('%')[0])"""
 
     def get_current_setpoint(self):
         """ Current laser current setpoint.
 
         @return float: laser current setpoint
         """
-        """if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
-            return float(self.inst.query('SETCURRENT1?').split('%')[0])
-        elif self.psu == PSUTypes.SMD6000:
-            return float(self.inst.query('CURRENT?').split('%')[0])
-        else:
-            return float(self.inst.query('SETCURRENT?').split('%')[0])"""
+        # """if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
+        #     return float(self.inst.query('SETCURRENT1?').split('%')[0])
+        # elif self.psu == PSUTypes.SMD6000:
+        #     return float(self.inst.query('CURRENT?').split('%')[0])
+        # else:
+        #     return float(self.inst.query('SETCURRENT?').split('%')[0])"""
 
     def set_current(self, current_percent):
         """ Set laser current setpoint.
 
         @param float current_percent: laser current setpoint
         """
-        """self._communicate('SOUR:POW:CURR{current_percent}')"""
+        # """self._communicate('SOUR:POW:CURR{current_percent}')"""
         return self.get_current()
-        """self.inst.query('CURRENT={0}'.format(current_percent))
-        return self.get_current()"""
+        # """self.inst.query('CURRENT={0}'.format(current_percent))
+        # return self.get_current()"""
 
     def get_shutter_state(self):
         """ Get laser shutter state.
@@ -309,16 +313,16 @@ class OBISLaser(Base, SimpleLaserInterface):
         @return ShutterState: laser shutter state
         """
         return ShutterState.NOSHUTTER
-        """if self.psu == PSUTypes.FPU:
-            state = self.inst.query('SHUTTER?')
-            if 'OPEN' in state:
-                return ShutterState.OPEN
-            elif 'CLOSED' in state:
-                return ShutterState.CLOSED
-            else:
-                return ShutterState.UNKNOWN
-        else:
-            return ShutterState.NOSHUTTER"""
+        # """if self.psu == PSUTypes.FPU:
+        #     state = self.inst.query('SHUTTER?')
+        #     if 'OPEN' in state:
+        #         return ShutterState.OPEN
+        #     elif 'CLOSED' in state:
+        #         return ShutterState.CLOSED
+        #     else:
+        #         return ShutterState.UNKNOWN
+        # else:
+        #     return ShutterState.NOSHUTTER"""
 
     def set_shutter_state(self, state):
         """ Set the desired laser shutter state.
@@ -328,14 +332,14 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         return self.get_shutter_state()
         
-        """if self.psu == PSUTypes.FPU:
-            actstate = self.get_shutter_state()
-            if state != actstate:
-                if state == ShutterState.OPEN:
-                    self.inst.query('SHUTTER OPEN')
-                elif state == ShutterState.CLOSED:
-                    self.inst.query('SHUTTER CLOSE')
-        return self.get_shutter_state()"""
+        # """if self.psu == PSUTypes.FPU:
+        #     actstate = self.get_shutter_state()
+        #     if state != actstate:
+        #         if state == ShutterState.OPEN:
+        #             self.inst.query('SHUTTER OPEN')
+        #         elif state == ShutterState.CLOSED:
+        #             self.inst.query('SHUTTER CLOSE')
+        # return self.get_shutter_state()"""
 
     def get_psu_temperature(self):
         """ Get power supply temperature
@@ -344,7 +348,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         self._communicate('SOUR:TEMP:DIOD?')
         return response[0]
-        """return float(self.inst.query('PSUTEMP?').split('C')[0])"""
+        # """return float(self.inst.query('PSUTEMP?').split('C')[0])"""
         
 
     def get_laser_temperature(self):
@@ -352,9 +356,9 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser head temperature
         """
-        return float(self._communicate('SOUR:TEMP:INT?').split'C'[0])
+        return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
 
-        """return float(self.inst.query('LASTEMP?').split('C')[0])"""
+        # """return float(self.inst.query('LASTEMP?').split('C')[0])"""
 
 
     def get_temperatures(self):
@@ -367,10 +371,10 @@ class OBISLaser(Base, SimpleLaserInterface):
             'Internal': self.get_laser_temperature()
             }
 
-        """return {
-            'psu': self.get_psu_temperature(),
-            'laser': self.get_laser_temperature()
-            }"""
+        # """return {
+        #     'psu': self.get_psu_temperature(),
+        #     'laser': self.get_laser_temperature()
+        #     }"""
 
     def set_temperatures(self, temps):
         """ Set temperature for lasers with adjustable temperature for tuning
@@ -391,10 +395,10 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return str: text on power supply display
         """
-       """ if self.psu == PSUTypes.SMD12 or self.psu == PSUTypes.SMD6000:
-            return ''
-        else:
-            return self.inst.query('STATUSLCD?')"""
+    #    """ if self.psu == PSUTypes.SMD12 or self.psu == PSUTypes.SMD6000:
+    #         return ''
+    #     else:
+    #         return self.inst.query('STATUSLCD?')"""
 
     def get_laser_state(self):
         """ Get laser operation state
@@ -402,10 +406,10 @@ class OBISLaser(Base, SimpleLaserInterface):
         @return LaserState: laser state
         """
         state = self._communicate('SOUR:AM:SOUR:STAT?')
-        """if self.psu == PSUTypes.SMD6000:
-            state = self.inst.query('STAT?')
-        else:
-            state = self.inst.query('STATUS?')"""
+        # """if self.psu == PSUTypes.SMD6000:
+        #     state = self.inst.query('STAT?')
+        # else:
+        #     state = self.inst.query('STATUS?')"""
         if 'ON' in state:
             return LaserState.ON
         elif 'OFF' in state:
@@ -422,9 +426,9 @@ class OBISLaser(Base, SimpleLaserInterface):
         actstat = self.get_laser_state()
         if actstat != status:
             if status == LaserState.ON:
-                self._communicate(SOUR:AM:STAT)
+                self._communicate('SOUR:AMP:STAT')
             elif status == LaserState.OFF:
-                self._communicate(SOUR:AM:STAT)
+                self._communicate('SOUR:AMP:STAT')
         return self.get_laser_state()
 
     def on(self):
@@ -432,14 +436,14 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        self._communicate('SOUR:AM:STAT?')
-        if response[0] = OFF
-            self._communicate('SOUR:AM:STAT')
+        self._communicate('SOUR:AMP:STAT?')
+        if response.startswith('OFF'):
+            self._communicate('SOUR:AMP:STAT')
             return self.get_laser_state
-        else 
+        else: 
             return self.get_laser_state
         
-        """return self.set_laser_state(LaserState.ON)"""
+        # """return self.set_laser_state(LaserState.ON)"""
 
     def off(self):
         """ Turn laser off.
@@ -460,27 +464,27 @@ class OBISLaser(Base, SimpleLaserInterface):
         self._communicate('SYST:INF:FVER')
         return response
         
-        """lines = []
-        try:
-            while True:
-                lines.append(self.inst.read())
-        except:
-            pass
-        return lines"""
+        # """lines = []
+        # try:
+        #     while True:
+        #         lines.append(self.inst.read())
+        # except:
+        #     pass
+        # return lines"""
 
     def dump(self):
         """ Return LaserQuantum information dump
 
         @return str: diagnostic information dump from laser
         """
-        """self.inst.write('DUMP ')
-        lines = []
-        try:
-            while True:
-                lines.append(self.inst.read())
-        except:
-            pass
-        return lines"""
+        # """self.inst.write('DUMP ')
+        # lines = []
+        # try:
+        #     while True:
+        #         lines.append(self.inst.read())
+        # except:
+        #     pass
+        # return lines"""
         return {}
 
     def timers(self):
@@ -515,19 +519,21 @@ class OBISLaser(Base, SimpleLaserInterface):
         return extra
 
     def _send(self, message):
-            new_message = message + eol
-            obis.write(new_message.encode())
+        new_message = message + self.eol
+        self.obis.write(new_message.encode())
 
     def _communicate(self, message):
-            send(message)
-            time.sleep(0.1)
-            response_len = obis.inWaiting()
-            response = []
+        self._send(message)
+        time.sleep(0.1)
+        response_len = self.obis.inWaiting()
+        response = []
 
-            while response_len > 0:
-                if response_len = 4 and obis.readline().decode().strip() = 'OK':
-                    response.append('')                     
-                else:
-                    response.append(obis.readline().decode().strip())
+        while response_len > 0:
+            if (response_len == 4) and (response == 'OK'):
+                response.append('')                     
+            else:
+                response.append(self.obis.readline().decode().strip())
+            response_len = self.obis.inWaiting()
 
-
+        return response
+            
