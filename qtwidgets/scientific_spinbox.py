@@ -264,6 +264,24 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
             string = fn.siFormat(value, precision=self.precision + 2)
         else:
             string = fn.siFormat(value, precision=self.precision + 3)
+        string = string.strip()  # remove leading or trailing whitespaces
+        # Reintroduce trailing zeros
+        if self.precision > 0:
+            split_si_str = string.split()
+            string = split_si_str[0]
+            if len(split_si_str) > 1:
+                si_prefix = split_si_str[1]
+            else:
+                si_prefix = ''
+
+            split_float_str = string.split('.')
+            if len(split_float_str) == 1:
+                string += '.' + '0' * self.precision
+            elif len(split_float_str[1]) < self.precision:
+                string += '0' * (self.precision - len(split_float_str[1]))
+
+            if si_prefix:
+                string += ' {0}'.format(si_prefix)
         return string
 
     def stepBy(self, steps):
