@@ -110,7 +110,7 @@ class AnalogParametersWidget(QtGui.QWidget):
                 widget.setMinimum(self._parameters[param]['min'])
                 widget.setMaximum(self._parameters[param]['max'])
                 widget.setValue(self._parameters[param]['init'])
-                widget.precision = 6
+                widget.setDecimals(6, False)
                 # widget.setSuffix(self._parameters[param]['unit'])
                 # Set size constraints
                 widget.setFixedWidth(90)

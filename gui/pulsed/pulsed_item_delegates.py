@@ -177,7 +177,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
         editor.setValue(self.item_dict['init_val'])
-        editor.precision = 6
+        editor.setDecimals(6, False)
         # editor.setSuffix(self.item_dict['unit'])
         # editor.installEventFilter(self)
         # editor.setFixedWidth(75)
@@ -241,7 +241,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = ScienDSpinBox()
-        widget.precision = 6
+        widget.setDecimals(6, False)
         # widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
