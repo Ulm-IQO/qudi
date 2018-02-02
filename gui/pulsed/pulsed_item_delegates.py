@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from qtpy import QtCore, QtGui
-from qtwidgets.scientific_spinbox import ScienDSpinBox
 from gui.pulsed.pulsed_custom_widgets import DigitalChannelsWidget, AnalogParametersWidget
-from gui.pulsed.pulsed_custom_widgets import ScientificDoubleSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox
+
 
 class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
     """
@@ -173,7 +173,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
-        editor = ScientificDoubleSpinBox(parent=parent)
+        editor = ScienDSpinBox(parent=parent)
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
         editor.setValue(self.item_dict['init_val'])
@@ -239,7 +239,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = ScientificDoubleSpinBox()
+        widget = ScienDSpinBox()
         # widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))

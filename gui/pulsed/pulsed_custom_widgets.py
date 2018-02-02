@@ -21,10 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import re
-import numpy as np
 from qtpy import QtCore, QtGui
 from collections import OrderedDict
-from pyqtgraph import functions as fn
+from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
 class FloatValidator(QtGui.QValidator):
@@ -62,56 +61,6 @@ class FloatValidator(QtGui.QValidator):
             return match.groups()[0] == string
         else:
             return False
-
-
-class ScientificDoubleSpinBox(QtGui.QDoubleSpinBox):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.setMinimum(-np.inf)
-        self.setMaximum(np.inf)
-        self.validator = FloatValidator()
-        self.setDecimals(1000)
-
-    def validate(self, text, position):
-        # text = text.replace(self.suffix(), '').replace(self.prefix(), '')
-        state, string, position = self.validator.validate(text, position)
-        return state, string, position  #self.prefix() + string + self.suffix(), position
-
-    def fixup(self, text):
-        return self.validator.fixup(text)
-
-    def valueFromText(self, text):
-        text = text.lstrip().rstrip()  # get rid of leading and trailing whitespaces
-        text = text.replace(self.suffix(), '').replace(self.prefix(), '') # get rid of prefix/suffix
-        return fn.siEval(text)
-
-    def textFromValue(self, value):
-        (scale_factor, suffix) = fn.siScale(value)
-        scaled_val = value * scale_factor
-        string = ''
-        if abs(scaled_val) < 10:
-            string = fn.siFormat(value, precision=4)
-        elif abs(scaled_val) < 100:
-            string = fn.siFormat(value, precision=5)
-        elif abs(scaled_val) < 1000:
-            string = fn.siFormat(value, precision=6)
-        return string
-
-    def stepBy(self, steps):
-        text = self.cleanText()
-        groups = self.validator.float_re.search(text).groups()
-        decimal_num = float(groups[1])
-        decimal_num += steps
-        new_string = '{0:g}'.format(decimal_num) + ((' ' + groups[4]) if groups[4] else '')
-        new_value = fn.siEval(new_string)
-        if new_value < self.minimum():
-            new_value = self.minimum()
-        if new_value > self.maximum():
-            new_value = self.maximum()
-        new_string = self.textFromValue(new_value)
-        self.lineEdit().setText(new_string)
-        return
 
 
 class DigitalChannelsWidget(QtGui.QWidget):
@@ -195,7 +144,7 @@ class AnalogParametersWidget(QtGui.QWidget):
             label.setAlignment(QtCore.Qt.AlignCenter)
             label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             if self._parameters[param]['type'] == float:
-                widget = ScientificDoubleSpinBox()
+                widget = ScienDSpinBox()
                 widget.setMinimum(self._parameters[param]['min'])
                 widget.setMaximum(self._parameters[param]['max'])
                 widget.setValue(self._parameters[param]['init'])
