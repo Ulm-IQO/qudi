@@ -28,6 +28,7 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 
 from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
