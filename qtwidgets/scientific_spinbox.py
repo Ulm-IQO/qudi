@@ -143,7 +143,7 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         super().__init__(*args, **kwargs)
         self.setMinimum(-np.inf)
         self.setMaximum(np.inf)
-        self.precision = 6
+        self.precision = 2
         self.validator = FloatValidator()
         self.setDecimals(1000)
         self.dynamic_stepping = True
