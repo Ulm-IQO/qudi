@@ -113,11 +113,11 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         @return float[]: the photon counts per second
         """
 
-        counts = np.zeros(length)
+        counts = np.zeros((len(self.get_odmr_channels()), length))
         # self.trigger()
         for i in range(length):
             self.trigger()
-            counts[i] = self._sc_device.get_counter(samples=1)[0]
+            counts[:, i] = self._sc_device.get_counter(samples=1)[0]
         self.trigger()
         return counts
 
@@ -135,6 +135,12 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         """
         return self._sc_device.close_clock()
 
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+        @return list(str): channels recorded during ODMR measurement
+        """
+        return self._sc_device.get_counter_channels()
 
     ### ----------- Microwave interface commands -----------
 
