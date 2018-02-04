@@ -1415,4 +1415,3 @@ class Manager(QtCore.QObject):
                 logger.error('You tried to remove the task runner but none was registered.')
             else:
                 logger.warning('Replacing task runner.')
-

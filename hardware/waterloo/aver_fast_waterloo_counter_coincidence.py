@@ -309,6 +309,13 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         else:
             self.log.error('No parameter "timetagger_channel_apd_0" configured.\n')
 
+
+        if 'averager' in config.keys():
+            self._chan_list.append(2)
+            self._chan_list.append(3)
+            self._chan_list.append(4)
+            #self._chan_list.append(2)
+
         if 'timetagger_channel_apd_1' in config.keys():
             self._channel_apd_1 = config['timetagger_channel_apd_1']
             self._chan_list.append(config['timetagger_channel_apd_1'])
@@ -326,7 +333,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         #self.log.info('coincidence is {0}'.format(self._coincidence))
        # self.log.info('channel list is {0}'.format(self._chan_list))
 
-        self.ms = mysocket(sock=None, channels=self._chan_list, biases=[1.1,1.1], delays=[0,0], coincidences=self._coincidence,
+        self.ms = mysocket(sock=None, channels=self._chan_list, biases=[1.2,1.2,1.2,1.5,1.1], delays=[0,2,5,10,0], coincidences=self._coincidence,
                            window=window,
                            histogram_channels=[1], histogram_windows_ns=50)
         self.ms.connect(self.TCP_IP, self.TCP_PORT)
@@ -391,7 +398,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         """
 
 
-        #self._count_frequency = clock_frequency
+        self._count_frequency = clock_frequency
 
         #self.ms.send('setup')
         #self.ms.update_timing_window(1/self._count_frequency)
@@ -434,7 +441,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         data = self.ms.sock.recv(2048)
         #print(data)
         decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
-        decrypted["poll_time"] = 0 #1 / self._count_frequency
+        decrypted["poll_time"] = 1 / self._count_frequency
         decrypted["user_name"] = 'imaging_pc0'
         decrypted["user_platform"] = 'python'
         if self._coincidence:
@@ -490,27 +497,18 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         @return numpy.array(uint32): the photon counts per second
         """
 
-        #tick = time.perf_counter()
-
         if samples is None:
             samples = 1
-        #print(samples)
 
         found = 0
-        data = []
-        while found < 1:
-            self.ms.sock.send(bytes('counts', 'utf8'))
-            #print('counts')
-            raw_data = self.ms.sock.recv(2048)
-        # print(data)
-            #if not data:
-            #    break
+        counts_out = []
 
-            #data.decode('utf8').replace('\x00', '')data.decode('utf8').replace('\x00', '')
-            #line = infile.readline()
+        while found < samples:
+            self.ms.sock.send(bytes('counts\x00', 'utf8'))
+            raw_data = self.ms.sock.recv(2048)
+
             if not raw_data:
                 break
-            #print(data)
             start = bytes(raw_data).find(bytes('{'.encode('utf8')))
             end = bytes(raw_data).find(bytes('}'.encode('utf8')), start)
             json_str = raw_data[start:end + 1]
@@ -519,93 +517,55 @@ class WaterlooCounter2(Base, SlowCounterInterface):
             except json.decoder.JSONDecodeError:
                 break
 
-            #print(data.decode('utf8').replace('\x00', ''))
-            #decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
-            #print(decrypted['type'])
             if 'counts' in decrypted['type']:
-                #print('its true')
-                #found += found
-                found = 1
-                data = [decrypted]
-                #data[found] = decrypted
+                counts_out_col = []
+                found = found +1
+                counts = np.array(decrypted['counts'])
+                deltatime = decrypted['delta_time']
+                counts0 = counts[0]
 
-        #print('data {0}'.format(data))
-        #print(data[0])
-
-        #time.sleep(0.2)
-        #print('hi')
-        #tock = time.perf_counter() - tick
-        # print(counts)
-        #print(tock)
-        counts_out = []#0 for x in range(0, len(data))]
-
-        #print(len(data))
-        for x in range(0, len(data)):
-
-            counts_out_col = []  # 0 for x in range(0, len(data))]
-            try:
-                deltatime = data[x]['delta_time']
-
-                counts = np.array(data[x]['counts'])
-                #self.log.info(counts)
-                counts0 = counts[self._channel_apd_0 - 1]
                 if counts0 is None or counts0 is 0:
                     counts0 = 1
 
-                counts_out_col.append(round(counts0/deltatime))
-
-                #self.log.info(counts[self._channel_apd_0]/deltatime)
-                #self.log.info(counts_out_col)
+                counts_out_col.append(counts0 / deltatime)
                 if self._channel_apd_1 is not None:
-                    counts_out_col.append( round(counts[self._channel_apd_1-1]/deltatime))
+                    counts_out_col.append(0)
+                    counts_out_col.append(0)
 
-                #logging.info('counts {0}'.format(counts))
-
-                #logging.info('coincidence {0}'.format(coincidences))
-
-                if self._coincidence is not None:
-                    coincidences = data[x]['coincidence']
-                    #print(coincidences)
-                    if not coincidences:
-                        coincidences = [0]
-                    #self.log.info('coinc {0}'.format(coincidences))
-
-                    value = coincidences[0] / counts0
-                    if math.isnan(value):
-                        value = 0
-                    counts_out_col.append(value)
-
-
-
-                #for x in range(0, len(counts_out_col)):
-                    #if counts_out_col[x] is not counts_out_col[x]:
-                        #print(counts_out_col)
-
-                #print(counts_out_col)
                 counts_out.append(counts_out_col)
-            except KeyError:
-                pass
-                # setup variable
 
-        #self.ms.sock.shutdown()
-                #self.log.info(self.get_counter_channels())
-        #self.log.info(len(self.get_counter_channels()))
-        #self.log.info(counts_out)
-        if not counts_out:
-            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*0
+
+
+        # for x in range(0, len(data)):
+        #
+        #     counts_out_col = []
+        #     try:
+        #         deltatime = data[x]['delta_time']
+        #
+        #         counts = np.array(data[x]['counts'])
+        #         #print(counts)
+        #         counts0 = np.median(counts[0:3])
+        #
+        #         if counts0 is None or counts0 is 0:
+        #             counts0 = 1
+        #
+        #         counts_out_col.append(round(counts0/deltatime))
+        #
+        #         if self._channel_apd_1 is not None:
+        #             counts_out_col.append(0)
+        #             counts_out_col.append(0)
+        #
+        #         counts_out.append(counts_out_col)
+        #     except KeyError:
+        #         pass
+
+        if counts_out:
+            counts_out = np.transpose(np.array(counts_out, dtype=np.uint32))
         else:
-            counts_out = np.transpose(np.array(counts_out,dtype=np.uint32))
-
-        #tock = time.perf_counter() - tick
-        #print(counts_out)
-        #print('tock {}'.format(tock))
-
-        #self.log.info('counts_out = {0}'.format(counts_out))
-
+            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*0
 
         return counts_out
-        #data = data[0]
-        #self.log.info(data)
+
 
 
     def close_counter(self, scanner=False):
@@ -613,15 +573,16 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        message = 'disconnect'
-        self.ms.send(message)
-        self.ms.sock.close()
+        #message = 'disconnect'
+        #self.ms.send(message)
+        #self.ms.sock.close()
 
 
         #self.ms.send('disconnect')
 
 
-        #self.ms.close()
+        self.ms.close()
+        #time.sleep(0.2)
         return 0
 
     def close_clock(self, scanner=False):

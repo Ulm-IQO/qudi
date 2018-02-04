@@ -23,17 +23,17 @@ import time
 import numpy as np
 import math
 
-from core.module import Base, Connector
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
+from logic.generic_logic import GenericLogic
 
-
-class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
+class ConfocalScannerMotorInterfuse(GenericLogic, ConfocalScannerInterface):
 
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
     _modclass = 'confocalscannerinterface'
-    _modtype = 'hardware'
+    _modtype = 'interfuse'
     # connectors
 
     fitlogic = Connector(interface='FitLogic')
@@ -43,11 +43,11 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
         # if 'clock_frequency' in config.keys():
         #    self._clock_frequency = config['clock_frequency']
@@ -63,7 +63,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         self._scanner_counter_daq_task = None
         self._voltage_range = [-1., 1.]
 
-        self._position_range = [[0., 1.], [0., 1.], [0., 1.], [0., 0]]
+        self._position_range = [[0., 1e-5], [0., 1e-5], [0., 1e-5], [0., 1e-5]]
         self._current_position = [0., 0., 0., 0.]
 
         self._num_points = 500
@@ -71,7 +71,6 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
         self._fit_logic = self.get_connector('fitlogic')
         self._confocal_hw = self.get_connector('confocalscanner1')
         self._motor_hw = self.get_connector('magnetinterface')
@@ -106,9 +105,11 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
             self.position_range.append([constraints[label_axis]['scan_min'],constraints[label_axis]['scan_max']])
             #self.log.info(label_axis)
         #self.log.info('Position range is {0}'.format(self.position_range))
-        #self.position_range.append([0,0e-6])
+        self.position_range.append([0,0e-6])
 
     def on_deactivate(self):
+
+        # Stop measurement
         self.reset_hardware()
 
     def reset_hardware(self):
@@ -117,7 +118,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.warning('Scanning Device will be reset.')
-        self._motor_hw.abort()
+        #self._motor_hw.abort()
         return 0
 
     def get_position_range(self):
@@ -167,6 +168,11 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         #self.log.info('No scanner clock on motor')
+
+
+        if clock_frequency is not None:
+            self._count_frequency = clock_frequency
+
         #return self._scanner_hw.set_up_scanner_clock(clock_frequency=clock_frequency, clock_channel=clock_channel)
         return 0
 
@@ -183,6 +189,20 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         #self.log.warning('set_up_scanner')
+
+
+        # setting up the counter
+
+
+        clock_status = self._confocal_hw.set_up_clock(clock_frequency=self._count_frequency)
+        if clock_status < 0:
+            return np.array([-1.])
+
+        counter_status = self._confocal_hw.set_up_counter()
+        if counter_status < 0:
+            self._confocal_hw.close_clock()
+            return np.array([-1.])
+
         return 0
 
     def get_scanner_axes(self):
@@ -191,8 +211,8 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         n = 2
 
         possible_channels = ['x', 'y', 'z', 'a']
-
-        return possible_channels[0:int(n)]
+        #self.log.info('pos are {0}'.format(possible_channels[0:int(n)]))
+        return ['x', 'y', 'z']
 
     def scanner_set_position(self, x = None, y = None, z = None, a = None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
@@ -205,27 +225,35 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
+        #print('x{0} y{1} z{2} a{3}'.format(x,y,z,a))
         #self._scanner_hw.scanner_set_position(x=x, y=y, z=z, a=a)
         move_dict = {}
         # TODO: make this not hardcoded to axis name?
         if x is not None:
-            current = float(self._motor_hw.get_pos({'x-axis'})['x-axis'])
-            # round to 2 nm precision
-            if not math.isclose(x, current, abs_tol=1e-9):
-                move_dict.update({'x-axis': x})
+
+            #close = 0
+            #while close is 0:
+            #current = float(self._motor_hw.get_pos({'x-axis'})['x-axis'])
+                # round to 2 nm precision
+            #if not math.isclose(x, current, abs_tol=1e-9):
+
+            move_dict.update({'x-axis': x})
+            self.move_dict.update({'x-axis': x})
+
+            #current = float(self._motor_hw.get_pos({'x-axis'})['x-axis'])
         #self.log.info('wanted {}'.format(float(y)))
         #self.log.info(float(self.move_dict['y-axis']))
-        if (y is not None) and not math.isclose(y, float(self.move_dict['y-axis']),abs_tol=1e-9): # stop all those y calls
-            current = float(self._motor_hw.get_pos({'y-axis'})['y-axis'])
-            if not math.isclose(y ,current, abs_tol=1e-9):
-                move_dict.update({'y-axis': y})
-                self.move_dict.update({'y-axis': y})
-                #self.log.info('how did I get in here?')
-        if z is not None:
-            current = float(self._motor_hw.get_pos({'z-axis'})['z-axis'])
-            if round(float(z) * 2, 9) is not round(current * 2, 9):
-                move_dict.update({'z-axis': z})
+        if (y is not None)and not math.isclose(y, float(self.move_dict['y-axis']),abs_tol=1e-9): # stop all those y calls
+            #current = float(self._motor_hw.get_pos({'y-axis'})['y-axis'])
+            #if not math.isclose(y ,current, abs_tol=1e-9):
+            move_dict.update({'y-axis': y})
+            self.move_dict.update({'y-axis': y})
+            #self.log.info(y-current)
+        if (z is not None):
+            #current = float(self._motor_hw.get_pos({'z-axis'})['z-axis'])
+            #if round(float(z) * 2, 9) is not round(current * 2, 9):
+            move_dict.update({'z-axis': z})
+            self.move_dict.update({'z-axis': z})
 
         #self.log.info(move_dict)
         self._motor_hw.move_abs(move_dict)
@@ -240,9 +268,14 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         @return float[]: current position in (x, y, z).
         """
-        position_dict = self._motor_hw.get_pos()
+        #print('from hardware')
+        #position_dict = self._motor_hw.get_pos()
+        #print(position_dict)
         position_vect = []
         #self.log.info('motor interfuse reports {0}'.format(position_dict))
+
+        position_dict  = self.move_dict
+
 
         label_dict = {'x-axis','y-axis','z-axis'}
 
@@ -253,6 +286,7 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #Add random a channel
         #position_vect.append(0)
         #self.log.info('Current position in (x,y,z) is {0}'.format(position_vect))
+        #print(position_vect)
         return position_vect
 
     def set_up_line(self, length=100):
@@ -285,17 +319,6 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
             self.log.error('Given voltage list is no array type.')
             return np.array([-1.])
 
-        # setting up the counter
-
-
-        clock_status = self._confocal_hw.set_up_clock(clock_frequency=self._count_frequency)
-        if clock_status < 0:
-            return np.array([-1.])
-
-        counter_status = self._confocal_hw.set_up_counter()
-        if counter_status < 0:
-            self._confocal_hw.close_clock()
-            return np.array([-1.])
 
         self.set_up_line(np.shape(line_path)[1])
 
@@ -303,52 +326,88 @@ class ConfocalScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #        (len(self.get_scanner_count_channels()), self._line_length),
         #       dtype=np.uint32)
 
-        count_data = np.empty((self._line_length, 1), dtype = np.uint32)
+        #count_data = np.empty((self._line_length, 1), dtype = np.uint32)
+        count_data = np.empty(
+            (self._line_length,len(self.get_scanner_count_channels())),
+            dtype=np.uint32)
 
         #if dir == 1:
          #   line_path
           #  dir = -1
 
-
         for i in range(self._line_length):
+
+            #tick = time.perf_counter()
+
             coords = line_path[:, i]
 
-            if len(coords) == 2: #  xy scan
-                self.scanner_set_position(x=coords[0], y=coords[1])
+            #print(coords)
+            #self.scanner_set_position(x=coords[0], y=coords[1], z=coords[0])
 
-            if len(coords) == 1: #  depth scan
+            if len(coords) == 3: #  xy scan
+                self.scanner_set_position(x=coords[0], y=coords[1], z=coords[2])
+            elif len(coords) == 1: #  depth scan
                 self.scanner_set_position(z=coords[0])
             # record counts
             #self.log.info(self._confocal_hw.get_counter())
-            count = self._confocal_hw.get_counter()
-
+            count = self._confocal_hw.get_counter(samples=2)
+            try:
+                count_data[i,:] = count[:,1]
+            except IndexError:
+                self.log.warning('Count data {0}'.format(count))
+            #print(count)
             #self.log.info(self.get_scanner_position())
+            #print(np.mean(count))
 
-            count_data[i,0] = np.mean(count) # could be say, 10 values
+            # sometimes not ready after begining of line
 
-        self._confocal_hw.close_counter(scanner=False)
-        self._confocal_hw.close_clock(scanner=False)
+            #try0 = 0
+            #if i is 0:
+            #    while try0 < 4:
+            #        if count[0][0] is 0:
+            #            count = self._confocal_hw.get_counter(samples=5)
+            #            try0 += try0
+            #       else: try0 = 5
+            #print(count_data[i,:])
+            #count_data[i,:] = np.median(count,axis=1) # could be say, 10 values
+            #print(count_data[i,:])
+            #print(count)
+            #iqr = np.sort(count,axis=1)[:,2:7]
+            #print(iqr)
+            #count_data[i,:] = np.mean(iqr,axis =1)
+            #print(count)
+            #count_data[i, :] = count[0]
+            #print(count_data[i,:])
+            #tock =     time.perf_counter() - tick
+            #print(tock)
+
 
         return count_data
 
-    def close_scanner(self, scanner=False):
+    def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
-        #self._motor_hw.abort()
+        #try:
+        #    self._motor_hw.abort()
+        #except serial.serialutil.SerialException:
+        #    pass
         #self._scanner_hw.close_scanner()
-
+        self._confocal_hw.close_counter(scanner=True)
+        self.log.debug('ConfocalScannerDummy>close_scanner')
         return 0
 
-    def close_scanner_clock(self):
+    def close_scanner_clock(self, power=0):
         """ Closes the clock and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
         #self._scanner_hw.close_scanner_clock()
+        self._confocal_hw.close_clock(scanner=True)
+        self.log.debug('ConfocalScannerDummy>close_scanner_clock')
         return 0
 
     def  get_scanner_count_channels(self):
 
-        return ['Ctr1']
+        return self._confocal_hw.get_counter_channels()

@@ -225,6 +225,9 @@ class NanomaxStage(Base, MotorInterface):
                             pos = self._do_get_pos(axis_label)
                             param_dict[axis_label] = pos  # * 1e-7
                             # self.log.info('Position is {}'.format(pos))
+                            #print('param passed')
+                            #print(axis_label)
+                            #print(pos)
                         except:
                             param_dict[axis_label] = 0
                         else:
@@ -235,8 +238,11 @@ class NanomaxStage(Base, MotorInterface):
                         # self.log.debug(attempt)
                         try:
                             # self.log.info('now here')
+                            #print('from constraints')
                             pos = self._do_get_pos(axis_label)
                             param_dict[axis_label] = pos  # * 1e-7
+                            #print(axis_label)
+                            #print(pos)
                             # self.log.info('Position is {}'.format(pos))
                         except:
                             continue
@@ -333,8 +339,11 @@ class NanomaxStage(Base, MotorInterface):
     def _do_get_pos(self, axis):
         constraints = self.get_constraints()
         voltage = self.piezo.get_voltage(axis)
+        #print('voltage ')
+        #print(voltage)
         # self.log.info('Voltage is {} V'.format(voltage))
         pos = self.piezo.vol2dist(voltage)
+        #print(pos)
         return pos
 
     def _do_move_rel(self, axis, step):
@@ -468,7 +477,11 @@ class PiezoController(serial.Serial):
         '''
         # logging.info(str(command))
         #tick = time.perf_counter()
-        self.write((bytes(command + '\n', 'utf8')))
+        try:
+            self.write((bytes(command + '\n', 'utf8')))
+        except  serial.serialutil.SerialTimeoutException:
+            logging.error('Serial timeout exception when writing')
+
         # Have a timeout so that writing successive strings does not interrupt
         # the last command
         #logging.info(command)
@@ -502,7 +515,7 @@ class PiezoController(serial.Serial):
             bytesToRead = self.inWaiting()
             resp.append( self.read(bytesToRead))
 
-        #logging.info(resp)
+        #print(resp)
         # Search the response to extract the number
         regex = r'[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?'
 
@@ -528,8 +541,10 @@ class PiezoController(serial.Serial):
             self.close_connection()
             logging.error("%s axis is not in (X,Y,Z)" % axis)
         # logging.info("{}voltage?".format(axis))
-        self.cmd('{}voltage?'.format(axis))
+        self.cmd('{0}voltage?'.format(axis))
+        time.sleep(0.2)
         voltage = self.response()
+        #print('get {0} {1}'.format(axis, voltage))
         return voltage
 
     def set_voltage(self, axiso, voltage, step=2.5):
@@ -572,9 +587,10 @@ class PiezoController(serial.Serial):
 
         # This is the string that we send over serial to MDT693A
         value = round(voltage,3)
+        #print('set {0} {1}'.format(axis, value))
         #if value is not current_voltage:
             #logging.info(current_voltage)
-            #logging.info("{}voltage={}".format(axis, value))
+        #logging.info("{}voltage={}".format(axis, value))
         self.cmd("{}voltage={}".format(axis, value))
 
     def jog(self, axis, voltage_increment):
@@ -637,6 +653,7 @@ class PiezoController(serial.Serial):
 
     def close_connection(self):
         self.close()
+        #time.sleep(0.2)
 
     def vol2dist(self, voltage):
 
@@ -649,7 +666,7 @@ class PiezoController(serial.Serial):
         self.volt = float((dist + 10e-6) / ((20 / 75) * 1e-6))
 
         # resolution is 3 mV
-        self.volt = round(self.volt, 5)
+        #self.volt = round(self.volt, 5)
 
         return self.volt
 

@@ -12,6 +12,9 @@ from numpy import arange
 
 import re
 
+import visa
+import signal
+
 from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
@@ -24,9 +27,9 @@ class NanomaxStage(Base, MotorInterface):
     # _modclass = 'MotorStageNanomax'
     # _modtype = 'hardware'
 
-    _com_port_nano_xyz = ConfigOption('com_port_nano_xyz', 'COM4')
-    _nano_xyz_baud_rate = ConfigOption('nano_xyz_baud_rate', 115200)
-    _nano_xyz_timeout = ConfigOption('nano_xyz_timeout', 1000)
+    _com_port_nano_xyz = ConfigOption('com_port_nano_xyz', 'GPIB0::3')
+    #_nano_xyz_baud_rate = ConfigOption('nano_xyz_baud_rate', 115200)
+    #_nano_xyz_timeout = ConfigOption('nano_xyz_timeout', 1000)
     _nano_xyz_term_char = ConfigOption('nano_xyz_term_char', '\n')
     _first_axis_label = ConfigOption('nano_first_axis_label', 'x-axis')
     _second_axis_label = ConfigOption('nano_second_axis_label', 'y-axis')
@@ -66,7 +69,47 @@ class NanomaxStage(Base, MotorInterface):
         """ Initialisation performed during activation of the module.
         @return: error code
         """
-        self.piezo = PiezoController(port=self._com_port_nano_xyz)
+
+
+        self.rm = None
+        self.srs = None
+        '''
+        
+        Signals.CTRL_C_EVENT
+Signals.CTRL_BREAK_EVENT
+Signals.SIGINT
+Signals.SIGILL
+Signals.SIGFPE
+Signals.SIGSEGV
+Signals.SIGTERM
+Signals.SIGBREAK
+Signals.SIGABRT
+        
+        
+        '''
+        #for sig in signal.Signals:
+            #signal.signal(sig, print)  # Substitute handler of choice for `print`
+
+
+        def receive_signal(signum, stack):
+            print('Received:', signum)
+
+        for i in set(signal.Signals) - {signal.SIGINT, signal.CTRL_C_EVENT, signal.CTRL_BREAK_EVENT}:
+            try:
+                signal.signal(i, receive_signal)
+            except ValueError:
+                print(i)
+
+        try:
+            self.rm = visa.ResourceManager()
+            self.srs = self.rm.open_resource('USB0::0xB506::0x2000::002604::INSTR')
+            idn = self.srs.write('*IDN?')
+            idn = self.srs.read()
+            self.log.info(' Connected {0}'.format(idn))
+        except visa.VisaIOError:
+            self.log.error('GPIB device not found')
+            return False
+
         self.vel = {}
         self.vel['x-axis'] = 1e-5
         self.vel['y-axis'] = 1e-5
@@ -77,7 +120,11 @@ class NanomaxStage(Base, MotorInterface):
         """ Deinitialisation performed during deactivation of the module.
         @return: error code
         """
-        self.piezo.close_connection()
+
+        self.srs.clear()
+        self.srs.close()
+        self.rm.close()
+
         return 0
 
     def get_constraints(self):
@@ -195,8 +242,8 @@ class NanomaxStage(Base, MotorInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-
-        self.piezo.close_connection()
+        self.srs.clear()
+        self.srs.close()
         return 0
 
     def get_pos(self, param_list=None):
@@ -338,11 +385,11 @@ class NanomaxStage(Base, MotorInterface):
 
     def _do_get_pos(self, axis):
         constraints = self.get_constraints()
-        voltage = self.piezo.get_voltage(axis)
+        voltage = self._get_voltage(axis)
         #print('voltage ')
         #print(voltage)
         # self.log.info('Voltage is {} V'.format(voltage))
-        pos = self.piezo.vol2dist(voltage)
+        pos = self._vol2dist(voltage)
         #print(pos)
         return pos
 
@@ -367,30 +414,27 @@ class NanomaxStage(Base, MotorInterface):
             self._do_move_abs(axis, move)
         return axis, move
 
-    def _do_convert_volt(self, value):
+
+
+    def _dist2volt(self, value):
 
         """
-        Converts the range of the piezo (20 microns ) to voltage (max 75)
-
+        Converts the range of the piezo (20 microns ) to voltage (max 10)
         :param value:
         :return:
         """
 
-        volt = (value - 0.1e-6) / ((20 / 75) * 1e-6)
-
-        if volt > 75:
-            self.log.error("Voltage is beyond range of piezo")
-            volt = 0
+        volt = (value + 1e-5) / ((20 / 10) * 1e-6)
 
         return volt
 
-    def _do_convert_SI(self, value):
+    def _volt2dist(self, value):
         """
         does the opposite
         :param value:
         :return:
         """
-        unit = (20 / 75) * 1e-6 * value + 0.1e-6
+        unit = (20 / 10) * 1e-6 * value - 1e-5
 
         return unit
 
@@ -406,7 +450,7 @@ class NanomaxStage(Base, MotorInterface):
         """
 
         # get voltage from position in SI units
-        move_volt = self.piezo.dist2volt(move)
+        move_volt = self._dist2volt(move)
         # move to voltage
 
         # self.log.info('Move volt is {0}'.format(move_volt))
@@ -417,7 +461,7 @@ class NanomaxStage(Base, MotorInterface):
                              ''.format(axis, move, constraints[axis]['pos_min'], constraints[axis]['pos_max']))
         else:
 
-            self.piezo.set_voltage(axis, move_volt)  # 1e7 to convert meter to SI units
+            self._set_voltage(axis, move_volt)  # 1e7 to convert meter to SI units
         return axis, move
 
     def _in_movement_xyz(self):
@@ -449,227 +493,51 @@ class NanomaxStage(Base, MotorInterface):
                 stopped = False
         return stopped
 
-
-import logging, time
-
-
-class PiezoController(serial.Serial):
-    '''
-    Python class for controlling voltages to 3-axis ThorLabs MDT693A
-    '''
-
-    # Note 75V is the maximum voltage the Nanomax can handle!
-    def __init__(self, MAX_VOLTAGE=75.0, port='COM4', baudrate=115200):
-
-        self.MAX_VOLTAGE = MAX_VOLTAGE
-
-        # Initialise the class using super class of (py)serial
-        serial.Serial.__init__(self, port, baudrate, bytesize=serial.EIGHTBITS, parity=serial.PARITY_NONE,
-                               stopbits=serial.STOPBITS_ONE, timeout=0.3)
-
-            # Close any open connections and open a serial connection
-            # self.close()
-            # self.open()
-
-    def cmd(self, command, verbose=False):
-        '''
-        Send a command to the MDT693A
-        '''
-        # logging.info(str(command))
-        #tick = time.perf_counter()
-        try:
-            self.write((bytes(command + '\n', 'utf8')))
-        except  serial.serialutil.SerialTimeoutException:
-            logging.error('Serial timeout exception when writing')
-
-        # Have a timeout so that writing successive strings does not interrupt
-        # the last command
-        #logging.info(command)
-        num = 1
-        while (num < 1):
-            num = self.out_waiting()
-        #tock = time.perf_counter() - tick
-        #logging.info(tock)
-
-    def response(self):
-        '''
-        Get response and convert to a float if there's a match
-        '''
-
-        # resp = self.read()
-        # # logging.info(resp)
-        # if resp is b'':
-        #     return
-        #
-        # # Loop until we hit the end line character
-        # while resp[-1] is not '\r':
-        #     r = self.read()
-        #     # logging.info(r)
-        #     resp.append(r)
-        #     if r == b'':
-        #         break
-
-        resp = []
-        bytesToRead = 1
-        while (bytesToRead > 0) :
-            bytesToRead = self.inWaiting()
-            resp.append( self.read(bytesToRead))
-
-        #print(resp)
-        # Search the response to extract the number
-        regex = r'[+-]?(\d+(\.\d*)?|\.\d+)([eE][+-]?\d+)?'
-
-        found = re.findall(regex, str(resp))
-        # print found
-        if len(found) > 0:
-            result = float(found[0][0])
-            return result
-        else:
-            return 0
-
-
-    def get_voltage(self, axiso):
+    def _get_voltage(self, axis):
         '''
         get the voltage for the x,y,z axes
         --------
         axis - (str) x y or z axis to set the voltage
         '''
 
-        axis = axiso.replace("-axis", "")
-        #logging.info(axis)
-        if axis not in ["x", "y", "z"]:
-            self.close_connection()
-            logging.error("%s axis is not in (X,Y,Z)" % axis)
-        # logging.info("{}voltage?".format(axis))
-        self.cmd('{0}voltage?'.format(axis))
-        time.sleep(0.2)
-        voltage = self.response()
-        #print('get {0} {1}'.format(axis, voltage))
-        return voltage
+        lut = ["x-axis", "y-axis", "z-axis"]
 
-    def set_voltage(self, axiso, voltage, step=2.5):
+        if axis not in lut:
+            self.log.error("%s is not in (X,Y,Z)" % axis)
+            return
+
+        else:
+            index = int(lut.index(axis))
+            # logging.info("{}voltage?".format(axis))
+            voltage = float(self.srs.query('AUXV? {0}'.format(index)))
+            return voltage
+
+    def _set_voltage(self, axis, voltage):
         '''
         set the voltage on the piezo controller
-        #=======================================================================
-        # PLEASE USE Z-AXIS WITH CAUTION WHEN THE VGA IS NEAR THE SURFACE OF THE
-        # CHIP
-        #=======================================================================
-        ---------
         axis - (str) x y or z axis to set the voltage
         voltage - (float) voltage to set on the piezo controller
         '''
-        axis = axiso.replace("-axis", "")
-        if axis not in ["x", "y", "z"]:
-            self.close_connection()
-            logging.error("%s axis is not in (X,Y,Z)" % axis)
-        if not 0.0 <= voltage <= self.MAX_VOLTAGE:
-            self.close_connection()
-            logging.error("The current voltage (%s V) must be between 0V and %s V" % (voltage, self.MAX_VOLTAGE))
-        if step > 5.0:
-            logging.error('Step size %s V must be less than %s V' % (voltage, step))
 
-        # Check value
-        #current_voltage = self.get_voltage(axiso)
+        lut = ["x-axis", "y-axis", "z-axis"]
 
-        # logging.info('Current voltage is {}'.format(current_voltage))
-        # logging.info('Wanted voltage is {}'.format(voltage))
+        if axis not in lut:
+            self.log.error("%s axis is not in (X,Y,Z)" % axis)
+        if not 0.0 <= voltage <= 10.1:
+            self.log.error("The current voltage (%s V) must be between 0V and 10 V" %voltage)
 
-        # if abs(current_voltage - voltage) > step:
-        #     if (current_voltage - voltage) < 0:
-        #         intermediate = arange(current_voltage, voltage, step)
-        #     else:
-        #         intermediate = arange(voltage, current_voltage, step)[::-1]
-        #
-        #     for i in intermediate:
-        #         logging.info("{}voltage={}".format(axis, round(i,5)))
-        #         self.cmd("{}voltage={}".format(axis, round(i,5)))
-        #         #                 sleep(0.03)
+        else:
+            index = lut.index(axis)
+            value = round(voltage, 5)
+            #sleep(0.01)
+            #print("AUXV {0}, {1}".format(index, value))
+            self.srs.write("AUXV {0}, {1}".format(index, value))
 
-        # This is the string that we send over serial to MDT693A
-        value = round(voltage,3)
-        #print('set {0} {1}'.format(axis, value))
-        #if value is not current_voltage:
-            #logging.info(current_voltage)
-        #logging.info("{}voltage={}".format(axis, value))
-        self.cmd("{}voltage={}".format(axis, value))
 
-    def jog(self, axis, voltage_increment):
-        '''
-        Increment/decrement the voltages on a given axis by a voltage
-        --------
-        axis - (str) x y or z axis to set the voltage
-        voltage - (float) voltage to set on the piezo controller
-        '''
-        if axis not in ["x", "y", "z"]:
-            self.close_connection()
-            raise RuntimeError("%s axis is not in (x,y,z)" % axis)
 
-        v = self.get_voltage(axis)
-        new_voltage = v + voltage_increment
 
-        if not 0.0 <= new_voltage <= self.MAX_VOLTAGE:
-            self.close_connection()
-            raise RuntimeError(
-                "The current voltage (%s V) must be between 0V and %s V" % (new_voltage, self.MAX_VOLTAGE))
 
-        self.set_voltage(axis, new_voltage)
 
-    def set_voltage_rel(self, axis, r):
-        '''
-        set relative voltage on the piezo controller (i.e. between 0 and
-        MAX_VOLTAGE.
-        #=======================================================================
-        # PLEASE USE Z-AXIS WITH CAUTION WHEN THE VGA IS NEAR THE SURFACE OF THE
-        # CHIP
-        #=======================================================================
-        -------
-        axis - (str) x y or z axis to set the voltage
-        voltage - (float) number between 0 and 1 for piezo controller where
-                0 is zero voltage and 1 is MAX_VOLTAGE
-        '''
 
-        if not 0.0 <= r <= 1.0:
-            self.close_connection()
-            logging.error("The relative voltage must be between 0 and 1")
-        self.set_voltage(axis, r * self.MAX_VOLTAGE)
 
-    def half_xy_axes(self):
-        '''
-        set the voltages on the x, y piezos to half of the max voltage
-        '''
-        self.set_voltage_rel('x', 0.5)
-        self.set_voltage_rel('y', 0.5)
-
-    def zero_all_axes(self):
-        '''
-        Set all the axis to zero
-        #############################################################
-        WARNING DO NOT EXECUTE THIS COMMAND WHEN VGA IS NEAR THE CHIP
-        #############################################################
-        '''
-        self.set_voltage("x", 0.0)
-        self.set_voltage("y", 0.0)
-        self.set_voltage("z", 0.0)
-
-    def close_connection(self):
-        self.close()
-        #time.sleep(0.2)
-
-    def vol2dist(self, voltage):
-
-        self.dist = (20 / 75) * 1e-6 * voltage - 10e-6
-
-        return self.dist
-
-    def dist2volt(self, dist):
-
-        self.volt = float((dist + 10e-6) / ((20 / 75) * 1e-6))
-
-        # resolution is 3 mV
-        #self.volt = round(self.volt, 5)
-
-        return self.volt
-
-    def __del__(self):
-        self.close()
 

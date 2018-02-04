@@ -119,6 +119,8 @@ class MotorDummy(Base, MotorInterface):
         axis0['acc_min'] = 0.1
         axis0['acc_max'] = 0.0
         axis0['acc_step'] = 0.0
+        axis0['scan_min'] = -1e-5
+        axis0['scan_max'] = 1e-5
 
         axis1 = {}
         axis1['label'] = self._y_axis.label        # that axis label should be obtained from config
@@ -133,6 +135,8 @@ class MotorDummy(Base, MotorInterface):
         axis1['acc_min'] = 0.1
         axis1['acc_max'] = 0.0
         axis1['acc_step'] = 0.0
+        axis1['scan_min'] = -1e-5
+        axis1['scan_max'] = 1e-5
 
         axis2 = {}
         axis2['label'] = self._z_axis.label        # that axis label should be obtained from config
@@ -147,6 +151,8 @@ class MotorDummy(Base, MotorInterface):
         axis2['acc_min'] = 0.1
         axis2['acc_max'] = 0.0
         axis2['acc_step'] = 0.0
+        axis2['scan_min'] = -1e-5
+        axis2['scan_max'] = 1e-5
 
         axis3 = {}
         axis3['label'] = self._phi_axis.label      # that axis label should be obtained from config
@@ -161,6 +167,8 @@ class MotorDummy(Base, MotorInterface):
         axis3['acc_min'] = None
         axis3['acc_max'] = None
         axis3['acc_step'] = None
+        axis3['scan_min'] = -1e-5
+        axis3['scan_max'] = 1e-5
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0

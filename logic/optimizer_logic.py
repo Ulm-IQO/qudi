@@ -198,6 +198,10 @@ class OptimizerLogic(GenericLogic):
             @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
+
+        #print(initial_pos)
+        #print(caller_tag)
+
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
@@ -211,6 +215,10 @@ class OptimizerLogic(GenericLogic):
         # Keep track of where the start_refocus was initiated
         self._caller_tag = caller_tag
 
+        #print('optim')
+        #print(self._initial_pos_x)
+        #print(self._initial_pos_y)
+        #print(self._initial_pos_z)
         # Set the optim_pos values to match the initial_pos values.
         # This means we can use optim_pos in subsequent steps and ensure
         # that we benefit from any completed optimization step.
@@ -220,7 +228,7 @@ class OptimizerLogic(GenericLogic):
         self.optim_sigma_x = 0.
         self.optim_sigma_y = 0.
         self.optim_sigma_z = 0.
-
+        #
         self._xy_scan_line_count = 0
         self._optimization_step = 0
         self.check_optimization_sequence()
@@ -350,6 +358,7 @@ class OptimizerLogic(GenericLogic):
             line = np.vstack((lsx, lsy, lsz, np.zeros(lsx.shape)))
 
         line_counts = self._scanning_device.scan_line(line)
+        #print('line_counts {0}'.format(line_counts))
         if np.any(line_counts == -1):
             self.log.error('The scan went wrong, killing the scanner.')
             self.stop_refocus()
@@ -391,7 +400,7 @@ class OptimizerLogic(GenericLogic):
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian
+            estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
 
@@ -529,12 +538,16 @@ class OptimizerLogic(GenericLogic):
         scan_x_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
         scan_y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
 
+        #print(scan_z_line)
+        #print(scan_x_line)
+        #print(scan_y_line)
         if n_ch <= 3:
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line)[0:n_ch])
         else:
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line, np.zeros(scan_x_line.shape)))
 
         # Perform scan
+        #print(line)
         line_counts = self._scanning_device.scan_line(line)
         if np.any(line_counts == -1):
             self.log.error('Z scan went wrong, killing the scanner.')
@@ -653,4 +666,3 @@ class OptimizerLogic(GenericLogic):
         if z is not None:
             self._current_z = z
         self.sigPositionChanged.emit(self._current_x, self._current_y, self._current_z)
-

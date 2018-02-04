@@ -328,6 +328,7 @@ class CounterLogic(GenericLogic):
 
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
+        print(data)
         count_data = data[:, 1:len(self.get_channels())+1]
         time_data = data[:, 0]
 
@@ -468,7 +469,7 @@ class CounterLogic(GenericLogic):
 
                 # read the current counter value
                 self.rawdata = self._counting_device.get_counter(samples=self._counting_samples)
-                if self.rawdata[0] < 0:
+                if self.rawdata[0][0] < 0:
                     self.log.error('The counting went wrong, killing the counter.')
                     self.stopRequested = True
                 else:

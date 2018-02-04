@@ -316,11 +316,10 @@ class WaterlooCounter2(Base, SlowCounterInterface):
             self._chan_list.append(4)
             #self._chan_list.append(2)
 
+        self._channel_apd_1 = None
         if 'timetagger_channel_apd_1' in config.keys():
             self._channel_apd_1 = config['timetagger_channel_apd_1']
             self._chan_list.append(config['timetagger_channel_apd_1'])
-        else:
-            self._channel_apd_1 = None
 
         if 'coincidence' in config.keys():
             self._coincidence = config['coincidence']
@@ -344,7 +343,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
         self.n_connects = 0
 
-        self._count_frequency = 100  # Hz
+        self._count_frequency = 50  # Hz
 
 
         if 'timetagger_sum_channels' in config.keys():
@@ -398,7 +397,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         """
 
 
-        #self._count_frequency = clock_frequency
+        self._count_frequency = clock_frequency
 
         #self.ms.send('setup')
         #self.ms.update_timing_window(1/self._count_frequency)
@@ -441,7 +440,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         data = self.ms.sock.recv(2048)
         #print(data)
         decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
-        decrypted["poll_time"] = 0 #1 / self._count_frequency
+        decrypted["poll_time"] = 1 / self._count_frequency #20e-3
         decrypted["user_name"] = 'imaging_pc0'
         decrypted["user_platform"] = 'python'
         if self._coincidence:
@@ -503,12 +502,16 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         found = 0
         counts_out = []
 
+        deltatime = 0
+        counts0 = 0
+
         while found < samples:
             self.ms.sock.send(bytes('counts\x00', 'utf8'))
             raw_data = self.ms.sock.recv(2048)
 
             if not raw_data:
                 break
+
             start = bytes(raw_data).find(bytes('{'.encode('utf8')))
             end = bytes(raw_data).find(bytes('}'.encode('utf8')), start)
             json_str = raw_data[start:end + 1]
@@ -519,50 +522,37 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
             if 'counts' in decrypted['type']:
                 counts_out_col = []
-                found = found +1
                 counts = np.array(decrypted['counts'])
-                deltatime = decrypted['delta_time']
+                deltatime = decrypted['span_time']
                 counts0 = counts[0]
 
-                if counts0 is None or counts0 is 0:
-                    counts0 = 1
+                if deltatime is deltatime or deltatime <= 0.0:
+                    pass
 
-                counts_out_col.append(counts0 / deltatime)
-                if self._channel_apd_1 is not None:
-                    counts_out_col.append(0)
-                    counts_out_col.append(0)
+                if counts0 != counts0 or counts0  <= 0:
+                    pass
 
-                counts_out.append(counts_out_col)
+                else:
+                    counts_out_col.append(counts0 / deltatime)
+                    if self._channel_apd_1 is not None:
+                        counts_out_col.append(0)
+                        counts_out_col.append(0)
+
+                    counts_out.append(counts_out_col)
+                    found = found + 1
 
 
-
-        # for x in range(0, len(data)):
-        #
-        #     counts_out_col = []
-        #     try:
-        #         deltatime = data[x]['delta_time']
-        #
-        #         counts = np.array(data[x]['counts'])
-        #         #print(counts)
-        #         counts0 = np.median(counts[0:3])
-        #
-        #         if counts0 is None or counts0 is 0:
-        #             counts0 = 1
-        #
-        #         counts_out_col.append(round(counts0/deltatime))
-        #
-        #         if self._channel_apd_1 is not None:
-        #             counts_out_col.append(0)
-        #             counts_out_col.append(0)
-        #
-        #         counts_out.append(counts_out_col)
-        #     except KeyError:
-        #         pass
-
-        if counts_out:
+        try:
             counts_out = np.transpose(np.array(counts_out, dtype=np.uint32))
-        else:
+        except ValueError:
+            self.log.warning('Value error: {0}'.format(counts_out))
             counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*0
+        except OverflowError:
+            self.log.warning('Overflow error: {0}'.format(counts_out))
+            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*0
+
+        if counts_out is None:
+            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32) * 0
 
         return counts_out
 

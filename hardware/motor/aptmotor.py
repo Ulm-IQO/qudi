@@ -235,6 +235,7 @@ class APTMotor():
 
         self.aptdll = windll.LoadLibrary(path_dll)
         self.aptdll.EnableEventDlg(True)
+        self.aptdll.APTCleanUp()
         self.aptdll.APTInit()
         self._HWType = c_long(self.hwtype_dict[hwtype])
         self.Connected = False
@@ -574,7 +575,7 @@ class APTMotor():
             relativeDistance = c_float(relDistance*1000.0)
         else:
             relativeDistance = c_float(relDistance)
-
+        print('Moving {}'.format(relDistance))
         self.aptdll.MOT_MoveRelativeEx(self.SerialNum, relativeDistance, self._wait_until_done)
         if self.verbose:
             print('move_rel SUCESS')
@@ -594,7 +595,7 @@ class APTMotor():
             absolutePosition = c_float(absPosition*1000.0)
         else:
             absolutePosition = c_float(absPosition)
-
+        print('Moving {}'.format(absPosition))
         self.aptdll.MOT_MoveAbsoluteEx(self.SerialNum, absolutePosition, self._wait_until_done)
         if self.verbose:
             print('move_abs SUCESS')
@@ -754,6 +755,7 @@ class APTMotor():
         @param float backlash: the backlash in m or degree for the used stage.
         """
 
+
         if self._unit == 'm':
             # controller needs values in mm:
             c_backlash = c_float(backlash*1000)
@@ -859,7 +861,7 @@ class APTStage(Base, MotorInterface):
                 self.log.error('The following label "{0}" cannot be found in '
                         'the constraints method!\nCheck whether label '
                         'coincide with the label given in the config!\n'
-                        'Restart the program!')
+                        'Restart the program!'.format(label))
 
         self.custom_activation()
 
@@ -1163,11 +1165,11 @@ class APTOneAxisStage(APTStage):
                                             limits_dict[label_axis]['pos_min'],
                                             limits_dict[label_axis]['pos_max'],
                                             pitch=pitch, unit=unit)
-            self._axis_dict[label_axis].setVelocityParameters(
-                                            limits_dict[label_axis]['vel_min'],
-                                            limits_dict[label_axis]['acc_max'],
-                                            limits_dict[label_axis]['vel_max'])
-            self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
+            #self._axis_dict[label_axis].setVelocityParameters(
+             #                               limits_dict[label_axis]['vel_min'],
+              #                              limits_dict[label_axis]['acc_max'],
+               #                             limits_dict[label_axis]['vel_max'])
+            #self._axis_dict[label_axis].set_velocity(limits_dict[label_axis]['vel_max'])
             self._axis_dict[label_axis].setHardwareLimitSwitches(2, 2)
             self._axis_dict[label_axis]._wait_until_done = False
             # set the backlach correction in m since the forward movement is
@@ -1221,7 +1223,7 @@ class APTOneAxisStage(APTStage):
         axis0['pos_min']  = 0       # in °
         axis0['pos_max']  = 360     # that is basically the traveling range
         axis0['pos_step'] = 0.01    # in °
-        axis0['vel_min']  = 0.1     # in °/s
+        axis0['vel_min']  = 1     # in °/s
         axis0['vel_max']  = 4.5     # in °/s
         axis0['vel_step'] = 0.1     # in °/s (a rather arbitrary number)
         axis0['acc_min']  = 4.0     # in °/s^2

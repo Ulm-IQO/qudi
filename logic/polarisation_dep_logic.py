@@ -70,7 +70,7 @@ class PolarisationDepLogic(GenericLogic):
         """
 
         # Set up measurement
-        self._hwpmotor.move_abs(0)
+        self._hwpmotor.move_abs({'phi': 0})
 
         # configure the countergui
 
@@ -79,7 +79,7 @@ class PolarisationDepLogic(GenericLogic):
         self.signal_start_rotation.emit()
 
     def rotate_polarisation(self):
-        self._hwpmotor.move_rel(self.scan_length)
+        self._hwpmotor.move_rel({'phi': self.scan_length})
         self.log.info('rotation finished, saving data')
         self.signal_rotation_finished.emit()
 

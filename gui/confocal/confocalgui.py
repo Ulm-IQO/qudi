@@ -357,6 +357,7 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='m')
 
         # Create Region of Interest for xy image and add to xy Image Widget:
+        # Create Region of Interest for xy image and add to xy Image Widget:
         self.roi_xy = CrossROI(
             [
                 ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size / 2,
@@ -1112,6 +1113,9 @@ class ConfocalGui(GUIBase):
         self.disable_scan_actions()
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()
+        #print('from gui')
+        #print(crosshair_pos)
+
         self.sigStartOptimizer.emit(crosshair_pos, 'confocalgui')
 
     def update_crosshair_position_from_logic(self, tag):
@@ -1431,6 +1435,7 @@ class ConfocalGui(GUIBase):
         @params int sliderValue: slider postion, a quantized whole number
         """
         z_pos = self._scanning_logic.z_range[0] + sliderValue * self.slider_res
+        #self.log.info('zpos {}'.format(z_pos))
         self.update_roi_depth(v=z_pos)
         self.update_input_z(z_pos)
         self._scanning_logic.set_position('zslider', z=z_pos)

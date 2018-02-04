@@ -23,6 +23,7 @@ import ctypes
 import numpy as np
 import time
 from qtpy import QtCore
+import os
 
 from core.module import Base, ConfigOption
 from core.util.mutex import Mutex
@@ -1013,7 +1014,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         constraints.max_detectors = 1
         constraints.min_count_frequency = 1e-3
         constraints.max_count_frequency = 10e9
-        conetraints.counting_mode = [CountingMode.CONTINUOUS]
+        constraints.counting_mode = [CountingMode.CONTINUOUS]
         return constraints
 
     def get_counter(self, samples=None):
@@ -1024,7 +1025,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         @return float: the photon counts per second
         """
         time.sleep(0.05)
-        return [self.get_count_rate(self._count_channel)]
+        return [[self.get_count_rate(self._count_channel)]]
 
     def close_counter(self):
         """ Closes the counter and cleans up afterwards. Actually, you do not

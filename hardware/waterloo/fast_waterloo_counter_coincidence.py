@@ -29,7 +29,7 @@ import socket
 import json
 import time
 import numpy as np
-
+import math
 class mysocket:
     '''demonstration class only
       - coded for clarity, not efficiency
@@ -323,8 +323,8 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         self.TCP_IP = 'localhost'
         self.TCP_PORT = 5001
         window = 256
-        self.log.info('coincidence is {0}'.format(self._coincidence))
-        self.log.info('channel list is {0}'.format(self._chan_list))
+        #self.log.info('coincidence is {0}'.format(self._coincidence))
+       # self.log.info('channel list is {0}'.format(self._chan_list))
 
         self.ms = mysocket(sock=None, channels=self._chan_list, biases=[1.1,1.1], delays=[0,0], coincidences=self._coincidence,
                            window=window,
@@ -434,7 +434,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         data = self.ms.sock.recv(2048)
         #print(data)
         decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
-        decrypted["poll_time"] = 1 / self._count_frequency
+        decrypted["poll_time"] = 0 #1 / self._count_frequency
         decrypted["user_name"] = 'imaging_pc0'
         decrypted["user_platform"] = 'python'
         if self._coincidence:
@@ -443,7 +443,11 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
         send_dat = json.dumps(decrypted) + '\x00'
         self.ms.sock.send(bytes(send_dat, 'utf8'))
-        # data = self.ms.sock.recv(2048) #receive back again
+        time.sleep(0.2)
+
+        #self.ms.sock.send(bytes('counts', 'utf8'))
+
+        data = self.ms.sock.recv(2048) #receive back again
         time.sleep(0.2)
 
         return 0
@@ -459,7 +463,7 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         if self._channel_apd_1 is not None:
             channels.append('APD 1')
         if self._coincidence:
-            channels.append('Coincidence')
+            channels.append('Coincidence/ APD 0')
 
         return channels
 
@@ -491,33 +495,69 @@ class WaterlooCounter2(Base, SlowCounterInterface):
         if samples is None:
             samples = 1
         #print(samples)
-        data = self.ms.recv(2048*(samples))
 
-        #print(data)
+        found = 0
+        data = []
+        while found < 1:
+            self.ms.sock.send(bytes('counts', 'utf8'))
+            #print('counts')
+            raw_data = self.ms.sock.recv(2048)
+        # print(data)
+            #if not data:
+            #    break
+
+            #data.decode('utf8').replace('\x00', '')data.decode('utf8').replace('\x00', '')
+            #line = infile.readline()
+            if not raw_data:
+                break
+            #print(data)
+            start = bytes(raw_data).find(bytes('{'.encode('utf8')))
+            end = bytes(raw_data).find(bytes('}'.encode('utf8')), start)
+            json_str = raw_data[start:end + 1]
+            try:
+                decrypted = json.loads(json_str)
+            except json.decoder.JSONDecodeError:
+                break
+
+            #print(data.decode('utf8').replace('\x00', ''))
+            #decrypted = json.loads(data.decode('utf8').replace('\x00', ''))
+            #print(decrypted['type'])
+            if 'counts' in decrypted['type']:
+                #print('its true')
+                #found += found
+                found = 1
+                data = [decrypted]
+                #data[found] = decrypted
+
+        #print('data {0}'.format(data))
         #print(data[0])
 
-
+        #time.sleep(0.2)
+        #print('hi')
         #tock = time.perf_counter() - tick
         # print(counts)
         #print(tock)
-
         counts_out = []#0 for x in range(0, len(data))]
 
         #print(len(data))
         for x in range(0, len(data)):
-            #if 'counts' in data[x]['type']:
+
             counts_out_col = []  # 0 for x in range(0, len(data))]
             try:
-                deltatime = data[x]['span_time']
+                deltatime = data[x]['delta_time']
 
                 counts = np.array(data[x]['counts'])
                 #self.log.info(counts)
-                counts_out_col.append(counts[self._channel_apd_0-1]/deltatime)
+                counts0 = counts[self._channel_apd_0 - 1]
+                if counts0 is None or counts0 is 0:
+                    counts0 = 1
+
+                counts_out_col.append(round(counts0/deltatime))
 
                 #self.log.info(counts[self._channel_apd_0]/deltatime)
                 #self.log.info(counts_out_col)
                 if self._channel_apd_1 is not None:
-                    counts_out_col.append( counts[self._channel_apd_1-1]/deltatime)
+                    counts_out_col.append( round(counts[self._channel_apd_1-1]/deltatime))
 
                 #logging.info('counts {0}'.format(counts))
 
@@ -529,28 +569,40 @@ class WaterlooCounter2(Base, SlowCounterInterface):
                     if not coincidences:
                         coincidences = [0]
                     #self.log.info('coinc {0}'.format(coincidences))
-                    counts_out_col.append(coincidences[0]/deltatime)
 
-                #self.log.info(counts_out_col)
+                    value = coincidences[0] / counts0
+                    if math.isnan(value):
+                        value = 0
+                    counts_out_col.append(value)
+
+
+
+                #for x in range(0, len(counts_out_col)):
+                    #if counts_out_col[x] is not counts_out_col[x]:
+                        #print(counts_out_col)
+
+                #print(counts_out_col)
                 counts_out.append(counts_out_col)
             except KeyError:
                 pass
                 # setup variable
 
         #self.ms.sock.shutdown()
-        #tock = time.perf_counter() - tick
-        #print(counts)
-        #print(tock)
-        #self.log.info(self.get_counter_channels())
+                #self.log.info(self.get_counter_channels())
         #self.log.info(len(self.get_counter_channels()))
-
+        #self.log.info(counts_out)
         if not counts_out:
-            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*-1
+            counts_out = np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32)*0
         else:
             counts_out = np.transpose(np.array(counts_out,dtype=np.uint32))
 
-        #self.log.info('counts_out = {0}'.format(counts_out))
+        #tock = time.perf_counter() - tick
         #print(counts_out)
+        #print('tock {}'.format(tock))
+
+        #self.log.info('counts_out = {0}'.format(counts_out))
+
+
         return counts_out
         #data = data[0]
         #self.log.info(data)
@@ -561,8 +613,8 @@ class WaterlooCounter2(Base, SlowCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        #message = 'disconnect'
-        #self.ms.send(message)
+        message = 'disconnect'
+        self.ms.send(message)
         self.ms.sock.close()
 
 
