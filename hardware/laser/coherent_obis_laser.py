@@ -238,10 +238,9 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return tuple(float, float): laser power range
         """
-        self._communicate('SOUR:POW:LIM:LOW?')
-        minpower = float(response[0])
-        self._communicate('SOUR:POW:LIM:HIGH?')
-        maxpower = float(response[0])
+        
+        minpower = float(self._communicate('SOUR:POW:LIM:LOW?')[0])
+        maxpower = float(self._communicate('SOUR:POW:LIM:HIGH?')[0])
         return (minpower, maxpower)
         # """direct insert vs inquiry - what is upper power limit. """
 
@@ -250,7 +249,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @param float power: desired laser power in watts
         """
-        self._communicate('SOUR:POW:LEV {}'.format(power))
+        self._communicate('SOUR:POW:LEV:IMM:AMPL {}'.format(power))
         
         # '''if self.psu == PSUTypes.FPU:
         #     self.inst.query('POWER={0:f}'.format(power))
@@ -405,7 +404,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return LaserState: laser state
         """
-        state = self._communicate('SOUR:AM:SOUR:STAT?')
+        state = self._communicate('SOUR:AM:STAT?')
         # """if self.psu == PSUTypes.SMD6000:
         #     state = self.inst.query('STAT?')
         # else:
@@ -425,23 +424,27 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         actstat = self.get_laser_state()
         if actstat != status:
-            if status == LaserState.ON:
-                self._communicate('SOUR:AMP:STAT')
-            elif status == LaserState.OFF:
-                self._communicate('SOUR:AMP:STAT')
-        return self.get_laser_state()
+        
+            if status == 'LaserState.ON':
+                self._communicate('SOUR:AM:STAT ON')
+                return self.get_laser_state()
+            elif status == 'LaserState.OFF':
+                self._communicate('SOUR:AM:STAT OFF')
+                return self.get_laser_state()
+            else:
+                return 'LaserState.Unknown'
 
     def on(self):
         """ Turn laser on.
 
             @return LaserState: actual laser state
         """
-        self._communicate('SOUR:AMP:STAT?')
-        if response.startswith('OFF'):
-            self._communicate('SOUR:AMP:STAT')
-            return self.get_laser_state
+        status = self.get_laser_state()
+        if status == LaserState.OFF :
+            self._communicate('SOUR:AM:STAT ON')
+            return self.get_laser_state()
         else: 
-            return self.get_laser_state
+            return self.get_laser_state()
         
         # """return self.set_laser_state(LaserState.ON)"""
 
@@ -450,7 +453,8 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        return self.set_laser_state(LaserState.OFF)
+        self.set_laser_state('LaserState.OFF')
+        return self.get_laser_state()
 
     def get_firmware_version(self):
         """ Ask the laser for ID.
