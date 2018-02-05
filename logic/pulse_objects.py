@@ -83,7 +83,7 @@ class PulseBlock(object):
     """
     Collection of Pulse_Block_Elements which is called a Pulse_Block.
     """
-    def __init__(self, name, element_list):
+    def __init__(self, name, element_list=None):
         """
         The constructor for a Pulse_Block needs to have:
 
@@ -92,7 +92,10 @@ class PulseBlock(object):
                                   Pulse_Block, e.g. [Pulse_Block_Element, Pulse_Block_Element, ...]
         """
         self.name = name
-        self.element_list = element_list
+        if element_list is None:
+            self.element_list = list()
+        else:
+            self.element_list = element_list
         self.init_length_s = None
         self.increment_s = None
         self.analog_channels = None
@@ -182,7 +185,7 @@ class PulseBlockEnsemble(object):
 
     This object is used as a construction plan to create one sampled file.
     """
-    def __init__(self, name, block_list, rotating_frame=True):
+    def __init__(self, name, block_list=None, rotating_frame=True):
         """
         The constructor for a Pulse_Block_Ensemble needs to have:
 
@@ -194,7 +197,10 @@ class PulseBlockEnsemble(object):
         """
         # FIXME: Sanity checking needed here
         self.name = name                    # Pulse_Block_Ensemble name
-        self.block_list = block_list
+        if block_list is None:
+            self.block_list = list()
+        else:
+            self.block_list = block_list
         self.rotating_frame = rotating_frame
         self.length_s = 0
         self.analog_channels = None

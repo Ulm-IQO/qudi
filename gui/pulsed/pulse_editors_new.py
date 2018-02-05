@@ -50,23 +50,24 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
     blockElementRole = QtCore.Qt.UserRole + 10
     pulseBlockRole = QtCore.Qt.UserRole + 11
 
-    def __init__(self, activation_config=None):
+    def __init__(self):
         super().__init__()
-        if activation_config is None:
-            activation_config = OrderedDict()
 
         self.digital_channels = list()
         self.analog_channels = list()
 
-        # The actual model data container. Gets initialized in self.set_activation_config()
-        self._pulse_block = None
+        # The actual model data container.
+        self._pulse_block = PulseBlock('EDITOR CONTAINER')
+
+        # Create header strings
+        self._create_header_data()
 
         # The current column widths.
         # The fact that the widths are stored in the model saves a huge amount of computational
         # time when resizing columns due to item changes.
-        self._col_widths = list()
-
-        self.set_activation_config(activation_config)
+        self._col_widths = self._get_column_widths()
+        # Notify the QTableView about a change in column widths
+        self._notify_column_width()
         return
 
     def _create_header_data(self):
@@ -81,18 +82,6 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         for chnl in self.analog_channels:
             self._h_header_data.append('{0}\nshape'.format(chnl))
             self._h_header_data.append('{0}\nparameters'.format(chnl))
-
-        # self._col_widths = [75, 75]
-        # if len(self.digital_channels) > 0:
-        #     self._col_widths.append(30 * len(self.digital_channels))
-        # for chnl in self.analog_channels:
-        #     self._col_widths.append(80)
-        #     self._col_widths.append(0)
-        #     for element in self._pulse_block.element_list:
-        #         tmp_size = 90 * len(element.pulse_function[chnl].params)
-        #         if tmp_size > self._col_widths[-1]:
-        #             self._col_widths[-1] = tmp_size
-        #     self.sigColumnWidthChanged.emit(len(self._col_widths), self._col_widths[-1])
         return
 
     def _notify_column_width(self, column=None):
@@ -163,10 +152,10 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         @return:
         """
         self.beginResetModel()
-        self.digital_channels = [chnl for chnl in activation_config if
-                                 activation_config[chnl] and chnl.startswith('d_ch')]
-        self.analog_channels = [chnl for chnl in activation_config if
-                                activation_config[chnl] and chnl.startswith('a_ch')]
+        self.digital_channels = [chnl for chnl in activation_config if chnl.startswith('d_ch')]
+                                 # activation_config[chnl] and chnl.startswith('d_ch')]
+        self.analog_channels = [chnl for chnl in activation_config if chnl.startswith('a_ch')]
+                                # activation_config[chnl] and chnl.startswith('a_ch')]
 
         analog_shape = OrderedDict()
         for chnl in self.analog_channels:
@@ -392,13 +381,13 @@ class BlockEditor(QtWidgets.QTableView):
     """
 
     """
-    def __init__(self, parent, activation_config=None):
+    def __init__(self, parent):
         # Initialize inherited QTableView
         super().__init__(parent)
 
         # Create custom data model and hand it to the QTableView.
         # (essentially it's a PulseBlock instance with QAbstractTableModel interface)
-        model = BlockEditorTableModel(activation_config)
+        model = BlockEditorTableModel()
         self.setModel(model)
 
         # Connect the custom signal sigColumnWidthChanged from the model to the setColumnWidth
@@ -484,6 +473,26 @@ class BlockEditor(QtWidgets.QTableView):
             self.setColumnWidth(column, width)
         return
 
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
+        else:
+            return 0
+
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
+        else:
+            return 0
+
     def add_elements(self, count=1, at_position=None):
         """
 
@@ -550,6 +559,8 @@ class BlockEditor(QtWidgets.QTableView):
         @param pulse_block: PulseBlock, the PulseBlock instance to load into the model/view
         @return: bool, operation success
         """
+        if not isinstance(pulse_block, PulseBlock):
+            return False
         block_copy = copy.deepcopy(pulse_block)
         block_copy.name = 'EDITOR CONTAINER'
         return self.model().set_pulse_block(block_copy)
@@ -565,38 +576,45 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
     blockRole = QtCore.Qt.UserRole + 3
     blockEnsembleRole = QtCore.Qt.UserRole + 4
 
-    def __init__(self, get_pulse_block_ref, available_pulse_blocks=None):
+    def __init__(self):
         super().__init__()
 
-        # A reference to a function that takes the name of a PulseBlock and returns the
-        # corresponding PulseBlock instance.
-        self._get_pulse_block = get_pulse_block_ref
-
-        # A list of available PulseBlock names
-        self.available_pulse_blocks = available_pulse_blocks
-
-        # Fill in the first available PulseBlock as starting point.
-        block_list = list()
-        if self.available_pulse_blocks is not None:
-            if len(self.available_pulse_blocks) > 0:
-                block = self._get_pulse_block(self.available_pulse_blocks[0])
-                block_list.append((block, 0))
+        # dictionary containing block names as keys and PulseBlock instances as items.
+        self.available_pulse_blocks = None
 
         # The actual model data container.
-        self._block_ensemble = PulseBlockEnsemble('EDITOR CONTAINER', block_list)
+        self._block_ensemble = PulseBlockEnsemble('EDITOR CONTAINER')
         return
 
-    def set_available_pulse_blocks(self, block_names):
+    def set_available_pulse_blocks(self, blocks):
         """
 
-        @param block_names:
-        @return:
+        @param blocks: list|dict, list/dict containing all available PulseBlock instances
+        @return: int, error code (>=0: OK, <0: ERR)
         """
-        self.available_pulse_blocks = block_names
+        # Convert to dictionary
+        if isinstance(blocks, list):
+            tmp_dict = OrderedDict()
+            for blk in blocks:
+                if blk.name:
+                    tmp_dict[blk.name] = blk
+            blocks = tmp_dict
+
+        if not isinstance(blocks, dict):
+            return -1
+
+        self.available_pulse_blocks = blocks
+
+        # Check if the PulseBlockEnsemble model instance is empty and set a single block if True.
+        if len(self._block_ensemble.block_list) == 0:
+            self.insertRows(0, 1)
+            return 0
+
+        # Remove blocks from list that are not there anymore
         for row, (block, reps) in enumerate(self._block_ensemble.block_list):
-            if block.name not in block_names:
+            if block.name not in blocks:
                 self.removeRows(row, 1)
-        return
+        return 0
 
     def set_rotating_frame(self, rotating_frame=True):
         """
@@ -639,7 +657,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
             block = self._block_ensemble.block_list[index.row()][0]
             self._block_ensemble.block_list[index.row()] = (block, data)
         elif role == self.blockNameRole and isinstance(data, str):
-            block = self._get_pulse_block(data)
+            block = self.available_pulse_blocks[data]
             reps = self._block_ensemble.block_list[index.row()][1]
             self._block_ensemble.block_list[index.row()] = (block, reps)
         elif role == self.blockRole and isinstance(data, PulseBlock):
@@ -684,7 +702,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
 
         self.beginInsertRows(parent, row, row + count - 1)
 
-        block = self._get_pulse_block(self.available_pulse_blocks[0])
+        block = self.available_pulse_blocks[list(self.available_pulse_blocks)[0]]
         for i in range(count):
             self._block_ensemble.block_list.insert(row, (block, 0))
 
@@ -733,13 +751,13 @@ class EnsembleEditor(QtWidgets.QTableView):
     """
 
     """
-    def __init__(self, parent, get_pulse_block_ref, available_pulse_blocks=None):
+    def __init__(self, parent):
         # Initialize inherited QTableView
         super().__init__(parent)
 
         # Create custom data model and hand it to the QTableView.
         # (essentially it's a PulseBlockEnsemble instance with QAbstractTableModel interface)
-        model = EnsembleEditorTableModel(get_pulse_block_ref, available_pulse_blocks)
+        model = EnsembleEditorTableModel()
         self.setModel(model)
 
         # Set header sizes
@@ -756,9 +774,7 @@ class EnsembleEditor(QtWidgets.QTableView):
         self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
 
         # Set item delegate (ComboBox) for PulseBlock column
-        if available_pulse_blocks is None:
-            available_pulse_blocks = list()
-        self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, available_pulse_blocks,
+        self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),
                                                               self.model().blockNameRole,
                                                               QtCore.QSize(100,50)))
         # Set item delegate (SpinBoxes) for repetition column
@@ -768,20 +784,61 @@ class EnsembleEditor(QtWidgets.QTableView):
         self.resizeColumnsToContents()
         return
 
-    def set_available_pulse_blocks(self, block_names):
+    def set_available_pulse_blocks(self, blocks):
         """
 
-        @param block_names:
+        @param blocks:
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        if isinstance(blocks, dict):
+            name_list = list(blocks)
+        elif isinstance(blocks, list):
+            name_list = blocks
+        else:
+            return -1
+
+        err_code = 0
+        # Check if something needs to be changed at all and change if necessary
+        if self.model().available_pulse_blocks is None:
+            err_code = self.model().set_available_pulse_blocks(blocks.copy())
+            new_delegate = ComboBoxItemDelegate(self, name_list, self.model().blockNameRole)
+            self.setItemDelegateForColumn(0, new_delegate)
+        elif sorted(name_list) != sorted(self.model().available_pulse_blocks):
+            err_code = self.model().set_available_pulse_blocks(blocks.copy())
+            new_delegate = ComboBoxItemDelegate(self, name_list, self.model().blockNameRole)
+            self.setItemDelegateForColumn(0, new_delegate)
+        return err_code
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
         @return:
         """
-        if isinstance(block_names, list) and self.model().available_pulse_blocks != block_names:
-            self.model().set_available_pulse_blocks(block_names)
-
-            new_delegate = ComboBoxItemDelegate(self, block_names, self.model().blockNameRole)
-            self.setItemDelegateForColumn(0, new_delegate)
+        self.model().set_rotating_frame(rotating_frame)
         return
 
-    def add_block(self, count=1, at_position=None):
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
+        else:
+            return 0
+
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
+        else:
+            return 0
+
+    def add_blocks(self, count=1, at_position=None):
         """
 
         @param count:
@@ -798,7 +855,7 @@ class EnsembleEditor(QtWidgets.QTableView):
             at_position = self.model().rowCount()
         return self.model().insertRows(at_position, count)
 
-    def remove_elements(self, count=1, at_position=None):
+    def remove_blocks(self, count=1, at_position=None):
         """
 
         @param count:
@@ -821,7 +878,7 @@ class EnsembleEditor(QtWidgets.QTableView):
 
         @return: bool, operation success
         """
-        success = self.remove_elements(self.model().rowCount(), 0)
+        success = self.remove_blocks(self.model().rowCount(), 0)
         if not success:
             return False
         self.add_elements(1, 0)
@@ -846,6 +903,8 @@ class EnsembleEditor(QtWidgets.QTableView):
                                model/view
         @return: bool, operation success
         """
+        if not isinstance(block_ensemble, PulseBlockEnsemble):
+            return False
         ensemble_copy = copy.deepcopy(block_ensemble)
         ensemble_copy.name = 'EDITOR CONTAINER'
         return self.model().set_block_ensemble(ensemble_copy)
