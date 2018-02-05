@@ -132,7 +132,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         #     return False
         # else:
         #     return True
-        response = self._communicate('*IDN?')
+        response = self._communicate('*IDN?')[0]
 
         if response.startswith('ERR-100'):
             return False
@@ -275,8 +275,8 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: current laser current
         """
-        _communicate('SOUR:POW:CURR?')
-        return float(response.split('%')[0])
+        
+        return float(self._communicate('SOUR:POW:CURR?')[0])
 
 
         # """if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
