@@ -132,6 +132,8 @@ class OBISLaser(Base, SimpleLaserInterface):
         #     return False
         # else:
         #     return True
+        self.on_activate
+
         response = self._communicate('*IDN?')[0]
 
         if response.startswith('ERR-100'):
