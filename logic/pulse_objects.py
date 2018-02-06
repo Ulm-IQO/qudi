@@ -304,7 +304,7 @@ class PulseSequence(object):
     Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
-    def __init__(self, name, ensemble_list, rotating_frame=True):
+    def __init__(self, name, ensemble_list=None, rotating_frame=True):
         """
         The constructor for a PulseSequence objects needs to have:
 
@@ -339,7 +339,10 @@ class PulseSequence(object):
                                     oscillating functions.
         """
         self.name = name
-        self.ensemble_list = ensemble_list
+        if ensemble_list is None:
+            self.ensemble_list = list()
+        else:
+            self.ensemble_list = ensemble_list
         self.rotating_frame = rotating_frame
         self.length_s = 0.0
         self.analog_channels = None
