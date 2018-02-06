@@ -20,35 +20,24 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import datetime
 import inspect
 import numpy as np
 import os
 import pyqtgraph as pg
-import re
 
-
-from collections import OrderedDict
 from core.module import Connector, StatusVar
 from core.util import units
-from core.util.mutex import Mutex
 from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from gui.guibase import GUIBase
-# from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
-# from gui.pulsed.pulse_editor import PulseEditor
-# from logic.sampling_functions import SamplingFunctions
-from qtpy import QtGui
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
+from qtpy import QtGui, QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
-#FIXME: Display the Pulse
-#FIXME: save the length in sample points (bins)
-#FIXME: adjust the length to the bins
+# FIXME: Display the Pulse
+# FIXME: save the length in sample points (bins)
+# FIXME: adjust the length to the bins
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
@@ -139,6 +128,7 @@ class PredefinedMethodsTab(QtWidgets.QWidget):
 
         uic.loadUi(ui_file, self)
 
+
 class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
     def __init__(self):
         # Get the path to the *.ui file
@@ -149,6 +139,7 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
         super().__init__()
 
         uic.loadUi(ui_file, self)
+
 
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
@@ -293,7 +284,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pm_cfg.rejected.disconnect()
         self._pm_cfg.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
         self._pm_cfg.close()
-
 
         self._pulsed_master_logic.sigPredefinedSequencesUpdated.disconnect()
         self._mw.action_Settings_Block_Generation.triggered.disconnect()
@@ -509,8 +499,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pulsed_master_logic.sigCurrentBlockEnsembleUpdated.connect(self.load_ensemble_in_editor)
         self._pulsed_master_logic.sigCurrentSequenceUpdated.connect(self.load_sequence_in_editor)
 
-        # self.sequence_editor = SequenceEditor(self._sg.sequence_editor_TableWidget)
-
         # Apply hardware constraints to input widgets
         self._gen_apply_hardware_constraints()
 
@@ -661,7 +649,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self._pg.block_editor.remove_elements(1, self._pg.block_editor_TableWidget.rowCount() - 1)
+        self._pg.block_editor.remove_elements(1, self._pg.block_editor.rowCount() - 1)
         return
 
     def block_add_sel_clicked(self):
@@ -737,7 +725,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.sequence_editor.insert_rows(self._sg.sequence_editor_TableWidget.rowCount(), 1)
+        self._sg.sequence_editor.add_steps(1, self._sg.sequence_editor.rowCount())
         return
 
     def sequence_del_last_clicked(self):
@@ -745,7 +733,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.sequence_editor.delete_row(self._sg.sequence_editor_TableWidget.rowCount() - 1)
+        self._sg.sequence_editor.remove_steps(1, self._sg.sequence_editor.rowCount() - 1)
         return
 
     def sequence_add_sel_clicked(self):
@@ -753,8 +741,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        index = self._sg.sequence_editor_TableWidget.currentRow()
-        self.sequence_editor.insert_rows(index + 1, 1)
+        index = self._sg.sequence_editor.currentRow()
+        self._sg.sequence_editor.add_steps(1, index + 1)
         return
 
     def sequence_del_sel_clicked(self):
@@ -762,8 +750,8 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        index = self._sg.sequence_editor_TableWidget.currentRow()
-        self.sequence_editor.delete_row(index)
+        index = self._sg.sequence_editor.currentRow()
+        self._sg.sequence_editor.remove_steps(1, index)
         return
 
     def sequence_clear_clicked(self):
@@ -771,7 +759,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        self.sequence_editor.clear_table()
+        self._sg.sequence_editor.clear()
         return
 
     def editor_generate_block_clicked(self):
@@ -820,7 +808,8 @@ class PulsedMeasurementGui(GUIBase):
             self.log.error('No name has been entered for the PulseSequence to be generated.')
             return
         rotating_frame = self._sg.curr_sequence_rot_frame_CheckBox.isChecked()
-        sequence_object = self.sequence_editor.generate_sequence_object(name, rotating_frame)
+        self._sg.sequence_editor.set_rotating_frame(rotating_frame)
+        sequence_object = self._sg.sequence_editor.get_sequence()
         self._pulsed_master_logic.save_sequence(name, sequence_object)
         return
 
@@ -835,13 +824,15 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def load_block_in_editor(self, block_obj):
-        self._pg.block_editor.load_block(block_obj)
         if block_obj is not None:
+            self._pg.block_editor.load_block(block_obj)
             self._pg.curr_block_name_LineEdit.setText(block_obj.name)
         return
 
     def load_ensemble_in_editor(self, ensemble_obj, ensemble_params):
-        self._pg.block_organizer.load_ensemble(ensemble_obj)
+        if ensemble_obj is not None:
+            self._pg.block_organizer.load_ensemble(ensemble_obj)
+            self._pg.curr_ensemble_name_LineEdit.setText(ensemble_obj.name)
         if ensemble_params != {}:
             self._pg.curr_ensemble_length_DSpinBox.setValue(ensemble_params['sequence_length'])
             self._pg.curr_ensemble_bins_SpinBox.setValue(ensemble_params['sequence_length_bins'])
@@ -854,13 +845,13 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.curr_ensemble_bins_SpinBox.setValue(0)
             self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
-        if ensemble_obj is not None:
-            self._pg.curr_ensemble_name_LineEdit.setText(ensemble_obj.name)
         return
 
     def load_sequence_in_editor(self, sequence_obj, sequence_params):
-        self.sequence_editor.load_pulse_sequence(sequence_obj)
-        if sequence_params != {}:
+        if sequence_obj is not None:
+            self._sg.sequence_editor.load_sequence(sequence_obj)
+            self._sg.curr_sequence_name_LineEdit.setText(sequence_obj.name)
+        if sequence_params:
             self._sg.curr_sequence_length_DSpinBox.setValue(sequence_params['sequence_length'])
             self._sg.curr_sequence_bins_SpinBox.setValue(sequence_params['sequence_length_bins'])
             # FIXME: This is just a rough estimation of the sequence size in MB
@@ -870,8 +861,6 @@ class PulsedMeasurementGui(GUIBase):
             self._sg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._sg.curr_sequence_bins_SpinBox.setValue(0)
             self._sg.curr_sequence_size_DSpinBox.setValue(0.0)
-        if sequence_obj is not None:
-            self._sg.curr_sequence_name_LineEdit.setText(sequence_obj.name)
         return
 
     def update_block_dict(self, block_dict):
@@ -903,7 +892,7 @@ class PulsedMeasurementGui(GUIBase):
         else:
             text_to_set = self._pg.gen_ensemble_ComboBox.currentText()
 
-        # self.sequence_editor.set_ensemble_dict(ensemble_dict)
+        self._sg.sequence_editor.set_available_block_ensembles(ensemble_dict)
         # block signals
         self._pg.gen_ensemble_ComboBox.blockSignals(True)
         self._pg.saved_ensembles_ComboBox.blockSignals(True)
