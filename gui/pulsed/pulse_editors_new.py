@@ -26,7 +26,7 @@ from collections import OrderedDict
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
 from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate
-from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
+from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble, PulseSequence
 import logic.sampling_functions as sf
 
 
@@ -908,3 +908,364 @@ class EnsembleEditor(QtWidgets.QTableView):
         ensemble_copy = copy.deepcopy(block_ensemble)
         ensemble_copy.name = 'EDITOR CONTAINER'
         return self.model().set_block_ensemble(ensemble_copy)
+
+
+class SequenceEditorTableModel(QtCore.QAbstractTableModel):
+    """
+
+    """
+    # User defined roles for model data access
+    repetitionsRole = QtCore.Qt.UserRole + 1
+    ensembleNameRole = QtCore.Qt.UserRole + 2
+    ensembleRole = QtCore.Qt.UserRole + 3
+    goToRole = QtCore.Qt.UserRole + 4
+    eventJumpRole = QtCore.Qt.UserRole + 5
+    sequenceRole = QtCore.Qt.UserRole + 6
+
+    def __init__(self):
+        super().__init__()
+
+        # dictionary containing ensemble names as keys and PulseBlockEnsemble instances as items.
+        self.available_block_ensembles = None
+
+        # The actual model data container.
+        self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
+        return
+
+    def set_available_block_ensembles(self, ensembles):
+        """
+
+        @param ensembles: list|dict, list/dict containing all available PulseBlockEnsemble instances
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        # Convert to dictionary
+        if isinstance(ensembles, list):
+            tmp_dict = OrderedDict()
+            for ens in ensembles:
+                if ens.name:
+                    tmp_dict[ens.name] = ens
+            ensembles = tmp_dict
+
+        if not isinstance(ensembles, dict):
+            return -1
+
+        self.available_block_ensembles = ensembles
+
+        # Check if the PulseSequence model instance is empty and set a single ensemble if True.
+        if len(self._pulse_sequence.ensemble_list) == 0:
+            self.insertRows(0, 1)
+            return 0
+
+        # Remove ensembles from list that are not there anymore
+        for row, (ensemble, reps) in enumerate(self._pulse_sequence.ensemble_list):
+            if ensemble.name not in ensembles:
+                self.removeRows(row, 1)
+        return 0
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
+        @return:
+        """
+        self._pulse_sequence.rotating_frame = rotating_frame
+        return
+
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        return len(self._pulse_sequence.ensemble_list)
+
+    def columnCount(self, parent=QtCore.QModelIndex()):
+        return 4
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.DisplayRole:
+            return None
+
+        if role == self.sequenceRole:
+            return self._pulse_sequence
+
+        if not index.isValid():
+            return None
+
+        if role == self.repetitionsRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('repetitions')
+        if role == self.ensembleNameRole:
+            return self._pulse_sequence.ensemble_list[index.row()][0].name
+        if role == self.ensembleRole:
+            return self._pulse_sequence.ensemble_list[index.row()][0]
+        if role == self.goToRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('go_to')
+        if role == self.eventJumpRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('event_jump_to')
+
+        return None
+
+    def setData(self, index, data, role=QtCore.Qt.DisplayRole):
+        """
+        """
+        if role == self.repetitionsRole and isinstance(data, int):
+            ensemble = self._pulse_sequence.ensemble_list[index.row()][0]
+            self._pulse_sequence.ensemble_list[index.row()] = (ensemble, data)
+        elif role == self.ensembleNameRole and isinstance(data, str):
+            ensemble = self.available_block_ensembles[data]
+            reps = self._pulse_sequence.ensemble_list[index.row()][1]
+            self._pulse_sequence.ensemble_list[index.row()] = (ensemble, reps)
+        elif role == self.ensembleRole and isinstance(data, PulseBlockEnsemble):
+            reps = self._pulse_sequence.ensemble_list[index.row()][1]
+            self._pulse_sequence.ensemble_list[index.row()] = (data, reps)
+        elif role == self.goToRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['go_to'] = data
+        elif role == self.eventJumpRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['event_jump_to'] = data
+        elif role == self.sequenceRole and isinstance(data, PulseSequence):
+            self._pulse_sequence = data
+        return
+
+    def headerData(self, section, orientation, role):
+        # Horizontal header
+        if orientation == QtCore.Qt.Horizontal:
+            if role == QtCore.Qt.DisplayRole:
+                if section == 0:
+                    return 'BlockEnsemble'
+                if section == 1:
+                    return 'Repetitions'
+                if section == 2:
+                    return 'Go To (#)'
+                if section == 3:
+                    return 'Event Trigger'
+        return super().headerData(section, orientation, role)
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
+
+    def insertRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row > self.rowCount() or len(self.available_block_ensembles) < 1:
+            return False
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginInsertRows(parent, row, row + count - 1)
+
+        ensemble = self.available_block_ensembles[list(self.available_block_ensembles)[0]]
+        for i in range(count):
+            seq_params = {'repetitions': 0, 'go_to': -1, 'event_jump_to': -1}
+            self._pulse_sequence.ensemble_list.insert(row, (ensemble, seq_params))
+
+        self._pulse_sequence._refresh_parameters()
+
+        self.endInsertRows()
+        return True
+
+    def removeRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
+            return False
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginRemoveRows(parent, row, row + count - 1)
+
+        del(self._pulse_sequence.ensemble_list[row:row+count])
+
+        self._pulse_sequence._refresh_parameters()
+
+        self.endRemoveRows()
+        return True
+
+    def set_pulse_sequence(self, pulse_sequence):
+        """
+
+        @param pulse_sequence:
+        @return:
+        """
+        self.beginResetModel()
+        self.setData(QtCore.QModelIndex(), pulse_sequence, self.sequenceRole)
+        self.endResetModel()
+        return True
+
+
+class SequenceEditor(QtWidgets.QTableView):
+    """
+
+    """
+    def __init__(self, parent):
+        # Initialize inherited QTableView
+        super().__init__(parent)
+
+        # Create custom data model and hand it to the QTableView.
+        # (essentially it's a PulseSequence instance with QAbstractTableModel interface)
+        model = SequenceEditorTableModel()
+        self.setModel(model)
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setDefaultSectionSize(100)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+
+        # Set item selection and editing behaviour
+        self.setEditTriggers(
+            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+
+        # Set item delegate (ComboBox) for PulseBlockEnsemble column
+        self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),
+                                                              self.model().ensembleNameRole,
+                                                              QtCore.QSize(100, 50)))
+        # Set item delegate (SpinBoxes) for repetition column
+        repetition_item_dict = {'init_val': 0, 'min': -1, 'max': (2**31)-1}
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, repetition_item_dict,
+                                                             self.model().repetitionsRole))
+        # Set item delegate (SpinBoxes) for go_to column
+        goto_item_dict = {'init_val': -1, 'min': -1, 'max': (2 ** 31) - 1}
+        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, goto_item_dict,
+                                                             self.model().goToRole))
+        # Set item delegate (SpinBoxes) for event_jump_to column
+        eventjump_item_dict = {'init_val': -1, 'min': -1, 'max': (2 ** 31) - 1}
+        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, eventjump_item_dict,
+                                                             self.model().eventJumpRole))
+        self.resizeColumnsToContents()
+        return
+
+    def set_available_block_ensembles(self, ensembles):
+        """
+
+        @param ensembles:
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        if isinstance(ensembles, dict):
+            name_list = list(ensembles)
+        elif isinstance(ensembles, list):
+            name_list = ensembles
+        else:
+            return -1
+
+        err_code = 0
+        # Check if something needs to be changed at all and change if necessary
+        if self.model().available_block_ensembles is None:
+            err_code = self.model().set_available_block_ensembles(ensembles.copy())
+            new_delegate = ComboBoxItemDelegate(self, name_list, self.model().ensembleNameRole)
+            self.setItemDelegateForColumn(0, new_delegate)
+        elif sorted(name_list) != sorted(self.model().available_block_ensembles):
+            err_code = self.model().set_available_block_ensembles(ensembles.copy())
+            new_delegate = ComboBoxItemDelegate(self, name_list, self.model().ensembleNameRole)
+            self.setItemDelegateForColumn(0, new_delegate)
+        return err_code
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
+        @return:
+        """
+        self.model().set_rotating_frame(rotating_frame)
+        return
+
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
+        else:
+            return 0
+
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
+        else:
+            return 0
+
+    def add_steps(self, count=1, at_position=None):
+        """
+
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        # Insert new sequence step(s) as row to the table model/view at the specified position.
+        # Append new sequence step(s) to the table model/view if no position was given.
+        if at_position is None:
+            at_position = self.model().rowCount()
+        return self.model().insertRows(at_position, count)
+
+    def remove_steps(self, count=1, at_position=None):
+        """
+
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        # Remove rows/sequence steps with index <at_position> to index <at_position + count - 1>
+        # Remove last <count> number of sequence steps if no at_position was given.
+        if at_position is None:
+            at_position = self.model().rowCount() - count
+        return self.model().removeRows(at_position, count)
+
+    def clear(self):
+        """
+        Removes all sequence steps from the view/model and inserts a single one afterwards.
+
+        @return: bool, operation success
+        """
+        success = self.remove_steps(self.model().rowCount(), 0)
+        if not success:
+            return False
+        self.add_steps(1, 0)
+        return True
+
+    def get_sequence(self):
+        """
+        Returns a (deep)copy of the PulseSequence instance serving as model for this editor.
+
+        @return: object, an instance of PulseSequence
+        """
+        data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
+        sequence_copy = copy.deepcopy(data_container)
+        sequence_copy.name = ''
+        return sequence_copy
+
+    def load_sequence(self, pulse_sequence):
+        """
+        Load an instance of PulseSequence into the model in order to view/edit it.
+
+        @param pulse_sequence: object, the PulseSequence instance to load into the model/view
+        @return: bool, operation success
+        """
+        if not isinstance(pulse_sequence, PulseSequence):
+            return False
+        sequence_copy = copy.deepcopy(pulse_sequence)
+        sequence_copy.name = 'EDITOR CONTAINER'
+        return self.model().set_pulse_sequence(sequence_copy)
