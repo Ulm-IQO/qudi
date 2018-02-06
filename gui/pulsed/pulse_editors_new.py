@@ -886,7 +886,7 @@ class EnsembleEditor(QtWidgets.QTableView):
         success = self.remove_blocks(self.model().rowCount(), 0)
         if not success:
             return False
-        self.add_elements(1, 0)
+        self.add_blocks(1, 0)
         return True
 
     def get_ensemble(self):
