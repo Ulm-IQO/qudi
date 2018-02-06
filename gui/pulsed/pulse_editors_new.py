@@ -355,7 +355,9 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
 
         del(self._pulse_block.element_list[row:row+count])
         self._pulse_block._refresh_parameters()
-        self._rescale_column_widths()
+
+        self._col_widths = self._get_column_widths()
+        self._notify_column_width()
 
         self.endRemoveRows()
         return True
@@ -372,7 +374,8 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             return False
         self.beginResetModel()
         self.setData(QtCore.QModelIndex(), pulse_block, self.pulseBlockRole)
-        self._rescale_column_widths()
+        self._col_widths = self._get_column_widths()
+        self._notify_column_width()
         self.endResetModel()
         return True
 
@@ -760,13 +763,6 @@ class EnsembleEditor(QtWidgets.QTableView):
         model = EnsembleEditorTableModel()
         self.setModel(model)
 
-        # Set header sizes
-        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        # self.horizontalHeader().setDefaultSectionSize(100)
-        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
-        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.verticalHeader().setDefaultSectionSize(50)
-
         # Set item selection and editing behaviour
         self.setEditTriggers(
             QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
@@ -781,7 +777,16 @@ class EnsembleEditor(QtWidgets.QTableView):
         repetition_item_dict = {'init_val': 0, 'min': 0, 'max': (2**31)-1}
         self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, repetition_item_dict,
                                                              self.model().repetitionsRole))
-        self.resizeColumnsToContents()
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setDefaultSectionSize(100)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+        for col in range(self.columnCount()):
+            width = self.itemDelegateForColumn(col).sizeHint().width()
+            self.setColumnWidth(col, width)
         return
 
     def set_available_pulse_blocks(self, blocks):
@@ -1003,16 +1008,15 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
         """
-        if role == self.repetitionsRole and isinstance(data, int):
-            ensemble = self._pulse_sequence.ensemble_list[index.row()][0]
-            self._pulse_sequence.ensemble_list[index.row()] = (ensemble, data)
-        elif role == self.ensembleNameRole and isinstance(data, str):
+        if role == self.ensembleNameRole and isinstance(data, str):
             ensemble = self.available_block_ensembles[data]
-            reps = self._pulse_sequence.ensemble_list[index.row()][1]
-            self._pulse_sequence.ensemble_list[index.row()] = (ensemble, reps)
+            params = self._pulse_sequence.ensemble_list[index.row()][1]
+            self._pulse_sequence.ensemble_list[index.row()] = (ensemble, params)
         elif role == self.ensembleRole and isinstance(data, PulseBlockEnsemble):
-            reps = self._pulse_sequence.ensemble_list[index.row()][1]
-            self._pulse_sequence.ensemble_list[index.row()] = (data, reps)
+            params = self._pulse_sequence.ensemble_list[index.row()][1]
+            self._pulse_sequence.ensemble_list[index.row()] = (data, params)
+        elif role == self.repetitionsRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['repetitions'] = data
         elif role == self.goToRole and isinstance(data, int):
             self._pulse_sequence.ensemble_list[index.row()][1]['go_to'] = data
         elif role == self.eventJumpRole and isinstance(data, int):
@@ -1114,13 +1118,6 @@ class SequenceEditor(QtWidgets.QTableView):
         model = SequenceEditorTableModel()
         self.setModel(model)
 
-        # Set header sizes
-        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        # self.horizontalHeader().setDefaultSectionSize(100)
-        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
-        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
-        self.verticalHeader().setDefaultSectionSize(50)
-
         # Set item selection and editing behaviour
         self.setEditTriggers(
             QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
@@ -1143,7 +1140,16 @@ class SequenceEditor(QtWidgets.QTableView):
         eventjump_item_dict = {'init_val': -1, 'min': -1, 'max': (2 ** 31) - 1}
         self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, eventjump_item_dict,
                                                              self.model().eventJumpRole))
-        self.resizeColumnsToContents()
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setDefaultSectionSize(100)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+        for col in range(self.columnCount()):
+            width = self.itemDelegateForColumn(col).sizeHint().width()
+            self.setColumnWidth(col, width)
         return
 
     def set_available_block_ensembles(self, ensembles):
