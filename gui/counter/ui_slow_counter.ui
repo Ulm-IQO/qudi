@@ -13,14 +13,112 @@
   <property name="windowTitle">
    <string>qudi: Slow Counter</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QDockWidget" name="trace_selection_DockWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>50</y>
+      <width>421</width>
+      <height>109</height>
+     </rect>
+    </property>
+    <property name="floating">
+     <bool>true</bool>
+    </property>
+    <property name="windowTitle">
+     <string>Trace Selection</string>
+    </property>
+    <widget class="QWidget" name="dockWidgetContents_3">
+     <widget class="QWidget" name="horizontalLayoutWidget">
+      <property name="geometry">
+       <rect>
+        <x>-1</x>
+        <y>0</y>
+        <width>421</width>
+        <height>109</height>
+       </rect>
+      </property>
+      <layout class="QHBoxLayout" name="horizontalLayout_2">
+       <item>
+        <widget class="QCheckBox" name="trace_1_checkbox">
+         <property name="text">
+          <string>Trace 1</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="trace_2_checkbox">
+         <property name="text">
+          <string>Trace 2</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="trace_3_checkbox">
+         <property name="text">
+          <string>Trace 3</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QCheckBox" name="trace_4_checkbox">
+         <property name="text">
+          <string>Trace 4</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_2">
+         <item>
+          <widget class="QLabel" name="show_couts_label">
+           <property name="text">
+            <string>Show counts from:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="trace_1_radiobutton">
+           <property name="text">
+            <string>Trace 1</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="trace_2_radiobutton">
+           <property name="text">
+            <string>Trace 2</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="trace_3_radiobutton">
+           <property name="text">
+            <string>Trace 3</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QRadioButton" name="trace_4_radiobutton">
+           <property name="text">
+            <string>Trace 4</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </widget>
+    </widget>
+   </widget>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -35,6 +133,7 @@
     </widget>
     <addaction name="slow_counter_view_Action"/>
     <addaction name="slow_counter_parameters_view_Action"/>
+    <addaction name="trace_selection_view_Action"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
     <addaction name="separator"/>
@@ -266,6 +365,17 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>Close</string>
    </property>
   </action>
+  <action name="trace_selection_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Trace Selection</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -385,6 +495,38 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <hint type="destinationlabel">
      <x>399</x>
      <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_selection_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>trace_selection_DockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>39</x>
+     <y>463</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>trace_selection_DockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>trace_selection_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>39</x>
+     <y>463</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>

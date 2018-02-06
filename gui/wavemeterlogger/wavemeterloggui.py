@@ -28,6 +28,7 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 
 from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
@@ -157,8 +158,6 @@ class WavemeterLogGui(GUIBase):
         self._pw.addItem(self.curve_envelope)
         self._right_axis.addItem(self.curve_nm_counts)
         self._top_axis.addItem(self.curve_hz_counts)
-
-        self._save_PNG = True
 
         # scatter plot for time series
         self._spw = self._mw.scatterPlotWidget
@@ -301,9 +300,6 @@ class WavemeterLogGui(GUIBase):
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')
 
-        if self._save_PNG:
-            exporter = pg.exporters.ImageExporter(self._pw.plotItem)
-            exporter.export(filename+'.png')
 
         self._wm_logger_logic.save_data(timestamp=timestamp)
 
