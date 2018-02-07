@@ -542,4 +542,7 @@ class OBISLaser(Base, SimpleLaserInterface):
             response_len = self.obis.inWaiting()
 
         return response
+
+    def _set_laser_to_11(self):
+        self.set_power(0.165)
             
