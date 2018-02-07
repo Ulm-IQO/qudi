@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from interface import scope
+from interface import scope_ivi_interface
 from .python_ivi_base import PythonIviBase
 
 import inspect
@@ -28,7 +28,7 @@ from qtpy.QtCore import Signal
 import ivi.scope
 
 
-class Acquisition(QObject, scope.AcquisitionInterface):
+class Acquisition(QObject, scope_ivi_interface.AcquisitionInterface):
     """
     The acquisition sub-system configures the acquisition type, the size of the waveform record,
     the length of time that corresponds to the overall waveform record, and the position of the
@@ -93,7 +93,7 @@ class Acquisition(QObject, scope.AcquisitionInterface):
         self.start_time_changed.emit(acquisition_start_time)
 
 
-class Channel(QObject, scope.ChannelInterface):
+class Channel(QObject, scope_ivi_interface.ChannelInterface):
     enabled_changed = Signal(bool)
     input_impedance_changed = Signal(int)
     input_frequency_max_changed = Signal(float)
@@ -260,7 +260,7 @@ class Channel(QObject, scope.ChannelInterface):
         return self._measurement
 
 
-class Measurement(QObject, scope.MeasurementInterface):
+class Measurement(QObject, scope_ivi_interface.MeasurementInterface):
     """
     IVI Methods for Measurement
     """
@@ -320,7 +320,7 @@ class Measurement(QObject, scope.MeasurementInterface):
         return self.parent().driver.measurement.initiate()
 
 
-class ChannelMeasurement(QObject, scope.ChannelMeasurementInterface):
+class ChannelMeasurement(QObject, scope_ivi_interface.ChannelMeasurementInterface):
     def __init__(self, channel_index, **kwargs):
         self._channel_index = channel_index
         super().__init__(**kwargs)
@@ -407,7 +407,7 @@ class ChannelMeasurement(QObject, scope.ChannelMeasurementInterface):
         return self.parent().driver.channels[self._channel_index].measurement.read_waveform()
 
 
-class Trigger(QObject, scope.TriggerInterface):
+class Trigger(QObject, scope_ivi_interface.TriggerInterface):
     """
     IVI Methods for Trigger
     """
@@ -560,7 +560,7 @@ class Trigger(QObject, scope.TriggerInterface):
         self.parent().driver.trigger.configure(trigger_type, holdoff)
 
 
-class EdgeTrigger(QObject, scope.EdgeTriggerInterface):
+class EdgeTrigger(QObject, scope_ivi_interface.EdgeTriggerInterface):
     """
     IVI methods for Edge triggering
     """
@@ -608,7 +608,7 @@ class EdgeTrigger(QObject, scope.EdgeTriggerInterface):
 # ************************ EXTENSIONS **************************************************************
 
 
-class InterpolationAcquisitionMixin(scope.InterpolationAcquisitionInterface):
+class InterpolationAcquisitionMixin(scope_ivi_interface.InterpolationAcquisitionInterface):
     interpolation_changed = Signal(str)
 
     @property
@@ -630,7 +630,7 @@ class InterpolationAcquisitionMixin(scope.InterpolationAcquisitionInterface):
         self.interpolation_changed.emit(value)
 
 
-class TVTrigger(QObject, scope.TVTriggerInterface):
+class TVTrigger(QObject, scope_ivi_interface.TVTriggerInterface):
     """
     Extension IVI methods for oscilloscopes supporting TV triggering
     """
@@ -720,7 +720,7 @@ class TVTrigger(QObject, scope.TVTriggerInterface):
         self.parent().driver.trigger.tv.configure(source, signal_format, event, polarity)
 
 
-class RuntTrigger(QObject, scope.RuntTriggerInterface):
+class RuntTrigger(QObject, scope_ivi_interface.RuntTriggerInterface):
     """
     Extension IVI methods for oscilloscopes supporting runt triggering
     """
@@ -786,7 +786,7 @@ class RuntTrigger(QObject, scope.RuntTriggerInterface):
         self.parent().driver.trigger.runt.configure(source, threshold_low, threshold_high, polarity)
 
 
-class WidthTrigger(QObject, scope.WidthTriggerInterface):
+class WidthTrigger(QObject, scope_ivi_interface.WidthTriggerInterface):
     """
     Extension IVI methods for oscilloscopes supporting width triggering
     """
@@ -877,7 +877,7 @@ class WidthTrigger(QObject, scope.WidthTriggerInterface):
         self.parent().driver.trigger.width.configure(source, level, threshold_low, threshold_high, polarity, condition)
 
 
-class GlitchTrigger(QObject, scope.GlitchTriggerInterface):
+class GlitchTrigger(QObject, scope_ivi_interface.GlitchTriggerInterface):
     """
     Extension IVI methods for oscilloscopes supporting glitch triggering
     """
@@ -953,7 +953,7 @@ class GlitchTrigger(QObject, scope.GlitchTriggerInterface):
         self.parent().driver.trigger.glitch.configure(source, level, width, polarity, condition)
 
 
-class AcLineTrigger(QObject, scope.AcLineTriggerInterface):
+class AcLineTrigger(QObject, scope_ivi_interface.AcLineTriggerInterface):
     """
     Extension IVI methods for oscilloscopes supporting AC line triggering
     """
@@ -977,7 +977,7 @@ class AcLineTrigger(QObject, scope.AcLineTriggerInterface):
         self.slope_changed.emit(self.parent().driver.trigger.ac_line.slope)
 
 
-class ProbeAutoSenseMixin(scope.ProbeAutoSenseInterface):
+class ProbeAutoSenseMixin(scope_ivi_interface.ProbeAutoSenseInterface):
     """
     Extension IVI methods for oscilloscopes supporting probe attenuation sensing
 
@@ -1010,7 +1010,7 @@ class ProbeAutoSenseMixin(scope.ProbeAutoSenseInterface):
             self.parent().driver.channels[self._channel_index].probe_attenuation_auto)
 
 
-class ContinuousAcquisitionMixin(scope.ContinuousAcquisitionInterface):
+class ContinuousAcquisitionMixin(scope_ivi_interface.ContinuousAcquisitionInterface):
     """
     The IviScopeContinuousAcquisition extension group provides support for oscilloscopes that can
     perform a continuous acquisition.
@@ -1035,7 +1035,7 @@ class ContinuousAcquisitionMixin(scope.ContinuousAcquisitionInterface):
         self.continuous_changed.emit(value)
 
 
-class AverageAcquisitionMixin(scope.AverageAcquisitionInterface):
+class AverageAcquisitionMixin(scope_ivi_interface.AverageAcquisitionInterface):
     """
     The IviScopeAverageAcquisition extension group provides support for oscilloscopes that can
     perform the average acquisition.
@@ -1060,7 +1060,7 @@ class AverageAcquisitionMixin(scope.AverageAcquisitionInterface):
         self.number_of_averages_changed.emit(value)
 
 
-class SampleModeMixin(scope.SampleModeInterface):
+class SampleModeMixin(scope_ivi_interface.SampleModeInterface):
     """
     Extension IVI methods for oscilloscopes supporting equivalent and real time acquisition
 
@@ -1085,7 +1085,7 @@ class SampleModeMixin(scope.SampleModeInterface):
         self.sample_mode_changed.emit(self.parent().driver.acquisition.sample_mode)
 
 
-class TriggerModifierMixin(scope.TriggerModifierInterface):
+class TriggerModifierMixin(scope_ivi_interface.TriggerModifierInterface):
     """
     Extension IVI methods for oscilloscopes supporting specific triggering subsystem behavior in the absence of a trigger
 
@@ -1112,7 +1112,7 @@ class TriggerModifierMixin(scope.TriggerModifierInterface):
         self.modifier_changed.emit(self.parent().driver.trigger.modifier)
 
 
-class AutoSetupMixin(scope.AutoSetupInterface):
+class AutoSetupMixin(scope_ivi_interface.AutoSetupInterface):
     """
     The IviScopeAutoSetup extension group provides support for oscilloscopes that can perform an
     auto-setup operation.
@@ -1127,7 +1127,7 @@ class AutoSetupMixin(scope.AutoSetupInterface):
         self.parent().driver.measurement.auto_setup()
 
 
-class WaveformMeasurementReferenceLevel(QObject, scope.WaveformMeasurementReferenceLevelInterface):
+class WaveformMeasurementReferenceLevel(QObject, scope_ivi_interface.WaveformMeasurementReferenceLevelInterface):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1188,7 +1188,7 @@ class WaveformMeasurementReferenceLevel(QObject, scope.WaveformMeasurementRefere
         self.parent().driver.reference_level.configure(low, middle, high)
 
 
-class WaveformMeasurementChannelMeasurementMixin(scope.WaveformMeasurementChannelMeasurementInterface):
+class WaveformMeasurementChannelMeasurementMixin(scope_ivi_interface.WaveformMeasurementChannelMeasurementInterface):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1300,7 +1300,7 @@ class WaveformMeasurementChannelMeasurementMixin(scope.WaveformMeasurementChanne
             self._channel_index].measurement.read_waveform_measurement(measurement_function, maximum_time)
 
 
-class MinMaxWaveformAcquisitionMixin(scope.MinMaxWaveformAcquisitionInterface):
+class MinMaxWaveformAcquisitionMixin(scope_ivi_interface.MinMaxWaveformAcquisitionInterface):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
@@ -1329,7 +1329,7 @@ class MinMaxWaveformAcquisitionMixin(scope.MinMaxWaveformAcquisitionInterface):
         self.number_of_envelopes_changed.emit(value)
 
 
-class MinMaxWaveformChannelMeasurementMixin(scope.MinMaxWaveformChannelMeasurementInterface):
+class MinMaxWaveformChannelMeasurementMixin(scope_ivi_interface.MinMaxWaveformChannelMeasurementInterface):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
@@ -1434,10 +1434,8 @@ class MinMaxWaveformChannelMeasurementMixin(scope.MinMaxWaveformChannelMeasureme
 # **************************************************************************************************
 
 
-class PythonIviScope(PythonIviBase, scope.ScopeInterface):
-    """
-    Module for accessing oscilloscopes via PythonIVI library
-    """
+class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
+    """ Module for accessing oscilloscopes via PythonIVI library. """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
