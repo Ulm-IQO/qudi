@@ -1187,7 +1187,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return float[]: current position in (x, y, z, a).
         """
-        return self._current_position
+        return self._current_position.tolist()
 
     def _set_up_line(self, length=100):
         """ Sets up the analog output for scanning a line.
@@ -1454,7 +1454,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 all_data[len(self._scanner_counter_channels):] = self._analog_data[:, :-1]
 
             # update the scanner position instance variable
-            self._current_position = list(line_path[:, -1])
+            self._current_position = np.array(line_path[:, -1])
         except:
             self.log.exception('Error while scanning line.')
             return np.array([[-1.]])
