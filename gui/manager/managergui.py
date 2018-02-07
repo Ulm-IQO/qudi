@@ -679,7 +679,7 @@ class ModuleListItem(QtWidgets.QFrame):
                     self.cleanupButton.setEnabled(True)
             except:
                 state = 'exception, cannot get state'
-                self.reloadButton.setEnabled(False)
+                self.reloadButton.setEnabled(True)
                 self.deactivateButton.setEnabled(True)
                 self.cleanupButton.setEnabled(True)
 
