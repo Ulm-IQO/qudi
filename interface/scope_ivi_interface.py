@@ -23,7 +23,7 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-class ScopeInterface(metaclass=InterfaceMetaclass):
+class ScopeIviInterface(metaclass=InterfaceMetaclass):
     """
     Interface for oscilloscope driver implementation following the IVI specification.
     """
