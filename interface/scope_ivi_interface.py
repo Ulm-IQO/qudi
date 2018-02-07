@@ -24,48 +24,42 @@ from core.util.interfaces import InterfaceMetaclass
 
 
 class ScopeIviInterface(metaclass=InterfaceMetaclass):
-    """
-    Interface for oscilloscope driver implementation following the IVI specification.
-    """
-
-    @property
-    @abc.abstractmethod
-    def acquisition(self):
-        """
-        Object implementing Acquisition interface.
-        """
-        pass
-
+    """ Interface for oscilloscope driver implementation following the IVI specification. """
     channels = []
 
     @property
     @abc.abstractmethod
+    def acquisition(self):
+        """ Object containing the Acquisition interface implementation. """
+        pass
+
+    @property
+    @abc.abstractmethod
     def measurement(self):
-        """
-        Object implementing Measurement interface.
-        """
+        """ Object containing the Measurement interface implementation. """
         pass
 
     @property
     @abc.abstractmethod
     def trigger(self):
-        """
-        Object implementing Trigger interface.
-        """
+        """ Object containing the Trigger interface implementation. """
         pass
 
 
 class AcquisitionInterface(metaclass=InterfaceMetaclass):
-    """
-    The acquisition sub-system configures the acquisition type, the size of the waveform record,
-    the length of time that corresponds to the overall waveform record, and the position of the
-    first point in the waveform record relative to the Trigger Event.
+    """ Interface for the Acquisition subsytem.
+
+    The acquisition sub-system configures the acquisition type, the size of the
+    waveform record, the length of time that corresponds to the overall waveform
+    record, and the position of the first point in the waveform record relative
+    to the Trigger Event.
     """
 
     @property
     @abc.abstractmethod
     def start_time(self):
         """
+
         Specifies the length of time from the trigger event to the first point in
         the waveform record. If the value is positive, the first point in the
         waveform record occurs after the trigger event. If the value is negative,
