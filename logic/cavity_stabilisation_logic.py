@@ -793,7 +793,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         ramp_data = np.tile(np.append(self.ramp, self.down_ramp), int(self.elapsed_sweeps / 2))
         # if odd # of scans one more ramp needs to be added
         if (self.elapsed_sweeps % 2) == 1:
-            np.append(ramp_data, self.ramp)
+            ramp_data = np.append(ramp_data, self.ramp)
 
         scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
         data['Voltage (V)'] = ramp_data.flatten()
