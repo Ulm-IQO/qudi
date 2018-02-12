@@ -39,8 +39,8 @@ class PulseExtractionLogic(GenericLogic):
 
     extraction_settings = StatusVar('extraction_settings', default={'conv_std_dev': 10.0,
                                                                     'count_threshold': 10,
-                                                                    'threshold_tolerance_bins': 20,
-                                                                    'min_laser_length': 200,
+                                                                    'threshold_tolerance': 20e-9,
+                                                                    'min_laser_length': 200e-9,
                                                                     'current_method': 'conv_deriv'})
 
     def __init__(self, config, **kwargs):
@@ -100,6 +100,11 @@ class PulseExtractionLogic(GenericLogic):
         @param is_gated:
         @return:
         """
+
+        # convert time to bin
+        self.threshold_tolerance_bin = int(self.extraction_settings['threshold_tolerance']/self.fast_counter_binwidth + 1)
+        self.min_laser_length_bin = int(self.extraction_settings['min_laser_length'] / self.fast_counter_binwidth + 1)
+
         if is_gated:
             return_dict = self.gated_extraction_methods[self.extraction_settings['current_method']](count_data)
         else:
