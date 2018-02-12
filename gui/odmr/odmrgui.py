@@ -88,7 +88,7 @@ class ODMRGui(GUIBase):
     sigFitChanged = QtCore.Signal(str)
     sigNumberOfLinesChanged = QtCore.Signal(int)
     sigRuntimeChanged = QtCore.Signal(float)
-    sigDoFit = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal(str, int, arguments=['fit_function', 'channel_index'])
     sigSaveMeasurement = QtCore.Signal(str, list, list)
 
     def __init__(self, config, **kwargs):
@@ -584,7 +584,7 @@ class ODMRGui(GUIBase):
 
     def do_fit(self):
         fit_function = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
-        self.sigDoFit.emit(fit_function)
+        self.sigDoFit.emit(fit_function, self._mw.odmr_channel_ComboBox.currentIndex())
         return
 
     def update_fit(self, x_data, y_data, result_str_dict, current_fit):
