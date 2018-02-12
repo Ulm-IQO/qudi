@@ -95,6 +95,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     signal_stabilise_cavity = QtCore.Signal()
     signal_optimize_length = QtCore.Signal(float, bool)
     signal_scan_next_line = QtCore.Signal()
+    sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray)
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
         # Todo: I am not sure fi this inheritance is sensible (Generic logic)
@@ -285,7 +286,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 self._optimize_cavity_length(voltage_result)
             else:
                 self.signal_stabilise_cavity.emit()
-
 
         # if a maximum speed of the readout should be wanted a time.sleep can be added.
         # for this one should measure the time the operation requires. The difference between the minimum time between
@@ -544,6 +544,13 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     # =============================== stop cavity stabilisation Commands  =======================
 
     # =============================== start cavity scanning Commands  =======================
+
+    def _initialize_image(self):
+        """ Initializing the cavity scan plot. """
+        self.cavity_scan_plot_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
+        self.cavity_scan_plot_y = np.zeros([len(self.get_cavity_scan_channels()), self.cavity_scan_plot_x.size])
+        return
+
     def _initialise_scanner(self):
         """Initialise the clock and locks for a scan"""
         # Fixme: Do error catch/test
@@ -768,14 +775,23 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.histo_count += 1
         # self.sigCounterUpdated.emit()
         # self.sigHistoUpdated.emit()
+
+        self.time_array = self.time_array + 1. / self._scan_frequency
+        new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
+        self._image_data = np.array([np.append(self._image_data[0, len(self.ramp):], self.time_array),
+                                     np.append(self._image_data[1, len(self.ramp):], new_image_data)])
+        self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1])
         self.signal_scan_next_line.emit()
 
     def _initialise_data_matrix(self):
-        """ Initializing the ODMR matrix plot. """
+        """ Initializing the cavity scan plot. """
         estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
         self.scan_raw_data = np.zeros([estimated_number_of_lines, len(self.ramp)])
+        self.time_array = np.linspace(0, 1. / self._scan_frequency, len(self.ramp))
+        self._image_data = np.zeros((2, 5 * len(self.ramp)))
+        self._image_data[0,]
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
