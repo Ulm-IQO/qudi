@@ -58,14 +58,6 @@ last</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="0" rowspan="9">
-         <widget class="QTableWidget" name="block_editor_TableWidget">
-          <property name="rowCount">
-           <number>1</number>
-          </property>
-          <row/>
-         </widget>
-        </item>
         <item row="1" column="1">
          <widget class="QPushButton" name="block_add_last_PushButton">
           <property name="maximumSize">
@@ -158,6 +150,9 @@ sel.</string>
            </size>
           </property>
          </spacer>
+        </item>
+        <item row="0" column="0" rowspan="9">
+         <widget class="BlockEditor" name="block_editor"/>
         </item>
        </layout>
       </item>
@@ -331,14 +326,6 @@ last</string>
           </property>
          </widget>
         </item>
-        <item row="0" column="0" rowspan="9">
-         <widget class="QTableWidget" name="block_organizer_TableWidget">
-          <property name="rowCount">
-           <number>1</number>
-          </property>
-          <row/>
-         </widget>
-        </item>
         <item row="5" column="1">
          <widget class="QPushButton" name="organizer_del_sel_PushButton">
           <property name="maximumSize">
@@ -398,6 +385,9 @@ last</string>
            </size>
           </property>
          </spacer>
+        </item>
+        <item row="0" column="0" rowspan="9">
+         <widget class="EnsembleEditor" name="block_organizer"/>
         </item>
        </layout>
       </item>
@@ -865,6 +855,16 @@ Ensemble</string>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>BlockEditor</class>
+   <extends>QTableView</extends>
+   <header>gui.pulsed.pulse_editors_new.h</header>
+  </customwidget>
+  <customwidget>
+   <class>EnsembleEditor</class>
+   <extends>QTableView</extends>
+   <header>gui.pulsed.pulse_editors_new.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

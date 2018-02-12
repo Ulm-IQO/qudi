@@ -47,9 +47,7 @@ class DigitalChannelsWidget(QtGui.QWidget):
             label = QtGui.QLabel(chnl.rsplit('ch')[1])
             label.setFixedWidth(30)
             label.setAlignment(QtCore.Qt.AlignCenter)
-            label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             widget = QtGui.QCheckBox()
-            widget.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             widget.setFixedWidth(19)
             widget.setChecked(False)
             self._dch_checkboxes[chnl] = {'label': label, 'widget': widget}
@@ -104,7 +102,6 @@ class AnalogParametersWidget(QtGui.QWidget):
         for param in self._parameters:
             label = QtGui.QLabel(param)
             label.setAlignment(QtCore.Qt.AlignCenter)
-            label.setAttribute(QtCore.Qt.WA_TranslucentBackground)
             if self._parameters[param]['type'] == float:
                 widget = ScienDSpinBox()
                 widget.setMinimum(self._parameters[param]['min'])
