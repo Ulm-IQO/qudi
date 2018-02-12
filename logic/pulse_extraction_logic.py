@@ -102,7 +102,7 @@ class PulseExtractionLogic(GenericLogic):
         """
 
         # convert time to bin
-        self.threshold_tolerance_bin = int(self.extraction_settings['threshold_tolerance']/self.fast_counter_binwidth + 1)
+        self.threshold_tolerance_bin = int(self.extraction_settings['threshold_tolerance']/self.fast_counter_binwidth+1)
         self.min_laser_length_bin = int(self.extraction_settings['min_laser_length'] / self.fast_counter_binwidth + 1)
 
         if is_gated:
