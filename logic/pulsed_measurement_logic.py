@@ -1051,8 +1051,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._pulse_extraction_logic.extraction_settings['conv_std_dev']
         if self._pulse_extraction_logic.extraction_settings['current_method'] == 'threshold':
             parameters['Count threshold'] = self._pulse_extraction_logic.extraction_settings['count_threshold']
-            parameters['threshold_tolerance'] =\
-                self._pulse_extraction_logic.extraction_settings['threshold_tolerance']
+            parameters['threshold_tolerance'] = self._pulse_extraction_logic.extraction_settings['threshold_tolerance']
             parameters['min_laser_length'] = self._pulse_extraction_logic.extraction_settings['min_laser_length']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
