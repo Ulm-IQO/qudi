@@ -20,20 +20,21 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
-from qtpy import QtGui
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
-import time
 import os
+import pyqtgraph as pg
+import time
 
+from core.module import Connector, ConfigOption, StatusVar
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitParametersWidget
+from qtpy import QtCore
+from qtpy import QtGui
+from qtpy import QtWidgets
+from qtpy import uic
 
 class CrossROI(pg.ROI):
 
@@ -133,11 +134,13 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
+    sigDoubleClick = QtCore.Signal()
 
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_confocalgui.ui')
+        self._doubleclicked = False
 
         # Load it
         super(ConfocalMainWindow, self).__init__()
@@ -147,6 +150,10 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
     def keyPressEvent(self, event):
         """Pass the keyboard press event from the main window further. """
         self.sigPressKeyBoard.emit(event)
+
+    def mouseDoubleClickEvent(self, event):
+        self._doubleclicked = True
+        self.sigDoubleClick.emit()
 
 
 class ConfocalSettingDialog(QtWidgets.QDialog):
@@ -184,30 +191,27 @@ class ConfocalGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'confocallogic1': 'ConfocalLogic',
-           'savelogic': 'SaveLogic',
-           'optimizerlogic1': 'OptimizerLogic'
-           }
+    confocallogic1 = Connector(interface='ConfocalLogic')
+    savelogic = Connector(interface='SaveLogic')
+    optimizerlogic1 = Connector(interface='OptimizerLogic')
 
+    # config options for gui
+    fixed_aspect_ratio_xy = ConfigOption('fixed_aspect_ratio_xy', True)
+    fixed_aspect_ratio_depth = ConfigOption('fixed_aspect_ratio_depth', True)
+    image_x_padding = ConfigOption('image_x_padding', 0.02)
+    image_y_padding = ConfigOption('image_y_padding', 0.02)
+    image_z_padding = ConfigOption('image_z_padding', 0.02)
+
+    # status var
+    adjust_cursor_roi = StatusVar(default=True)
+    slider_small_step = StatusVar(default=10e-9)    # initial value in meter
+    slider_big_step = StatusVar(default=100e-9)     # initial value in meter
+
+    # signals
     sigStartOptimizer = QtCore.Signal(list, str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        self.fixed_aspect_ratio_xy = config['fixed_aspect_ratio_xy']
-        self.fixed_aspect_ratio_depth = config['fixed_aspect_ratio_depth']
-        self.image_x_padding = config['image_x_padding']
-        self.image_y_padding = config['image_y_padding']
-        self.image_z_padding = config['image_z_padding']
-
-        self.slider_small_step = 10e-9         # initial value in meter
-        self.slider_big_step = 100e-9          # initial value in meter
 
     def on_activate(self):
         """ Initializes all needed UI files and establishes the connectors.
@@ -248,23 +252,20 @@ class ConfocalGui(GUIBase):
         self.depth_channel = 0
         self.opt_channel = 0
 
-        # Get the image for the display from the logic. Transpose the received
-        # matrix to get the proper scan. The graphig widget displays vector-
-        # wise the lines and the lines are normally columns, but in our
-        # measurement we scan rows per row. That's why it has to be transposed.
-        arr01 = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
-        arr02 = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        # Get the image for the display from the logic
+        raw_data_xy = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
+        raw_data_depth = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
 
         # Set initial position for the crosshair, default is the middle of the
         # screen:
-        ini_pos_x_crosshair = len(arr01) / 2
-        ini_pos_y_crosshair = len(arr01) / 2
-        ini_pos_z_crosshair = len(arr02) / 2
+        ini_pos_x_crosshair = len(raw_data_xy) / 2
+        ini_pos_y_crosshair = len(raw_data_xy) / 2
+        ini_pos_z_crosshair = len(raw_data_depth) / 2
 
 
         # Load the images for xy and depth in the display:
-        self.xy_image = pg.ImageItem(arr01)
-        self.depth_image = pg.ImageItem(arr02)
+        self.xy_image = pg.ImageItem(image=raw_data_xy, axisOrder='row-major')
+        self.depth_image = pg.ImageItem(image=raw_data_depth, axisOrder='row-major')
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -288,7 +289,8 @@ class ConfocalGui(GUIBase):
         ###################################################################
         # Load the image for the optimizer tab
         self.xy_refocus_image = pg.ImageItem(
-            self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel].transpose())
+            image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
+            axisOrder='row-major')
         self.xy_refocus_image.setRect(
             QtCore.QRectF(
                 self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
@@ -591,7 +593,8 @@ class ConfocalGui(GUIBase):
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
         self._mw.optimizer_only_view_Action.triggered.connect(self.small_optimizer_view)
-
+        self._mw.actionAutoRange_xy.triggered.connect(self._mw.xy_ViewWidget.autoRange)
+        self._mw.actionAutoRange_z.triggered.connect(self._mw.depth_ViewWidget.autoRange)
         # Connect the buttons and inputs for the xy colorbar
         self._mw.xy_cb_manual_RadioButton.clicked.connect(self.update_xy_cb_range)
         self._mw.xy_cb_centiles_RadioButton.clicked.connect(self.update_xy_cb_range)
@@ -651,11 +654,13 @@ class ConfocalGui(GUIBase):
         self._mw.action_full_range_z.triggered.connect(self.set_full_scan_range_z)
 
         self._mw.action_zoom.toggled.connect(self.zoom_clicked)
+        self._mw.sigDoubleClick.connect(self.activate_zoom_double_click)
         self._mw.xy_ViewWidget.sigMouseClick.connect(self.xy_scan_start_zoom_point)
         self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
-
         self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
         self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
+
+
 
         ###################################################################
         #               Icons for the scan actions                        #
@@ -737,9 +742,6 @@ class ConfocalGui(GUIBase):
         self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_settings)
         self._sd.hardware_switch.clicked.connect(self.switch_hardware)
 
-        if 'adjust_cursor_roi' in self._statusVariables:
-            self.adjust_cursor_roi = self._statusVariables['adjust_cursor_roi']
-
         # write the configuration to the settings window of the GUI.
         self.keep_former_settings()
 
@@ -774,7 +776,6 @@ class ConfocalGui(GUIBase):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['adjust_cursor_roi'] = self.adjust_cursor_roi
         self._mw.close()
         return 0
 
@@ -1087,10 +1088,10 @@ class ConfocalGui(GUIBase):
 
     def ready_clicked(self):
         """ Stopp the scan if the state has switched to ready. """
-        if self._scanning_logic.getState() == 'locked':
+        if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
-        if self._optimizer_logic.getState() == 'locked':
+        if self._optimizer_logic.module_state() == 'locked':
             self._optimizer_logic.stop_refocus()
 
         self.enable_scan_actions()
@@ -1564,7 +1565,7 @@ class ConfocalGui(GUIBase):
         """
         self.xy_image.getViewBox().updateAutoRange()
 
-        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel].transpose()
+        xy_image_data = self._scanning_logic.xy_image[:, :, 3 + self.xy_channel]
 
         cb_range = self.get_xy_cb_range()
 
@@ -1573,7 +1574,7 @@ class ConfocalGui(GUIBase):
         self.refresh_xy_colorbar()
 
         # Unlock state widget if scan is finished
-        if self._scanning_logic.getState() != 'locked':
+        if self._scanning_logic.module_state() != 'locked':
             self.enable_scan_actions()
 
     def refresh_depth_image(self):
@@ -1585,7 +1586,7 @@ class ConfocalGui(GUIBase):
 
         self.depth_image.getViewBox().enableAutoRange()
 
-        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel].transpose()
+        depth_image_data = self._scanning_logic.depth_image[:, :, 3 + self.depth_channel]
         cb_range = self.get_depth_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1593,14 +1594,14 @@ class ConfocalGui(GUIBase):
         self.refresh_depth_colorbar()
 
         # Unlock state widget if scan is finished
-        if self._scanning_logic.getState() != 'locked':
+        if self._scanning_logic.module_state() != 'locked':
             self.enable_scan_actions()
 
     def refresh_refocus_image(self):
         """Refreshes the xy image, the crosshair and the colorbar. """
         ##########
         # Updating the xy optimizer image with color scaling based only on nonzero data
-        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel].transpose()
+        xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
         if np.max(xy_optimizer_image) != 0:
@@ -1960,6 +1961,10 @@ class ConfocalGui(GUIBase):
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
+        if self._mw._doubleclicked:
+            event.ignore()
+            return
+
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -1977,6 +1982,11 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
+        if self._mw._doubleclicked:
+            self._mw._doubleclicked = False
+            event.ignore()
+            return
+
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -1990,7 +2000,10 @@ class ConfocalGui(GUIBase):
         # system of the ViewBox, which also includes the 2D graph:
         pos = viewbox.mapSceneToView(event.localPos())
         endpos = [pos.x(), pos.y()]
+
         initpos = self._current_xy_zoom_start
+
+
 
         # get the right corners from the zoom window:
         if initpos[0] > endpos[0]:
@@ -2022,6 +2035,7 @@ class ConfocalGui(GUIBase):
         # second time is really needed, otherwisa zooming will not work for the first time
         viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
         self.update_roi_xy()
+        self._mw.action_zoom.setChecked(False)
 
     def reset_xy_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
@@ -2060,12 +2074,21 @@ class ConfocalGui(GUIBase):
             self.xy_image.getViewBox().setRange(xRange=(xMin, xMax), yRange=(yMin, yMax),
                 update=True)
 
+    def activate_zoom_double_click(self):
+        if self._mw.action_zoom.isChecked():
+            self._mw.action_zoom.setChecked(False)
+        else:
+            self._mw.action_zoom.setChecked(True)
+
     def depth_scan_start_zoom_point(self, event):
         """ Get the mouse coordinates if the mouse button was pressed.
 
         @param QMouseEvent event: Mouse Event object which contains all the
                                   information at the time the event was emitted
         """
+        if self._mw._doubleclicked:
+            event.ignore()
+            return
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -2073,9 +2096,9 @@ class ConfocalGui(GUIBase):
             return
 
         pos = self.depth_image.getViewBox().mapSceneToView(event.localPos())
+        self._current_depth_zoom_start = [pos.x(), pos.y()]
 
         # store the initial mouse position in a class variable
-        self._current_depth_zoom_start = [pos.x(), pos.y()]
         event.accept()
 
     def depth_scan_end_zoom_point(self, event):
@@ -2083,6 +2106,11 @@ class ConfocalGui(GUIBase):
 
         @param QEvent event:
         """
+        if self._mw._doubleclicked:
+            self._mw._doubleclicked = False
+            event.ignore()
+            return
+
         # catch the event if the zoom mode is activated and if the event is
         # coming from a left mouse button.
         if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
@@ -2128,6 +2156,9 @@ class ConfocalGui(GUIBase):
         # second time is really needed, otherwisa zooming will not work for the first time
         viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
         self.update_roi_depth()
+
+        self._mw.action_zoom.setChecked(False)
+
 
     def reset_depth_imagerange(self):
         """ Reset the imagerange if autorange was pressed.

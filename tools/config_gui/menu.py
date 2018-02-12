@@ -20,11 +20,22 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 from qtpy import QtCore, QtWidgets
 
+class MenuItem:
+
+    def __init__(self, menu, children=None, actions=None):
+        if children is None:
+            children = {}
+        if actions is None:
+            actions = {}
+        self.menu = menu
+        self.children = children
+        self.actions = actions
+
 class ModMenu(QtWidgets.QMenu):
     """ This class represents the module selection menu.
     """
 
-    def __init__(self, m):
+    def __init__(self, modules):
         """ Create new menu from module tree.
 
             @param dict m: module tree
@@ -40,32 +51,20 @@ class ModMenu(QtWidgets.QMenu):
         self.addMenu(self.logicmenu)
         self.addMenu(self.guimenu)
 
-        self.hwmenuitems = {
-            'menu': self.hwmenu,
-            'children': {},
-            'actions': {}
-        }
-        self.logicmenuitems = {
-            'menu': self.logicmenu,
-            'children': {},
-            'actions': {}
-        }
-        self.guimenuitems = {
-            'menu': self.guimenu,
-            'children': {},
-            'actions': {}
-        }
+        self.hwmenuitems = MenuItem(self.hwmenu)
+        self.logicmenuitems = MenuItem(self.logicmenu)
+        self.guimenuitems = MenuItem(self.guimenu)
 
-        for k,v in sorted(m['hardware'].items()):
-            self.build_submenu(self.hwmenuitems, k, v)
+        for module_path, module in sorted(modules['hardware'].items()):
+            self.build_submenu(self.hwmenuitems, module_path, module)
 
-        for k,v in sorted(m['logic'].items()):
-            self.build_submenu(self.logicmenuitems, k, v)
+        for module_path, module in sorted(modules['logic'].items()):
+            self.build_submenu(self.logicmenuitems, module_path, module)
 
-        for k,v in sorted(m['gui'].items()):
-            self.build_submenu(self.guimenuitems, k, v)
+        for module_path, module in sorted(modules['gui'].items()):
+            self.build_submenu(self.guimenuitems, module_path, module)
 
-    def build_submenu(self, mlist, modpath, module) :
+    def build_submenu(self, menu_item, modpath, module) :
         """ Create a submenu from a module list, a module path and a module definition.
 
             @param dict mlist: module list dict
@@ -73,20 +72,18 @@ class ModMenu(QtWidgets.QMenu):
             @param dict moddef: module definition dict
         """
         k_parts = modpath.split('.')
+        child_item = menu_item
         if len(k_parts) > 3:
             for part in k_parts[1:-2]:
-                if part in mlist['children']:
-                    mlist = mlist['children'][part]
+                if part in menu_item.children:
+                    child_item = menu_item.children[part]
                 else:
-                    menu = mlist['menu'].addMenu(part)
-                    mlist['children'][part] = {
-                        'menu': menu,
-                        'children': {},
-                        'actions': {}
-                        }
-                    mlist = mlist['children'][part]
-        action = mlist['menu'].addAction(k_parts[-2] + ' ' + k_parts[-1])
-        mlist['actions'][k_parts[-2] + ' ' + k_parts[-1]] = action
+                    new_menu = menu_item.menu.addMenu(part)
+                    menu_item.children[part] = MenuItem(new_menu)
+                    child_item = menu_item.children[part]
+
+        action = child_item.menu.addAction(k_parts[-2] + ' ' + k_parts[-1])
+        child_item.actions[k_parts[-2] + ' ' + k_parts[-1]] = action
         action.triggered.connect(module.addModule)
         self.modules.append(module)
 

@@ -19,12 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
-import os
 import importlib
 import inspect
-from logic.generic_logic import GenericLogic
+import numpy as np
+import os
+
 from collections import OrderedDict
+from core.module import StatusVar
+from core.util.modules import get_main_dir
+from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
 
@@ -34,41 +37,24 @@ class PulseAnalysisLogic(GenericLogic):
     _modclass = 'PulseAnalysisLogic'
     _modtype = 'logic'
 
+    analysis_settings = StatusVar('analysis_settings', default={'signal_start_s': 0.0,
+                                                                'signal_end_s': 200.0e-9,
+                                                                'norm_start_s': 500.0e-9,
+                                                                'norm_end_s': 700.0e-9,
+                                                                'current_method': 'mean_norm'})
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        self.signal_start_bin = 0
-        self.signal_end_bin = 200
-        self.norm_start_bin = 300
-        self.norm_end_bin = 400
-        self.current_method = 'mean_norm'
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # recall saved variables from file
-        if 'current_method' in self._statusVariables:
-            self.current_method = self._statusVariables['current_method']
-        if 'signal_start_bin' in self._statusVariables:
-            self.signal_start_bin = self._statusVariables['signal_start_bin']
-        if 'signal_end_bin' in self._statusVariables:
-            self.signal_end_bin = self._statusVariables['signal_end_bin']
-        if 'norm_start_bin' in self._statusVariables:
-            self.norm_start_bin = self._statusVariables['norm_start_bin']
-        if 'norm_end_bin' in self._statusVariables:
-            self.norm_end_bin = self._statusVariables['norm_end_bin']
 
         self.analysis_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory pulsed_analysis_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'pulsed_analysis_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'pulsed_analysis_methods')
         for entry in os.listdir(path):
             if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
                 filename_list.append(entry[:-3])
@@ -93,12 +79,6 @@ class PulseAnalysisLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        # Save variables to file
-        self._statusVariables['current_method'] = self.current_method
-        self._statusVariables['signal_start_bin'] = self.signal_start_bin
-        self._statusVariables['signal_end_bin'] = self.signal_end_bin
-        self._statusVariables['norm_start_bin'] = self.norm_start_bin
-        self._statusVariables['norm_end_bin'] = self.norm_end_bin
         return
 
     def analyze_data(self, laser_data):
@@ -109,5 +89,12 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array measuring_error: Array with the computed signal error
         """
-        signal_data, measuring_error = self.analysis_methods[self.current_method](laser_data)
+#
+        # convert time to bin
+        self.signal_start_bin = round(self.analysis_settings['signal_start_s'] / self.fast_counter_binwidth)
+        self.signal_end_bin = round(self.analysis_settings['signal_end_s'] / self.fast_counter_binwidth)
+        self.norm_start_bin = round(self.analysis_settings['norm_start_s'] / self.fast_counter_binwidth)
+        self.norm_end_bin = round(self.analysis_settings['norm_end_s'] / self.fast_counter_binwidth)
+
+        signal_data, measuring_error = self.analysis_methods[self.analysis_settings['current_method']](laser_data)
         return signal_data, measuring_error

@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -32,25 +32,15 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     """
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
+
     # connectors
-    _connectors = {'fitlogic': 'FitLogic'}
+    fitlogic = Connector(interface='FitLogic')
+
+    # config options
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
-
 
         # Internal parameters
         self._line_length = None
@@ -199,7 +189,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
                     ''.format(myrange))
             return -1
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
@@ -241,7 +231,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
         self.log.warning('ConfocalScannerInterfaceDummy>set_up_scanner')
 
-        #if self.getState() == 'locked' or self._scanner_counter_daq_task != None:
+        #if self.module_state() == 'locked' or self._scanner_counter_daq_task != None:
         #    self.log.error('Another scanner is already running, close this one first.')
         #    return -1
 
@@ -261,7 +251,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A Scanner is already running, close this one '
                     'first.')
             return -1
@@ -330,7 +320,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
 
 #        self.log.warning('ConfocalScannerInterfaceDummy>scan_line: length {0:d}.'.format(self._line_length))
 
-        #self.unlock()
+        #self.module_state.unlock()
 
         # update the scanner position instance variable
         self._current_position = list(line_path[:,-1])

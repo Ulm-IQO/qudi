@@ -251,11 +251,18 @@ class Mapper():
                     if model_getter is None:
                         raise Exception('Attribute {0} of model is readonly.'
                                         ''.format(model_property_name))
+            else:
+                # getter is not a property. Check if it is a callable.
+                model_getter_name = model_getter
+                model_getter = getattr(model, model_getter)
+                if not callable(model_getter):
+                    raise Exception('Attribute {0} of model is not callable.'.format(
+                        model_getter_name))
         if isinstance(model_setter, str):
             model_setter_name = model_setter
             model_setter = getattr(model, model_setter)
             if not callable(model_setter):
-                raise Exception('{0} is not callable'.format(
+                raise Exception('Attribute {0} of model is not callable'.format(
                     model_setter_name))
         if isinstance(model_property_notifier, str):
             model_property_notifier = getattr(model, model_property_notifier)

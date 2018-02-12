@@ -32,20 +32,38 @@ import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
+from core.module import Connector, ConfigOption, StatusVar
 
 class ODMRLogic(GenericLogic):
 
     """This is the Logic class for ODMR."""
     _modclass = 'odmrlogic'
     _modtype = 'logic'
+
     # declare connectors
-    _connectors = {
-        'odmrcounter': 'ODMRCounterInterface',
-        'fitlogic': 'FitLogic',
-        'microwave1': 'mwsourceinterface',
-        'savelogic': 'SaveLogic',
-        'taskrunner': 'TaskRunner'
-    }
+    odmrcounter = Connector(interface='ODMRCounterInterface')
+    fitlogic = Connector(interface='FitLogic')
+    microwave1 = Connector(interface='mwsourceinterface')
+    savelogic = Connector(interface='SaveLogic')
+    taskrunner = Connector(interface='TaskRunner')
+
+    # config option
+    mw_scanmode = ConfigOption(
+                    'scanmode',
+                    'LIST',
+                    missing='warn',
+                    converter=lambda x: MicrowaveMode[x.upper()])
+
+    clock_frequency = StatusVar('clock_frequency', 200)
+    cw_mw_frequency = StatusVar('cw_mw_frequency', 2870e6)
+    cw_mw_power = StatusVar('cw_mw_power', -30)
+    sweep_mw_power = StatusVar('sweep_mw_power', -30)
+    mw_start = StatusVar('mw_start', 2800e6)
+    mw_stop = StatusVar('mw_stop', 2950e6)
+    mw_step = StatusVar('mw_step', 2e6)
+    run_time = StatusVar('run_time', 60)
+    number_of_lines = StatusVar('number_of_lines', 50)
+    fc = StatusVar('fits', None)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -59,22 +77,12 @@ class ODMRLogic(GenericLogic):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
         self.threadlock = Mutex()
 
     def on_activate(self):
-        """ 
+        """
         Initialisation performed during activation of the module.
         """
-        # Get configuration
-        config = self.getConfiguration()
-
         # Get connectors
         self._mw_device = self.get_connector('microwave1')
         self._fit_logic = self.get_connector('fitlogic')
@@ -82,11 +90,76 @@ class ODMRLogic(GenericLogic):
         self._save_logic = self.get_connector('savelogic')
         self._taskrunner = self.get_connector('taskrunner')
 
+        # Get hardware constraints
+        limits = self.get_hw_constraints()
+
+        # Set/recall microwave source parameters
+        self.cw_mw_frequency = limits.frequency_in_range(self.cw_mw_frequency)
+        self.cw_mw_power = limits.power_in_range(self.cw_mw_power)
+        self.sweep_mw_power = limits.power_in_range(self.sweep_mw_power)
+        self.mw_start = limits.frequency_in_range(self.mw_start)
+        self.mw_stop = limits.frequency_in_range(self.mw_stop)
+        self.mw_step = limits.list_step_in_range(self.mw_step)
+
+        # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
+        # theoretically this can be changed, but the current counting scheme will not support that
+        self.mw_trigger_pol = TriggerEdge.RISING
+        self.set_trigger_pol(self.mw_trigger_pol)
+
+        # Elapsed measurement time and number of sweeps
+        self.elapsed_time = 0.0
+        self.elapsed_sweeps = 0
+
+        # Set flags
+        # for stopping a measurement
+        self._stopRequested = False
+        # for clearing the ODMR data during a measurement
+        self._clearOdmrData = False
+
+        # Initalize the ODMR data arrays (mean signal and sweep matrix)
+        self._initialize_odmr_plots()
+        # Raw data array
+        self.odmr_raw_data = np.zeros(
+            [self.number_of_lines,
+             len(self._odmr_counter.get_odmr_channels()),
+            self.odmr_plot_x.size]
+            )
+
+        # Switch off microwave and set CW frequency and power
+        self.mw_off()
+        self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
+
+        # Connect signals
+        self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
+        return
+
+    def on_deactivate(self):
+        """ Deinitialisation performed during deactivation of the module.
+        """
+        # Stop measurement if it is still running
+        if self.module_state() == 'locked':
+            self.stop_odmr_scan()
+        timeout = 30.0
+        start_time = time.time()
+        while self.module_state() == 'locked':
+            time.sleep(0.5)
+            timeout -= (time.time() - start_time)
+            if timeout <= 0.0:
+                self.log.error('Failed to properly deactivate odmr logic. Odmr scan is still '
+                               'running but can not be stopped after 30 sec.')
+                break
+        # Switch off microwave source for sure (also if CW mode is active or module is still locked)
+        self._mw_device.off()
+        # Disconnect signals
+        self.sigNextLine.disconnect()
+
+    @fc.constructor
+    def sv_set_fits(self, val):
         # Setup fit container
-        self.fc = self._fit_logic.make_fit_container('ODMR sum', '1d')
-        self.fc.set_units(['Hz', 'c/s'])
-        if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
-            self.fc.load_from_dict(self._statusVariables['fits'])
+        fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
+        fc.set_units(['Hz', 'c/s'])
+        if isinstance(val, dict) and len(val) > 0:
+            fc.load_from_dict(val)
         else:
             d1 = OrderedDict()
             d1['Lorentzian dip'] = {
@@ -111,138 +184,25 @@ class ODMRLogic(GenericLogic):
                 }
             default_fits = OrderedDict()
             default_fits['1d'] = d1
-            self.fc.load_from_dict(default_fits)
+            fc.load_from_dict(default_fits)
+        return fc
 
-        # Set/recall clock frequency for ODMR counting device in Hz
-        if 'clock_frequency' in self._statusVariables:
-            self.clock_frequency = self._statusVariables['clock_frequency']
+    @fc.representer
+    def sv_get_fits(self, val):
+        """ save configured fits """
+        if len(val.fit_list) > 0:
+            return val.save_to_dict()
         else:
-            self.clock_frequency = 200
-
-        # Get hardware constraints
-        limits = self.get_hw_constraints()
-
-        # Set/recall microwave source parameters
-        if 'cw_mw_frequency' in self._statusVariables:
-            self.cw_mw_frequency = limits.frequency_in_range(
-                self._statusVariables['cw_mw_frequency'])
-        else:
-            self.cw_mw_frequency = limits.frequency_in_range(2870e6)
-        if 'cw_mw_power' in self._statusVariables:
-            self.cw_mw_power = limits.power_in_range(self._statusVariables['cw_mw_power'])
-        else:
-            self.cw_mw_power = limits.power_in_range(-30)
-        if 'sweep_mw_power' in self._statusVariables:
-            self.sweep_mw_power = limits.power_in_range(self._statusVariables['sweep_mw_power'])
-        else:
-            self.sweep_mw_power = limits.power_in_range(-30)
-        if 'mw_start' in self._statusVariables:
-            self.mw_start = limits.frequency_in_range(self._statusVariables['mw_start'])
-        else:
-            self.mw_start = limits.frequency_in_range(2800e6)
-        if 'mw_stop' in self._statusVariables:
-            self.mw_stop = limits.frequency_in_range(self._statusVariables['mw_stop'])
-        else:
-            self.mw_stop = limits.frequency_in_range(2950e6)
-        if 'mw_step' in self._statusVariables:
-            self.mw_step = limits.list_step_in_range(self._statusVariables['mw_step'])
-        else:
-            self.mw_step = limits.list_step_in_range(2e6)
-
-        # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
-        # theoretically this can be changed, but the current counting scheme will not support that
-        self.mw_trigger_pol = TriggerEdge.RISING
-        self.set_trigger_pol(self.mw_trigger_pol)
-
-        # Get scanmode from config. Currently only sweep and list is allowed
-        if 'scanmode' in config:
-            if ('sweep' in config['scanmode']) or ('SWEEP' in config['scanmode']):
-                self.mw_scanmode = MicrowaveMode.SWEEP
-            elif ('list' in config['scanmode']) or ('LIST' in config['scanmode']):
-                self.mw_scanmode = MicrowaveMode.LIST
-            else:
-                self.mw_scanmode = MicrowaveMode.LIST
-                self.log.error('Specified scanmode "{0}" not valid. Choose "list" or "sweep".\n'
-                               'Falling back to list mode.'.format(config['scanmode']))
-        else:
-            self.mw_scanmode = MicrowaveMode.LIST
-            self.log.warning('No scanmode defined in config for odmr_logic module.\n'
-                             'Falling back to list mode.')
-
-        # Set/recall ODMR runtime in seconds
-        if 'run_time' in self._statusVariables:
-            self.run_time = self._statusVariables['run_time']
-        else:
-            self.run_time = 60
-
-        # Elapsed measurement time and number of sweeps
-        self.elapsed_time = 0.0
-        self.elapsed_sweeps = 0
-
-        # Set flags
-        # for stopping a measurement
-        self._stopRequested = False
-        # for clearing the ODMR data during a measurement
-        self._clearOdmrData = False
-
-        # Set/recall number of lines in the raw data matrix
-        if 'number_of_lines' in self._statusVariables:
-            self.number_of_lines = self._statusVariables['number_of_lines']
-        else:
-            self.number_of_lines = 50
-
-        # Initalize the ODMR data arrays (mean signal and sweep matrix)
-        self._initialize_odmr_plots()
-        # Raw data array
-        self.odmr_raw_data = np.zeros([self.number_of_lines, self.odmr_plot_x.size])
-
-        # Switch off microwave and set CW frequency and power
-        self.mw_off()
-        self.set_cw_parameters(self.cw_mw_frequency, self.cw_mw_power)
-
-        # Connect signals
-        self.sigNextLine.connect(self._scan_odmr_line, QtCore.Qt.QueuedConnection)
-        return
-
-    def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
-        # Stop measurement if it is still running
-        if self.getState() == 'locked':
-            self.stop_odmr_scan()
-        timeout = 30.0
-        start_time = time.time()
-        while self.getState() == 'locked':
-            time.sleep(0.5)
-            timeout -= (time.time() - start_time)
-            if timeout <= 0.0:
-                self.log.error('Failed to properly deactivate odmr logic. Odmr scan is still '
-                               'running but can not be stopped after 30 sec.')
-                break
-        # Switch off microwave source for sure (also if CW mode is active or module is still locked)
-        self._mw_device.off()
-        # Disconnect signals
-        self.sigNextLine.disconnect()
-        # save parameters stored in app state store
-        self._statusVariables['clock_frequency'] = self.clock_frequency
-        self._statusVariables['cw_mw_frequency'] = self.cw_mw_frequency
-        self._statusVariables['cw_mw_power'] = self.cw_mw_power
-        self._statusVariables['sweep_mw_power'] = self.sweep_mw_power
-        self._statusVariables['mw_start'] = self.mw_start
-        self._statusVariables['mw_stop'] = self.mw_stop
-        self._statusVariables['mw_step'] = self.mw_step
-        self._statusVariables['run_time'] = self.run_time
-        self._statusVariables['number_of_lines'] = self.number_of_lines
-        if len(self.fc.fit_list) > 0:
-            self._statusVariables['fits'] = self.fc.save_to_dict()
+            return None
 
     def _initialize_odmr_plots(self):
         """ Initializing the ODMR plots (line and matrix). """
         self.odmr_plot_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
-        self.odmr_plot_y = np.zeros(self.odmr_plot_x.size)
+        self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size])
         self.odmr_fit_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
         self.odmr_fit_y = np.zeros(self.odmr_fit_x.size)
-        self.odmr_plot_xy = np.zeros([self.number_of_lines, self.odmr_plot_x.size])
+        self.odmr_plot_xy = np.zeros(
+            [self.number_of_lines, len(self.get_odmr_channels()), self.odmr_plot_x.size])
         self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
         current_fit = self.fc.current_fit
         self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y, {}, current_fit)
@@ -251,12 +211,12 @@ class ODMRLogic(GenericLogic):
     def set_trigger_pol(self, trigger_pol):
         """
         Set trigger polarity of external microwave trigger (for list and sweep mode).
-        
+
         @param object trigger_pol: one of [TriggerEdge.RISING, TriggerEdge.FALLING]
-        
+
         @return object: actually set trigger polarity returned from hardware
         """
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             self.mw_trigger_pol = self._mw_device.set_ext_trigger(trigger_pol)
         else:
             self.log.warning('set_trigger_pol failed. Logic is locked.')
@@ -274,7 +234,7 @@ class ODMRLogic(GenericLogic):
         @return int: actually set clock frequency
         """
         # checks if scanner is still running
-        if self.getState() != 'locked' and isinstance(clock_frequency, (int, float)):
+        if self.module_state() != 'locked' and isinstance(clock_frequency, (int, float)):
             self.clock_frequency = int(clock_frequency)
         else:
             self.log.warning('set_clock_frequency failed. Logic is either locked or input value is '
@@ -315,7 +275,7 @@ class ODMRLogic(GenericLogic):
         else:
             self.log.warning('set_runtime failed. Input parameter runtime is no integer or float.')
 
-        update_dict = {'runtime': self.run_time}
+        update_dict = {'run_time': self.run_time}
         self.sigParameterUpdated.emit(update_dict)
         return self.run_time
 
@@ -327,7 +287,7 @@ class ODMRLogic(GenericLogic):
 
         @return (float, float): actually set frequency in Hz, actually set power in dBm
         """
-        if self.getState() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
+        if self.module_state() != 'locked' and isinstance(frequency, (int, float)) and isinstance(power, (int, float)):
             constraints = self.get_hw_constraints()
             frequency_to_set = constraints.frequency_in_range(frequency)
             power_to_set = constraints.power_in_range(power)
@@ -349,11 +309,11 @@ class ODMRLogic(GenericLogic):
         @param float step: step frequency to set in Hz
         @param float power: mw power to set in dBm
 
-        @return float, float, float, float: current start_freq, current stop_freq, 
+        @return float, float, float, float: current start_freq, current stop_freq,
                                             current freq_step, current power
         """
         limits = self.get_hw_constraints()
-        if self.getState() != 'locked':
+        if self.module_state() != 'locked':
             if isinstance(start, (int, float)):
                 self.mw_start = limits.frequency_in_range(start)
             if isinstance(stop, (int, float)):
@@ -374,12 +334,12 @@ class ODMRLogic(GenericLogic):
         return self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
 
     def mw_cw_on(self):
-        """ 
+        """
         Switching on the mw source in cw mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('Can not start microwave in CW mode. ODMRLogic is already locked.')
         else:
             self.cw_mw_frequency, \
@@ -399,7 +359,7 @@ class ODMRLogic(GenericLogic):
         return mode, is_running
 
     def mw_sweep_on(self):
-        """ 
+        """
         Switching on the mw source in list/sweep mode.
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
@@ -419,12 +379,11 @@ class ODMRLogic(GenericLogic):
                 self.sigParameterUpdated.emit({'mw_step': self.mw_step})
 
         if self.mw_scanmode == MicrowaveMode.SWEEP:
-            self.mw_start, \
-            self.mw_stop, \
-            self.mw_step, \
-            self.sweep_mw_power, \
-            mode = self._mw_device.set_sweep(self.mw_start, self.mw_stop,
-                                             self.mw_step, self.sweep_mw_power)
+
+            sweep_return = self._mw_device.set_sweep(
+                self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power)
+            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power, mode = sweep_return
+
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         else:
@@ -490,9 +449,9 @@ class ODMRLogic(GenericLogic):
         return 0
 
     def _stop_odmr_counter(self):
-        """ 
-        Stopping the ODMR counter. 
-        
+        """
+        Stopping the ODMR counter.
+
         @return int: error code (0:OK, -1:error)
         """
 
@@ -512,11 +471,11 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
 
-            self.lock()
+            self.module_state.lock()
             self._clearOdmrData = False
             self.stopRequested = False
             self.fc.clear_result()
@@ -530,13 +489,13 @@ class ODMRLogic(GenericLogic):
             if odmr_status < 0:
                 mode, is_running = self._mw_device.get_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             mode, is_running = self.mw_sweep_on()
             if not is_running:
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             self._initialize_odmr_plots()
@@ -547,7 +506,11 @@ class ODMRLogic(GenericLogic):
                 estimated_number_of_lines = self.number_of_lines
             self.log.debug('Estimated number of raw data lines: {0:d}'
                            ''.format(estimated_number_of_lines))
-            self.odmr_raw_data = np.zeros([estimated_number_of_lines, self.odmr_plot_x.size])
+            self.odmr_raw_data = np.zeros(
+                [estimated_number_of_lines,
+                 len(self._odmr_counter.get_odmr_channels()),
+                 self.odmr_plot_x.size]
+            )
             self.sigNextLine.emit()
             return 0
 
@@ -557,11 +520,11 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
 
-            self.lock()
+            self.module_state.lock()
             self.stopRequested = False
             self.fc.clear_result()
 
@@ -572,13 +535,13 @@ class ODMRLogic(GenericLogic):
             if odmr_status < 0:
                 mode, is_running = self._mw_device.get_status()
                 self.sigOutputStateUpdated.emit(mode, is_running)
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             mode, is_running = self.mw_sweep_on()
             if not is_running:
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return -1
 
             self.sigNextLine.emit()
@@ -590,7 +553,7 @@ class ODMRLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.stopRequested = True
         return 0
 
@@ -600,7 +563,7 @@ class ODMRLogic(GenericLogic):
         The clear operation has to be performed within the method
         _scan_odmr_line. This method just sets the flag for that. """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self._clearOdmrData = True
         return
 
@@ -611,7 +574,7 @@ class ODMRLogic(GenericLogic):
         """
         with self.threadlock:
             # If the odmr measurement is not running do nothing
-            if self.getState() != 'locked':
+            if self.module_state() != 'locked':
                 return
 
             # Stop measurement if stop has been requested
@@ -619,7 +582,7 @@ class ODMRLogic(GenericLogic):
                 self.stopRequested = False
                 self.mw_off()
                 self._stop_odmr_counter()
-                self.unlock()
+                self.module_state.unlock()
                 return
 
             # if during the scan a clearing of the ODMR data is needed:
@@ -632,54 +595,54 @@ class ODMRLogic(GenericLogic):
 
             # Acquire count data
             new_counts = self._odmr_counter.count_odmr(length=self.odmr_plot_x.size)
-            if new_counts[0] == -1:
+
+            if new_counts[0, 0] == -1:
                 self.stopRequested = True
                 self.sigNextLine.emit()
                 return
 
             # Add new count data to mean signal
             if self._clearOdmrData:
-                self.odmr_plot_y[:] = 0
+                self.odmr_plot_y[:, :, :] = 0
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 
             # Add new count data to raw_data array and append if array is too small
             if self._clearOdmrData:
-                self.odmr_raw_data[:, :] = 0
+                self.odmr_raw_data[:, :, :] = 0
                 self._clearOdmrData = False
             if self.elapsed_sweeps == (self.odmr_raw_data.shape[0] - 1):
-                expanded_array = np.zeros([self.odmr_raw_data.shape[0] + self.number_of_lines,
-                                           self.odmr_raw_data.shape[1]])
-                expanded_array[:self.elapsed_sweeps, :] = self.odmr_raw_data[
-                                                          :self.elapsed_sweeps, :]
-                self.odmr_raw_data = expanded_array
+                expanded_array = np.zeros(self.odmr_raw_data.shape)
+                self.odmr_raw_data = np.concatenate((self.odmr_raw_data, expanded_array), axis=0)
                 self.log.warning('raw data array in ODMRLogic was not big enough for the entire '
                                  'measurement. Array will be expanded.\nOld array shape was '
                                  '({0:d}, {1:d}), new shape is ({2:d}, {3:d}).'
-                                 ''.format(self.odmr_raw_data.shape[0]-self.number_of_lines,
+                                 ''.format(self.odmr_raw_data.shape[0] - self.number_of_lines,
                                            self.odmr_raw_data.shape[1],
                                            self.odmr_raw_data.shape[0],
                                            self.odmr_raw_data.shape[1]))
 
             # shift data in the array "up" and add new data at the "bottom"
-            self.odmr_raw_data[1:self.elapsed_sweeps + 1, :] = self.odmr_raw_data[
-                                                               :self.elapsed_sweeps, :]
-            self.odmr_raw_data[0, :] = new_counts
+            self.odmr_raw_data = np.roll(self.odmr_raw_data, 1, axis=0)
+
+            self.odmr_raw_data[0] = new_counts
 
             # Set plot slice of matrix
-            self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :]
+            self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :, :]
 
             # Update elapsed time/sweeps
             self.elapsed_sweeps += 1
             self.elapsed_time = time.time() - self._startTime
             if self.elapsed_time >= self.run_time:
                 self.stopRequested = True
-
             # Fire update signals
             self.sigOdmrElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_sweeps)
             self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
             self.sigNextLine.emit()
             return
+
+    def get_odmr_channels(self):
+        return self._odmr_counter.get_odmr_channels()
 
     def get_hw_constraints(self):
         """ Return the names of all ocnfigured fit functions.
@@ -694,13 +657,13 @@ class ODMRLogic(GenericLogic):
         """
         return list(self.fc.fit_list)
 
-    def do_fit(self, fit_function=None, x_data=None, y_data=None):
-        """ 
+    def do_fit(self, fit_function=None, x_data=None, y_data=None, channel_index=0):
+        """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
         if (x_data is None) or (y_data is None):
             x_data = self.odmr_plot_x
-            y_data = self.odmr_plot_y
+            y_data = self.odmr_plot_y[channel_index]
 
         if fit_function is not None and isinstance(fit_function, str):
             if fit_function in self.get_fit_functions():
@@ -717,73 +680,78 @@ class ODMRLogic(GenericLogic):
             result_str_dict = {}
         else:
             result_str_dict = result.result_str_dict
-        self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y,
-                                    result_str_dict, self.fc.current_fit)
+        self.sigOdmrFitUpdated.emit(
+            self.odmr_fit_x, self.odmr_fit_y, result_str_dict, self.fc.current_fit)
         return
 
     def save_odmr_data(self, tag=None, colorscale_range=None, percentile_range=None):
         """ Saves the current ODMR data to a file."""
-        if tag is None:
-            tag = ''
-
-        # two paths to save the raw data and the odmr scan data.
-        filepath = self._save_logic.get_path_for_module(module_name='ODMR')
-        filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
-
         timestamp = datetime.datetime.now()
 
-        if len(tag) > 0:
-            filelabel = tag + '_ODMR_data'
-            filelabel2 = tag + '_ODMR_data_raw'
-        else:
-            filelabel = 'ODMR_data'
-            filelabel2 = 'ODMR_data_raw'
+        if tag is None:
+            tag = ''
+        for nch, channel in enumerate(self.get_odmr_channels()):
+            # two paths to save the raw data and the odmr scan data.
+            filepath = self._save_logic.get_path_for_module(module_name='ODMR')
+            filepath2 = self._save_logic.get_path_for_module(module_name='ODMR')
 
-        # prepare the data in a dict or in an OrderedDict:
-        data = OrderedDict()
-        data2 = OrderedDict()
-        data['frequency (Hz)'] = self.odmr_plot_x
-        data['count data (counts/s)'] = self.odmr_plot_y
-        data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, :]
+            if len(tag) > 0:
+                filelabel = '{0}_ODMR_data_ch{1}'.format(tag, nch)
+                filelabel2 = '{0}_ODMR_data_ch{1}_raw'.format(tag, nch)
+            else:
+                filelabel = 'ODMR_data_ch{0}'.format(nch)
+                filelabel2 = 'ODMR_data_ch{0}_raw'.format(nch)
 
-        parameters = OrderedDict()
-        parameters['Microwave Power (dBm)'] = self.mw_power
-        parameters['Run Time (s)'] = self.run_time
-        parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
-        parameters['Start Frequency (Hz)'] = self.mw_start
-        parameters['Stop Frequency (Hz)'] = self.mw_stop
-        parameters['Step size (Hz)'] = self.mw_step
-        parameters['Clock Frequency (Hz)'] = self.clock_frequency
-        if self.fc.current_fit != 'No Fit':
-            parameters['Fit function'] = self.fc.current_fit
+            # prepare the data in a dict or in an OrderedDict:
+            data = OrderedDict()
+            data2 = OrderedDict()
+            data['frequency (Hz)'] = self.odmr_plot_x
+            data['count data (counts/s)'] = self.odmr_plot_y[nch]
+            data2['count data (counts/s)'] = self.odmr_raw_data[:self.elapsed_sweeps, nch, :]
 
-        # add all fit parameter to the saved data:
-        for name, param in self.fc.current_fit_param.items():
-            parameters[name] = str(param)
+            parameters = OrderedDict()
+            parameters['Microwave CW Power (dBm)'] = self.cw_mw_power
+            parameters['Microwave Sweep Power (dBm)'] = self.sweep_mw_power
+            parameters['Run Time (s)'] = self.run_time
+            parameters['Number of frequency sweeps (#)'] = self.elapsed_sweeps
+            parameters['Start Frequency (Hz)'] = self.mw_start
+            parameters['Stop Frequency (Hz)'] = self.mw_stop
+            parameters['Step size (Hz)'] = self.mw_step
+            parameters['Clock Frequency (Hz)'] = self.clock_frequency
+            parameters['Channel'] = '{0}: {1}'.format(nch, channel)
+            if self.fc.current_fit != 'No Fit':
+                parameters['Fit function'] = self.fc.current_fit
 
-        fig = self.draw_figure(cbar_range=colorscale_range, percentile_range=percentile_range)
+            # add all fit parameter to the saved data:
+            for name, param in self.fc.current_fit_param.items():
+                parameters[name] = str(param)
 
-        self._save_logic.save_data(data,
-                                   filepath=filepath,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp,
-                                   plotfig=fig)
+            fig = self.draw_figure(
+                nch,
+                cbar_range=colorscale_range,
+                percentile_range=percentile_range)
 
-        self._save_logic.save_data(data2,
-                                   filepath=filepath2,
-                                   parameters=parameters,
-                                   filelabel=filelabel2,
-                                   fmt='%.6e',
-                                   delimiter='\t',
-                                   timestamp=timestamp)
+            self._save_logic.save_data(data,
+                                       filepath=filepath,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       timestamp=timestamp,
+                                       plotfig=fig)
 
-        self.log.info('ODMR data saved to:\n{0}'.format(filepath))
+            self._save_logic.save_data(data2,
+                                       filepath=filepath2,
+                                       parameters=parameters,
+                                       filelabel=filelabel2,
+                                       fmt='%.6e',
+                                       delimiter='\t',
+                                       timestamp=timestamp)
+
+            self.log.info('ODMR data saved to:\n{0}'.format(filepath))
         return
 
-    def draw_figure(self, cbar_range=None, percentile_range=None):
+    def draw_figure(self, channel_number, cbar_range=None, percentile_range=None):
         """ Draw the summary figure to save with the data.
 
         @param: list cbar_range: (optional) [color_scale_min, color_scale_max].
@@ -795,10 +763,10 @@ class ODMRLogic(GenericLogic):
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
         freq_data = self.odmr_plot_x
-        count_data = self.odmr_plot_y
+        count_data = self.odmr_plot_y[channel_number]
         fit_freq_vals = self.odmr_fit_x
         fit_count_vals = self.odmr_fit_y
-        matrix_data = self.odmr_plot_xy
+        matrix_data = self.odmr_plot_xy[:, channel_number]
 
         # If no colorbar range was given, take full range of data
         if cbar_range is None:
@@ -852,18 +820,19 @@ class ODMRLogic(GenericLogic):
         ax_mean.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
         ax_mean.set_xlim(np.min(freq_data), np.max(freq_data))
 
-        matrixplot = ax_matrix.imshow(matrix_data,
-                                      cmap=plt.get_cmap('inferno'),  # reference the right place in qd
-                                      origin='lower',
-                                      vmin=cbar_range[0],
-                                      vmax=cbar_range[1],
-                                      extent=[np.min(freq_data),
-                                              np.max(freq_data),
-                                              0,
-                                              self.number_of_lines
-                                              ],
-                                      aspect='auto',
-                                      interpolation='nearest')
+        matrixplot = ax_matrix.imshow(
+            matrix_data,
+            cmap=plt.get_cmap('inferno'),  # reference the right place in qd
+            origin='lower',
+            vmin=cbar_range[0],
+            vmax=cbar_range[1],
+            extent=[np.min(freq_data),
+                np.max(freq_data),
+                0,
+                self.number_of_lines
+                ],
+            aspect='auto',
+            interpolation='nearest')
 
         ax_matrix.set_xlabel('Frequency (' + mw_prefix + 'Hz)')
         ax_matrix.set_ylabel('Scan #')
@@ -912,11 +881,11 @@ class ODMRLogic(GenericLogic):
         """ An independant method, which can be called by a task with the proper input values
             to perform an odmr measurement.
 
-        @return 
+        @return
         """
         timeout = 30
         start_time = time.time()
-        while self.getState() != 'idle':
+        while self.module_state() != 'idle':
             time.sleep(0.5)
             timeout -= (time.time() - start_time)
             if timeout <= 0:
@@ -933,10 +902,10 @@ class ODMRLogic(GenericLogic):
         self.start_odmr_scan()
 
         # wait until the scan has started
-        while self.getState() != 'locked':
+        while self.module_state() != 'locked':
             time.sleep(1)
         # wait until the scan has finished
-        while self.getState() == 'locked':
+        while self.module_state() == 'locked':
             time.sleep(1)
 
         # Perform fit if requested

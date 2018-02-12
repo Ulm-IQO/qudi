@@ -19,10 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore
 import numpy as np
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 
 
 class SimpleDataLogic(GenericLogic):
@@ -30,7 +31,8 @@ class SimpleDataLogic(GenericLogic):
     """
     _modclass = 'smple_data'
     _modtype = 'logic'
-    _connectors = {'simpledata': 'SimpleDataInterface'}
+
+    simpledata = Connector(interface='SimpleDataInterface')
 
     sigRepeat = QtCore.Signal()
 
@@ -52,7 +54,7 @@ class SimpleDataLogic(GenericLogic):
         self.window_len = 50
         self.buf = np.zeros((self.bufferLength,  self._data_logic.getChannels()))
         self.smooth = np.zeros((self.bufferLength + self.window_len - 1,  self._data_logic.getChannels()))
-        self.lock()
+        self.module_state.lock()
         self.sigRepeat.emit()
 
     def stopMeasure(self):
@@ -64,7 +66,7 @@ class SimpleDataLogic(GenericLogic):
         """
         if self.stopRequest:
             self.stopRequest = False
-            self.unlock()
+            self.module_state.unlock()
             return
 
         data = np.zeros((100,  self._data_logic.getChannels()))

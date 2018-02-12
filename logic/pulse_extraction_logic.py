@@ -23,7 +23,10 @@ import os
 import importlib
 import inspect
 import numpy as np
+
 from collections import OrderedDict
+from core.module import StatusVar
+from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
 
 
@@ -34,45 +37,32 @@ class PulseExtractionLogic(GenericLogic):
     _modclass = 'PulseExtractionLogic'
     _modtype = 'logic'
 
+    extraction_settings = StatusVar('extraction_settings', default={'conv_std_dev': 10.0,
+                                                                    'count_threshold': 10,
+                                                                    'threshold_tolerance_bins': 20,
+                                                                    'min_laser_length': 200,
+                                                                    'current_method': 'conv_deriv'})
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        self.conv_std_dev = 10.0
         self.number_of_lasers = 50
-        self.count_treshold = 10
-        self.threshold_tolerance_bins = 20
-        self.min_laser_length = 200
-        self.current_method = 'conv_deriv'
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # recall saved variables from file
-        if 'conv_std_dev' in self._statusVariables:
-            self.conv_std_dev = self._statusVariables['conv_std_dev']
-        if 'count_treshold' in self._statusVariables:
-            self.count_treshold = self._statusVariables['count_treshold']
-        if 'threshold_tolerance_bins' in self._statusVariables:
-            self.threshold_tolerance_bins = self._statusVariables['threshold_tolerance_bins']
-        if 'min_laser_length' in self._statusVariables:
-            self.min_laser_length = self._statusVariables['min_laser_length']
-        #if 'number_of_lasers' in self._statusVariables:
-        #    self.number_of_lasers = self._statusVariables['number_of_lasers']
-        if 'current_method' in self._statusVariables:
-            self.current_method = self._statusVariables['current_method']
-
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
         self.extraction_methods = OrderedDict()
         filename_list = []
         # The assumption is that in the directory pulse_extraction_methods, there are
         # *.py files, which contain only methods!
-        path = os.path.join(self.get_main_dir(), 'logic', 'pulse_extraction_methods')
+        path = os.path.join(get_main_dir(), 'logic', 'pulse_extraction_methods')
         for entry in os.listdir(path):
             if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
                 filename_list.append(entry[:-3])
@@ -101,13 +91,6 @@ class PulseExtractionLogic(GenericLogic):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        # Save variables to file
-        self._statusVariables['conv_std_dev'] = self.conv_std_dev
-        self._statusVariables['count_treshold'] = self.count_treshold
-        self._statusVariables['threshold_tolerance_bins'] = self.threshold_tolerance_bins
-        self._statusVariables['min_laser_length'] = self.min_laser_length
-        #self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['current_method'] = self.current_method
         return
 
     def extract_laser_pulses(self, count_data, is_gated=False):
@@ -118,49 +101,10 @@ class PulseExtractionLogic(GenericLogic):
         @return:
         """
         if is_gated:
-            return_dict = self.gated_extraction_methods[self.current_method](count_data)
+            return_dict = self.gated_extraction_methods[self.extraction_settings['current_method']](count_data)
         else:
-            return_dict = self.ungated_extraction_methods[self.current_method](count_data)
+            return_dict = self.ungated_extraction_methods[self.extraction_settings['current_method']](count_data)
         return return_dict
 
-    # FIXME: What's that???
-    # def excise_laser_pulses(self,count_data,num_lasers,laser_length,initial_offset,initial_length,increment):
-    #
-    #     return_dict = {}
-    #     laser_x = []
-    #     laser_y = []
-    #
-    #     x_data = np.linspace(initial_offset,initial_offset+laser_length,laser_length+1)
-    #     y_data = count_data[initial_offset:initial_offset+laser_length]
-    #     laser_x.append(x_data)
-    #     laser_y.append(y_data)
-    #
-    #     time = initial_length + initial_offset
-    #
-    #     for laser in range(int(num_lasers)-1):
-    #
-    #         x_data = np.linspace(time,time+laser_length,laser_length+1)
-    #         y_data = count_data[time:(time+laser_length)]
-    #         laser_x.append(np.array(x_data))
-    #         laser_y.append(np.array(y_data))
-    #
-    #
-    #         time = time + initial_length + (laser+1)*increment
-    #
-    #
-    #
-    #
-    #     laser_y = np.asarray(laser_y)
-    #     laser_x = np.asarray(laser_x)
-    #
-    #     self.log.debug(laser_y)
-    #
-    #     rising_ind = np.array([i[0] for i in laser_x])
-    #     falling_ind = np.array([i[-1] for i in laser_y])
-    #
-    #     return_dict['laser_rising'] = rising_ind
-    #     return_dict['laser_falling'] = falling_ind
-    #     return_dict['laser_arr_y'] = laser_y.astype(int)
-    #
-    #     return return_dict
+
 

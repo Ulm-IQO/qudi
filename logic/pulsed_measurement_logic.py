@@ -26,8 +26,10 @@ import time
 import datetime
 import matplotlib.pyplot as plt
 
+from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
+from core.util import units
 from logic.generic_logic import GenericLogic
 
 
@@ -39,18 +41,38 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    _connectors = {
-        'pulseanalysislogic': 'PulseAnalysisLogic',
-        'pulseextractionlogic': 'PulseExtractionLogic',
-        'fitlogic': 'FitLogic',
-        'savelogic': 'SaveLogic',
-        'fastcounter': 'FastCounterInterface',
-        'microwave': 'MWInterface',
-        'pulsegenerator': 'PulserInterface',
-    }
+    pulseanalysislogic = Connector(interface='PulseAnalysisLogic')
+    pulseextractionlogic = Connector(interface='PulseExtractionLogic')
+    fitlogic = Connector(interface='FitLogic')
+    savelogic = Connector(interface='SaveLogic')
+    fastcounter = Connector(interface='FastCounterInterface')
+    microwave = Connector(interface='MWInterface')
+    pulsegenerator = Connector(interface='PulserInterface')
 
+    # status vars
+    fast_counter_record_length = StatusVar(default=3.e-6)
+    sequence_length_s = StatusVar(default=100e-6)
+    fast_counter_binwidth = StatusVar(default=1e-9)
+    microwave_power = StatusVar(default=-30.0)
+    microwave_freq = StatusVar(default=2870e6)
+    use_ext_microwave = StatusVar(default=False)
+    current_channel_config_name = StatusVar(default='')
+    sample_rate = StatusVar(default=25e9)
+    analogue_amplitude = StatusVar(default=dict())
+    interleave_on = StatusVar(default=False)
+    timer_interval = StatusVar(default=5)
+    alternating = StatusVar(default=False)
+    show_raw_data = StatusVar(default=False)
+    show_laser_index = StatusVar(default=0)
 
+    # fourier transform status var:
+    zeropad = StatusVar(default=0)
+    psd = StatusVar(default=False)
+    window = StatusVar(default='none')
+    base_corr = StatusVar(default=True)
+    save_ft = StatusVar(default=True)
 
+    # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray, np.ndarray,
                                          np.ndarray, np.ndarray)
@@ -69,20 +91,13 @@ class PulsedMeasurementLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
         # microwave parameters
         self.use_ext_microwave = False
         self.microwave_power = -30.     # dbm  (always in SI!)
@@ -161,42 +176,14 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Fitting
         self.fc = self._fit_logic.make_fit_container('pulsed', '1d')
-        self.fc.set_units(['s', 'a.u.'])
+        self.fc.set_units(['s', 'arb.u.'])
 
         # Recall saved status variables
         if 'number_of_lasers' in self._statusVariables:
             self.number_of_lasers = self._statusVariables['number_of_lasers']
             self._pulse_extraction_logic.number_of_lasers = self.number_of_lasers
-        if 'fast_counter_record_length' in self._statusVariables:
-            self.fast_counter_record_length = self._statusVariables['fast_counter_record_length']
-        if 'sequence_length_s' in self._statusVariables:
-            self.sequence_length_s = self._statusVariables['sequence_length_s']
         if 'controlled_vals' in self._statusVariables:
             self.controlled_vals = np.array(self._statusVariables['controlled_vals'])
-        if 'fast_counter_binwidth' in self._statusVariables:
-            self.fast_counter_binwidth = self._statusVariables['fast_counter_binwidth']
-        if 'microwave_power' in self._statusVariables:
-            self.microwave_power = self._statusVariables['microwave_power']
-        if 'microwave_freq' in self._statusVariables:
-            self.microwave_freq = self._statusVariables['microwave_freq']
-        if 'use_ext_microwave' in self._statusVariables:
-            self.use_ext_microwave = self._statusVariables['use_ext_microwave']
-        if 'current_channel_config_name' in self._statusVariables:
-            self.current_channel_config_name = self._statusVariables['current_channel_config_name']
-        if 'sample_rate' in self._statusVariables:
-            self.sample_rate = self._statusVariables['sample_rate']
-        if 'analogue_amplitude' in self._statusVariables:
-            self.analogue_amplitude = self._statusVariables['analogue_amplitude']
-        if 'interleave_on' in self._statusVariables:
-            self.interleave_on = self._statusVariables['interleave_on']
-        if 'timer_interval' in self._statusVariables:
-            self.timer_interval = self._statusVariables['timer_interval']
-        if 'alternating' in self._statusVariables:
-            self.alternating = self._statusVariables['alternating']
-        if 'show_raw_data' in self._statusVariables:
-            self.show_raw_data = self._statusVariables['show_raw_data']
-        if 'show_laser_index' in self._statusVariables:
-            self.show_laser_index = self._statusVariables['show_laser_index']
         if 'fits' in self._statusVariables and isinstance(self._statusVariables['fits'], dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
 
@@ -223,7 +210,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.fast_counter_record_length = 3e-6
         self.configure_fast_counter()
         self.fast_counter_off()
-
+        self._pulse_analysis_logic.fast_counter_binwidth = self.fast_counter_binwidth
         # Check and configure external microwave
         if self.use_ext_microwave:
             self.microwave_on_off(False)
@@ -241,25 +228,11 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Deactivate the module properly.
         """
 
-        if self.getState() != 'idle' and self.getState() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_pulsed_measurement()
 
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
-        self._statusVariables['fast_counter_record_length'] = self.fast_counter_record_length
-        self._statusVariables['sequence_length_s'] = self.sequence_length_s
         self._statusVariables['controlled_vals'] = list(self.controlled_vals)
-        self._statusVariables['fast_counter_binwidth'] = self.fast_counter_binwidth
-        self._statusVariables['microwave_power'] = self.microwave_power
-        self._statusVariables['microwave_freq'] = self.microwave_freq
-        self._statusVariables['use_ext_microwave'] = self.use_ext_microwave
-        self._statusVariables['current_channel_config_name'] = self.current_channel_config_name
-        self._statusVariables['sample_rate'] = self.sample_rate
-        self._statusVariables['analogue_amplitude'] = self.analogue_amplitude
-        self._statusVariables['interleave_on'] = self.interleave_on
-        self._statusVariables['timer_interval'] = self.timer_interval
-        self._statusVariables['alternating'] = self.alternating
-        self._statusVariables['show_raw_data'] = self.show_raw_data
-        self._statusVariables['show_laser_index'] = self.show_laser_index
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
         return
@@ -287,16 +260,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigTimerIntervalUpdated.emit(self.timer_interval)
         self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
         self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.extraction_methods)
-        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.current_method,
-                                             self._pulse_analysis_logic.signal_start_bin,
-                                             self._pulse_analysis_logic.signal_end_bin,
-                                             self._pulse_analysis_logic.norm_start_bin,
-                                             self._pulse_analysis_logic.norm_end_bin)
-        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
-                                               self._pulse_extraction_logic.conv_std_dev,
-                                               self._pulse_extraction_logic.count_treshold,
-                                               self._pulse_extraction_logic.threshold_tolerance_bins,
-                                               self._pulse_extraction_logic.min_laser_length)
+        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.analysis_settings)
+        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.extraction_settings)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
@@ -349,6 +314,10 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_binwidth, self.fast_counter_record_length, num_of_gates = self.configure_fast_counter()
         # if self.fast_counter_gated:
         #    self.number_of_lasers = num_of_gates
+
+        # Make sure the analysis logic takes the correct binning into account
+        self._pulse_analysis_logic.fast_counter_binwidth = bin_width_s
+
         # emit update signal for master (GUI or other logic module)
         self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
                                                 self.fast_counter_record_length)
@@ -696,11 +665,13 @@ class PulsedMeasurementLogic(GenericLogic):
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
         self.sigMeasurementRunningUpdated.emit(True, False)
+        if self.show_laser_index > self.number_of_lasers:
+            self.set_laser_to_show(0, self.show_raw_data)
         if stashed_raw_data_tag == '':
             stashed_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'idle':
-                self.lock()
+            if self.module_state() == 'idle':
+                self.module_state.lock()
                 self.elapsed_time = 0.0
                 self.elapsed_time_str = '00:00:00:00'
                 self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
@@ -746,7 +717,7 @@ class PulsedMeasurementLogic(GenericLogic):
             calculates fluorescence signal and creates plots.
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
@@ -828,7 +799,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @param laser_index:
         @param show_raw_data:
+
         @return:
+
         """
         self.show_raw_data = show_raw_data
         self.show_laser_index = laser_index
@@ -846,7 +819,8 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 self.laser_plot_y = np.sum(self.laser_data, 0)
 
-        self.laser_plot_x = np.arange(1, len(self.laser_plot_y) + 1)
+
+        self.laser_plot_x = np.arange(1, len(self.laser_plot_y) + 1) * self.fast_counter_binwidth
 
         self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
@@ -859,7 +833,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if stash_raw_data_tag == '':
             stash_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #stopping and disconnecting the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -878,7 +852,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self.recalled_raw_data = None
 
-                self.unlock()
+                self.module_state.unlock()
                 self.sigMeasurementRunningUpdated.emit(False, False)
         return
 
@@ -887,7 +861,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #pausing the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -905,7 +879,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 if self.use_ext_microwave:
                     self.microwave_on_off(True)
                 self.fast_counter_continue()
@@ -937,51 +911,44 @@ class PulsedMeasurementLogic(GenericLogic):
     def manually_pull_data(self):
         """ Analyse and display the data
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self._pulsed_analysis_loop()
         return
 
-    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
-                                  norm_end_bin):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings:
         @return:
         """
         with self.threadlock:
-            self._pulse_analysis_logic.current_method = method
-            self._pulse_analysis_logic.signal_start_bin = signal_start_bin
-            self._pulse_analysis_logic.signal_end_bin = signal_end_bin
-            self._pulse_analysis_logic.norm_start_bin = norm_start_bin
-            self._pulse_analysis_logic.norm_end_bin = norm_end_bin
-            self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
-                                                 norm_start_bin, norm_end_bin)
-        return method, signal_start_bin, signal_end_bin, norm_start_bin, norm_end_bin
+            for parameter in analysis_settings:
+                self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
-                                    threshold_tolerance_bins, min_laser_length):
+            # forward to the GUI the exact timing
+            if 'signal_start_s' in analysis_settings:
+                analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'signal_end_s' in analysis_settings:
+                analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_start_s' in analysis_settings:
+                analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_end_s' in analysis_settings:
+                analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            self.sigAnalysisSettingsUpdated.emit(analysis_settings)
+
+        return analysis_settings
+
+    def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_treshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
         with self.threadlock:
-            self._pulse_extraction_logic.current_method = method
-            self._pulse_extraction_logic.conv_std_dev = conv_std_dev
-            self._pulse_extraction_logic.count_treshold = count_treshold
-            self._pulse_extraction_logic.threshold_tolerance_bins = threshold_tolerance_bins
-            self._pulse_extraction_logic.min_laser_length = min_laser_length
-            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
-                                                   threshold_tolerance_bins, min_laser_length)
-        return method, conv_std_dev, count_treshold, threshold_tolerance_bins, min_laser_length
+            for parameter in extraction_settings:
+                self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
+            self.sigExtractionSettingsUpdated.emit(extraction_settings)
+        return extraction_settings
 
     def _initialize_plots(self):
         """
@@ -993,7 +960,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measuring_error_plot_y = np.zeros(len(self.controlled_vals), dtype=float)
         self.measuring_error_plot_y2 = np.zeros(len(self.controlled_vals), dtype=float)
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
-        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
+        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
         self.signal_fft_x = self.controlled_vals
         self.signal_fft_y = np.zeros(len(self.controlled_vals))
@@ -1005,39 +972,51 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
-    def save_measurement_data(self, controlled_val_unit='a.u.', tag=None, with_error=True):
+    def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
+                              with_error=True, save_ft=None):
+        """ Prepare data to be saved and create a proper plot of the data
+
+        @param str controlled_val_unit: unit of the x axis of the plot
+        @param str tag: a filetag which will be included in the filename
+        @param bool with_error: select whether errors should be saved/plotted
+
+        @return str: filepath where data were saved
         """
 
-        @param controlled_val_unit:
-        @param tag:
-        @param with_error:
-        @return:
-        """
         filepath = self._save_logic.get_path_for_module('PulsedMeasurement')
         timestamp = datetime.datetime.now()
 
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
+
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_laser_pulses'
         else:
             filelabel = 'laser_pulses'
+
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         laser_trace = self.laser_data.astype(int)
         data['Signal (counts)\nLaser'.format()] = laser_trace.transpose()
+
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (s)'] = self.fast_counter_binwidth
-        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
+        parameters['laser length (s)'] = self.laser_plot_x.size
 
-        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters,
-                                   filepath=filepath, filelabel=filelabel, fmt='%d', delimiter='\t')
+        self._save_logic.save_data(data,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filepath=filepath,
+                                   filelabel=filelabel,
+                                   fmt='%d',
+                                   delimiter='\t')
 
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
+
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_pulsed_measurement'
         else:
@@ -1047,6 +1026,7 @@ class PulsedMeasurementLogic(GenericLogic):
         data = OrderedDict()
         data['Controlled variable (' + controlled_val_unit + ')'] = self.signal_plot_x
         data['Signal (norm.)'] = self.signal_plot_y
+
         if self.alternating:
             data['Signal2 (norm.)'] = self.signal_plot_y2
         if with_error:
@@ -1063,36 +1043,176 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Signal end (bin)'] = self._pulse_analysis_logic.signal_end_bin
         parameters['Normalization start (bin)'] = self._pulse_analysis_logic.norm_start_bin
         parameters['Normalization end (bin)'] = self._pulse_analysis_logic.norm_end_bin
-        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.conv_std_dev
+        parameters['Extraction_method'] = self._pulse_extraction_logic.extraction_settings['current_method']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'conv_deriv':
+            parameters['Standard deviation of gaussian convolution'] = \
+                self._pulse_extraction_logic.extraction_settings['conv_std_dev']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'threshold':
+            parameters['Count threshold'] = self._pulse_extraction_logic.extraction_settings['count_threshold']
+            parameters['threshold_tolerance_bins'] =\
+                self._pulse_extraction_logic.extraction_settings['threshold_tolerance_bins']
+            parameters['min_laser_length'] = self._pulse_extraction_logic.extraction_settings['min_laser_length']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
-        fig, ax1 = plt.subplots()
-        if with_error:
-            ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y, yerr=self.measuring_error_plot_y, fmt='-o')
-            if self.alternating:
-                ax1.errorbar(x=self.signal_plot_x, y=self.signal_plot_y2, yerr=self.measuring_error_plot_y2, fmt='-s')
-        else:
-            ax1.plot(self.signal_plot_x, self.signal_plot_y)
-            if self.alternating:
-                ax1.plot(self.signal_plot_x, self.signal_plot_y2)
-        ax1.ticklabel_format(style='sci', axis='x', scilimits=(0, 0))
-        ax1.set_xlabel('controlled variable (' + controlled_val_unit + ')')
-        ax1.set_ylabel('norm. sig (a.u.)')
-        fig.tight_layout()
 
-        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters, fmt='%.15e',
-                                   filepath=filepath, filelabel=filelabel, delimiter='\t',
-                                   plotfig=fig)
+        # extract the possible colors from the colorscheme:
+        prop_cycle = self._save_logic.mpl_qd_style['axes.prop_cycle']
+        colors = {}
+        for i, color_setting in enumerate(prop_cycle):
+            colors[i] = color_setting['color']
+
+        # scale the x_axis for plotting
+        max_val = np.max(self.signal_plot_x)
+        scaled_float = units.ScaledFloat(max_val)
+        counts_prefix = scaled_float.scale
+        x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
+
+        # if nothing is specified, then take the local settings
+        if save_ft is None:
+            save_ft = self.save_ft
+
+        # Create the figure object
+        if save_ft:
+            fig, (ax1, ax2) = plt.subplots(2, 1)
+        else:
+            fig, ax1 = plt.subplots()
+
+        if with_error:
+            ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y,
+                         yerr=self.measuring_error_plot_y, fmt='-o',
+                         linestyle=':', linewidth=0.5, color=colors[0],
+                         ecolor=colors[1], capsize=3, capthick=0.9,
+                         elinewidth=1.2, label='data trace 1')
+
+            if self.alternating:
+                ax1.errorbar(x=x_axis_scaled, y=self.signal_plot_y2,
+                             yerr=self.measuring_error_plot_y2, fmt='-D',
+                             linestyle=':', linewidth=0.5, color=colors[3],
+                             ecolor=colors[4],  capsize=3, capthick=0.7,
+                             elinewidth=1.2, label='data trace 2')
+
+        else:
+            ax1.plot(x_axis_scaled, self.signal_plot_y, '-o', color=colors[0],
+                     linestyle=':', linewidth=0.5, label='data trace 1')
+
+            if self.alternating:
+                ax1.plot(x_axis_scaled, self.signal_plot_y2, '-o',
+                         color=colors[3], linestyle=':', linewidth=0.5,
+                         label='data trace 2')
+
+        # Do not include fit curve if there is no fit calculated.
+        if max(self.signal_plot_y_fit) > 0:
+            x_axis_fit_scaled = self.signal_plot_x_fit / scaled_float.scale_val
+            ax1.plot(x_axis_fit_scaled, self.signal_plot_y_fit,
+                     color=colors[2], marker='None', linewidth=1.5,
+                     label='fit: {0}'.format(self.fc.current_fit))
+
+            # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011
+            entries_per_col = 24
+
+            # create the formatted fit text:
+            if hasattr(self.fc.current_fit_result, 'result_str_dict'):
+                fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
+            else:
+                self.log.warning('The fit container does not contain any data '
+                                 'from the fit! Apply the fit once again.')
+                fit_res = ''
+            # do reverse processing to get each entry in a list
+            entry_list = fit_res.split('\n')
+            # slice the entry_list in entries_per_col
+            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            is_first_column = True  # first entry should contain header or \n
+            shift = rel_offset
+
+            for column in chunks:
+
+                max_length = max(column, key=len)   # get the longest entry
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]  # remove the last new line
+
+                heading = ''
+                if is_first_column:
+                    heading = 'Fit results:'
+
+                column_text = heading + '\n' + column_text
+
+                ax1.text(1.00 + shift, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=ax1.transAxes,
+                         fontsize=12)
+
+                # the shift in position of the text is a linear function
+                # which depends on the longest entry in the column
+                shift += rel_len_fac * len(max_length)
+
+                is_first_column = False
+
+        # handle the save of the fourier Transform
+        if save_ft:
+
+            # scale the x_axis for plotting
+            max_val = np.max(self.signal_fft_x)
+            scaled_float = units.ScaledFloat(max_val)
+            x_axis_prefix = scaled_float.scale
+            x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
+
+            ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label='FT of data trace 1')
+
+            # since no ft units are provided, make a small work around:
+            if controlled_val_unit == 's':
+                inverse_cont_var = 'Hz'
+            elif controlled_val_unit == 'Hz':
+                inverse_cont_var = 's'
+            else:
+                inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
+
+            ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
+            ax2.set_ylabel('Fourier amplitude (arb.u.)')
+            ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                       mode="expand", borderaxespad=0.)
+
+        #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
+
+        ax1.set_xlabel('controlled variable (' + counts_prefix + controlled_val_unit + ')')
+        ax1.set_ylabel('norm. sig (arb.u.)')
+
+        fig.tight_layout()
+        ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                   mode="expand", borderaxespad=0.)
+        # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #            mode="expand", borderaxespad=0.)
+
+        self._save_logic.save_data(data, timestamp=timestamp,
+                                   parameters=parameters, fmt='%.15e',
+                                   filepath=filepath, filelabel=filelabel,
+                                   delimiter='\t', plotfig=fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####
         #####################################################################
+
         if tag is not None and len(tag) > 0:
             filelabel = tag + '_raw_timetrace'
         else:
             filelabel = 'raw_timetrace'
 
         # prepare the data in a dict or in an OrderedDict:
+
         data = OrderedDict()
         raw_trace = self.raw_data.astype(int)
         data['Signal (counts)'] = raw_trace.transpose()
@@ -1102,71 +1222,42 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Is alternating?'] = self.alternating
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
-        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
+        parameters['laser length (s)'] = self.laser_plot_x.size
         parameters['Controlled variable values'] = list(self.controlled_vals)
 
-        self._save_logic.save_data(data, timestamp=timestamp, parameters=parameters, fmt='%d',
-                                   filepath=filepath, filelabel=filelabel, delimiter='\t')
-        return
+        self._save_logic.save_data(data, timestamp=timestamp,
+                                   parameters=parameters, fmt='%d',
+                                   filepath=filepath, filelabel=filelabel,
+                                   delimiter='\t')
+        return filepath
 
     def _compute_fft(self):
-        """ Computing the fourier transform of the data.
+        """ Computing the fourier transform of the data. """
 
-        @return tuple (fft_x, fft_y):
-                    fft_x: the frequencies for the FT
-                    fft_y: the FT spectrum
-
-        Pay attention that the return values of the FT have only half of the
-        entries compared to the used signal input.
-
-        In general, a window function should be applied to the time domain data
-        before calculating the FT, to reduce spectral leakage. The Hann window
-        for instance is almost never a bad choice. Use it like:
-            y_ft = np.fft.fft(y_signal * np.hanning(len(y_signal)))
-
-        Keep always in mind the relation for the Fourier transform:
-            T = delta_t * N_samples
-        where delta_t is the distance between the time points and N_samples are
-        the amount of points in the time domain. Consequently the sample rate is
-            f_samplerate = T / N_samples
-
-        Keep in mind that the FT returns value from 0 to f_samplerate, or
-        equivalently -f_samplerate/2 to f_samplerate/2.
-
-
-        """
         # Do sanity checks:
         if len(self.signal_plot_x) < 2:
-            self.log.debug('FFT of measurement could not be calculated. Only one data point.')
+            self.log.debug('FFT of measurement could not be calculated. Only '
+                           'one data point.')
             self.signal_fft_x = np.zeros(1)
             self.signal_fft_y = np.zeros(1)
             self.signal_fft_y2 = np.zeros(1)
             return
-        # Make a baseline correction to avoid a constant offset near zero frequencies:
-        corrected_y = self.signal_plot_y - np.mean(self.signal_plot_y)
-        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
-        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
-        # aliasing effects). Therefore take the half of the values for the display.
-        middle = int((len(corrected_y) + 1) // 2)
-        # The absolute values contain the fourier transformed y values
-        self.signal_fft_y = np.abs(np.fft.fft(corrected_y))[:middle]
-        # Do the same for second data array if measurement sequence is alternating
-        if self.alternating:
-            corrected_y2 = self.signal_plot_y2 - np.mean(self.signal_plot_y2)
-            self.signal_fft_y2 = np.abs(np.fft.fft(corrected_y2))[:middle]
 
-        # Due to the sampling theorem you can only identify frequencies at half of the sample rate,
-        # therefore the FT contains an almost symmetric spectrum (the asymmetry results from
-        # aliasing effects). Therefore take the half of the values for the display.
-        middle = int((len(corrected_y)+1)//2)
-        # sample spacing of x_axis, if x is a time axis than it corresponds to a timestep:
-        #x_spacing = np.round(self.signal_plot_x[-1] - self.signal_plot_x[-2], 12)
-        # FIXME: Calculate the proper frequency values for non-uniform spacing of signal_plot_x
-        x_spacing = self.signal_plot_x[-1] - self.signal_plot_x[-2]
-        # use the helper function of numpy to calculate the x_values for the fourier space.
-        # That function will handle an occuring devision by 0:
-        self.signal_fft_x = np.abs(np.fft.fftfreq(len(corrected_y), d=x_spacing))[:middle]
+        if self.alternating:
+            x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+                self.signal_plot_x,
+                self.signal_plot_y2,
+                zeropad_num=0)
+
+        self.signal_fft_x, self.signal_fft_y = units.compute_ft(
+            self.signal_plot_x,
+            self.signal_plot_y,
+            zeropad_num=self.zeropad,
+            window=self.window,
+            base_corr=self.base_corr,
+            psd=self.psd)
         return
+
 
     def do_fit(self, fit_method, x_data=None, y_data=None):
         """Performs the chosen fit on the measured data.
@@ -1177,6 +1268,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return float array pulsed_fit_y: Array containing the y-values of the fit
         @return dict fit_result: a dictionary containing the fit result
         """
+
         # Set current fit
         self.fc.set_current_fit(fit_method)
 

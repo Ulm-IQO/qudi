@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from qtpy.QtCore import QObject
-from core.base import BaseMixin
+from core.module import BaseMixin
 import warnings
 
 

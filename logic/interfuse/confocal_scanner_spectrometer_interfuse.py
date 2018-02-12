@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 import numpy as np
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
@@ -33,29 +33,17 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
     """
     _modclass = 'confocalscannerinterface'
     _modtype = 'hardware'
+
     # connectors
-    _connectors = {
-        'fitlogic': 'FitLogic',
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'spectrometer1': 'SpectrometerInterface'
-    }
+    fitlogic = Connector(interface='FitLogic')
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    spectrometer1 = Connector(interface='SpectrometerInterface')
+
+    # config options
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency = config['clock_frequency']
-        else:
-            self._clock_frequency = 100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
-
 
         # Internal parameters
         self._line_length = None
@@ -199,11 +187,11 @@ class SpectrometerScannerInterfuse(Base, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
 
-        #if self.getState() == 'locked':
+        #if self.module_state() == 'locked':
         #    self.log.error('A scan_line is already running, close this one first.')
         #    return -1
         #
-        #self.lock()
+        #self.module_state.lock()
 
         if not isinstance( line_path, (frozenset, list, set, tuple, np.ndarray, ) ):
             self.log.error('Given voltage list is no array type.')

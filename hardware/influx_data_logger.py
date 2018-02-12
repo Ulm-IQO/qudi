@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.base import Base
+from core.module import Base, ConfigOption
 from interface.data_logger_interface import DataLoggerInterface
 
 from influxdb import InfluxDBClient
@@ -30,6 +30,16 @@ class InfluxLogger(Base, DataLoggerInterface):
     _modclass = 'InfluxLogger'
     _modtype = 'hardware'
 
+    user = ConfigOption('user', missing='error')
+    pw = ConfigOption('password', missing='error')
+    dbname = ConfigOption('dbname', missing='error')
+    host = ConfigOption('host', missing='error')
+    port = ConfigOption('port', 8086)
+    series = ConfigOption('dataseries', missing='error')
+    field = ConfigOption('field', missing='error')
+    cr = ConfigOption('criterion', missing='error')
+
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.log_channels = {}
@@ -37,34 +47,6 @@ class InfluxLogger(Base, DataLoggerInterface):
     def on_activate(self):
         """ Activate module.
         """
-        config = self.getConfiguration()
-
-        if 'user' in config:
-            self.user = config['user']
-
-        if 'password' in config:
-            self.pw = config['password']
-
-        if 'dbname' in config:
-            self.dbname = config['dbname']
-
-        if 'host' in config:
-            self.host = config['host']
-
-        if 'port' in config:
-            self.port = config['port']
-        else:
-            self.port = 8086
-
-        if 'dataseries' in config:
-            self.series = config['dataseries']
-
-        if 'field' in config:
-            self.field = config['field']
-
-        if 'criterion' in config:
-            self.cr = config['criterion']
-
         self.connect_db()
 
     def on_deactivate(self):

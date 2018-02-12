@@ -20,9 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from collections import OrderedDict
+from core.module import Connector, ConfigOption, StatusVar
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-from collections import OrderedDict
 import numpy as np
 
 
@@ -32,6 +33,21 @@ class PulsedMasterLogic(GenericLogic):
     sequence_generator_logic and pulsed measurements via pulsed_measurement_logic.
     Basically glue logic to pass information between logic modules.
     """
+
+    _modclass = 'pulsedmasterlogic'
+    _modtype = 'logic'
+
+    # declare connectors
+    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
+    sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
+
+    # config options
+    direct_write = ConfigOption('direct_write', False, missing='warn')
+
+    # status vars
+    invoke_settings = StatusVar('invoke_settings', False)
+    couple_generator_hw = StatusVar('couple_generator_hw', True)
+
     # pulsed_measurement_logic signals
     sigLaserToShowChanged = QtCore.Signal(int, bool)
     sigDoFit = QtCore.Signal(str)
@@ -52,10 +68,10 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
     sigExtMicrowaveStartStop = QtCore.Signal(bool)
     sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisSettingsChanged = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisSettingsChanged = QtCore.Signal(dict)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
-    sigExtractionSettingsChanged = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsChanged = QtCore.Signal(dict)
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -71,7 +87,7 @@ class PulsedMasterLogic(GenericLogic):
     sigSampleSequence = QtCore.Signal(str, bool)
     sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
     sigRequestGeneratorInitValues = QtCore.Signal()
-    sigGeneratePredefinedSequence = QtCore.Signal(str, list)
+    sigGeneratePredefinedSequence = QtCore.Signal(str, dict)
 
     # signals for master module (i.e. GUI)
     sigSavedPulseBlocksUpdated = QtCore.Signal(dict)
@@ -102,19 +118,10 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
-
-    _modclass = 'pulsedmasterlogic'
-    _modtype = 'logic'
-
-    # declare connectors
-    _connectors = {
-        'pulsedmeasurementlogic': 'PulsedMeasurementLogic',
-        'sequencegeneratorlogic': 'SequenceGeneratorLogic',
-    }
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
@@ -123,43 +130,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
-        if 'direct_write' in config.keys():
-            if isinstance(config['direct_write'], bool):
-                self.direct_write = config['direct_write']
-            else:
-                self.log.warning('The "direct_write" parameter in config is non-bool type\n'
-                                 'Using "False" as default.')
-                self.direct_write = False
-        else:
-            self.log.warning('The "direct_write" parameter in config is not defined.\n'
-                             'If you want to use direct write, set this parameter to "True". '
-                             'Default is "False".')
-            self.direct_write = False
-
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
         self._generator_logic = self.get_connector('sequencegeneratorlogic')
 
-        # Recall status variables
-        if 'invoke_settings' in self._statusVariables:
-            self.invoke_settings = self._statusVariables['invoke_settings']
-        else:
-            self.invoke_settings = False
-        if 'couple_generator_hw' in self._statusVariables:
-            self.couple_generator_hw = self._statusVariables['couple_generator_hw']
-        else:
-            self.couple_generator_hw = True
-
-            # Signals controlling the pulsed_measurement_logic
+        # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
                                                      QtCore.Qt.QueuedConnection)
         self.sigMeasurementSequenceSettingsChanged.connect(
@@ -316,10 +293,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        # Save status variables
-        self._statusVariables['invoke_settings'] = self.invoke_settings
-        self._statusVariables['couple_generator_hw'] = self.couple_generator_hw
-
         # Disconnect all signals
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.disconnect()
@@ -549,34 +522,22 @@ class PulsedMasterLogic(GenericLogic):
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
-                                  norm_end_bin):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings
         @return:
         """
-        self.sigAnalysisSettingsChanged.emit(method, signal_start_bin, signal_end_bin,
-                                             norm_start_bin, norm_end_bin)
+        self.sigAnalysisSettingsChanged.emit(analysis_settings)
         return
 
-    def analysis_settings_updated(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
-                                  norm_end_bin):
+    def analysis_settings_updated(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict: analysis_settings:
         @return:
         """
-        self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
-                                             norm_start_bin, norm_end_bin)
+        self.sigAnalysisSettingsUpdated.emit(analysis_settings)
         return
 
     def analysis_methods_updated(self, methods_dict):
@@ -916,34 +877,22 @@ class PulsedMasterLogic(GenericLogic):
                                        error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_treshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
-        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_treshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsChanged.emit(extraction_settings)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_treshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_updated(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_treshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
-        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsUpdated.emit(extraction_settings)
         return
 
     def extraction_methods_updated(self, methods_dict):
@@ -1267,14 +1216,14 @@ class PulsedMasterLogic(GenericLogic):
                                                    self._measurement_logic.interleave_on)
         return
 
-    def generate_predefined_sequence(self, generator_method_name, arg_list):
+    def generate_predefined_sequence(self, generator_method_name, kwarg_dict):
         """
 
         @param generator_method_name:
-        @param arg_list:
+        @param kwarg_dict:
         @return:
         """
-        self.sigGeneratePredefinedSequence.emit(generator_method_name, arg_list)
+        self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
         return
 
     def predefined_sequence_generated(self, generator_method_name):

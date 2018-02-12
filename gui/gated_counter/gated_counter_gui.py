@@ -20,14 +20,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
 import numpy as np
+import os
+import pyqtgraph as pg
 
+from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.colordefs import QudiPalette as palettedark
-from core.util import units
-import pyqtgraph as pg
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
@@ -53,8 +54,8 @@ class GatedCounterGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {'gatedcounterlogic1': 'GatedCounterLogic',
-           'traceanalysislogic1': 'TraceAnalysisLogic'}
+    gatedcounterlogic1 = Connector(interface='GatedCounterLogic')
+    traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
 
 
     sigStartGatedCounter = QtCore.Signal()
@@ -63,7 +64,7 @@ class GatedCounterGui(GUIBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
@@ -193,7 +194,7 @@ class GatedCounterGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter. """
 
-        if self._counter_logic.getState() != 'locked':
+        if self._counter_logic.module_state() != 'locked':
             self.sigStartGatedCounter.emit()
             self._mw.start_counter_Action.setEnabled(False)
             self._mw.stop_counter_Action.setEnabled(True)
@@ -201,7 +202,7 @@ class GatedCounterGui(GUIBase):
     def stop_clicked(self):
         """ Handling the Stop button to stop and restart the counter. """
 
-        if self._counter_logic.getState() == 'locked':
+        if self._counter_logic.module_state() == 'locked':
             self.sigStopGatedCounter.emit()
             self.reset_toolbar_display()
 
@@ -244,7 +245,7 @@ class GatedCounterGui(GUIBase):
     def update_trace(self):
         """ The function that grabs the data and sends it to the plot. """
 
-        if self._counter_logic.getState() == 'locked':
+        if self._counter_logic.module_state() == 'locked':
             self._trace1.setData(x=np.arange(0, self._counter_logic.get_count_length()),
                                  y=self._counter_logic.countdata[0] )
 

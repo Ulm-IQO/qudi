@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>509</width>
+    <width>601</width>
     <height>252</height>
    </rect>
   </property>
@@ -36,21 +36,21 @@
      <item row="0" column="2">
       <widget class="QLabel" name="label_6">
        <property name="text">
-        <string>new X</string>
+        <string>     new X     </string>
        </property>
       </widget>
      </item>
      <item row="0" column="3">
       <widget class="QLabel" name="label_7">
        <property name="text">
-        <string>new Y</string>
+        <string>     new Y     </string>
        </property>
       </widget>
      </item>
      <item row="0" column="4">
       <widget class="QLabel" name="label_8">
        <property name="text">
-        <string>new Z</string>
+        <string>     new Z      </string>
        </property>
       </widget>
      </item>
@@ -78,7 +78,7 @@
       </widget>
      </item>
      <item row="1" column="2">
-      <widget class="QDoubleSpinBox" name="ref_a_x_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_a_x_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -103,7 +103,7 @@
       </widget>
      </item>
      <item row="1" column="3">
-      <widget class="QDoubleSpinBox" name="ref_a_y_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_a_y_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -128,7 +128,7 @@
       </widget>
      </item>
      <item row="1" column="4">
-      <widget class="QDoubleSpinBox" name="ref_a_z_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_a_z_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -186,7 +186,7 @@
       </widget>
      </item>
      <item row="2" column="2">
-      <widget class="QDoubleSpinBox" name="ref_b_x_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_b_x_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -211,7 +211,7 @@
       </widget>
      </item>
      <item row="2" column="3">
-      <widget class="QDoubleSpinBox" name="ref_b_y_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_b_y_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -236,7 +236,7 @@
       </widget>
      </item>
      <item row="2" column="4">
-      <widget class="QDoubleSpinBox" name="ref_b_z_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_b_z_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -294,7 +294,7 @@
       </widget>
      </item>
      <item row="3" column="2">
-      <widget class="QDoubleSpinBox" name="ref_c_x_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_c_x_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -319,7 +319,7 @@
       </widget>
      </item>
      <item row="3" column="3">
-      <widget class="QDoubleSpinBox" name="ref_c_y_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_c_y_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -344,7 +344,7 @@
       </widget>
      </item>
      <item row="3" column="4">
-      <widget class="QDoubleSpinBox" name="ref_c_z_pos_DoubleSpinBox">
+      <widget class="ScienDSpinBox" name="ref_c_z_pos_DoubleSpinBox">
        <property name="enabled">
         <bool>true</bool>
        </property>
@@ -558,6 +558,13 @@
    </item>
   </layout>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+ </customwidgets>
  <resources/>
  <connections>
   <connection>

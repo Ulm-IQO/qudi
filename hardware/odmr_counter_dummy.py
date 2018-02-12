@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
-from core.base import Base
+from core.module import Base, Connector, ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
 class ODMRCounterDummy(Base, ODMRCounterInterface):
@@ -32,23 +32,13 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _modtype = 'hardware'
 
     # connectors
-    _connectors = {'fitlogic': 'FitLogic'}
+    fitlogic = Connector(interface='FitLogic')
+
+    # config options
+    _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
-        if 'clock_frequency' in config.keys():
-            self._clock_frequency=config['clock_frequency']
-        else:
-            self._clock_frequency=100
-            self.log.warning('No clock_frequency configured taking 100 Hz '
-                    'instead.')
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
@@ -96,7 +86,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.log.info('ODMRCounterDummy>set_up_odmr')
 
-        if self.getState() == 'locked' or self._scanner_counter_daq_task is not None:
+        if self.module_state() == 'locked' or self._scanner_counter_daq_task is not None:
             self.log.error('Another odmr is already running, close this one '
                     'first.')
             return -1
@@ -128,19 +118,19 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return float[]: the photon counts per second
         """
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('A scan_line is already running, close this one '
                            'first.')
             return -1
 
-        self.lock()
+        self.module_state.lock()
 
 
         self._odmr_length = length
 
         count_data = np.random.uniform(0, 5e4, length)
 
-        lorentians,params = self._fit_logic.make_lorentziandouble_model()
+        lorentians, params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 
@@ -156,9 +146,11 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         time.sleep(self._odmr_length*1./self._clock_frequency)
 
-        self.unlock()
+        self.module_state.unlock()
 
-        return count_data
+        ret = np.empty((1, len(count_data)))
+        ret[0] = count_data
+        return ret
 
 
     def close_odmr(self):
@@ -182,3 +174,10 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         self.log.info('ODMRCounterDummy>close_odmr_clock')
 
         return 0
+
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+        @return list(str): channels recorded during ODMR measurement
+        """
+        return ['ch1']

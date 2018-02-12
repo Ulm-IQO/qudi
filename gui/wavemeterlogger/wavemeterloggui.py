@@ -20,20 +20,22 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import pyqtgraph as pg
-import numpy as np
 
-import pyqtgraph.exporters
 import datetime
+import numpy as np
 import os
+import pyqtgraph as pg
+import pyqtgraph.exporters
 
+from core.module import Connector
+from core.util import units
+from gui.guibase import GUIBase
+from gui.colordefs import QudiPalettePale as palette
+from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
 
-from gui.guibase import GUIBase
-from gui.colordefs import QudiPalettePale as palette
-from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 
 class WavemeterLogWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -54,10 +56,8 @@ class WavemeterLogGui(GUIBase):
     _modtype = 'gui'
 
     ## declare connectors
-    _connectors = {
-        'wavemeterloggerlogic1': 'WavemeterLoggerLogic',
-        'savelogic': 'SaveLogic'
-        }
+    wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -67,7 +67,7 @@ class WavemeterLogGui(GUIBase):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
+        self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
         for key in config.keys():
@@ -158,8 +158,6 @@ class WavemeterLogGui(GUIBase):
         self._pw.addItem(self.curve_envelope)
         self._right_axis.addItem(self.curve_nm_counts)
         self._top_axis.addItem(self.curve_hz_counts)
-
-        self._save_PNG = True
 
         # scatter plot for time series
         self._spw = self._mw.scatterPlotWidget
@@ -262,7 +260,7 @@ class WavemeterLogGui(GUIBase):
         """ Handling the Start button to stop and restart the counter.
         """
         # If running, then we stop the measurement and enable inputs again
-        if self._wm_logger_logic.getState() == 'running':
+        if self._wm_logger_logic.module_state() == 'running':
             self._mw.actionStop_resume_scan.setText('Resume')
             self._wm_logger_logic.stop_scanning()
             self._mw.actionStop_resume_scan.setEnabled(True)
@@ -278,7 +276,7 @@ class WavemeterLogGui(GUIBase):
     def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
         """
-        if self._wm_logger_logic.getState() == 'idle':
+        if self._wm_logger_logic.module_state() == 'idle':
             self._scatterplot.clear()
             self._wm_logger_logic.start_scanning()
 
@@ -302,9 +300,6 @@ class WavemeterLogGui(GUIBase):
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')
 
-        if self._save_PNG:
-            exporter = pg.exporters.ImageExporter(self._pw.plotItem)
-            exporter.export(filename+'.png')
 
         self._wm_logger_logic.save_data(timestamp=timestamp)
 

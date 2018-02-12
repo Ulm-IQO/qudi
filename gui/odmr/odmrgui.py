@@ -20,19 +20,20 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
-from qtpy import QtCore
-from qtpy import QtWidgets
-from qtpy import uic
-import pyqtgraph as pg
 import numpy as np
 import os
+import pyqtgraph as pg
 
+from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
-from core.util import units
+from qtpy import QtCore
+from qtpy import QtWidgets
+from qtpy import uic
 
 
 class ODMRMainWindow(QtWidgets.QMainWindow):
@@ -71,8 +72,8 @@ class ODMRGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    _connectors = {'odmrlogic1': 'ODMRLogic',
-           'savelogic': 'SaveLogic'}
+    odmrlogic1 = Connector(interface='ODMRLogic')
+    savelogic = Connector(interface='SaveLogic')
 
     sigStartOdmrScan = QtCore.Signal()
     sigStopOdmrScan = QtCore.Signal()
@@ -92,12 +93,6 @@ class ODMRGui(GUIBase):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
-
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition, configuration and initialisation of the ODMR GUI.
@@ -152,8 +147,18 @@ class ODMRGui(GUIBase):
         self._mw.clear_odmr_PushButton.setEnabled(False)
         self._mw.toolBar.addWidget(self._mw.clear_odmr_PushButton)
 
+        # Set up and connect channel combobox
+        self.display_channel = 0
+        odmr_channels = self._odmr_logic.get_odmr_channels()
+        for n, ch in enumerate(odmr_channels):
+            self._mw.odmr_channel_ComboBox.addItem(str(ch), n)
+
+        self._mw.odmr_channel_ComboBox.activated.connect(self.update_channel)
+
         # Get the image from the logic
-        self.odmr_matrix_image = pg.ImageItem(self._odmr_logic.odmr_plot_xy.transpose())
+        self.odmr_matrix_image = pg.ImageItem(
+            self._odmr_logic.odmr_plot_xy[:, self.display_channel],
+            axisOrder='row-major')
         self.odmr_matrix_image.setRect(QtCore.QRectF(
                 self._odmr_logic.mw_start,
                 0,
@@ -162,7 +167,7 @@ class ODMRGui(GUIBase):
             ))
 
         self.odmr_image = pg.PlotDataItem(self._odmr_logic.odmr_plot_x,
-                                          self._odmr_logic.odmr_plot_y,
+                                          self._odmr_logic.odmr_plot_y[self.display_channel],
                                           pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
                                           symbol='o',
                                           symbolPen=palette.c1,
@@ -264,6 +269,8 @@ class ODMRGui(GUIBase):
         self.sigRuntimeChanged.connect(self._odmr_logic.set_runtime, QtCore.Qt.QueuedConnection)
         self.sigNumberOfLinesChanged.connect(self._odmr_logic.set_matrix_line_number,
                                              QtCore.Qt.QueuedConnection)
+        self.sigClockFreqChanged.connect(self._odmr_logic.set_clock_frequency,
+                                         QtCore.Qt.QueuedConnection)
         self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic:
@@ -285,7 +292,7 @@ class ODMRGui(GUIBase):
         self.reject_settings()
 
         # Show the Main ODMR GUI:
-        self._show()
+        self.show()
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -313,6 +320,7 @@ class ODMRGui(GUIBase):
         self.sigMwSweepParamsChanged.disconnect()
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
+        self.sigClockFreqChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
         self._mw.odmr_cb_manual_RadioButton.clicked.disconnect()
         self._mw.odmr_cb_centiles_RadioButton.clicked.disconnect()
@@ -339,12 +347,11 @@ class ODMRGui(GUIBase):
         self._mw.close()
         return 0
 
-    def _show(self):
+    def show(self):
         """Make window visible and put it above all other windows. """
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     def _menu_settings(self):
         """ Open the settings menu """
@@ -410,7 +417,7 @@ class ODMRGui(GUIBase):
         return
 
     def update_status(self, mw_mode, is_running):
-        """ 
+        """
         Update the display for a change in the microwave status (mode and output).
 
         @param str mw_mode: is the microwave output active?
@@ -483,18 +490,29 @@ class ODMRGui(GUIBase):
     def update_plots(self, odmr_data_x, odmr_data_y, odmr_matrix):
         """ Refresh the plot widgets with new data. """
         # Update mean signal plot
-        self.odmr_image.setData(odmr_data_x, odmr_data_y)
+        self.odmr_image.setData(odmr_data_x, odmr_data_y[self.display_channel])
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
         self.update_colorbar(cb_range)
-        self.odmr_matrix_image.setRect(QtCore.QRectF(odmr_data_x[0],
-                                                     0,
-                                                     np.abs(odmr_data_x[-1] - odmr_data_x[0]),
-                                                     odmr_matrix.shape[0]))
-        self.odmr_matrix_image.setImage(image=odmr_matrix.transpose(),
-                                        levels=(cb_range[0], cb_range[1]))
+        self.odmr_matrix_image.setRect(
+            QtCore.QRectF(
+                odmr_data_x[0],
+                0,
+                np.abs(odmr_data_x[-1] - odmr_data_x[0]),
+                odmr_matrix.shape[0])
+            )
+        self.odmr_matrix_image.setImage(
+            image=odmr_matrix[:, self.display_channel],
+            axisOrder='row-major',
+            levels=(cb_range[0], cb_range[1]))
 
-        return
+    def update_channel(self, index):
+        self.display_channel = int(
+            self._mw.odmr_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
+        self.update_plots(
+            self._odmr_logic.odmr_plot_x,
+            self._odmr_logic.odmr_plot_y,
+            self._odmr_logic.odmr_plot_xy)
 
     def colorscale_changed(self):
         """
@@ -507,16 +525,16 @@ class ODMRGui(GUIBase):
         return
 
     def update_colorbar(self, cb_range):
-        """ 
+        """
         Update the colorbar to a new range.
-        
+
         @param list cb_range: List or tuple containing the min and max values for the cb range
         """
         self.odmr_cb.refresh_colorbar(cb_range[0], cb_range[1])
         return
 
     def get_matrix_cb_range(self):
-        """ 
+        """
         Determines the cb_min and cb_max values for the matrix plot
         """
         matrix_image = self.odmr_matrix_image.image
@@ -565,7 +583,7 @@ class ODMRGui(GUIBase):
         return
 
     def do_fit(self):
-        fit_function  = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
+        fit_function = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
         self.sigDoFit.emit(fit_function)
         return
 
@@ -607,17 +625,11 @@ class ODMRGui(GUIBase):
         The update will block the GUI signals from emitting a change back to the
         logic.
         """
-        param = param_dict.get('mw_power')
+        param = param_dict.get('sweep_mw_power')
         if param is not None:
-            self._mw.power_DoubleSpinBox.blockSignals(True)
-            self._mw.power_DoubleSpinBox.setValue(param)
-            self._mw.power_DoubleSpinBox.blockSignals(False)
-
-        param = param_dict.get('mw_frequency')
-        if param is not None:
-            self._mw.frequency_DoubleSpinBox.blockSignals(True)
-            self._mw.frequency_DoubleSpinBox.setValue(param)
-            self._mw.frequency_DoubleSpinBox.blockSignals(False)
+            self._mw.sweep_power_DoubleSpinBox.blockSignals(True)
+            self._mw.sweep_power_DoubleSpinBox.setValue(param)
+            self._mw.sweep_power_DoubleSpinBox.blockSignals(False)
 
         param = param_dict.get('mw_start')
         if param is not None:
@@ -654,6 +666,18 @@ class ODMRGui(GUIBase):
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(True)
             self._sd.clock_frequency_DoubleSpinBox.setValue(param)
             self._sd.clock_frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('cw_mw_frequency')
+        if param is not None:
+            self._mw.cw_frequency_DoubleSpinBox.blockSignals(True)
+            self._mw.cw_frequency_DoubleSpinBox.setValue(param)
+            self._mw.cw_frequency_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('cw_mw_power')
+        if param is not None:
+            self._mw.cw_power_DoubleSpinBox.blockSignals(True)
+            self._mw.cw_power_DoubleSpinBox.setValue(param)
+            self._mw.cw_power_DoubleSpinBox.blockSignals(False)
         return
 
     ############################################################################

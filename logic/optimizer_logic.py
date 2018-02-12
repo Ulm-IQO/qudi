@@ -24,6 +24,7 @@ import numpy as np
 import time
 
 from logic.generic_logic import GenericLogic
+from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 
 
@@ -36,10 +37,21 @@ class OptimizerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    _connectors = {
-        'confocalscanner1': 'ConfocalScannerInterface',
-        'fitlogic': 'FitLogic'
-    }
+    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    fitlogic = Connector(interface='FitLogic')
+
+    # declare status vars
+    _clock_frequency = StatusVar('clock_frequency', 50)
+    return_slowness = StatusVar(default=20)
+    refocus_XY_size = StatusVar('xy_size', 0.6e-6)
+    optimizer_XY_res = StatusVar('xy_resolution', 10)
+    refocus_Z_size = StatusVar('z_size', 2e-6)
+    optimizer_Z_res = StatusVar('z_resolution', 30)
+    hw_settle_time = StatusVar('settle_time', 0.1)
+    optimization_sequence = StatusVar(default=['XY', 'Z'])
+    do_surface_subtraction = StatusVar('surface_subtraction', False)
+    surface_subtr_scan_offset = StatusVar('surface_subtraction_offset', 1e-6)
+    opt_channel = StatusVar('optimization_channel', 0)
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -60,12 +72,6 @@ class OptimizerLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key, config[key]))
-
         # locking for thread safety
         self.threadlock = Mutex()
 
@@ -82,62 +88,6 @@ class OptimizerLogic(GenericLogic):
         """
         self._scanning_device = self.get_connector('confocalscanner1')
         self._fit_logic = self.get_connector('fitlogic')
-
-        # default values for clock frequency and slowness
-        # slowness: steps during retrace line
-        if 'clock_frequency' in self._statusVariables:
-            self._clock_frequency = self._statusVariables['clock_frequency']
-        else:
-            self._clock_frequency = 50
-        if 'return_slowness' in self._statusVariables:
-            self.return_slowness = self._statusVariables['return_slowness']
-        else:
-            self.return_slowness = 20
-
-        if 'xy_size' in self._statusVariables:
-            self.refocus_XY_size = self._statusVariables['xy_size']
-        else:
-            self.refocus_XY_size = 0.6e-6  # meters
-
-        if 'xy_resolution' in self._statusVariables:
-            self.optimizer_XY_res = self._statusVariables['xy_resolution']
-        else:
-            self.optimizer_XY_res = 10
-
-        if 'z_size' in self._statusVariables:
-            self.refocus_Z_size = self._statusVariables['z_size']
-        else:
-            self.refocus_Z_size = 2e-6  # meters
-
-        if 'z_resolution' in self._statusVariables:
-            self.optimizer_Z_res = self._statusVariables['z_resolution']
-        else:
-            self.optimizer_Z_res = 30
-
-        if 'settle_time' in self._statusVariables:
-            self.hw_settle_time = self._statusVariables['settle_time']
-        else:
-            self.hw_settle_time = 0.1  # seconds
-
-        if 'optimization_sequence' in self._statusVariables:
-            self.optimization_sequence = self._statusVariables['optimization_sequence']
-        else:
-            self.optimization_sequence = ['XY', 'Z']
-
-        if 'surface_subtraction' in self._statusVariables:
-            self.do_surface_subtraction = self._statusVariables['surface_subtraction']
-        else:
-            self.do_surface_subtraction = False
-
-        if 'surface_subtraction_offset' in self._statusVariables:
-            self.surface_subtr_scan_offset = self._statusVariables['surface_subtraction_offset']
-        else:
-            self.surface_subtr_scan_offset = 1  # micron
-
-        if 'optimization_channel' in self._statusVariables:
-            self.opt_channel = self._statusVariables['optimization_channel']
-        else:
-            self.opt_channel = 0
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
@@ -190,17 +140,6 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._statusVariables['optimization_channel'] = self.opt_channel
-        self._statusVariables['clock_frequency'] = self._clock_frequency
-        self._statusVariables['return_slowness'] = self.return_slowness
-        self._statusVariables['xy_size'] = self.refocus_XY_size
-        self._statusVariables['xy_resolution'] = self.optimizer_XY_res
-        self._statusVariables['z_size'] = self.refocus_Z_size
-        self._statusVariables['z_resolution'] = self.optimizer_Z_res
-        self._statusVariables['settle_time'] = self.hw_settle_time
-        self._statusVariables['optimization_sequence'] = self.optimization_sequence
-        self._statusVariables['surface_subtraction'] = self.do_surface_subtraction
-        self._statusVariables['surface_subtraction_offset'] = self.surface_subtr_scan_offset
         return 0
 
     def check_optimization_sequence(self):
@@ -228,7 +167,7 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # checks if scanner is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             return -1
         else:
             self._clock_frequency = int(clock_frequency)
@@ -259,6 +198,8 @@ class OptimizerLogic(GenericLogic):
             @param str tag:
         """
         # checking if refocus corresponding to crosshair or corresponding to initial_pos
+
+
         if isinstance(initial_pos, (np.ndarray,)) and initial_pos.size >= 3:
             self._initial_pos_x, self._initial_pos_y, self._initial_pos_z = initial_pos[0:3]
         elif isinstance(initial_pos, (list, tuple)) and len(initial_pos) >= 3:
@@ -281,7 +222,7 @@ class OptimizerLogic(GenericLogic):
         self.optim_sigma_x = 0.
         self.optim_sigma_y = 0.
         self.optim_sigma_z = 0.
-
+        #
         self._xy_scan_line_count = 0
         self._optimization_step = 0
         self.check_optimization_sequence()
@@ -452,7 +393,7 @@ class OptimizerLogic(GenericLogic):
         result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
             xy_axes=axes,
             data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian
+            estimator=self._fit_logic.estimate_twoDgaussian_MLE
         )
         # print(result_2D_gaus.fit_report())
 
@@ -642,17 +583,17 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.lock()
+        self.module_state.lock()
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
         if clock_status < 0:
-            self.unlock()
+            self.module_state.unlock()
             return -1
 
         scanner_status = self._scanning_device.set_up_scanner()
         if scanner_status < 0:
             self._scanning_device.close_scanner_clock()
-            self.unlock()
+            self.module_state.unlock()
             return -1
 
         return 0
@@ -672,7 +613,7 @@ class OptimizerLogic(GenericLogic):
         except:
             self.log.exception('Closing refocus scanner clock failed.')
             return -1
-        self.unlock()
+        self.module_state.unlock()
         return rv + rv2
 
     def _do_next_optimization_step(self):

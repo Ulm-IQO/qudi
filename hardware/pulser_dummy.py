@@ -24,7 +24,8 @@ import os
 from collections import OrderedDict
 from fnmatch import fnmatch
 
-from core.base import Base
+from core.util.modules import get_home_dir
+from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -41,12 +42,6 @@ class PulserDummy(Base, PulserInterface):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        self.log.info('The following configuration was found.')
-
-        # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
-
         self.log.info('Dummy Pulser: I will simulate an AWG :) !')
 
         self.awg_waveform_directory = '/waves'
@@ -56,7 +51,7 @@ class PulserDummy(Base, PulserInterface):
 
             if not os.path.exists(self.pulsed_file_dir):
 
-                homedir = self.get_home_dir()
+                homedir = get_home_dir()
                 self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
                 self.log.warning('The directory defined in parameter '
                         '"pulsed_file_dir" in the config for '
@@ -64,7 +59,7 @@ class PulserDummy(Base, PulserInterface):
                         'The default home directory\n{0}\n will be taken '
                         'instead.'.format(self.pulsed_file_dir))
         else:
-            homedir = self.get_home_dir()
+            homedir = get_home_dir()
             self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.log.warning('No parameter "pulsed_file_dir" was specified '
                     'in the config for SequenceGeneratorLogic as directory '

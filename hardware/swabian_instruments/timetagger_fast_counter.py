@@ -22,46 +22,25 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as tt
-from core.base import Base
+from core.module import Base, ConfigOption
 import os
 
 
 class TimeTaggerFastCounter(Base, FastCounterInterface):
-    _modclass = 'FastCounterFGAPiP3'
+    _modclass = 'TimeTaggerFastCounter'
     _modtype = 'hardware'
+
+    _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
+    _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='error')
+    _channel_detect = ConfigOption('timetagger_channel_detect', missing='error')
+    _channel_sequence = ConfigOption('timetagger_channel_sequence', missing='error')
+    _sum_channels = ConfigOption('timetagger_sum_channels', True, missing='warn')
 
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
         """
         self._tagger = tt.createTimeTagger()
         self._tagger.reset()
-        config = self.getConfiguration()
-
-        if 'timetagger_channel_apd_0' in config.keys():
-            self._channel_apd_0 = config['timetagger_channel_apd_0']
-        else:
-            self.log.warning('No apd0 channel defined for timetagger')
-
-        if 'timetagger_channel_apd_1' in config.keys():
-            self._channel_apd_1 = config['timetagger_channel_apd_1']
-        else:
-            self.log.warning('No apd1 channel defined for timetagger')
-
-        if 'timetagger_channel_detect' in config.keys():
-            self._channel_detect = config['timetagger_channel_detect']
-        else:
-            self.log.warning('No detect channel defined for timetagger')
-
-        if 'timetagger_channel_sequence' in config.keys():
-            self._channel_sequence = config['timetagger_channel_sequence']
-        else:
-            self.log.warning('No sequence channel defined for timetagger')
-
-        if 'timetagger_sum_channels' in config.keys():
-            self._sum_channels = config['timetagger_sum_channels']
-        else:
-            self.log.warning('No indication whether or not to sum apd channels for timetagger. Assuming true.')
-            self._sum_channels = True
 
         self._number_of_gates = int(100)
         self._bin_width = 1
@@ -127,7 +106,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
     def on_deactivate(self):
         """ Deactivate the FPGA.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.pulsed.stop()
         self.pulsed.clear()
         self.pulsed = None
@@ -169,7 +148,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
     def start_measure(self):
         """ Start the fast counter. """
-        self.lock()
+        self.module_state.lock()
         self.pulsed.clear()
         self.pulsed.start()
         self.statusvar = 2
@@ -177,9 +156,9 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
     def stop_measure(self):
         """ Stop the fast counter. """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.pulsed.stop()
-            self.unlock()
+            self.module_state.unlock()
         self.statusvar = 1
         return 0
 
@@ -188,7 +167,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
         Fast counter must be initially in the run state to make it pause.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.pulsed.stop()
             self.statusvar = 3
         return 0
@@ -198,7 +177,7 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.pulsed.start()
             self.statusvar = 2
         return 0

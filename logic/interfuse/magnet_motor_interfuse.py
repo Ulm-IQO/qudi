@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 
@@ -32,7 +33,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
-    _connectors = {'motorstage': 'MotorInterface'}
+    motorstage = Connector(interface='MotorInterface')
 
 
     def __init__(self, **kwargs):
@@ -193,7 +194,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         @return int: error code (0:OK, -1:error)
         """
         if not self._magnet_idle:
-            self._motor_device.set_velocity(param_list)
+            self._motor_device.set_velocity(param_dict)
         else:
             self.log.warning('Motor Device is in Idle state and cannot '
                     'perform "set_velocity" commands. Couple the Motor to '
