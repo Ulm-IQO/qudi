@@ -66,10 +66,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         editor = QtGui.QSpinBox(parent=parent)
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
-        editor.setValue(self.item_dict['init_val'])
-        # editor.installEventFilter(self)
-        # editor.setFixedWidth(75)
-        # editor.setFixedHeight(50)
+        editor.setGeometry(option.rect)
         editor.editingFinished.connect(self.commitAndCloseEditor)
         return editor
 
@@ -80,7 +77,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
+    def sizeHint(self):
         return QtCore.QSize(90, 50)
 
     def setEditorData(self, editor, index):
@@ -176,12 +173,8 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         editor = ScienDSpinBox(parent=parent)
         editor.setMinimum(self.item_dict['min'])
         editor.setMaximum(self.item_dict['max'])
-        editor.setValue(self.item_dict['init_val'])
-        editor.setDecimals(6, False)
-        # editor.setSuffix(self.item_dict['unit'])
-        # editor.installEventFilter(self)
-        # editor.setFixedWidth(75)
-        # editor.setFixedHeight(50)
+        editor.precision = 6
+        editor.setGeometry(option.rect)
         editor.editingFinished.connect(self.commitAndCloseEditor)
         return editor
 
@@ -192,7 +185,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
+    def sizeHint(self):
         return QtCore.QSize(90, 50)
 
     def setEditorData(self, editor, index):
@@ -212,7 +205,6 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         editor.blockSignals(True)
         editor.setValue(data)
         editor.blockSignals(False)
-        # editor.selectNumber()  # that is specific for the ScientificSpinBox
         return
 
     def setModelData(self, editor, model, index):
@@ -229,8 +221,6 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         model. Furthermore here the postprocessing of the data can happen, where the data can be
         manipulated for the model.
         """
-        # editor.interpretText()
-        # editor.interpret()  # that is specific for the ScientificSpinBox
         data = editor.value()
         # write the data to the model:
         model.setData(index, data, self._access_role)
@@ -241,8 +231,7 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = ScienDSpinBox()
-        widget.setDecimals(6, False)
-        # widget.setSuffix(self.item_dict['unit'])
+        widget.precision = 6
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
         widget.render(painter)
@@ -284,10 +273,7 @@ class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
         """
         widget = QtGui.QComboBox(parent)
         widget.addItems(self._item_list)
-        widget.setFixedWidth(self._size.width())
-        widget.setFixedHeight(self._size.height())
-        # combo_index = widget.findText(index.data(self._access_role))
-        widget.setCurrentIndex(0)
+        widget.setGeometry(option.rect)
         widget.currentIndexChanged.connect(self.commitAndCloseEditor)
         return widget
 
@@ -298,7 +284,7 @@ class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
+    def sizeHint(self):
         return self._size
 
     def setEditorData(self, editor, index):
