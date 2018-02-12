@@ -100,7 +100,6 @@ class CavityStabilisationGui(GUIBase):
 
         self._cavity_stabilisation_logic = self.get_connector('cavity_stabilisation_logic')
 
-        # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
         # GUI element:
         self._mw = CavityStabilisationMainWindow()
 
@@ -108,11 +107,6 @@ class CavityStabilisationGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        # plot labels
-        #self._pw = self._mw.cavity_PlotWidget
-
-        #self._pw.setLabel('left', 'Input Voltage', units='V')
-        #self._pw.setLabel('bottom', 'Output Voltage', units='V')
 
         self.cavity_scan_image = pg.PlotDataItem(self._cavity_stabilisation_logic.scan_raw_data[0],
                                           self._cavity_stabilisation_logic.scan_raw_data[1],
@@ -129,33 +123,6 @@ class CavityStabilisationGui(GUIBase):
         self._mw.cavity_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
         self._mw.cavity_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
 
-        # Create an empty plot curve to be filled later, set its pen
-        #self._curve1 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-        #                               symbol='o',
-        #                               symbolPen=palette.c1,
-        #                               symbolBrush=palette.c1,
-        #                               symbolSize=5
-        #                               )
-
-        #self._pw.addItem(self._curve1)
-
-        #setting x axis range
-        #self._pw.setXRange(
-        #    self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
-        #    self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1]
-        #)
-        # plot labels optimizer
-        #self._pw2 = self._mw.optimizer_PlotWidget
-        #
-        #self._pw2.setLabel('left', 'Fluorescence', units='counts/bin')
-        #self._pw2.setLabel('bottom', 'A position', units='m')
-        #
-        #self._curve2 = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-        #                               symbol='o',
-        #                               symbolPen=palette.c1,
-        #                               symbolBrush=palette.c1,
-        #                               symbolSize=5
-        #                               )
 
         # setting default parameters
         self._mw.start_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0], self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
@@ -186,30 +153,22 @@ class CavityStabilisationGui(GUIBase):
         # handle slider movement
         self._mw.position_slider.sliderMoved.connect(self.update_from_pos_slider, QtCore.Qt.QueuedConnection)
 
-        # setting up Slider check box
-        #self._mw.Position_checkBox.toggled.connect(self.toggle_pos_check)
 
         # connecting user interactions
         self._mw.action_start_scanning.triggered.connect(self.start_clicked)
         self._mw.action_stop_scanning.triggered.connect(self.stop_clicked)
         self._mw.action_Save.triggered.connect(self.save_clicked)
-        #self._mw.action_optimize.triggered.connect(self.optimize_clicked)
-        #self._mw.action_ramp.triggered.connect(self.ramp_clicked)
+
 
         self._mw.scan_frequency_spinBox.valueChanged.connect(self.scan_frequency_changed)
         self._mw.scan_resolution_spinBox.valueChanged.connect(self.scan_resolution_changed)
 
-        #self.sigStopCounter.connect(self._piscan_logic.stop_scanning)
-        #self._piscan_logic.sigCounterUpdated.connect(self.updateData, QtCore.Qt.QueuedConnection)
-        #self._piscan_logic.sigOptimizerUpdated.connect(self.updateData_optimizer, QtCore.Qt.QueuedConnection)
-        #self._piscan_logic.sigHistoUpdated.connect(self.updateData_histo, QtCore.Qt.QueuedConnection)
+
         self._cavity_stabilisation_logic.sigCavityScanPlotUpdated.connect(self.update_plot, QtCore.Qt.QueuedConnection)
         self.sigUpdateGotoPos.connect(self.update_goto_pos, QtCore.Qt.QueuedConnection)
 
-        #self._mw.action_start_stop_hold_max.triggered.connect(self._piscan_logic.hold_max_start)
-
         # Connect other signals from the logic with an update of the gui
-        #self._piscan_logic.signal_start_scanning.connect(self.logic_started_scanning)
+        #self._cavity_stabilisation_logic.signal_start_scanning.connect(self.logic_started_scanning)
 
         #setting GUI elements enabled
         self._mw.start_spinBox.setEnabled(True)
@@ -226,24 +185,13 @@ class CavityStabilisationGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
         self.disable_scan_actions()
         self._cavity_stabilisation_logic._initialise_scanner()
         self._cavity_stabilisation_logic._do_next_line()
-
-    #    if self._piscan_logic.module_state() == 'locked':
-    #        self.sigStopCounter.emit()
-    #    else:
-
-    #        if self._piscan_logic.position_slider is False:
-    #            self._piscan_logic.start_scanning(
-    #                self._mw.start_spinBox.value() * 1e-6,
-    #                self._mw.stop_spinBox.value() * 1e-6)
-
-    #        else:
-    #            self.log.error('Cannot start scan, because position slider is active!')
 
     def stop_clicked(self):
         """ Stop the scan if the state has switched to ready.
@@ -259,6 +207,7 @@ class CavityStabilisationGui(GUIBase):
         """ Handling the save button to save the data into a file.
         """
         self._cavity_stabilisation_logic.save_data()
+
 
     def update_pos_slider(self, output_value):
         """ Update position_slider if other GUI elements are changed.
@@ -292,44 +241,7 @@ class CavityStabilisationGui(GUIBase):
         """ Refresh the plot widget with new data. """
         # Update mean signal plot
         self.cavity_scan_image.setData(cavity_scan_data_x, cavity_scan_data_y)
-        # Update raw data matrix plot
-        #cb_range = self.get_matrix_cb_range()
-        #self.update_colorbar(cb_range)
-        #self.odmr_matrix_image.setRect(
-        #    QtCore.QRectF(
-        #        odmr_data_x[0],
-        #        0,
-        #        np.abs(odmr_data_x[-1] - odmr_data_x[0]),
-        #        odmr_matrix.shape[0])
-        #    )
-        #self.odmr_matrix_image.setImage(
-        #    image=odmr_matrix[:, self.display_channel],
-        #    axisOrder='row-major',
-        #    levels=(cb_range[0], cb_range[1]))
 
-    #    if self._piscan_logic.data_to_save:
-    #        self._mw.action_Save.setText('Save')
-    #        self._piscan_logic.save_data()
-    #    else:
-    #        self.log.error('No Data to save!"')
-
-    #def speed_changed(self):
-    #    speed = self._mw.speed_spinBox.value() * 1e-6
-    #    self._piscan_logic._goto_speed = speed
-    #    self._piscan_logic._scan_speed = speed
-    #    self.num_of_steps_changed()
-
-    #def frequency_changed(self):
-    #    frequency = self._mw.frequency_spinBox.value()
-    #    self._piscan_logic._clock_frequency = frequency
-    #    self.num_of_steps_changed()
-
-    #def num_of_steps_changed(self):
-    #    self._piscan_logic._num_of_steps = (
-    #        abs(self._piscan_logic.a_range[1]-self._piscan_logic.a_range[0])
-    #        / (self._piscan_logic._scan_speed / self._piscan_logic._clock_frequency)
-    #        )
-    #    self._mw.num_of_steps_spinBox.setValue(self._piscan_logic._num_of_steps)
 
     def scan_frequency_changed(self):
         frequency = self._mw.scan_frequency_spinBox.value()
@@ -346,6 +258,7 @@ class CavityStabilisationGui(GUIBase):
     def stop_value_changed(self):
         stop = self._mw.stop_spinBox.value()
         self._cavity_stabilisation_logic._end_voltage = stop
+
 
     def disable_scan_actions(self):
         """ Disables the button for scanning.
