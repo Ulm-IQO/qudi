@@ -191,10 +191,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self._start_voltage = 0.0
         self._end_voltage = 1.0
         self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
+        self._ramp_length = len(self.ramp)
         self.scan_direction = True
-        self._clock_frequency = self._scan_frequency * len(self.ramp)
+        self._clock_frequency = self._scan_frequency * self._ramp_length
         self.input = 0
-        self.scan_raw_data = np.zeros([self.number_of_lines, len(self.ramp)])
+        self.scan_raw_data = np.zeros([self.number_of_lines, self._ramp_length])
         self.elapsed_sweeps = 0
         self.start_time = time.time()
         self.stop_time = time.time()
@@ -561,6 +562,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         # generate voltage ramp
         self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
+        self._ramp_length = len(self.ramp)
         if self.ramp[0] == -1:
             self.log.error("Not possible to initialise scanner as ramp was not generated")
             return 0
@@ -575,7 +577,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.change_analogue_output_voltage(self._start_voltage)
 
         # do the actual initialisation of the scanner
-        self._clock_frequency = self._scan_frequency * len(self.ramp)
+        self._clock_frequency = self._scan_frequency * self._ramp_length
         if 0 > self.initialise_analogue_stabilisation():
             self.log.error("Setting up analogue output for scanning failed.")
             return -1
@@ -588,7 +590,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.close_analogue_stabilisation()
             return -1
 
-        if 0 > self._output_device.configure_analogue_timing(self.control_axis, len(self.ramp)):
+        if 0 > self._output_device.configure_analogue_timing(self.control_axis, self._ramp_length):
             self.log.error("Not possible to set appropriate timing for analogue scan.")
             self.close_analogue_stabilisation()
             self._output_device.close_analogue_output_clock(self.control_axis)
@@ -601,7 +603,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("Adding up analogue input clock for scanning failed.")
             self._close_scanner()
             return -1
-        if 0 < self._feedback_device.set_up_analogue_voltage_reader_scanner(len(self.ramp),
+        if 0 < self._feedback_device.set_up_analogue_voltage_reader_scanner(self._ramp_length,
                                                                             self.feedback_axis):
             self.log.error("Setting up analogue input for scanning failed.")
             self._close_scanner()
@@ -697,7 +699,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                     self.log.warning('Voltage ramp too short to apply the '
                                      'configured smoothing_steps. A simple linear ramp '
                                      'was created instead.')
-
         # Reverse if downwards ramp is required
         if end_voltage < start_voltage:
             ramp = ramp[::-1]
@@ -757,7 +758,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts[::-1])
             # counts = counts[::-1]n
             self.stop_time = time.time()
-        if len(counts) != len(self.ramp):
+        if len(counts) != self._ramp_length:
             self.log.error("Something didn't work in the cavity scan. Stopping procedure")
             self.stopRequested = True
             return
@@ -791,8 +792,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         self.time_array = self.time_array + 1. / self._scan_frequency
         new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
-        self._image_data = np.array([np.append(self._image_data[0, len(self.ramp):], self.time_array),
-                                     np.append(self._image_data[1, len(self.ramp):], new_image_data)])
+        self._image_data = np.array([np.append(self._image_data[0, self._ramp_length:], self.time_array),
+                                     np.append(self._image_data[1, self._ramp_length:], new_image_data)])
         self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1])
         self.signal_scan_next_line.emit()
 
@@ -801,9 +802,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         estimated_number_of_lines = int(1.5 * self.number_of_lines)  # Safety
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
-        self.scan_raw_data = np.zeros([estimated_number_of_lines, len(self.ramp)])
-        self.time_array = np.linspace(0, 1. / self._scan_frequency, len(self.ramp))
-        self._image_data = np.zeros((2, 5 * len(self.ramp)))
+        self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
+        self.time_data = np.zeros([estimated_number_of_lines, self._ramp_length])
+        self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
+        self._image_data = np.zeros((2, 5 * self._ramp_length))
         self._image_data[0,]
 
     def save_data(self):
@@ -825,7 +827,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             ramp_data = np.append(ramp_data, self.ramp)
 
         scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
-   #     time_data = self.
+        time_data = np.linspace(0, 1. / self._scan_frequency, len(scan_data))
         data['Voltage (V)'] = ramp_data.flatten()
         data['Analogue input (Voltage/bin)'] = scan_data.flatten()
 
@@ -833,7 +835,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters = OrderedDict()
         parameters['Start (m)'] = self._start_voltage
         parameters['Stop (m)'] = self._end_voltage
-        parameters['Steps per ramp(#)'] = len(self.ramp)
+        parameters['Steps per ramp(#)'] = self._ramp_length
         parameters['Ramps executed (#)'] = self.elapsed_sweeps
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['ScanSpeed (Hz)'] = self._scan_frequency
