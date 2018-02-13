@@ -2927,6 +2927,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self.log.error(
                     "No clock task specified for this analogue reader. If more then one sample is acquired (%s) "
                     "a clock needs to be implemented.", samples)
+
         # Fixme: this timeout might really hurt for cavity stabilisation. make optional
         # *1.1 to have an extra (10%) short waiting time.
         if samples != 1:
@@ -3544,7 +3545,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return -1
 
         # assign the clock frequency, if given
-        if clock_frequency is None:
+        if clock_frequency is None or clock_frequency == 0.0:
             self._clock_frequency_new[name] = float(self._dummy_frequency)
             self.log.info("no clock frequency given, using dummy frequency (%s Hz)instead.", self._dummy_frequency)
         else:

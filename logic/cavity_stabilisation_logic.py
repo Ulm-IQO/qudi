@@ -184,7 +184,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_change_analogue_output_voltage.connect(self.change_analogue_output_voltage,
                                                            QtCore.Qt.QueuedConnection)
         self.signal_position_slider_moved.connect(self.change_analogue_output_voltage,
-                                                           QtCore.Qt.QueuedConnection)
+                                                  QtCore.Qt.QueuedConnection)
 
         # Cavity_scanning
         self.smoothing = False  # defines if smoothing at beginning and end of ramp should be done to protect piezo
@@ -197,9 +197,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.input = 0
         self.scan_raw_data = np.zeros([self.number_of_lines, self._ramp_length])
         self.elapsed_sweeps = 0
+        self.image_array_reducing_factor = 0
         self.start_time = time.time()
         self.stop_time = time.time()
         self._use_maximal_resolution = True
+        self._shown_scan_numbers = 5
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -514,9 +516,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if not in_range(end_voltage, v_range[0], v_range[1]):
             self.log.error("not possible to go to voltage %s outside of voltage range (%s)", end_voltage, v_range)
             return -1
-        if abs(start_voltage - end_voltage) > self._scan_resolution:
-            _clock_frequency = self._scan_frequency * len(ramp)
-    #        _clock_frequency = 10 / self._scan_resolution
+        voltage_difference = abs(start_voltage - end_voltage)
+        if voltage_difference > self._scan_resolution:
+            _clock_frequency = self.maximum_clock_frequency
+            #        _clock_frequency = 10 / self._scan_resolution
             if 0 > self.initialise_analogue_stabilisation():
                 self.log.error("Setting up analogue output for scanning failed.")
                 return -1
@@ -526,6 +529,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 # Fixme: I do not think this is necessary. However it should be checked.
                 # self.set_position('scanner')
                 self.log.error("Problems setting up analogue output clock.")
+                self.close_analogue_stabilisation()
                 return -1
 
             self._output_device.configure_analogue_timing(self.control_axis, len(ramp))
@@ -533,7 +537,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             retval3 = self._output_device.analogue_scan_line(self.control_axis, ramp)
             try:
                 retval1 = self._output_device.close_analogue_output_clock(self.control_axis)
-                retval2 = self._output_device.close_analogue_output(self.control_axis)
+                retval2 = self.close_analogue_stabilisation()
             except:
                 self.log.warn("Closing the Analogue scanner did not work")
             if retval3 != -1:
@@ -559,6 +563,16 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     def _initialise_scanner(self):
         """Initialise the clock and locks for a scan"""
         # Fixme: Do error catch/test
+        # if user wants to acquired maximal voltage resolution on output set resolution to maximal
+        #  possible for this scan.
+        if self._use_maximal_resolution:
+            minV = min(self._start_voltage, self._end_voltage)
+            maxV = max(self._start_voltage, self._end_voltage)
+            self._scan_resolution = self.calculate_resolution(
+                self._feedback_device.get_analogue_resolution(), [minV, maxV])
+            if self._scan_resolution == -1:
+                self.log.error("Calculated scan resolution not possible")
+                return -1
 
         # generate voltage ramp
         self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
@@ -567,12 +581,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("Not possible to initialise scanner as ramp was not generated")
             return 0
         self.down_ramp = self.ramp[::-1]
-        # if user wants to acquired maximal voltage resolution on output set resolution to maximal
-        #  possible for this scan.
-        if self._use_maximal_resolution:
-            self._scan_resolution = self.calculate_resolution(
-                self._feedback_device._feedback_device.get_analogue_resolution(),
-                abs(self._start_voltage-self._end_voltage))
+
         # move piezo to desired start position to go easy on piezo
         self.change_analogue_output_voltage(self._start_voltage)
 
@@ -791,9 +800,19 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # self.sigHistoUpdated.emit()
 
         self.time_array = self.time_array + 1. / self._scan_frequency
-        new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
-        self._image_data = np.array([np.append(self._image_data[0, self._ramp_length:], self.time_array),
-                                     np.append(self._image_data[1, self._ramp_length:], new_image_data)])
+        if (self.image_array_reducing_factor > 0):
+            new_image_data = np.mean(self.scan_raw_data[self.elapsed_sweeps - 1].reshape(-1,self.image_array_reducing_factor),1)
+            single_scan_length = int(self._ramp_length/self.image_array_reducing_factor)
+        else:
+            new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
+            single_scan_length = self._ramp_length
+        self._image_data = np.array([np.append(self._image_data[0, single_scan_length:], self.time_array),
+                                     np.append(self._image_data[1, single_scan_length:], new_image_data)])
+
+        #if (self.image_array_reducing_factor > 0):
+        #    self._image_data = [np.mean(self._image_data[0].reshape(-1, self.image_array_reducing_factor), 1),
+        #    np.mean(self._image_data[1].reshape(-1, self.image_array_reducing_factor), 1)]
+
         self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1])
         self.signal_scan_next_line.emit()
 
@@ -803,10 +822,29 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
         self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
-        self.time_data = np.zeros([estimated_number_of_lines, self._ramp_length])
+    #    self.time_data = np.zeros([estimated_number_of_lines, self._ramp_length])
         self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
-        self._image_data = np.zeros((2, 5 * self._ramp_length))
-        self._image_data[0,]
+        if (self._ramp_length*self._shown_scan_numbers) > 1000:
+            minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / 1000)
+            for i in range(int(minimal_factor), self._ramp_length):
+                if self._ramp_length % i == 0:
+                    self.image_array_reducing_factor = i
+                    break
+
+            self._image_data = np.zeros((2, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
+            self.time_array = np.mean(self.time_array.reshape(-1,self.image_array_reducing_factor),1)
+        else:
+            self._image_data = np.zeros((2, self._shown_scan_numbers * self._ramp_length))
+
+    #        else:
+    #            self.image_array_reducing_factor = (self._ramp_length * 5) / (5 * 1000)
+
+    #
+    #        self._image_data[0,]
+
+    #    else:
+    #        self._image_data = np.zeros((2, 5 * self._ramp_length))
+    #        self._image_data[0,]
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -839,7 +877,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Ramps executed (#)'] = self.elapsed_sweeps
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['ScanSpeed (Hz)'] = self._scan_frequency
-        parameters['Volts per meter (V/m)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters['Volts per meter (V/s)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters["Scan Resolution (V/Step)"] = self._scan_resolution
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
 
