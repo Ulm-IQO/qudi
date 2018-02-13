@@ -202,6 +202,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.stop_time = time.time()
         self._use_maximal_resolution = True
         self._shown_scan_numbers = 5
+        self._points_per_scan = 1000
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -787,9 +788,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                              self.scan_raw_data.shape[1])
         self.scan_direction = not self.scan_direction
 
-        self.scan_raw_data[1:self.elapsed_sweeps + 1, :] = self.scan_raw_data[
-                                                           :self.elapsed_sweeps, :]
-        self.scan_raw_data[0, :] = counts
+
+        self.scan_raw_data[self.elapsed_sweeps, :] = counts
 
         # self.scan_matrix[0] = counts
         # self.data_to_save = True
@@ -824,8 +824,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
     #    self.time_data = np.zeros([estimated_number_of_lines, self._ramp_length])
         self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
-        if (self._ramp_length*self._shown_scan_numbers) > 1000:
-            minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / 1000)
+        if (self._ramp_length*self._shown_scan_numbers) > self._points_per_scan:
+            minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / self._points_per_scan)
             for i in range(int(minimal_factor), self._ramp_length):
                 if self._ramp_length % i == 0:
                     self.image_array_reducing_factor = i
