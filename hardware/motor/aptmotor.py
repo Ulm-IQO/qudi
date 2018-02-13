@@ -793,6 +793,7 @@ class APTStage(Base, MotorInterface):
 
     For example, a config file entry for a single-axis rotating half-wave-plate stage would look like
 
+    ```
     hwp_motor:
         module.Class: 'motor.aptmotor.APTStage'
         dll_path: 'C:\Program Files\Thorlabs\'
@@ -810,6 +811,7 @@ class APTStage(Base, MotorInterface):
                 vel_max: 10.0
                 acc_min: 4.0
                 acc_max: 10.0
+    ```
     """
 
     def on_activate(self):
