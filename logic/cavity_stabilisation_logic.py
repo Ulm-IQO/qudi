@@ -190,6 +190,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.elapsed_sweeps = 0
         self.start_time = time.time()
         self.stop_time = time.time()
+        self._use_maximal_resolution = True
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -561,7 +562,12 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("Not possible to initialise scanner as ramp was not generated")
             return 0
         self.down_ramp = self.ramp[::-1]
-
+        # if user wants to acquired maximal voltage resolution on output set resolution to maximal
+        #  possible for this scan.
+        if self._use_maximal_resolution:
+            self._scan_resolution = self.calculate_resolution(
+                self._feedback_device._feedback_device.get_analogue_resolution(),
+                abs(self._start_voltage-self._end_voltage))
         # move piezo to desired start position to go easy on piezo
         self.change_analogue_output_voltage(self._start_voltage)
 
@@ -612,6 +618,9 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             retval3 = self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
         except:
             self.log.warn("Closing the Scanner did not work")
+        if self._use_maximal_resolution:
+            self._scan_resolution = self.axis_class[self.feedback_axis].feedback_precision_volt
+            self.log.info("scanner set back for maximal resolution for whole scan range")
         return min(retval1, retval2, retval3)
 
     def _generate_ramp(self, start_voltage, end_voltage):
