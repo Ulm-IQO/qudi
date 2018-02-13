@@ -165,6 +165,7 @@ class CavityStabilisationGui(GUIBase):
 
 
         self._cavity_stabilisation_logic.sigCavityScanPlotUpdated.connect(self.update_plot, QtCore.Qt.QueuedConnection)
+        self._cavity_stabilisation_logic.sigScanFinished.connect(self.update_gui, QtCore.Qt.QueuedConnection)
         self.sigUpdateGotoPos.connect(self.update_goto_pos, QtCore.Qt.QueuedConnection)
 
         # Connect other signals from the logic with an update of the gui
@@ -197,11 +198,7 @@ class CavityStabilisationGui(GUIBase):
         """ Stop the scan if the state has switched to ready.
         """
         self._cavity_stabilisation_logic.stopRequested = True
-        self.enable_scan_actions()
-        self._mw.position_spinBox.setValue(self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage)
-        self._mw.position_slider.setValue((self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage-self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res)
+        self.disable_stop_action()
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -219,6 +216,7 @@ class CavityStabilisationGui(GUIBase):
         """
         output_value = self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0] + slider_value * self.slider_res
         self.update_pos_spinBox(output_value)
+    #    self._cavity_stabilisation_logic.signal_position_slider_moved.emit(output_value)
         self.sigUpdateGotoPos.emit(output_value)
 
     def update_pos_spinBox(self, output_value):
@@ -235,13 +233,24 @@ class CavityStabilisationGui(GUIBase):
         self.sigUpdateGotoPos.emit(output_value)
 
     def update_goto_pos(self, output_value):
-        self._cavity_stabilisation_logic.change_analogue_output_voltage(output_value)
+        self._cavity_stabilisation_logic.signal_change_analogue_output_voltage.emit(output_value)
 
     def update_plot(self, cavity_scan_data_x, cavity_scan_data_y):
         """ Refresh the plot widget with new data. """
         # Update mean signal plot
         self.cavity_scan_image.setData(cavity_scan_data_x, cavity_scan_data_y)
 
+    def update_gui(self):
+        """ Update the gui elements after scanning. """
+        # Update mean signal plot
+        self.enable_scan_actions()
+        self._mw.position_spinBox.setValue(self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage)
+        self._mw.position_slider.setValue((self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage -
+                                           self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[
+                                               0]) / self.slider_res)
 
     def scan_frequency_changed(self):
         frequency = self._mw.scan_frequency_spinBox.value()
@@ -291,6 +300,10 @@ class CavityStabilisationGui(GUIBase):
         self._mw.position_slider.setEnabled(True)
         self._mw.scan_frequency_spinBox.setEnabled(True)
         self._mw.scan_resolution_spinBox.setEnabled(True)
+
+    def disable_stop_action(self):
+
+        self._mw.action_stop_scanning.setEnabled(False)
 
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default

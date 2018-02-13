@@ -89,13 +89,17 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     _scan_frequency = ConfigOption('scan_frequency', 1, missing="warn")
     _scan_resolution = ConfigOption('scan_resolution', 1e-6, missing="warn")
     _smoothing_steps = ConfigOption('smoothing_parameter', 0, missing="info")
+    maximum_clock_frequency = ConfigOption('maximum_clock_frequency', 1000, missing="warn")
     number_of_lines = StatusVar('number_of_lines', 50)
 
     # signals
     signal_stabilise_cavity = QtCore.Signal()
     signal_optimize_length = QtCore.Signal(float, bool)
     signal_scan_next_line = QtCore.Signal()
+    signal_change_analogue_output_voltage = QtCore.Signal(float)
+    signal_position_slider_moved = QtCore.Signal(float)
     sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray)
+    sigScanFinished = QtCore.Signal()
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
         # Todo: I am not sure fi this inheritance is sensible (Generic logic)
@@ -177,6 +181,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_stabilise_cavity.connect(self._stabilise_cavity_length, QtCore.Qt.QueuedConnection)
         self.signal_optimize_length.connect(self._optimize_cavity_length, QtCore.Qt.QueuedConnection)
         self.signal_scan_next_line.connect(self._do_next_line, QtCore.Qt.QueuedConnection)
+        self.signal_change_analogue_output_voltage.connect(self.change_analogue_output_voltage,
+                                                           QtCore.Qt.QueuedConnection)
+        self.signal_position_slider_moved.connect(self.change_analogue_output_voltage,
+                                                           QtCore.Qt.QueuedConnection)
 
         # Cavity_scanning
         self.smoothing = False  # defines if smoothing at beginning and end of ramp should be done to protect piezo
@@ -507,6 +515,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         if abs(start_voltage - end_voltage) > self._scan_resolution:
             _clock_frequency = self._scan_frequency * len(ramp)
+    #        _clock_frequency = 10 / self._scan_resolution
             if 0 > self.initialise_analogue_stabilisation():
                 self.log.error("Setting up analogue output for scanning failed.")
                 return -1
@@ -545,12 +554,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     # =============================== stop cavity stabilisation Commands  =======================
 
     # =============================== start cavity scanning Commands  =======================
-
-    def _initialize_image(self):
-        """ Initializing the cavity scan plot. """
-        self.cavity_scan_plot_x = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
-        self.cavity_scan_plot_y = np.zeros([len(self.get_cavity_scan_channels()), self.cavity_scan_plot_x.size])
-        return
 
     def _initialise_scanner(self):
         """Initialise the clock and locks for a scan"""
@@ -735,6 +738,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 final_voltage = self._end_voltage
             self.axis_class[self.control_axis].output_voltage = final_voltage
             self.scan_direction = True
+            self.sigScanFinished.emit()
             return 0
 
         if self.elapsed_sweeps == 0:
@@ -821,6 +825,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             ramp_data = np.append(ramp_data, self.ramp)
 
         scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
+   #     time_data = self.
         data['Voltage (V)'] = ramp_data.flatten()
         data['Analogue input (Voltage/bin)'] = scan_data.flatten()
 
@@ -847,3 +852,96 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                                    delimiter='\t')  # ,
         # plotfig=fig)
         return 0
+
+    def draw_figure(self, data):
+        """ Draw figure to save with data file.
+
+        @param: nparray data: a numpy array containing counts vs a_range
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+
+        count_data = data[0]
+        ramp_data = data[1]
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+
+        while np.max(count_data) > 1000:
+            count_data = count_data / 1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Scale axes values using SI prefix
+        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        a_prefix_count = 0
+
+        while np.max(ramp_data) < 0.01:
+            ramp_data = ramp_data * 1000
+            a_prefix_count = a_prefix_count + 1
+
+        a_prefix = axes_prefix[a_prefix_count]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        ax.plot(ramp_data, count_data, linestyle=':', linewidth=0.5)
+
+        ax.set_xlabel('A position (' + a_prefix + 'm)')
+        ax.set_ylabel('Fluorescence (' + counts_prefix + 'counts/bin)')
+
+        return fig
+
+    def draw_figure(self):
+        """ Draw figure to save with data file.
+
+        @return: fig fig: a matplotlib figure object to be saved to file.
+        """
+        # TODO: Draw plot for second APD if it is connected
+
+        wavelength_data = [entry[2] for entry in self.counts_with_wavelength]
+        count_data = np.array([entry[1] for entry in self.counts_with_wavelength])
+
+        # Index of max counts, to use to position "0" of frequency-shift axis
+        count_max_index = count_data.argmax()
+
+        # Scale count values using SI prefix
+        prefix = ['', 'k', 'M', 'G']
+        prefix_index = 0
+
+        while np.max(count_data) > 1000:
+            count_data = count_data / 1000
+            prefix_index = prefix_index + 1
+
+        counts_prefix = prefix[prefix_index]
+
+        # Use qudi style
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        # Create figure
+        fig, ax = plt.subplots()
+
+        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
+
+        ax.set_xlabel('wavelength (nm)')
+        ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
+
+        x_formatter = mpl.ticker.ScalarFormatter(useOffset=False)
+        ax.xaxis.set_major_formatter(x_formatter)
+
+        ax2 = ax.twiny()
+
+        nm_xlim = ax.get_xlim()
+        ghz_at_max_counts = self.nm_to_ghz(wavelength_data[count_max_index])
+        ghz_min = self.nm_to_ghz(nm_xlim[0]) - ghz_at_max_counts
+        ghz_max = self.nm_to_ghz(nm_xlim[1]) - ghz_at_max_counts
+
+        ax2.set_xlim(ghz_min, ghz_max)
+        ax2.set_xlabel('Shift (GHz)')
+
+        return fig
