@@ -100,6 +100,7 @@ class CavityStabilisationGui(GUIBase):
 
         self._cavity_stabilisation_logic = self.get_connector('cavity_stabilisation_logic')
 
+
         # GUI element:
         self._mw = CavityStabilisationMainWindow()
 
@@ -107,21 +108,52 @@ class CavityStabilisationGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        ## giving the plots names allows us to link their axes together
+        self._pw = self._mw.cavity_scan_PlotWidget
+        self._plot_item = self._pw.plotItem
 
-        self.cavity_scan_image = pg.PlotDataItem(self._cavity_stabilisation_logic.scan_raw_data[0],
-                                          self._cavity_stabilisation_logic.scan_raw_data[1],
-                                          pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+        ## create a new ViewBox, link the right axis to its coordinate system
+        self._right_axis = pg.ViewBox()
+        self._plot_item.showAxis('right')
+        self._plot_item.scene().addItem(self._right_axis)
+        self._plot_item.getAxis('right').linkToView(self._right_axis)
+        self._right_axis.setXLink(self._plot_item)
+
+        # handle resizing of any of the elements
+        #self._update_plot_views()
+        #self._plot_item.vb.sigResized.connect(self._update_plot_views)
+
+        # Add the display item ViewWidget, which was defined in the UI file.
+        #self._mw.cavity_scan_PlotWidget.addItem(self.cavity_scan_image)
+        self._mw.cavity_scan_PlotWidget.setLabel(axis='left', text='Input Voltage', units='V')
+        self._mw.cavity_scan_PlotWidget.setLabel(axis='right', text='Output Voltage', units='V')
+        self._mw.cavity_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
+        self._mw.cavity_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.6)
+
+        #self.cavity_scan_image = pg.PlotDataItem(self._cavity_stabilisation_logic.scan_raw_data[0],
+        #                                  self._cavity_stabilisation_logic.scan_raw_data[1],
+        #                                  pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+        #                                  symbol='o',
+        #                                  symbolPen=palette.c1,
+        #                                  symbolBrush=palette.c1,
+        #                                  symbolSize=7)
+
+        self.cavity_scan_image = pg.PlotDataItem(
+                                          pen=pg.mkPen(palette.c3, style=QtCore.Qt.DotLine),
                                           symbol='o',
                                           symbolPen=palette.c1,
                                           symbolBrush=palette.c1,
-                                          symbolSize=7)
+                                          symbolSize=6)
 
+        self.cavity_ramp_image = pg.PlotDataItem(
+                                          pen=pg.mkPen(palette.c4, style=QtCore.Qt.DotLine),
+                                          symbol='o',
+                                          symbolPen=palette.c2,
+                                          symbolBrush=palette.c2,
+                                          symbolSize=4)
 
-        # Add the display item to the xy and xz ViewWidget, which was defined in the UI file.
-        self._mw.cavity_scan_PlotWidget.addItem(self.cavity_scan_image)
-        self._mw.cavity_scan_PlotWidget.setLabel(axis='left', text='Input Voltage', units='V')
-        self._mw.cavity_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
-        self._mw.cavity_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._pw.addItem(self.cavity_scan_image)
+        self._pw.addItem(self.cavity_ramp_image)
 
 
         # setting default parameters
@@ -238,10 +270,11 @@ class CavityStabilisationGui(GUIBase):
     def update_goto_pos(self, output_value):
         self._cavity_stabilisation_logic.signal_change_analogue_output_voltage.emit(output_value)
 
-    def update_plot(self, cavity_scan_data_x, cavity_scan_data_y):
+    def update_plot(self, cavity_scan_data_x, cavity_scan_data_y, cavity_scan_data_y2):
         """ Refresh the plot widget with new data. """
         # Update mean signal plot
         self.cavity_scan_image.setData(cavity_scan_data_x, cavity_scan_data_y)
+        self.cavity_ramp_image.setData(cavity_scan_data_x, cavity_scan_data_y2)
 
     def update_gui(self):
         """ Update the gui elements after scanning. """

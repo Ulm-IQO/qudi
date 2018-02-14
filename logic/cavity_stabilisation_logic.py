@@ -99,7 +99,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     signal_scan_next_line = QtCore.Signal()
     signal_change_analogue_output_voltage = QtCore.Signal(float)
     signal_position_slider_moved = QtCore.Signal(float)
-    sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray)
+    sigCavityScanPlotUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
     sigScanFinished = QtCore.Signal()
 
     class Axis:  # Todo this needs a better name here as it also applies for the APD and the NIDAQ output
@@ -761,11 +761,13 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if self.scan_direction:
             self.start_time = time.time()
             counts = self._scan_line(self.ramp)
+            ramp = self.ramp
             # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts)
             self.stop_time = time.time()
         else:
             self.start_time = time.time()
             counts = self._scan_line(self.down_ramp)
+            ramp = self.down_ramp
             # self.scan_matrix[1] = np.add(self.scan_matrix[1], counts[::-1])
             # counts = counts[::-1]n
             self.stop_time = time.time()
@@ -800,18 +802,24 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # self.sigCounterUpdated.emit()
         # self.sigHistoUpdated.emit()
 
+        self.scan_ramp_data = ramp
         self.time_array = self.time_array + 1. / self._scan_frequency
 
         if (self.image_array_reducing_factor > 0):
-            new_image_data = np.mean(self.scan_raw_data[self.elapsed_sweeps - 1].reshape(-1,self.image_array_reducing_factor),1)
+            new_image_data = np.mean(
+                self.scan_raw_data[self.elapsed_sweeps - 1].reshape(-1, self.image_array_reducing_factor), 1)
+            new_ramp_data = np.mean(
+                self.scan_ramp_data.reshape(-1, self.image_array_reducing_factor), 1)
             single_scan_length = int(self._ramp_length/self.image_array_reducing_factor)
         else:
             new_image_data = self.scan_raw_data[self.elapsed_sweeps - 1]
+            new_ramp_data = self.scan_ramp_data
             single_scan_length = self._ramp_length
         self._image_data = np.array([np.append(self._image_data[0, single_scan_length:], self.time_array),
-                                     np.append(self._image_data[1, single_scan_length:], new_image_data)])
+                                     np.append(self._image_data[1, single_scan_length:], new_image_data),
+                                     np.append(self._image_data[2, single_scan_length:], new_ramp_data)])
 
-        self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1])
+        self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1], self._image_data[2])
         self.signal_scan_next_line.emit()
 
     def _initialise_data_matrix(self):
@@ -820,7 +828,9 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
         self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
+        self.scan_ramp_data = np.zeros([estimated_number_of_lines, self._ramp_length])
         self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
+        self.image_array_reducing_factor = 0
 
         if (self._ramp_length*self._shown_scan_numbers) > self._points_per_scan:
             minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / self._points_per_scan)
@@ -828,10 +838,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                 if self._ramp_length % i == 0:
                     self.image_array_reducing_factor = i
                     break
-            self._image_data = np.zeros((2, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
+            self._image_data = np.zeros(
+                (3, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
             self.time_array = np.mean(self.time_array.reshape(-1,self.image_array_reducing_factor),1)
         else:
-            self._image_data = np.zeros((2, self._shown_scan_numbers * self._ramp_length))
+            self._image_data = np.zeros((3, self._shown_scan_numbers * self._ramp_length))
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -925,6 +936,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         ax2 = ax.twinx()
         ax.plot(time_data, input_voltage_data, linestyle=':', linewidth=0.5)
+        ax2.plot(time_data, output_voltage_data, linestyle=':', linewidth=0.5, color='yellow')
 
         ax.set_xlabel('Time (' + time_prefix + 's)')
         ax.set_ylabel('Input Voltage (' + input_voltage_prefix + 'V)')
