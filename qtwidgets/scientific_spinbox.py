@@ -19,10 +19,12 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
-from qtpy import QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 import numpy as np
 import re
 from pyqtgraph import functions as fn
+from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
+from decimal import getcontext
 
 __all__ = ['ScienDSpinBox']
 
@@ -33,11 +35,15 @@ class FloatValidator(QtGui.QValidator):
     (i.e. "1.35e-9", ".24E+8", "14e3" etc.)
     Also supports SI unit prefix like 'M', 'n' etc.
     """
-    def __init__(self):
-        self.float_re = None
-        self.group_map = dict()  # mapping of the regex groups
-        self.set_prefix_suffix()  # Set regular expression
-        return
+
+    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+    group_map = {'match': 0,
+                 'mantissa': 1,
+                 'integer': 2,
+                 'fractional': 3,
+                 'exponent': 4,
+                 'si': 5
+                 }
 
     def validate(self, string, position):
         """
@@ -58,9 +64,8 @@ class FloatValidator(QtGui.QValidator):
         if not string.strip() or position < 1:
             return self.Intermediate, string, position
 
-        match = self.float_re.search(string)
-        if match:
-            groups = match.groups()
+        groups = self.get_groups(string)
+        if groups:
             if groups[self.group_map['match']] == string:
                 return self.Acceptable, string, position
 
@@ -68,12 +73,19 @@ class FloatValidator(QtGui.QValidator):
                 position = len(string)
             if string[position-1] in 'eE.-+':
                 if string.count('.') > 1:
-                    return self.Invalid, string, position
+                    return self.Invalid, groups[self.group_map['match']], position
                 return self.Intermediate, string, position
 
-            return self.Invalid, string, position
+            return self.Invalid, groups[self.group_map['match']], position
         else:
-            return self.Invalid, string, position
+            return self.Invalid, '', position
+
+    def get_groups(self, string):
+        match = self.float_re.search(string)
+        if match:
+            return match.groups()
+        else:
+            return False
 
     def fixup(self, text):
         match = self.float_re.search(text)
@@ -82,52 +94,8 @@ class FloatValidator(QtGui.QValidator):
         else:
             return ''
 
-    def set_prefix_suffix(self, prefix=None, suffix=None):
-        self.group_map = dict()
-        self.group_map['match'] = 0
-        if suffix is None and prefix is not None:
-            self.float_re = re.compile(
-                r'(({0})\s?(([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))'
-                r''.format(prefix))
-            self.group_map['prefix'] = 1
-            self.group_map['mantissa'] = 2
-            self.group_map['integer'] = 3
-            self.group_map['fractional'] = 4
-            self.group_map['exponent'] = 5
-            self.group_map['si'] = 6
-        elif suffix is not None and prefix is None:
-            self.float_re = re.compile(
-                r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({0}))'
-                r''.format(suffix))
-            self.group_map['mantissa'] = 1
-            self.group_map['integer'] = 2
-            self.group_map['fractional'] = 3
-            self.group_map['exponent'] = 4
-            self.group_map['si'] = 5
-            self.group_map['suffix'] = 6
-        elif suffix is not None and prefix is not None:
-            self.float_re = re.compile(
-                r'(({0})\s?(([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s?({1}))'
-                r''.format(prefix, suffix))
-            self.group_map['prefix'] = 1
-            self.group_map['mantissa'] = 2
-            self.group_map['integer'] = 3
-            self.group_map['fractional'] = 4
-            self.group_map['exponent'] = 5
-            self.group_map['si'] = 6
-            self.group_map['suffix'] = 7
-        else:
-            self.float_re = re.compile(
-                r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
-            self.group_map['mantissa'] = 1
-            self.group_map['integer'] = 2
-            self.group_map['fractional'] = 3
-            self.group_map['exponent'] = 4
-            self.group_map['si'] = 5
-        return
 
-
-class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
+class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
     """
     Wrapper Class from PyQt5 (or QtPy) to display a QDoubleSpinBox in Scientific way.
     Fully supports prefix and suffix functionality of the QDoubleSpinBox.
@@ -138,42 +106,192 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
     header file and use the name of the present class.
     """
 
+    valueChanged = QtCore.Signal(object)
+
+    unit_prefix_dict = {
+        'y': '1e-24',
+        'z': '1e-21',
+        'a': '1e-18',
+        'f': '1e-15',
+        'p': '1e-12',
+        'n': '1e-9',
+        'µ': '1e-6',
+        'u': '1e-6',
+        'm': '1e-3',
+        '': '1',
+        'k': '1e3',
+        'M': '1e6',
+        'G': '1e9',
+        'T': '1e12',
+        'P': '1e15',
+        'E': '1e18',
+        'Z': '1e21',
+        'Y': '1e24'
+    }
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.setMinimum(-np.inf)
-        self.setMaximum(np.inf)
-        self.precision = 2
+        self.__value = D(0.0)
+        self.__minimum = -np.inf
+        self.__maximum = np.inf
+        self.__decimals = 3
+        self.__prefix = ''
+        self.__suffix = ''
+        self.__singleStep = D('1.0')
+        self.__minimalStep = D('0.0')
         self.validator = FloatValidator()
         self.dynamic_stepping = True
         self.dynamic_precision = True
-        super().setDecimals(1000)
+        self.editingFinished.connect(self.editingFinishedEvent)
+        self.lineEdit().textEdited.connect(self.test)
 
-    def setSingleStep(self, val, dynamic_stepping=True):
-        """
-        Pass call to this method to parent implementation.
-        Additionally set flag indicating if the dynamic stepping should be used (default) or not.
-        The specified step size will only be used if the dynamic_stepping is set to False.
+    def test(self, text):
+        print('That was AWESOME!')
+        text = self.cleanText()
+        value = self.valueFromText(text)
+        value, in_range = self.check_range(value)
+        if self.__value != value:
+            self.__value = value
+            self.valueChanged.emit(self.value())
+        #     new_text = self.textFromValue()
+        # self.setValue(value)
+        # value, in_range = self.check_range(value)
+        # if self.__value != value:
+        #     self.__value = value
+        #     self.valueChanged.emit(self.value())
+        #     string
+        #
+        # text = self.__prefix + string + self.__suffix
 
-        @param val: float, the absolute step size for a single step.
-                           Unused if dynamic_stepping=True.
-        @param dynamic_stepping: bool, Flag indicating if the absolute step size should be used.
-        """
-        super().setSingleStep(val)
-        self.dynamic_stepping = dynamic_stepping
-        return
+    def value(self):
+        return float(self.__value)
 
-    def setDecimals(self, digits, dynamic_precision=True):
-        """
-        Overwrite the parent implementation in order to always have max digits available.
-        Set the number of fractional digits to display though.
+    def setValue(self, value):
+        value = D(value)
+        value, in_range = self.check_range(value)
 
-        @param digits: int, number of fractional digits to show.
-        @param dynamic_precision: Flag to set if dynamic precision should be enabled
+        if self.__value != value:
+            self.__value = value
+            self.update_display()
+            self.valueChanged.emit(self.value())
+
+    def check_range(self, value):
+        if value < self.__minimum:
+            value = self.__minimum
+            in_range = False
+        elif value > self.__maximum:
+            value = self.__maximum
+            in_range = False
+        else:
+            in_range = True
+        return value, in_range
+
+    def minimum(self):
+        return float(self.__minimum)
+
+    def setMinimum(self, minimum):
+        self.__minimum = float(minimum)
+        if self.__minimum > self.value():
+            self.setValue(self.__minimum)
+
+    def maximum(self):
+        return float(self.__maximum)
+
+    def setMaximum(self, maximum):
+        self.__maximum = float(maximum)
+        if self.__maximum < self.value():
+            self.setValue(self.__maximum)
+
+    def setRange(self, minimum, maximum):
+        self.setMinimum(minimum)
+        self.setMaximum(maximum)
+
+    def decimals(self):
+        return self.__decimals
+
+    def setDecimals(self, decimals):
+        self.__decimals = int(decimals)
+        # Increase precision of decimal calculation if number of decimals exceed current settings
+        if self.__decimals >= getcontext().prec - 1:
+            getcontext().prec = self.__decimals + 2
+        elif self.__decimals < 28 < getcontext().prec:
+            getcontext().prec = 28  # The default precision
+
+    def prefix(self):
+        return self.__prefix
+
+    def setPrefix(self, prefix):
+        self.__prefix = str(prefix)
+        self.update_display()
+
+    def suffix(self):
+        return self.__suffix
+
+    def setSuffix(self, suffix):
+        self.__suffix = str(suffix)
+        self.update_display()
+
+    def singleStep(self):
+        return float(self.__singleStep)
+
+    def setSingleStep(self, step):
+        self.__singleStep = D(step)
+
+    def minimalStep(self):
+        return float(self.__minimalStep)
+
+    def setMinimalStep(self, step):
+        self.__minimalStep = D(step)
+
+    def cleanText(self):
+        text = self.text().strip()
+        if self.__prefix and text.startswith(self.__prefix):
+            text = text[len(self.__prefix):]
+        if self.__suffix and text.endswith(self.__suffix):
+            text = text[:-len(self.__suffix)]
+        return text.strip()
+
+    def update_display(self):
         """
-        super().setDecimals(1000)
-        self.precision = digits
-        self.dynamic_precision = dynamic_precision
-        return
+
+        @return:
+        """
+        text = self.textFromValue(self.value())
+        text = self.__prefix + text + self.__suffix
+        self.lineEdit().setText(text)
+
+    def keyPressEvent(self, event):
+        if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
+            super().keyPressEvent(event)
+            return
+
+        if len(event.text()) > 0:
+            cursor_pos = self.lineEdit().cursorPosition()
+            begin = len(self.__prefix)
+            end = len(self.text()) - len(self.__suffix)
+            if cursor_pos < begin:
+                self.lineEdit().setCursorPosition(begin)
+                return
+            elif cursor_pos > end:
+                self.lineEdit().setCursorPosition(end)
+                return
+
+        if event.key() == QtCore.Qt.Key_Left:
+            if self.lineEdit().cursorPosition() == len(self.__prefix):
+                event.ignore()
+                return
+        if event.key() == QtCore.Qt.Key_Right:
+            if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
+                event.ignore()
+                return
+        if event.key() == QtCore.Qt.Key_Home:
+            self.lineEdit().setCursorPosition(len(self.__prefix))
+            return
+        if event.key() == QtCore.Qt.Key_End:
+            self.lineEdit().setCursorPosition(len(self.text()) - len(self.__suffix))
+            return
+
+        super().keyPressEvent(event)
 
     def validate(self, text, position):
         """
@@ -184,8 +302,26 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         @return: (enum QValidator::State) the returned validator state,
                  (str) the input string, (int) the cursor position
         """
+        begin = len(self.__prefix)
+        end = len(text) - len(self.__suffix)
+        if position < begin:
+            position = begin
+        elif position > end:
+            position = end
+
+        if self.__prefix and text.startswith(self.__prefix):
+            text = text[len(self.__prefix):]
+        if self.__suffix and text.endswith(self.__suffix):
+            text = text[:-len(self.__suffix)]
+
+        print('VALIDATION BABY!!! {0}'.format(text))
         state, string, position = self.validator.validate(text, position)
-        return state, string, position
+
+        end = len(text) - len(self.__suffix)
+        if position > end:
+            position = end
+
+        return state, text, position
 
     def fixup(self, text):
         """
@@ -195,47 +331,8 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
+        print('FIXUP CALLED!!!')
         return self.validator.fixup(text)
-
-    def setPrefix(self, prefix=None):
-        """
-        This will add a prefix to the ScienDSpinBox.
-        If empty string or None is passed, remove prefix.
-        Reimplementation of the parent method.
-
-        @param prefix: str, a string containing no whitespaces to be set as prefix.
-        """
-        if not prefix:
-            prefix = None
-
-        if self.suffix():
-            suffix = self.suffix()
-        else:
-            suffix = None
-
-        self.validator.set_prefix_suffix(prefix, suffix)
-        super().setPrefix(prefix)
-        return
-
-    def setSuffix(self, suffix=None):
-        """
-        This will add a suffix to the ScienDSpinBox.
-        If empty string or None is passed, remove suffix.
-        Reimplementation of the parent method.
-
-        @param suffix: str, a string containing no whitespaces to be set as suffix.
-        """
-        if not suffix:
-            suffix = None
-
-        if self.prefix():
-            prefix = self.prefix()
-        else:
-            prefix = None
-
-        self.validator.set_prefix_suffix(prefix, suffix)
-        super().setSuffix(suffix)
-        return
 
     def valueFromText(self, text):
         """
@@ -246,24 +343,34 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
 
         @param text: str, the display string to be converted into a numeric value.
                           This string must be conform with the validator.
-        @return: float, the numeric value converted from the input string.
+        @return: Decimal, the numeric value converted from the input string.
         """
-        # Extract si-notation number string
-        text = text.strip()  # get rid of leading and trailing whitespaces
-        text = text.replace(self.suffix(), '')  # get rid of suffix
-        text = text.replace(self.prefix(), '')  # get rid of prefix
-        if text.startswith('+'):
-            text = text[1:]
+        groups = self.validator.get_groups(text)
+        group_map = self.validator.group_map
+        if not groups:
+            return False
+
+        if not groups[group_map['mantissa']]:
+            return False
+
+        si_prefix = groups[group_map['si']]
+        if si_prefix is not None:
+            si_scale_str = self.unit_prefix_dict[si_prefix]
+        else:
+            si_scale_str = '1'
+
+        unscaled_value_str = groups[group_map['mantissa']]
+        if groups[group_map['exponent']] is not None:
+            unscaled_value_str += groups[group_map['exponent']]
+
+        value = D(unscaled_value_str) * D(si_scale_str)
 
         # Try to extract the precision the user intends to use
         if self.dynamic_precision:
-            split_text = text.split()
-            if 0 < len(split_text) < 3:
-                float_str = split_text[0]
-                if len(float_str.split('.')) == 2:
-                    integer, fractional = float_str.split('.')
-                    self.precision = len(fractional)
-        return fn.siEval(text)
+            if groups[group_map['fractional']] is not None:
+                self.setDecimals(len(groups[group_map['fractional']]))
+
+        return value
 
     def textFromValue(self, value):
         """
@@ -274,32 +381,13 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
         @param value: float, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
-        scale_factor, prefix = fn.siScale(value)
+        print(float(value))
+
+        scale_factor, si_prefix = si_scale(value)
         scaled_val = value * scale_factor
-        if scaled_val < 10:
-            string = fn.siFormat(value, precision=self.precision + 1)
-        elif scaled_val < 100:
-            string = fn.siFormat(value, precision=self.precision + 2)
-        else:
-            string = fn.siFormat(value, precision=self.precision + 3)
-        string = string.strip()  # remove leading or trailing whitespaces
-        # Reintroduce trailing zeros
-        if self.precision > 0:
-            split_si_str = string.split()
-            string = split_si_str[0]
-            if len(split_si_str) > 1:
-                si_prefix = split_si_str[1]
-            else:
-                si_prefix = ''
-
-            split_float_str = string.split('.')
-            if len(split_float_str) == 1:
-                string += '.' + '0' * self.precision
-            elif len(split_float_str[1]) < self.precision:
-                string += '0' * (self.precision - len(split_float_str[1]))
-
-            if si_prefix:
-                string += ' {0}'.format(si_prefix)
+        print(float(scaled_val))
+        string = ('{0:.' + str(self.__decimals) + 'f}').format(float(scaled_val))
+        string += ' ' + si_prefix
         return string
 
     def stepBy(self, steps):
@@ -360,3 +448,71 @@ class ScienDSpinBox(QtWidgets.QDoubleSpinBox):
                 self.setValue(new_value)
                 # raise UserWarning('The set step size is much smaller than the displayed magnitude.')
         return
+
+    def editingFinishedEvent(self):
+        print('YEAP')
+        self.update_display()
+
+    def si_scale(x):
+        """
+        Return the recommended scale factor and SI prefix string for x.
+
+        Example::
+
+            siScale(0.0001)   # returns (1e6, 'μ')
+            # This indicates that the number 0.0001 is best represented as 0.0001 * 1e6 = 100 μUnits
+        """
+        try:
+            if isinstance(x, decimal.Decimal):
+                if x.is_infinite() or x.is_nan():
+                    return 1, ''
+            else:
+                if np.isnan(x) or np.isinf(x):
+                    return 1, ''
+        except:
+            print(x, type(x))
+            raise
+
+        exponent = int(math.log10(abs(x)) // 3)
+
+        if exponent == 0:
+            prefix = ''
+        elif exponent > 8 or exponent < -8:
+            prefix = 'e{0:d}'.format(exponent)
+        else:
+            prefix = 'yzafpnµm kMGTPEZY'[8 + exponent]
+
+        if isinstance(x, decimal.Decimal):
+            scale_factor = decimal.Decimal('0.001') ** exponent
+        else:
+            scale_factor = 0.001 ** exponent
+
+        return scale_factor, prefix
+
+
+    # def setSingleStep(self, val, dynamic_stepping=True):
+    #     """
+    #     Pass call to this method to parent implementation.
+    #     Additionally set flag indicating if the dynamic stepping should be used (default) or not.
+    #     The specified step size will only be used if the dynamic_stepping is set to False.
+    #
+    #     @param val: float|str, the absolute step size for a single step.
+    #                        Unused if dynamic_stepping=True.
+    #     @param dynamic_stepping: bool, Flag indicating if the absolute step size should be used.
+    #     """
+    #     super().setSingleStep(val)
+    #     self.dynamic_stepping = dynamic_stepping
+    #     return
+    #
+    # def setDecimals(self, digits, dynamic_precision=True):
+    #     """
+    #     Overwrite the parent implementation in order to always have max digits available.
+    #     Set the number of fractional digits to display though.
+    #
+    #     @param digits: int, number of fractional digits to show.
+    #     @param dynamic_precision: Flag to set if dynamic precision should be enabled
+    #     """
+    #     super().setDecimals(1000)
+    #     self.precision = digits
+    #     self.dynamic_precision = dynamic_precision
+    #     return
