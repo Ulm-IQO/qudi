@@ -1767,7 +1767,14 @@ class PulsedMeasurementGui(GUIBase):
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
+        if self._pa.second_plot_ComboBox.currentText() == 'None':
+            save_ft = True
+        else:
+            save_ft = False
+        self._pulsed_master_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
+                                                        tag=save_tag,
+                                                        with_error=with_error,
+                                                        save_ft=save_ft)
         self._mw.action_save.setEnabled(True)
         return
 
