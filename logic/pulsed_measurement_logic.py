@@ -70,7 +70,7 @@ class PulsedMeasurementLogic(GenericLogic):
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
-    save_ft = StatusVar(default=True)
+    save_ft = StatusVar(default=False)
 
     # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
@@ -979,6 +979,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_ft: select wether the Fourier Transform is plotted
 
         @return str: filepath where data were saved
         """
