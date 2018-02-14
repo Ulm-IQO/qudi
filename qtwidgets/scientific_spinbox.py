@@ -25,6 +25,7 @@ import re
 from pyqtgraph import functions as fn
 from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
 from decimal import getcontext
+import math
 
 __all__ = ['ScienDSpinBox']
 
@@ -143,25 +144,18 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.dynamic_stepping = True
         self.dynamic_precision = True
         self.editingFinished.connect(self.editingFinishedEvent)
-        self.lineEdit().textEdited.connect(self.test)
+        self.lineEdit().textEdited.connect(self.update_value)
 
-    def test(self, text):
-        print('That was AWESOME!')
+    def update_value(self):
+        print('=== update_value ===')
         text = self.cleanText()
         value = self.valueFromText(text)
         value, in_range = self.check_range(value)
-        if self.__value != value:
+        if float(value) != self.value():
             self.__value = value
             self.valueChanged.emit(self.value())
-        #     new_text = self.textFromValue()
-        # self.setValue(value)
-        # value, in_range = self.check_range(value)
-        # if self.__value != value:
-        #     self.__value = value
-        #     self.valueChanged.emit(self.value())
-        #     string
-        #
-        # text = self.__prefix + string + self.__suffix
+        else:
+            self.__value = value
 
     def value(self):
         return float(self.__value)
@@ -177,13 +171,15 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def check_range(self, value):
         if value < self.__minimum:
-            value = self.__minimum
+            new_value = self.__minimum
             in_range = False
         elif value > self.__maximum:
-            value = self.__maximum
+            new_value = self.__maximum
             in_range = False
         else:
             in_range = True
+        if not in_range:
+            value = D(new_value)
         return value, in_range
 
     def minimum(self):
@@ -253,12 +249,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def update_display(self):
         """
-
-        @return:
         """
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
+        self.clearFocus()
 
     def keyPressEvent(self, event):
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
@@ -302,6 +297,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @return: (enum QValidator::State) the returned validator state,
                  (str) the input string, (int) the cursor position
         """
+        print('validating: "{0}"'.format(text))
+
         begin = len(self.__prefix)
         end = len(text) - len(self.__suffix)
         if position < begin:
@@ -314,8 +311,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         if self.__suffix and text.endswith(self.__suffix):
             text = text[:-len(self.__suffix)]
 
-        print('VALIDATION BABY!!! {0}'.format(text))
         state, string, position = self.validator.validate(text, position)
+
+        text = self.__prefix + string + self.__suffix
 
         end = len(text) - len(self.__suffix)
         if position > end:
@@ -331,7 +329,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
-        print('FIXUP CALLED!!!')
+        print('fixup called on: "{0}"'.format(text))
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
@@ -381,11 +379,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param value: float, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
-        print(float(value))
-
         scale_factor, si_prefix = si_scale(value)
         scaled_val = value * scale_factor
-        print(float(scaled_val))
         string = ('{0:.' + str(self.__decimals) + 'f}').format(float(scaled_val))
         string += ' ' + si_prefix
         return string
@@ -450,69 +445,42 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def editingFinishedEvent(self):
-        print('YEAP')
+        print('=== editingFinishedEvent ===')
         self.update_display()
 
-    def si_scale(x):
-        """
-        Return the recommended scale factor and SI prefix string for x.
 
-        Example::
+def si_scale(x):
+    """
+    Return the recommended scale factor and SI prefix string for x.
 
-            siScale(0.0001)   # returns (1e6, 'μ')
-            # This indicates that the number 0.0001 is best represented as 0.0001 * 1e6 = 100 μUnits
-        """
-        try:
-            if isinstance(x, decimal.Decimal):
-                if x.is_infinite() or x.is_nan():
-                    return 1, ''
-            else:
-                if np.isnan(x) or np.isinf(x):
-                    return 1, ''
-        except:
-            print(x, type(x))
-            raise
+    Example::
 
-        exponent = int(math.log10(abs(x)) // 3)
-
-        if exponent == 0:
-            prefix = ''
-        elif exponent > 8 or exponent < -8:
-            prefix = 'e{0:d}'.format(exponent)
+        siScale(0.0001)   # returns (1e6, 'μ')
+        # This indicates that the number 0.0001 is best represented as 0.0001 * 1e6 = 100 μUnits
+    """
+    try:
+        if isinstance(x, D):
+            if x.is_infinite() or x.is_nan() or x == 0:
+                return 1, ''
         else:
-            prefix = 'yzafpnµm kMGTPEZY'[8 + exponent]
+            if np.isnan(x) or np.isinf(x) or x == 0:
+                return 1, ''
+    except:
+        print(x, type(x))
+        raise
 
-        if isinstance(x, decimal.Decimal):
-            scale_factor = decimal.Decimal('0.001') ** exponent
-        else:
-            scale_factor = 0.001 ** exponent
+    exponent = int(math.log10(abs(x)) // 3)
 
-        return scale_factor, prefix
+    if exponent == 0:
+        prefix = ''
+    elif exponent > 8 or exponent < -8:
+        prefix = 'e{0:d}'.format(exponent)
+    else:
+        prefix = 'yzafpnµm kMGTPEZY'[8 + exponent]
 
+    if isinstance(x, D):
+        scale_factor = D('0.001') ** exponent
+    else:
+        scale_factor = 0.001 ** exponent
 
-    # def setSingleStep(self, val, dynamic_stepping=True):
-    #     """
-    #     Pass call to this method to parent implementation.
-    #     Additionally set flag indicating if the dynamic stepping should be used (default) or not.
-    #     The specified step size will only be used if the dynamic_stepping is set to False.
-    #
-    #     @param val: float|str, the absolute step size for a single step.
-    #                        Unused if dynamic_stepping=True.
-    #     @param dynamic_stepping: bool, Flag indicating if the absolute step size should be used.
-    #     """
-    #     super().setSingleStep(val)
-    #     self.dynamic_stepping = dynamic_stepping
-    #     return
-    #
-    # def setDecimals(self, digits, dynamic_precision=True):
-    #     """
-    #     Overwrite the parent implementation in order to always have max digits available.
-    #     Set the number of fractional digits to display though.
-    #
-    #     @param digits: int, number of fractional digits to show.
-    #     @param dynamic_precision: Flag to set if dynamic precision should be enabled
-    #     """
-    #     super().setDecimals(1000)
-    #     self.precision = digits
-    #     self.dynamic_precision = dynamic_precision
-    #     return
+    return scale_factor, prefix
