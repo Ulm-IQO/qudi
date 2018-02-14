@@ -671,16 +671,21 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
-        """
+    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_ft):
+        """ Prepare data to be saved and create a proper plot of the data.
+        This is just handed over to the measurement logic.
 
-        @param controlled_val_unit:
-        @param save_tag:
-        @param with_error:
-        @return:
+        @param str controlled_val_unit: unit of the x axis of the plot
+        @param str tag: a filetag which will be included in the filename
+        @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_ft: select wether the Fourier Transform is plotted
+
+        @return str: filepath where data were saved
         """
-        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
-        return
+        return self._measurement_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
+                                                      tag=tag,
+                                                      with_error=with_error,
+                                                      save_ft=save_ft)
 
     def clear_pulse_generator(self):
         """
