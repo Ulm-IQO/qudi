@@ -77,13 +77,18 @@ class ScaledFloat(float):
     @property
     def scale(self):
         """
-        Returns the scale.
+        Returns the scale. (No prefix if 0)
 
         Examples
         --------
         1e-3: m
         1e6: M
         """
+
+        # Zero makes the log crash and should not have a prefix
+        if self == 0:
+            return ''
+
         exponent = math.floor(math.log10(abs(self)) / 3)
         if exponent < -8:
             exponent = -8
@@ -330,6 +335,10 @@ def get_relevant_digit(entry):
 
     # the log10 can only be calculated of a positive number.
     entry = np.abs(entry)
+
+    # the log of zero crashes, so return 0
+    if entry == 0:
+        return 0
 
     if np.log10(entry) >= 0:
         return int(np.log10(entry))
