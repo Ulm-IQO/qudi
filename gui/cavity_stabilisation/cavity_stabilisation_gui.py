@@ -153,6 +153,9 @@ class CavityStabilisationGui(GUIBase):
         # handle slider movement
         self._mw.position_slider.sliderMoved.connect(self.update_from_pos_slider, QtCore.Qt.QueuedConnection)
 
+        # setting up check box for the maximal scan resolution
+        self._mw.max_scan_resolution_checkBox.toggled.connect(self.toggle_scan_resolution)
+
 
         # connecting user interactions
         self._mw.action_start_scanning.triggered.connect(self.start_clicked)
@@ -251,6 +254,8 @@ class CavityStabilisationGui(GUIBase):
                                            self._cavity_stabilisation_logic.axis_class[
                                                self._cavity_stabilisation_logic.control_axis].output_voltage_range[
                                                0]) / self.slider_res)
+        self.toggle_scan_resolution()
+
 
     def scan_frequency_changed(self):
         frequency = self._mw.scan_frequency_spinBox.value()
@@ -267,6 +272,14 @@ class CavityStabilisationGui(GUIBase):
     def stop_value_changed(self):
         stop = self._mw.stop_spinBox.value()
         self._cavity_stabilisation_logic._end_voltage = stop
+
+    def toggle_scan_resolution(self):
+        if self._mw.max_scan_resolution_checkBox.isChecked():
+            self._cavity_stabilisation_logic._use_maximal_resolution = True
+            self._mw.scan_resolution_spinBox.setEnabled(False)
+        else:
+            self._cavity_stabilisation_logic._use_maximal_resolution = False
+            self._mw.scan_resolution_spinBox.setEnabled(True)
 
 
     def disable_scan_actions(self):
@@ -309,16 +322,16 @@ class CavityStabilisationGui(GUIBase):
         """ Restore the arrangement of DockWidgets to the default
         """
         # Show any hidden dock widgets
-        self._mw.cavity_DockWidget.show()
+        self._mw.cavity_scan_DockWidget.show()
         self._mw.scan_parameters_DockWidget.show()
 
         # re-dock any floating dock widgets
-        self._mw.cavity_DockWidget.setFloating(False)
+        self._mw.cavity_scan_DockWidget.setFloating(False)
         self._mw.scan_parameters_DockWidget.setFloating(False)
 
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
-                               self._mw.cavity_DockWidget
+                               self._mw.cavity_scan_DockWidget
                                )
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
                                self._mw.scan_parameters_DockWidget

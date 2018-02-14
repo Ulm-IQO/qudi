@@ -200,7 +200,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.image_array_reducing_factor = 0
         self.start_time = time.time()
         self.stop_time = time.time()
-        self._use_maximal_resolution = True
+        self._use_maximal_resolution = False
         self._shown_scan_numbers = 5
         self._points_per_scan = 1000
 
