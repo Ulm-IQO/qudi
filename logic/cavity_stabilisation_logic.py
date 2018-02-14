@@ -520,8 +520,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         voltage_difference = abs(start_voltage - end_voltage)
         if voltage_difference > self._scan_resolution:
-            _clock_frequency = self.maximum_clock_frequency
-            #        _clock_frequency = 10 / self._scan_resolution
+            #_clock_frequency = self.maximum_clock_frequency
+            _clock_frequency = 10 / self._scan_resolution
             if 0 > self.initialise_analogue_stabilisation():
                 self.log.error("Setting up analogue output for scanning failed.")
                 return -1
@@ -869,7 +869,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
 
-        fig = self.draw_figure([time_data, scan_data, ramp_data])
+        fig = self.draw_figure([time_data, scan_data.flatten(), ramp_data.flatten()])
 
         self._save_logic.save_data(data,
                                    filepath=filepath,
@@ -909,7 +909,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             output_voltage_data = output_voltage_data * 1000
             output_voltage_prefix_index = output_voltage_prefix_index + 1
 
-            output_voltage_prefix = prefix[output_voltage_prefix_index]
+        output_voltage_prefix = prefix[output_voltage_prefix_index]
 
         while np.max(time_data) < 0.01:
             time_data = time_data * 1000

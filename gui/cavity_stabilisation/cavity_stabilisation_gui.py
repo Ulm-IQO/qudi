@@ -280,6 +280,7 @@ class CavityStabilisationGui(GUIBase):
         else:
             self._cavity_stabilisation_logic._use_maximal_resolution = False
             self._mw.scan_resolution_spinBox.setEnabled(True)
+            self.scan_resolution_changed()
 
 
     def disable_scan_actions(self):
@@ -340,3 +341,4 @@ class CavityStabilisationGui(GUIBase):
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
                             self._mw.scan_control_ToolBar)
+        return 0
