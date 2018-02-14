@@ -25,6 +25,7 @@ from qtpy import QtCore
 
 import time
 import numpy as np
+import matplotlib.pyplot as plt
 import math
 import datetime
 from collections import OrderedDict
@@ -197,10 +198,10 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.input = 0
         self.scan_raw_data = np.zeros([self.number_of_lines, self._ramp_length])
         self.elapsed_sweeps = 0
-        self.image_array_reducing_factor = 0
         self.start_time = time.time()
         self.stop_time = time.time()
         self._use_maximal_resolution = False
+        self.image_array_reducing_factor = 0
         self._shown_scan_numbers = 5
         self._points_per_scan = 1000
 
@@ -800,6 +801,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # self.sigHistoUpdated.emit()
 
         self.time_array = self.time_array + 1. / self._scan_frequency
+
         if (self.image_array_reducing_factor > 0):
             new_image_data = np.mean(self.scan_raw_data[self.elapsed_sweeps - 1].reshape(-1,self.image_array_reducing_factor),1)
             single_scan_length = int(self._ramp_length/self.image_array_reducing_factor)
@@ -808,10 +810,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             single_scan_length = self._ramp_length
         self._image_data = np.array([np.append(self._image_data[0, single_scan_length:], self.time_array),
                                      np.append(self._image_data[1, single_scan_length:], new_image_data)])
-
-        #if (self.image_array_reducing_factor > 0):
-        #    self._image_data = [np.mean(self._image_data[0].reshape(-1, self.image_array_reducing_factor), 1),
-        #    np.mean(self._image_data[1].reshape(-1, self.image_array_reducing_factor), 1)]
 
         self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1])
         self.signal_scan_next_line.emit()
@@ -822,29 +820,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.log.debug('Estimated number of raw data lines: %s'
                        '', estimated_number_of_lines)
         self.scan_raw_data = np.zeros([estimated_number_of_lines, self._ramp_length])
-    #    self.time_data = np.zeros([estimated_number_of_lines, self._ramp_length])
         self.time_array = np.linspace(0, 1. / self._scan_frequency, self._ramp_length)
+
         if (self._ramp_length*self._shown_scan_numbers) > self._points_per_scan:
             minimal_factor = np.floor((self._ramp_length * self._shown_scan_numbers) / self._points_per_scan)
             for i in range(int(minimal_factor), self._ramp_length):
                 if self._ramp_length % i == 0:
                     self.image_array_reducing_factor = i
                     break
-
             self._image_data = np.zeros((2, self._shown_scan_numbers * int(self._ramp_length / self.image_array_reducing_factor)))
             self.time_array = np.mean(self.time_array.reshape(-1,self.image_array_reducing_factor),1)
         else:
             self._image_data = np.zeros((2, self._shown_scan_numbers * self._ramp_length))
-
-    #        else:
-    #            self.image_array_reducing_factor = (self._ramp_length * 5) / (5 * 1000)
-
-    #
-    #        self._image_data[0,]
-
-    #    else:
-    #        self._image_data = np.zeros((2, 5 * self._ramp_length))
-    #        self._image_data[0,]
 
     def save_data(self):
         """ Save the counter trace data and writes it to a file.
@@ -865,7 +852,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             ramp_data = np.append(ramp_data, self.ramp)
 
         scan_data = self.scan_raw_data[:self.elapsed_sweeps, :]
-        time_data = np.linspace(0, 1. / self._scan_frequency, len(scan_data))
+        time_data = np.linspace(0, self.elapsed_sweeps* (1. / self._scan_frequency), len(ramp_data))
         data['Voltage (V)'] = ramp_data.flatten()
         data['Analogue input (Voltage/bin)'] = scan_data.flatten()
 
@@ -882,7 +869,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
 
-        # fig = self.draw_figure([self.scan_matrix[0], self.ramp])
+        fig = self.draw_figure([time_data, scan_data, ramp_data])
 
         self._save_logic.save_data(data,
                                    filepath=filepath,
@@ -890,8 +877,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                                    parameters=parameters,
                                    filelabel=filelabel,
                                    fmt='%.6e',
-                                   delimiter='\t')  # ,
-        # plotfig=fig)
+                                   delimiter='\t',
+                                   plotfig=fig)
         return 0
 
     def draw_figure(self, data):
@@ -902,64 +889,33 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         @return: fig fig: a matplotlib figure object to be saved to file.
         """
 
-        count_data = data[0]
-        ramp_data = data[1]
+        time_data = data[0]
+        input_voltage_data = data[1]
+        output_voltage_data = data[2]
 
-        # Scale count values using SI prefix
-        prefix = ['', 'k', 'M', 'G']
-        prefix_index = 0
+        # Scale voltage and time values using SI prefix
+        prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
+        input_voltage_prefix_index = 0
+        output_voltage_prefix_index = 0
+        time_prefix_index = 0
 
-        while np.max(count_data) > 1000:
-            count_data = count_data / 1000
-            prefix_index = prefix_index + 1
+        while np.max(input_voltage_data) < 0.01:
+            input_voltage_data = input_voltage_data * 1000
+            input_voltage_prefix_index = input_voltage_prefix_index + 1
 
-        counts_prefix = prefix[prefix_index]
+        input_voltage_prefix = prefix[input_voltage_prefix_index]
 
-        # Scale axes values using SI prefix
-        axes_prefix = ['', 'm', r'$\mathrm{\mu}$', 'n']
-        a_prefix_count = 0
+        while np.max(output_voltage_data) < 0.01:
+            output_voltage_data = output_voltage_data * 1000
+            output_voltage_prefix_index = output_voltage_prefix_index + 1
 
-        while np.max(ramp_data) < 0.01:
-            ramp_data = ramp_data * 1000
-            a_prefix_count = a_prefix_count + 1
+            output_voltage_prefix = prefix[output_voltage_prefix_index]
 
-        a_prefix = axes_prefix[a_prefix_count]
+        while np.max(time_data) < 0.01:
+            time_data = time_data * 1000
+            time_prefix_index = time_prefix_index + 1
 
-        # Use qudi style
-        plt.style.use(self._save_logic.mpl_qd_style)
-
-        # Create figure
-        fig, ax = plt.subplots()
-
-        ax.plot(ramp_data, count_data, linestyle=':', linewidth=0.5)
-
-        ax.set_xlabel('A position (' + a_prefix + 'm)')
-        ax.set_ylabel('Fluorescence (' + counts_prefix + 'counts/bin)')
-
-        return fig
-
-    def draw_figure(self):
-        """ Draw figure to save with data file.
-
-        @return: fig fig: a matplotlib figure object to be saved to file.
-        """
-        # TODO: Draw plot for second APD if it is connected
-
-        wavelength_data = [entry[2] for entry in self.counts_with_wavelength]
-        count_data = np.array([entry[1] for entry in self.counts_with_wavelength])
-
-        # Index of max counts, to use to position "0" of frequency-shift axis
-        count_max_index = count_data.argmax()
-
-        # Scale count values using SI prefix
-        prefix = ['', 'k', 'M', 'G']
-        prefix_index = 0
-
-        while np.max(count_data) > 1000:
-            count_data = count_data / 1000
-            prefix_index = prefix_index + 1
-
-        counts_prefix = prefix[prefix_index]
+        time_prefix = prefix[time_prefix_index]
 
         # Use qudi style
         plt.style.use(self._save_logic.mpl_qd_style)
@@ -967,22 +923,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # Create figure
         fig, ax = plt.subplots()
 
-        ax.plot(wavelength_data, count_data, linestyle=':', linewidth=0.5)
+        ax2 = ax.twinx()
+        ax.plot(time_data, input_voltage_data, linestyle=':', linewidth=0.5)
 
-        ax.set_xlabel('wavelength (nm)')
-        ax.set_ylabel('Fluorescence (' + counts_prefix + 'c/s)')
-
-        x_formatter = mpl.ticker.ScalarFormatter(useOffset=False)
-        ax.xaxis.set_major_formatter(x_formatter)
-
-        ax2 = ax.twiny()
-
-        nm_xlim = ax.get_xlim()
-        ghz_at_max_counts = self.nm_to_ghz(wavelength_data[count_max_index])
-        ghz_min = self.nm_to_ghz(nm_xlim[0]) - ghz_at_max_counts
-        ghz_max = self.nm_to_ghz(nm_xlim[1]) - ghz_at_max_counts
-
-        ax2.set_xlim(ghz_min, ghz_max)
-        ax2.set_xlabel('Shift (GHz)')
+        ax.set_xlabel('Time (' + time_prefix + 's)')
+        ax.set_ylabel('Input Voltage (' + input_voltage_prefix + 'V)')
+        ax2.set_ylabel('Output Voltage (' + output_voltage_prefix + 'V)')
 
         return fig
