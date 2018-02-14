@@ -380,9 +380,30 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @return: str, the formatted string representing the input value
         """
         scale_factor, si_prefix = si_scale(value)
-        scaled_val = value * scale_factor
-        string = ('{0:.' + str(self.__decimals) + 'f}').format(float(scaled_val))
-        string += ' ' + si_prefix
+        # scaled_val = value * scale_factor
+        # string = ('{0:.' + str(self.__decimals) + 'f}').format(float(scaled_val))
+        string = '{0:.100f}'.format(value)
+        integer_str = string.split('.')[0]
+        fractional_str = string.split('.')[1]
+        if integer_str != '0':
+            si_prefix = ''
+            prefix_index = 0
+            while len(integer_str) > 3:
+                fractional_str = integer_str[:-3] + fractional_str
+                integer_str = integer_str[:-3]
+                if prefix_index < 8:
+                    si_prefix = 'kMGTPEZY'[prefix_index]
+                else:
+                    si_prefix = 'e{0:d}'.format(3 * (prefix_index + 1))
+                prefix_index += 1
+            # Round last fractional digit
+            indicator = int(fractional_str[self.__decimals + 1])
+            fractional_str = fractional_str[:self.__decimals]
+            if indicator >= 5:
+                new_fractional_str = str(int(fractional_str) + 1)
+                if len(new_fractional_str) > len(fractional_str):
+                    fractional_str
+            string = '{0}.{1} {2}'.format(integer_str, fractional_str[:self.__decimals], si_prefix)
         return string
 
     def stepBy(self, steps):
