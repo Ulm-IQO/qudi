@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>791</width>
-    <height>572</height>
+    <width>1038</width>
+    <height>727</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,7 +19,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>791</width>
+     <width>1038</width>
      <height>21</height>
     </rect>
    </property>
@@ -53,7 +53,20 @@
       <widget class="PlotWidget" name="cavity_scan_PlotWidget"/>
      </item>
      <item>
-      <widget class="PlotWidget" name="ramp_scan_PlotWidget"/>
+      <widget class="PlotWidget" name="ramp_scan_PlotWidget">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>171</height>
+        </size>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
