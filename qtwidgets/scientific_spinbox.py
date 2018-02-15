@@ -165,7 +165,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self._dynamic_precision = use_dynamic_precision
 
     def update_value(self):
-        print('=== update_value ===')
         text = self.cleanText()
         value = self.valueFromText(text)
         if not value:
@@ -327,8 +326,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @return: (enum QValidator::State) the returned validator state,
                  (str) the input string, (int) the cursor position
         """
-        # print('validating: "{0}"'.format(text))
-
         begin = len(self.__prefix)
         end = len(text) - len(self.__suffix)
         if position < begin:
@@ -442,11 +439,13 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                     fractional_str = str(fractional_int)
             elif self.__decimals == len(fractional_str):
                 if fractional >= 0.5:
-                    fractional_int = int(fractional_str) + 1
-                    fractional_str = str(fractional_int)
+                    if fractional_str:
+                        fractional_int = int(fractional_str) + 1
+                        fractional_str = str(fractional_int)
+                    else:
+                        fractional_str = '1'
             elif self.__decimals > len(fractional_str):
                 digits_to_add = self.__decimals - len(fractional_str) # number of digits to add
-                print(digits_to_add)
                 fractional_tmp_str = ('{0:.' + str(digits_to_add) + 'f}').format(fractional)
                 if fractional_tmp_str.startswith('1'):
                     fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
@@ -456,6 +455,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             if len(fractional_str) > self.__decimals:
                 integer_str = str(int(integer_str) + 1)
                 fractional_str = '0' * self.__decimals
+        elif fractional == 0.0:
+            fractional_str = '0' * self.__decimals
+            integer_str = '0'
         else:
             # determine the order of magnitude by comparing the fractional to unit values
             prefix_index = 1
@@ -518,50 +520,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                                                    # depends on the step sign.
                     exp = abs(value * fudge).log10().quantize(1, rounding=ROUND_FLOOR)
                     step = self.__singleStep * D(10) ** exp
-                if self.__minimalStep > 0:
-                    step = max(step, self.__minimalStep)
+                    if self.__minimalStep > 0:
+                        step = max(step, self.__minimalStep)
                 value += s * step
-
             self.setValue(value)
         return
 
     def editingFinishedEvent(self):
-        print('=== editingFinishedEvent ===')
         self.update_display()
-
-
-def si_scale(x):
-    """
-    Return the recommended scale factor and SI prefix string for x.
-
-    Example::
-
-        siScale(0.0001)   # returns (1e6, 'μ')
-        # This indicates that the number 0.0001 is best represented as 0.0001 * 1e6 = 100 μUnits
-    """
-    try:
-        if isinstance(x, D):
-            if x.is_infinite() or x.is_nan() or x == 0:
-                return 1, ''
-        else:
-            if np.isnan(x) or np.isinf(x) or x == 0:
-                return 1, ''
-    except:
-        print(x, type(x))
-        raise
-
-    exponent = int(math.log10(abs(x)) // 3)
-
-    if exponent == 0:
-        prefix = ''
-    elif exponent > 8 or exponent < -8:
-        prefix = 'e{0:d}'.format(exponent)
-    else:
-        prefix = 'yzafpnµm kMGTPEZY'[8 + exponent]
-
-    if isinstance(x, D):
-        scale_factor = D('0.001') ** exponent
-    else:
-        scale_factor = 0.001 ** exponent
-
-    return scale_factor, prefix
