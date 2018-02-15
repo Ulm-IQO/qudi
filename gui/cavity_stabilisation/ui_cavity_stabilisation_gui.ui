@@ -52,6 +52,9 @@
      <item>
       <widget class="PlotWidget" name="cavity_scan_PlotWidget"/>
      </item>
+     <item>
+      <widget class="PlotWidget" name="ramp_scan_PlotWidget"/>
+     </item>
     </layout>
    </widget>
   </widget>

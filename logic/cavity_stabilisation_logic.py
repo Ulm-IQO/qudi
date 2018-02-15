@@ -936,7 +936,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         ax2 = ax.twinx()
         ax.plot(time_data, input_voltage_data, linestyle=':', linewidth=0.5)
-        ax2.plot(time_data, output_voltage_data, linestyle=':', linewidth=0.5, color='yellow')
+        ax2.plot(time_data, output_voltage_data, linestyle=':', linewidth=0.5, marker='s', color='#FFA40E')
 
         ax.set_xlabel('Time (' + time_prefix + 's)')
         ax.set_ylabel('Input Voltage (' + input_voltage_prefix + 'V)')
