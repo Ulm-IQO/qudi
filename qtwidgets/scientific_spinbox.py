@@ -184,6 +184,18 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         value, in_range = self.check_range(value)
 
         if self.__value != value:
+            # Try to increase decimals when the value has changed but no change in display detected.
+            # This will only be executed when the dynamic precision flag is set
+            if self.value() != float(value) and self.dynamic_precision:
+                old_text = self.cleanText()
+                new_text = self.textFromValue(value).strip()
+                current_dec = self.decimals()
+                while old_text == new_text:
+                    if self.__decimals > 20:
+                        self.__decimals = current_dec
+                        break
+                    self.__decimals += 1
+                    new_text = self.textFromValue(value).strip()
             self.__value = value
             self.update_display()
             self.valueChanged.emit(self.value())
