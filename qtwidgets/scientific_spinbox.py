@@ -140,22 +140,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__suffix = ''
         self.__singleStep = D('1.0')
         self.__minimalStep = D('0.0')
-        self.validator = FloatValidator()
         self._dynamic_stepping = True
         self._dynamic_precision = True
+        self.validator = FloatValidator()
         self.editingFinished.connect(self.editingFinishedEvent)
         self.lineEdit().textEdited.connect(self.update_value)
-
-    def update_value(self):
-        print('=== update_value ===')
-        text = self.cleanText()
-        value = self.valueFromText(text)
-        value, in_range = self.check_range(value)
-        if float(value) != self.value():
-            self.__value = value
-            self.valueChanged.emit(self.value())
-        else:
-            self.__value = value
 
     @property
     def dynamic_stepping(self):
@@ -174,6 +163,19 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
     def dynamic_precision(self, use_dynamic_precision):
         use_dynamic_precision = bool(use_dynamic_precision)
         self._dynamic_precision = use_dynamic_precision
+
+    def update_value(self):
+        print('=== update_value ===')
+        text = self.cleanText()
+        value = self.valueFromText(text)
+        if not value:
+            return
+        value, in_range = self.check_range(value)
+        if float(value) != self.value():
+            self.__value = value
+            self.valueChanged.emit(self.value())
+        else:
+            self.__value = value
 
     def value(self):
         return float(self.__value)
@@ -404,34 +406,89 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         in the SpinBox.
         Suffix and Prefix must not be handled here, just the si-Prefix.
 
-        @param value: float, the numeric value to be formatted into a string
+        The main problem here is, that a scaled float with a suffix is represented by a different
+        machine precision than the total value.
+        This method is so complicated because it represents the actual precision of the value as
+        float and not the precision of the scaled si float.
+        '{:.20f}'.format(value) shows different digits than
+        '{:.20f} {}'.format(scaled_value, si_prefix)
+
+        @param value: float|decimal.Decimal, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
-        scale_factor, si_prefix = si_scale(value)
-        # scaled_val = value * scale_factor
-        # string = ('{0:.' + str(self.__decimals) + 'f}').format(float(scaled_val))
-        string = '{0:.100f}'.format(value)
-        integer_str = string.split('.')[0]
-        fractional_str = string.split('.')[1]
-        if integer_str != '0':
-            si_prefix = ''
-            prefix_index = 0
+        sign = '-' if value < 0 else ''
+        fractional, integer = math.modf(abs(value))
+        integer = int(integer)
+        si_prefix = ''
+        prefix_index = 0
+        if integer != 0:
+            integer_str = str(integer)
+            fractional_str = ''
             while len(integer_str) > 3:
-                fractional_str = integer_str[:-3] + fractional_str
+                fractional_str = integer_str[-3:] + fractional_str
                 integer_str = integer_str[:-3]
                 if prefix_index < 8:
                     si_prefix = 'kMGTPEZY'[prefix_index]
                 else:
                     si_prefix = 'e{0:d}'.format(3 * (prefix_index + 1))
                 prefix_index += 1
-            # Round last fractional digit
-            indicator = int(fractional_str[self.__decimals + 1])
-            fractional_str = fractional_str[:self.__decimals]
-            if indicator >= 5:
-                new_fractional_str = str(int(fractional_str) + 1)
-                if len(new_fractional_str) > len(fractional_str):
-                    fractional_str
-            string = '{0}.{1} {2}'.format(integer_str, fractional_str[:self.__decimals], si_prefix)
+            # Truncate and round to set number of decimals
+            # Add digits from fractional if it's not already enough for set self.__decimals
+            if self.__decimals < len(fractional_str):
+                round_indicator = int(fractional_str[self.__decimals])
+                fractional_str = fractional_str[:self.__decimals]
+                if round_indicator >= 5:
+                    fractional_int = int(fractional_str) + 1
+                    fractional_str = str(fractional_int)
+            elif self.__decimals == len(fractional_str):
+                if fractional >= 0.5:
+                    fractional_int = int(fractional_str) + 1
+                    fractional_str = str(fractional_int)
+            elif self.__decimals > len(fractional_str):
+                digits_to_add = self.__decimals - len(fractional_str) # number of digits to add
+                print(digits_to_add)
+                fractional_tmp_str = ('{0:.' + str(digits_to_add) + 'f}').format(fractional)
+                if fractional_tmp_str.startswith('1'):
+                    fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
+                else:
+                    fractional_str += fractional_tmp_str.split('.')[1]
+            # Check if the rounding has overflown the fractional part into the integer part
+            if len(fractional_str) > self.__decimals:
+                integer_str = str(int(integer_str) + 1)
+                fractional_str = '0' * self.__decimals
+        else:
+            # determine the order of magnitude by comparing the fractional to unit values
+            prefix_index = 1
+            magnitude = 1e-3
+            si_prefix = 'm'
+            while magnitude > fractional:
+                prefix_index += 1
+                magnitude = magnitude ** prefix_index
+                if prefix_index <= 8:
+                    si_prefix = 'mµnpfazy'[prefix_index - 1]  # use si-prefix if possible
+                else:
+                    si_prefix = 'e-{0:d}'.format(3 * prefix_index)  # use engineering notation
+            # Get the string representation of all needed digits from the fractional part of value.
+            digits_needed = 3 * prefix_index + self.__decimals
+            helper_str = ('{0:.' + str(digits_needed) + 'f}').format(fractional)
+            overflow = bool(int(helper_str.split('.')[0]))
+            helper_str = helper_str.split('.')[1]
+            if overflow:
+                integer_str = '1000'
+                fractional_str = '0' * self.__decimals
+            elif (prefix_index - 1) > 0 and helper_str[3 * (prefix_index - 1) - 1] != '0':
+                integer_str = '1000'
+                fractional_str = '0' * self.__decimals
+            else:
+                integer_str = str(int(helper_str[:3 * prefix_index]))
+                fractional_str = helper_str[3 * prefix_index:3 * prefix_index + self.__decimals]
+
+        # Create the actual string representation of value scaled in a scientific way
+        space = '' if si_prefix.startswith('e') else ' '
+        if self.__decimals > 0:
+            string = '{0}{1}.{2}{3}{4}'.format(sign, integer_str, fractional_str, space, si_prefix)
+        else:
+            string = '{0}{1}{2}{3}'.format(sign, integer_str, space, si_prefix)
         return string
 
     def stepBy(self, steps):
