@@ -161,15 +161,24 @@ class CavityStabilisationGui(GUIBase):
 
 
         # setting default parameters
-        self._mw.start_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0], self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
+        self._mw.start_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
+                                            self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
+                                        self._cavity_stabilisation_logic.axis_class[
+                                            self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
         self._mw.start_spinBox.setValue(self._cavity_stabilisation_logic._start_voltage)
         self._mw.start_spinBox.editingFinished.connect(self.start_value_changed, QtCore.Qt.QueuedConnection)
 
-        self._mw.stop_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0], self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
+        self._mw.stop_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
+                                           self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
+                                       self._cavity_stabilisation_logic.axis_class[
+                                           self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
         self._mw.stop_spinBox.setValue(self._cavity_stabilisation_logic._end_voltage)
         self._mw.stop_spinBox.editingFinished.connect(self.stop_value_changed, QtCore.Qt.QueuedConnection)
 
-        self._mw.position_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0], self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
+        self._mw.position_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
+                                           self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
         self._mw.position_spinBox.setValue(self._cavity_stabilisation_logic._start_voltage)
         self._mw.position_spinBox.editingFinished.connect(self.update_from_pos_spinBox, QtCore.Qt.QueuedConnection)
 
@@ -180,17 +189,32 @@ class CavityStabilisationGui(GUIBase):
         self.slider_res = 0.001
 
         # number of points needed for the slider
-        num_of_points_slider = (self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[1] - self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res
+        num_of_points_slider = (self._cavity_stabilisation_logic.axis_class[
+                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[1] -
+                                self._cavity_stabilisation_logic.axis_class[
+                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/\
+                               self.slider_res
 
         # setting range for the slider
         self._mw.position_slider.setRange(0, num_of_points_slider)
-        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage-self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res)
+        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage-
+                                           self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/
+                                          self.slider_res)
 
         # handle slider movement
         self._mw.position_slider.sliderMoved.connect(self.update_from_pos_slider, QtCore.Qt.QueuedConnection)
 
         # setting up check box for the maximal scan resolution
         self._mw.max_scan_resolution_checkBox.toggled.connect(self.toggle_scan_resolution)
+
+        # setting up the LCD Displays for the scan speed (V/s) and the maximal scan resolution
+        self._mw.scan_speed_DisplayWidget.display(np.abs(self._cavity_stabilisation_logic._end_voltage -
+                                                         self._cavity_stabilisation_logic._start_voltage) *
+                                                  self._cavity_stabilisation_logic._scan_frequency)
+        self._mw.maximal_scan_resolution_DisplayWidget.display(self._cavity_stabilisation_logic.calculate_resolution(
+                                                                   16, [self._cavity_stabilisation_logic._start_voltage,
+                                                                       self._cavity_stabilisation_logic._end_voltage]))
 
 
         # connecting user interactions
@@ -248,14 +272,16 @@ class CavityStabilisationGui(GUIBase):
     def update_pos_slider(self, output_value):
         """ Update position_slider if other GUI elements are changed.
         """
-        self._mw.position_slider.setValue((output_value-self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res)
+        self._mw.position_slider.setValue((output_value-self._cavity_stabilisation_logic.axis_class[
+            self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/self.slider_res)
 
     def update_from_pos_slider(self, slider_value):
         """  If position_slider is moved, adjust GUI elements.
         """
-        output_value = self._cavity_stabilisation_logic.axis_class[self._cavity_stabilisation_logic.control_axis].output_voltage_range[0] + slider_value * self.slider_res
+        output_value = self._cavity_stabilisation_logic.axis_class[
+                           self._cavity_stabilisation_logic.control_axis].output_voltage_range[0] + slider_value * \
+                       self.slider_res
         self.update_pos_spinBox(output_value)
-    #    self._cavity_stabilisation_logic.signal_position_slider_moved.emit(output_value)
         self.sigUpdateGotoPos.emit(output_value)
 
     def update_pos_spinBox(self, output_value):
@@ -297,6 +323,7 @@ class CavityStabilisationGui(GUIBase):
     def scan_frequency_changed(self):
         frequency = self._mw.scan_frequency_spinBox.value()
         self._cavity_stabilisation_logic._scan_frequency = frequency
+        self.update_scan_speed()
 
     def scan_resolution_changed(self):
         resolution = self._mw.scan_resolution_spinBox.value()
@@ -305,10 +332,14 @@ class CavityStabilisationGui(GUIBase):
     def start_value_changed(self):
         start = self._mw.start_spinBox.value()
         self._cavity_stabilisation_logic._start_voltage = start
+        self.update_scan_speed()
+        self.update_maximal_scan_resolution()
 
     def stop_value_changed(self):
         stop = self._mw.stop_spinBox.value()
         self._cavity_stabilisation_logic._end_voltage = stop
+        self.update_scan_speed()
+        self.update_maximal_scan_resolution()
 
     def toggle_scan_resolution(self):
         if self._mw.max_scan_resolution_checkBox.isChecked():
@@ -318,6 +349,20 @@ class CavityStabilisationGui(GUIBase):
             self._cavity_stabilisation_logic._use_maximal_resolution = False
             self._mw.scan_resolution_spinBox.setEnabled(True)
             self.scan_resolution_changed()
+
+    def update_scan_speed(self):
+        scan_speed = np.abs(self._cavity_stabilisation_logic._end_voltage -
+                            self._cavity_stabilisation_logic._start_voltage) * \
+                     self._cavity_stabilisation_logic._scan_frequency
+        self._mw.scan_speed_DisplayWidget.display(scan_speed)
+        return
+
+    def update_maximal_scan_resolution(self):
+        minV = min(self._cavity_stabilisation_logic._start_voltage, self._cavity_stabilisation_logic._end_voltage)
+        maxV = max(self._cavity_stabilisation_logic._start_voltage, self._cavity_stabilisation_logic._end_voltage)
+        maximal_scan_resolution = self._cavity_stabilisation_logic.calculate_resolution(16, [minV, maxV])
+        self._mw.maximal_scan_resolution_DisplayWidget.display(maximal_scan_resolution)
+        return
 
 
     def disable_scan_actions(self):

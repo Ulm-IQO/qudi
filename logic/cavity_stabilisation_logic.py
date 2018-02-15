@@ -514,6 +514,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         start_voltage = self.axis_class[self.control_axis].output_voltage
         v_range = self.axis_class[self.control_axis].output_voltage_range
         num_of_linear_steps = np.rint(abs((start_voltage - end_voltage)) / self._scan_resolution)
+        if(num_of_linear_steps == 1):
+            num_of_linear_steps = 2
         ramp = np.linspace(start_voltage, end_voltage, num_of_linear_steps)
         if not in_range(end_voltage, v_range[0], v_range[1]):
             self.log.error("not possible to go to voltage %s outside of voltage range (%s)", end_voltage, v_range)
