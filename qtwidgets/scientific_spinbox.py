@@ -24,7 +24,7 @@ import numpy as np
 import re
 from pyqtgraph import functions as fn
 from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
-from decimal import getcontext
+from decimal import getcontext, ROUND_FLOOR
 import math
 
 __all__ = ['ScienDSpinBox']
@@ -138,8 +138,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__decimals = 3
         self.__prefix = ''
         self.__suffix = ''
-        self.__singleStep = D('1.0')
-        self.__minimalStep = D('0.0')
+        self.__singleStep = D('0.1')
+        self.__minimalStep = D(0)
         self._dynamic_stepping = True
         self._dynamic_precision = True
         self.validator = FloatValidator()
@@ -327,7 +327,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @return: (enum QValidator::State) the returned validator state,
                  (str) the input string, (int) the cursor position
         """
-        print('validating: "{0}"'.format(text))
+        # print('validating: "{0}"'.format(text))
 
         begin = len(self.__prefix)
         end = len(text) - len(self.__suffix)
@@ -491,6 +491,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             string = '{0}{1}{2}{3}'.format(sign, integer_str, space, si_prefix)
         return string
 
+    def stepEnabled(self):
+        return self.StepUpEnabled | self.StepDownEnabled
+
     def stepBy(self, steps):
         """
         This method is incrementing the value of the SpinBox when the user triggers a step
@@ -503,51 +506,23 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
         if self.dynamic_stepping:
-            text = self.text()
-            groups = self.validator.float_re.search(text).groups()
-            integer_str = groups[self.validator.group_map['integer']]
-            fractional_str = groups[self.validator.group_map['fractional']]
-            si_prefix = groups[self.validator.group_map['si']]
+            n = D(int(steps))  # n must be integral number of steps.
+            s = [D(-1), D(1)][n >= 0]  # determine sign of step
+            value = self.__value
+            for i in range(int(abs(n))):
+                if value == 0:
+                    step = self.__minimalStep
+                else:
+                    vs = [D(-1), D(1)][value >= 0]
+                    fudge = D('1.01') ** (s * vs)  # fudge factor. At some places, the step size
+                                                   # depends on the step sign.
+                    exp = abs(value * fudge).log10().quantize(1, rounding=ROUND_FLOOR)
+                    step = self.__singleStep * D(10) ** exp
+                if self.__minimalStep > 0:
+                    step = max(step, self.__minimalStep)
+                value += s * step
 
-            if not integer_str:
-                integer_str = '0'
-            if not fractional_str:
-                fractional_str = '0'
-
-            integer_value = int(integer_str)
-            integer_str = integer_str.strip('+-')  # remove plus/minus sign
-            if len(integer_str) < 3:
-                integer_value += steps
-            else:
-                integer_value += steps * 10**(len(integer_str) - 2)
-
-            float_str = '{0:d}.{1}'.format(integer_value, fractional_str)
-            if si_prefix:
-                float_str += ' {0}'.format(si_prefix)
-
-            # constraint new value to allowed min/max range
-            if fn.siEval(float_str) > self.maximum():
-                float_str = self.textFromValue(self.maximum())
-            elif fn.siEval(float_str) < self.minimum():
-                float_str = self.textFromValue(self.minimum())
-
-            if self.prefix():
-                float_str = self.prefix() + float_str
-            if self.suffix():
-                float_str += self.suffix()
-
-            self.lineEdit().setText(float_str)
-        else:
-            text = self.text()
-            value = self.value()
-            new_value = value + steps * self.singleStep()
-            self.setValue(new_value)
-            while text == self.text():
-                self.precision += 1
-                self.setValue(value)
-                text = self.text()
-                self.setValue(new_value)
-                # raise UserWarning('The set step size is much smaller than the displayed magnitude.')
+            self.setValue(value)
         return
 
     def editingFinishedEvent(self):
