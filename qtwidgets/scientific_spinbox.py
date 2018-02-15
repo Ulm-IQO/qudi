@@ -141,8 +141,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__singleStep = D('1.0')
         self.__minimalStep = D('0.0')
         self.validator = FloatValidator()
-        self.dynamic_stepping = True
-        self.dynamic_precision = True
+        self._dynamic_stepping = True
+        self._dynamic_precision = True
         self.editingFinished.connect(self.editingFinishedEvent)
         self.lineEdit().textEdited.connect(self.update_value)
 
@@ -156,6 +156,24 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
         else:
             self.__value = value
+
+    @property
+    def dynamic_stepping(self):
+        return bool(self._dynamic_stepping)
+
+    @dynamic_stepping.setter
+    def dynamic_stepping(self, use_dynamic_stepping):
+        use_dynamic_stepping = bool(use_dynamic_stepping)
+        self._dynamic_stepping = use_dynamic_stepping
+
+    @property
+    def dynamic_precision(self):
+        return bool(self._dynamic_precision)
+
+    @dynamic_precision.setter
+    def dynamic_precision(self, use_dynamic_precision):
+        use_dynamic_precision = bool(use_dynamic_precision)
+        self._dynamic_precision = use_dynamic_precision
 
     def value(self):
         return float(self.__value)
@@ -205,13 +223,22 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
     def decimals(self):
         return self.__decimals
 
-    def setDecimals(self, decimals):
-        self.__decimals = int(decimals)
+    def setDecimals(self, decimals, dynamic_precision=True):
+        decimals = int(decimals)
+        # Restrict the number of fractional digits to a maximum of 20. Beyond that the number
+        # is not very meaningful anyways due to machine precision. (even before that)
+        if decimals < 0:
+            decimals = 0
+        elif decimals > 20:
+            decimals = 20
+        self.__decimals = decimals
+        # Set the flag for using dynamic precision (decimals invoked from user input)
+        self.dynamic_precision = dynamic_precision
         # Increase precision of decimal calculation if number of decimals exceed current settings
-        if self.__decimals >= getcontext().prec - 1:
-            getcontext().prec = self.__decimals + 2
-        elif self.__decimals < 28 < getcontext().prec:
-            getcontext().prec = 28  # The default precision
+        # if self.__decimals >= getcontext().prec - 1:
+        #     getcontext().prec = self.__decimals + 2
+        # elif self.__decimals < 28 < getcontext().prec:
+        #     getcontext().prec = 28  # The default precision
 
     def prefix(self):
         return self.__prefix
@@ -230,8 +257,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
     def singleStep(self):
         return float(self.__singleStep)
 
-    def setSingleStep(self, step):
+    def setSingleStep(self, step, dynamic_stepping=True):
         self.__singleStep = D(step)
+        self.dynamic_stepping = dynamic_stepping
 
     def minimalStep(self):
         return float(self.__minimalStep)
