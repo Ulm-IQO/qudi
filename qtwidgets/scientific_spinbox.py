@@ -132,7 +132,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.__value = D(0.0)
+        self.__value = D(0)
         self.__minimum = -np.inf
         self.__maximum = np.inf
         self.__decimals = 3
@@ -145,6 +145,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.validator = FloatValidator()
         self.editingFinished.connect(self.editingFinishedEvent)
         self.lineEdit().textEdited.connect(self.update_value)
+        self.update_display()
 
     @property
     def dynamic_stepping(self):
@@ -180,13 +181,26 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__value)
 
     def setValue(self, value):
-        value = D(value)
+        try:
+            value = D(value)
+        except TypeError:
+            if 'int' in type(value).__name__:
+                value = int(value)
+            elif 'float' in type(value).__name__:
+                value = float(value)
+            else:
+                raise
+            value = D(value)
+
+        if value.is_nan():
+            value = D(0)
+
         value, in_range = self.check_range(value)
 
         if self.__value != value:
             # Try to increase decimals when the value has changed but no change in display detected.
             # This will only be executed when the dynamic precision flag is set
-            if self.value() != float(value) and self.dynamic_precision:
+            if self.value() != float(value) and self.dynamic_precision and not value.is_infinite():
                 old_text = self.cleanText()
                 new_text = self.textFromValue(value).strip()
                 current_dec = self.decimals()
@@ -271,14 +285,34 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__singleStep)
 
     def setSingleStep(self, step, dynamic_stepping=True):
-        self.__singleStep = D(step)
+        try:
+            step = D(step)
+        except TypeError:
+            if 'int' in type(step).__name__:
+                step = int(step)
+            elif 'float' in type(step).__name__:
+                step = float(step)
+            else:
+                raise
+            step = D(step)
+        self.__singleStep = step
         self.dynamic_stepping = dynamic_stepping
 
     def minimalStep(self):
         return float(self.__minimalStep)
 
     def setMinimalStep(self, step):
-        self.__minimalStep = D(step)
+        try:
+            step = D(step)
+        except TypeError:
+            if 'int' in type(step).__name__:
+                step = int(step)
+            elif 'float' in type(step).__name__:
+                step = float(step)
+            else:
+                raise
+            step = D(step)
+        self.__minimalStep = step
 
     def cleanText(self):
         text = self.text().strip()
@@ -425,6 +459,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param value: float|decimal.Decimal, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
+        # Catch infinity and NaN values
+        if abs(value) == np.inf or abs(value) == np.nan:
+            return ' '
+
         sign = '-' if value < 0 else ''
         fractional, integer = math.modf(abs(value))
         integer = int(integer)
