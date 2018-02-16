@@ -65,28 +65,31 @@ class FloatValidator(QtGui.QValidator):
         if not string.strip() or position < 1:
             return self.Intermediate, string, position
 
-        groups = self.get_groups(string)
-        if groups:
-            if groups[self.group_map['match']] == string:
+        group_dict = self.get_group_dict(string)
+        if group_dict:
+            if group_dict['match'] == string:
                 return self.Acceptable, string, position
 
             if position > len(string):
                 position = len(string)
             if string[position-1] in 'eE.-+':
                 if string.count('.') > 1:
-                    return self.Invalid, groups[self.group_map['match']], position
+                    return self.Invalid, group_dict['match'], position
                 return self.Intermediate, string, position
 
-            return self.Invalid, groups[self.group_map['match']], position
+            return self.Invalid, group_dict['match'], position
         else:
             return self.Invalid, '', position
 
-    def get_groups(self, string):
+    def get_group_dict(self, string):
         match = self.float_re.search(string)
-        if match:
-            return match.groups()
-        else:
+        if not match:
             return False
+        groups = match.groups()
+        group_dict = dict()
+        for group_key in self.group_map:
+            group_dict[group_key] = groups[self.group_map[group_key]]
+        return group_dict
 
     def fixup(self, text):
         match = self.float_re.search(text)
@@ -430,29 +433,28 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                           This string must be conform with the validator.
         @return: Decimal, the numeric value converted from the input string.
         """
-        groups = self.validator.get_groups(text)
-        group_map = self.validator.group_map
-        if not groups:
+        group_dict = self.validator.get_group_dict(text)
+        if not group_dict:
             return False
 
-        if not groups[group_map['mantissa']]:
+        if not group_dict['mantissa']:
             return False
 
-        si_prefix = groups[group_map['si']]
+        si_prefix = group_dict['si']
         if si_prefix is None:
             si_prefix = ''
         si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
-        unscaled_value_str = groups[group_map['mantissa']]
-        if groups[group_map['exponent']] is not None:
-            unscaled_value_str += groups[group_map['exponent']]
+        unscaled_value_str = group_dict['mantissa']
+        if group_dict['exponent'] is not None:
+            unscaled_value_str += group_dict['exponent']
 
         value = D(unscaled_value_str) * si_scale
 
         # Try to extract the precision the user intends to use
         if self.dynamic_precision:
-            if groups[group_map['fractional']] is not None:
-                self.setDecimals(len(groups[group_map['fractional']]))
+            if group_dict['fractional'] is not None:
+                self.setDecimals(len(group_dict['fractional']))
 
         return value
 
