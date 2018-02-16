@@ -201,6 +201,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tabWidget.addTab(self._sg, 'Sequence Generator')
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
+        self._mw.actionSave.triggered.connect(self.save_clicked)
+
         self.setup_toolbar()
         self._activate_analysis_settings_ui()
         self._activate_analysis_ui()
@@ -220,6 +222,9 @@ class PulsedMeasurementGui(GUIBase):
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
+
+        self._mw.actionSave.triggered.disconnect()
+
         self._deactivate_analysis_settings_ui()
         self._deactivate_analysis_ui()
 
