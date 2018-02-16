@@ -51,7 +51,7 @@ class DailyLogHandler(logging.FileHandler):
     """
 
     def __init__(self, base_filename, savelogic):
-        self._savelogic  = savelogic
+        self._savelogic = savelogic
         self._base_filename = base_filename
         # get current directory
         self._current_directory = savelogic.get_daily_directory()
@@ -68,8 +68,8 @@ class DailyLogHandler(logging.FileHandler):
     @property
     def filename(self):
         return os.path.join(self._current_directory,
-                time.strftime(self._base_filename,
-                    self._current_time))
+                            time.strftime(self._base_filename,
+                                          self._current_time))
 
     def emit(self, record):
         """
@@ -115,7 +115,6 @@ class FunctionImplementationError(Exception):
 
 
 class SaveLogic(GenericLogic):
-
     """
     A general class which saves all kinds of data in a general sense.
     """
@@ -132,13 +131,13 @@ class SaveLogic(GenericLogic):
         'axes.prop_cycle': cycler(
             'color',
             ['#1f17f4',
-            '#ffa40e',
-            '#ff3487',
-            '#008b00',
-            '#17becf',
-            '#850085'
-            ]
-            ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
+             '#ffa40e',
+             '#ff3487',
+             '#008b00',
+             '#17becf',
+             '#850085'
+             ]
+        ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
         'axes.edgecolor': '0.3',
         'xtick.color': '0.3',
         'ytick.color': '0.3',
@@ -153,7 +152,7 @@ class SaveLogic(GenericLogic):
         'xtick.minor.visible': True,
         'ytick.minor.visible': True,
         'savefig.dpi': '180'
-        }
+    }
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -180,10 +179,10 @@ class SaveLogic(GenericLogic):
 
         # start logging into daily directory?
         if not isinstance(self.log_into_daily_directory, bool):
-                self.log.warning(
-                    'log entry in configuration is not a '
-                    'boolean. Falling back to default setting: False.')
-                self.log_into_daily_directory = False
+            self.log.warning(
+                'log entry in configuration is not a '
+                'boolean. Falling back to default setting: False.')
+            self.log_into_daily_directory = False
 
         self._daily_loghandler = None
 
@@ -193,7 +192,7 @@ class SaveLogic(GenericLogic):
         if self.log_into_daily_directory:
             # adds a log handler for logging into daily directory
             self._daily_loghandler = DailyLogHandler(
-                    '%Y%m%d-%Hh%Mm%Ss-qudi.log', self)
+                '%Y%m%d-%Hh%Mm%Ss-qudi.log', self)
             self._daily_loghandler.setFormatter(logging.Formatter(
                 '%(asctime)s %(name)s %(levelname)s: %(message)s',
                 datefmt='%Y-%m-%d %H:%M:%S'))
@@ -223,7 +222,8 @@ class SaveLogic(GenericLogic):
         self._daily_loghandler.setLevel(level)
 
     def save_data(self, data, filepath=None, parameters=None, filename=None, filelabel=None,
-                  timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None):
+                  timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None,
+                  plotformat="all"):
         """
         General save routine for data.
 
@@ -284,6 +284,11 @@ class SaveLogic(GenericLogic):
                                               behaviour or failure to save right away.
         @param string delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
                                  for tab, ',' for a comma ect.
+        @param pyplot  plotfig: optional,  a  matplotlib.pyplot object. If this is set the object
+                                will be saved in the same folder as the data
+        @param string plotformat: defines as which kind of type the plotfig object will be saved.
+                                    Possible values: "all": all possible types, "pdf",
+                                    "png". Only has an effect if plotfig was passed.
 
         1D data
         =======
@@ -364,12 +369,13 @@ class SaveLogic(GenericLogic):
 
         # Raise error if data contains a mixture of 1D and 2D arrays
         if found_2d and found_1d:
-            self.log.error('Passed data dictionary contains 1D AND 2D arrays. This is not allowed. '
-                           'Either fit all data arrays into a single 2D array or pass multiple 1D '
-                           'arrays only. Saving data failed!')
+            self.log.error(
+                'Passed data dictionary contains 1D AND 2D arrays. This is not allowed. '
+                'Either fit all data arrays into a single 2D array or pass multiple 1D '
+                'arrays only. Saving data failed!')
             return -1
 
-        # try to trace back the functioncall to the class which was calling it.
+        # try to trace back the function call to the class which was calling it.
         try:
             frm = inspect.stack()[1]
             # this will get the object, which called the save_data function.
@@ -471,17 +477,19 @@ class SaveLogic(GenericLogic):
         # write data to file
         # FIXME: Implement other file formats
         if filetype == 'text':
-            self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
+            self.save_array_as_text(data=data[identifier_str], filename=filename,
+                                    filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
                                     append=False)
         else:
             self.log.error('Only saving of data as textfile is implemented. Filetype "{0}" is not '
                            'supported yet. Saving as textfile.'.format(filetype))
-            self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
+            self.save_array_as_text(data=data[identifier_str], filename=filename,
+                                    filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
                                     append=False)
 
-        #--------------------------------------------------------------------------------------------
+        # --------------------------------------------------------------------------------------------
         # Save thumbnail figure of plot
         if plotfig is not None:
             # create Metadata
@@ -489,7 +497,9 @@ class SaveLogic(GenericLogic):
             metadata['Title'] = 'Image produced by qudi: ' + module_name
             metadata['Author'] = 'qudi - Software Suite'
             metadata['Subject'] = 'Find more information on: https://github.com/Ulm-IQO/qudi'
-            metadata['Keywords'] = 'Python 3, Qt, experiment control, automation, measurement, software, framework, modular'
+            metadata[
+                'Keywords'] = 'Python 3, Qt, experiment control, automation, measurement,' \
+                              ' software, framework, modular'
             metadata['Producer'] = 'qudi - Software Suite'
             if timestamp is not None:
                 metadata['CreationDate'] = timestamp
@@ -498,47 +508,57 @@ class SaveLogic(GenericLogic):
                 metadata['CreationDate'] = time
                 metadata['ModDate'] = time
 
-            # determine the PDF-Filename
-            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+            if plotformat is None:
+                self.log.error("No plot type for the to be saved image was passed to the "
+                               "save function. \nAll types possible will be saved. Please set "
+                               "the option. Possible options are: \n'pdf', 'png' or 'all'")
 
-            # Create the PdfPages object to which we will save the pages:
-            # The with statement makes sure that the PdfPages object is closed properly at
-            # the end of the block, even if an Exception occurs.
-            with PdfPages(fig_fname_vector) as pdf:
-                pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+            if plotformat in ["pdf", "all"]:
+                # determine the PDF-Filename
+                fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
 
-                # We can also set the file's metadata via the PdfPages object:
-                pdf_metadata = pdf.infodict()
+                # Create the PdfPages object to which we will save the pages:
+                # The with statement makes sure that the PdfPages object is closed properly at
+                # the end of the block, even if an Exception occurs.
+                with PdfPages(fig_fname_vector) as pdf:
+                    pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+
+                    # We can also set the file's metadata via the PdfPages object:
+                    pdf_metadata = pdf.infodict()
+                    for x in metadata:
+                        pdf_metadata[x] = metadata[x]
+
+            if plotformat in ["png", "all"]:
+                # determine the PNG-Filename and save the plain PNG
+                fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
+                plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+
+                # Use Pillow (an fork for PIL) to attach metadata to the PNG
+                png_image = Image.open(fig_fname_image)
+                png_metadata = PngImagePlugin.PngInfo()
+
+                # PIL can only handle Strings, so let's convert our times
+                metadata['CreationDate'] = metadata['CreationDate'].strftime('%Y%m%d-%H%M-%S')
+                metadata['ModDate'] = metadata['ModDate'].strftime('%Y%m%d-%H%M-%S')
+
                 for x in metadata:
-                    pdf_metadata[x] = metadata[x]
+                    # make sure every value of the metadata is a string
+                    if not isinstance(metadata[x], str):
+                        metadata[x] = str(metadata[x])
 
-            # determine the PNG-Filename and save the plain PNG
-            fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'
-            plotfig.savefig(fig_fname_image, bbox_inches='tight', pad_inches=0.05)
+                    # add the metadata to the picture
+                    png_metadata.add_text(x, metadata[x])
 
-            # Use Pillow (an fork for PIL) to attach metadata to the PNG
-            png_image = Image.open(fig_fname_image)
-            png_metadata = PngImagePlugin.PngInfo()
-
-            # PIL can only handle Strings, so let's convert our times
-            metadata['CreationDate'] = metadata['CreationDate'].strftime('%Y%m%d-%H%M-%S')
-            metadata['ModDate'] = metadata['ModDate'].strftime('%Y%m%d-%H%M-%S')
-
-            for x in metadata:
-                # make sure every value of the metadata is a string
-                if not isinstance(metadata[x], str):
-                    metadata[x] = str(metadata[x])
-
-                # add the metadata to the picture
-                png_metadata.add_text(x, metadata[x])
-
-            # save the picture again, this time including the metadata
-            png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
+                # save the picture again, this time including the metadata
+                png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
+            if plotformat not in ["all", "png", "pdf"]:
+                self.log.error("The chosen data format %s to save the plot is not supported. No "
+                               "image was saved", plotformat)
 
             # close matplotlib figure
             plt.close(plotfig)
-            self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
-            #----------------------------------------------------------------------------------
+            self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time() - start_time))
+            # ----------------------------------------------------------------------------------
 
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):
@@ -575,24 +595,25 @@ class SaveLogic(GenericLogic):
         # First check if the directory exists and if not then the default
         # directory is taken.
         if not os.path.exists(self.data_dir):
-                # Check if the default directory does exist. If yes, there is
-                # no need to create it, since it will overwrite the existing
-                # data there.
-                if not os.path.exists(self.data_dir):
-                    os.makedirs(self.data_dir)
-                    self.log.warning('The specified Data Directory in the '
-                            'config file does not exist. Using default for '
-                            '{0} system instead. The directory {1} was '
-                            'created'.format(self.os_system, self.data_dir))
+            # Check if the default directory does exist. If yes, there is
+            # no need to create it, since it will overwrite the existing
+            # data there.
+            if not os.path.exists(self.data_dir):
+                os.makedirs(self.data_dir)
+                self.log.warning('The specified Data Directory in the '
+                                 'config file does not exist. Using default for '
+                                 '{0} system instead. The directory {1} was '
+                                 'created'.format(self.os_system, self.data_dir))
 
         # That is now the current directory:
         current_dir = os.path.join(self.data_dir, time.strftime("%Y"), time.strftime("%m"))
 
-        folder_exists = False   # Flag to indicate that the folder does not exist.
+        folder_exists = False  # Flag to indicate that the folder does not exist.
         if os.path.exists(current_dir):
 
             # Get only the folders without the files there:
-            folderlist = [d for d in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, d))]
+            folderlist = [d for d in os.listdir(current_dir) if
+                          os.path.isdir(os.path.join(current_dir, d))]
             # Search if there is a folder which starts with the current date:
             for entry in folderlist:
                 if (time.strftime("%Y%m%d") in (entry[:2])):
@@ -603,7 +624,7 @@ class SaveLogic(GenericLogic):
         if not folder_exists:
             current_dir = os.path.join(current_dir, time.strftime("%Y%m%d"))
             self.log.info('Creating directory for today\'s data in \n'
-                    '{0}'.format(current_dir))
+                          '{0}'.format(current_dir))
 
             # The exist_ok=True is necessary here to prevent Error 17 "File Exists"
             # Details at http://stackoverflow.com/questions/12468022/python-fileexists-error-when-making-directory
