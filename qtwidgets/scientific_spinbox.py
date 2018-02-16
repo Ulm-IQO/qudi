@@ -139,6 +139,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__suffix = ''
         self.__singleStep = D('0.1')
         self.__minimalStep = D(0)
+        self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
         self.validator = FloatValidator()
@@ -170,6 +171,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         if not value:
             return
         value, in_range = self.check_range(value)
+
+        # save old value to be able to restore it later on
+        if self.__cached_value is None:
+            self.__cached_value = self.__value
+
         if float(value) != self.value():
             self.__value = value
             self.valueChanged.emit(self.value())
@@ -327,9 +333,18 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
+        self.__cached_value = None  # clear cached value
         self.clearFocus()
 
     def keyPressEvent(self, event):
+        # Restore cached value upon pressing escape and lose focus.
+        if event.key() == QtCore.Qt.Key_Escape:
+            if self.__cached_value is not None:
+                self.__value = self.__cached_value
+                self.valueChanged.emit(self.value())
+            self.clearFocus()  # This will also trigger editingFinished
+
+        # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
             return
@@ -556,10 +571,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
+        n = D(int(steps))  # n must be integral number of steps.
+        s = [D(-1), D(1)][n >= 0]  # determine sign of step
+        value = self.__value  # working copy of current value
         if self.dynamic_stepping:
-            n = D(int(steps))  # n must be integral number of steps.
-            s = [D(-1), D(1)][n >= 0]  # determine sign of step
-            value = self.__value
             for i in range(int(abs(n))):
                 if value == 0:
                     step = self.__minimalStep
@@ -572,7 +587,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                     if self.__minimalStep > 0:
                         step = max(step, self.__minimalStep)
                 value += s * step
-            self.setValue(value)
+        else:
+            value = value + self.__singleStep * n
+        self.setValue(value)
         return
 
     def editingFinishedEvent(self):
