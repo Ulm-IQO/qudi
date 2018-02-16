@@ -117,7 +117,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         'p': '1e-12',
         'n': '1e-9',
         'µ': '1e-6',
-        'u': '1e-6',
         'm': '1e-3',
         '': '1',
         'k': '1e3',
@@ -135,7 +134,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__value = D(0)
         self.__minimum = -np.inf
         self.__maximum = np.inf
-        self.__decimals = 3
+        self.__decimals = 2  # default in QtDesigner
         self.__prefix = ''
         self.__suffix = ''
         self.__singleStep = D('0.1')
@@ -193,7 +192,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             value = D(value)
 
         if value.is_nan():
-            value = D(0)
+            return
 
         value, in_range = self.check_range(value)
 
@@ -426,7 +425,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         si_prefix = groups[group_map['si']]
         if si_prefix is not None:
-            si_scale_str = self.unit_prefix_dict[si_prefix]
+            si_scale_str = self.unit_prefix_dict[si_prefix.replace('u', 'µ')]
         else:
             si_scale_str = '1'
 
