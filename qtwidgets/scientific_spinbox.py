@@ -109,24 +109,24 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     valueChanged = QtCore.Signal(object)
 
-    unit_prefix_dict = {
-        'y': '1e-24',
-        'z': '1e-21',
-        'a': '1e-18',
-        'f': '1e-15',
-        'p': '1e-12',
-        'n': '1e-9',
-        'µ': '1e-6',
-        'm': '1e-3',
-        '': '1',
-        'k': '1e3',
-        'M': '1e6',
-        'G': '1e9',
-        'T': '1e12',
-        'P': '1e15',
-        'E': '1e18',
-        'Z': '1e21',
-        'Y': '1e24'
+    _unit_prefix_dict = {
+        'y': D('1e-24'),
+        'z': D('1e-21'),
+        'a': D('1e-18'),
+        'f': D('1e-15'),
+        'p': D('1e-12'),
+        'n': D('1e-9'),
+        'µ': D('1e-6'),
+        'm': D('1e-3'),
+        '': D('1'),
+        'k': D('1e3'),
+        'M': D('1e6'),
+        'G': D('1e9'),
+        'T': D('1e12'),
+        'P': D('1e15'),
+        'E': D('1e18'),
+        'Z': D('1e21'),
+        'Y': D('1e24')
     }
 
     def __init__(self, *args, **kwargs):
@@ -439,16 +439,15 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             return False
 
         si_prefix = groups[group_map['si']]
-        if si_prefix is not None:
-            si_scale_str = self.unit_prefix_dict[si_prefix.replace('u', 'µ')]
-        else:
-            si_scale_str = '1'
+        if si_prefix is None:
+            si_prefix = ''
+        si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
         unscaled_value_str = groups[group_map['mantissa']]
         if groups[group_map['exponent']] is not None:
             unscaled_value_str += groups[group_map['exponent']]
 
-        value = D(unscaled_value_str) * D(si_scale_str)
+        value = D(unscaled_value_str) * si_scale
 
         # Try to extract the precision the user intends to use
         if self.dynamic_precision:
