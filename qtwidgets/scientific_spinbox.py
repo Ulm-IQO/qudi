@@ -22,9 +22,8 @@ Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 from qtpy import QtCore, QtGui, QtWidgets
 import numpy as np
 import re
-from pyqtgraph import functions as fn
-from decimal import Decimal as D  ## Use decimal to avoid accumulating floating-point errors
-from decimal import getcontext, ROUND_FLOOR
+from decimal import Decimal as D  # Use decimal to avoid accumulating floating-point errors
+from decimal import ROUND_FLOOR
 import math
 
 __all__ = ['ScienDSpinBox']
