@@ -918,7 +918,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         input_voltage_prefix = prefix[input_voltage_prefix_index]
 
-        while np.max(output_voltage_data) < 0.01:
+        while np.max(np.abs(output_voltage_data)) < 0.01:
             output_voltage_data = output_voltage_data * 1000
             output_voltage_prefix_index = output_voltage_prefix_index + 1
 
