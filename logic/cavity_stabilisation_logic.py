@@ -581,7 +581,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # generate voltage ramp
         self.ramp = self._generate_ramp(self._start_voltage, self._end_voltage)
         self._ramp_length = len(self.ramp)
-        if self.ramp[0] == -1:
+        if self.ramp[0] == -11:
             self.log.error("Not possible to initialise scanner as ramp was not generated")
             return 0
         self.down_ramp = self.ramp[::-1]
@@ -659,12 +659,12 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                         self.axis_class[self.control_axis].output_voltage_range[1]):
             self.log.error("The given start voltage %s is not within the possible output voltages %s", start_voltage,
                            voltage_range)
-            return [-1]
+            return [-11]
         elif not in_range(start_voltage, self.axis_class[self.control_axis].output_voltage_range[0],
                           self.axis_class[self.control_axis].output_voltage_range[1]):
             self.log.error("The given end voltage %s is not within the possible output voltages %s", end_voltage,
                            voltage_range)
-            return [-1]
+            return [-11]
         # It is much easier to calculate the smoothed ramp for just one direction (upwards),
         # and then to reverse it if a downwards ramp is required.
         v_min = min(start_voltage, end_voltage)
@@ -868,16 +868,17 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         time_data = np.linspace(0, self.elapsed_sweeps* (1. / self._scan_frequency), len(ramp_data))
         data['Voltage (V)'] = ramp_data.flatten()
         data['Analogue input (Voltage/bin)'] = scan_data.flatten()
+        data['Time (s)'] = time_data
 
         # write the parameters:
         parameters = OrderedDict()
-        parameters['Start (m)'] = self._start_voltage
-        parameters['Stop (m)'] = self._end_voltage
+        parameters['Start (V)'] = self._start_voltage
+        parameters['Stop (V)'] = self._end_voltage
         parameters['Steps per ramp(#)'] = self._ramp_length
         parameters['Ramps executed (#)'] = self.elapsed_sweeps
         parameters['Clock Frequency (Hz)'] = self._clock_frequency
         parameters['ScanSpeed (Hz)'] = self._scan_frequency
-        parameters['Volts per meter (V/s)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
+        parameters['Volts per second (V/s)'] = abs(self._start_voltage - self._end_voltage) / self._scan_frequency
         parameters["Scan Resolution (V/Step)"] = self._scan_resolution
         parameters['Start Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.start_time))
         parameters['Stop Time (s)'] = time.strftime('%d.%m.%Y %Hh:%Mmin:%Ss', time.localtime(self.stop_time))
@@ -912,7 +913,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         output_voltage_prefix_index = 0
         time_prefix_index = 0
 
-        while np.max(input_voltage_data) < 0.01:
+        while np.max(np.abs(input_voltage_data)) < 0.01:
             input_voltage_data = input_voltage_data * 1000
             input_voltage_prefix_index = input_voltage_prefix_index + 1
 

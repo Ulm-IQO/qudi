@@ -231,10 +231,12 @@ class CavityStabilisationGui(GUIBase):
         self._cavity_stabilisation_logic.sigScanFinished.connect(self.update_gui, QtCore.Qt.QueuedConnection)
         self.sigUpdateGotoPos.connect(self.update_goto_pos, QtCore.Qt.QueuedConnection)
 
-        # Connect other signals from the logic with an update of the gui
-        #self._cavity_stabilisation_logic.signal_start_scanning.connect(self.logic_started_scanning)
 
-        #setting GUI elements enabled
+        # connect the default view action
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+
+
+        # setting GUI elements enabled
         self._mw.start_spinBox.setEnabled(True)
         self._mw.stop_spinBox.setEnabled(True)
         self._mw.position_spinBox.setEnabled(True)
