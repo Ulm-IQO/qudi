@@ -111,6 +111,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     valueChanged = QtCore.Signal(object)
 
+    # The maximum number of decimals to allow. Be careful when changing this number since
+    # the decimal package has by default a limited accuracy.
+    __max_decimals = 20
+    # Dictionary mapping the si-prefix to a scaling factor as decimal.Decimal (exact value)
     _unit_prefix_dict = {
         'y': D('1e-24'),
         'z': D('1e-21'),
@@ -212,7 +216,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 new_text = self.textFromValue(value).strip()
                 current_dec = self.decimals()
                 while old_text == new_text:
-                    if self.__decimals > 20:
+                    if self.__decimals > self.__max_decimals:
                         self.__decimals = current_dec
                         break
                     self.__decimals += 1
@@ -259,20 +263,15 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def setDecimals(self, decimals, dynamic_precision=True):
         decimals = int(decimals)
-        # Restrict the number of fractional digits to a maximum of 20. Beyond that the number
-        # is not very meaningful anyways due to machine precision. (even before that)
+        # Restrict the number of fractional digits to a maximum of self.__max_decimals = 20.
+        # Beyond that the number is not very meaningful anyways due to machine precision.
         if decimals < 0:
             decimals = 0
-        elif decimals > 20:
-            decimals = 20
+        elif decimals > self.__max_decimals:
+            decimals = self.__max_decimals
         self.__decimals = decimals
         # Set the flag for using dynamic precision (decimals invoked from user input)
         self.dynamic_precision = dynamic_precision
-        # Increase precision of decimal calculation if number of decimals exceed current settings
-        # if self.__decimals >= getcontext().prec - 1:
-        #     getcontext().prec = self.__decimals + 2
-        # elif self.__decimals < 28 < getcontext().prec:
-        #     getcontext().prec = 28  # The default precision
 
     def prefix(self):
         return self.__prefix
