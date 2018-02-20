@@ -98,6 +98,72 @@ class FloatValidator(QtGui.QValidator):
             return ''
 
 
+class IntegerValidator(QtGui.QValidator):
+    """
+    This is a validator for int values represented as strings in scientific notation.
+    Using engeneering notation only positive exponents are allowed
+    (i.e. "1e9", "2E+8", "14e+3" etc.)
+    Also supports non-fractional SI unit prefix like 'M', 'k' etc.
+    """
+
+    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?))')
+    group_map = {'match': 0,
+                 'mantissa': 1,
+                 'exponent': 2,
+                 'si': 3
+                 }
+
+    def validate(self, string, position):
+        """
+        This is the actual validator. It checks whether the current user input is a valid string
+        every time the user types a character. There are 3 states that are possible.
+        1) Invalid: The current input string is invalid. The user input will not accept the last
+                    typed character.
+        2) Acceptable: The user input in conform with the regular expression and will be accepted.
+        3) Intermediate: The user input is not a valid string yet but on the right track. Use this
+                         return value to allow the user to type fill-characters needed in order to
+                         complete an expression (i.e. the decimal point of a float value).
+        @param string: The current input string (from a QLineEdit for example)
+        @param position: The current position of the text cursor
+        @return: enum QValidator::State: the returned validator state,
+                 str: the input string, int: the cursor position
+        """
+        # Return intermediate status when empty string is passed or cursor is at index 0
+        if not string.strip() or position < 1:
+            return self.Intermediate, string, position
+
+        group_dict = self.get_group_dict(string)
+        if group_dict:
+            if group_dict['match'] == string:
+                return self.Acceptable, string, position
+
+            if position > len(string):
+                position = len(string)
+            if string[position-1] in 'eE-+':
+                return self.Intermediate, string, position
+
+            return self.Invalid, group_dict['match'], position
+        else:
+            return self.Invalid, '', position
+
+    def get_group_dict(self, string):
+        match = self.int_re.search(string)
+        if not match:
+            return False
+        groups = match.groups()
+        group_dict = dict()
+        for group_key in self.group_map:
+            group_dict[group_key] = groups[self.group_map[group_key]]
+        return group_dict
+
+    def fixup(self, text):
+        match = self.int_re.search(text)
+        if match:
+            return match.groups()[0].strip()
+        else:
+            return ''
+
+
 class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
     """
     Wrapper Class from PyQt5 (or QtPy) to display a QDoubleSpinBox in Scientific way.
@@ -587,7 +653,363 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                         step = max(step, self.__minimalStep)
                 value += s * step
         else:
-            value = value + self.__singleStep * n
+            value = value + max(self.__minimalStep * n, self.__singleStep * n)
+        self.setValue(value)
+        return
+
+    def editingFinishedEvent(self):
+        self.update_display()
+
+
+class ScienSpinBox(QtWidgets.QAbstractSpinBox):
+    """
+    Wrapper Class from PyQt5 (or QtPy) to display a QSpinBox in Scientific way.
+    Fully supports prefix and suffix functionality of the QSpinBox.
+
+    This class can be directly used in Qt Designer by promoting the QSpinBox to ScienSpinBox.
+    State the path to this file (in python style, i.e. dots are separating the directories) as the
+    header file and use the name of the present class.
+    """
+
+    valueChanged = QtCore.Signal(object)
+    # Dictionary mapping the si-prefix to a scaling factor as integer (exact value)
+    _unit_prefix_dict = {
+        '': 1,
+        'k': 10 ** 3,
+        'M': 10 ** 6,
+        'G': 10 ** 9,
+        'T': 10 ** 12,
+        'P': 10 ** 15,
+        'E': 10 ** 18,
+        'Z': 10 ** 21,
+        'Y': 10 ** 24
+    }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.__value = 0
+        self.__minimum = 2 ** 31 - 1  # Use a 32bit integer size by default. Same as QSpinBox.
+        self.__maximum = -2 ** 31  # Use a 32bit integer size by default. Same as QSpinBox.
+        self.__prefix = ''
+        self.__suffix = ''
+        self.__singleStep = 1
+        self.__minimalStep = 1
+        self.__cached_value = None  # a temporary variable for restore functionality
+        self._dynamic_stepping = True
+        self.validator = IntegerValidator()
+        self.editingFinished.connect(self.editingFinishedEvent)
+        self.lineEdit().textEdited.connect(self.update_value)
+        self.update_display()
+
+    @property
+    def dynamic_stepping(self):
+        return bool(self._dynamic_stepping)
+
+    @dynamic_stepping.setter
+    def dynamic_stepping(self, use_dynamic_stepping):
+        use_dynamic_stepping = bool(use_dynamic_stepping)
+        self._dynamic_stepping = use_dynamic_stepping
+
+    def update_value(self):
+        text = self.cleanText()
+        value = self.valueFromText(text)
+        if not value:
+            return
+        value, in_range = self.check_range(value)
+
+        # save old value to be able to restore it later on
+        if self.__cached_value is None:
+            self.__cached_value = self.__value
+
+        if value != self.value():
+            self.__value = value
+            self.valueChanged.emit(self.value())
+
+    def value(self):
+        return int(self.__value)
+
+    def setValue(self, value):
+        if value is np.nan:
+            return
+
+        value = int(value)
+
+        value, in_range = self.check_range(value)
+
+        if self.__value != value:
+            self.__value = value
+            self.update_display()
+            self.valueChanged.emit(self.value())
+
+    def check_range(self, value):
+        if value < self.__minimum:
+            new_value = self.__minimum
+            in_range = False
+        elif value > self.__maximum:
+            new_value = self.__maximum
+            in_range = False
+        else:
+            in_range = True
+        if not in_range:
+            value = int(new_value)
+        return value, in_range
+
+    def minimum(self):
+        return int(self.__minimum)
+
+    def setMinimum(self, minimum):
+        self.__minimum = int(minimum)
+        if self.__minimum > self.value():
+            self.setValue(self.__minimum)
+
+    def maximum(self):
+        return int(self.__maximum)
+
+    def setMaximum(self, maximum):
+        self.__maximum = int(maximum)
+        if self.__maximum < self.value():
+            self.setValue(self.__maximum)
+
+    def setRange(self, minimum, maximum):
+        self.setMinimum(minimum)
+        self.setMaximum(maximum)
+
+    def prefix(self):
+        return self.__prefix
+
+    def setPrefix(self, prefix):
+        self.__prefix = str(prefix)
+        self.update_display()
+
+    def suffix(self):
+        return self.__suffix
+
+    def setSuffix(self, suffix):
+        self.__suffix = str(suffix)
+        self.update_display()
+
+    def singleStep(self):
+        return int(self.__singleStep)
+
+    def setSingleStep(self, step, dynamic_stepping=True):
+        if step < 1:
+            step = 1
+        self.__singleStep = int(step)
+        self.dynamic_stepping = dynamic_stepping
+
+    def minimalStep(self):
+        return int(self.__minimalStep)
+
+    def setMinimalStep(self, step):
+        if step < 1:
+            step = 1
+        self.__minimalStep = int(step)
+
+    def cleanText(self):
+        text = self.text().strip()
+        if self.__prefix and text.startswith(self.__prefix):
+            text = text[len(self.__prefix):]
+        if self.__suffix and text.endswith(self.__suffix):
+            text = text[:-len(self.__suffix)]
+        return text.strip()
+
+    def update_display(self):
+        """
+        """
+        text = self.textFromValue(self.value())
+        text = self.__prefix + text + self.__suffix
+        self.lineEdit().setText(text)
+        self.__cached_value = None  # clear cached value
+        self.clearFocus()
+
+    def keyPressEvent(self, event):
+        # Restore cached value upon pressing escape and lose focus.
+        if event.key() == QtCore.Qt.Key_Escape:
+            if self.__cached_value is not None:
+                self.__value = self.__cached_value
+                self.valueChanged.emit(self.value())
+            self.clearFocus()  # This will also trigger editingFinished
+
+        # The rest is to avoid editing suffix and prefix
+        if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
+            super().keyPressEvent(event)
+            return
+
+        if len(event.text()) > 0:
+            cursor_pos = self.lineEdit().cursorPosition()
+            begin = len(self.__prefix)
+            end = len(self.text()) - len(self.__suffix)
+            if cursor_pos < begin:
+                self.lineEdit().setCursorPosition(begin)
+                return
+            elif cursor_pos > end:
+                self.lineEdit().setCursorPosition(end)
+                return
+
+        if event.key() == QtCore.Qt.Key_Left:
+            if self.lineEdit().cursorPosition() == len(self.__prefix):
+                event.ignore()
+                return
+        if event.key() == QtCore.Qt.Key_Right:
+            if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
+                event.ignore()
+                return
+        if event.key() == QtCore.Qt.Key_Home:
+            self.lineEdit().setCursorPosition(len(self.__prefix))
+            return
+        if event.key() == QtCore.Qt.Key_End:
+            self.lineEdit().setCursorPosition(len(self.text()) - len(self.__suffix))
+            return
+
+        super().keyPressEvent(event)
+
+    def validate(self, text, position):
+        """
+        Access method to the validator. See IntegerValidator class for more information.
+
+        @param text: str, string to be validated.
+        @param position: int, current text cursor position
+        @return: (enum QValidator::State) the returned validator state,
+                 (str) the input string, (int) the cursor position
+        """
+        begin = len(self.__prefix)
+        end = len(text) - len(self.__suffix)
+        if position < begin:
+            position = begin
+        elif position > end:
+            position = end
+
+        if self.__prefix and text.startswith(self.__prefix):
+            text = text[len(self.__prefix):]
+        if self.__suffix and text.endswith(self.__suffix):
+            text = text[:-len(self.__suffix)]
+
+        state, string, position = self.validator.validate(text, position)
+
+        text = self.__prefix + string + self.__suffix
+
+        end = len(text) - len(self.__suffix)
+        if position > end:
+            position = end
+
+        return state, text, position
+
+    def fixup(self, text):
+        """
+        Takes an invalid string and tries to fix it in order to pass validation.
+        The returned string is not guaranteed to pass validation.
+
+        @param text: str, a string that has not passed validation in need to be fixed.
+        @return: str, the resulting string from the fix attempt
+        """
+        print('fixup called on: "{0}"'.format(text))
+        return self.validator.fixup(text)
+
+    def valueFromText(self, text):
+        """
+        This method is responsible for converting a string displayed in the SpinBox into an int
+        value.
+        The input string is already stripped of prefix and suffix.
+        Just the si-prefix may be present.
+
+        @param text: str, the display string to be converted into a numeric value.
+                          This string must be conform with the validator.
+        @return: int, the numeric value converted from the input string.
+        """
+        group_dict = self.validator.get_group_dict(text)
+        if not group_dict:
+            return False
+
+        if not group_dict['mantissa']:
+            return False
+
+        si_prefix = group_dict['si']
+        if si_prefix is None:
+            si_prefix = ''
+        si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
+
+        unscaled_value = int(group_dict['mantissa'])
+        if group_dict['exponent'] is not None:
+            scale_factor = 10 ** int(group_dict['exponent'].replace('e', '').replace('E', ''))
+            unscaled_value = unscaled_value * scale_factor
+
+        value = unscaled_value * si_scale
+        return value
+
+    def textFromValue(self, value):
+        """
+        This method is responsible for the mapping of the underlying value to a string to display
+        in the SpinBox.
+        Suffix and Prefix must not be handled here, just the si-Prefix.
+
+        @param value: int, the numeric value to be formatted into a string
+        @return: str, the formatted string representing the input value
+        """
+        # Convert the integer value to a string
+        sign = '-' if value < 0 else ''
+        value_str = str(abs(value))
+
+        # find out the index of the least significant non-zero digit
+        for digit_index in range(len(value_str)):
+            if value_str[digit_index:].count('0') == len(value_str) - digit_index:
+                break
+
+        # get the engineering notation exponent (multiple of 3)
+        missing_zeros = (len(value_str) - digit_index) % 3
+        exponent = len(value_str) - digit_index - missing_zeros
+        print(exponent)
+
+        # the scaled integer string that is still missing the order of magnitude (si-prefix or e)
+        integer_str = value_str[:digit_index + missing_zeros]
+
+        # Add si-prefix or, if the exponent is too big, add e-notation
+        if 2 < exponent <= 24:
+            si_prefix = ' ' + 'kMGTPEZY'[exponent // 3 - 1]
+        elif exponent > 24:
+            si_prefix = 'e{0:d}'.format(exponent)
+        else:
+            si_prefix = ''
+
+        # Assemble the string and return it
+        return sign + integer_str + si_prefix
+
+    def stepEnabled(self):
+        return self.StepUpEnabled | self.StepDownEnabled
+
+    def stepBy(self, steps):
+        """
+        This method is incrementing the value of the SpinBox when the user triggers a step
+        (by pressing PgUp/PgDown/Up/Down, MouseWheel movement or clicking on the arrows).
+        It should handle the case when the new to-set value is out of bounds.
+        Also the absolute value of a single step increment should be handled here.
+        It is absolutely necessary to avoid accumulating rounding errors and/or discrepancy between
+        self.value and the displayed text.
+
+        @param steps: int, Number of steps to increment (NOT the absolute step size)
+        """
+        steps = int(steps)
+        value = self.__value  # working copy of current value
+        sign = -1 if steps < 0 else 1  # determine sign of step
+        if self.dynamic_stepping:
+            for i in range(abs(steps)):
+                if value == 0:
+                    step = max(1, self.__minimalStep)
+                else:
+                    integer_str = str(abs(value))
+                    if len(integer_str) > 1:
+                        step = 10 ** (len(integer_str) - 2)
+                        # Handle the transition to lower order of magnitude
+                        if integer_str.startswith('10') and (sign * value) < 0:
+                            step = step // 10
+                    else:
+                        step = 1
+
+                    step = max(step, self.__minimalStep)
+
+                value += sign * step
+        else:
+            value = value + max(self.__minimalStep * steps, self.__singleStep * steps)
+
         self.setValue(value)
         return
 
