@@ -78,14 +78,14 @@ class OBISLaser(Base, SimpleLaserInterface):
     def allowed_control_modes(self):
         """ Control modes for this laser
         """
-        pass
+        self.log.warning('The OBIS laser does not have control modes')
 
     def get_control_mode(self):
         """ Get current laser control mode.
 
         @return ControlMode: current laser control mode
         """
-        pass
+        self.log.warning('The OBIS laser does not have control modes, cannot get current mode.')
 
     def set_control_mode(self, mode):
         """ Set laser control mode.
@@ -93,7 +93,9 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param ControlMode mode: desired control mode
         @return ControlMode: actual control mode
         """
-        pass
+        self.log.warning('The OBIS laser does not have control modes,'
+                         'cannot set to mode {}'.format(mode)
+                        )
 
     def get_power(self):
         """ Get laser power.
@@ -109,7 +111,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser power setpoint in watts
         """
-        pass
+        return self.get_power()
 
     def get_power_range(self):
         """ Get laser power range.
@@ -164,7 +166,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @param float current_percent: laser current setpoint
         """
-        # TODO: check this on the laser hardware
+        # TODO: This does not work. the command returns an err-100
         self._communicate('SOUR:POW:CURR {}'.format(current_percent))
         return self.get_current()
 
@@ -184,20 +186,22 @@ class OBISLaser(Base, SimpleLaserInterface):
         # TODO: give user warning that no shutter exists.
         return self.get_shutter_state()
 
-    def _get_psu_temperature(self):
-        """ Get power supply temperature
+    def _get_diode_temperature(self):
+        """ Get diode temperature
 
-        @return float: power supply temperature
+        @return float: diode temperature
         """
+        # TODO: this command does not work - returns ERR-100
         response = self._communicate('SOUR:TEMP:DIOD?')
         return response
 
     def _get_laser_temperature(self):
-        """ Get laser head temperature
+        """ Get int (TODO: what is this) temperature
 
         @return float: laser head temperature
         """
         # TODO: check the [0] of this split
+        # TODO: this command does not work - returns ERR-100
         return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
 
     def get_temperatures(self):
@@ -206,7 +210,7 @@ class OBISLaser(Base, SimpleLaserInterface):
             @return dict: dict of temperature names and value
         """
         return {
-            'Diode': self._get_PSU_temperature(),
+            'Diode': self._get_psu_temperature(),
             'Internal': self._get_laser_temperature()
         }
 
@@ -215,7 +219,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict with new temperature setpoints
         """
-        # TODO: give warning that can't be done
+        slef.log.warning('The OBIS laser cannot set temperatures.')
         return {}
 
     def get_temperature_setpoints(self):
@@ -223,7 +227,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict of temperature name and setpoint value
         """
-        # TODO: warning that it can't be done
+        self.log.warning('The OBIS laser has no temperature setpoints.')
         return {}
 
     def get_laser_state(self):
@@ -245,17 +249,19 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param LaserState status: desired laser state
         @return LaserState: actual laser state
         """
+        # TODO: this is big. cannot be called without having LaserState, 
+        #       which is only defined in the simple laser interface.
+        #       I think this shoudl be a private method.
         actstat = self.get_laser_state()
         if actstat != status:
 
-            if status == 'LaserState.ON':
+            if status == LaserState.ON:
                 self._communicate('SOUR:AM:STAT ON')
-                return self.get_laser_state()
-            elif status == 'LaserState.OFF':
+                #return self.get_laser_state()
+            elif status == LaserState.OFF:
                 self._communicate('SOUR:AM:STAT OFF')
-                return self.get_laser_state()
-            else:
-                return 'LaserState.Unknown'
+                #return self.get_laser_state()
+            return self.get_laser_state()
 
     def on(self):
         """ Turn laser on.
@@ -276,7 +282,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        self.set_laser_state('LaserState.OFF')
+        self.set_laser_state(LaserState.OFF)
         return self.get_laser_state()
 
     def _get_firmware_version(self):
@@ -284,7 +290,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return str: what the laser tells you about itself
         """
-        response = self._communicate('SYST:INF:FVER')
+        response = self._communicate('SYST:INF:FVER?')
         return response
 
     def get_extra_info(self):
@@ -294,7 +300,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         For LaserQuantum devices, this is the firmware version, dump and timers information
         """
-        extra = self._get_firmware_version()
+        extra = 'Firmware version: ' + self._get_firmware_version()
         return extra
 
     def _send(self, message):
@@ -312,10 +318,11 @@ class OBISLaser(Base, SimpleLaserInterface):
         response = []
 
         while response_len > 0:
-            if (response_len == 4) and (response == 'OK'):
+            this_response_line = self.obis.readline().decode().strip()
+            if (response_len == 4) and (this_response_line == 'OK'):
                 response.append('')
             else:
-                response.append(self.obis.readline().decode().strip())
+                response.append(this_response_line)
             response_len = self.obis.inWaiting()
 
         # Potentially multi-line responses - need to be joined into string
