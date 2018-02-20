@@ -285,22 +285,27 @@ class OBISLaser(Base, SimpleLaserInterface):
         self.set_laser_state(LaserState.OFF)
         return self.get_laser_state()
 
-    def _get_firmware_version(self):
-        """ Ask the laser for ID.
-
-        @return str: what the laser tells you about itself
-        """
-        response = self._communicate('SYST:INF:FVER?')
-        return response
-
     def get_extra_info(self):
         """ Extra information from laser.
 
         @return str: multiple lines of text with information about laser
-
-        For LaserQuantum devices, this is the firmware version, dump and timers information
         """
-        extra = 'Firmware version: ' + self._get_firmware_version()
+
+        extra = ('System Model Name: '      + self._communicate('SYST:INF:MOD?')    + '/n'
+                'System Manufacture Date: ' + self._communicate('SYST:INF:MDAT?')   + '/n'
+                'System Calibration Date: ' + self._communicate('SYST:INF:CDAT?')   + '/n'
+                'System Serial Number: '    + self._communicate('SYST:INF:SNUM?')   + '/n'
+                'System Part Number: '      + self._communicate('SYST:INF:PNUM?')   + '/n'
+                'Firmware version: '        + self._communicate('SYST:INF:FVER?')   + '/n'
+                'System Protocol Version: ' + self._communicate('SYST:INF:PVER?')   + '/n'
+                'System Wavelength: '       + self._communicate('SYST:INF:WAV?')    + '/n'
+                'System Power Rating: '     + self._communicate('SYST:INF:POW?')    + '/n'
+                'Device Type: '             + self._communicate('SYST:INF:TYP?')    + '/n'
+                'System Power Cycles: '     + self._communicate('SYST:CYCL?')       + '/n'
+                'System Power Hours: '      + self._communicate('SYST:HOUR?')       + '/n'
+                'Diode Hours: '             + self._communicate('SYST:DIOD:HOUR?')
+                )
+
         return extra
 
     def _send(self, message):
