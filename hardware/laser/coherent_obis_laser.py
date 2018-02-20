@@ -219,7 +219,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict with new temperature setpoints
         """
-        slef.log.warning('The OBIS laser cannot set temperatures.')
+        self.log.warning('The OBIS laser cannot set temperatures.')
         return {}
 
     def get_temperature_setpoints(self):
