@@ -309,13 +309,19 @@ class OBISLaser(Base, SimpleLaserInterface):
         return extra
 
     def _send(self, message):
-        """ TODO: docstring
+        """ Send a message to to laser
+
+        @param string message: message to be delivered to the laser
         """
         new_message = message + self.eol
         self.obis.write(new_message.encode())
 
     def _communicate(self, message):
-        """ TODO: docstring
+        """ Send a receive messages with the laser
+
+        @param string message: message to be delivered to the laser
+
+        @returns string response: message received from the laser
         """
         self._send(message)
         time.sleep(0.1)
@@ -336,6 +342,6 @@ class OBISLaser(Base, SimpleLaserInterface):
         return full_response
 
     def _set_laser_to_11(self):
-        """ TODO: docstring
+        """ Set the laser power to 11
         """
         self.set_power(0.165)
