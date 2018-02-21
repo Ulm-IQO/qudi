@@ -357,6 +357,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.update_display()
             self.valueChanged.emit(self.value())
 
+    def setProperty(self, prop, val):
+        """
+        For compatibility with QtDesigner. Somehow the value gets initialized through this method.
+        @param prop:
+        @param val:
+        """
+        if prop == 'value':
+            self.setValue(val)
+        else:
+            raise UserWarning('setProperty in scientific spinboxes only works for "value".')
+
     def check_range(self, value):
         """
         Helper method to check if the passed value is within the set minimum and maximum value
@@ -939,6 +950,17 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             self.__value = value
             self.update_display()
             self.valueChanged.emit(self.value())
+
+    def setProperty(self, prop, val):
+        """
+        For compatibility with QtDesigner. Somehow the value gets initialized through this method.
+        @param prop:
+        @param val:
+        """
+        if prop == 'value':
+            self.setValue(val)
+        else:
+            raise UserWarning('setProperty in scientific spinboxes only works for "value".')
 
     def check_range(self, value):
         """
