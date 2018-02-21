@@ -308,18 +308,18 @@ class OBISLaser(Base, SimpleLaserInterface):
         @return str: multiple lines of text with information about laser
         """
 
-        extra = ('System Model Name: '      + self._communicate('SYST:INF:MOD?')    + '/n'
-                'System Manufacture Date: ' + self._communicate('SYST:INF:MDAT?')   + '/n'
-                'System Calibration Date: ' + self._communicate('SYST:INF:CDAT?')   + '/n'
-                'System Serial Number: '    + self._communicate('SYST:INF:SNUM?')   + '/n'
-                'System Part Number: '      + self._communicate('SYST:INF:PNUM?')   + '/n'
-                'Firmware version: '        + self._communicate('SYST:INF:FVER?')   + '/n'
-                'System Protocol Version: ' + self._communicate('SYST:INF:PVER?')   + '/n'
-                'System Wavelength: '       + self._communicate('SYST:INF:WAV?')    + '/n'
-                'System Power Rating: '     + self._communicate('SYST:INF:POW?')    + '/n'
-                'Device Type: '             + self._communicate('SYST:INF:TYP?')    + '/n'
-                'System Power Cycles: '     + self._communicate('SYST:CYCL?')       + '/n'
-                'System Power Hours: '      + self._communicate('SYST:HOUR?')       + '/n'
+        extra = ('System Model Name: '      + self._communicate('SYST:INF:MOD?')    + '\n'
+                'System Manufacture Date: ' + self._communicate('SYST:INF:MDAT?')   + '\n'
+                'System Calibration Date: ' + self._communicate('SYST:INF:CDAT?')   + '\n'
+                'System Serial Number: '    + self._communicate('SYST:INF:SNUM?')   + '\n'
+                'System Part Number: '      + self._communicate('SYST:INF:PNUM?')   + '\n'
+                'Firmware version: '        + self._communicate('SYST:INF:FVER?')   + '\n'
+                'System Protocol Version: ' + self._communicate('SYST:INF:PVER?')   + '\n'
+                'System Wavelength: '       + self._communicate('SYST:INF:WAV?')    + '\n'
+                'System Power Rating: '     + self._communicate('SYST:INF:POW?')    + '\n'
+                'Device Type: '             + self._communicate('SYST:INF:TYP?')    + '\n'
+                'System Power Cycles: '     + self._communicate('SYST:CYCL?')       + '\n'
+                'System Power Hours: '      + self._communicate('SYST:HOUR?')       + '\n'
                 'Diode Hours: '             + self._communicate('SYST:DIOD:HOUR?')
                 )
 
