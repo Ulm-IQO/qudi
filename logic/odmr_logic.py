@@ -657,13 +657,13 @@ class ODMRLogic(GenericLogic):
         """
         return list(self.fc.fit_list)
 
-    def do_fit(self, fit_function=None, x_data=None, y_data=None):
+    def do_fit(self, fit_function=None, x_data=None, y_data=None, channel_index=0):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
         if (x_data is None) or (y_data is None):
             x_data = self.odmr_plot_x
-            y_data = self.odmr_plot_y
+            y_data = self.odmr_plot_y[channel_index]
 
         if fit_function is not None and isinstance(fit_function, str):
             if fit_function in self.get_fit_functions():
