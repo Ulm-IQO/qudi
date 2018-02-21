@@ -43,6 +43,7 @@ class OBISLaser(Base, SimpleLaserInterface):
     _modtype = 'hardware'
 
     eol = '\r'
+    _model_name = 'UNKNOWN'
 
     def on_activate(self):
         """ Activate module.
@@ -55,6 +56,7 @@ class OBISLaser(Base, SimpleLaserInterface):
             self.log.error('Laser does not seem to be connected.')
             return -1
         else:
+            self._model_name = self._communicate('SYST:INF:MOD?')
             return 0
 
     def on_deactivate(self):
@@ -84,14 +86,14 @@ class OBISLaser(Base, SimpleLaserInterface):
     def allowed_control_modes(self):
         """ Control modes for this laser
         """
-        self.log.warning('The OBIS laser does not have control modes')
+        self.log.warning(self._model_name + ' does not have control modes')
 
     def get_control_mode(self):
         """ Get current laser control mode.
 
         @return ControlMode: current laser control mode
         """
-        self.log.warning('The OBIS laser does not have control modes, cannot get current mode.')
+        self.log.warning(self._model_name + ' does not have control modes, cannot get current mode.')
 
     def set_control_mode(self, mode):
         """ Set laser control mode.
@@ -99,7 +101,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param ControlMode mode: desired control mode
         @return ControlMode: actual control mode
         """
-        self.log.warning('The OBIS laser does not have control modes,'
+        self.log.warning(self._model_name + ' does not have control modes,'
                          'cannot set to mode {}'.format(mode)
                         )
 
@@ -108,8 +110,8 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return float: laser power in watts
         """
-        # response = self._communicate('SOUR:POW:LEV:IMM:AMPL?')  # The present laser power level setting in watts (set level)
-        response = self._communicate('SOUR:POW:LEV?')  # The present laser output power in watts
+        # The present laser output power in watts
+        response = self._communicate('SOUR:POW:LEV?')
 
         return float(response)
 
@@ -118,7 +120,9 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser power setpoint in watts
         """
-        return self.get_power()
+        # The present laser power level setting in watts (set level)
+        response = self._communicate('SOUR:POW:LEV:IMM:AMPL?')
+        return float(response)
 
     def get_power_range(self):
         """ Get laser power range.
@@ -151,6 +155,12 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         low = self._communicate('SOUR:CURR:LIM:LOW?')
         high = self._communicate('SOUR:CURR:LIM:HIGH?')
+
+        # TODO: write explanation. This does not work for our laser, gives ('ERR-100', 'ERR-100')
+
+        # TODO: turn responses to float.
+
+        # TODO: If ERR-100, then set the float to NaN or -1 AND self.log.warning or error?
         return (low, high)
 
     def get_current(self):
@@ -165,6 +175,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser current setpoint
         """
+        self.log.warning('Getting the current setpoint is not supported by the ' + self._model_name)
         pass
 
     def set_current(self, current_percent):
@@ -190,7 +201,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param ShutterState state: desired laser shutter state
         @return ShutterState: actual laser shutter state
         """
-        self.log.warning('The OBIS laser does not have a shutter')
+        self.log.warning(self._model_name + ' does not have a shutter')
         return self.get_shutter_state()
 
     def _get_diode_temperature(self):
@@ -236,7 +247,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict with new temperature setpoints
         """
-        self.log.warning('The OBIS laser cannot set temperatures.')
+        self.log.warning(self._model_name + ' cannot set temperatures.')
         return {}
 
     def get_temperature_setpoints(self):
@@ -244,7 +255,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict of temperature name and setpoint value
         """
-        self.log.warning('The OBIS laser has no temperature setpoints.')
+        self.log.warning(self._model_name + ' has no temperature setpoints.')
         return {}
 
     def get_laser_state(self):
