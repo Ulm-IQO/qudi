@@ -102,7 +102,8 @@ class OBISLaser(Base, SimpleLaserInterface):
 
             @return float: laser power in watts
         """
-        response = self._communicate('SOUR:POW:LEV:IMM:AMPL?')
+        # response = self._communicate('SOUR:POW:LEV:IMM:AMPL?')  # The present laser power level setting in watts (set level)
+        response = self._communicate('SOUR:POW:LEV?')  # The present laser output power in watts
 
         return float(response)
 
@@ -133,25 +134,24 @@ class OBISLaser(Base, SimpleLaserInterface):
     def get_current_unit(self):
         """ Get unit for laser current.
 
-        @return str: unit for laser current
+        @return str: unit for laser curret
         """
-        # TODO: check this!
-        return '%'
+        return 'A'  # amps
 
     def get_current_range(self):
         """ Get range for laser current.
 
         @return tuple(flaot, float): range for laser current
         """
-        # TODO: get this from hardware itself, or from the config perhaps?
-        return (0, 100)
+        low = self._communicate('SOUR:CURR:LIM:LOW?')
+        high = self._communicate('SOUR:CURR:LIM:HIGH?')
+        return (low, high)
 
     def get_current(self):
         """ Cet current laser current
 
-        @return float: current laser current
+        @return float: current laser current in amps
         """
-
         return float(self._communicate('SOUR:POW:CURR?'))
 
     def get_current_setpoint(self):
@@ -167,6 +167,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param float current_percent: laser current setpoint
         """
         # TODO: This does not work. the command returns an err-100
+        # ERR-100: Unrecognized or unsupported command
         self._communicate('SOUR:POW:CURR {}'.format(current_percent))
         return self.get_current()
 
@@ -183,26 +184,35 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param ShutterState state: desired laser shutter state
         @return ShutterState: actual laser shutter state
         """
-        # TODO: give user warning that no shutter exists.
+        self.log.warning('The OBIS laser does not have a shutter')
         return self.get_shutter_state()
 
     def _get_diode_temperature(self):
-        """ Get diode temperature
+        """ Get laser diode temperature
 
-        @return float: diode temperature
+        @return float: laser diode temperature
         """
         # TODO: this command does not work - returns ERR-100
-        response = self._communicate('SOUR:TEMP:DIOD?')
+        # ERR-100: Unrecognized or unsupported command
+        response = self._communicate('SOUR:TEMP:DIOD?')  # looks correct in user manual
         return response
 
-    def _get_laser_temperature(self):
-        """ Get int (TODO: what is this) temperature
+    def _get_internal_temperature(self):
+        """ Get internal laser temperature
 
-        @return float: laser head temperature
+        @return float: internal laser temperature
         """
         # TODO: check the [0] of this split
         # TODO: this command does not work - returns ERR-100
+        # ERR-100: Unrecognized or unsupported command
         return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
+
+    def _get_baseplate_temperature(self):
+        """ Get laser base plate temperature
+
+        @return float: laser base plate temperature
+        """
+        return float(self._communicate('SOUR:TEMP:BAS?').split('C')[0])
 
     def get_temperatures(self):
         """ Get all available temperatures.
@@ -210,8 +220,9 @@ class OBISLaser(Base, SimpleLaserInterface):
             @return dict: dict of temperature names and value
         """
         return {
-            'Diode': self._get_psu_temperature(),
-            'Internal': self._get_laser_temperature()
+            'Diode': self._get_diode_temperature(),
+            'Internal': self._get_internal_temperature(),
+            'Base Plate': self._get_baseplate_temperature()
         }
 
     def set_temperatures(self, temps):
@@ -345,3 +356,17 @@ class OBISLaser(Base, SimpleLaserInterface):
         """ Set the laser power to 11
         """
         self.set_power(0.165)
+
+    def _get_interlock_status(self):
+        """ Get the status of the system interlock
+
+        @returns bool interlock: status of the interlock
+        """
+        response = self._communicate('SYST:LOCK?')
+
+        if response.lower() == 'ok':
+            return True
+        elif response.lower() == 'off':
+            return False
+        else:
+            return False
