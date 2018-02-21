@@ -101,7 +101,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         @param ControlMode mode: desired control mode
         @return ControlMode: actual control mode
         """
-        self.log.warning(self._model_name + ' does not have control modes,'
+        self.log.warning(self._model_name + ' does not have control modes, '
                          'cannot set to mode {}'.format(mode)
                         )
 
@@ -171,15 +171,13 @@ class OBISLaser(Base, SimpleLaserInterface):
         @return float: laser current setpoint
         """
         self.log.warning('Getting the current setpoint is not supported by the ' + self._model_name)
-        pass
+        return -1
 
     def set_current(self, current_percent):
         """ Set laser current setpoint.
 
         @param float current_percent: laser current setpoint
         """
-        # TODO: This does not work. the command returns an err-100
-        # ERR-100: Unrecognized or unsupported command
         self._communicate('SOUR:POW:CURR {}'.format(current_percent))
         return self.get_current()
 
@@ -204,9 +202,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: laser diode temperature
         """
-        # TODO: this command does not work - returns ERR-100
-        # ERR-100: Unrecognized or unsupported command
-        response = self._communicate('SOUR:TEMP:DIOD?')  # looks correct in user manual
+        response = float(self._communicate('SOUR:TEMP:DIOD?').split('C')[0])
         return response
 
     def _get_internal_temperature(self):
@@ -214,9 +210,6 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return float: internal laser temperature
         """
-        # TODO: check the [0] of this split
-        # TODO: this command does not work - returns ERR-100
-        # ERR-100: Unrecognized or unsupported command
         return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
 
     def _get_baseplate_temperature(self):
@@ -364,7 +357,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         if full_response == 'ERR-100':
             self.log.warning(self._model_name + ' does not support the command ' + message)
-            return -1
+            return '-1'
 
         return full_response
 
