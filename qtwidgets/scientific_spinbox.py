@@ -81,6 +81,14 @@ class FloatValidator(QtGui.QValidator):
             return self.Invalid, '', position
 
     def get_group_dict(self, string):
+        """
+        This method will match the input string with the regular expression of this validator.
+        The match groups will be put into a dictionary with string descriptors as keys describing
+        the role of the specific group (i.e. mantissa, exponent, si-prefix etc.)
+
+        @param string: str, input string to be matched
+        @return: dictionary containing groups as items and descriptors as keys (see: self.group_map)
+        """
         match = self.float_re.search(string)
         if not match:
             return False
@@ -147,6 +155,14 @@ class IntegerValidator(QtGui.QValidator):
             return self.Invalid, '', position
 
     def get_group_dict(self, string):
+        """
+        This method will match the input string with the regular expression of this validator.
+        The match groups will be put into a dictionary with string descriptors as keys describing
+        the role of the specific group (i.e. mantissa, exponent, si-prefix etc.)
+
+        @param string: str, input string to be matched
+        @return: dictionary containing groups as items and descriptors as keys (see: self.group_map)
+        """
         match = self.int_re.search(string)
         if not match:
             return False
@@ -209,8 +225,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__decimals = 2  # default in QtDesigner
         self.__prefix = ''
         self.__suffix = ''
-        self.__singleStep = D('0.1')
-        self.__minimalStep = D(0)
+        self.__singleStep = D('0.1')  # must be precise Decimal always, no conversion from float
+        self.__minimalStep = D(0)  # must be precise Decimal always, no conversion from float
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
@@ -221,23 +237,60 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     @property
     def dynamic_stepping(self):
+        """
+        This property is a flag indicating if the dynamic (logarithmic) stepping should be used or
+        not (fixed steps).
+
+        @return: bool, use dynamic stepping (True) or constant steps (False)
+        """
         return bool(self._dynamic_stepping)
 
     @dynamic_stepping.setter
     def dynamic_stepping(self, use_dynamic_stepping):
+        """
+        This property is a flag indicating if the dynamic (logarithmic) stepping should be used or
+        not (fixed steps).
+
+        @param use_dynamic_stepping: bool, use dynamic stepping (True) or constant steps (False)
+        """
         use_dynamic_stepping = bool(use_dynamic_stepping)
         self._dynamic_stepping = use_dynamic_stepping
 
     @property
     def dynamic_precision(self):
+        """
+        This property is a flag indicating if the dynamic (invoked from user input) decimal
+        precision should be used or not (fixed number of digits).
+
+        @return: bool, use dynamic precision (True) or fixed precision (False)
+        """
         return bool(self._dynamic_precision)
 
     @dynamic_precision.setter
     def dynamic_precision(self, use_dynamic_precision):
+        """
+        This property is a flag indicating if the dynamic (invoked from user input) decimal
+        precision should be used or not (fixed number of digits).
+
+        @param use_dynamic_precision: bool, use dynamic precision (True) or fixed precision (False)
+        """
         use_dynamic_precision = bool(use_dynamic_precision)
         self._dynamic_precision = use_dynamic_precision
 
     def update_value(self):
+        """
+        This method will grab the currently shown text from the QLineEdit and interpret it.
+        Range checking is performed on the value afterwards.
+        If a valid value can be derived, it will set this value as the current value
+        (if it has changed) and emit the valueChanged signal.
+        Note that the comparison between old and new value is done by comparing the float
+        representations of both values and not by comparing them as Decimals.
+        The valueChanged signal will only emit if the actual float representation has changed since
+        Decimals are only internally used and the rest of the program won't notice a slight change
+        in the Decimal that can't be resolved in a float.
+        In addition it will cache the old value provided the cache is empty to be able to restore
+        it later on.
+        """
         text = self.cleanText()
         value = self.valueFromText(text)
         if not value:
@@ -255,9 +308,22 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.__value = value
 
     def value(self):
+        """
+        Getter method to obtain the current value as float.
+
+        @return: float, the current value of the SpinBox
+        """
         return float(self.__value)
 
     def setValue(self, value):
+        """
+        Setter method to programmatically set the current value. For best robustness pass the value
+        as string or Decimal in order to be lossless cast into Decimal.
+        Will perform range checking and ignore NaN values.
+        Will emit valueChanged if the new value is different from the old one.
+        When using dynamic decimals precision, this method will also try to invoke the optimal
+        display precision by checking for a change in the displayed text.
+        """
         try:
             value = D(value)
         except TypeError:
@@ -292,6 +358,16 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
 
     def check_range(self, value):
+        """
+        Helper method to check if the passed value is within the set minimum and maximum value
+        bounds.
+        If outside of bounds the returned value will be clipped to the nearest boundary.
+
+        @param value: float|Decimal, number to be checked
+        @return: (Decimal, bool), the corrected value and a flag indicating if the value has been
+                                  changed (False) or not (True)
+        """
+
         if value < self.__minimum:
             new_value = self.__minimum
             in_range = False
@@ -308,6 +384,12 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__minimum)
 
     def setMinimum(self, minimum):
+        """
+        Setter method to set the minimum value allowed in the SpinBox.
+        Input will be converted to float before being stored.
+
+        @param minimum: float, the minimum value to be set
+        """
         self.__minimum = float(minimum)
         if self.__minimum > self.value():
             self.setValue(self.__minimum)
@@ -316,11 +398,24 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__maximum)
 
     def setMaximum(self, maximum):
+        """
+        Setter method to set the maximum value allowed in the SpinBox.
+        Input will be converted to float before being stored.
+
+        @param maximum: float, the maximum value to be set
+        """
         self.__maximum = float(maximum)
         if self.__maximum < self.value():
             self.setValue(self.__maximum)
 
     def setRange(self, minimum, maximum):
+        """
+        Convenience method for compliance with Qt SpinBoxes.
+        Essentially a wrapper to call both self.setMinimum and self.setMaximum.
+
+        @param minimum: float, the minimum value to be set
+        @param maximum: float, the maximum value to be set
+        """
         self.setMinimum(minimum)
         self.setMaximum(maximum)
 
@@ -328,6 +423,18 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return self.__decimals
 
     def setDecimals(self, decimals, dynamic_precision=True):
+        """
+        Method to set the number of displayed digits after the decimal point.
+        Also specifies if the dynamic precision functionality should be used or not.
+        If dynamic_precision=True the number of decimals will be invoked from the number of
+        decimals entered by the user in the QLineEdit of this spinbox. The set decimal value will
+        only be used before the first explicit user text input or call to self.setValue.
+        If dynamic_precision=False the specified number of decimals will be fixed and will not be
+        changed except by calling this method.
+
+        @param decimals: int, the number of decimals to be displayed
+        @param dynamic_precision: bool, flag indicating the use of dynamic_precision
+        """
         decimals = int(decimals)
         # Restrict the number of fractional digits to a maximum of self.__max_decimals = 20.
         # Beyond that the number is not very meaningful anyways due to machine precision.
@@ -343,6 +450,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return self.__prefix
 
     def setPrefix(self, prefix):
+        """
+        Set a string to be shown as non-editable prefix in the spinbox.
+
+        @param prefix: str, the prefix string to be set
+        """
         self.__prefix = str(prefix)
         self.update_display()
 
@@ -350,6 +462,12 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return self.__suffix
 
     def setSuffix(self, suffix):
+        """
+        Set a string to be shown as non-editable suffix in the spinbox.
+        This suffix will come right after the si-prefix.
+
+        @param suffix: str, the suffix string to be set
+        """
         self.__suffix = str(suffix)
         self.update_display()
 
@@ -357,6 +475,24 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__singleStep)
 
     def setSingleStep(self, step, dynamic_stepping=True):
+        """
+        Method to set the stepping behaviour of the spinbox (e.g. when moving the mouse wheel).
+
+        When dynamic_stepping=True the spinbox will perform logarithmic steps according to the
+        values' current order of magnitude. The step parameter is then referring to the step size
+        relative to the values order of magnitude. Meaning step=0.1 would step increment the second
+        most significant digit by one etc.
+
+        When dynamic_stepping=False the step parameter specifies an absolute step size. Meaning each
+        time a step is performed this value is added/substracted from the current value.
+
+        For maximum roboustness and consistency it is strongly recommended to pass step as Decimal
+        or string in order to be converted lossless to Decimal.
+
+        @param step: Decimal|str, the (relative) step size to set
+        @param dynamic_stepping: bool, flag indicating the use of dynamic stepping (True) or
+                                       constant stepping (False)
+        """
         try:
             step = D(step)
         except TypeError:
@@ -374,6 +510,19 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return float(self.__minimalStep)
 
     def setMinimalStep(self, step):
+        """
+        Method used to set a minimal step size.
+        When the absolute step size has been calculated in either dynamic or constant step mode
+        this value is checked against the minimal step size. If it is smaller then the minimal step
+        size is chosen over the calculated step size. This ensures that no step taken can be
+        smaller than minimalStep.
+        Set this value to 0 for no minimal step size.
+
+        For maximum roboustness and consistency it is strongly recommended to pass step as Decimal
+        or string in order to be converted lossless to Decimal.
+
+        @param step: Decimal|str, the minimal step size to be set
+        """
         try:
             step = D(step)
         except TypeError:
@@ -387,6 +536,13 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__minimalStep = step
 
     def cleanText(self):
+        """
+        Compliance method from Qt SpinBoxes.
+        Returns the currently shown text from the QLineEdit without prefix and suffix and stripped
+        from leading or trailing whitespaces.
+
+        @return: str, currently shown text stripped from suffix and prefix
+        """
         text = self.text().strip()
         if self.__prefix and text.startswith(self.__prefix):
             text = text[len(self.__prefix):]
@@ -396,6 +552,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def update_display(self):
         """
+        This helper method updates the shown text based on the current value.
+        Because this method is only called upon finishing an editing procedure, the eventually
+        cached value gets deleted.
+        Also causes the spinbox to lose focus.
         """
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
@@ -404,6 +564,12 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.clearFocus()
 
     def keyPressEvent(self, event):
+        """
+        This method catches all keyboard press events triggered by the user. Can be used to alter
+        the behaviour of certain key events from the default implementation of QAbstractSpinBox.
+
+        @param event: QKeyEvent, a Qt QKeyEvent instance holding the event information
+        """
         # Restore cached value upon pressing escape and lose focus.
         if event.key() == QtCore.Qt.Key_Escape:
             if self.__cached_value is not None:
@@ -488,8 +654,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def valueFromText(self, text):
         """
-        This method is responsible for converting a string displayed in the SpinBox into a float
-        value.
+        This method is responsible for converting a string displayed in the SpinBox into a Decimal.
+
         The input string is already stripped of prefix and suffix.
         Just the si-prefix may be present.
 
@@ -623,6 +789,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return string
 
     def stepEnabled(self):
+        """
+        Enables stepping (mouse wheel, arrow up/down, clicking, PgUp/Down) by default.
+        """
         return self.StepUpEnabled | self.StepDownEnabled
 
     def stepBy(self, steps):
@@ -703,14 +872,34 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
     @property
     def dynamic_stepping(self):
+        """
+        This property is a flag indicating if the dynamic (logarithmic) stepping should be used or
+        not (fixed steps).
+
+        @return: bool, use dynamic stepping (True) or constant steps (False)
+        """
         return bool(self._dynamic_stepping)
 
     @dynamic_stepping.setter
     def dynamic_stepping(self, use_dynamic_stepping):
+        """
+        This property is a flag indicating if the dynamic (logarithmic) stepping should be used or
+        not (fixed steps).
+
+        @param use_dynamic_stepping: bool, use dynamic stepping (True) or constant steps (False)
+        """
         use_dynamic_stepping = bool(use_dynamic_stepping)
         self._dynamic_stepping = use_dynamic_stepping
 
     def update_value(self):
+        """
+        This method will grab the currently shown text from the QLineEdit and interpret it.
+        Range checking is performed on the value afterwards.
+        If a valid value can be derived, it will set this value as the current value
+        (if it has changed) and emit the valueChanged signal.
+        In addition it will cache the old value provided the cache is empty to be able to restore
+        it later on.
+        """
         text = self.cleanText()
         value = self.valueFromText(text)
         if not value:
@@ -726,9 +915,19 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
 
     def value(self):
+        """
+        Getter method to obtain the current value as int.
+
+        @return: int, the current value of the SpinBox
+        """
         return int(self.__value)
 
     def setValue(self, value):
+        """
+        Setter method to programmatically set the current value.
+        Will perform range checking and ignore NaN values.
+        Will emit valueChanged if the new value is different from the old one.
+        """
         if value is np.nan:
             return
 
@@ -742,6 +941,15 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
 
     def check_range(self, value):
+        """
+        Helper method to check if the passed value is within the set minimum and maximum value
+        bounds.
+        If outside of bounds the returned value will be clipped to the nearest boundary.
+
+        @param value: int, number to be checked
+        @return: (int, bool), the corrected value and a flag indicating if the value has been
+                              changed (False) or not (True)
+        """
         if value < self.__minimum:
             new_value = self.__minimum
             in_range = False
@@ -758,6 +966,12 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return int(self.__minimum)
 
     def setMinimum(self, minimum):
+        """
+        Setter method to set the minimum value allowed in the SpinBox.
+        Input will be converted to int before being stored.
+
+        @param minimum: int, the minimum value to be set
+        """
         self.__minimum = int(minimum)
         if self.__minimum > self.value():
             self.setValue(self.__minimum)
@@ -766,11 +980,24 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return int(self.__maximum)
 
     def setMaximum(self, maximum):
+        """
+        Setter method to set the maximum value allowed in the SpinBox.
+        Input will be converted to int before being stored.
+
+        @param maximum: int, the maximum value to be set
+        """
         self.__maximum = int(maximum)
         if self.__maximum < self.value():
             self.setValue(self.__maximum)
 
     def setRange(self, minimum, maximum):
+        """
+        Convenience method for compliance with Qt SpinBoxes.
+        Essentially a wrapper to call both self.setMinimum and self.setMaximum.
+
+        @param minimum: int, the minimum value to be set
+        @param maximum: int, the maximum value to be set
+        """
         self.setMinimum(minimum)
         self.setMaximum(maximum)
 
@@ -778,6 +1005,11 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return self.__prefix
 
     def setPrefix(self, prefix):
+        """
+        Set a string to be shown as non-editable prefix in the spinbox.
+
+        @param prefix: str, the prefix string to be set
+        """
         self.__prefix = str(prefix)
         self.update_display()
 
@@ -785,6 +1017,12 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return self.__suffix
 
     def setSuffix(self, suffix):
+        """
+        Set a string to be shown as non-editable suffix in the spinbox.
+        This suffix will come right after the si-prefix.
+
+        @param suffix: str, the suffix string to be set
+        """
         self.__suffix = str(suffix)
         self.update_display()
 
@@ -792,6 +1030,20 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return int(self.__singleStep)
 
     def setSingleStep(self, step, dynamic_stepping=True):
+        """
+        Method to set the stepping behaviour of the spinbox (e.g. when moving the mouse wheel).
+
+        When dynamic_stepping=True the spinbox will perform logarithmic steps according to the
+        values' current order of magnitude. The step parameter is then ignored.
+        Will always increment the second most significant digit by one.
+
+        When dynamic_stepping=False the step parameter specifies an absolute step size. Meaning each
+        time a step is performed this value is added/substracted from the current value.
+
+        @param step: int, the absolute step size to set
+        @param dynamic_stepping: bool, flag indicating the use of dynamic stepping (True) or
+                                       constant stepping (False)
+        """
         if step < 1:
             step = 1
         self.__singleStep = int(step)
@@ -801,11 +1053,28 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return int(self.__minimalStep)
 
     def setMinimalStep(self, step):
+        """
+        Method used to set a minimal step size.
+        When the absolute step size has been calculated in either dynamic or constant step mode
+        this value is checked against the minimal step size. If it is smaller then the minimal step
+        size is chosen over the calculated step size. This ensures that no step taken can be
+        smaller than minimalStep.
+        Minimal step size can't be smaller than 1 for integer.
+
+        @param step: int, the minimal step size to be set
+        """
         if step < 1:
             step = 1
         self.__minimalStep = int(step)
 
     def cleanText(self):
+        """
+        Compliance method from Qt SpinBoxes.
+        Returns the currently shown text from the QLineEdit without prefix and suffix and stripped
+        from leading or trailing whitespaces.
+
+        @return: str, currently shown text stripped from suffix and prefix
+        """
         text = self.text().strip()
         if self.__prefix and text.startswith(self.__prefix):
             text = text[len(self.__prefix):]
@@ -815,6 +1084,10 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
     def update_display(self):
         """
+        This helper method updates the shown text based on the current value.
+        Because this method is only called upon finishing an editing procedure, the eventually
+        cached value gets deleted.
+        Also causes the spinbox to lose focus.
         """
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
@@ -823,6 +1096,12 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         self.clearFocus()
 
     def keyPressEvent(self, event):
+        """
+        This method catches all keyboard press events triggered by the user. Can be used to alter
+        the behaviour of certain key events from the default implementation of QAbstractSpinBox.
+
+        @param event: QKeyEvent, a Qt QKeyEvent instance holding the event information
+        """
         # Restore cached value upon pressing escape and lose focus.
         if event.key() == QtCore.Qt.Key_Escape:
             if self.__cached_value is not None:
@@ -974,6 +1253,9 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return sign + integer_str + si_prefix
 
     def stepEnabled(self):
+        """
+        Enables stepping (mouse wheel, arrow up/down, clicking, PgUp/Down) by default.
+        """
         return self.StepUpEnabled | self.StepDownEnabled
 
     def stepBy(self, steps):
