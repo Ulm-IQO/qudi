@@ -156,12 +156,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         low = self._communicate('SOUR:CURR:LIM:LOW?')
         high = self._communicate('SOUR:CURR:LIM:HIGH?')
 
-        # TODO: write explanation. This does not work for our laser, gives ('ERR-100', 'ERR-100')
-
-        # TODO: turn responses to float.
-
-        # TODO: If ERR-100, then set the float to NaN or -1 AND self.log.warning or error?
-        return (low, high)
+        return (float(low), float(high))
 
     def get_current(self):
         """ Cet current laser current
@@ -366,6 +361,10 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         # Potentially multi-line responses - need to be joined into string
         full_response = ''.join(response)
+
+        if full_response == 'ERR-100':
+            self.log.warning(self._model_name + ' does not support the command ' + message)
+            return -1
 
         return full_response
 
