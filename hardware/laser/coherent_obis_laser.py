@@ -31,6 +31,12 @@ import time
 class OBISLaser(Base, SimpleLaserInterface):
 
     """ Implements the Coherent OBIS laser.
+
+    Example configuration:
+    ```
+    # obis:
+    #     module.Class: 'SimpleLaserInterface.OBISLaser'
+    ```
     """
 
     _modclass = 'laser'
