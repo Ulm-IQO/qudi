@@ -197,28 +197,6 @@ class OBISLaser(Base, SimpleLaserInterface):
         self.log.warning(self._model_name + ' does not have a shutter')
         return self.get_shutter_state()
 
-    def _get_diode_temperature(self):
-        """ Get laser diode temperature
-
-        @return float: laser diode temperature
-        """
-        response = float(self._communicate('SOUR:TEMP:DIOD?').split('C')[0])
-        return response
-
-    def _get_internal_temperature(self):
-        """ Get internal laser temperature
-
-        @return float: internal laser temperature
-        """
-        return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
-
-    def _get_baseplate_temperature(self):
-        """ Get laser base plate temperature
-
-        @return float: laser base plate temperature
-        """
-        return float(self._communicate('SOUR:TEMP:BAS?').split('C')[0])
-
     def get_temperatures(self):
         """ Get all available temperatures.
 
@@ -323,6 +301,8 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         return extra
 
+########################## communication methods ###############################
+
     def _send(self, message):
         """ Send a message to to laser
 
@@ -360,10 +340,29 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         return full_response
 
-    def _set_laser_to_11(self):
-        """ Set the laser power to 11
+########################## internal methods ####################################
+
+    def _get_diode_temperature(self):
+        """ Get laser diode temperature
+
+        @return float: laser diode temperature
         """
-        self.set_power(0.165)
+        response = float(self._communicate('SOUR:TEMP:DIOD?').split('C')[0])
+        return response
+
+    def _get_internal_temperature(self):
+        """ Get internal laser temperature
+
+        @return float: internal laser temperature
+        """
+        return float(self._communicate('SOUR:TEMP:INT?').split('C')[0])
+
+    def _get_baseplate_temperature(self):
+        """ Get laser base plate temperature
+
+        @return float: laser base plate temperature
+        """
+        return float(self._communicate('SOUR:TEMP:BAS?').split('C')[0])
 
     def _get_interlock_status(self):
         """ Get the status of the system interlock
@@ -378,3 +377,8 @@ class OBISLaser(Base, SimpleLaserInterface):
             return False
         else:
             return False
+
+    def _set_laser_to_11(self):
+        """ Set the laser power to 11
+        """
+        self.set_power(0.165)
