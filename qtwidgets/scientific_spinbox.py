@@ -137,7 +137,7 @@ class IntegerValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or cursor is at index 0
-        if not string.strip() or position < 1:
+        if not string.strip():
             return self.Intermediate, string, position
 
         group_dict = self.get_group_dict(string)
@@ -231,7 +231,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self._dynamic_stepping = True
         self._dynamic_precision = True
         self.validator = FloatValidator()
-        self.editingFinished.connect(self.editingFinishedEvent)
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
 
@@ -566,14 +565,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         This helper method updates the shown text based on the current value.
         Because this method is only called upon finishing an editing procedure, the eventually
         cached value gets deleted.
-        Also causes the spinbox to lose focus.
         """
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
-        self.clearFocus()
 
     def keyPressEvent(self, event):
         """
@@ -588,6 +584,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 self.__value = self.__cached_value
                 self.valueChanged.emit(self.value())
             self.clearFocus()  # This will also trigger editingFinished
+            return
 
         # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
@@ -621,6 +618,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             return
 
         super().keyPressEvent(event)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        self.selectAll()
+        return
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.update_display()
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        return
 
     def validate(self, text, position):
         """
@@ -838,8 +846,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.setValue(value)
         return
 
-    def editingFinishedEvent(self):
-        self.update_display()
+    def selectAll(self):
+        begin = len(self.__prefix)
+        selection_length = len(self.cleanText())
+        self.lineEdit().setSelection(begin, selection_length)
 
 
 class ScienSpinBox(QtWidgets.QAbstractSpinBox):
@@ -878,7 +888,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self.validator = IntegerValidator()
-        self.editingFinished.connect(self.editingFinishedEvent)
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
 
@@ -1110,14 +1119,11 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         This helper method updates the shown text based on the current value.
         Because this method is only called upon finishing an editing procedure, the eventually
         cached value gets deleted.
-        Also causes the spinbox to lose focus.
         """
         text = self.textFromValue(self.value())
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
-        self.clearFocus()
 
     def keyPressEvent(self, event):
         """
@@ -1165,6 +1171,17 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             return
 
         super().keyPressEvent(event)
+
+    def focusInEvent(self, event):
+        super().focusInEvent(event)
+        self.selectAll()
+        return
+
+    def focusOutEvent(self, event):
+        super().focusOutEvent(event)
+        self.update_display()
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        return
 
     def validate(self, text, position):
         """
@@ -1260,7 +1277,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         # get the engineering notation exponent (multiple of 3)
         missing_zeros = (len(value_str) - digit_index) % 3
         exponent = len(value_str) - digit_index - missing_zeros
-        print(exponent)
 
         # the scaled integer string that is still missing the order of magnitude (si-prefix or e)
         integer_str = value_str[:digit_index + missing_zeros]
@@ -1319,5 +1335,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         self.setValue(value)
         return
 
-    def editingFinishedEvent(self):
-        self.update_display()
+    def selectAll(self):
+        begin = len(self.__prefix)
+        selection_length = len(self.cleanText())
+        self.lineEdit().setSelection(begin, selection_length)
