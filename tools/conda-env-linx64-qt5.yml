@@ -102,4 +102,4 @@ dependencies:
   - rpyc==3.3.0
   - ruamel.yaml==0.13.14
   - smmap2==2.0.1
-
+  - serial==0.0.38
