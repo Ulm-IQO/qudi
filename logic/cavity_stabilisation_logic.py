@@ -81,16 +81,17 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
     savelogic = Connector(interface='SaveLogic')
 
     voltage_adjustment_steps = ConfigOption('voltage_adjustment_steps', 1, missing='warn')
-    reflection = ConfigOption('cavitymode_reflection', True, missing='warn')
     _average_number = ConfigOption('averages_over_feedback', 1, missing='warn')
     threshold = ConfigOption('threshold', 0.1, missing='error')
+    reflection = ConfigOption('cavitymode_reflection', True, missing='warn')
     _axis = ConfigOption('axis', "APD", missing='error')
     feedback_axis = ConfigOption('feedback', 'APD', missing='error')
     control_axis = ConfigOption('control', 'z', missing='error')
     _scan_frequency = ConfigOption('scan_frequency', 1, missing="warn")
     _scan_resolution = ConfigOption('scan_resolution', 1e-6, missing="warn")
     _smoothing_steps = ConfigOption('smoothing_parameter', 0, missing="info")
-    maximum_clock_frequency = ConfigOption('maximum_clock_frequency', 1000, missing="warn")
+    _shown_scan_numbers = ConfigOption('shown_scan_numbers', 5, missing="warn")
+    _points_per_scan = ConfigOption('points_per_scan', 1000, missing="warn")
     number_of_lines = StatusVar('number_of_lines', 50)
 
     # signals
@@ -202,8 +203,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.stop_time = time.time()
         self._use_maximal_resolution = False
         self.image_array_reducing_factor = 0
-        self._shown_scan_numbers = 5
-        self._points_per_scan = 1000
 
     def on_deactivate(self):
         """ Reverse steps of activation
