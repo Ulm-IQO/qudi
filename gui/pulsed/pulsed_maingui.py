@@ -162,7 +162,7 @@ class PulsedMeasurementGui(GUIBase):
     _ana_param_second_plot_y_axis_unit_text = StatusVar('ana_param_second_plot_y_axis_unit_LineEdit', '')
 
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
-    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', '')
+    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', 'None')
 
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
     _functions_to_show = StatusVar('functions_to_show', [])
