@@ -60,8 +60,8 @@ class FloatValidator(QtGui.QValidator):
         @return: enum QValidator::State: the returned validator state,
                  str: the input string, int: the cursor position
         """
-        # Return intermediate status when empty string is passed or cursor is at index 0
-        if not string.strip() or position < 1:
+        # Return intermediate status when empty string is passed
+        if not string.strip():
             return self.Intermediate, string, position
 
         group_dict = self.get_group_dict(string)
@@ -572,6 +572,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         self.clearFocus()
 
     def keyPressEvent(self, event):
@@ -586,6 +587,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             if self.__cached_value is not None:
                 self.__value = self.__cached_value
                 self.valueChanged.emit(self.value())
+            self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
             self.clearFocus()  # This will also trigger editingFinished
 
         # The rest is to avoid editing suffix and prefix
@@ -1115,6 +1117,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         self.clearFocus()
 
     def keyPressEvent(self, event):
@@ -1129,6 +1132,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             if self.__cached_value is not None:
                 self.__value = self.__cached_value
                 self.valueChanged.emit(self.value())
+            self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
             self.clearFocus()  # This will also trigger editingFinished
 
         # The rest is to avoid editing suffix and prefix
