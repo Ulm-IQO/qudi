@@ -26,7 +26,7 @@ from decimal import Decimal as D  # Use decimal to avoid accumulating floating-p
 from decimal import ROUND_FLOOR
 import math
 
-__all__ = ['ScienDSpinBox']
+__all__ = ['ScienDSpinBox', 'ScienSpinBox']
 
 
 class FloatValidator(QtGui.QValidator):
