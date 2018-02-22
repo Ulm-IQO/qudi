@@ -27,7 +27,6 @@ from interface.simple_laser_interface import ShutterState
 import serial
 import time
 
-        
 class OBISLaser(Base, SimpleLaserInterface):
 
     """ Implements the Coherent OBIS laser.
@@ -129,7 +128,6 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return tuple(float, float): laser power range
         """
-
         minpower = float(self._communicate('SOUR:POW:LIM:LOW?'))
         maxpower = float(self._communicate('SOUR:POW:LIM:HIGH?'))
         return (minpower, maxpower)
@@ -268,8 +266,6 @@ class OBISLaser(Base, SimpleLaserInterface):
         else:
             return self.get_laser_state()
 
-        # """return self.set_laser_state(LaserState.ON)"""
-
     def off(self):
         """ Turn laser off.
 
@@ -283,7 +279,6 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return str: multiple lines of text with information about laser
         """
-
         extra = ('System Model Name: '      + self._communicate('SYST:INF:MOD?')    + '\n'
                 'System Manufacture Date: ' + self._communicate('SYST:INF:MDAT?')   + '\n'
                 'System Calibration Date: ' + self._communicate('SYST:INF:CDAT?')   + '\n'
