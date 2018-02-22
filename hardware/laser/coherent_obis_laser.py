@@ -243,8 +243,7 @@ class OBISLaser(Base, SimpleLaserInterface):
 
         @return dict: dict of temperature name and setpoint value
         """
-        self.log.warning(self._model_name + ' has no temperature setpoints.')
-        return {}
+        return {'Diode':float(self._communicate('SOUR:TEMP:DIOD:DSET?').split('C')[0])}
 
     def get_laser_state(self):
         """ Get laser operation state
