@@ -89,3 +89,4 @@ dependencies:
   - smmap2==2.0.1
   - typing==3.5.3.0
   - win-unicode-console==0.5
+  - serial==0.0.38
