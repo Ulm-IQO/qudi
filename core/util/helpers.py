@@ -78,19 +78,43 @@ def exit(exitcode=0):
     # invoke atexit callbacks
     atexit._run_exitfuncs()
 
+
     # close file handles
-    if sys.platform == 'darwin':
-        for fd in range(3, 4096):
+    fd_min = 3
+    fd_max = 4096
+    fd_except = []
+
+    fd_list = [i for i in range(fd_min, fd_max)]
+
+    # in this subprocess we redefine the stdout, therefore on Unix systems we
+    # need to handle the opened file descriptors
+    if sys.platform in ['linux', 'darwin']:
+
+        if sys.platform == 'darwin':
             # trying to close 7 produces an illegal instruction on the Mac.
-            if fd not in [7]:
-                os.close(fd)
-    else:
-        # just guessing on the maximum descriptor count..
-        os.closerange(3, 4096)
+            fd_except = [7]
+
+        # remove specified file descriptor
+        for entry in fd_except:
+            fd_list.remove(entry)
+
+        close_fd(fd_list)
 
     os._exit(exitcode)
 
 
+def close_fd(fd_list):
+    """ Close routine for file descriptor
+
+    @param list fd_list: list of integers indicating the file descriptors which
+                         should be closed (or at least tried to close).
+    """
+
+    for fd in fd_list:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
 def import_check():
     """ Checks whether all the necessary modules are present upon start of qudi.
