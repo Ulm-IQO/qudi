@@ -587,7 +587,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             if self.__cached_value is not None:
                 self.__value = self.__cached_value
                 self.valueChanged.emit(self.value())
-            self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
             self.clearFocus()  # This will also trigger editingFinished
 
         # The rest is to avoid editing suffix and prefix
@@ -1132,7 +1131,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             if self.__cached_value is not None:
                 self.__value = self.__cached_value
                 self.valueChanged.emit(self.value())
-            self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
             self.clearFocus()  # This will also trigger editingFinished
 
         # The rest is to avoid editing suffix and prefix
