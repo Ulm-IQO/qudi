@@ -87,7 +87,8 @@ def exit(exitcode=0):
     fd_list = [i for i in range(fd_min, fd_max)]
 
     # in this subprocess we redefine the stdout, therefore on Unix systems we
-    # need to handle the opened file descriptors
+    # need to handle the opened file descriptors, see PEP 446:
+    #       https://www.python.org/dev/peps/pep-0446/
     if sys.platform in ['linux', 'darwin']:
 
         if sys.platform == 'darwin':
