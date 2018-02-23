@@ -162,7 +162,7 @@ class PulsedMeasurementGui(GUIBase):
     _ana_param_second_plot_y_axis_unit_text = StatusVar('ana_param_second_plot_y_axis_unit_LineEdit', '')
 
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
-    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', '')
+    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', 'None')
 
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
     _functions_to_show = StatusVar('functions_to_show', [])
@@ -192,6 +192,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tabWidget.addTab(self._sg, 'Sequence Generator')
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
+        self._mw.actionSave.triggered.connect(self.save_clicked)
+
         self.setup_toolbar()
         self._activate_analysis_settings_ui()
         self._activate_analysis_ui()
@@ -211,6 +213,9 @@ class PulsedMeasurementGui(GUIBase):
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
+
+        self._mw.actionSave.triggered.disconnect()
+
         self._deactivate_analysis_settings_ui()
         self._deactivate_analysis_ui()
 
@@ -1679,7 +1684,14 @@ class PulsedMeasurementGui(GUIBase):
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._pulsed_master_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
+        if self._pa.second_plot_ComboBox.currentText() == 'None':
+            save_ft = False
+        else:
+            save_ft = True
+        self._pulsed_master_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
+                                                        tag=save_tag,
+                                                        with_error=with_error,
+                                                        save_ft=save_ft)
         self._mw.action_save.setEnabled(True)
         return
 
