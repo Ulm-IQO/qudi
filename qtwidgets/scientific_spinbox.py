@@ -570,6 +570,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
 
     def keyPressEvent(self, event):
         """
@@ -625,9 +626,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        self.update_display()
         self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        self.update_display()
         return
 
     def validate(self, text, position):
@@ -844,7 +844,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         else:
             value = value + max(self.__minimalStep * n, self.__singleStep * n)
         self.setValue(value)
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
     def selectAll(self):
@@ -1125,6 +1124,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
 
     def keyPressEvent(self, event):
         """
@@ -1179,9 +1179,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        self.update_display()
         self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        self.update_display()
         return
 
     def validate(self, text, position):
@@ -1334,7 +1333,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             value = value + max(self.__minimalStep * steps, self.__singleStep * steps)
 
         self.setValue(value)
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
     def selectAll(self):
