@@ -844,6 +844,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         else:
             value = value + max(self.__minimalStep * n, self.__singleStep * n)
         self.setValue(value)
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
     def selectAll(self):
@@ -1333,6 +1334,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
             value = value + max(self.__minimalStep * steps, self.__singleStep * steps)
 
         self.setValue(value)
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
     def selectAll(self):
