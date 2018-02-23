@@ -625,8 +625,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        super().focusOutEvent(event)
         self.update_display()
+        self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
         self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
@@ -1179,8 +1179,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        super().focusOutEvent(event)
         self.update_display()
+        self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
         self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
         return
 
