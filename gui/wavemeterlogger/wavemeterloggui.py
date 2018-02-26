@@ -28,6 +28,7 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 
 from core.module import Connector
+from core.util import units
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
@@ -158,8 +159,6 @@ class WavemeterLogGui(GUIBase):
         self._right_axis.addItem(self.curve_nm_counts)
         self._top_axis.addItem(self.curve_hz_counts)
 
-        self._save_PNG = True
-
         # scatter plot for time series
         self._spw = self._mw.scatterPlotWidget
         self._spi = self._spw.plotItem
@@ -261,7 +260,7 @@ class WavemeterLogGui(GUIBase):
         """ Handling the Start button to stop and restart the counter.
         """
         # If running, then we stop the measurement and enable inputs again
-        if self._wm_logger_logic.getState() == 'running':
+        if self._wm_logger_logic.module_state() == 'running':
             self._mw.actionStop_resume_scan.setText('Resume')
             self._wm_logger_logic.stop_scanning()
             self._mw.actionStop_resume_scan.setEnabled(True)
@@ -277,7 +276,7 @@ class WavemeterLogGui(GUIBase):
     def start_clicked(self):
         """ Handling resume of the scanning without resetting the data.
         """
-        if self._wm_logger_logic.getState() == 'idle':
+        if self._wm_logger_logic.module_state() == 'idle':
             self._scatterplot.clear()
             self._wm_logger_logic.start_scanning()
 
@@ -301,9 +300,6 @@ class WavemeterLogGui(GUIBase):
         exporter = pg.exporters.SVGExporter(self._pw.plotItem)
         exporter.export(filename+'.svg')
 
-        if self._save_PNG:
-            exporter = pg.exporters.ImageExporter(self._pw.plotItem)
-            exporter.export(filename+'.png')
 
         self._wm_logger_logic.save_data(timestamp=timestamp)
 

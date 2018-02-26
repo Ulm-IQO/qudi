@@ -70,7 +70,7 @@ class PulsedMeasurementLogic(GenericLogic):
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
-    save_ft = StatusVar(default=True)
+    save_ft = StatusVar(default=False)
 
     # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
@@ -91,9 +91,9 @@ class PulsedMeasurementLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, int, int, int, int)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
@@ -210,7 +210,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.fast_counter_record_length = 3e-6
         self.configure_fast_counter()
         self.fast_counter_off()
-
+        self._pulse_analysis_logic.fast_counter_binwidth = self.fast_counter_binwidth
         # Check and configure external microwave
         if self.use_ext_microwave:
             self.microwave_on_off(False)
@@ -228,7 +228,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Deactivate the module properly.
         """
 
-        if self.getState() != 'idle' and self.getState() != 'deactivated':
+        if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             self.stop_pulsed_measurement()
 
         self._statusVariables['number_of_lasers'] = self.number_of_lasers
@@ -260,16 +260,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigTimerIntervalUpdated.emit(self.timer_interval)
         self.sigAnalysisMethodsUpdated.emit(self._pulse_analysis_logic.analysis_methods)
         self.sigExtractionMethodsUpdated.emit(self._pulse_extraction_logic.extraction_methods)
-        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.current_method,
-                                             self._pulse_analysis_logic.signal_start_bin,
-                                             self._pulse_analysis_logic.signal_end_bin,
-                                             self._pulse_analysis_logic.norm_start_bin,
-                                             self._pulse_analysis_logic.norm_end_bin)
-        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.current_method,
-                                               self._pulse_extraction_logic.conv_std_dev,
-                                               self._pulse_extraction_logic.count_treshold,
-                                               self._pulse_extraction_logic.threshold_tolerance_bins,
-                                               self._pulse_extraction_logic.min_laser_length)
+        self.sigAnalysisSettingsUpdated.emit(self._pulse_analysis_logic.analysis_settings)
+        self.sigExtractionSettingsUpdated.emit(self._pulse_extraction_logic.extraction_settings)
         self.sigLoadedAssetUpdated.emit(self.loaded_asset_name)
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
@@ -322,6 +314,10 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fast_counter_binwidth, self.fast_counter_record_length, num_of_gates = self.configure_fast_counter()
         # if self.fast_counter_gated:
         #    self.number_of_lasers = num_of_gates
+
+        # Make sure the analysis logic takes the correct binning into account
+        self._pulse_analysis_logic.fast_counter_binwidth = bin_width_s
+
         # emit update signal for master (GUI or other logic module)
         self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
                                                 self.fast_counter_record_length)
@@ -674,8 +670,8 @@ class PulsedMeasurementLogic(GenericLogic):
         if stashed_raw_data_tag == '':
             stashed_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'idle':
-                self.lock()
+            if self.module_state() == 'idle':
+                self.module_state.lock()
                 self.elapsed_time = 0.0
                 self.elapsed_time_str = '00:00:00:00'
                 self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
@@ -721,7 +717,7 @@ class PulsedMeasurementLogic(GenericLogic):
             calculates fluorescence signal and creates plots.
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
@@ -803,7 +799,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @param laser_index:
         @param show_raw_data:
+
         @return:
+
         """
         self.show_raw_data = show_raw_data
         self.show_laser_index = laser_index
@@ -821,7 +819,8 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 self.laser_plot_y = np.sum(self.laser_data, 0)
 
-        self.laser_plot_x = np.arange(1, len(self.laser_plot_y) + 1)
+
+        self.laser_plot_x = np.arange(1, len(self.laser_plot_y) + 1) * self.fast_counter_binwidth
 
         self.sigLaserToShowUpdated.emit(self.show_laser_index, self.show_raw_data)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
@@ -834,7 +833,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if stash_raw_data_tag == '':
             stash_raw_data_tag = None
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #stopping and disconnecting the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -853,7 +852,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self.recalled_raw_data = None
 
-                self.unlock()
+                self.module_state.unlock()
                 self.sigMeasurementRunningUpdated.emit(False, False)
         return
 
@@ -862,7 +861,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 #pausing the timer
                 if self.analysis_timer is not None:
                     self.analysis_timer.stop()
@@ -880,7 +879,7 @@ class PulsedMeasurementLogic(GenericLogic):
           @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 if self.use_ext_microwave:
                     self.microwave_on_off(True)
                 self.fast_counter_continue()
@@ -912,51 +911,44 @@ class PulsedMeasurementLogic(GenericLogic):
     def manually_pull_data(self):
         """ Analyse and display the data
         """
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self._pulsed_analysis_loop()
         return
 
-    def analysis_settings_changed(self, method, signal_start_bin, signal_end_bin, norm_start_bin,
-                                  norm_end_bin):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings:
         @return:
         """
         with self.threadlock:
-            self._pulse_analysis_logic.current_method = method
-            self._pulse_analysis_logic.signal_start_bin = signal_start_bin
-            self._pulse_analysis_logic.signal_end_bin = signal_end_bin
-            self._pulse_analysis_logic.norm_start_bin = norm_start_bin
-            self._pulse_analysis_logic.norm_end_bin = norm_end_bin
-            self.sigAnalysisSettingsUpdated.emit(method, signal_start_bin, signal_end_bin,
-                                                 norm_start_bin, norm_end_bin)
-        return method, signal_start_bin, signal_end_bin, norm_start_bin, norm_end_bin
+            for parameter in analysis_settings:
+                self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_treshold,
-                                    threshold_tolerance_bins, min_laser_length):
+            # forward to the GUI the exact timing
+            if 'signal_start_s' in analysis_settings:
+                analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'signal_end_s' in analysis_settings:
+                analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_start_s' in analysis_settings:
+                analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            if 'norm_end_s' in analysis_settings:
+                analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+            self.sigAnalysisSettingsUpdated.emit(analysis_settings)
+
+        return analysis_settings
+
+    def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_treshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
         with self.threadlock:
-            self._pulse_extraction_logic.current_method = method
-            self._pulse_extraction_logic.conv_std_dev = conv_std_dev
-            self._pulse_extraction_logic.count_treshold = count_treshold
-            self._pulse_extraction_logic.threshold_tolerance_bins = threshold_tolerance_bins
-            self._pulse_extraction_logic.min_laser_length = min_laser_length
-            self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_treshold,
-                                                   threshold_tolerance_bins, min_laser_length)
-        return method, conv_std_dev, count_treshold, threshold_tolerance_bins, min_laser_length
+            for parameter in extraction_settings:
+                self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
+            self.sigExtractionSettingsUpdated.emit(extraction_settings)
+        return extraction_settings
 
     def _initialize_plots(self):
         """
@@ -968,7 +960,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measuring_error_plot_y = np.zeros(len(self.controlled_vals), dtype=float)
         self.measuring_error_plot_y2 = np.zeros(len(self.controlled_vals), dtype=float)
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
-        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int)
+        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
         self.signal_fft_x = self.controlled_vals
         self.signal_fft_y = np.zeros(len(self.controlled_vals))
@@ -987,6 +979,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_ft: select wether the Fourier Transform is plotted
 
         @return str: filepath where data were saved
         """
@@ -1011,7 +1004,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # write the parameters:
         parameters = OrderedDict()
         parameters['Bin size (s)'] = self.fast_counter_binwidth
-        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
+        parameters['laser length (s)'] = self.laser_plot_x.size
 
         self._save_logic.save_data(data,
                                    timestamp=timestamp,
@@ -1051,7 +1044,15 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Signal end (bin)'] = self._pulse_analysis_logic.signal_end_bin
         parameters['Normalization start (bin)'] = self._pulse_analysis_logic.norm_start_bin
         parameters['Normalization end (bin)'] = self._pulse_analysis_logic.norm_end_bin
-        parameters['Standard deviation of gaussian convolution'] = self._pulse_extraction_logic.conv_std_dev
+        parameters['Extraction_method'] = self._pulse_extraction_logic.extraction_settings['current_method']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'conv_deriv':
+            parameters['Standard deviation of gaussian convolution'] = \
+                self._pulse_extraction_logic.extraction_settings['conv_std_dev']
+        if self._pulse_extraction_logic.extraction_settings['current_method'] == 'threshold':
+            parameters['Count threshold'] = self._pulse_extraction_logic.extraction_settings['count_threshold']
+            parameters['threshold_tolerance_bins'] =\
+                self._pulse_extraction_logic.extraction_settings['threshold_tolerance_bins']
+            parameters['min_laser_length'] = self._pulse_extraction_logic.extraction_settings['min_laser_length']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
 
@@ -1222,7 +1223,7 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['Is alternating?'] = self.alternating
         parameters['Bin size (s)'] = self.fast_counter_binwidth
         parameters['Number of laser pulses'] = self.number_of_lasers
-        parameters['laser length (s)'] = self.fast_counter_binwidth * self.laser_plot_x.size
+        parameters['laser length (s)'] = self.laser_plot_x.size
         parameters['Controlled variable values'] = list(self.controlled_vals)
 
         self._save_logic.save_data(data, timestamp=timestamp,

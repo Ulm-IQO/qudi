@@ -25,6 +25,7 @@ import os
 import numpy as np
 
 from core.module import Base, ConfigOption
+from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 
 
@@ -50,7 +51,7 @@ class FastCounterDummy(Base, FastCounterInterface):
 
         if self.trace_path is None:
             self.trace_path = os.path.join(
-                self.get_main_dir(),
+                get_main_dir(),
                 'tools',
                 'FastComTec_demo_timetrace.asc')
 

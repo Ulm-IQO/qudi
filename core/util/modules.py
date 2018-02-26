@@ -22,6 +22,25 @@ Derived form ACQ4:
 Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
+import os
+
+
+def get_main_dir():
+    """ Returns the absolut path to the directory of the main software.
+
+         @return string: path to the main tree of the software
+
+    """
+    return os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '../..'))
+
+
+def get_home_dir():
+    """ Returns the path to the home directory, which should definitely
+        exist.
+        @return string: absolute path to the home directory
+    """
+    return os.path.abspath(os.path.expanduser('~'))
 
 
 def toposort(deps, cost=None):
@@ -116,7 +135,7 @@ def toposort(deps, cost=None):
 
 
 def isBase(base):
-    """Is the given base one of the three allowd ones?
+    """Is the given base one of the three allowed ones?
       @return bool: base is allowed
     """
     return base in ('hardware', 'logic', 'gui')
