@@ -34,7 +34,7 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'integer': 2,
@@ -747,8 +747,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 round_indicator = int(fractional_str[self.__decimals])
                 fractional_str = fractional_str[:self.__decimals]
                 if round_indicator >= 5:
-                    fractional_int = int(fractional_str) + 1
-                    fractional_str = str(fractional_int)
+                    if not fractional_str:
+                        fractional_str = '1'
+                    else:
+                        fractional_str = str(int(fractional_str) + 1)
             elif self.__decimals == len(fractional_str):
                 if fractional >= 0.5:
                     if fractional_str:
