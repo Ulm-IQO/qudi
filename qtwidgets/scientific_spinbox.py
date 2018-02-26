@@ -15,8 +15,6 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
-
-Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -669,7 +667,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
-        print('fixup called on: "{0}"'.format(text))
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
@@ -1222,7 +1219,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
-        print('fixup called on: "{0}"'.format(text))
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
