@@ -34,7 +34,7 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'integer': 2,
@@ -58,9 +58,13 @@ class FloatValidator(QtGui.QValidator):
         @return: enum QValidator::State: the returned validator state,
                  str: the input string, int: the cursor position
         """
-        # Return intermediate status when empty string is passed
-        if not string.strip():
+        # Return intermediate status when empty string is passed or when incomplete "[+-]inf"
+        if not string.strip() or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
             return self.Intermediate, string, position
+
+        # Accept input of [+-]inf. Not case sensitive.
+        if re.match(r'[+-]?\binf$', string, re.IGNORECASE):
+            return self.Acceptable, string.lower(), position
 
         group_dict = self.get_group_dict(string)
         if group_dict:
@@ -69,7 +73,7 @@ class FloatValidator(QtGui.QValidator):
 
             if position > len(string):
                 position = len(string)
-            if string[position-1] in 'eE.-+':
+            if string[position-1] in 'eE.-+' and 'i' not in string.lower():
                 if string.count('.') > 1:
                     return self.Invalid, group_dict['match'], position
                 return self.Intermediate, string, position
@@ -680,6 +684,14 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                           This string must be conform with the validator.
         @return: Decimal, the numeric value converted from the input string.
         """
+        # Check for infinite value
+        if 'inf' in text.lower():
+            if text.startswith('-'):
+                return D('-inf')
+            else:
+                return D('inf')
+
+        # Handle "normal" (non-infinite) input
         group_dict = self.validator.get_group_dict(text)
         if not group_dict:
             return False
@@ -721,9 +733,12 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param value: float|decimal.Decimal, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
-        # Catch infinity and NaN values
-        if abs(value) == np.inf or abs(value) == np.nan:
-            return ' '
+        # Catch infinity value
+        if np.isinf(float(value)):
+            if value < 0:
+                return '-inf '
+            else:
+                return 'inf '
 
         sign = '-' if value < 0 else ''
         fractional, integer = math.modf(abs(value))
@@ -824,6 +839,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
+        # Ignore stepping for infinity values
+        if self.__value.is_infinite():
+            return
+
         n = D(int(steps))  # n must be integral number of steps.
         s = [D(-1), D(1)][n >= 0]  # determine sign of step
         value = self.__value  # working copy of current value
@@ -847,7 +866,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText())
+        selection_length = len(self.cleanText()) + 1
         self.lineEdit().setSelection(begin, selection_length)
 
 
@@ -1335,5 +1354,5 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText())
+        selection_length = len(self.cleanText()) + 1
         self.lineEdit().setSelection(begin, selection_length)
