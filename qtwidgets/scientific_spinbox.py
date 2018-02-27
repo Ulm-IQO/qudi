@@ -232,6 +232,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
+        self._is_valid = True  # A flag property to check if the current value is valid.
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
@@ -277,6 +278,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         use_dynamic_precision = bool(use_dynamic_precision)
         self._dynamic_precision = use_dynamic_precision
+
+    @property
+    def is_valid(self):
+        """
+        This property is a flag indicating if the currently available value is valid.
+        It will return False if there has been an attempt to set NaN as current value.
+        Will return True after a valid value has been set.
+
+        @return: bool, current value invalid (False) or current value valid (True)
+        """
+        return bool(self._is_valid)
 
     def update_value(self):
         """
@@ -336,12 +348,14 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 raise
             value = D(value)
 
+        # catch NaN values and set the "is_valid" flag to False until a valid value is set again.
         if value.is_nan():
+            self._is_valid = False
             return
 
         value, in_range = self.check_range(value)
 
-        if self.__value != value:
+        if self.__value != value or not self.is_valid:
             # Try to increase decimals when the value has changed but no change in display detected.
             # This will only be executed when the dynamic precision flag is set
             if self.value() != float(value) and self.dynamic_precision and not value.is_infinite():
@@ -355,6 +369,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                     self.__decimals += 1
                     new_text = self.textFromValue(value).strip()
             self.__value = value
+            self._is_valid = True
             self.update_display()
             self.valueChanged.emit(self.value())
 
@@ -402,6 +417,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param minimum: float, the minimum value to be set
         """
+        # Ignore NaN values
+        if self._check_nan(float(minimum)):
+            return
+
         self.__minimum = float(minimum)
         if self.__minimum > self.value():
             self.setValue(self.__minimum)
@@ -416,6 +435,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param maximum: float, the maximum value to be set
         """
+        # Ignore NaN values
+        if self._check_nan(float(maximum)):
+            return
+
         self.__maximum = float(maximum)
         if self.__maximum < self.value():
             self.setValue(self.__maximum)
@@ -515,7 +538,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             else:
                 raise
             step = D(step)
-        self.__singleStep = step
+
+        # ignore NaN and infinity values
+        if not step.is_nan() and not step.is_infinite():
+            self.__singleStep = step
+
         self.dynamic_stepping = dynamic_stepping
 
     def minimalStep(self):
@@ -545,7 +572,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             else:
                 raise
             step = D(step)
-        self.__minimalStep = step
+
+        # ignore NaN and infinity values
+        if not step.is_nan() and not step.is_infinite():
+            self.__minimalStep = step
 
     def cleanText(self):
         """
@@ -868,6 +898,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         begin = len(self.__prefix)
         selection_length = len(self.cleanText()) + 1
         self.lineEdit().setSelection(begin, selection_length)
+
+    @staticmethod
+    def _check_nan(value):
+        """
+        Helper method to check if the passed float value is NaN.
+        Makes use of the fact that NaN values will always compare to false, even with itself.
+
+        @param value: Decimal|float, value to be checked for NaN
+        @return: (bool) is NaN (True), is no NaN (False)
+        """
+        return not value == value
 
 
 class ScienSpinBox(QtWidgets.QAbstractSpinBox):
