@@ -319,6 +319,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
         else:
             self.__value = value
+        self._is_valid = True
 
     def value(self):
         """
@@ -661,6 +662,24 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
         self.update_display()
         return
+
+    def paintEvent(self, ev):
+        """
+        Add drawing of a red frame around the spinbox if the is_valid flag is False
+        """
+        super().paintEvent(ev)
+
+        # draw red frame if is_valid = False
+        if not self.is_valid:
+            pen = QtGui.QPen()
+            pen.setColor(QtGui.QColor(200, 50, 50))
+            pen.setWidth(2)
+
+            p = QtGui.QPainter(self)
+            p.setRenderHint(p.Antialiasing)
+            p.setPen(pen)
+            p.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 4, 4)
+            p.end()
 
     def validate(self, text, position):
         """
