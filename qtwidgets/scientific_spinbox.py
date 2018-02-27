@@ -620,6 +620,22 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.clearFocus()  # This will also trigger editingFinished
             return
 
+        # Update display upon pressing enter/return before processing the event in the default way.
+        if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
+            self.update_display()
+
+        # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+        if self.lineEdit().selectedText():
+            sel_start = self.lineEdit().selectionStart()
+            sel_end = sel_start + len(self.lineEdit().selectedText())
+            min_start = len(self.__prefix)
+            max_end = len(self.__prefix) + len(self.cleanText())
+            if sel_start < min_start:
+                sel_start = min_start
+            if sel_end > max_end:
+                sel_end = max_end
+            self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+
         # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
@@ -631,10 +647,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             end = len(self.text()) - len(self.__suffix)
             if cursor_pos < begin:
                 self.lineEdit().setCursorPosition(begin)
-                return
             elif cursor_pos > end:
                 self.lineEdit().setCursorPosition(end)
-                return
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
@@ -915,7 +929,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText()) + 1
+        text = self.cleanText()
+        if text.endswith(' '):
+            selection_length = len(text) + 1
+        else:
+            selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
 
     @staticmethod
@@ -1218,6 +1236,22 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
                 self.valueChanged.emit(self.value())
             self.clearFocus()  # This will also trigger editingFinished
 
+        # Update display upon pressing enter/return before processing the event in the default way.
+        if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
+            self.update_display()
+
+        # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+        if self.lineEdit().selectedText():
+            sel_start = self.lineEdit().selectionStart()
+            sel_end = sel_start + len(self.lineEdit().selectedText())
+            min_start = len(self.__prefix)
+            max_end = len(self.__prefix) + len(self.cleanText())
+            if sel_start < min_start:
+                sel_start = min_start
+            if sel_end > max_end:
+                sel_end = max_end
+            self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+
         # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
@@ -1414,5 +1448,9 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText()) + 1
+        text = self.cleanText()
+        if text.endswith(' '):
+            selection_length = len(text) + 1
+        else:
+            selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
