@@ -652,11 +652,9 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Right:
             if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Home:
             self.lineEdit().setCursorPosition(len(self.__prefix))
@@ -1270,11 +1268,9 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Right:
             if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Home:
             self.lineEdit().setCursorPosition(len(self.__prefix))
