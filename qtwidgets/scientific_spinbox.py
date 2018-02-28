@@ -624,31 +624,31 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
             self.update_display()
 
-        # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
-        if self.lineEdit().selectedText():
-            sel_start = self.lineEdit().selectionStart()
-            sel_end = sel_start + len(self.lineEdit().selectedText())
-            min_start = len(self.__prefix)
-            max_end = len(self.__prefix) + len(self.cleanText())
-            if sel_start < min_start:
-                sel_start = min_start
-            if sel_end > max_end:
-                sel_end = max_end
-            self.lineEdit().setSelection(sel_start, sel_end - sel_start)
-
-        # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
             return
 
+        # The rest is to avoid editing suffix and prefix
         if len(event.text()) > 0:
-            cursor_pos = self.lineEdit().cursorPosition()
-            begin = len(self.__prefix)
-            end = len(self.text()) - len(self.__suffix)
-            if cursor_pos < begin:
-                self.lineEdit().setCursorPosition(begin)
-            elif cursor_pos > end:
-                self.lineEdit().setCursorPosition(end)
+            # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+            if self.lineEdit().selectedText():
+                sel_start = self.lineEdit().selectionStart()
+                sel_end = sel_start + len(self.lineEdit().selectedText())
+                min_start = len(self.__prefix)
+                max_end = len(self.__prefix) + len(self.cleanText())
+                if sel_start < min_start:
+                    sel_start = min_start
+                if sel_end > max_end:
+                    sel_end = max_end
+                self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+            else:
+                cursor_pos = self.lineEdit().cursorPosition()
+                begin = len(self.__prefix)
+                end = len(self.text()) - len(self.__suffix)
+                if cursor_pos < begin:
+                    self.lineEdit().setCursorPosition(begin)
+                elif cursor_pos > end:
+                    self.lineEdit().setCursorPosition(end)
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
@@ -1238,33 +1238,33 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
             self.update_display()
 
-        # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
-        if self.lineEdit().selectedText():
-            sel_start = self.lineEdit().selectionStart()
-            sel_end = sel_start + len(self.lineEdit().selectedText())
-            min_start = len(self.__prefix)
-            max_end = len(self.__prefix) + len(self.cleanText())
-            if sel_start < min_start:
-                sel_start = min_start
-            if sel_end > max_end:
-                sel_end = max_end
-            self.lineEdit().setSelection(sel_start, sel_end - sel_start)
-
-        # The rest is to avoid editing suffix and prefix
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
             return
 
+        # The rest is to avoid editing suffix and prefix
         if len(event.text()) > 0:
-            cursor_pos = self.lineEdit().cursorPosition()
-            begin = len(self.__prefix)
-            end = len(self.text()) - len(self.__suffix)
-            if cursor_pos < begin:
-                self.lineEdit().setCursorPosition(begin)
-                return
-            elif cursor_pos > end:
-                self.lineEdit().setCursorPosition(end)
-                return
+            # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+            if self.lineEdit().selectedText():
+                sel_start = self.lineEdit().selectionStart()
+                sel_end = sel_start + len(self.lineEdit().selectedText())
+                min_start = len(self.__prefix)
+                max_end = len(self.__prefix) + len(self.cleanText())
+                if sel_start < min_start:
+                    sel_start = min_start
+                if sel_end > max_end:
+                    sel_end = max_end
+                self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+            else:
+                cursor_pos = self.lineEdit().cursorPosition()
+                begin = len(self.__prefix)
+                end = len(self.text()) - len(self.__suffix)
+                if cursor_pos < begin:
+                    self.lineEdit().setCursorPosition(begin)
+                    return
+                elif cursor_pos > end:
+                    self.lineEdit().setCursorPosition(end)
+                    return
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
