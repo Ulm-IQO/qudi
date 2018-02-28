@@ -671,8 +671,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
         self.update_display()
+        super().focusOutEvent(event)
         return
 
     def paintEvent(self, ev):
@@ -1287,8 +1287,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        self.lineEdit().event(event)  # let the line edit handle the focusOutEvent first
         self.update_display()
+        super().focusOutEvent(event)
         return
 
     def validate(self, text, position):
