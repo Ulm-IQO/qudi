@@ -289,9 +289,6 @@ class PoiManagerGui(GUIBase):
         # All our gui elements are dockable, and so there should be no "central" widget.
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
-
-        self._mw.roi_cb_high_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=5)
-        self._mw.roi_cb_low_percentile_DoubleSpinBox.setOpts(step=0.01, decimals=2)
         #####################
         # Setting up display of ROI map xy image
         #####################
