@@ -15,8 +15,6 @@ GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
 along with Qudi. If not, see <http://www.gnu.org/licenses/>.
-
-Copyright (C) 2016 Alexander Stark alexander.stark@uni-ulm.de
 """
 
 from qtpy import QtCore, QtGui, QtWidgets
@@ -60,9 +58,13 @@ class FloatValidator(QtGui.QValidator):
         @return: enum QValidator::State: the returned validator state,
                  str: the input string, int: the cursor position
         """
-        # Return intermediate status when empty string is passed
-        if not string.strip():
+        # Return intermediate status when empty string is passed or when incomplete "[+-]inf"
+        if not string.strip() or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
             return self.Intermediate, string, position
+
+        # Accept input of [+-]inf. Not case sensitive.
+        if re.match(r'[+-]?\binf$', string, re.IGNORECASE):
+            return self.Acceptable, string.lower(), position
 
         group_dict = self.get_group_dict(string)
         if group_dict:
@@ -71,7 +73,7 @@ class FloatValidator(QtGui.QValidator):
 
             if position > len(string):
                 position = len(string)
-            if string[position-1] in 'eE.-+':
+            if string[position-1] in 'eE.-+' and 'i' not in string.lower():
                 if string.count('.') > 1:
                     return self.Invalid, group_dict['match'], position
                 return self.Intermediate, string, position
@@ -230,6 +232,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
+        self._is_valid = True  # A flag property to check if the current value is valid.
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
         self.update_display()
@@ -276,6 +279,17 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         use_dynamic_precision = bool(use_dynamic_precision)
         self._dynamic_precision = use_dynamic_precision
 
+    @property
+    def is_valid(self):
+        """
+        This property is a flag indicating if the currently available value is valid.
+        It will return False if there has been an attempt to set NaN as current value.
+        Will return True after a valid value has been set.
+
+        @return: bool, current value invalid (False) or current value valid (True)
+        """
+        return bool(self._is_valid)
+
     def update_value(self):
         """
         This method will grab the currently shown text from the QLineEdit and interpret it.
@@ -305,6 +319,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.valueChanged.emit(self.value())
         else:
             self.__value = value
+        self._is_valid = True
 
     def value(self):
         """
@@ -334,12 +349,14 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 raise
             value = D(value)
 
+        # catch NaN values and set the "is_valid" flag to False until a valid value is set again.
         if value.is_nan():
+            self._is_valid = False
             return
 
         value, in_range = self.check_range(value)
 
-        if self.__value != value:
+        if self.__value != value or not self.is_valid:
             # Try to increase decimals when the value has changed but no change in display detected.
             # This will only be executed when the dynamic precision flag is set
             if self.value() != float(value) and self.dynamic_precision and not value.is_infinite():
@@ -353,6 +370,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                     self.__decimals += 1
                     new_text = self.textFromValue(value).strip()
             self.__value = value
+            self._is_valid = True
             self.update_display()
             self.valueChanged.emit(self.value())
 
@@ -400,6 +418,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param minimum: float, the minimum value to be set
         """
+        # Ignore NaN values
+        if self._check_nan(float(minimum)):
+            return
+
         self.__minimum = float(minimum)
         if self.__minimum > self.value():
             self.setValue(self.__minimum)
@@ -414,6 +436,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param maximum: float, the maximum value to be set
         """
+        # Ignore NaN values
+        if self._check_nan(float(maximum)):
+            return
+
         self.__maximum = float(maximum)
         if self.__maximum < self.value():
             self.setValue(self.__maximum)
@@ -513,7 +539,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             else:
                 raise
             step = D(step)
-        self.__singleStep = step
+
+        # ignore NaN and infinity values
+        if not step.is_nan() and not step.is_infinite():
+            self.__singleStep = step
+
         self.dynamic_stepping = dynamic_stepping
 
     def minimalStep(self):
@@ -543,7 +573,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             else:
                 raise
             step = D(step)
-        self.__minimalStep = step
+
+        # ignore NaN and infinity values
+        if not step.is_nan() and not step.is_infinite():
+            self.__minimalStep = step
 
     def cleanText(self):
         """
@@ -570,6 +603,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
 
     def keyPressEvent(self, event):
         """
@@ -586,29 +620,41 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             self.clearFocus()  # This will also trigger editingFinished
             return
 
-        # The rest is to avoid editing suffix and prefix
+        # Update display upon pressing enter/return before processing the event in the default way.
+        if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
+            self.update_display()
+
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
             return
 
+        # The rest is to avoid editing suffix and prefix
         if len(event.text()) > 0:
-            cursor_pos = self.lineEdit().cursorPosition()
-            begin = len(self.__prefix)
-            end = len(self.text()) - len(self.__suffix)
-            if cursor_pos < begin:
-                self.lineEdit().setCursorPosition(begin)
-                return
-            elif cursor_pos > end:
-                self.lineEdit().setCursorPosition(end)
-                return
+            # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+            if self.lineEdit().selectedText():
+                sel_start = self.lineEdit().selectionStart()
+                sel_end = sel_start + len(self.lineEdit().selectedText())
+                min_start = len(self.__prefix)
+                max_end = len(self.__prefix) + len(self.cleanText())
+                if sel_start < min_start:
+                    sel_start = min_start
+                if sel_end > max_end:
+                    sel_end = max_end
+                self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+            else:
+                cursor_pos = self.lineEdit().cursorPosition()
+                begin = len(self.__prefix)
+                end = len(self.text()) - len(self.__suffix)
+                if cursor_pos < begin:
+                    self.lineEdit().setCursorPosition(begin)
+                elif cursor_pos > end:
+                    self.lineEdit().setCursorPosition(end)
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Right:
             if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Home:
             self.lineEdit().setCursorPosition(len(self.__prefix))
@@ -625,10 +671,27 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        super().focusOutEvent(event)
         self.update_display()
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        super().focusOutEvent(event)
         return
+
+    def paintEvent(self, ev):
+        """
+        Add drawing of a red frame around the spinbox if the is_valid flag is False
+        """
+        super().paintEvent(ev)
+
+        # draw red frame if is_valid = False
+        if not self.is_valid:
+            pen = QtGui.QPen()
+            pen.setColor(QtGui.QColor(200, 50, 50))
+            pen.setWidth(2)
+
+            p = QtGui.QPainter(self)
+            p.setRenderHint(p.Antialiasing)
+            p.setPen(pen)
+            p.drawRoundedRect(self.rect().adjusted(2, 2, -2, -2), 4, 4)
+            p.end()
 
     def validate(self, text, position):
         """
@@ -669,7 +732,6 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
-        print('fixup called on: "{0}"'.format(text))
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
@@ -683,6 +745,14 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                           This string must be conform with the validator.
         @return: Decimal, the numeric value converted from the input string.
         """
+        # Check for infinite value
+        if 'inf' in text.lower():
+            if text.startswith('-'):
+                return D('-inf')
+            else:
+                return D('inf')
+
+        # Handle "normal" (non-infinite) input
         group_dict = self.validator.get_group_dict(text)
         if not group_dict:
             return False
@@ -724,9 +794,12 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         @param value: float|decimal.Decimal, the numeric value to be formatted into a string
         @return: str, the formatted string representing the input value
         """
-        # Catch infinity and NaN values
-        if abs(value) == np.inf or abs(value) == np.nan:
-            return ' '
+        # Catch infinity value
+        if np.isinf(float(value)):
+            if value < 0:
+                return '-inf '
+            else:
+                return 'inf '
 
         sign = '-' if value < 0 else ''
         fractional, integer = math.modf(abs(value))
@@ -750,8 +823,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 round_indicator = int(fractional_str[self.__decimals])
                 fractional_str = fractional_str[:self.__decimals]
                 if round_indicator >= 5:
-                    fractional_int = int(fractional_str) + 1
-                    fractional_str = str(fractional_int)
+                    if not fractional_str:
+                        fractional_str = '1'
+                    else:
+                        fractional_str = str(int(fractional_str) + 1)
             elif self.__decimals == len(fractional_str):
                 if fractional >= 0.5:
                     if fractional_str:
@@ -825,6 +900,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         @param steps: int, Number of steps to increment (NOT the absolute step size)
         """
+        # Ignore stepping for infinity values
+        if self.__value.is_infinite():
+            return
+
         n = D(int(steps))  # n must be integral number of steps.
         s = [D(-1), D(1)][n >= 0]  # determine sign of step
         value = self.__value  # working copy of current value
@@ -848,8 +927,23 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText())
+        text = self.cleanText()
+        if text.endswith(' '):
+            selection_length = len(text) + 1
+        else:
+            selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
+
+    @staticmethod
+    def _check_nan(value):
+        """
+        Helper method to check if the passed float value is NaN.
+        Makes use of the fact that NaN values will always compare to false, even with itself.
+
+        @param value: Decimal|float, value to be checked for NaN
+        @return: (bool) is NaN (True), is no NaN (False)
+        """
+        return not value == value
 
 
 class ScienSpinBox(QtWidgets.QAbstractSpinBox):
@@ -1124,6 +1218,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.__prefix + text + self.__suffix
         self.lineEdit().setText(text)
         self.__cached_value = None  # clear cached value
+        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
 
     def keyPressEvent(self, event):
         """
@@ -1139,29 +1234,43 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
                 self.valueChanged.emit(self.value())
             self.clearFocus()  # This will also trigger editingFinished
 
-        # The rest is to avoid editing suffix and prefix
+        # Update display upon pressing enter/return before processing the event in the default way.
+        if event.key() == QtCore.Qt.Key_Enter or event.key() == QtCore.Qt.Key_Return:
+            self.update_display()
+
         if (QtCore.Qt.ControlModifier | QtCore.Qt.MetaModifier) & event.modifiers():
             super().keyPressEvent(event)
             return
 
+        # The rest is to avoid editing suffix and prefix
         if len(event.text()) > 0:
-            cursor_pos = self.lineEdit().cursorPosition()
-            begin = len(self.__prefix)
-            end = len(self.text()) - len(self.__suffix)
-            if cursor_pos < begin:
-                self.lineEdit().setCursorPosition(begin)
-                return
-            elif cursor_pos > end:
-                self.lineEdit().setCursorPosition(end)
-                return
+            # Allow editing of the number or SI-prefix even if part of the prefix/suffix is selected.
+            if self.lineEdit().selectedText():
+                sel_start = self.lineEdit().selectionStart()
+                sel_end = sel_start + len(self.lineEdit().selectedText())
+                min_start = len(self.__prefix)
+                max_end = len(self.__prefix) + len(self.cleanText())
+                if sel_start < min_start:
+                    sel_start = min_start
+                if sel_end > max_end:
+                    sel_end = max_end
+                self.lineEdit().setSelection(sel_start, sel_end - sel_start)
+            else:
+                cursor_pos = self.lineEdit().cursorPosition()
+                begin = len(self.__prefix)
+                end = len(self.text()) - len(self.__suffix)
+                if cursor_pos < begin:
+                    self.lineEdit().setCursorPosition(begin)
+                    return
+                elif cursor_pos > end:
+                    self.lineEdit().setCursorPosition(end)
+                    return
 
         if event.key() == QtCore.Qt.Key_Left:
             if self.lineEdit().cursorPosition() == len(self.__prefix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Right:
             if self.lineEdit().cursorPosition() == len(self.text()) - len(self.__suffix):
-                event.ignore()
                 return
         if event.key() == QtCore.Qt.Key_Home:
             self.lineEdit().setCursorPosition(len(self.__prefix))
@@ -1178,9 +1287,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         return
 
     def focusOutEvent(self, event):
-        super().focusOutEvent(event)
         self.update_display()
-        self.lineEdit().setCursorPosition(0)  # Display the most significant part of the number
+        super().focusOutEvent(event)
         return
 
     def validate(self, text, position):
@@ -1222,7 +1330,6 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         @param text: str, a string that has not passed validation in need to be fixed.
         @return: str, the resulting string from the fix attempt
         """
-        print('fixup called on: "{0}"'.format(text))
         return self.validator.fixup(text)
 
     def valueFromText(self, text):
@@ -1337,5 +1444,9 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
 
     def selectAll(self):
         begin = len(self.__prefix)
-        selection_length = len(self.cleanText())
+        text = self.cleanText()
+        if text.endswith(' '):
+            selection_length = len(text) + 1
+        else:
+            selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)

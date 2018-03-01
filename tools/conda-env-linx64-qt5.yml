@@ -101,5 +101,5 @@ dependencies:
   - pyvisa-py==0.2
   - rpyc==3.3.0
   - ruamel.yaml==0.13.14
+  - serial==0.0.38
   - smmap2==2.0.1
-
