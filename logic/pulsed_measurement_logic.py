@@ -211,6 +211,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.configure_fast_counter()
         self.fast_counter_off()
         self._pulse_analysis_logic.fast_counter_binwidth = self.fast_counter_binwidth
+        self._pulse_extraction_logic.fast_counter_binwidth = self.fast_counter_binwidth
         # Check and configure external microwave
         if self.use_ext_microwave:
             self.microwave_on_off(False)
@@ -317,6 +318,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Make sure the analysis logic takes the correct binning into account
         self._pulse_analysis_logic.fast_counter_binwidth = bin_width_s
+        self._pulse_extraction_logic.fast_counter_binwidth = bin_width_s
 
         # emit update signal for master (GUI or other logic module)
         self.sigFastCounterSettingsUpdated.emit(self.fast_counter_binwidth,
@@ -1050,8 +1052,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._pulse_extraction_logic.extraction_settings['conv_std_dev']
         if self._pulse_extraction_logic.extraction_settings['current_method'] == 'threshold':
             parameters['Count threshold'] = self._pulse_extraction_logic.extraction_settings['count_threshold']
-            parameters['threshold_tolerance_bins'] =\
-                self._pulse_extraction_logic.extraction_settings['threshold_tolerance_bins']
+            parameters['threshold_tolerance'] = self._pulse_extraction_logic.extraction_settings['threshold_tolerance']
             parameters['min_laser_length'] = self._pulse_extraction_logic.extraction_settings['min_laser_length']
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
