@@ -1,0 +1,59 @@
+### Methods
+# general
+on_activate
+	-> bool
+on_deactivate
+	-> bool
+get_position_axes
+	-> axes
+get_acquisition_channels
+	-> channels
+
+# positioner
+get_position
+	-> postion
+set_position
+	<- position
+
+# scanner
+set_scanner_path
+	-> pathdata
+get_scanner_path
+	<- pathdata
+set_scanner_timing
+	-> double
+get_scanner_timing
+	<- double
+scan
+	-> pathdata
+	-> channeldata
+initialize_scanner
+	-> bool
+free_scanner
+	-> bool
+
+### Data types
+pathdata = dict
+{ 'axis_x': np.array(),
+  'axis_y': np.array(),
+  'axis_z': np.array()}
+
+channeldata = dict
+{ 'channel1': np.array(),
+  'channel2': np.array(),
+  'channel3': np.array()}
+
+channels = dict
+{ 'channel1': { 'mode': 'digital', 'range_min' : -10, 'range_max' : 10, 'resolution': 0.00001},
+  'channel2': { 'mode': 'digital', 'range_min' : -10, 'range_max' : 10, 'resolution': 0.00001},
+  'channel3': { 'mode': 'analque', 'range_min' : -1, 'range_max' : 1, 'resolution': 0.001}}
+  
+axes = dict
+{ 'axis_x': { 'range_min' : -100, 'range_max' : 100, 'resolution': 0.00001},
+  'axis_y': { 'range_min' : -100, 'range_max' : 100, 'resolution': 0.00001},
+  'axis_z': { 'range_min' : 0, 'range_max' : 200, 'resolution': 0.001}}
+  
+position = dict
+{ 'axis_x': 1,
+  'axis_y': 0,
+  'axis_z': 15}

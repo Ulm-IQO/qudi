@@ -1,0 +1,82 @@
+### Methods
+
+# general
+=========
+on_activate
+	-> bool
+on_deactivate
+	-> bool
+get_position_axes
+	-> axes
+get_acquisition_channels
+	-> channels
+
+# positioner
+============
+
+set_positioner_state (=>activate positioner)
+	-> bool 
+get_positioner_state
+	<- bool
+
+get_position
+	-> position
+set_position
+	<- position
+
+#synchronization
+================
+
+set_up_synchronization
+	-> clock_channel (optional)
+	-> scanner_timing_freq (optional)
+
+
+# scanner
+=========
+
+set_scanner_path
+	-> pathdata
+get_scanner_path
+	<- pathdata
+
+start_scan
+	-> pathdata
+	-> channeldata
+stop_scan
+	<- bool
+
+set_scanner_state (=> initialize/activate/free scanner)
+	-> bool
+get_scanner_state
+	<- bool
+
+
+
+### Data types
+# transition data
+pathdata = dict
+{ 'axis_x': np.array(),
+  'axis_y': np.array(),
+  'axis_z': np.array()}
+
+channeldata = dict
+{ 'channel1': np.array(),
+  'channel2': np.array(),
+  'channel3': np.array()}
+
+# meta data
+channels = dict
+{ 'channel1': { 'mode': 'digital', 'range_min' : -10, 'range_max' : 10, 'resolution': 0.00001},
+  'channel2': { 'mode': 'digital', 'range_min' : -10, 'range_max' : 10, 'resolution': 0.00001},
+  'channel3': { 'mode': 'analogue', 'range_min' : -1, 'range_max' : 1, 'resolution': 0.001}}
+  
+axes = dict
+{ 'axis_x': { 'range_min' : -100, 'range_max' : 100, 'resolution': 0.00001},
+  'axis_y': { 'range_min' : -100, 'range_max' : 100, 'resolution': 0.00001},
+  'axis_z': { 'range_min' : 0, 'range_max' : 200, 'resolution': 0.001}}
+  
+position = dict
+{ 'axis_x': 1,
+  'axis_y': 0,
+  'axis_z': 15}
