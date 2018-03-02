@@ -791,25 +791,61 @@ class APTStage(Base, MotorInterface):
       - One of the config parameters is the constraints, which are given in a sub-sub-dictionary,
         which has the key 'constraints'.
 
-    For example, a config file entry for a single-axis rotating half-wave-plate stage would look like
+    For example, a config file entry for a single-axis rotating half-wave-plate stage would look like:
 
-    hwp_motor:
-        module.Class: 'motor.aptmotor.APTStage'
-        dll_path: 'C:\Program Files\Thorlabs\'
-        axis_labels:
-            - phi
-        phi:
-            hw_type: 'TDC001'
-            serial_num: 27500136
-            pitch: 17.87
-            unit: 'degree'
-            constraints:
-                pos_min: -360
-                pos_max: 720
-                vel_min: 1.0
-                vel_max: 10.0
-                acc_min: 4.0
-                acc_max: 10.0
+    ```
+    # hwp_motor:
+    #     module.Class: 'motor.aptmotor.APTStage'
+    #     dll_path:\ 'C:\Program Files\Thorlabs\'
+    #     axis_labels:
+    #         - phi
+    #     phi:
+    #         hw_type:'TDC001'
+    #         serial_num:27500136
+    #         pitch:  17.87
+    #         unit:'degree'
+    #         constraints:
+    #             pos_.min: -360
+    #             pos_max: 720
+    #             vel_min: 1.0
+    #             vel_max: 10.0
+    #             acc_min:4.0
+    #             acc_max:10.0
+    ```
+    A config file entry for a linear xy-axis stage would look like:
+
+    ```
+    # hwp_motor:
+    #     module.Class: 'motor.aptmotor.APTStage'
+    #     dll_path:\ 'C:\Program Files\Thorlabs\'
+    #     axis_labels:
+    #         - x
+    #         - y
+    #     x:
+    #         hw_type:'TDC001'
+    #         serial_num:00000000
+    #         pitch:  1
+    #         unit:'m'
+    #         constraints:
+    #             pos_.min: 0
+    #             pos_max: 2
+    #             vel_min: 1.0
+    #             vel_max: 10.0
+    #             acc_min:4.0
+    #             acc_max:10.0
+    #     y:
+    #         hw_type:'TDC001'
+    #         serial_num:00000001
+    #         pitch:  1
+    #         unit:'m'
+    #         constraints:
+    #             pos_.min: -1
+    #             pos_max: 1
+    #             vel_min: 1.0
+    #             vel_max: 10.0
+    #             acc_min:4.0
+    #             acc_max:10.0
+    ```
     """
 
     def on_activate(self):
@@ -1110,14 +1146,16 @@ class APTStage(Base, MotorInterface):
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
 
-        @param list param_list: optional, if a specific position of an axis
-                                is desired, then the labels of the needed
-                                axis should be passed as the param_list.
-                                If nothing is passed, then from each axis the
-                                position is asked.
+        @param list param_list:
+            optional, if a specific position of an axis
+            is desired, then the labels of the needed
+            axis should be passed as the param_list.
+            If nothing is passed, then from each axis the
+            position is asked.
 
-        @return dict: with keys being the axis labels and item the current
-                      position.
+        @return
+            dict with keys being the axis labels and item the current
+            position.
         """
         pos = {}
 
