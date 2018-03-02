@@ -660,11 +660,8 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(np.inf)
             dspinbox_ref.setMinimum(-np.inf)
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
-            dspinbox_ref.setSingleStep(0.001)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001, dynamic_stepping=False)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
             self._mw.curr_pos_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
@@ -716,11 +713,8 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
-            dspinbox_ref.setSingleStep(0.001)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001, dynamic_stepping=False)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
             self._mw.move_rel_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
@@ -833,11 +827,8 @@ class MagnetGui(GUIBase):
             dspinbox_ref.setMaximum(constraints[axis_label]['pos_max'])
             dspinbox_ref.setMinimum(constraints[axis_label]['pos_min'])
 
-            # in the ScienDSpinBox the decimals are actually the number of
-            # significant digits, therefore set them here by default:
-            dspinbox_ref.setDecimals(5)
-            dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
-            dspinbox_ref.setSingleStep(0.001)
+            # dspinbox_ref.setOpts(minStep=constraints[axis_label]['pos_step'])
+            dspinbox_ref.setSingleStep(0.001, dynamic_stepping=False)
             dspinbox_ref.setSuffix(constraints[axis_label]['unit'])
 
             # set the horizontal size to 100 pixel:
@@ -1368,22 +1359,22 @@ class MagnetGui(GUIBase):
         # set the range constraints:
         self._mw.align_2d_axis0_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
-        self._mw.align_2d_axis0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
-        # self._mw.align_2d_axis0_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis0_range_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'],
+                                                             dynamic_stepping=False)
         self._mw.align_2d_axis0_range_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the step constraints:
         self._mw.align_2d_axis0_step_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis0_step_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
-        self._mw.align_2d_axis0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'])
-        # self._mw.align_2d_axis0_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis0_step_DSpinBox.setSingleStep(constraints[axis0_name]['pos_step'],
+                                                            dynamic_stepping=False)
         self._mw.align_2d_axis0_step_DSpinBox.setSuffix(constraints[axis0_name]['unit'])
 
         # set the velocity constraints:
         self._mw.align_2d_axis0_vel_DSpinBox.setMinimum(constraints[axis0_name]['vel_min'])
         self._mw.align_2d_axis0_vel_DSpinBox.setMaximum(constraints[axis0_name]['vel_max'])
-        self._mw.align_2d_axis0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'])
-        # self._mw.align_2d_axis0_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis0_vel_DSpinBox.setSingleStep(constraints[axis0_name]['vel_step'],
+                                                           dynamic_stepping=False)
         self._mw.align_2d_axis0_vel_DSpinBox.setSuffix(constraints[axis0_name]['unit']+'/s')
 
     def _update_limits_axis1(self):
@@ -1396,20 +1387,20 @@ class MagnetGui(GUIBase):
 
         self._mw.align_2d_axis1_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
-        self._mw.align_2d_axis1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
-        # self._mw.align_2d_axis1_range_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis1_range_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'],
+                                                             dynamic_stepping=False)
         self._mw.align_2d_axis1_range_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
         self._mw.align_2d_axis1_step_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis1_step_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
-        self._mw.align_2d_axis1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'])
-        # self._mw.align_2d_axis1_step_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis1_step_DSpinBox.setSingleStep(constraints[axis1_name]['pos_step'],
+                                                            dynamic_stepping=False)
         self._mw.align_2d_axis1_step_DSpinBox.setSuffix(constraints[axis1_name]['unit'])
 
         self._mw.align_2d_axis1_vel_DSpinBox.setMinimum(constraints[axis1_name]['vel_min'])
         self._mw.align_2d_axis1_vel_DSpinBox.setMaximum(constraints[axis1_name]['vel_max'])
-        self._mw.align_2d_axis1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'])
-        # self._mw.align_2d_axis1_vel_DSpinBox.setDecimals(5)
+        self._mw.align_2d_axis1_vel_DSpinBox.setSingleStep(constraints[axis1_name]['vel_step'],
+                                                           dynamic_stepping=False)
         self._mw.align_2d_axis1_vel_DSpinBox.setSuffix(constraints[axis1_name]['unit']+'/s')
 
     def _set_vel_display_axis0(self):

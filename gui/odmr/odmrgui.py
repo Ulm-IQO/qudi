@@ -88,7 +88,7 @@ class ODMRGui(GUIBase):
     sigFitChanged = QtCore.Signal(str)
     sigNumberOfLinesChanged = QtCore.Signal(int)
     sigRuntimeChanged = QtCore.Signal(float)
-    sigDoFit = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal(str, object, object, int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
 
     def __init__(self, config, **kwargs):
@@ -121,15 +121,12 @@ class ODMRGui(GUIBase):
         self._mw.start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.step_freq_DoubleSpinBox.setMaximum(100e9)
-        self._mw.step_freq_DoubleSpinBox.setOpts(minStep=1.0)  # set the minimal step to 1Hz
         self._mw.stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
         self._mw.stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
         self._mw.cw_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
-        self._mw.cw_power_DoubleSpinBox.setOpts(minStep=0.1)
         self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.sweep_power_DoubleSpinBox.setMinimum(constraints.min_power)
-        self._mw.sweep_power_DoubleSpinBox.setOpts(minStep=0.1)
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
@@ -584,7 +581,7 @@ class ODMRGui(GUIBase):
 
     def do_fit(self):
         fit_function = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
-        self.sigDoFit.emit(fit_function)
+        self.sigDoFit.emit(fit_function, None, None, self._mw.odmr_channel_ComboBox.currentIndex())
         return
 
     def update_fit(self, x_data, y_data, result_str_dict, current_fit):
