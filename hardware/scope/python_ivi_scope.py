@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from interface import scope_ivi_interface
-from .python_ivi_base import PythonIviBase
+from ..python_ivi_base import PythonIviBase
 
 import inspect
 from qtpy.QtCore import QObject
