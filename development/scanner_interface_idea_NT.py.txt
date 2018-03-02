@@ -1,0 +1,97 @@
+All interfaces have:
+def get_constraints(self)
+def on_activate(self)
+def on_deactivate(self)
+
+
+class PositionerInterface:
+	
+	def move_to(self, position, velocity=None):
+		"""
+		Moves the positioner to a certain point.
+		The velocity is optional since it can be globally set for this device.
+		Exact path can vary depending on starting point and hardware used.
+		"""
+		
+	def move_relative(self, rel_position, velocity=None):
+		"""
+		Wrapper for self.move_to() in order to be able to move to a position relative to the current one.
+		"""
+		
+	def get_position(self):
+		"""
+		Returns the current position of the device.
+		"""
+		
+	def get_target(self):
+		"""
+		Returns the current target position of the device (i.e. the "ideal" position)
+		"""
+	
+	def set_velocity(self, velocity):
+		"""
+		Set the default velocity for the positioning movement
+		"""
+		
+	def get_velocity(self):
+		"""
+		Return the currently set default velocity
+		"""
+		
+		
+class ScannerInterface:
+
+	def set_path(self, path):
+		"""
+		Sets a path the scanner should move along in the scan. 
+		Jump from point to point with the set clock frequency.
+		"""
+		
+	def get_path(self):
+		"""
+		Returns the currently set scanning path.
+		"""
+		return self.path
+		
+	def set_step_frequency(self, frequency):
+		"""
+		Sets the frequency at which the scanner will jump from point to point specified in the path.
+		"""
+		
+	def get_step_frequency(self):
+		"""
+		Returns the currently set step frequency.
+		"""
+		return self.step_frequency
+	
+	def set_data_channels(self, data_channels):
+		"""
+		Set the default data channels to be used in scans.
+		The channels provided in "data_channels" must be available (check constraints of the hardware).
+		"""
+	
+	def get_data_channels(self):
+		"""
+		Returns a list of string descriptors for the available data channels 
+		(i.e. the input channels to collect data from during a scan).
+		"""
+		return self.data_channels
+		
+	def scan(self, path=None, step_frequency=None, data_channels=None):
+		"""
+		Performs a scan along the given "path" with "step_frequency" jump rate and collect data at each 
+		position from each of the "data_channels" provided.
+		If no path/jump_frequency/data_channels is given, the previously set path/step_frequency/data_channels will be used instead.
+		
+		Will return a set of real/ideal positions with corresponding data points (as many as data channels used).
+		"""
+		return real/ideal_positions, data_points
+		
+	def move(self, path=None, step_frequency=None)
+		"""
+		Does the same as self.scan() but without collecting data.
+		returns the real/ideal positions along the path.
+		"""
+		return real/ideal_positions
+		
+"In general depending on if the hardware is able to read back the actual positions or not it will return the ideal or real position."
