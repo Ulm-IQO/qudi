@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -19,7 +20,7 @@
    <string>qudi: Confocal</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QGridLayout" name="gridLayout_8" />
+   <layout class="QGridLayout" name="gridLayout_8"/>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -27,25 +28,25 @@
      <x>0</x>
      <y>0</y>
      <width>1261</width>
-     <height>27</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="actionSave_XY_Scan" />
-    <addaction name="actionSave_Depth_Scan" />
-    <addaction name="actionSave_configuration" />
-    <addaction name="separator" />
-    <addaction name="actionClose" />
+    <addaction name="actionSave_XY_Scan"/>
+    <addaction name="actionSave_Depth_Scan"/>
+    <addaction name="actionSave_configuration"/>
+    <addaction name="separator"/>
+    <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menu_Options">
     <property name="title">
      <string>Option&amp;s</string>
     </property>
-    <addaction name="action_Settings" />
-    <addaction name="action_optimizer_settings" />
+    <addaction name="action_Settings"/>
+    <addaction name="action_optimizer_settings"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -55,29 +56,29 @@
      <property name="title">
       <string>Too&amp;lbars</string>
      </property>
-     <addaction name="actionScan_Toolbar" />
-     <addaction name="actionUtil_Toolbar" />
+     <addaction name="actionScan_Toolbar"/>
+     <addaction name="actionUtil_Toolbar"/>
     </widget>
-    <addaction name="actionXY_scan_view" />
-    <addaction name="actionDepth_scan_view" />
-    <addaction name="actionScan_control_view" />
-    <addaction name="actionOptimizer_view" />
-    <addaction name="actionScan_line_view" />
-    <addaction name="actionTilt_correction_view" />
-    <addaction name="separator" />
-    <addaction name="menuToolbars" />
-    <addaction name="separator" />
-    <addaction name="restore_default_view_Action" />
-    <addaction name="separator" />
-    <addaction name="optimizer_only_view_Action" />
-    <addaction name="actionAutoRange_xy" />
-    <addaction name="actionAutoRange_z" />
+    <addaction name="actionXY_scan_view"/>
+    <addaction name="actionDepth_scan_view"/>
+    <addaction name="actionScan_control_view"/>
+    <addaction name="actionOptimizer_view"/>
+    <addaction name="actionScan_line_view"/>
+    <addaction name="actionTilt_correction_view"/>
+    <addaction name="separator"/>
+    <addaction name="menuToolbars"/>
+    <addaction name="separator"/>
+    <addaction name="restore_default_view_Action"/>
+    <addaction name="separator"/>
+    <addaction name="optimizer_only_view_Action"/>
+    <addaction name="actionAutoRange_xy"/>
+    <addaction name="actionAutoRange_z"/>
    </widget>
-   <addaction name="menuFile" />
-   <addaction name="menuView" />
-   <addaction name="menu_Options" />
+   <addaction name="menuFile"/>
+   <addaction name="menuView"/>
+   <addaction name="menu_Options"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar" />
+  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="depth_scan_dockWidget">
    <property name="windowTitle">
     <string>Depth scan</string>
@@ -100,7 +101,7 @@
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_2">
        <item>
-        <widget class="QComboBox" name="depth_channel_ComboBox" />
+        <widget class="QComboBox" name="depth_channel_ComboBox"/>
        </item>
        <item>
         <widget class="ScienDSpinBox" name="depth_cb_max_DoubleSpinBox">
@@ -128,6 +129,9 @@
          <property name="suffix">
           <string>c/s</string>
          </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
          <property name="minimum">
           <double>-1000000000.000000000000000</double>
          </property>
@@ -152,6 +156,9 @@
          </property>
          <property name="suffix">
           <string>%</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>0.000000000000000</double>
@@ -187,6 +194,9 @@
          </property>
          <property name="suffix">
           <string>%</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>0.000000000000000</double>
@@ -227,6 +237,9 @@
          </property>
          <property name="suffix">
           <string>c/s</string>
+         </property>
+         <property name="decimals">
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>-1000000000.000000000000000</double>
@@ -390,7 +403,7 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_3">
-     <item colspan="2" column="0" row="0">
+     <item row="0" column="0" colspan="2">
       <widget class="QLabel" name="resolutionLabel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -418,14 +431,14 @@
        </property>
       </widget>
      </item>
-     <item column="2" row="0">
+     <item row="0" column="2">
       <widget class="Line" name="line">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
-     <item colspan="2" column="3" row="0">
+     <item row="0" column="3" colspan="2">
       <widget class="QLabel" name="scanrangeLabel">
        <property name="text">
         <string>Scan Range</string>
@@ -435,7 +448,7 @@
        </property>
       </widget>
      </item>
-     <item column="5" row="0">
+     <item row="0" column="5">
       <spacer name="horizontalSpacer_2">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -448,7 +461,7 @@
        </property>
       </spacer>
      </item>
-     <item column="0" row="1">
+     <item row="1" column="0">
       <widget class="QLabel" name="xAxisLabel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -471,7 +484,7 @@
        </property>
       </widget>
      </item>
-     <item column="1" row="1">
+     <item row="1" column="1">
       <widget class="QSpinBox" name="xy_res_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -495,7 +508,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;XY-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;XY-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -517,69 +530,14 @@
        </property>
       </widget>
      </item>
-     <item column="2" row="1">
+     <item row="1" column="2">
       <widget class="Line" name="line_2">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
-     <item column="3" row="1">
-      <widget class="ScienDSpinBox" name="x_min_InputWidget">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>70</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>50</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="mouseTracking">
-        <bool>true</bool>
-       </property>
-       <property name="focusPolicy">
-        <enum>Qt::WheelFocus</enum>
-       </property>
-       <property name="acceptDrops">
-        <bool>true</bool>
-       </property>
-       <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;X_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-       <property name="buttonSymbols">
-        <enum>QAbstractSpinBox::NoButtons</enum>
-       </property>
-       <property name="accelerated">
-        <bool>true</bool>
-       </property>
-       <property name="decimals">
-        <number>3</number>
-       </property>
-       <property name="minimum">
-        <double>-200.000000000000000</double>
-       </property>
-       <property name="maximum">
-        <double>200.000000000000000</double>
-       </property>
-       <property name="singleStep">
-        <double>0.100000000000000</double>
-       </property>
-      </widget>
-     </item>
-     <item column="4" row="1">
+     <item row="1" column="4">
       <widget class="ScienDSpinBox" name="x_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -609,7 +567,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;X_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -621,7 +579,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -631,7 +589,7 @@
        </property>
       </widget>
      </item>
-     <item column="5" row="1">
+     <item row="1" column="5">
       <widget class="QSlider" name="x_SliderWidget">
        <property name="minimumSize">
         <size>
@@ -647,7 +605,7 @@
        </property>
       </widget>
      </item>
-     <item column="6" row="1">
+     <item row="1" column="6">
       <widget class="ScienDSpinBox" name="x_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -677,7 +635,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;X-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -689,7 +647,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-1000.000000000000000</double>
@@ -702,7 +660,7 @@
        </property>
       </widget>
      </item>
-     <item column="0" row="2">
+     <item row="2" column="0">
       <widget class="QLabel" name="yAxisLabel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -722,7 +680,7 @@
        </property>
       </widget>
      </item>
-     <item column="1" row="2">
+     <item row="2" column="1">
       <spacer name="horizontalSpacer_3">
        <property name="orientation">
         <enum>Qt::Horizontal</enum>
@@ -738,14 +696,14 @@
        </property>
       </spacer>
      </item>
-     <item column="2" row="2">
+     <item row="2" column="2">
       <widget class="Line" name="line_3">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
-     <item column="3" row="2">
+     <item row="2" column="3">
       <widget class="ScienDSpinBox" name="y_min_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -775,7 +733,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Y_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Y_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -787,7 +745,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -797,7 +755,7 @@
        </property>
       </widget>
      </item>
-     <item column="4" row="2">
+     <item row="2" column="4">
       <widget class="ScienDSpinBox" name="y_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -827,7 +785,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Y_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Y_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -839,7 +797,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -849,7 +807,7 @@
        </property>
       </widget>
      </item>
-     <item column="5" row="2">
+     <item row="2" column="5">
       <widget class="QSlider" name="y_SliderWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -883,7 +841,7 @@
        </property>
       </widget>
      </item>
-     <item column="6" row="2">
+     <item row="2" column="6">
       <widget class="ScienDSpinBox" name="y_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -913,7 +871,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Y-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Y-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -925,7 +883,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-1000.000000000000000</double>
@@ -938,7 +896,7 @@
        </property>
       </widget>
      </item>
-     <item column="0" row="3">
+     <item row="3" column="0">
       <widget class="QLabel" name="zAxisLabel">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
@@ -964,7 +922,7 @@
        </property>
       </widget>
      </item>
-     <item column="1" row="3">
+     <item row="3" column="1">
       <widget class="QSpinBox" name="z_res_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -988,7 +946,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Z-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Z-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1010,14 +968,14 @@
        </property>
       </widget>
      </item>
-     <item column="2" row="3">
+     <item row="3" column="2">
       <widget class="Line" name="line_4">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
        </property>
       </widget>
      </item>
-     <item column="3" row="3">
+     <item row="3" column="3">
       <widget class="ScienDSpinBox" name="z_min_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1047,7 +1005,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Z_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Z_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1059,7 +1017,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -1069,7 +1027,7 @@
        </property>
       </widget>
      </item>
-     <item column="4" row="3">
+     <item row="3" column="4">
       <widget class="ScienDSpinBox" name="z_max_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1099,7 +1057,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Z_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Z_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1111,7 +1069,7 @@
         <bool>true</bool>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-200.000000000000000</double>
@@ -1121,7 +1079,7 @@
        </property>
       </widget>
      </item>
-     <item column="5" row="3">
+     <item row="3" column="5">
       <widget class="QSlider" name="z_SliderWidget">
        <property name="minimumSize">
         <size>
@@ -1134,7 +1092,7 @@
        </property>
       </widget>
      </item>
-     <item column="6" row="3">
+     <item row="3" column="6">
       <widget class="ScienDSpinBox" name="z_current_InputWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -1164,7 +1122,7 @@
         <bool>true</bool>
        </property>
        <property name="toolTip">
-        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=" font-size:10pt; font-weight:600;"&gt;Z-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;Z-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -1173,7 +1131,7 @@
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
        <property name="decimals">
-        <number>3</number>
+        <number>2</number>
        </property>
        <property name="minimum">
         <double>-1000.000000000000000</double>
@@ -1186,7 +1144,7 @@
        </property>
       </widget>
      </item>
-     <item column="5" row="4">
+     <item row="4" column="5">
       <spacer name="verticalSpacer_2">
        <property name="orientation">
         <enum>Qt::Vertical</enum>
@@ -1198,6 +1156,61 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item row="1" column="3">
+      <widget class="ScienDSpinBox" name="x_min_InputWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>70</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>50</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="mouseTracking">
+        <bool>true</bool>
+       </property>
+       <property name="focusPolicy">
+        <enum>Qt::WheelFocus</enum>
+       </property>
+       <property name="acceptDrops">
+        <bool>true</bool>
+       </property>
+       <property name="toolTip">
+        <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="accelerated">
+        <bool>true</bool>
+       </property>
+       <property name="decimals">
+        <number>2</number>
+       </property>
+       <property name="minimum">
+        <double>-200.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>200.000000000000000</double>
+       </property>
+       <property name="singleStep">
+        <double>0.100000000000000</double>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
@@ -1229,7 +1242,7 @@
        <item>
         <layout class="QVBoxLayout" name="verticalLayout" stretch="0,0,0,1,0,0,0,0">
          <item>
-          <widget class="QComboBox" name="xy_channel_ComboBox" />
+          <widget class="QComboBox" name="xy_channel_ComboBox"/>
          </item>
          <item>
           <widget class="ScienDSpinBox" name="xy_cb_max_DoubleSpinBox">
@@ -1260,6 +1273,9 @@
            <property name="suffix">
             <string>c/s</string>
            </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
            <property name="minimum">
             <double>-1000000000.000000000000000</double>
            </property>
@@ -1284,6 +1300,9 @@
            </property>
            <property name="suffix">
             <string>%</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
            </property>
            <property name="minimum">
             <double>0.000000000000000</double>
@@ -1326,6 +1345,9 @@
            <property name="suffix">
             <string>%</string>
            </property>
+           <property name="decimals">
+            <number>2</number>
+           </property>
            <property name="minimum">
             <double>0.000000000000000</double>
            </property>
@@ -1365,6 +1387,9 @@
            </property>
            <property name="suffix">
             <string>c/s</string>
+           </property>
+           <property name="decimals">
+            <number>2</number>
            </property>
            <property name="minimum">
             <double>-1000000000.000000000000000</double>
@@ -1417,12 +1442,12 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_scan_xy_start" />
-   <addaction name="action_scan_xy_resume" />
-   <addaction name="action_stop_scanning" />
-   <addaction name="action_scan_depth_start" />
-   <addaction name="action_scan_depth_resume" />
-   <addaction name="action_optimize_position" />
+   <addaction name="action_scan_xy_start"/>
+   <addaction name="action_scan_xy_resume"/>
+   <addaction name="action_stop_scanning"/>
+   <addaction name="action_scan_depth_start"/>
+   <addaction name="action_scan_depth_resume"/>
+   <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="util_ToolBar">
    <property name="windowTitle">
@@ -1437,10 +1462,10 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_zoom" />
-   <addaction name="action_full_range_xy" />
-   <addaction name="action_full_range_z" />
-   <addaction name="action_TiltCorrection" />
+   <addaction name="action_zoom"/>
+   <addaction name="action_full_range_xy"/>
+   <addaction name="action_full_range_z"/>
+   <addaction name="action_TiltCorrection"/>
   </widget>
   <widget class="QDockWidget" name="tilt_correction_dockWidget">
    <property name="enabled">
@@ -1466,16 +1491,16 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_6">
     <layout class="QGridLayout" name="gridLayout_2">
-     <item column="0" row="0">
+     <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout">
-       <item colspan="2" column="0" row="4">
+       <item row="4" column="0" colspan="2">
         <widget class="QPushButton" name="calc_tilt_pushButton">
          <property name="text">
           <string>Calc. Tilit</string>
          </property>
         </widget>
        </item>
-       <item column="0" row="2">
+       <item row="2" column="0">
         <widget class="QPushButton" name="tilt_set_02_pushButton">
          <property name="maximumSize">
           <size>
@@ -1488,7 +1513,7 @@
          </property>
         </widget>
        </item>
-       <item column="0" row="3">
+       <item row="3" column="0">
         <widget class="QPushButton" name="tilt_set_03_pushButton">
          <property name="maximumSize">
           <size>
@@ -1501,7 +1526,7 @@
          </property>
         </widget>
        </item>
-       <item column="1" row="1">
+       <item row="1" column="1">
         <widget class="ScienDSpinBox" name="tilt_01_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1525,14 +1550,14 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item column="0" row="1">
+       <item row="1" column="0">
         <widget class="QPushButton" name="tilt_set_01_pushButton">
          <property name="maximumSize">
           <size>
@@ -1545,14 +1570,14 @@
          </property>
         </widget>
        </item>
-       <item column="0" row="0">
+       <item row="0" column="0">
         <widget class="QLabel" name="tiltpoint_label">
          <property name="text">
           <string>Set Tiltpoint :</string>
          </property>
         </widget>
        </item>
-       <item column="2" row="1">
+       <item row="1" column="2">
         <widget class="ScienDSpinBox" name="tilt_01_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1576,21 +1601,21 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignHCenter" column="1" row="0">
+       <item row="0" column="1" alignment="Qt::AlignHCenter">
         <widget class="QLabel" name="tilt_x_label">
          <property name="text">
           <string>X</string>
          </property>
         </widget>
        </item>
-       <item column="1" row="2">
+       <item row="2" column="1">
         <widget class="ScienDSpinBox" name="tilt_02_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1614,14 +1639,14 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item column="3" row="3">
+       <item row="3" column="3">
         <widget class="ScienDSpinBox" name="tilt_03_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1645,7 +1670,7 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>-100.000000000000000</double>
@@ -1655,7 +1680,7 @@
          </property>
         </widget>
        </item>
-       <item column="3" row="1">
+       <item row="1" column="3">
         <widget class="ScienDSpinBox" name="tilt_01_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1679,7 +1704,7 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>-100.000000000000000</double>
@@ -1689,7 +1714,7 @@
          </property>
         </widget>
        </item>
-       <item column="1" row="3">
+       <item row="3" column="1">
         <widget class="ScienDSpinBox" name="tilt_03_x_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1713,14 +1738,14 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item column="2" row="3">
+       <item row="3" column="2">
         <widget class="ScienDSpinBox" name="tilt_03_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1750,14 +1775,14 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item column="3" row="2">
+       <item row="2" column="3">
         <widget class="ScienDSpinBox" name="tilt_02_z_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1781,7 +1806,7 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="minimum">
           <double>-100.000000000000000</double>
@@ -1791,7 +1816,7 @@
          </property>
         </widget>
        </item>
-       <item column="2" row="2">
+       <item row="2" column="2">
         <widget class="ScienDSpinBox" name="tilt_02_y_pos_doubleSpinBox">
          <property name="enabled">
           <bool>true</bool>
@@ -1815,21 +1840,21 @@
           <enum>QAbstractSpinBox::NoButtons</enum>
          </property>
          <property name="decimals">
-          <number>3</number>
+          <number>2</number>
          </property>
          <property name="maximum">
           <double>200.000000000000000</double>
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignHCenter" column="2" row="0">
+       <item row="0" column="2" alignment="Qt::AlignHCenter">
         <widget class="QLabel" name="tilt_y_label">
          <property name="text">
           <string>Y</string>
          </property>
         </widget>
        </item>
-       <item alignment="Qt::AlignHCenter" column="3" row="0">
+       <item row="0" column="3" alignment="Qt::AlignHCenter">
         <widget class="QLabel" name="tilt_z_label">
          <property name="text">
           <string>Z</string>
@@ -1857,8 +1882,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="actionBack" />
-   <addaction name="actionForward" />
+   <addaction name="actionBack"/>
+   <addaction name="actionForward"/>
   </widget>
   <widget class="QDockWidget" name="scanLineDockWidget">
    <property name="windowTitle">
@@ -1869,8 +1894,8 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_5">
     <layout class="QGridLayout" name="gridLayout_4">
-     <item column="0" row="0">
-      <widget class="PlotWidget" name="scanLineGraphicsView" />
+     <item row="0" column="0">
+      <widget class="PlotWidget" name="scanLineGraphicsView"/>
      </item>
     </layout>
    </widget>
@@ -1911,7 +1936,7 @@
     <string>C&amp;lose</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+W<string>Close confocal. Shortcut:Ctrl+W</string>
+    <string>Close confocal. Shortcut:Ctrl+W</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+W</string>
@@ -1950,10 +1975,13 @@
    <property name="text">
     <string>Zoom</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Z</string>
+   </property>
    <property name="shortcut">
     <string>Z</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Z</string></property></action>
+  </action>
   <action name="actionXY_scan_view">
    <property name="checkable">
     <bool>true</bool>
@@ -1964,10 +1992,13 @@
    <property name="text">
     <string>&amp;XY scan</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Alt+X</string>
+   </property>
    <property name="shortcut">
     <string>Alt+X</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Alt+X</string></property></action>
+  </action>
   <action name="actionDepth_scan_view">
    <property name="checkable">
     <bool>true</bool>
@@ -1978,10 +2009,13 @@
    <property name="text">
     <string>&amp;Depth scan</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Alt+D</string>
+   </property>
    <property name="shortcut">
     <string>Alt+D</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Alt+D</string></property></action>
+  </action>
   <action name="actionScan_control_view">
    <property name="checkable">
     <bool>true</bool>
@@ -2003,10 +2037,13 @@
    <property name="text">
     <string>&amp;Optimizer</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Alt+O</string>
+   </property>
    <property name="shortcut">
     <string>Alt+O</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Alt+O</string></property></action>
+  </action>
   <action name="action_scan_xy_start">
    <property name="icon">
     <iconset>
@@ -2016,7 +2053,7 @@
     <string>Scan XY</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Shift+S<string>Start a fresh XY scan. Shortcut:Shift+S</string>
+    <string>Start a fresh XY scan. Shortcut:Shift+S</string>
    </property>
    <property name="shortcut">
     <string>Shift+S</string>
@@ -2031,7 +2068,7 @@
     <string>Resume XY scan</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Shift+R<string>Resume an interrupted XY scan. Shortcut:Shift+R</string>
+    <string>Resume an interrupted XY scan. Shortcut:Shift+R</string>
    </property>
    <property name="shortcut">
     <string>Shift+R</string>
@@ -2046,7 +2083,7 @@
     <string>Scan depth</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Shift+D<string>Start a fresh depth scan. Shortcut:Shift+D</string>
+    <string>Start a fresh depth scan. Shortcut:Shift+D</string>
    </property>
    <property name="shortcut">
     <string>Shift+D</string>
@@ -2073,10 +2110,10 @@
     <string>&amp;Optimize position</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+Alt+X<string>Optimize position of crosshair. Shortcut:Ctrl+Alt+X</string>
+    <string>Optimize position of crosshair. Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="statusTip">
-    <string />
+    <string/>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+X</string>
@@ -2091,7 +2128,7 @@
     <string>Stop scan</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Shift+E<string>Stop scanning XY or depth and return to "ready" state. Shortcut:Shift+E</string>
+    <string>Stop scanning XY or depth and return to &quot;ready&quot; state. Shortcut:Shift+E</string>
    </property>
    <property name="shortcut">
     <string>Shift+E</string>
@@ -2174,7 +2211,7 @@
     <string>&amp;Forward</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+R<string>Go forward in scan history. Shortcut:Ctrl+R</string>
+    <string>Go forward in scan history. Shortcut:Ctrl+R</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+R</string>
@@ -2192,7 +2229,7 @@
     <string>&amp;Back</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+Z<string>Go back in scan history. Shortcut:Ctrl+Z</string>
+    <string>Go back in scan history. Shortcut:Ctrl+Z</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Z</string>
@@ -2218,7 +2255,7 @@
     <string>Full range XY</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+Alt+&lt;<string>Set X and Y directions to full scan range. Shortcut:Ctrl+Alt+&lt;</string>
+    <string>Set X and Y directions to full scan range. Shortcut:Ctrl+Alt+&lt;</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+&lt;</string>
@@ -2233,7 +2270,7 @@
     <string>Full range Z</string>
    </property>
    <property name="toolTip">
-    . Shortcut:Ctrl+Alt+Y<string>Set Z direction to full scan range. Shortcut:Ctrl+Alt+Y</string>
+    <string>Set Z direction to full scan range. Shortcut:Ctrl+Alt+Y</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+Y</string>
@@ -2246,29 +2283,35 @@
    <property name="text">
     <string>autoRange_xy</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Shift+X</string>
+   </property>
    <property name="shortcut">
     <string>Shift+X</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Shift+X</string></property></action>
+  </action>
   <action name="actionAutoRange_z">
    <property name="text">
     <string>autoRange_z</string>
    </property>
+   <property name="toolTip">
+    <string>Shortcut:Shift+C</string>
+   </property>
    <property name="shortcut">
     <string>Shift+C</string>
    </property>
-  <property name="toolTip"><string>Shortcut:Shift+C</string></property></action>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>PlotWidgetModified</class>
@@ -2323,7 +2366,7 @@
   <tabstop>y_SliderWidget</tabstop>
   <tabstop>xy_ViewWidget</tabstop>
  </tabstops>
- <resources />
+ <resources/>
  <connections>
   <connection>
    <sender>actionClose</sender>

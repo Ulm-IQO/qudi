@@ -36,6 +36,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
     # config options
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
+    _number_of_channels = ConfigOption('number_of_channels', 2, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -103,11 +104,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-
         self._odmr_length = length
-#
-#        self.log.warning('ODMRCounterDummy>set_odmr_length')
-
         return 0
 
     def count_odmr(self, length=100):
@@ -125,12 +122,9 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self.module_state.lock()
 
-
         self._odmr_length = length
 
-        count_data = np.random.uniform(0, 5e4, length)
-
-        lorentians,params = self._fit_logic.make_lorentziandouble_model()
+        lorentians, params = self._fit_logic.make_lorentziandouble_model()
 
         sigma = 3.
 
@@ -142,13 +136,18 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         params.add('l1_sigma', value=sigma)
         params.add('offset', value=50000.)
 
-        count_data += lorentians.eval(x=np.arange(1, length+1, 1), params=params)
+        ret = np.empty((self._number_of_channels, length))
+
+        for chnl_index in range(self._number_of_channels):
+            count_data = np.random.uniform(0, 5e4, length)
+            count_data += (chnl_index + 1) * lorentians.eval(x=np.arange(1, length + 1, 1),
+                                                             params=params)
+            ret[chnl_index] = count_data
 
         time.sleep(self._odmr_length*1./self._clock_frequency)
 
         self.module_state.unlock()
-
-        return count_data
+        return ret
 
 
     def close_odmr(self):
@@ -172,3 +171,10 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         self.log.info('ODMRCounterDummy>close_odmr_clock')
 
         return 0
+
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+        @return list(str): channels recorded during ODMR measurement
+        """
+        return ['ch{0:d}'.format(i) for i in range(1, self._number_of_channels + 1)]

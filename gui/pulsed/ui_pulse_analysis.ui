@@ -543,19 +543,6 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="5">
-    <widget class="ScienSpinBox" name="time_param_elapsed_sweep_ScienSpinBox">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-     <property name="buttonSymbols">
-      <enum>QAbstractSpinBox::NoButtons</enum>
-     </property>
-     <property name="maximum">
-      <number>999999999</number>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="6">
     <widget class="QLabel" name="time_param_ana_periode_Label">
      <property name="text">
@@ -576,6 +563,19 @@
      </property>
     </widget>
    </item>
+   <item row="4" column="5">
+    <widget class="QSpinBox" name="time_param_elapsed_sweep_SpinBox">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="buttonSymbols">
+      <enum>QAbstractSpinBox::NoButtons</enum>
+     </property>
+     <property name="maximum">
+      <number>999999999</number>
+     </property>
+    </widget>
+   </item>
   </layout>
  </widget>
  <customwidgets>
@@ -593,11 +593,6 @@
    <class>FitSettingsComboBox</class>
    <extends>QComboBox</extends>
    <header>gui/fitsettings</header>
-  </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
