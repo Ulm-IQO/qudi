@@ -2086,7 +2086,7 @@ class PulsedMeasurementGui(GUIBase):
 
         extraction_settings['current_method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
         extraction_settings['count_threshold'] = self._pe.extract_param_threshold_SpinBox.value()
-        extraction_settings['threshold_tolerance_bins'] = self._pe.extract_param_tolerance_SpinBox.value()
+        extraction_settings['threshold_tolerance'] = self._pe.extract_param_tolerance_SpinBox.value()
         extraction_settings['min_laser_length'] = self._pe.extract_param_min_laser_length_SpinBox.value()
 
         self._pulsed_master_logic.extraction_settings_changed(extraction_settings)
@@ -2118,9 +2118,9 @@ class PulsedMeasurementGui(GUIBase):
             self._pe.extract_param_threshold_SpinBox.setValue(extraction_settings['count_threshold'])
             self._pe.extract_param_threshold_SpinBox.blockSignals(False)
 
-        if 'threshold_tolerance_bins' in extraction_settings:
+        if 'threshold_tolerance' in extraction_settings:
             self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
-            self._pe.extract_param_tolerance_SpinBox.setValue(extraction_settings['threshold_tolerance_bins'])
+            self._pe.extract_param_tolerance_SpinBox.setValue(extraction_settings['threshold_tolerance'])
             self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
 
         if 'min_laser_length' in extraction_settings:
