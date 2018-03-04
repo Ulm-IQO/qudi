@@ -608,7 +608,7 @@ class EdgeTrigger(QObject, scope_ivi_interface.EdgeTriggerInterface):
 # ************************ EXTENSIONS **************************************************************
 
 
-class InterpolationAcquisitionMixin(scope_ivi_interface.InterpolationAcquisitionInterface):
+class InterpolationAcquisitionMixin(scope_ivi_interface.InterpolationInterface):
     interpolation_changed = Signal(str)
 
     @property
@@ -1127,7 +1127,9 @@ class AutoSetupMixin(scope_ivi_interface.AutoSetupInterface):
         self.parent().driver.measurement.auto_setup()
 
 
-class WaveformMeasurementReferenceLevel(QObject, scope_ivi_interface.WaveformMeasurementReferenceLevelInterface):
+class WaveformMeasurementReferenceLevel(
+    QObject,
+    scope_ivi_interface.WaveformMeasurement_ReferenceLevel_Interface):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1188,7 +1190,8 @@ class WaveformMeasurementReferenceLevel(QObject, scope_ivi_interface.WaveformMea
         self.parent().driver.reference_level.configure(low, middle, high)
 
 
-class WaveformMeasurementChannelMeasurementMixin(scope_ivi_interface.WaveformMeasurementChannelMeasurementInterface):
+class WaveformMeasurementChannelMeasurementMixin(
+    scope_ivi_interface.WaveformMeasurement_ChannelMeasurement_Interface):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1297,10 +1300,11 @@ class WaveformMeasurementChannelMeasurementMixin(scope_ivi_interface.WaveformMea
         * Measurement Mid Reference
         """
         return self.parent().driver.channels[
-            self._channel_index].measurement.read_waveform_measurement(measurement_function, maximum_time)
+            self._channel_index].measurement.read_waveform_measurement(measurement_function,
+                                                                       maximum_time)
 
 
-class MinMaxWaveformAcquisitionMixin(scope_ivi_interface.MinMaxWaveformAcquisitionInterface):
+class MinMaxWaveformAcquisitionMixin(scope_ivi_interface.MinMaxWaveform_Acquisition_Interface):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
@@ -1329,7 +1333,8 @@ class MinMaxWaveformAcquisitionMixin(scope_ivi_interface.MinMaxWaveformAcquisiti
         self.number_of_envelopes_changed.emit(value)
 
 
-class MinMaxWaveformChannelMeasurementMixin(scope_ivi_interface.MinMaxWaveformChannelMeasurementInterface):
+class MinMaxWaveformChannelMeasurementMixin(
+    scope_ivi_interface.MinMaxWaveform_ChannelMeasurement_Interface):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
