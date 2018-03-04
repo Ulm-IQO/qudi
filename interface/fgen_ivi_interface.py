@@ -438,10 +438,6 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @number_waveforms_max.setter
-    def number_waveforms_max(self, value):
-        pass
-
     @property
     @abc.abstractmethod
     def size_max(self):
@@ -449,10 +445,6 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         Returns the maximum number of points the function generator allows in an
         arbitrary waveform.
         """
-        pass
-
-    @size_max.setter
-    def size_max(self, value):
         pass
 
     @property
@@ -464,10 +456,6 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @size_min.setter
-    def size_min(self, value):
-        pass
-
     @property
     @abc.abstractmethod
     def quantum(self):
@@ -476,15 +464,6 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         value. This attribute returns the quantum value the function generator
         allows. For example, if this attribute returns a value of 8, all waveform
         sizes must be a multiple of 8.
-        """
-        pass
-
-    @abc.abstractmethod
-    def configure(self, waveform, gain, offset):
-        """
-        Configures the attributes of the function generator that affect arbitrary
-        waveform generation. These attributes are the arbitrary waveform handle,
-        gain, and offset.
         """
         pass
 
@@ -501,7 +480,7 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def create(self):
+    def create(self, data):
         """
         Creates an arbitrary waveform from an array of data points. The function
         returns a handle that identifies the waveform. You pass a waveform handle
@@ -598,7 +577,7 @@ class ArbSeq_ArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def clear(self):
+    def clear(self, sequence_handle):
         """
         Removes a previously created arbitrary sequence from the function
         generator's memory and invalidates the sequence's handle.
@@ -609,16 +588,7 @@ class ArbSeq_ArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def configure(self, waveform, gain, offset):
-        """
-        Configures the attributes of the function generator that affect arbitrary
-        sequence generation. These attributes are the arbitrary sequence handle,
-        gain, and offset.
-        """
-        pass
-
-    @abc.abstractmethod
-    def create(self):
+    def create(self, waveform_handles):
         """
         Creates an arbitrary waveform sequence from an array of waveform handles
         and a corresponding array of loop counts. The function returns a handle
@@ -665,7 +635,7 @@ class ArbSeq_OutputsArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
     See also: ArbSeq_ArbitrarySequence_Interface, ArbSeq_Arbitrary_Interface
     """
     @abc.abstractmethod
-    def configure(self, waveform, gain, offset):
+    def configure(self, sequence_handle, gain, offset):
         """
         Configures the attributes of the function generator that affect arbitrary
         sequence generation. These attributes are the arbitrary sequence handle,
@@ -1027,6 +997,10 @@ class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=InterfaceMetaclass)
         * 'negative'
         * 'either'
         """
+        pass
+
+    @slope.setter
+    def slope(self, value):
         pass
 
     @property
@@ -1550,8 +1524,9 @@ class ModulateFM_FM_Interface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def configure_internal(self, deviation, waveform, frequency):
         """
-        Configures the attributes that control the function generator's internal frequency modulating
-        waveform source. These attributes are the modulation peak deviation, waveform, and frequency.
+        Configures the attributes that control the function generator's internal frequency
+        modulating waveform source. These attributes are the modulation peak deviation, waveform,
+        and frequency.
 
         This attribute affects instrument behavior only when the FM Enabled
         attribute is set to True.
@@ -1563,9 +1538,10 @@ class SampleClockInterface(metaclass=InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support external sample clocks
 
-    The IviFgenSampleClock extension group supports arbitrary waveform generators with the ability to use (or provide)
-    an external sample clock. Note that when using an external sample clock, the Arbitrary Sample Rate attribute must
-    be set to the corresponding frequency of the external sample clock.
+    The IviFgenSampleClock extension group supports arbitrary waveform generators with the ability
+    to use (or provide) an external sample clock. Note that when using an external sample clock,
+    the Arbitrary Sample Rate attribute must be set to the corresponding frequency of the external
+    sample clock.
 
     Implement as sample_clock.
     """
@@ -1587,7 +1563,10 @@ class SampleClockInterface(metaclass=InterfaceMetaclass):
     @property
     @abc.abstractmethod
     def output_enabled(self):
-        """ Specifies whether or not the sample clock appears at the sample clock output of the generator. """
+        """
+        Specifies whether or not the sample clock appears at the sample clock output of the
+        generator.
+        """
         pass
 
     @output_enabled.setter
@@ -1597,7 +1576,8 @@ class SampleClockInterface(metaclass=InterfaceMetaclass):
 
 class TerminalConfigurationInterface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support single ended or differential output selection
+    Extension IVI methods for function generators that support single ended or differential
+    output selection.
 
     Implement as mixin to outputs[].
     """
@@ -1624,11 +1604,13 @@ class TerminalConfigurationInterface(metaclass=InterfaceMetaclass):
 
 class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support user-defined arbitrary waveform generation
+    Extension IVI methods for function generators that support user-defined arbitrary waveform
+    generation
 
-    The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function generators capable of
-    producing user-defined arbitrary waveforms for specific output channels. The IviFgenArbChannelWfm extension group
-    includes functions for creating, configuring, and generating arbitrary waveforms.
+    The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function
+    generators capable of producing user-defined arbitrary waveforms for specific output channels.
+    The IviFgenArbChannelWfm extension group includes functions for creating, configuring, and
+    generating arbitrary waveforms.
 
     Implement as mixin to outputs[].arbitrary
 
@@ -1636,7 +1618,7 @@ class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
     """
 
     @abc.abstractmethod
-    def create_waveform(self):
+    def create_waveform(self, data):
         """
         Creates a channel-specific arbitrary waveform and returns a handle that
         identifies that waveform. You pass a waveform handle as the waveformHandle
@@ -1659,9 +1641,10 @@ class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
 
 class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
     """
-    The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function generators capable
-    of producing user-defined arbitrary waveforms for specific output channels. The IviFgenArbChannelWfm extension
-    group includes functions for creating, configuring, and generating arbitrary waveforms.
+    The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function
+    generators capable of producing user-defined arbitrary waveforms for specific output channels.
+    The IviFgenArbChannelWfm extension group includes functions for creating, configuring, and
+    generating arbitrary waveforms.
 
     Implement as arbitrary.waveform
 
@@ -1690,11 +1673,13 @@ class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
 
 class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support user-defined arbitrary binary waveform generation
+    Extension IVI methods for function generators that support user-defined arbitrary binary
+    waveform generation
 
-    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of producing user-defined
-    arbitrary waveforms that can be specified in binary format. The IviFgenArbWfmBinary extension group includes
-    functions for creating, configuring, and generating arbitrary waveforms.
+    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of
+    producing user-defined arbitrary waveforms that can be specified in binary format. The
+    IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
+    arbitrary waveforms.
 
     Implement as outputs[].arbitrary.waveform
 
@@ -1713,53 +1698,44 @@ class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=InterfaceMetacla
         create a sequence of arbitrary waveforms with the Create Arbitrary
         Sequence function.
 
-        If the instrument has multiple channels, it is possible to create
-        multi-channel waveforms: the channel names are passed as a
-        comma-separated list of channel names, and the waveform arrays
-        are concatenated into a single array. In this case, all waveforms
-        must be of the same length.
+        If the function generator cannot store any more arbitrary waveforms, this
+        function returns the error No Waveforms Available.
+        """
+        pass
+
+    @abc.abstractmethod
+    def create_channel_waveform_int32(self, waveform):
+        """
+        Creates a channel-specific arbitrary waveform and returns a handle that
+        identifies that waveform. Data is passed in as 32-bit binary data. If the
+        arbitrary waveform generator supports formats less than 32 bits, call the
+        BinaryAlignment property to determine whether to left or right justify the
+        data before passing it to this call. You pass a waveform handle as the
+        waveformHandle parameter of the Configure Arbitrary Waveform function to
+        produce that waveform. You also use the handles this function returns to
+        create a sequence of arbitrary waveforms with the Create Arbitrary
+        Sequence function.
 
         If the function generator cannot store any more arbitrary waveforms, this
         function returns the error No Waveforms Available.
         """
         pass
 
-        @abc.abstractmethod
-        def create_channel_waveform_int32(self, waveform):
-            """
-            Creates a channel-specific arbitrary waveform and returns a handle that
-            identifies that waveform. Data is passed in as 32-bit binary data. If the
-            arbitrary waveform generator supports formats less than 32 bits, call the
-            BinaryAlignment property to determine whether to left or right justify the
-            data before passing it to this call. You pass a waveform handle as the
-            waveformHandle parameter of the Configure Arbitrary Waveform function to
-            produce that waveform. You also use the handles this function returns to
-            create a sequence of arbitrary waveforms with the Create Arbitrary
-            Sequence function.
-
-            If the instrument has multiple channels, it is possible to create
-            multi-channel waveforms: the channel names are passed as a
-            comma-separated list of channel names, and the waveform arrays
-            are concatenated into a single array. In this case, all waveforms
-            must be of the same length.
-
-            If the function generator cannot store any more arbitrary waveforms, this
-            function returns the error No Waveforms Available.
-            """
-            pass
-
 
 class ArbWfmBinary_Arbitrary_Interface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support user-defined arbitrary binary waveform generation
+    Extension IVI methods for function generators that support user-defined arbitrary binary
+    waveform generation
 
-    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of producing user-defined
-    arbitrary waveforms that can be specified in binary format. The IviFgenArbWfmBinary extension group includes
-    functions for creating, configuring, and generating arbitrary waveforms.
+    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of
+    producing user-defined arbitrary waveforms that can be specified in binary format. The
+    IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
+    arbitrary waveforms.
 
     Implement as arbitrary
 
-    See also: ArbWfmBinary_OutputsArbitraryWaveform_Interface, ArbWfmBinary_ArbitraryWaveform_Interface
+    See also: ArbWfmBinary_OutputsArbitraryWaveform_Interface,
+              ArbWfmBinary_ArbitraryWaveform_Interface
     """
     @property
     @abc.abstractmethod
@@ -1775,10 +1751,6 @@ class ArbWfmBinary_Arbitrary_Interface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @binary_alignment.setter
-    def binary_alignment(self, value):
-        pass
-
     @property
     @abc.abstractmethod
     def sample_bit_resolution(self):
@@ -1789,18 +1761,16 @@ class ArbWfmBinary_Arbitrary_Interface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @sample_bit_resolution.setter
-    def sample_bit_resolution(self, value):
-        pass
-
 
 class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support user-defined arbitrary binary waveform generation
+    Extension IVI methods for function generators that support user-defined arbitrary binary
+    waveform generation
 
-    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of producing user-defined
-    arbitrary waveforms that can be specified in binary format. The IviFgenArbWfmBinary extension group includes
-    functions for creating, configuring, and generating arbitrary waveforms.
+    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of
+    producing user-defined arbitrary waveforms that can be specified in binary format. The
+    IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
+    arbitrary waveforms.
 
     Implement as arbitrary.waveform
 
@@ -1855,16 +1825,18 @@ class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
 
 class DataMarkerInterface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support output of particular waveform data bits as markers
+    Extension IVI methods for function generators that support output of particular waveform data
+    bits as markers
 
-    The IviFgenDataMarker Extension Group supports arbitrary waveform generators that can output particular bits of
-    waveform data as a marker output. The user can choose which bit (the 2nd bit for example) gets output, where the
-    output goes, and various analog characteristics of the marker output. Data markers are repeated capabilities to
-    allow the user to output multiple bits to different ouputs simultaneously. The user can also use the DataMask
-    property to ensure that the data marker does not get output with the main waveform output.
+    The IviFgenDataMarker Extension Group supports arbitrary waveform generators that can output
+    particular bits of waveform data as a marker output. The user can choose which bit (the 2nd bit
+    for example) gets output, where the output goes, and various analog characteristics of the
+    marker output. Data markers are repeated capabilities to allow the user to output multiple bits
+    to different ouputs simultaneously. The user can also use the DataMask property to ensure that
+    the data marker does not get output with the main waveform output.
 
-    Setting the Data Marker Destination attribute to a value other than None enables the data marker. To disable the
-    data marker, set the Data Marker Destination to None.
+    Setting the Data Marker Destination attribute to a value other than None enables the data
+    marker. To disable the data marker, set the Data Marker Destination to None.
 
     Implement in a list as data_markers[].
     """
@@ -1881,10 +1853,6 @@ class DataMarkerInterface(metaclass=InterfaceMetaclass):
         zero or greater than the value of the Data Marker Count, the attribute
         returns an empty string for the value and returns an error.
         """
-        pass
-
-    @name.setter
-    def name(self, value):
         pass
 
     @property
@@ -1971,7 +1939,8 @@ class DataMarkerInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def configure(self, source_channel, bit_position, destination):
         """
-        Configures some of the common data marker attributes: source channel, bit position and destination
+        Configures some of the common data marker attributes: source channel, bit position and
+        destination.
         """
         pass
 
@@ -1988,8 +1957,8 @@ class ArbDataMaskInterface(metaclass=InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support masking of waveform data bits
 
-    The IviFgenArbDataMask extension group supports arbitrary waveform generators with the ability to mask out
-    bits of the output data.
+    The IviFgenArbDataMask extension group supports arbitrary waveform generators with the ability
+    to mask out bits of the output data.
 
     Implement as mixing to arbitrary
     """
@@ -2016,17 +1985,19 @@ class ArbDataMaskInterface(metaclass=InterfaceMetaclass):
 
 class SparseMarkerInterface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support output of markers associated with output data samples
+    Extension IVI methods for function generators that support output of markers associated with
+    output data samples.
 
-    The IviFgenSparseMarker Extension Group supports arbitrary waveform generators that can output signals, known as
-    markers, associated with specified samples in the output data. Unlike data markers, sparse markers are not stored
-    as part of the waveform data, but rather provided as a list of particular samples of the waveform on which the
-    marker should be output. The user can choose which waveform and sample number the output is associated with,
-    where the output goes, and various analog characteristics of the marker output. Sparse markers are repeated
+    The IviFgenSparseMarker Extension Group supports arbitrary waveform generators that can output
+    signals, known as markers, associated with specified samples in the output data. Unlike data
+    markers, sparse markers are not stored as part of the waveform data, but rather provided as a
+    list of particular samples of the waveform on which the marker should be output. The user can
+    choose which waveform and sample number the output is associated with, where the output goes,
+    and various analog characteristics of the marker output. Sparse markers are repeated
     capabilities to allow the user to specify multiple markers to different outputs simultaneously.
 
-    Setting the Sparse Marker Destination attribute to a value other than None enables the sparse marker. To disable
-    the sparse marker, set the Sparse Marker Destination to None.
+    Setting the Sparse Marker Destination attribute to a value other than None enables the sparse
+    marker. To disable the sparse marker, set the Sparse Marker Destination to None.
 
     Implement as sparse_markers[]
     """
@@ -2038,15 +2009,7 @@ class SparseMarkerInterface(metaclass=InterfaceMetaclass):
         specific driver for the sparse marker that corresponds to the index that
         the user specifies. If the driver defines a qualified Sparse Marker name,
         this property returns the qualified name.
-
-        If the value that the user passes for the Index parameter is less than one
-        or greater than the value of the Sparse Marker Count, the attribute
-        returns an empty string for the value and returns an error.
         """
-        pass
-
-    @name.setter
-    def name(self, value):
         pass
 
     @property
@@ -2081,6 +2044,10 @@ class SparseMarkerInterface(metaclass=InterfaceMetaclass):
         """
         Specifies the destination terminal for the sparse marker output.
         """
+        pass
+
+    @destination.setter
+    def destination(self, value):
         pass
 
     @property
@@ -2148,10 +2115,11 @@ class SparseMarkerInterface(metaclass=InterfaceMetaclass):
 
 class ArbSeqDepthInterface(metaclass=InterfaceMetaclass):
     """
-    Extension IVI methods for function generators that support producing sequences of sequences of waveforms
+    Extension IVI methods for function generators that support producing sequences of sequences
+    of waveforms.
 
-    The IviFgenArbSeqDepth extension group supports arbitrary waveform generators supporting IviFgenArbSeq and that
-    are capable of producing sequences of sequences of arbitrary waveforms.
+    The IviFgenArbSeqDepth extension group supports arbitrary waveform generators supporting
+    IviFgenArbSeq and that are capable of producing sequences of sequences of arbitrary waveforms.
 
     Implement as arbitrary.sequence
     """
