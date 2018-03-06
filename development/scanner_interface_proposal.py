@@ -261,13 +261,21 @@ class DataAcquisitionInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_data(self):
+    def get_data(self, sample_number=None):
         """
         Returns the last recorded data set
-
+        @param dict/int sample_number: (optional) define how many samples should be acquired per channel.
+                                   Option 1: Usage: {'channel_label': <number-of-samples-value>}.
+                                        'channel_label' must correspond to a label given to one channel.
+                                        This gives a different sample number to each channel.
+                                        The function is blocking: it waits until the required sample number was acquired
+                                   Option 2: Usage: int <number-of-samples-value-for-all-channels>
+                                        This gives the same sample number to all channels.
+                                        The function is blocking: it waits until the required sample number was acquired
+                                   Option 3: If no sample_number is given, this function is non-blocking
+                                        and returns however many samples were acquired.
         @return dict: With keys being the channel label and items being the data arrays
         """
-        pass
 
     @abc.abstractmethod
     def set_data_channels(self, data_channels):
