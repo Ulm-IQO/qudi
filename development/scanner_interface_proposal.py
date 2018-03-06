@@ -216,21 +216,24 @@ class DataAcquisitionInterface(metaclass=InterfaceMetaclass):
     def set_sampling_rate(self, sampling_rate):
         """
         Set the sampling rate for one or multiple data acquisition channels.
-
-        @param float sampling_rate: The sampling rate defines the acquisition frequency of the hardware module.
-                                    Sampling rate is always in samples/s.
-
-        @return float: the actually set sampling rate
+        @param dict sampling_rate: dictionary, with keys being the channel label and items being the
+                                   sampling rate to set. Sampling rate is always in samples/s.
+                                   Usage: {'channel_label': <the-sampling-rate-value>}.
+                                   'channel_label' must correspond to a label given to one channel.
+        @return dict: the actually set sampling rates
         """
         pass
 
     @abc.abstractmethod
-    def get_sampling_rate(self):
+    def get_sampling_rate(self, channel_list=None):
         """
-        Gets the current sampling rate for the acquisition frequency of the hardware module.
-
-
-        @return float: the sampling rate.
+        Gets the current sampling rate for all connected channels.
+        @param dict channel_list: optional, if a specific sampling rate of a channel is desired,
+                                  then the labels of the needed channels should be passed in the
+                                  channel_list.
+                                  If nothing is passed, then from each channel the sampling rate is
+                                  returned.
+        @return dict: with the channel label as key and the sampling rate as item.
         """
         pass
 

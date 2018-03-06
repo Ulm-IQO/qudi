@@ -27,6 +27,7 @@ from qtpy.QtCore import QTimer
 from core.module import Base, Connector, ConfigOption
 from development.scanner_interface_proposal import PositionerInterface, DataAcquisitionInterface, ScannerInterface
 from enum import Enum
+from functools import partial
 
 
 class InternalState(Enum):
@@ -57,16 +58,16 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
 
         self._channels = dict()
         self._channels['channel_1'] = {'name': 'Analogue_IN', 'unit': 'V', 'range_min': 0, 'range_max': 10,
-                                       'status': InternalState.free}
+                                       'status': InternalState.free, 'sampling_rate': 100}
 
         self._current_position = dict()
         self._points = dict()
         self._num_points = 500
 
-        self._acquisition_frequency = 1000
-        self._sampling_length = 100
         self._continuous_acquisition = True
-        self._data_generation_timer = QTimer()
+        self._common_timing = False
+        self._data_generation_timer = dict()
+        self._sampling_length = 100
         self._raw_data = list()
 
     def on_activate(self):
@@ -81,8 +82,6 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
                                                  self._num_points)
             self._points['sigma_{0:s}'.format(key)] = np.random.normal(0.7e-6, 0.1e-6, self._num_points)
             self._current_position[key] = 0
-
-        self._data_generation_timer.timeout.connect(self._internal_generate_data)
 
     def on_deactivate(self):
         pass
@@ -301,48 +300,85 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
     #   DataAcquisitionInterface
     #
 
-    def initialize(self, acquisition_frequency=None, sampling_length=None, continuous=None):
+    def initialize(self, sampling_length=None, continuous=None, common_timing=None):
         """
         Set up timing and triggers
         """
-        if acquisition_frequency is not None:
-            self._acquisition_frequency = acquisition_frequency
         if sampling_length is not None:
             self._sampling_length = sampling_length
         if continuous is not None:
             self._continuous_acquisition = continuous
+        if common_timing is not None:
+            self._common_timing = common_timing
         for key in self._channels:
             if self._channels[key]['status'] is InternalState.locked:
                 self.log.error('The following channel is locked '
                                'and can therefore not be initialized: {0:s}'.format(key))
             else:
+                self._data_generation_timer[key] = QTimer()
+                self._data_generation_timer[key].timeout.connect(partial(self._internal_generate_data, key))
                 self._channels[key]['status'] = InternalState.initialized
 
     def set_sampling_rate(self, sampling_rate):
         """
         Set the sampling rate for one or multiple data acquisition channels.
-
-        @param float sampling_rate: The sampling rate defines the acquisition frequency of the hardware module.
-                                    Sampling rate is always in samples/s.
-
-        @return float: the actually set sampling rate
+        @param dict sampling_rate: dictionary, with keys being the channel label and items being the
+                                   sampling rate to set. Sampling rate is always in samples/s.
+                                   Usage: {'channel_label': <the-sampling-rate-value>}.
+                                   'channel_label' must correspond to a label given to one channel.
+        @return dict: the actually set sampling rates
         """
+        if isinstance(sampling_rate, dict):
+            if self._common_timing:
+                self.log.debug('Common timing applies: setting sampling rate of ALL channels to {0:f}'.
+                               format(sampling_rate[0]))
+                for key in self._channels:
+                    self._channels[key]['sampling_rate'] = sampling_rate[0]
+            else:
+                for key in sampling_rate:
+                    if key not in self._channels.keys():
+                        self.log.error('The following channel could not been found: {0:s}'.format(key))
+                    elif self._channels[key] is InternalState.locked:
+                        self.log.error('Cannot set sampling rate because the following channel is locked: {0:s}'.format(key))
+                    else:
+                        self._channels[key]['sampling_rate'] = sampling_rate[key]
+        else:
+            self.log.error('Parameter sampling_rate needs to be a dictionary.')
+
+        internal_sampling_rate = dict()
+        for key in self._channels:
+            internal_sampling_rate[key] = self._channels[key]['sampling_rate']
+
+        return internal_sampling_rate
+
+    def get_sampling_rate(self, channel_list=None):
+        """
+        Gets the current sampling rate for all connected channels.
+        @param dict channel_list: optional, if a specific sampling rate of a channel is desired,
+                                  then the labels of the needed channels should be passed in the
+                                  channel_list.
+                                  If nothing is passed, then from each channel the sampling rate is
+                                  returned.
+        @return dict: with the channel label as key and the sampling rate as item.
+        """
+        internal_sampling_rate = dict()
+
+        if channel_list is not None:
+            if isinstance(channel_list, list):
+                for key in channel_list:
+                    if key not in self._channels.keys():
+                        self.log.error('The following channel could not been found: {0:s}'.format(key))
+                    else:
+                        internal_sampling_rate[key] = self._channels[key]['sampling_rate']
+                if len(internal_sampling_rate) > 0:
+                    return internal_sampling_rate
+            else:
+                self.log.error('Parameter channel_list needs to be a list.')
 
         for key in self._channels:
-            if self._channels[key] is InternalState.locked:
-                self.log.error('Cannot set sampling rate because the following channel is locked: {0:s}'.format(key))
+            internal_sampling_rate[key] = self._channels[key]['sampling_rate']
 
-        self._acquisition_frequency = sampling_rate
-        return self._acquisition_frequency
-
-    def get_sampling_rate(self):
-        """
-        Gets the current sampling rate for the acquisition frequency of the hardware module.
-
-
-        @return float: the sampling rate.
-        """
-        return self._acquisition_frequency
+        return internal_sampling_rate
 
     def start(self):
         """
@@ -357,25 +393,32 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
         self._raw_data = dict()
 
         for key in self._channels:
-            self._raw_data[key] = list()
             if self._channels[key] is not InternalState.initialized:
                 self.log.error('Could not start the measurement, '
                                'because the following channels was not initialized: {0:s}'.format(key))
+                return -1
+            self._raw_data[key] = list()
+            self._data_generation_timer[key].start(int(1000/self._channels[key]['sampling_rate']))
 
-        self._data_generation_timer.start(int(1000/self._acquisition_frequency))
-
-    def _internal_generate_data(self):
+    def _internal_generate_data(self, channel_key=None):
         """
         This is an internal functions that generates the data for the DataAcquisitionInterface
         @return void: nothing
         """
         data_acquisition_done = False
 
-        for key in self._channels:
-            self._raw_data[key].append(np.random.uniform(self._channels[key]['range_min'],
-                                                         self._channels[key]['range_max'],
-                                                         1))
-            if not self._continuous_acquisition and len(self._raw_data[key]) > self._sampling_length:
+        if channel_key is None:
+            self.log.error('No channel given to acquire data to.')
+            self.stop()
+            return
+        elif channel_key not in self._channels.keys():
+            self.log.error('Cannot acquire data for the following channel because it does not exist: {0:s}'.
+                           format(channel_key))
+        else:
+            self._raw_data[channel_key].append(np.random.uniform(self._channels[channel_key]['range_min'],
+                                                                 self._channels[channel_key]['range_max'],
+                                                                 1))
+            if not self._continuous_acquisition and len(self._raw_data[channel_key]) > self._sampling_length:
                 data_acquisition_done = True
         if data_acquisition_done:
             self.stop()
@@ -388,36 +431,55 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
 
         @return int: error code (0:OK, -1:error)
         """
-        self._data_generation_timer.stop()
         for key in self._channels:
+            self._data_generation_timer[key].stop()
             self._channels[key]['status'] = InternalState.idle
 
-    def get_data(self):
+    def get_data(self, sample_number=None):
         """
         Returns the last recorded data set
-
+        @param dict/int sample_number: (optional) define how many samples should be acquired per channel.
+                                   Option 1: Usage: {'channel_label': <number-of-samples-value>}.
+                                        'channel_label' must correspond to a label given to one channel.
+                                        This gives a different sample number to each channel.
+                                        The function is blocking: it waits until the required sample number was acquired
+                                   Option 2: Usage: int <number-of-samples-value-for-all-channels>
+                                        This gives the same sample number to all channels.
+                                        The function is blocking: it waits until the required sample number was acquired
+                                   Option 3: If no sample_number is given, this function is non-blocking
+                                        and returns however many samples were acquired.
         @return dict: With keys being the channel label and items being the data arrays
         """
 
         stop_triggered = False
-        data_length = len(self._raw_data[0])
 
-        while ((data_length < self._sampling_length)
-                and not stop_triggered):
-            for key in self._channels:
-                if self._channels[key]['status'] is not InternalState.locked:
-                    stop_triggered = True
-            time.sleep((1000/self._acquisition_frequency) * (self._sampling_length - data_length) / 2)
-            data_length = len(self._raw_data[0])
-
-        data_length = len(self._raw_data[0])
-        return_data = dict()
         for key in self._channels:
-            return_data[key] = np.zeros(self._sampling_length)
-            return_data[key][:min(data_length,
-                                  self._sampling_length)] = self._raw_data[key][:min(data_length,
-                                                                                     self._sampling_length)]
-            del self._raw_data[key][:min(data_length, self._sampling_length)]
+            if self._channels[key]['status'] is not InternalState.locked:
+                stop_triggered = True
+
+        return_data = dict()
+        return_length = dict()
+        for key in self._channels:
+            if stop_triggered or sample_number is None:
+                return_length[key] = len(self._raw_data[key])
+            else:
+                if isinstance(sample_number, dict):
+                    if key not in sample_number:
+                        self.log.warn('No sample number found for the following channel: {0:s}'.format(key))
+                        return_length[key] = len(self._raw_data[key])
+                    else:
+                        return_length[key] = int(sample_number[key])
+                else:
+                    return_length[key] = int(sample_number)
+
+                # wait for the data to be available
+                while ((len(self._raw_data[key]) < return_length[key])
+                       and not stop_triggered):
+                    time.sleep(1000 / self._channels[key]['sampling_rate'])
+
+            return_data[key] = np.zeros(return_length[key])
+            return_data[key] = self._raw_data[key][:return_length[key]]
+            del self._raw_data[key][:return_length[key]]
 
         return return_data
 
