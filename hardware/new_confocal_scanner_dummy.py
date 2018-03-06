@@ -23,12 +23,20 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import time
 
+from qtpy.QtCore import QTimer
 from core.module import Base, Connector, ConfigOption
 from development.scanner_interface_proposal import PositionerInterface, DataAcquisitionInterface, ScannerInterface
+from enum import Enum
+
+
+class InternalState(Enum):
+    free = 0
+    idle = 1
+    initialized = 2
+    locked = 3
 
 
 class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, ScannerInterface):
-
     """ Dummy confocal scanner.
         Produces a picture with several gaussian spots.
     """
@@ -41,14 +49,25 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
         # Internal parameters
         self._axes = dict()
         self._axes['axis_1'] = {'name': 'axis_x', 'unit': 'm', 'range_min': 0, 'range_max': 100e-6,
-                                'status': 0, 'velocity': 0}
+                                'status': InternalState.free, 'velocity': 0}
         self._axes['axis_2'] = {'name': 'axis_y', 'unit': 'm', 'range_min': 0, 'range_max': 100e-6,
-                                'status': 0, 'velocity': 0}
+                                'status': InternalState.free, 'velocity': 0}
         self._axes['axis_3'] = {'name': 'axis_z', 'unit': 'm', 'range_min': -50e-6, 'range_max': 50e-6,
-                                'status': 0, 'velocity': 0}
+                                'status': InternalState.free, 'velocity': 0}
+
+        self._channels = dict()
+        self._channels['channel_1'] = {'name': 'Analogue_IN', 'unit': 'V', 'range_min': 0, 'range_max': 10,
+                                       'status': InternalState.free}
+
         self._current_position = dict()
         self._points = dict()
         self._num_points = 500
+
+        self._acquisition_frequency = 1000
+        self._sampling_length = 100
+        self._continuous_acquisition = True
+        self._data_generation_timer = QTimer()
+        self._raw_data = list()
 
     def on_activate(self):
 
@@ -63,6 +82,8 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
             self._points['sigma_{0:s}'.format(key)] = np.random.normal(0.7e-6, 0.1e-6, self._num_points)
             self._current_position[key] = 0
 
+        self._data_generation_timer.timeout.connect(self._internal_generate_data)
+
     def on_deactivate(self):
         pass
 
@@ -71,7 +92,11 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
         Return a dictionary containing the constraints for each parameter that can be set in this
         hardware. See other hardware modules to get the idea.
         """
-        return self._axes
+        return self._axes.update(self._channels)
+
+    #
+    #   PositionerInterface
+    #
 
     def move_to(self, position, velocity=None):
         """
@@ -98,6 +123,8 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
                     self.log.error('The position set does not confirm to axis constraints: {0:f} -> ({1:f},{2:f})'.
                                    format(position[key], self._axes[key]['range_min'], self._axes[key]['range_max'])
                                    )
+                elif self._axes[key]['status'] not in (InternalState.free, InternalState.idle):
+                    self.log.error('The following axis could not be changed, since it is in use: {0:s}'.format(key))
                 else:
                     self._current_position[key] = position[key]
             return 0
@@ -133,6 +160,8 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
                                           self._axes[key]['range_min'],
                                           self._axes[key]['range_max'])
                                    )
+                elif self._axes[key]['status'] not in (InternalState.free, InternalState.idle):
+                    self.log.error('The following axis could not be changed, since it is in use: {0:s}'.format(key))
                 else:
                     self._current_position[key] += rel_position[key]
             return 0
@@ -267,3 +296,167 @@ class ConfocalScannerDummy(Base, PositionerInterface, DataAcquisitionInterface, 
         """
 
         self.log.warn('ConfocalScannerDummy has no abort.')
+
+    #
+    #   DataAcquisitionInterface
+    #
+
+    def initialize(self, acquisition_frequency=None, sampling_length=None, continuous=None):
+        """
+        Set up timing and triggers
+        """
+        if acquisition_frequency is not None:
+            self._acquisition_frequency = acquisition_frequency
+        if sampling_length is not None:
+            self._sampling_length = sampling_length
+        if continuous is not None:
+            self._continuous_acquisition = continuous
+        for key in self._channels:
+            if self._channels[key]['status'] is InternalState.locked:
+                self.log.error('The following channel is locked '
+                               'and can therefore not be initialized: {0:s}'.format(key))
+            else:
+                self._channels[key]['status'] = InternalState.initialized
+
+    def set_sampling_rate(self, sampling_rate):
+        """
+        Set the sampling rate for one or multiple data acquisition channels.
+
+        @param float sampling_rate: The sampling rate defines the acquisition frequency of the hardware module.
+                                    Sampling rate is always in samples/s.
+
+        @return float: the actually set sampling rate
+        """
+
+        for key in self._channels:
+            if self._channels[key] is InternalState.locked:
+                self.log.error('Cannot set sampling rate because the following channel is locked: {0:s}'.format(key))
+
+        self._acquisition_frequency = sampling_rate
+        return self._acquisition_frequency
+
+    def get_sampling_rate(self):
+        """
+        Gets the current sampling rate for the acquisition frequency of the hardware module.
+
+
+        @return float: the sampling rate.
+        """
+        return self._acquisition_frequency
+
+    def start(self):
+        """
+        Start the data acquisition.
+        If the data should be recorded immediately this will acquire the data asap.
+        If the device is somehow synchronized with a trigger or such then this method will "arm"
+        the data acquisition to listen to triggers etc.
+
+        @return int: error code (0:OK, -1:error)
+        """
+
+        self._raw_data = dict()
+
+        for key in self._channels:
+            self._raw_data[key] = list()
+            if self._channels[key] is not InternalState.initialized:
+                self.log.error('Could not start the measurement, '
+                               'because the following channels was not initialized: {0:s}'.format(key))
+
+        self._data_generation_timer.start(int(1000/self._acquisition_frequency))
+
+    def _internal_generate_data(self):
+        """
+        This is an internal functions that generates the data for the DataAcquisitionInterface
+        @return void: nothing
+        """
+        data_acquisition_done = False
+
+        for key in self._channels:
+            self._raw_data[key].append(np.random.uniform(self._channels[key]['range_min'],
+                                                         self._channels[key]['range_max'],
+                                                         1))
+            if not self._continuous_acquisition and len(self._raw_data[key]) > self._sampling_length:
+                data_acquisition_done = True
+        if data_acquisition_done:
+            self.stop()
+
+    def stop(self):
+        """
+        Stop the data acquisition early.
+        The acquisition will stop automatically if all samples have been recorded but this method
+        can stop the device manually.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        self._data_generation_timer.stop()
+        for key in self._channels:
+            self._channels[key]['status'] = InternalState.idle
+
+    def get_data(self):
+        """
+        Returns the last recorded data set
+
+        @return dict: With keys being the channel label and items being the data arrays
+        """
+
+        stop_triggered = False
+        data_length = len(self._raw_data[0])
+
+        while ((data_length < self._sampling_length)
+                and not stop_triggered):
+            for key in self._channels:
+                if self._channels[key]['status'] is not InternalState.locked:
+                    stop_triggered = True
+            time.sleep((1000/self._acquisition_frequency) * (self._sampling_length - data_length) / 2)
+            data_length = len(self._raw_data[0])
+
+        data_length = len(self._raw_data[0])
+        return_data = dict()
+        for key in self._channels:
+            return_data[key] = np.zeros(self._sampling_length)
+            return_data[key][:min(data_length,
+                                  self._sampling_length)] = self._raw_data[key][:min(data_length,
+                                                                                     self._sampling_length)]
+            del self._raw_data[key][:min(data_length, self._sampling_length)]
+
+        return return_data
+
+    def set_data_channels(self, data_channels):
+        """
+        Set the active data channels to be used by the device.
+        The channels provided in "data_channels" must be available (check hardware constraints).
+
+        @param list data_channels: A list of channel labels to be active in the next acquisition
+
+        @return list: Actually active data channels
+        """
+
+        for key in data_channels:
+            if key not in self._channels.keys():
+                self.log.error('The following channel could not been found: {0:s}'.format(key))
+
+        for key in self._channels:
+            if self._channels[key]['status'] is InternalState.locked and key not in data_channels:
+                self.log.error('Cannot free the following channels, since it is locked: {0:s}'.format(key))
+            elif key not in data_channels:
+                self._channels[key]['status'] = InternalState.free
+            elif self._channels[key]['status'] is InternalState.free:
+                self._channels[key]['status'] = InternalState.idle
+
+        internal_data_channels = list()
+        for key in self._channels:
+            if self._channels[key]['status'] is not InternalState.free:
+                internal_data_channels.append(key)
+        return internal_data_channels
+
+    def get_data_channels(self):
+        """
+        Returns a list of active channel labels.
+
+        @return list: Currently active data channels
+        """
+        data_channels = list()
+        for key in self._channels:
+            if self._channels[key]['status'] is not InternalState.free:
+                data_channels.append(key)
+        return data_channels

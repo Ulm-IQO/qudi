@@ -353,7 +353,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
 ############################################################################
 #                                                                          #
-#    the following two functions are needed to fluoreschence signal        #
+#    the following two functions are needed to fluorescence signal         #
 #                             of the dummy NVs                             #
 #                                                                          #
 ############################################################################
