@@ -43,7 +43,7 @@ from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
-from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
 #FIXME: Display the Pulse
@@ -201,6 +201,8 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.tabWidget.addTab(self._sg, 'Sequence Generator')
         self._mw.tabWidget.addTab(self._pm, 'Predefined Methods')
 
+        self._mw.actionSave.triggered.connect(self.save_clicked)
+
         self.setup_toolbar()
         self._activate_analysis_settings_ui()
         self._activate_analysis_ui()
@@ -220,6 +222,9 @@ class PulsedMeasurementGui(GUIBase):
         This deactivation disconnects all the graphic modules, which were
         connected in the initUI method.
         """
+
+        self._mw.actionSave.triggered.disconnect()
+
         self._deactivate_analysis_settings_ui()
         self._deactivate_analysis_ui()
 
@@ -474,7 +479,7 @@ class PulsedMeasurementGui(GUIBase):
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
                         input_obj.setValue(default_val)
                     elif type(default_val) is int:
-                        input_obj = ScienSpinBox(groupBox)
+                        input_obj = QtWidgets.QSpinBox(groupBox)
                         input_obj.setMaximum(2**31 - 1)
                         input_obj.setMinimum(-2**31 + 1)
                         input_obj.setValue(default_val)
@@ -650,7 +655,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
         self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
         self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
-        self._pg.gen_sample_freq_DSpinBox.setSingleStep(pulser_constr.sample_rate.step)
         # unblock signals
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
@@ -1602,7 +1606,6 @@ class PulsedMeasurementGui(GUIBase):
         pulser_constr, fastcounter_constr = self._pulsed_master_logic.get_hardware_constraints()
         self._pa.pulser_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
         self._pa.pulser_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
-        self._pa.pulser_sample_freq_DSpinBox.setSingleStep(pulser_constr.sample_rate.step)
         self._pa.pulser_activation_config_ComboBox.clear()
         self._pa.pulser_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
         self._pa.ana_param_fc_bins_ComboBox.clear()
@@ -1768,9 +1771,9 @@ class PulsedMeasurementGui(GUIBase):
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
         if self._pa.second_plot_ComboBox.currentText() == 'None':
-            save_ft = True
-        else:
             save_ft = False
+        else:
+            save_ft = True
         self._pulsed_master_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
                                                         tag=save_tag,
                                                         with_error=with_error,
@@ -2169,7 +2172,7 @@ class PulsedMeasurementGui(GUIBase):
 
         extraction_settings['current_method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
         extraction_settings['count_threshold'] = self._pe.extract_param_threshold_SpinBox.value()
-        extraction_settings['threshold_tolerance_bins'] = self._pe.extract_param_tolerance_SpinBox.value()
+        extraction_settings['threshold_tolerance'] = self._pe.extract_param_tolerance_SpinBox.value()
         extraction_settings['min_laser_length'] = self._pe.extract_param_min_laser_length_SpinBox.value()
 
         self._pulsed_master_logic.extraction_settings_changed(extraction_settings)
@@ -2201,9 +2204,9 @@ class PulsedMeasurementGui(GUIBase):
             self._pe.extract_param_threshold_SpinBox.setValue(extraction_settings['count_threshold'])
             self._pe.extract_param_threshold_SpinBox.blockSignals(False)
 
-        if 'threshold_tolerance_bins' in extraction_settings:
+        if 'threshold_tolerance' in extraction_settings:
             self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
-            self._pe.extract_param_tolerance_SpinBox.setValue(extraction_settings['threshold_tolerance_bins'])
+            self._pe.extract_param_tolerance_SpinBox.setValue(extraction_settings['threshold_tolerance'])
             self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
 
         if 'min_laser_length' in extraction_settings:

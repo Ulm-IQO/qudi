@@ -461,34 +461,6 @@ last</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1" colspan="2">
-       <widget class="ScienSpinBox" name="curr_ensemble_bins_SpinBox">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-        <property name="buttonSymbols">
-         <enum>QAbstractSpinBox::NoButtons</enum>
-        </property>
-        <property name="suffix">
-         <string>bins</string>
-        </property>
-        <property name="prefix">
-         <string/>
-        </property>
-        <property name="maximum">
-         <number>1000000000</number>
-        </property>
-       </widget>
-      </item>
       <item row="2" column="1" colspan="2">
        <widget class="QDoubleSpinBox" name="curr_ensemble_size_DSpinBox">
         <property name="enabled">
@@ -655,6 +627,34 @@ last</string>
        <widget class="QLabel" name="pbe_size_label">
         <property name="text">
          <string>File size:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="2">
+       <widget class="QSpinBox" name="curr_ensemble_bins_SpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::NoButtons</enum>
+        </property>
+        <property name="suffix">
+         <string>bins</string>
+        </property>
+        <property name="prefix">
+         <string/>
+        </property>
+        <property name="maximum">
+         <number>1000000000</number>
         </property>
        </widget>
       </item>
@@ -864,11 +864,6 @@ Ensemble</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
