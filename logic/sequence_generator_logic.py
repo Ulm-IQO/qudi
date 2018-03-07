@@ -744,7 +744,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         # convert digital rising indices to numpy.ndarrays
         for chnl in range(len(digital_rising_bins)):
-            digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=int)
+            digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=np.int64)
 
         return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
 
