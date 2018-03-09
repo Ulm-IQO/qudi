@@ -43,37 +43,29 @@ from logic.generic_logic import GenericLogic
 from logic.samples_write_methods import SamplesWriteMethods
 
 
-class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFunctions
-    """unstable: Nikolas Tomek
+class SequenceGeneratorLogic(GenericLogic):
+    """
     This is the Logic class for the pulse (sequence) generation.
 
-    The basis communication with the GUI should be done as follows:
-    The logic holds all the created objects in its internal lists. The GUI is
-    able to view this list and get the element of this list.
+    It is responsible for creating the theoretical (ideal) contruction plan for a pulse sequence or
+    waveform (digital and/or analog) by creating PulseBlockElements, PulseBlocks,
+    PulseBlockEnsembles and PulseSequences.
+    Based on these objects the logic can sample waveforms according to the underlying hardware
+    constraints (especially the sample rate) and upload these samples to the connected pulse
+    generator hardware.
 
-    How the logic will contruct its objects according to configuration dicts.
-    The configuration dicts contain essentially, which parameters of either the
-    PulseBlockElement objects or the PulseBlock objects can be changed and
-    set via the GUI.
-
-    In the end the information transfer happend through lists (read by the GUI)
-    and dicts (set by the GUI). The logic sets(creats) the objects in the list
-    and read the dict, which tell it which parameters to expect from the GUI.
+    This logic is also responsible to manipulate and read back hardware settings for
+    waveform/sequence playback (pp-amplitude, sample rate, active channels etc.).
     """
 
     _modclass = 'sequencegeneratorlogic'
     _modtype = 'logic'
 
+    # declare connectors
+    pulse_generator = Connector(interface='PulserInterface')
+
     # status vars
-    activation_config = StatusVar(
-        'activation_config',
-        ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'])
     laser_channel = StatusVar('laser_channel', 'd_ch1')
-    amplitude_dict = StatusVar(
-        'amplitude_dict',
-        OrderedDict({'a_ch1': 0.5, 'a_ch2': 0.5, 'a_ch3': 0.5, 'a_ch4': 0.5}))
-    sample_rate = StatusVar('sample_rate', 25e9)
-    waveform_format = StatusVar('waveform_format', 'wfmx')
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
@@ -84,7 +76,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
     sigCurrentBlockUpdated = QtCore.Signal(object)
     sigCurrentEnsembleUpdated = QtCore.Signal(object)
     sigCurrentSequenceUpdated = QtCore.Signal(object)
-    sigSettingsUpdated = QtCore.Signal(list, str, float, dict, str)
+    sigSettingsUpdated = QtCore.Signal(dict)
     sigPredefinedSequencesUpdated = QtCore.Signal(dict)
     sigPredefinedSequenceGenerated = QtCore.Signal(str)
 
@@ -92,28 +84,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
         super().__init__(config=config, **kwargs)
 
         self.log.debug('The following configuration was found.')
-
         # checking for the right configuration
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
-
-        # # Get all the attributes from the SamplingFunctions module:
-        # SamplingFunctions.__init__(self)
-        # Get all the attributes from the SamplesWriteMethods module:
-        SamplesWriteMethods.__init__(self)
-
-        # here the currently shown data objects of the editors should be stored
-        self.current_block = None
-        self.current_ensemble = None
-        self.current_sequence = None
-
-        # The created PulseBlock objects are saved in this dictionary. The keys are the names.
-        self.saved_pulse_blocks = OrderedDict()
-        # The created PulseBlockEnsemble objects are saved in this dictionary.
-        # The keys are the names.
-        self.saved_pulse_block_ensembles = OrderedDict()
-        # The created Sequence objects are saved in this dictionary. The keys are the names.
-        self.saved_pulse_sequences = OrderedDict()
 
         if 'pulsed_file_dir' in config.keys():
             self.pulsed_file_dir = config['pulsed_file_dir']
@@ -152,36 +125,84 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
         else:
             self.additional_methods_dir = None
 
+        # The created pulse objects (PulseBlock, PulseBlockEnsemble, PusleSequence) are saved in
+        # these dictionaries. The keys are the names.
+        self.saved_pulse_blocks = OrderedDict()
+        self.saved_pulse_block_ensembles = OrderedDict()
+        self.saved_pulse_sequences = OrderedDict()
 
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
-        self.waveform_dir = self._get_dir_for_name('sampled_hardware_files')
-        self.temp_dir = self._get_dir_for_name('temporary_files')
-
-        # Information on used channel configuration for sequence generation
-        # IMPORTANT: THIS CONFIG DOES NOT REPRESENT THE ACTUAL SETTINGS ON THE HARDWARE
-        self.analog_channels = 2
-        self.digital_channels = 4
-        # The file format for the sampled hardware-compatible waveforms and sequences
-        self.sequence_format = 'seq'  # only .seq file format
 
         # a dictionary with all predefined generator methods and measurement sequence names
         self.generate_methods = None
 
+        # current pulse generator parameters that are frequently used by this logic.
+        # Save them here since reading them from device every time they are used may take some time.
+        self.activation_config = ('', set())
+        self.sample_rate = 0.0
+        self.analog_pp_amplitude = dict()
+        return
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        # Get connector to pulse generator hardware
+        self._pulse_generator = self.get_connector('pulse_generator')
+
+        # Read saved pulse objects from file
         self._get_blocks_from_file()
         self._get_ensembles_from_file()
         self._get_sequences_from_file()
 
+        # Get method definitions for prefined pulse sequences from seperate modules and attach them
+        # to this module.
         self._attach_predefined_methods()
 
+        # Read activation_config from device.
+        channel_state = self._pulse_generator.get_active_channels()
+        current_config = {chnl for chnl in channel_state if channel_state[chnl]}
+        avail_configs = self._pulse_generator.get_constraints().activation_config
+        # Set first available config if read config is not valid.
+        if current_config not in avail_configs.values():
+            config_to_set = avail_configs[list(avail_configs)[0]]
+            for chnl in channel_state:
+                if chnl in config_to_set:
+                    channel_state[chnl] = True
+                else:
+                    channel_state[chnl] = False
+            set_channel_state = self._pulse_generator.set_active_channels(channel_state)
+            set_config = {chnl for chnl in set_channel_state if set_channel_state[chnl]}
+            if set_config != config_to_set:
+                self.activation_config = ('', set_config)
+                self.log.error('Error during activation.\n'
+                               'Unable to set activation_config that was taken from pulse '
+                               'generator constraints.\n'
+                               'Probably one or more activation_configs in constraints invalid.')
+            else:
+                self.activation_config = (list(avail_configs)[0], set_config)
+        else:
+            for name, config in avail_configs.items():
+                if config == current_config:
+                    self.activation_config = (name, current_config)
+                    break
+
+        # Information on used channel configuration for sequence generation
         self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
         self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
-        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict, self.waveform_format)
+
+        # Read sample rate from device
+        self.sample_rate = self._pulse_generator.get_sample_rate()
+
+        # Read pp-voltages from device
+
+        settings = dict()
+        settings['activation_config'] = self.activation_config
+        settings['laser_channel'] = self.laser_channel
+        settings['sample_rate'] = self.sample_rate
+        settings['analog_pp_amplitude'] = self.analog_pp_amplitude
+        self.sigSettingsUpdated.emit(settings)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -262,55 +283,151 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
             os.makedirs(os.path.abspath(path))
         return os.path.abspath(path)
 
-    def request_init_values(self):
-        """
+    # def request_init_values(self):
+    #     """
+    #
+    #     @return:
+    #     """
+    #     self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
+    #     self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
+    #     self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
+    #     self.sigCurrentBlockUpdated.emit(self.current_block)
+    #     self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
+    #     self.sigCurrentSequenceUpdated.emit(self.current_sequence)
+    #     self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
+    #                                  self.amplitude_dict, self.waveform_format)
+    #     self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
+    #     return
 
-        @return:
-        """
-        self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
-        self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
-        self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        self.sigCurrentBlockUpdated.emit(self.current_block)
-        self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
-        self.sigCurrentSequenceUpdated.emit(self.current_sequence)
-        self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-                                     self.amplitude_dict, self.waveform_format)
-        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
-        return
-
-    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict, waveform_format):
+    def set_settings(self, settings_dict):
         """
         Sets all settings for the generator logic.
 
-        @param activation_config:
-        @param laser_channel:
-        @param sample_rate:
-        @param amplitude_dict:
-        @param waveform_format:
-        @return:
+        @param settings_dict: dict, A dictionary containing the settings to change.
+
+        @return dict: A dictionary containing the actually set values for all changed settings
         """
-        # check if the currently chosen laser channel is part of the config and adjust if this
-        # is not the case. Choose first digital channel in that case.
-        if laser_channel not in activation_config:
-            laser_channel = None
-            for channel in activation_config:
-                if 'd_ch' in channel:
-                    laser_channel = channel
-                    break
-            if laser_channel is None:
-                self.log.warning('No digital channel present in sequence generator activation '
-                                 'config.')
-        self.laser_channel = laser_channel
-        self.activation_config = activation_config
-        self.analog_channels = len([chnl for chnl in activation_config if 'a_ch' in chnl])
-        self.digital_channels = len([chnl for chnl in activation_config if 'd_ch' in chnl])
-        self.amplitude_dict = amplitude_dict
-        self.sample_rate = sample_rate
-        self.waveform_format = waveform_format
-        self.sigSettingsUpdated.emit(activation_config, laser_channel, sample_rate, amplitude_dict,
-                                     waveform_format)
-        return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict, \
-               waveform_format
+        # The returned dictionary. It will contain the actually set parameter values.
+        actual_settings = dict()
+
+        # Try to set new activation config.
+        if 'activation_config' in settings_dict:
+            avail_configs = self._pulse_generator.get_constraints().activation_config
+            # If activation_config is not within pulser constraints, do not change it.
+            if settings_dict['activation_config'] not in avail_configs:
+                self.log.error('Unable to set activation_config "{0}" since it can not be found in '
+                               'pulser constraints.\nPrevious config "{1}" will stay in effect.'
+                               ''.format(settings_dict['activation_config'],
+                                         self.activation_config[0]))
+
+            else:
+                channels_to_activate = avail_configs[settings_dict['activation_config']]
+                channel_state = self._pulse_generator.get_active_channels()
+                for chnl in channel_state:
+                    if chnl in channels_to_activate:
+                        channel_state[chnl] = True
+                    else:
+                        channel_state[chnl] = False
+                set_channel_states = self._pulse_generator.set_active_channels(channel_state)
+                set_activation_config = {chnl for chnl in set_channel_states if
+                                         set_channel_states[chnl]}
+                for name, config in avail_configs.items():
+                    if config == set_activation_config:
+                        self.activation_config = (name, config)
+                        break
+                if self.activation_config[1] != set_activation_config:
+                    self.activation_config[0] = ''
+                    self.log.error('Setting activation_config "{0}" failed.\n'
+                                   'Reload module to avoid undexpected behaviour.'
+                                   ''.format(settings_dict['activation_config']))
+
+                self.analog_channels = len(
+                    [chnl for chnl in self.activation_config[1] if 'a_ch' in chnl])
+                self.digital_channels = len(
+                    [chnl for chnl in self.activation_config[1] if 'd_ch' in chnl])
+
+                # Check if the laser channel is being set at the same time. If not, check if a
+                # change of laser channel is necessary due to the changed activation_config.
+                # If the laser_channel needs to be changed add it to settings_dict.
+                if 'laser_channel' not in settings_dict and self.laser_channel not in self.activation_config[1]:
+                    settings_dict['laser_channel'] = self.laser_channel
+            actual_settings['activation_config'] = self.activation_config[0]
+
+        # Try to set new laser_channel. Check if it's part of the current activation_config and
+        # adjust to first valid digital channel if not.
+        if 'laser_channel' in settings_dict:
+            if settings_dict['laser_channel'] in self.activation_config[1]:
+                self.laser_channel = settings_dict['laser_channel']
+            elif self.digital_channels > 0:
+                for chnl in self.activation_config[1]:
+                    if 'd_ch' in chnl:
+                        new_laser_channel = chnl
+                        break
+                self.log.warning('Unable to set laser_channel "{0}" since it is not in current '
+                                 'activation_config.\nLaser_channel set to "{1}" instead.'
+                                 ''.format(self.laser_channel, new_laser_channel))
+                self.laser_channel = new_laser_channel
+            else:
+                self.log.error('Unable to set new laser_channel "{0}". '
+                               'No digital channel in current activation_config.'
+                               ''.format(settings_dict['laser_channel']))
+                self.laser_channel = ''
+            actual_settings['laser_channel'] = self.laser_channel
+
+        # Try to set the sample rate
+        if 'sample_rate' in settings_dict:
+            # If sample rate already set, do nothing
+            if settings_dict['sample_rate'] != self.sample_rate:
+                sample_rate_constr = self._pulse_generator.get_constraints().sample_rate
+                # Check boundaries with constraints
+                if settings_dict['sample_rate'] > sample_rate_constr.max:
+                    self.log.warning('Sample rate to set ({0}) larger than allowed maximum ({1}).\n'
+                                     'New sample rate will be set to maximum value.'
+                                     ''.format(settings_dict['sample_rate'],
+                                               sample_rate_constr.max))
+                    settings_dict['sample_rate'] = sample_rate_constr.max
+                elif settings_dict['sample_rate'] < sample_rate_constr.min:
+                    self.log.warning('Sample rate to set ({0}) smaller than allowed minimum ({1}).'
+                                     '\nNew sample rate will be set to minimum value.'
+                                     ''.format(settings_dict['sample_rate'],
+                                               sample_rate_constr.min))
+                    settings_dict['sample_rate'] = sample_rate_constr.min
+
+                self.sample_rate = self._pulse_generator.set_sample_rate(
+                    settings_dict['sample_rate'])
+            actual_settings['sample_rate'] = self.sample_rate
+
+        # Try to set the pp-amplitudes for analog channels
+        if 'analog_pp_amplitude' in settings_dict:
+            # if no change is needed, do nothing
+            if settings_dict['analog_pp_amplitude'] != self.analog_pp_amplitude:
+                analog_constr = self._pulse_generator.get_constraints().a_ch_amplitude
+                # Get currently set pp-amplitudes
+                current_analog_amp = self._pulse_generator.get_analog_level(
+                    amplitude=list(settings_dict['analog_pp_amplitude']))
+                # Check boundaries with constraints
+                for chnl, value in settings_dict['analog_pp_amplitude'].items():
+                    if value > analog_constr.max:
+                        self.log.warning('pp-amplitude to set ({0}) larger than allowed maximum '
+                                         '({1}).\nNew pp-amplitude will be set to maximum value.'
+                                         ''.format(value, analog_constr.max))
+                        settings_dict['analog_pp_amplitude'][chnl] = analog_constr.max
+                    elif settings_dict['sample_rate'] < sample_rate_constr.min:
+                        self.log.warning('pp-amplitude to set ({0}) smaller than allowed minimum '
+                                         '({1}).\nNew pp-amplitude will be set to minimum value.'
+                                         ''.format(value, analog_constr.min))
+                        settings_dict['analog_pp_amplitude'][chnl] = analog_constr.min
+                    if chnl not in current_analog_amp:
+                        self.log.error('Trying to set pp-amplitude for non-existent channel "{0}"!'
+                                       ''.format(chnl))
+
+                self.analog_pp_amplitude, dummy = self._pulse_generator.set_analog_level(
+                    amplitude=settings_dict['analog_pp_amplitude'])
+
+            actual_settings['analog_pp_amplitude'] = self.analog_pp_amplitude
+
+        self.sigSettingsUpdated.emit(actual_settings)
+        return actual_settings
 
 # -----------------------------------------------------------------------------
 #                    BEGIN sequence/block generation
@@ -778,15 +895,11 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
         # TODO: Implement _analyze_pulse_sequence method.
         pass
 
-    def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
-                                    name_tag=None):
+    def sample_pulse_block_ensemble(self, ensemble_name, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
                                   ensembles.
-        @param bool write_to_file: Write either to RAM or to File (depends on the available space
-                                   in RAM). If set to FALSE, this method will return the samples
-                                   (digital and analog) as numpy arrays
         @param int offset_bin: If many pulse ensembles are samples sequentially, then the
                                offset_bin of the previous sampling can be passed to maintain
                                rotating frame across pulse_block_ensembles
@@ -794,15 +907,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
                              where sampled from the same PulseBlockEnsemble object but where
                              different offset_bins were used.
 
-        @return tuple: of length 4 with
-                       (analog_samples, digital_samples, [<created_files>], offset_bin).
+        @return tuple: of length 3 with
+                       (analog_samples, digital_samples, offset_bin).
                         analog_samples:
                             numpy arrays containing the sampled voltages
                         digital_samples:
                             numpy arrays containing the sampled logic levels
-                        [<created_files>]:
-                            list of strings, with the actual created files through the pulsing
-                            device
                         offset_bin:
                             integer, which is used for maintaining the rotation frame.
 
@@ -819,21 +929,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
         errors. Only in the last step when a single PulseBlockElement object is sampled  these
         integer bin values are translated into a floating point time.
 
-        The chunkwise write mode is used to save memory usage at the expense of time. Here for each
-        PulseBlockElement the write_to_file method in the HW module is called to avoid large
-        arrays inside the memory. In other words: The whole sample arrays are never created at any
-        time. This results in more function calls and general overhead causing the much longer time
-        to complete.
+        The chunkwise write mode is used to save memory usage at the expense of time.
+        In other words: The whole sample arrays are never created at any time. This results in more
+        function calls and general overhead causing much longer time to complete.
 
         In addition the pulse_block_ensemble gets analyzed and important parameters used during
-        sampling get stored in the ensemble object itself. Those attributes are:
-        <ensemble>.length_bins
-        <ensemble>.length_elements_bins
-        <ensemble>.number_of_elements
-        <ensemble>.digital_rising_bins
-        <ensemble>.sample_rate
-        <ensemble>.activation_config
-        <ensemble>.amplitude_dict
+        sampling get stored in the ensemble object "sampling_information" attribute.
+        It is a dictionary containing:
+        TODO: Add parameters that are stored
         """
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
@@ -841,56 +944,44 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
             sequence_sampling_in_progress = False
         else:
             sequence_sampling_in_progress = True
+
         # determine if chunkwise writing is enabled (the overhead byte size is set)
         chunkwise = self.sampling_overhead_bytes is not None
+
+        # get ensemble
+        ensemble = self.saved_pulse_block_ensembles[ensemble_name]
+        # Check if number of channels in PulseBlockEnsemble matches the hardware settings
+        ana_channels = ensemble.analog_channels
+        dig_channels = ensemble.digital_channels
+        if self.digital_channels != len(dig_channels) or self.analog_channels != len(ana_channels):
+            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
+                           'analog and digital channels between hardware ({1}, {2}) and '
+                           'PulseBlockEnsemble ({3}, {4}).'
+                           ''.format(ensemble_name, self.analog_channels, self.digital_channels,
+                                     len(ana_channels), len(dig_channels)))
+            return np.array([]), np.array([]), -1
+        elif ana_channels.union(dig_channels) != self.activation_config[1]:
+            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in activation '
+                           'config in logic ({1}) and active channels in PulseBlockEnsemble ({2}).'
+                           ''.format(ensemble_name, self.activation_config[1],
+                                     ana_channels.union(dig_channels)))
+            return np.array([]), np.array([]), -1
+
         # Set the filename (excluding the channel naming suffix, i.e. '_ch1')
         if name_tag is None:
             filename = ensemble_name
         else:
             filename = name_tag
-        # check for old files associated with the new ensemble and delete them from host PC
-        if write_to_file:
-            # get sampled filenames on host PC referring to the same ensemble
 
-            # be careful, in contrast to linux os, windows os is in general case insensitive!
-            # Therefore one needs to check and remove all files matching the case insensitive
-            # case for windows os.
-            if 'win' in sys.platform:
-                # make it simple and make everything lowercase.
-                filename_list = [f for f in os.listdir(self.waveform_dir) if
-                                 f.lower().startswith(filename.lower() + '_ch')]
-
-
-            else:
-                filename_list = [f for f in os.listdir(self.waveform_dir) if
-                                 f.startswith(filename + '_ch')]
-            # delete all filenames in the list
-            for file in filename_list:
-                os.remove(os.path.join(self.waveform_dir, file))
-
-            if len(filename_list) != 0:
-                self.log.info('Found old sampled ensembles for name "{0}". Files deleted before '
-                              'sampling: {1}'.format(filename, filename_list))
+        # check for old waveforms associated with the ensemble and delete them from pulse generator.
+        uploaded_waveforms = self._pulse_generator.get_uploaded_waveform_names()
+        wfm_regex = re.compile(r'\b' + filename + r'_ch\d+$')
+        for wfm_name in uploaded_waveforms:
+            if wfm_regex.match(wfm_name):
+                self._pulse_generator.delete_waveform(wfm_name)
+                self.log.debug('Old waveform deleted from pulse generator: "{0}".'.format(wfm_name))
 
         start_time = time.time()
-        # get ensemble
-        ensemble = self.saved_pulse_block_ensembles[ensemble_name]
-        # Ensemble parameters to determine the shape of sample arrays
-        ana_channels = ensemble.analog_channels
-        dig_channels = ensemble.digital_channels
-        if self.digital_channels != len(dig_channels) or self.analog_channels != len(ana_channels):
-            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in number of '
-                           'analog and digital channels between logic ({1}, {2}) and '
-                           'PulseBlockEnsemble ({3}, {4}).'
-                           ''.format(ensemble_name, self.analog_channels, self.digital_channels,
-                                     len(ana_channels), len(dig_channels)))
-            return np.array([]), np.array([]), -1
-        elif set(ana_channels + dig_channels) != set(self.activation_config):
-            self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in activation '
-                           'config in logic ({1}) and active channels in PulseBlockEnsemble ({2}).'
-                           ''.format(ensemble_name, self.activation_config,
-                                     ana_channels + dig_channels))
-            return np.array([]), np.array([]), -1
 
         # get important parameters from the ensemble and save some to the ensemble objects
         # sampling_information container.
@@ -901,12 +992,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
         ensemble.sampling_information['number_of_elements'] = number_of_elements
         ensemble.sampling_information['digital_rising_bins'] = digital_rising_bins
         ensemble.sampling_information['sample_rate'] = self.sample_rate
-        ensemble.sampling_information['activation_config'] = self.activation_config
-        ensemble.sampling_information['amplitude_dict'] = self.amplitude_dict
+        ensemble.sampling_information['activation_config'] = self.activation_config[1]
+        ensemble.sampling_information['analog_pp_amplitude'] = self.analog_pp_amplitude
         self.save_ensemble(ensemble_name, ensemble)
 
         # The time bin offset for each element to be sampled to preserve rotating frame.
-        if chunkwise and write_to_file:
+        if chunkwise:
             # Flags and counter for chunkwise writing
             is_first_chunk = True
             is_last_chunk = False
@@ -938,7 +1029,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
                     # create floating point time array for the current element inside rotating frame
                     time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
 
-                    if chunkwise and write_to_file:
+                    if chunkwise:
                         # determine it the current element is the last one to be sampled.
                         # Toggle the is_last_chunk flag accordingly.
                         if element_count == number_of_elements:
@@ -953,7 +1044,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
                             digital_samples[chnl] = np.full(element_length_bins, digital_high[chnl],
                                                             dtype=bool)
                         for chnl in pulse_function:
-                            analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.amplitude_dict[chnl])
+                            analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.analog_pp_amplitude[chnl])
                         # write temporary sample array to file
                         self._write_to_file[self.waveform_format](filename, analog_samples,
                                                                   digital_samples,
@@ -967,7 +1058,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplesWriteMethods): # , SamplingFun
                         for chnl in digital_high:
                             digital_samples[chnl][entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, digital_high[chnl], dtype=bool)
                         for chnl in pulse_function:
-                            analog_samples[chnl][entry_ind:entry_ind+element_length_bins] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.amplitude_dict[chnl])
+                            analog_samples[chnl][entry_ind:entry_ind+element_length_bins] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.analog_pp_amplitude[chnl])
 
                         # increment the index offset of the overall sample array for the next
                         # element
