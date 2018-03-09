@@ -256,8 +256,7 @@ class PoiManagerLogic(GenericLogic):
         """ Deactivate the active POI if the confocal microscope scanner position is
         moved by anything other than the optimizer
         """
-        if tag != 'optimizer':
-            self._deactivate_poi()
+        pass
 
     def testing(self):
         """ Debug function for testing. """
