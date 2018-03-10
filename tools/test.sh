@@ -55,9 +55,13 @@ failed=0
 
 test_notebook notebooks/matplotlib.ipynb
 
+jupyter-nbconvert --ExecutePreprocessor.timeout=600
+
 for notebook in notebooks/fit_testing_*.ipynb; do
     test_notebook $notebook;
 done
+
+jupyter-nbconvert --ExecutePreprocessor.timeout=30
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
