@@ -61,7 +61,7 @@ done
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
-sleep 20
+sleep 60
 
 if kill $QUDIPID; then
     echo "Shutdown has failed: $QUDIPID was killed" >&2
