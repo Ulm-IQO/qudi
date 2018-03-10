@@ -2,7 +2,7 @@
 
 function test_notebook () {
     let "total += 1"
-    jupyter-nbconvert --execute $1;
+    jupyter-nbconvert --ExecutePreprocessor.timeout=600 --execute $1;
     grep '<div.*output_stderr' "notebooks/"`basename $1 .ipynb`".html" > /dev/null
     retcode=$?
 
@@ -55,13 +55,9 @@ failed=0
 
 test_notebook notebooks/matplotlib.ipynb
 
-jupyter-nbconvert --ExecutePreprocessor.timeout=600
-
 for notebook in notebooks/fit_testing_*.ipynb; do
     test_notebook $notebook;
 done
-
-jupyter-nbconvert --ExecutePreprocessor.timeout=30
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
