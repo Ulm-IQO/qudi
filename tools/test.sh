@@ -2,7 +2,7 @@
 
 function test_notebook () {
     let "total += 1"
-    jupyter-nbconvert --execute $1;
+    jupyter-nbconvert --ExecutePreprocessor.timeout=600 --execute $1;
     grep '<div.*output_stderr' "notebooks/"`basename $1 .ipynb`".html" > /dev/null
     retcode=$?
 
@@ -61,7 +61,7 @@ done
 
 jupyter-nbconvert --execute notebooks/shutdown.ipynb
 
-sleep 20
+sleep 60
 
 if kill $QUDIPID; then
     echo "Shutdown has failed: $QUDIPID was killed" >&2
