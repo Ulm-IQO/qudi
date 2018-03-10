@@ -838,7 +838,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 digits_to_add = self.__decimals - len(fractional_str) # number of digits to add
                 fractional_tmp_str = ('{0:.' + str(digits_to_add) + 'f}').format(fractional)
                 if fractional_tmp_str.startswith('1'):
-                    fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
+                    if fractional_str:
+                        fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
+                    else:
+                        fractional_str = '1' + '0' * digits_to_add
                 else:
                     fractional_str += fractional_tmp_str.split('.')[1]
             # Check if the rounding has overflown the fractional part into the integer part
