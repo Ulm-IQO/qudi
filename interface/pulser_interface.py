@@ -163,19 +163,44 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device mass memory.
-            Also loads these files into the device workspace if present.
-            Does NOT load waveforms/sequences/patterns into channels.
+    def load_waveform(self, load_dict):
+        """ Loads a waveform to the specified channel of the pulsing device.
+        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
+        workspace into the channel.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
 
-        @param asset_name: string, name of the ensemble/sequence to be uploaded
+        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
 
-        @return int: error code (0:OK, -1:error)
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
+        """
+        pass
 
-        If nothing is passed, method will be skipped.
+    @abc.abstractmethod
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
 
-        This method has no effect when using pulser hardware without own mass memory
-        (i.e. PulseBlaster, FPGA)
+        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
+
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
         pass
 
@@ -425,37 +450,75 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_uploaded_asset_names(self):
-        """ Retrieve the names of all uploaded assets on the device.
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk):
+        """
+        Write a new waveform or append samples to an already existing waveform on the device memory.
+        The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
+        be created or if the write process to a waveform should be terminated.
 
-        @return list: List of all uploaded asset name strings in the current device directory.
-                      This is no list of the file names.
+        :param name: str, the name of the waveform to be created/append to
+        :param analog_samples: numpy.ndarray of type float32 containing the voltage samples
+        :param digital_samples: numpy.ndarray of type bool containing the marker states
+                                (if analog channels are active, this must be the same length as
+                                analog_samples)
+        :param is_first_chunk: bool, flag indicating if it is the first chunk to write.
+                                     If True this method will create a new empty wavveform.
+                                     If False the samples are appended to the existing waveform.
+        :param is_last_chunk: bool, flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
 
-        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        :return: (int, list) number of samples written (-1 indicates failed process) and list of
+                             created waveform names
         """
         pass
 
     @abc.abstractmethod
-    def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC. This is no list of
-            the file names.
+    def write_sequence(self, name, sequence_parameters):
+        """
+        Write a new sequence on the device memory.
 
-        @return list: List of all saved asset name strings in the current
-                      directory of the host PC.
+        :param name: str, the name of the waveform to be created/append to
+        :param sequence_parameters: dict, dictionary containing the parameters for a sequence
+
+        :return: int, number of sequence steps written (-1 indicates failed process)
         """
         pass
 
     @abc.abstractmethod
-    def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device
-            memory (mass storage as well as i.e. awg workspace/channels).
+    def get_waveform_names(self):
+        """ Retrieve the names of all uploaded waveforms on the device.
 
-        @param str asset_name: The name of the asset to be deleted
-                               Optionally a list of asset names can be passed.
+        @return list: List of all uploaded waveform name strings in the device workspace.
+        """
+        pass
 
-        @return list: a list with strings of the files which were deleted.
+    @abc.abstractmethod
+    def get_sequence_names(self):
+        """ Retrieve the names of all uploaded sequence on the device.
 
-        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        @return list: List of all uploaded sequence name strings in the device workspace.
+        """
+        pass
+
+    @abc.abstractmethod
+    def delete_waveform(self, waveform_name):
+        """ Delete the waveform with name "waveform_name" from the device memory.
+
+        @param str waveform_name: The name of the waveform to be deleted
+                                  Optionally a list of waveform names can be passed.
+
+        @return list: a list of deleted waveform names.
+        """
+        pass
+
+    @abc.abstractmethod
+    def delete_sequence(self, sequence_name):
+        """ Delete the sequence with name "sequence_name" from the device memory.
+
+        @param str sequence_name: The name of the sequence to be deleted
+                                  Optionally a list of sequence names can be passed.
+
+        @return list: a list of deleted sequence names.
         """
         pass
 
@@ -508,7 +571,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def tell(self, command):
+    def write(self, command):
         """ Sends a command string to the device.
 
         @param string command: string containing the command
@@ -518,7 +581,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def ask(self, question):
+    def query(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.
 a
         @param string question: string containing the command
