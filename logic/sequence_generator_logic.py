@@ -907,14 +907,16 @@ class SequenceGeneratorLogic(GenericLogic):
                              where sampled from the same PulseBlockEnsemble object but where
                              different offset_bins were used.
 
-        @return tuple: of length 3 with
-                       (analog_samples, digital_samples, offset_bin).
+        @return tuple: of length 4 with
+                       (analog_samples, digital_samples, offset_bin, created_waveforms).
                         analog_samples:
                             numpy arrays containing the sampled voltages
                         digital_samples:
                             numpy arrays containing the sampled logic levels
                         offset_bin:
-                            integer, which is used for maintaining the rotation frame.
+                            integer, which is used for maintaining the rotation frame
+                        created_waveforms:
+                            list, a list of created waveform names
 
         This method is creating the actual samples (voltages and logic states) for each time step
         of the analog and digital channels specified in the PulseBlockEnsemble.
@@ -949,7 +951,13 @@ class SequenceGeneratorLogic(GenericLogic):
         chunkwise = self.sampling_overhead_bytes is not None
 
         # get ensemble
-        ensemble = self.saved_pulse_block_ensembles[ensemble_name]
+        ensemble = self.saved_pulse_block_ensembles.get(ensemble_name)
+        if ensemble is None:
+            if not sequence_sampling_in_progress:
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit('', dict(), dict())
+            return dict(), dict(), -1, []
+
         # Check if number of channels in PulseBlockEnsemble matches the hardware settings
         ana_channels = ensemble.analog_channels
         dig_channels = ensemble.digital_channels
@@ -959,13 +967,19 @@ class SequenceGeneratorLogic(GenericLogic):
                            'PulseBlockEnsemble ({3}, {4}).'
                            ''.format(ensemble_name, self.analog_channels, self.digital_channels,
                                      len(ana_channels), len(dig_channels)))
-            return np.array([]), np.array([]), -1
+            if not sequence_sampling_in_progress:
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit('', dict(), dict())
+            return dict(), dict(), -1, []
         elif ana_channels.union(dig_channels) != self.activation_config[1]:
             self.log.error('Sampling of PulseBlockEnsemble "{0}" failed!\nMismatch in activation '
                            'config in logic ({1}) and active channels in PulseBlockEnsemble ({2}).'
                            ''.format(ensemble_name, self.activation_config[1],
                                      ana_channels.union(dig_channels)))
-            return np.array([]), np.array([]), -1
+            if not sequence_sampling_in_progress:
+                self.module_state.unlock()
+            self.sigSampleEnsembleComplete.emit('', dict(), dict())
+            return dict(), dict(), -1, []
 
         # Set the filename (excluding the channel naming suffix, i.e. '_ch1')
         if name_tag is None:
@@ -974,7 +988,7 @@ class SequenceGeneratorLogic(GenericLogic):
             filename = name_tag
 
         # check for old waveforms associated with the ensemble and delete them from pulse generator.
-        uploaded_waveforms = self._pulse_generator.get_uploaded_waveform_names()
+        uploaded_waveforms = self._pulse_generator.get_waveform_names()
         wfm_regex = re.compile(r'\b' + filename + r'_ch\d+$')
         for wfm_name in uploaded_waveforms:
             if wfm_regex.match(wfm_name):
@@ -1046,10 +1060,21 @@ class SequenceGeneratorLogic(GenericLogic):
                         for chnl in pulse_function:
                             analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.analog_pp_amplitude[chnl])
                         # write temporary sample array to file
-                        self._write_to_file[self.waveform_format](filename, analog_samples,
-                                                                  digital_samples,
-                                                                  number_of_samples, is_first_chunk,
-                                                                  is_last_chunk)
+                            written_samples, wfm_list = self._pulse_generator.write_waveform(
+                                name=filename,
+                                analog_samples=analog_samples,
+                                digital_samples=digital_samples,
+                                is_first_chunk=is_first_chunk,
+                                is_last_chunk=is_last_chunk)
+                        # check if write process was successful
+                        if written_samples != element_length_bins:
+                            self.log.error('Sampling of block "{0}" in ensemble "{1}" failed. Write'
+                                           ' to device was unsuccessful.'.format(block.name,
+                                                                                 ensemble.name))
+                            if not sequence_sampling_in_progress:
+                                self.module_state.unlock()
+                            self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
+                            return dict(), dict(), -1, []
                         # set flag to FALSE after first write
                         is_first_chunk = False
                     else:
@@ -1069,60 +1094,55 @@ class SequenceGeneratorLogic(GenericLogic):
                     if ensemble.rotating_frame:
                         offset_bin += element_length_bins
 
-        if not write_to_file:
-            # return a status message with the time needed for sampling the entire ensemble as a
-            # whole without writing to file.
-            self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
-                          'whole: {0} sec.'.format(int(np.rint(time.time() - start_time))))
-            # return the sample arrays for write_to_file was set to FALSE
-            if not sequence_sampling_in_progress:
-                self.module_state.unlock()
-            self.sigSampleEnsembleComplete.emit(filename, analog_samples, digital_samples)
-            return analog_samples, digital_samples, offset_bin
-        elif chunkwise:
+        if chunkwise:
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
-            self.log.info('Time needed for sampling and writing to file chunkwise: {0} sec'
+            self.log.info('Time needed for sampling and writing to device chunkwise: {0} sec'
                           ''.format(int(np.rint(time.time()-start_time))))
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
-            return dict(), dict(), offset_bin
+            return dict(), dict(), offset_bin, wfm_list
         else:
-            # If the sampling should not be chunkwise and write to file is enabled call the
-            # write_to_file method only once.
-            self._write_to_file[self.waveform_format](filename, analog_samples, digital_samples,
-                                                      number_of_samples, is_first_chunk,
-                                                      is_last_chunk)
-            # return a status message with the time needed for sampling and writing the ensemble as
-            # a whole.
-            self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
+            # If the sampling should not be chunkwise call the write_waveform method only once.
+            written_samples, wfm_list = self._pulse_generator.write_waveform(
+                name=filename,
+                analog_samples=analog_samples,
+                digital_samples=digital_samples,
+                is_first_chunk=is_first_chunk,
+                is_last_chunk=is_last_chunk)
+            # check if write process was successful
+            if written_samples != number_of_samples:
+                self.log.error('Sampling of ensemble "{0}" failed. Write to device was '
+                               'unsuccessful.'.format(ensemble.name))
+                if not sequence_sampling_in_progress:
+                    self.module_state.unlock()
+                self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
+                return dict(), dict(), -1, []
+            # return a status message with the time needed for sampling and writing the ensemble.
+            self.log.info('Time needed for sampling and writing PulseBlockEnsemble to device as a '
                           'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
 
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, dict(), dict())
-            return dict(), dict(), offset_bin
+            return analog_samples, digital_samples, offset_bin, wfm_list
 
-    def sample_pulse_sequence(self, sequence_name, write_to_file=True):
+    def sample_pulse_sequence(self, sequence_name):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
         @param str ensemble_name: Name, which should correlate with the name of on of the displayed
                                   ensembles.
-        @param bool write_to_file: Write either to RAM or to File (depends on the available space
-                                   in RAM). If set to FALSE, this method will return the samples
-                                   (digital and analog) as numpy arrays
 
         The sequence object is sampled by call subsequently the sampling routine for the
         PulseBlockEnsemble objects and passing if needed the rotating frame option.
-
-        Only those PulseBlockEnsemble object where sampled that are different! These can be
-        directly obtained from the internal attribute different_ensembles_dict of a PulseSequence.
 
         Right now two 'simple' methods of sampling where implemented, which reuse the sample
         function for the Pulse_Block_Ensembles. One, which samples by preserving the phase (i.e.
         staying in the rotating frame) and the other which samples without keep a phase
         relationship between the different entries of the PulseSequence object.
+        ATTENTION: The phase preservation within a single PulseBlockEnsemble is NOT affected by
+                   this method.
 
         More sophisticated sequence sampling method can be implemented here.
         """
@@ -1132,104 +1152,111 @@ class SequenceGeneratorLogic(GenericLogic):
         else:
             self.log.error('Cannot sample sequence "{0}" because the sequence generator logic is '
                            'still busy (locked).\nFunction call ignored.'.format(sequence_name))
-            return
-        if write_to_file:
-            # get sampled filenames on host PC referring to the same sequence
-            filename_list = [f for f in os.listdir(self.sequence_dir) if
-                             f.startswith(sequence_name + '.seq')]
-            # delete all filenames in the list
-            for file in filename_list:
-                os.remove(os.path.join(self.sequence_dir, file))
+            self.sigSampleSequenceComplete.emit(sequence_name, [])
+            return []
 
-            if len(filename_list) != 0:
-                self.log.warning('Found old sequence for name "{0}". Files deleted before '
-                                 'sampling: {1}'.format(sequence_name, filename_list))
+        # delete already written sequences on the device memory that have the same name
+        if sequence_name in self._pulse_generator.get_sequence_names():
+            self._pulse_generator.delete_sequence(sequence_name)
+            self.log.debug('Old sequence deleted from pulse generator: "{0}".'
+                           ''.format(sequence_name))
 
         start_time = time.time()
 
-
-
         # get ensemble
-        sequence_obj = self.saved_pulse_sequences[sequence_name]
-        sequence_param_dict_list = []
-        ana_chnl_names = sequence_obj.analog_channels
+        sequence = self.saved_pulse_sequences.get(sequence_name)
+        if sequence is None:
+            self.log.error('No sequence by the name "{0}" found in saved sequences. '
+                           'Sequence sampling failed.'.format(sequence_name))
+            self.module_state.unlock()
+            self.sigSampleSequenceComplete.emit(sequence_name, [])
+            return []
+
+        # Produce a list of created waveforms
+        created_waveforms_list = list()
+
+        # Create a list in the process with each element holding the created wavfeorm names as a
+        # tuple and the corresponding sequence parameters as defined in the PulseSequence object
+        # Example: [(('waveform1', 'waveform2'), seq_param_dict1),
+        #           (('waveform3', 'waveform4'), seq_param_dict2)]
+        sequence_param_dict_list = list()
 
         # if all the Pulse_Block_Ensembles should be in the rotating frame, then each ensemble
         # will be created in general with a different offset_bin. Therefore, in order to keep track
         # of the sampled Pulse_Block_Ensembles one has to introduce a running number as an
         # additional name tag, so keep the sampled files separate.
-        if sequence_obj.rotating_frame:
-            ensemble_index = 0  # that will indicate the ensemble index
-            offset_bin = 0      # that will be used for phase preserving
-            for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
+        if sequence.rotating_frame:
+            offset_bin = 0  # that will be used for phase preservation
+            for ensemble_index, (ensemble, seq_param) in enumerate(sequence.ensemble_param_list):
                 # to make something like 001
                 name_tag = sequence_name + '_' + str(ensemble_index).zfill(3)
 
                 dummy1, \
                 dummy2, \
-                offset_bin_return = self.sample_pulse_block_ensemble(ensemble_obj.name,
-                                                                     write_to_file=write_to_file,
+                offset_bin_return, \
+                created_waveforms = self.sample_pulse_block_ensemble(ensemble.name,
                                                                      offset_bin=offset_bin,
                                                                      name_tag=name_tag)
 
-                # the temp_dict is a format how the sequence parameter will be saved
-                temp_dict = dict()
-                name_list = []
-                for chnl in ana_chnl_names:
-                    name_list.append(name_tag + chnl[1:] + '.' + self.waveform_format)
-                temp_dict['name'] = name_list
+                if len(created_waveforms) == 0:
+                    self.log.error('Sampling of PulseBlockEnsemble "{0}" failed during sampling of '
+                                   'PulseSequence "{1}".\nFailed to create waveforms on device.'
+                                   ''.format(ensemble.name, sequence_name))
+                    self.module_state.unlock()
+                    self.sigSampleSequenceComplete.emit(sequence_name, [])
+                    return []
 
-                # update the sequence parameter to the temp dict:
-                temp_dict.update(seq_param)
-                # add the whole dict to the list of dicts, containing information about how to
-                # write the sequence properly in the hardware file:
-                sequence_param_dict_list.append(temp_dict)
+                created_waveforms_list.extend(created_waveforms)
+
+                sequence_param_dict_list.append((tuple(created_waveforms), seq_param))
 
                 # for the next run, the returned offset_bin will serve as starting point for
                 # phase preserving.
                 offset_bin = offset_bin_return
-                ensemble_index += 1
         else:
             # if phase prevervation between the sequence entries is not needed, then only the
-            # different ensembles will be sampled, since the offset_bin does not matter for them:
-            for ensemble_name in sequence_obj.different_ensembles:
-                self.sample_pulse_block_ensemble(ensemble_name, write_to_file=write_to_file,
-                                                 offset_bin=0, name_tag=None)
+            # different ensembles will be sampled, since the offset_bin does not matter for them.
 
-            # go now through the sequence list and replace all the entries with the output of the
-            # sampled ensemble file:
-            for ensemble_obj, seq_param in sequence_obj.ensemble_list:
-                temp_dict = dict()
-                name_list = []
-                for chnl in ana_chnl_names:
-                    name_list.append(ensemble_obj.name + chnl[1:] + '.' + self.waveform_format)
-                temp_dict['name'] = name_list
-                # update the sequence parameter to the temp dict:
-                temp_dict.update(seq_param)
+            # Use a list to keep track of already sampled ensembles
+            sampled_ensembles = list()
 
-                sequence_param_dict_list.append(temp_dict)
+            for ensemble, seq_param in sequence.ensemble_param_list:
+                if ensemble.name not in sampled_ensembles:
+                    dummy1, \
+                    dummy2, \
+                    dummy3, \
+                    created_waveforms = self.sample_pulse_block_ensemble(ensemble.name)
+                    sampled_ensembles.append(ensemble.name)
+
+                if len(created_waveforms) == 0:
+                    self.log.error('Sampling of PulseBlockEnsemble "{0}" failed during sampling of '
+                                   'PulseSequence "{1}".\nFailed to create waveforms on device.'
+                                   ''.format(ensemble.name, sequence_name))
+                    self.module_state.unlock()
+                    self.sigSampleSequenceComplete.emit(sequence_name, [])
+                    return []
+
+                created_waveforms_list.extend(created_waveforms)
+
+                sequence_param_dict_list.append((tuple(created_waveforms), seq_param))
 
         # get important parameters from the sequence and save some to the sequence object
         # TODO: Get information from _analyze_pulse_sequence as soon as it's implemented.
         # self._analyze_pulse_sequence(sequence_obj)
-        sequence_obj.sampling_information = dict()
-        sequence_obj.sampling_information['sample_rate'] = self.sample_rate
-        sequence_obj.sampling_information['activation_config'] = self.activation_config
-        sequence_obj.sampling_information['amplitude_dict'] = self.amplitude_dict
-        self.save_sequence(sequence_name, sequence_obj)
+        sequence.sampling_information = dict()
+        sequence.sampling_information['sample_rate'] = self.sample_rate
+        sequence.sampling_information['activation_config'] = self.activation_config
+        sequence.sampling_information['amplitude_dict'] = self.amplitude_dict
+        self.save_sequence(sequence_name, sequence)
 
-        if write_to_file:
-            # pass the whole information to the sequence creation method:
-            self._write_to_file[self.sequence_format](sequence_obj)
-            self.log.info('Time needed for sampling and writing Pulse Sequence to file: {0} sec.'
-                          ''.format(int(np.rint(time.time() - start_time))))
-        else:
-            self.log.info('Time needed for sampling Pulse Sequence: {0} sec.'
-                          ''.format(int(np.rint(time.time() - start_time))))
+        # pass the whole information to the sequence creation method:
+        self._pulse_generator.write_sequence(sequence_name, sequence_param_dict_list)
+        self.log.info('Time needed for sampling and writing Pulse Sequence to device: {0} sec.'
+                      ''.format(int(np.rint(time.time() - start_time))))
         # unlock module
         self.module_state.unlock()
         self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
-        return
+        return sequence_param_dict_list
 
     #---------------------------------------------------------------------------
     #                    END sequence/block sampling
