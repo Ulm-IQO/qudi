@@ -205,29 +205,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing device.
-        For devices that have a workspace (i.e. AWG) this will load the asset from the device
-        workspace into the channel.
-        For a device without mass memory this will transfer the waveform/sequence/pattern data
-        directly to the device so that it is ready to play.
-
-        @param str asset_name: The name of the asset to be loaded
-
-        @param dict load_dict:  a dictionary with keys being one of the available channel numbers
-                                and items being the name of the already sampled waveform/sequence
-                                files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given then the channel
-                                association is invoked from the file name, i.e. the appendix
-                                (_ch1, _ch2 etc.)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
 
@@ -456,18 +433,18 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
-        :param name: str, the name of the waveform to be created/append to
-        :param analog_samples: numpy.ndarray of type float32 containing the voltage samples
-        :param digital_samples: numpy.ndarray of type bool containing the marker states
+        @param name: str, the name of the waveform to be created/append to
+        @param analog_samples: numpy.ndarray of type float32 containing the voltage samples
+        @param digital_samples: numpy.ndarray of type bool containing the marker states
                                 (if analog channels are active, this must be the same length as
                                 analog_samples)
-        :param is_first_chunk: bool, flag indicating if it is the first chunk to write.
+        @param is_first_chunk: bool, flag indicating if it is the first chunk to write.
                                      If True this method will create a new empty wavveform.
                                      If False the samples are appended to the existing waveform.
-        :param is_last_chunk: bool, flag indicating if it is the last chunk to write.
+        @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
                                     Some devices may need to know when to close the appending wfm.
 
-        :return: (int, list) number of samples written (-1 indicates failed process) and list of
+        @return: (int, list) number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
         pass
@@ -477,10 +454,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         Write a new sequence on the device memory.
 
-        :param name: str, the name of the waveform to be created/append to
-        :param sequence_parameters: dict, dictionary containing the parameters for a sequence
+        @param name: str, the name of the waveform to be created/append to
+        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
 
-        :return: int, number of sequence steps written (-1 indicates failed process)
+        @return: int, number of sequence steps written (-1 indicates failed process)
         """
         pass
 
@@ -519,28 +496,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
                                   Optionally a list of sequence names can be passed.
 
         @return list: a list of deleted sequence names.
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_asset_dir_on_device(self, dir_path):
-        """ Change the directory where the assets are stored on the device.
-
-        @param str dir_path: The target directory
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for pulse generators without changeable file structure (PulseBlaster, FPGA).
-        """
-        pass
-
-    @abc.abstractmethod
-    def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on the device.
-
-        @return str: The current file directory
-
-        Unused for pulse generators without changeable file structure (i.e. PulseBlaster, FPGA).
         """
         pass
 
