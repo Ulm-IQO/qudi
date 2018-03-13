@@ -50,9 +50,6 @@ class PulserDummy(Base, PulserInterface):
               'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
               'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
         self.channel_states = ch
-        self.activation_config = self.get_constraints().activation_config['config0']
-        for chnl in self.activation_config:
-            self.channel_states[chnl] = True
 
         # for each analog channel one value
         self.amplitude_dict = {'a_ch1': 1.0, 'a_ch2': 1.0, 'a_ch3': 1.0}
@@ -73,6 +70,10 @@ class PulserDummy(Base, PulserInterface):
         self.interleave = False
 
         self.current_status = 0    # that means off, not running.
+
+        self.activation_config = self.get_constraints().activation_config['config0']
+        for chnl in self.activation_config:
+            self.channel_states[chnl] = True
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -105,18 +106,14 @@ class PulserDummy(Base, PulserInterface):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
         sequence mode) just leave it out so that the default is used (only zeros).
         """
         constraints = PulserConstraints()
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = [self.compatible_waveform_format]
-        constraints.sequence_format = [self.compatible_sequence_format]
 
         if self.interleave:
             constraints.sample_rate.min = 12.0e9
@@ -194,23 +191,23 @@ class PulserDummy(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['config0'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['config0'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['config1'] = {'a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4'}
         # Usage of channel 1 only:
-        activation_config['config2'] = ['a_ch2', 'd_ch1', 'd_ch2']
+        activation_config['config2'] = {'a_ch2', 'd_ch1', 'd_ch2'}
         # Usage of channel 2 only:
-        activation_config['config3'] = ['a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['config3'] = {'a_ch3', 'd_ch3', 'd_ch4'}
         # Usage of Interleave mode:
-        activation_config['config4'] = ['a_ch1', 'd_ch1', 'd_ch2']
+        activation_config['config4'] = {'a_ch1', 'd_ch1', 'd_ch2'}
         # Usage of only digital channels:
-        activation_config['config5'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
-                                        'd_ch7', 'd_ch8']
+        activation_config['config5'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
+                                        'd_ch7', 'd_ch8'}
         # Usage of only one analog channel:
-        activation_config['config6'] = ['a_ch1']
-        activation_config['config7'] = ['a_ch2']
-        activation_config['config8'] = ['a_ch3']
+        activation_config['config6'] = {'a_ch1'}
+        activation_config['config7'] = {'a_ch2'}
+        activation_config['config8'] = {'a_ch3'}
         # Usage of only the analog channels:
-        activation_config['config9'] = ['a_ch2', 'a_ch3']
+        activation_config['config9'] = {'a_ch2', 'a_ch3'}
         constraints.activation_config = activation_config
 
         return constraints
@@ -450,11 +447,10 @@ class PulserDummy(Base, PulserInterface):
 
         return self.get_loaded_assets()
 
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
+    def get_loaded_assets(self):
+        """ Retrieve the currently loaded asset names for each active channel of the device.
 
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
+        @return str: Name of the current assets ready to play
         """
         return self.current_loaded_assets
 
