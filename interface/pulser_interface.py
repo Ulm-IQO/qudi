@@ -55,8 +55,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
@@ -64,10 +64,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         # Example for configuration with default values:
         constraints = PulserConstraints()
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = ['wfm', 'wfmx']
-        constraints.sequence_format = ['seq', 'seqx']
 
         constraints.sample_rate.min = 10.0e6
         constraints.sample_rate.max = 12.0e9
@@ -139,9 +135,9 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
         constraints.activation_config = activation_conf
         """
         pass
@@ -205,10 +201,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
+    def get_loaded_assets(self):
+        """ Retrieve the currently loaded asset names for each active channel of the device.
 
-        @return str: Name of the current asset ready to play. (no filename)
+        @return str: Name of the current assets ready to play. (no filename)
         """
         pass
 
@@ -578,13 +574,9 @@ class PulserConstraints:
         self.waveform_num = ScalarConstraint(unit='#')
         self.sequence_num = ScalarConstraint(unit='#')
         self.subsequence_num = ScalarConstraint(unit='#')
-        # compatible file formats, e.g. 'wfm', 'wfmx', 'fpga', 'seq', 'seqx'
-        self.waveform_format = []
-        self.sequence_format = []
         # Not used yet
         self.repetitions = ScalarConstraint(unit='#')
         self.trigger_in = ScalarConstraint(unit='chnl')
         self.event_jump_to = ScalarConstraint(unit='step')
         self.go_to = ScalarConstraint(unit='step')
-        # add CountingMode enums to this list in instances
         self.activation_config = dict()
