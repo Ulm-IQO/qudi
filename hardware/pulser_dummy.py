@@ -61,8 +61,8 @@ class PulserDummy(Base, PulserInterface):
         self.digital_low_dict = {'d_ch1': 0.0, 'd_ch2': 0.0, 'd_ch3': 0.0, 'd_ch4': 0.0,
                                  'd_ch5': 0.0, 'd_ch6': 0.0, 'd_ch7': 0.0, 'd_ch8': 0.0}
 
-        self.waveform_list = []
-        self.sequence_list = []
+        self.waveform_list = list()
+        self.sequence_dict = dict()
 
         self.current_loaded_assets = dict()
 
@@ -320,10 +320,10 @@ class PulserDummy(Base, PulserInterface):
                                    'present in device memory.'.format(name, waveform))
                     return -1
 
-        if name in self.sequence_list:
-            del self.sequence_list[self.sequence_list.index(name)]
+        if name in self.sequence_dict:
+            del self.sequence_dict[name]
 
-        self.sequence_list.append(name)
+        self.sequence_dict[name] = len(sequence_parameter_list[0][0])
         time.sleep(1)
 
         self.log.info('Sequence with name "{0}" directly written on dummy pulser.'.format(name))
@@ -341,7 +341,7 @@ class PulserDummy(Base, PulserInterface):
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        return self.sequence_list
+        return list(self.sequence_dict)
 
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.
@@ -375,8 +375,8 @@ class PulserDummy(Base, PulserInterface):
 
         deleted_sequences = list()
         for sequence in sequence_name:
-            if sequence in self.sequence_list:
-                del self.sequence_list[self.sequence_list.index(sequence)]
+            if sequence in self.sequence_dict:
+                del self.sequence_dict[sequence]
                 deleted_sequences.append(sequence)
 
         return deleted_sequences
@@ -397,7 +397,9 @@ class PulserDummy(Base, PulserInterface):
                                       association will be invoked from the channel
                                       suffix '_ch1', '_ch2' etc.
 
-        @return dict: Dictionary containing the actually loaded waveforms per channel.
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel, string describing the asset
+                             type ('waveform' or 'sequence')
         """
         if isinstance(load_dict, list):
             new_dict = dict()
@@ -442,17 +444,72 @@ class PulserDummy(Base, PulserInterface):
 
         @param sequence_name:  str, name of the sequence to load
 
-        @return dict: Dictionary containing the actually loaded assets per channel.
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel, string describing the asset
+                             type ('waveform' or 'sequence')
         """
+        if sequence_name not in self.sequence_dict:
+            self.log.error('Sequence loading failed. No sequence with name "{0}" found on device '
+                           'memory.'.format(sequence_name))
+            return self.get_loaded_assets()
 
+        # Determine if the device is purely digital and get all active channels
+        analog_channels = [chnl for chnl in self.activation_config if
+                           self.activation_config[chnl] and chnl.startswith('a')].sort()
+        digital_channels = [chnl for chnl in self.activation_config if
+                            self.activation_config[chnl] and chnl.startswith('d')].sort()
+        pure_digital = len(analog_channels) == 0
+
+        if pure_digital and len(digital_channels) != self.sequence_dict[sequence_name]:
+            self.log.error('Sequence loading failed. Number of active digital channels ({0:d}) does'
+                           ' not match the number of tracks in the sequence ({1:d}).'
+                           ''.format(len(digital_channels), self.sequence_dict[sequence_name]))
+            return self.get_loaded_assets()
+        if not pure_digital and len(analog_channels) != self.sequence_dict[sequence_name]:
+            self.log.error('Sequence loading failed. Number of active analog channels ({0:d}) does'
+                           ' not match the number of tracks in the sequence ({1:d}).'
+                           ''.format(len(analog_channels), self.sequence_dict[sequence_name]))
+            return self.get_loaded_assets()
+
+        new_loaded_assets = dict()
+        if pure_digital:
+            for track_index, chnl in enumerate(digital_channels):
+                chnl_num = int(chnl.split('ch')[1])
+                new_loaded_assets[chnl_num] = '{0}_{1:d}'.format(sequence_name, track_index)
+        else:
+            for track_index, chnl in enumerate(analog_channels):
+                chnl_num = int(chnl.split('ch')[1])
+                new_loaded_assets[chnl_num] = '{0}_{1:d}'.format(sequence_name, track_index)
+
+        self.current_loaded_assets = new_loaded_assets
         return self.get_loaded_assets()
 
     def get_loaded_assets(self):
         """ Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        @return str: Name of the current assets ready to play
+        @return (dict, str): Dictionary with keys being the channel number and values being the respective
+        asset loaded into the channel, string describing the asset type ('waveform' or 'sequence')
         """
-        return self.current_loaded_assets
+        # Determine if it's a waveform or a sequence
+        asset_type = None
+        for asset_name in self.current_loaded_assets.values():
+            if 'ch' in asset_name.rsplit('_', 1)[1]:
+                current_type = 'waveform'
+            else:
+                current_type = 'sequence'
+
+            if asset_type is None or asset_type == current_type:
+                asset_type = current_type
+            else:
+                self.log.error('Unable to determine loaded asset type. Mixed naming convention '
+                               'assets loaded (waveform and sequence tracks).')
+                return dict(), ''
+
+        return self.current_loaded_assets, asset_type
 
     def clear_all(self):
         """ Clears all loaded waveform from the pulse generators RAM.
@@ -464,7 +521,7 @@ class PulserDummy(Base, PulserInterface):
         """
         self.current_loaded_assets = dict()
         self.waveform_list = list()
-        self.sequence_list = list()
+        self.sequence_dict = dict()
         return 0
 
     def get_status(self):
