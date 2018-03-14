@@ -83,7 +83,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
+    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, str)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
     sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
@@ -116,6 +116,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = 100e-6
         self.loaded_asset_name = ''
         self.alternating = False
+        self.second_plot_type = 'FFT'
 
         # Pulse generator parameters
         self.current_channel_config_name = ''
@@ -250,7 +251,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 self.fast_counter_record_length)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating)
+                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
                                                    self.current_channel_config_name,
                                                    self.analogue_amplitude, self.interleave_on)
@@ -326,12 +327,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return self.fast_counter_binwidth, self.fast_counter_record_length
 
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
-                                      sequence_length_s, laser_ignore_list, is_alternating):
+                                      sequence_length_s, laser_ignore_list, is_alternating, second_plot_type='FFT'):
         if len(controlled_vals) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
             self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                       self.number_of_lasers, self.sequence_length_s,
-                                                      self.laser_ignore_list, self.alternating)
+                                                      self.laser_ignore_list, self.alternating, self.second_plot_type)
             return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
                    self.laser_ignore_list, self.alternating
 
@@ -356,15 +357,16 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
+        self.second_plot_type = second_plot_type
         if self.fast_counter_gated:
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating)
+                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
         return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
-               self.laser_ignore_list, self.alternating
+               self.laser_ignore_list, self.alternating, self.second_plot_type
 
     def get_fastcounter_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
@@ -1236,28 +1238,34 @@ class PulsedMeasurementLogic(GenericLogic):
     def _compute_fft(self):
         """ Computing the fourier transform of the data. """
 
-        # Do sanity checks:
-        if len(self.signal_plot_x) < 2:
-            self.log.debug('FFT of measurement could not be calculated. Only '
-                           'one data point.')
-            self.signal_fft_x = np.zeros(1)
-            self.signal_fft_y = np.zeros(1)
-            self.signal_fft_y2 = np.zeros(1)
-            return
+        print(self.second_plot_type)
+        if self.second_plot_type == 'Delta':
+            self.signal_fft_x = self.signal_plot_x
+            self.signal_fft_y = self.signal_plot_y - self.signal_plot_y2
+            self.signal_fft_y2 = self.signal_plot_y2 - self.signal_plot_y
+        else:
+            # Do sanity checks:
+            if len(self.signal_plot_x) < 2:
+                self.log.debug('FFT of measurement could not be calculated. Only '
+                               'one data point.')
+                self.signal_fft_x = np.zeros(1)
+                self.signal_fft_y = np.zeros(1)
+                self.signal_fft_y2 = np.zeros(1)
+                return
 
-        if self.alternating:
-            x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+            if self.alternating:
+                x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+                    self.signal_plot_x,
+                    self.signal_plot_y2,
+                    zeropad_num=0)
+
+            self.signal_fft_x, self.signal_fft_y = units.compute_ft(
                 self.signal_plot_x,
-                self.signal_plot_y2,
-                zeropad_num=0)
-
-        self.signal_fft_x, self.signal_fft_y = units.compute_ft(
-            self.signal_plot_x,
-            self.signal_plot_y,
-            zeropad_num=self.zeropad,
-            window=self.window,
-            base_corr=self.base_corr,
-            psd=self.psd)
+                self.signal_plot_y,
+                zeropad_num=self.zeropad,
+                window=self.window,
+                base_corr=self.base_corr,
+                psd=self.psd)
         return
 
 
