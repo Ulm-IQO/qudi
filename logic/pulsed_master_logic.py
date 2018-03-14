@@ -58,7 +58,7 @@ class PulsedMasterLogic(GenericLogic):
     sigStartPulser = QtCore.Signal()
     sigStopPulser = QtCore.Signal()
     sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool)
+    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool, str)
     sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
     sigUploadAsset = QtCore.Signal(str)
     sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
@@ -111,7 +111,7 @@ class PulsedMasterLogic(GenericLogic):
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
+    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, str)
     sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
@@ -389,7 +389,7 @@ class PulsedMasterLogic(GenericLogic):
         return pulsegenerator_constraints, fastcounter_constraints
 
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating):
+                                              sequence_length_s, laser_ignore_list, alternating, second_plot_type):
         """
 
         @param controlled_vals:
@@ -397,15 +397,16 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
+        @param second_plot_type:
         @return:
         """
         self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating)
+                                                        alternating, second_plot_type)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating):
+                                              sequence_length_s, laser_ignore_list, alternating, second_plot_type):
         """
 
         @param controlled_vals:
@@ -413,11 +414,12 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
+        @param second_plot_type:
         @return:
         """
         self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating)
+                                                        alternating, second_plot_type)
         return
 
     def fast_counter_settings_changed(self, bin_width_s, record_length_s):
@@ -812,7 +814,8 @@ class PulsedMasterLogic(GenericLogic):
                                                                asset_params['num_of_lasers'],
                                                                asset_params['sequence_length'],
                                                                asset_params['laser_ignore_list'],
-                                                               asset_params['is_alternating'])
+                                                               asset_params['is_alternating'],
+                                                               second_plot_type='FFT')
         # Load asset into channel
         self.status_dict['loading_busy'] = True
         self.sigLoadAsset.emit(asset_name, load_dict)

@@ -215,6 +215,11 @@
             <string>Log(x)Log(y)</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>Delta</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item row="5" column="2">
