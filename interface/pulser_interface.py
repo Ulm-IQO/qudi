@@ -203,8 +203,13 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def get_loaded_assets(self):
         """ Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        @return str: Name of the current assets ready to play. (no filename)
+        @return (dict, str): Dictionary with keys being the channel number and values being the respective
+        asset loaded into the channel, string describing the asset type ('waveform' or 'sequence')
         """
         pass
 
