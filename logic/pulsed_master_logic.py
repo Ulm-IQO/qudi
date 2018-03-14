@@ -609,6 +609,8 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
+        if stash_raw_data_tag is None:
+            stash_raw_data_tag = ''
         self.sigStopMeasurement.emit(stash_raw_data_tag)
         return
 
