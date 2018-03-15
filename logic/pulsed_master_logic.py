@@ -611,7 +611,9 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
-        if stash_raw_data_tag is None:
+        if not isinstance(stash_raw_data_tag, str):
+            self.log.warn('PulsedMaster: stop_measurement was called with stash_raw_data_tag not being a string. '
+                          'Setting it to an empty string to avoid crashes.')
             stash_raw_data_tag = ''
         self.sigStopMeasurement.emit(stash_raw_data_tag)
         return
