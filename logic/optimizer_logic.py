@@ -43,6 +43,8 @@ class OptimizerLogic(GenericLogic):
     # declare status vars
     _clock_frequency = StatusVar('clock_frequency', 50)
     return_slowness = StatusVar(default=20)
+    _template_clock_frequency = StatusVar('clock_frequency', 50)
+    template_return_slowness = StatusVar(default=20)
     refocus_XY_size = StatusVar('xy_size', 0.6e-6)
     optimizer_XY_res = StatusVar('xy_resolution', 10)
     refocus_Z_size = StatusVar('z_size', 2e-6)
@@ -159,10 +161,11 @@ class OptimizerLogic(GenericLogic):
         """
         return self._scanning_device.get_scanner_count_channels()
 
-    def set_clock_frequency(self, clock_frequency):
+    def set_clock_frequency(self, clock_frequency, template_clock_frequency=-1):
         """Sets the frequency of the clock
 
         @param int clock_frequency: desired frequency of the clock
+        @param int template_clock_frequency: clock frequency for the fitting template image
 
         @return int: error code (0:OK, -1:error)
         """
@@ -171,6 +174,8 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             self._clock_frequency = int(clock_frequency)
+            if template_clock_frequency > 0:
+                self._template_clock_frequency = int(template_clock_frequency)
         self.sigClockFrequencyChanged.emit(self._clock_frequency)
         return 0
 
@@ -271,6 +276,15 @@ class OptimizerLogic(GenericLogic):
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
         self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+
+        self.xy_template_image = np.zeros((
+            len(self._Y_values),
+            len(self._X_values),
+            3 + len(self.get_scanner_count_channels())))
+        self.xy_template_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
+        y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
+        self.xy_template_image[:, :, 1] = y_value_matrix.transpose()
+        self.xy_template_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -375,6 +389,10 @@ class OptimizerLogic(GenericLogic):
 
         s_ch = len(self.get_scanner_count_channels())
         self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
+
+        if self._caller_tag == 'template_image':
+            self.xy_template_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
+
         self.sigImageUpdated.emit()
 
         self._xy_scan_line_count += 1
@@ -584,8 +602,9 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self.module_state.lock()
+        clock_frequency = self._template_clock_frequency if self._caller_tag == 'template_image' else self._clock_frequency
         clock_status = self._scanning_device.set_up_scanner_clock(
-            clock_frequency=self._clock_frequency)
+            clock_frequency=clock_frequency)
         if clock_status < 0:
             self.module_state.unlock()
             return -1
@@ -619,6 +638,15 @@ class OptimizerLogic(GenericLogic):
     def _do_next_optimization_step(self):
         """Handle the steps through the specified optimization sequence
         """
+        # If template image requested, just take a XY scan and save it as template image
+        if self._caller_tag == 'template_image':
+            if self._optimization_step >= 1:
+                self._sigFinishedAllOptimizationSteps.emit()
+            else:
+                self._initialize_xy_refocus_image()
+                self._sigScanNextXyLine.emit()
+                self._optimization_step += 1
+            return
 
         # At the end fo the sequence, finish the optimization
         if self._optimization_step == len(self.optimization_sequence):

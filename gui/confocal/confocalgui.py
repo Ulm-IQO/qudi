@@ -763,6 +763,36 @@ class ConfocalGui(GUIBase):
         self._osd.fit_tab = FitParametersWidget(self._optimizer_logic.z_params)
         self._osd.settings_tabWidget.addTab(self._osd.fit_tab, "Fit Params")
 
+        ############################################################
+        # Set up the template tab
+        ############################################################
+
+        self._osd.take_template_image_Button.clicked.connect(self.take_template_image)
+        self._osd.activate_template_checkBox.toggled.connect(self.activate_template_changed)
+
+        # Load the image for the optimizer tab
+        self.xy_template_image = pg.ImageItem(
+            image=self._optimizer_logic.xy_template_image[:, :, 3 + self.opt_channel],
+            axisOrder='row-major')
+        self.xy_template_image.setRect(
+            QtCore.QRectF(
+                self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic.refocus_XY_size
+            )
+        )
+
+        # Add the display item to the xy and depth VieWidget, which was defined in
+        # the UI file.
+        self._osd.template_plot_widget.addItem(self.xy_template_image)
+
+        # Labelling axes
+        self._osd.template_plot_widget.setLabel('bottom', 'X position', units='m')
+        self._osd.template_plot_widget.setLabel('left', 'Y position', units='m')
+
+        self.xy_template_image.setLookupTable(self.my_colors.lut)
+
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
 
@@ -993,6 +1023,20 @@ class ConfocalGui(GUIBase):
         else:
             self._mw.actionBack.setEnabled(False)
 
+    def take_template_image(self):
+        """ Start to take a template image. """
+        print('take_template_image')
+        self.disable_scan_actions()
+        self.update_optimizer_settings()
+
+        # Get the current crosshair position to send to optimizer
+        crosshair_pos = self._scanning_logic.get_position()
+        self.sigStartOptimizer.emit(crosshair_pos, 'template_image')
+
+    def activate_template_changed(self):
+        print('activate_template_changed')
+        pass
+
     def menu_settings(self):
         """ This method opens the settings menu. """
         self._sd.exec_()
@@ -1042,8 +1086,10 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.optimizer_XY_res = self._osd.xy_optimizer_resolution_SpinBox.value()
         self._optimizer_logic.refocus_Z_size = self._osd.z_optimizer_range_DoubleSpinBox.value()
         self._optimizer_logic.optimizer_Z_res = self._osd.z_optimizer_resolution_SpinBox.value()
-        self._optimizer_logic.set_clock_frequency(self._osd.count_freq_SpinBox.value())
+        self._optimizer_logic.set_clock_frequency(self._osd.count_freq_SpinBox.value(),
+                                                  self._osd.template_count_frequency_spinBox.value())
         self._optimizer_logic.return_slowness = self._osd.return_slow_SpinBox.value()
+        self._optimizer_logic.template_return_slowness = self._osd.template_slowness_spinBox.value()
         self._optimizer_logic.hw_settle_time = self._osd.hw_settle_time_SpinBox.value() / 1000
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
         index = self._osd.opt_channel_ComboBox.currentIndex()
@@ -1604,6 +1650,14 @@ class ConfocalGui(GUIBase):
             colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
 
             self.xy_refocus_image.setImage(image=xy_optimizer_image, levels=(colorscale_min, colorscale_max))
+
+        xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
+        if np.max(xy_template_image) != 0:
+            template_colorscale_min = np.min(xy_template_image[np.nonzero(xy_template_image)])
+            template_colorscale_max = np.max(xy_template_image[np.nonzero(xy_template_image)])
+
+            self.xy_template_image.setImage(image=xy_template_image,
+                                           levels=(template_colorscale_min, template_colorscale_max))
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
