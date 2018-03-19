@@ -42,6 +42,7 @@ class PulseExtractionLogic(GenericLogic):
                                                                     'threshold_tolerance': 20e-9,
                                                                     'min_laser_length': 200e-9,
                                                                     'current_method': 'conv_deriv'})
+    #print(extraction_settings)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

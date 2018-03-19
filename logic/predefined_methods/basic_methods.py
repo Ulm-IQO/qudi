@@ -492,8 +492,8 @@ def generate_HHamp(self, name='hh_amp', rabi_period=1.0e-6, spinlock_length=20e-
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
                                           mw_freq, 0.0)
     # get 3pihalf element
-    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
-                                           mw_freq, 0.0)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 180.0)
 
     if sync_trig_channel is not None:
         # get sequence trigger element

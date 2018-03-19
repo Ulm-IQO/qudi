@@ -1647,6 +1647,67 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
 
     return error, params
 
+def estimate_sinetriplewithexpdecay_14N(self, x_axis, data, params):
+    """ Provides an estimator for initial values of three sine with offset and
+        exponential decay fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    # That procedure seems to work extremely reliable: make three consecutive
+    # sine exponential decay with offset fits where for the next fit the
+    # previous is subtracted to delete its contribution in the data.
+
+    res2 = self.make_sineexponentialdecay_fit(
+        x_axis=x_axis,
+        data=data,
+        estimator=self.estimate_sineexponentialdecay)
+
+    # data_sub1 = data - res1.best_fit
+
+    # res1 = self.make_sineexponentialdecay_fit(
+        # x_axis=x_axis,
+        # data=data_sub1,
+        # estimator=self.estimate_sineexponentialdecay)
+
+    # data_sub2 = data_sub1 - res2.best_fit
+
+    # res3 = self.make_sineexponentialdecay_fit(
+        # x_axis=x_axis,
+        # data=data_sub2,
+        # estimator=self.estimate_sineexponentialdecay)
+
+    # Fill the parameter dict:
+    params['s1_amplitude'].set(value=res2.params['amplitude'].value/3.)#, expr='s2_amplitude')
+    params['s1_frequency'].set(value=np.sqrt(res2.params['frequency'].value**2-2.16e6**2), expr='sqrt(s2_frequency**2-2.16e6**2)')
+    params['s1_phase'].set(value=res2.params['phase'].value, expr='s2_phase')
+
+    params['s2_amplitude'].set(value=res2.params['amplitude'].value/3.)
+    params['s2_frequency'].set(value=res2.params['frequency'].value)
+    params['s2_phase'].set(value=res2.params['phase'].value)
+
+    params['s3_amplitude'].set(value=res2.params['amplitude'].value/3.)#, expr='s2_amplitude')
+    params['s3_frequency'].set(value=np.sqrt(res2.params['frequency'].value**2+2.16e6**2), expr='sqrt(s2_frequency**2+2.16e6**2)')
+    params['s3_phase'].set(value=res2.params['phase'].value, expr='s2_phase')
+
+    lifetime = res2.params['lifetime'].value
+    params['lifetime'].set(value=lifetime,
+                           min=2*(x_axis[1]-x_axis[0]))
+    params['offset'].set(value=data.mean())
+
+    return error, params
+
 
 #########################################################################
 # Sum of three individual Sinus with offset and three exponential decay #

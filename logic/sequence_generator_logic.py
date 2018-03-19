@@ -154,7 +154,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         else:
             self.additional_methods_dir = None
 
-
         self.block_dir = self._get_dir_for_name('pulse_block_objects')
         self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
         self.sequence_dir = self._get_dir_for_name('sequence_objects')
@@ -232,7 +231,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         setattr(SequenceGeneratorLogic, method, getattr(mod, method))
                         # Add method to dictionary if it is a generator method
                         if method.startswith('generate_'):
-                            self.generate_methods[method[9:]] = eval('self.'+method)
+                            self.generate_methods[method[9:]] = eval('self.' + method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filename))
@@ -248,7 +247,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         setattr(SequenceGeneratorLogic, method, getattr(mod, method))
                         # Add method to dictionary if it is a generator method
                         if method.startswith('generate_'):
-                            self.generate_methods[method[9:]] = eval('self.'+method)
+                            self.generate_methods[method[9:]] = eval('self.' + method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filepath))
@@ -283,7 +282,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
-    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict, waveform_format):
+    def set_settings(self, activation_config, laser_channel, sample_rate, amplitude_dict,
+                     waveform_format):
         """
         Sets all settings for the generator logic.
 
@@ -317,9 +317,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         return self.activation_config, self.laser_channel, self.sample_rate, self.amplitude_dict, \
                waveform_format
 
-# -----------------------------------------------------------------------------
-#                    BEGIN sequence/block generation
-# -----------------------------------------------------------------------------
+    # -----------------------------------------------------------------------------
+    #                    BEGIN sequence/block generation
+    # -----------------------------------------------------------------------------
     def get_saved_asset(self, name):
         """
         Returns the data object for a saved Ensemble/Sequence with name "name". Searches in the
@@ -339,7 +339,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             self.log.warning('No PulseSequence or PulseBlockEnsemble by the name "{0}" could be '
                              'found in saved assets. Returning None.'.format(name))
         return asset_obj
-
 
     def save_block(self, name, block):
         """ Serialize a PulseBlock object to a *.blk file.
@@ -376,7 +375,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param name: string, name of the PulseBlock object to be removed.
         """
         if name in list(self.saved_pulse_blocks):
-            del(self.saved_pulse_blocks[name])
+            del (self.saved_pulse_blocks[name])
             if hasattr(self.current_block, 'name'):
                 if self.current_block.name == name:
                     self.current_block = None
@@ -473,7 +472,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
     def delete_ensemble(self, name):
         """ Remove the ensemble with 'name' from the ensemble list and HDD. """
         if name in list(self.saved_pulse_block_ensembles):
-            del(self.saved_pulse_block_ensembles[name])
+            del (self.saved_pulse_block_ensembles[name])
             if hasattr(self.current_ensemble, 'name'):
                 if self.current_ensemble.name == name:
                     self.current_ensemble = None
@@ -577,7 +576,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         @param str name: name of the sequence object, which should be deleted.
         """
         if name in list(self.saved_pulse_sequences):
-            del(self.saved_pulse_sequences[name])
+            del (self.saved_pulse_sequences[name])
             if hasattr(self.current_sequence, 'name'):
                 if self.current_sequence.name == name:
                     self.current_sequence = None
@@ -659,14 +658,14 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                       os.path.join(self.sequence_dir, 'sequence_dict.sequ'))
         return
 
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     #                    END sequence/block generation
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
 
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     #                    BEGIN sequence/block sampling
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     def _analyze_block_ensemble(self, ensemble):
         """
         This helper method runs through each element of a PulseBlockEnsemble object and extracts
@@ -705,7 +704,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
         for block, reps in ensemble.block_list:
             # Total number of elements in the current block including all repetitions
-            unrolled_elements = (reps+1) * len(block.element_list)
+            unrolled_elements = (reps + 1) * len(block.element_list)
             # Add this number to the total number of unrolled elements in the ensemble
             total_elements += unrolled_elements
             # Temporary array to hold the length for each element (including reps) in bins
@@ -713,7 +712,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
 
             # Iterate over all repetitions of the current block
             unrolled_element_index = 0
-            for rep_no in range(reps+1):
+            for rep_no in range(reps + 1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_index, block_element in enumerate(block.element_list):
                     # save bin position if a transition from low to high has occured in a digital
@@ -732,26 +731,59 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                     # ideal end time for the sequence up until this point in sec
                     current_end_time += element_length_s
                     # Nearest possible match including the discretization in bins
-                    current_end_bin = int(np.rint(current_end_time * self.sample_rate))
+                    current_end_bin = int(
+                        np.rint(current_end_time * self.sample_rate))  # <=== issue
                     # current element length in discrete bins
-                    element_length_bins = current_end_bin - current_start_bin
-                    tmp_length_bins[unrolled_element_index] = element_length_bins
+                    element_length_bins = current_end_bin - current_start_bin  # <=== issue
+                    tmp_length_bins[unrolled_element_index] = element_length_bins  # <=== issue
                     # advance bin offset for next element
-                    current_start_bin += element_length_bins
+                    current_start_bin += element_length_bins  # <=== issue
                     # increment element counter
                     unrolled_element_index += 1
 
             # append element lengths (in bins) to array
-            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
+            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)  # <=== issue
 
         # calculate total number of samples
-        number_of_samples = np.sum(elements_length_bins)
+        number_of_samples = np.sum(elements_length_bins)  # <=== issue
 
         # convert digital rising indices to numpy.ndarrays
         for chnl in range(len(digital_rising_bins)):
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype=np.int64)
 
+        # AWG7122C requires a waveform granularity of 4. Here is how to enforce it
+        if number_of_samples % 4:
+            delay_bin = 4 - number_of_samples % 4
+            self.append_delay_block(ensemble=ensemble, delay_bin=delay_bin)
+            number_of_samples += delay_bin
+            total_elements += 1
+            elements_length_bins = np.append(elements_length_bins, delay_bin)
+            self.log.warn(
+                'Appending PulseBlock with {} idle bins to the end of PulseBlockEnsemble '.format(
+                    delay_bin) + ensemble.name)
+
         return number_of_samples, total_elements, elements_length_bins, digital_rising_bins
+
+    def append_delay_block(self, ensemble, delay_bin):
+        """
+        example application:
+        AWG7122C requires a waveform granularity of 4. This method appends an empty block of length
+        delay_bin to the PulseBlockEnsemble ensemble
+
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @param delay_bin: length in bins of an empty PulseBlock object appended to ensemble
+        @return None
+        """
+        delay_time = delay_bin / self.sample_rate
+        delay_function = ['Idle'] * ensemble.analog_channels
+        delay_digital = [False] * ensemble.digital_channels
+        delay_params = [{}] * ensemble.analog_channels
+        delay_element = PulseBlockElement(init_length_s=delay_time, increment_s=0.0,
+                                          pulse_function=delay_function, digital_high=delay_digital,
+                                          parameters=delay_params, use_as_tick=False)
+        delay_block = PulseBlock(name='fill_up_block', element_list=[delay_element, ])
+        ensemble.append_block((delay_block, 0))
+        return
 
     def sample_pulse_block_ensemble(self, ensemble_name, write_to_file=True, offset_bin=0,
                                     name_tag=None):
@@ -865,9 +897,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             return np.array([]), np.array([]), -1
 
         # get important parameters from the ensemble and save some to the ensemble object
-        number_of_samples, number_of_elements, length_elements_bins, digital_rising_bins = self._analyze_block_ensemble(ensemble)
-        ensemble.length_bins = number_of_samples
-        ensemble.length_elements_bins = length_elements_bins
+        number_of_samples, number_of_elements, length_elements_bins, digital_rising_bins = self._analyze_block_ensemble(
+            ensemble)
+        ensemble.length_bins = number_of_samples  # <=== issue
+        ensemble.length_elements_bins = length_elements_bins  # <=== issue
         ensemble.number_of_elements = number_of_elements
         ensemble.digital_rising_bins = digital_rising_bins
         ensemble.sample_rate = self.sample_rate
@@ -882,8 +915,9 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             is_last_chunk = False
         else:
             # Allocate huge sample arrays if chunkwise writing is disabled.
-            analog_samples = np.empty([ana_channels, number_of_samples], dtype='float32')
-            digital_samples = np.empty([dig_channels, number_of_samples], dtype=bool)
+            analog_samples = np.empty([ana_channels, number_of_samples],
+                                      dtype='float32')  # <=== issue
+            digital_samples = np.empty([dig_channels, number_of_samples], dtype=bool)  # <=== issue
             # Starting index for the sample array entrys
             entry_ind = 0
 
@@ -891,17 +925,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # Iterate over all blocks within the PulseBlockEnsemble object
         for block, reps in ensemble.block_list:
             # Iterate over all repertitions of the current block
-            for rep_no in range(reps+1):
+            for rep_no in range(reps + 1):
                 # Iterate over the Block_Elements inside the current block
                 for elem_ind, block_element in enumerate(block.element_list):
                     parameters = block_element.parameters
                     digital_high = block_element.digital_high
                     pulse_function = block_element.pulse_function
-                    element_length_bins = length_elements_bins[element_count]
+                    element_length_bins = length_elements_bins[element_count]  # <=== issue
                     element_count += 1
 
                     # create floating point time array for the current element inside rotating frame
-                    time_arr = (offset_bin + np.arange(element_length_bins, dtype='float64')) / self.sample_rate
+                    time_arr = (offset_bin + np.arange(element_length_bins,
+                                                       dtype='float64')) / self.sample_rate  # <=== issue
 
                     if chunkwise and write_to_file:
                         # determine it the current element is the last one to be sampled.
@@ -910,14 +945,18 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                             is_last_chunk = True
 
                         # allocate temporary sample arrays to contain the current element
-                        analog_samples = np.empty([ana_channels, element_length_bins], dtype='float32')
-                        digital_samples = np.empty([dig_channels, element_length_bins], dtype=bool)
+                        analog_samples = np.empty([ana_channels, element_length_bins],
+                                                  dtype='float32')  # <=== issue
+                        digital_samples = np.empty([dig_channels, element_length_bins],
+                                                   dtype=bool)  # <=== issue
 
                         # actually fill the allocated sample arrays with values.
                         for i, state in enumerate(digital_high):
                             digital_samples[i] = np.full(element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
+                            analog_samples[i] = np.float32(
+                                self._math_func[func_name](time_arr, parameters[i]) /
+                                self.amplitude_dict[ana_chnl_names[i]])
                         # write temporary sample array to file
                         self._write_to_file[self.waveform_format](filename, analog_samples,
                                                                   digital_samples,
@@ -929,9 +968,13 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         # if the ensemble should be sampled as a whole (chunkwise = False) fill the
                         # entries in the huge sample arrays
                         for i, state in enumerate(digital_high):
-                            digital_samples[i, entry_ind:entry_ind+element_length_bins] = np.full(element_length_bins, state, dtype=bool)
+                            digital_samples[i, entry_ind:entry_ind + element_length_bins] = np.full(
+                                element_length_bins, state, dtype=bool)
                         for i, func_name in enumerate(pulse_function):
-                            analog_samples[i, entry_ind:entry_ind+element_length_bins] = np.float32(self._math_func[func_name](time_arr, parameters[i])/self.amplitude_dict[ana_chnl_names[i]])
+                            analog_samples[i,
+                            entry_ind:entry_ind + element_length_bins] = np.float32(
+                                self._math_func[func_name](time_arr, parameters[i]) /
+                                self.amplitude_dict[ana_chnl_names[i]])
 
                         # increment the index offset of the overall sample array for the next
                         # element
@@ -956,7 +999,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # return a status message with the time needed for sampling and writing the ensemble
             # chunkwise.
             self.log.info('Time needed for sampling and writing to file chunkwise: {0} sec'
-                          ''.format(int(np.rint(time.time()-start_time))))
+                          ''.format(int(np.rint(time.time() - start_time))))
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(filename, np.array([]), np.array([]))
@@ -972,7 +1015,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
             # return a status message with the time needed for sampling and writing the ensemble as
             # a whole.
             self.log.info('Time needed for sampling and writing PulseBlockEnsemble to file as a '
-                          'whole: {0} sec'.format(int(np.rint(time.time()-start_time))))
+                          'whole: {0} sec'.format(int(np.rint(time.time() - start_time))))
 
             if not sequence_sampling_in_progress:
                 self.module_state.unlock()
@@ -1035,7 +1078,7 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         # additional name tag, so keep the sampled files separate.
         if sequence_obj.rotating_frame:
             ensemble_index = 0  # that will indicate the ensemble index
-            offset_bin = 0      # that will be used for phase preserving
+            offset_bin = 0  # that will be used for phase preserving
             for ensemble_obj, seq_param in sequence_obj.ensemble_param_list:
                 # to make something like 001
                 name_tag = sequence_name + '_' + str(ensemble_index).zfill(3)
@@ -1077,7 +1120,8 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 temp_dict = dict()
                 name_list = []
                 for ch_num in ana_chnl_num:
-                    name_list.append(ensemble_obj.name + '_ch' + str(ch_num) + '.' + self.waveform_format)
+                    name_list.append(
+                        ensemble_obj.name + '_ch' + str(ch_num) + '.' + self.waveform_format)
                 temp_dict['name'] = name_list
                 # update the sequence parameter to the temp dict:
                 temp_dict.update(seq_param)
@@ -1085,10 +1129,10 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                 sequence_param_dict_list.append(temp_dict)
 
         # get important parameters from the sequence and save some to the sequence object
-        #sequence_obj.length_bins = 0
-        #sequence_obj.length_elements_bins = length_elements_bins
-        #sequence_obj.number_of_elements = number_of_elements
-        #sequence_obj.digital_rising_bins = digital_rising_bins
+        # sequence_obj.length_bins = 0
+        # sequence_obj.length_elements_bins = length_elements_bins
+        # sequence_obj.number_of_elements = number_of_elements
+        # sequence_obj.digital_rising_bins = digital_rising_bins
         sequence_obj.sample_rate = self.sample_rate
         sequence_obj.activation_config = self.activation_config
         sequence_obj.amplitude_dict = self.amplitude_dict
@@ -1107,6 +1151,6 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
         self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
         return
 
-    #---------------------------------------------------------------------------
-    #                    END sequence/block sampling
-    #---------------------------------------------------------------------------
+        # ---------------------------------------------------------------------------
+        #                    END sequence/block sampling
+        # ---------------------------------------------------------------------------
