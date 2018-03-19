@@ -607,6 +607,36 @@ def estimate_lorentziandouble_dip(self, x_axis, data, params,
 
     return error, params
 
+def estimate_lorentziandouble_SameSigmaDip(self, x_axis, data, params,
+                                      threshold_fraction=0.3,
+                                      minimal_threshold=0.01,
+                                      sigma_threshold_fraction=0.3):
+
+
+    """ Provide an estimator for double lorentzian dip with offset.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error, params = self.estimate_lorentziandouble_dip(x_axis, data, params,
+                                          threshold_fraction,
+                                          minimal_threshold,
+                                          sigma_threshold_fraction)
+
+    params['l1_sigma'].set(expr='l0_sigma')
+
+    return error, params
+
+
 def estimate_lorentziandouble_peak(self, x_axis, data, params,
                                    threshold_fraction=0.3,
                                    minimal_threshold=0.01,
