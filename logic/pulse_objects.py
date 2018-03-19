@@ -32,7 +32,7 @@ class PulseBlockElement:
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_s, increment_s=0, pulse_function=None, digital_high=None,
+    def __init__(self, init_length_s, increment_s=0.0, pulse_function=None, digital_high=None,
                  parameters=None, use_as_tick=False):
         """
         The constructor for a Pulse_Block_Element needs to have:

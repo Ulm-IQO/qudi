@@ -726,7 +726,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # add old raw data from previous measurements if necessary
                 if self.recalled_raw_data is not None:
-                    self.log.info('Found old saved raw data. Sum of timebins: {0}'
+                    self.log.debug('Found old saved raw data. Sum of timebins: {0}'
                                   ''.format(np.sum(self.recalled_raw_data)))
                     if np.sum(fc_data) < 1.0:
                         self.log.warning('Only zeros received from fast counter!\n'
