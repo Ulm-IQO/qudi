@@ -601,6 +601,19 @@ class ODMRLogic(GenericLogic):
                 self.sigNextLine.emit()
                 return
 
+            # Blink correction
+            self.blink_correction = True
+            if self.blink_correction is True and self.elapsed_sweeps > 5:
+                for index, element in enumerate(new_counts[0]):
+                    #Fixme: Care about central index
+                    temp = self.odmr_raw_data[:self.elapsed_sweeps, :, index]
+                    #                    print temp, temp.mean(), k, temp.mean()*(1+thresh)
+                    thresh = 5 * np.std(temp) / temp.mean()
+                    if (element > temp.mean() * (1 + thresh)) or (element < temp.mean() * (1 - thresh)):
+                        print('ODMR-Data deleted:', self.elapsed_sweeps, element, temp.mean(), thresh * 100)
+                        new_counts[0, index] = temp.mean()
+
+
             # Add new count data to mean signal
             if self._clearOdmrData:
                 self.odmr_plot_y[:, :, :] = 0
