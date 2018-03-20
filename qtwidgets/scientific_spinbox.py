@@ -1020,7 +1020,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         """
         text = self.cleanText()
         value = self.valueFromText(text)
-        if not value:
+        if value is False:
             return
         value, in_range = self.check_range(value)
 
