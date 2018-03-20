@@ -44,6 +44,9 @@ class SamplingFunctions():
         self._math_func['DoubleSinGauss']   = self._doublesingauss
         self._math_func['TripleSinGauss']   = self._triplesingauss
 
+        self._math_func['Chirp'] = self._chirp
+
+
         # Definition of constraints for the parameters
         # --------------------------------------------
         # Mathematical parameters may be subjected to certain constraints
@@ -58,12 +61,12 @@ class SamplingFunctions():
 
         # predefine a general range for the frequency, amplitude and phase
         # <general_parameter> = {}
-        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                    'view_stepsize': 1.0, 'dec': 15, 'type': float}
+        freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
+                    'view_stepsize': 1.0, 'dec': 10, 'type': float}
         ampl_def = {'unit': 'V', 'init_val': 0.0, 'min': 0.0, 'max': 1.0,
-                    'view_stepsize': 0.01, 'dec': 15, 'type': float}
-        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -360, 'max': 360,
-                     'view_stepsize': 0.1, 'dec': 15, 'type': float}
+                    'view_stepsize': 0.01, 'dec': 3, 'type': float}
+        phase_def = {'unit': '°', 'init_val': 0.0, 'min': -np.inf, 'max': +np.inf,
+                    'view_stepsize': 0.1, 'dec': 3, 'type': float}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
@@ -86,7 +89,7 @@ class SamplingFunctions():
 
         self.func_config = OrderedDict()
         self.func_config['Idle'] = OrderedDict()
-        self.func_config['DC'] = OrderedDict()
+        self.func_config['DC'] =  OrderedDict()
         self.func_config['DC']['amplitude1'] = ampl_def
 
         self.func_config['Sin'] = OrderedDict()
@@ -114,10 +117,15 @@ class SamplingFunctions():
         self.func_config['TripleSin']['amplitude1'] = ampl_def
         self.func_config['TripleSin']['amplitude2'] = ampl_def
         self.func_config['TripleSin']['amplitude3'] = ampl_def
-        self.func_config['TripleSin']['phase1']     = phase_def
-        self.func_config['TripleSin']['phase2']     = phase_def
-        self.func_config['TripleSin']['phase3']     = phase_def
+        self.func_config['TripleSin']['phase1'] = phase_def
+        self.func_config['TripleSin']['phase2'] = phase_def
+        self.func_config['TripleSin']['phase3'] = phase_def
 
+        self.func_config['Chirp'] = OrderedDict()
+        self.func_config['Chirp']['frequency1'] = freq_def
+        self.func_config['Chirp']['frequency2'] = freq_def
+        self.func_config['Chirp']['amplitude1'] = ampl_def
+        self.func_config['Chirp']['phase1'] = phase_def
 
     def _idle(self, time_arr, parameters=None):
         result_arr = np.zeros(len(time_arr))
@@ -217,6 +225,12 @@ class SamplingFunctions():
         result_arr = (amp1 * np.sin(2*np.pi * freq1 * time_arr + phase1) + amp2 * np.sin(2*np.pi * freq2 * time_arr + phase2) + amp3 * np.sin(2*np.pi * freq3 * time_arr + phase3)) * np.exp(-(((time_arr-mu)/sigma)**2)/2)
         return result_arr
 
-
-
-
+    def _chirp(self, time_arr, parameters):
+        amp = 2 * parameters['amplitude1']  # conversion so that the AWG actually outputs the specified voltage
+        freq_start = parameters['frequency1']
+        freq_end = parameters['frequency2']
+        phase = np.pi * parameters['phase1'] / 180
+        result_arr = amp * np.sin(2. * np.pi * time_arr * (freq_start + (freq_end-freq_start) *
+                                                           (time_arr-time_arr[0])/(time_arr[-1]-time_arr[0]) / 2.) +
+                                  phase)
+        return result_arr
