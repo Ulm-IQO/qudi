@@ -232,5 +232,5 @@ class SamplingFunctions():
         phase = np.pi * parameters['phase1'] / 180
         result_arr = amp * np.sin(2. * np.pi * time_arr * (freq_start + (freq_end-freq_start) *
                                                            (time_arr-time_arr[0])/(time_arr[-1]-time_arr[0]) / 2.) +
-                                  phase)
+                                                            phase)
         return result_arr
