@@ -3,6 +3,7 @@
 
 * [License](@ref license)
 * [Changelog](@ref changelog)
+* [Getting Started](@ref get-started)
 
 * Setup
     * [Installation](@ref installation)
@@ -21,7 +22,7 @@
 
 * Configuration
     * [Using a Config file](@ref config-explanation)
-    * [Remote access to modules)(@red remote_modules)
+    * [Remote access to modules](@ref remote_modules)
 
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)
