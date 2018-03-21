@@ -1,4 +1,4 @@
-#Simple spectrometer interface {#simple-spectrometer-interface}
+#Spectrometer Interface {#simple-spectrometer-interface}
 
 This interface let logic modules control the very basic functions of a spectrometer device.
 

@@ -37,6 +37,7 @@
 
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
+    * [Spectrometer Interface](@ref simple-spectrometer-interface)
 
 * Hardware documentation
     * Spectrometer
