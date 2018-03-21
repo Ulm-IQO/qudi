@@ -34,7 +34,7 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'integer': 2,
@@ -116,7 +116,7 @@ class IntegerValidator(QtGui.QValidator):
     Also supports non-fractional SI unit prefix like 'M', 'k' etc.
     """
 
-    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?))')
+    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?)\s*)')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'exponent': 2,
@@ -306,7 +306,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         text = self.cleanText()
         value = self.valueFromText(text)
-        if not value:
+        if value is False:
             return
         value, in_range = self.check_range(value)
 
@@ -838,7 +838,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
                 digits_to_add = self.__decimals - len(fractional_str) # number of digits to add
                 fractional_tmp_str = ('{0:.' + str(digits_to_add) + 'f}').format(fractional)
                 if fractional_tmp_str.startswith('1'):
-                    fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
+                    if fractional_str:
+                        fractional_str = str(int(fractional_str) + 1) + '0' * digits_to_add
+                    else:
+                        fractional_str = '1' + '0' * digits_to_add
                 else:
                     fractional_str += fractional_tmp_str.split('.')[1]
             # Check if the rounding has overflown the fractional part into the integer part
@@ -1017,7 +1020,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         """
         text = self.cleanText()
         value = self.valueFromText(text)
-        if not value:
+        if value is False:
             return
         value, in_range = self.check_range(value)
 
