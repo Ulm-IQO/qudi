@@ -38,3 +38,6 @@
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
 
+* Hardware documentation
+    * Spectrometer
+        * [Andor spectrometer](@ref simple-spectrometer-andor)

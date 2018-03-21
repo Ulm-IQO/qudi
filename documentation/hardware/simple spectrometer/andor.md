@@ -1,4 +1,4 @@
-# Andor simple spectrometer hardware module
+# Andor simple spectrometer hardware module {#simple-spectrometer-andor}
 
 ### Instruments
 
