@@ -725,6 +725,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # get raw data from fast counter
                 fc_data = netobtain(self._fast_counter_device.get_data_trace())
+                # Convert returned numpy array to int64 dtype if necessary
+                if fc_data.dtype != np.int64:
+                    fc_data = fc_data.astype('int64')
 
                 # add old raw data from previous measurements if necessary
                 if self.recalled_raw_data is not None:
