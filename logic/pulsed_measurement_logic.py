@@ -71,6 +71,7 @@ class PulsedMeasurementLogic(GenericLogic):
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
     save_ft = StatusVar(default=False)
+    second_plot_type = StatusVar(default='FFT')
 
     # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
@@ -116,7 +117,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = 100e-6
         self.loaded_asset_name = ''
         self.alternating = False
-        self.second_plot_type = 'FFT'
 
         # Pulse generator parameters
         self.current_channel_config_name = ''
@@ -140,9 +140,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x = np.array([])
         self.signal_plot_y = np.array([])
         self.signal_plot_y2 = np.array([])
-        self.signal_fft_x = np.array([])
-        self.signal_fft_y = np.array([])
-        self.signal_fft_y2 = np.array([])
+        self.signal_second_plot_x = np.array([])
+        self.signal_second_plot_y = np.array([])
+        self.signal_second_plot_y2 = np.array([])
         self.measuring_error_plot_x = np.array([])
         self.measuring_error_plot_y = np.array([])
         self.measuring_error_plot_y2 = np.array([])
@@ -268,7 +268,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
+                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
         #self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit,
         #                        {})
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
@@ -779,8 +779,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set laser to show
                 self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
-                # Compute FFT of signal
-                self._compute_fft()
+                # Compute the second plot of signal
+                self._compute_second_plot()
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
@@ -794,8 +794,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                           self.measuring_error_plot_y2, self.signal_fft_x,
-                                           self.signal_fft_y, self.signal_fft_y2)
+                                           self.measuring_error_plot_y2, self.signal_second_plot_x,
+                                           self.signal_second_plot_y, self.signal_second_plot_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
@@ -966,13 +966,13 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
-        self.signal_fft_x = self.controlled_vals
-        self.signal_fft_y = np.zeros(len(self.controlled_vals))
-        self.signal_fft_y2 = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_x = self.controlled_vals
+        self.signal_second_plot_y = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_y2 = np.zeros(len(self.controlled_vals))
 
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
+                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
@@ -1168,14 +1168,10 @@ class PulsedMeasurementLogic(GenericLogic):
         if save_ft:
 
             # scale the x_axis for plotting
-            max_val = np.max(self.signal_fft_x)
+            max_val = np.max(self.signal_second_plot_x)
             scaled_float = units.ScaledFloat(max_val)
             x_axis_prefix = scaled_float.scale
-            x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
-
-            ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0],
-                     label='FT of data trace 1')
+            x_axis_ft_scaled = self.signal_second_plot_x / scaled_float.scale_val
 
             # since no ft units are provided, make a small work around:
             if controlled_val_unit == 's':
@@ -1185,8 +1181,21 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
 
-            ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
-            ax2.set_ylabel('Fourier amplitude (arb.u.)')
+            if self.second_plot_type == 'Delta':
+                x_axis_ft_label = 'controlled variable (' + controlled_val_unit + ')'
+                y_axis_ft_label = 'norm. sig (arb. u.)'
+                ft_label = ''
+            else:
+                x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
+                y_axis_ft_label = 'Fourier amplitude (arb. u.)'
+                ft_label = 'FT of data trace 1'
+
+            ax2.plot(x_axis_ft_scaled, self.signal_second_plot_y, '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label=ft_label)
+
+            ax2.set_xlabel(x_axis_ft_label)
+            ax2.set_ylabel(y_axis_ft_label)
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
@@ -1235,31 +1244,30 @@ class PulsedMeasurementLogic(GenericLogic):
                                    delimiter='\t')
         return filepath
 
-    def _compute_fft(self):
+    def _compute_second_plot(self):
         """ Computing the fourier transform of the data. """
 
-        print(self.second_plot_type)
         if self.second_plot_type == 'Delta':
-            self.signal_fft_x = self.signal_plot_x
-            self.signal_fft_y = self.signal_plot_y - self.signal_plot_y2
-            self.signal_fft_y2 = self.signal_plot_y2 - self.signal_plot_y
+            self.signal_second_plot_x = self.signal_plot_x
+            self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
+            self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
         else:
             # Do sanity checks:
             if len(self.signal_plot_x) < 2:
                 self.log.debug('FFT of measurement could not be calculated. Only '
                                'one data point.')
-                self.signal_fft_x = np.zeros(1)
-                self.signal_fft_y = np.zeros(1)
-                self.signal_fft_y2 = np.zeros(1)
+                self.signal_second_plot_x = np.zeros(1)
+                self.signal_second_plot_y = np.zeros(1)
+                self.signal_second_plot_y2 = np.zeros(1)
                 return
 
             if self.alternating:
-                x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+                x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
                     self.signal_plot_x,
                     self.signal_plot_y2,
                     zeropad_num=0)
 
-            self.signal_fft_x, self.signal_fft_y = units.compute_ft(
+            self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
                 self.signal_plot_x,
                 self.signal_plot_y,
                 zeropad_num=self.zeropad,
