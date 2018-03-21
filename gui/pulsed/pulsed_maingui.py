@@ -171,7 +171,7 @@ class PulsedMeasurementGui(GUIBase):
     _ana_param_second_plot_y_axis_unit_text = StatusVar('ana_param_second_plot_y_axis_unit_LineEdit', '')
 
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
-    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', '')
+    _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', 'None')
 
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
     _functions_to_show = StatusVar('functions_to_show', [])
@@ -1225,10 +1225,17 @@ class PulsedMeasurementGui(GUIBase):
         self._ana_param_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
         self._ana_param_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
         self._ana_param_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
-        self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
-        self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
-        self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
-        self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+
+        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._ana_param_x_axis_name_text
+            self._ana_param_second_plot_x_axis_unit_text = self._ana_param_x_axis_unit_text
+            self._ana_param_second_plot_y_axis_name_text = self._ana_param_y_axis_name_text
+            self._ana_param_second_plot_y_axis_unit_text = self._ana_param_y_axis_unit_text
 
         self._pa.pulse_analysis_PlotWidget.setLabel(
             axis='bottom',
@@ -2145,7 +2152,7 @@ class PulsedMeasurementGui(GUIBase):
         else:
             self._pa.second_plot_GroupBox.setVisible(True)
 
-            if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            if self._pa.second_plot_ComboBox.currentText() in ('FFT', 'Delta'):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
             elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
@@ -2155,6 +2162,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
         self._pa.second_plot_GroupBox.setTitle(self._pa.second_plot_ComboBox.currentText())
+        self.update_analysis_settings()
         self.measurement_sequence_settings_changed()
         return
 
