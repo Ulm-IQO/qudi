@@ -41,12 +41,8 @@ class PulsedMasterLogic(GenericLogic):
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
-    # config options
-    direct_write = ConfigOption('direct_write', False, missing='warn')
-
     # status vars
     invoke_settings = StatusVar('invoke_settings', False)
-    couple_generator_hw = StatusVar('couple_generator_hw', True)
 
     # pulsed_measurement_logic signals
     sigLaserToShowChanged = QtCore.Signal(int, bool)
@@ -494,11 +490,6 @@ class PulsedMasterLogic(GenericLogic):
         """
         self.sigPulseGeneratorSettingsChanged.emit(sample_rate_hz, activation_config_name,
                                                    analogue_amplitude, interleave_on)
-        if self.couple_generator_hw:
-            self.generator_settings_changed(activation_config_name,
-                                            self._generator_logic.laser_channel,
-                                            sample_rate_hz, analogue_amplitude,
-                                            self._generator_logic.waveform_format)
         return
 
     def pulse_generator_settings_updated(self, sample_rate_hz, activation_config_name,
@@ -511,12 +502,7 @@ class PulsedMasterLogic(GenericLogic):
         @param interleave_on:
         @return:
         """
-        # FIXME: This is just a temporary fix to avoid mismatch of pp-amplitude in measurement
-        # and generator logic. Later on the pp-amplitude is a field in the GUI just like activation
-        # config and sample rate
-        self._generator_logic.amplitude_dict = analogue_amplitude
-
-        constraints = self._measurement_logic.get_pulser_constraints()
+        constraints = self._generator_logic.get_pulser_constraints()
         activation_config = constraints.activation_config[activation_config_name]
         self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
                                            activation_config, analogue_amplitude, interleave_on)
