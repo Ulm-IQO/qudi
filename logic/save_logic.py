@@ -125,6 +125,7 @@ class SaveLogic(GenericLogic):
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
     log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
+    _plot_format = ConfigOption('save_files_as', "all", missing='info')
 
     # Matplotlib style definition for saving plots
     mpl_qd_style = {
@@ -223,7 +224,7 @@ class SaveLogic(GenericLogic):
 
     def save_data(self, data, filepath=None, parameters=None, filename=None, filelabel=None,
                   timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None,
-                  plotformat="all"):
+                  plotformat=None):
         """
         General save routine for data.
 
@@ -284,7 +285,8 @@ class SaveLogic(GenericLogic):
                                               behaviour or failure to save right away.
         @param string delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
                                  for tab, ',' for a comma ect.
-        @param pyplot  plotfig: optional,  a  matplotlib.pyplot object. If this is set the object
+        @param pyplot  plotfig: opt
+        ional,  a  matplotlib.pyplot object. If this is set the object
                                 will be saved in the same folder as the data
         @param string plotformat: defines as which kind of type the plotfig object will be saved.
                                     Possible values: "all": all possible types, "pdf",
@@ -509,9 +511,7 @@ class SaveLogic(GenericLogic):
                 metadata['ModDate'] = time
 
             if plotformat is None:
-                self.log.error("No plot type for the to be saved image was passed to the "
-                               "save function. \nAll types possible will be saved. Please set "
-                               "the option. Possible options are: \n'pdf', 'png' or 'all'")
+                plotformat = self._plot_format
 
             if plotformat in ["pdf", "all"]:
                 # determine the PDF-Filename
