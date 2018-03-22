@@ -108,3 +108,43 @@ the function are working on that card.
 ## Configuration
 
 There are quite a few options for setting up a National instruments card.
+
+````yaml
+mynicard:
+    module.Class: 'national_instruments_x_series.NationalInstrumentsXSeries'
+    clock_channel: '/Dev1/Ctr0'
+    scanner_clock_channel: '/Dev1/Ctr2'
+    photon_sources:
+        - '/Dev1/PFI8'
+        - '/Dev1/PFI9'
+    counter_channels:
+        - '/Dev1/Ctr1'
+    counter_ai_channels:  # optional
+        - '/Dev1/AI1'
+    scanner_counter_channels:
+        - '/Dev1/Ctr3'
+    scanner_ai_channels:  # optional
+        - '/Dev1/AI0'
+    scanner_ao_channels:
+        - '/Dev1/AO0'
+        - '/Dev1/AO1'
+        - '/Dev1/AO2'
+        - '/Dev1/AO3'
+    scanner_position_ranges:
+        - [0e-6, 200e-6]
+        - [0e-6, 200e-6]
+        - [-100e-6, 100e-6]
+        - [-10, 10]
+    scanner_voltage_ranges:
+        - [-10, 10]
+        - [-10, 10]
+        - [-10, 10]
+        - [-10, 10]
+    default_samples_number: 10
+    default_clock_frequency: 100
+    default_scanner_clock_frequency: 100
+    gate_in_channel: '/Dev1/PFI9'
+    counting_edge_rising: True
+    odmr_trigger_channel: '/Dev1/PFI15'
+````
+
