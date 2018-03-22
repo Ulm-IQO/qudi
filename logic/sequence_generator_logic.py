@@ -30,7 +30,7 @@ import time
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar
+from core.module import StatusVar, Connector
 from core.util.modules import get_home_dir
 from core.util.modules import get_main_dir
 
@@ -39,8 +39,6 @@ from logic.pulse_objects import PulseBlock
 from logic.pulse_objects import PulseBlockEnsemble
 from logic.pulse_objects import PulseSequence
 from logic.generic_logic import GenericLogic
-# from logic.sampling_functions import SamplingFunctions
-from logic.samples_write_methods import SamplesWriteMethods
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -442,9 +440,9 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         if name == '':
             asset_obj = None
-        elif name in list(self.saved_pulse_sequences):
+        elif name in self.saved_pulse_sequences:
             asset_obj = self.saved_pulse_sequences[name]
-        elif name in list(self.saved_pulse_block_ensembles):
+        elif name in self.saved_pulse_block_ensembles:
             asset_obj = self.saved_pulse_block_ensembles[name]
         else:
             asset_obj = None
@@ -1250,9 +1248,17 @@ class SequenceGeneratorLogic(GenericLogic):
         self.save_sequence(sequence_name, sequence)
 
         # pass the whole information to the sequence creation method:
-        self._pulse_generator.write_sequence(sequence_name, sequence_param_dict_list)
-        self.log.info('Time needed for sampling and writing Pulse Sequence to device: {0} sec.'
-                      ''.format(int(np.rint(time.time() - start_time))))
+        steps_written = self._pulse_generator.write_sequence(sequence_name,
+                                                             sequence_param_dict_list)
+        if steps_written == len(sequence_param_dict_list):
+            self.log.info('Time needed for sampling and writing Pulse Sequence to device: {0} sec.'
+                          ''.format(int(np.rint(time.time() - start_time))))
+        else:
+            self.log.error('Writing PulseSequence "{0}" to the device memory failed.\n'
+                           'Returned number of sequence steps ({1:d}) does not match desired '
+                           'number of steps ({2:d}).'.format(sequence_name,
+                                                             steps_written,
+                                                             len(sequence_param_dict_list)))
         # unlock module
         self.module_state.unlock()
         self.sigSampleSequenceComplete.emit(sequence_name, sequence_param_dict_list)
