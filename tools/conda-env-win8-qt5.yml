@@ -86,6 +86,7 @@ dependencies:
   - pyvisa-py==0.2
   - rpyc==3.3.0
   - ruamel.yaml==0.13.13
+  - serial==0.0.38
   - smmap2==2.0.1
   - typing==3.5.3.0
   - win-unicode-console==0.5
