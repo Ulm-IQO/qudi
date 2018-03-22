@@ -874,7 +874,6 @@ Ensemble</string>
   <tabstop>gen_analog_channels_SpinBox</tabstop>
   <tabstop>gen_digital_channels_SpinBox</tabstop>
   <tabstop>gen_sample_freq_DSpinBox</tabstop>
-  <tabstop>block_editor_TableWidget</tabstop>
   <tabstop>block_add_last_PushButton</tabstop>
   <tabstop>block_del_last_PushButton</tabstop>
   <tabstop>block_add_sel_PushButton</tabstop>
@@ -885,7 +884,6 @@ Ensemble</string>
   <tabstop>saved_blocks_ComboBox</tabstop>
   <tabstop>curr_block_del_PushButton</tabstop>
   <tabstop>curr_block_load_PushButton</tabstop>
-  <tabstop>block_organizer_TableWidget</tabstop>
   <tabstop>organizer_add_last_PushButton</tabstop>
   <tabstop>organizer_del_last_PushButton</tabstop>
   <tabstop>organizer_add_sel_PushButton</tabstop>
@@ -905,6 +903,8 @@ Ensemble</string>
   <tabstop>saup_ensemble_PushButton</tabstop>
   <tabstop>sauplo_ensemble_PushButton</tabstop>
   <tabstop>load_ensemble_PushButton</tabstop>
+  <tabstop>block_editor_TableWidget</tabstop>
+  <tabstop>block_organizer_TableWidget</tabstop>
  </tabstops>
  <resources/>
  <connections/>
