@@ -448,7 +448,6 @@ Sequence</string>
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>sequence_editor_TableWidget</tabstop>
   <tabstop>sequence_add_last_PushButton</tabstop>
   <tabstop>sequence_del_last_PushButton</tabstop>
   <tabstop>sequence_add_sel_PushButton</tabstop>
@@ -467,6 +466,7 @@ Sequence</string>
   <tabstop>saup_sequence_PushButton</tabstop>
   <tabstop>sauplo_sequence_PushButton</tabstop>
   <tabstop>load_sequence_PushButton</tabstop>
+  <tabstop>sequence_editor_TableWidget</tabstop>
  </tabstops>
  <resources/>
  <connections/>
