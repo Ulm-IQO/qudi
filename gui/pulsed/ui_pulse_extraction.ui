@@ -147,7 +147,7 @@
            <bool>true</bool>
           </property>
           <property name="maximum">
-           <number>999999999</number>
+           <double>999999999.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -188,10 +188,10 @@
         <item row="9" column="2">
          <widget class="ScienDSpinBox" name="extract_param_min_laser_length_SpinBox">
           <property name="minimum">
-           <number>0</number>
+           <double>0.000000000000000</double>
           </property>
           <property name="maximum">
-           <number>999999999</number>
+           <double>999999999.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -334,7 +334,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header location="global">pyqtgraph</header>
+   <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>ScienDSpinBox</class>
@@ -342,6 +342,23 @@
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>measuring_error_PlotWidget</tabstop>
+  <tabstop>extract_param_analysis_method_comboBox</tabstop>
+  <tabstop>extract_param_ana_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ana_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_extraction_method_comboBox</tabstop>
+  <tabstop>extract_param_conv_std_dev_DSpinBox</tabstop>
+  <tabstop>extract_param_conv_std_dev_slider</tabstop>
+  <tabstop>extract_param_threshold_SpinBox</tabstop>
+  <tabstop>extract_param_min_laser_length_SpinBox</tabstop>
+  <tabstop>extract_param_tolerance_SpinBox</tabstop>
+  <tabstop>laserpulses_display_raw_CheckBox</tabstop>
+  <tabstop>laserpulses_ComboBox</tabstop>
+  <tabstop>laserpulses_PlotWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>
