@@ -54,6 +54,7 @@ class OptimizerLogic(GenericLogic):
     do_surface_subtraction = StatusVar('surface_subtraction', False)
     surface_subtr_scan_offset = StatusVar('surface_subtraction_offset', 1e-6)
     opt_channel = StatusVar('optimization_channel', 0)
+    fit_type = StatusVar('fit_type', 'normal')
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -82,6 +83,7 @@ class OptimizerLogic(GenericLogic):
 
         # Keep track of who called the refocus
         self._caller_tag = ''
+        self.xy_template_image = np.zeros(1)
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -277,14 +279,15 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
         self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
-        self.xy_template_image = np.zeros((
-            len(self._Y_values),
-            len(self._X_values),
-            3 + len(self.get_scanner_count_channels())))
-        self.xy_template_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
-        y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
-        self.xy_template_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_template_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+        if self._caller_tag == 'template_image' or np.max(self.xy_template_image) == 0:
+            self.xy_template_image = np.zeros((
+                len(self._Y_values),
+                len(self._X_values),
+                3 + len(self.get_scanner_count_channels())))
+            self.xy_template_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
+            y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
+            self.xy_template_image[:, :, 1] = y_value_matrix.transpose()
+            self.xy_template_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -402,18 +405,61 @@ class OptimizerLogic(GenericLogic):
         else:
             self._sigCompletedXyOptimizerScan.emit()
 
+    def template_fit(self, xy_axes, data, template):
+        (x, y) = xy_axes
+        #print('x', x)
+        #print('y', y)
+        x0 = np.average(x)
+        y0 = np.average(y)
+        print('(x0, y0) = ({0:f}, {1:f})'.format(x0, y0))
+
+        ft_data = np.fft.fft(data)
+        ft_template = np.fft.fft(template)
+        print('data', data)
+        print('ft_data', ft_data)
+        print('template', template)
+        print('ft_template', ft_template)
+        conv = abs(np.fft.ifft(ft_data * ft_template))  # Jochen
+        print('conv_fft', conv)
+        left_right = np.fliplr(conv)
+        print('conv_left_right', left_right)
+        conv = np.flipud(left_right)
+        print('updown', conv)
+        conv = np.roll(conv, y0 / 2, 0)
+        print(conv)
+        conv = np.roll(conv, x0 / 2, 1)
+        print(conv)
+
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
+        print('fitting: {0:s}'.format(self.fit_type))
+
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
-            xy_axes=axes,
-            data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian_MLE
-        )
-        # print(result_2D_gaus.fit_report())
+
+        if self.fit_type != 'template':
+            result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
+                xy_axes=axes,
+                data=xy_fit_data,
+                estimator=self._fit_logic.estimate_twoDgaussian_MLE
+            )
+        else:
+            xy_fit_data = self.xy_refocus_image[:, :, 3+self.opt_channel]#.ravel()
+            xy_template_data = self.xy_template_image[:, :, 3+self.opt_channel]#.ravel()
+            self.template_fit(
+                xy_axes=axes,
+                data=xy_fit_data,
+                template=xy_template_data
+            )
+#            result_2D_gaus = self._fit_logic.make_twoDtemplate_fit(
+#                xy_axes=axes,
+#                data=xy_fit_data,
+#                estimator=self._fit_logic.estimate_twoDtemplate,
+#                template=xy_template_data
+#            )
+            # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
             self.log.error('Error: 2D Gaussian Fit was not successfull!.')

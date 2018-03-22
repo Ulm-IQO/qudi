@@ -767,6 +767,8 @@ class ConfocalGui(GUIBase):
         # Set up the template tab
         ############################################################
 
+        self._osd.activate_template_checkBox.setChecked(True if self._optimizer_logic.fit_type == 'template' else False)
+
         self._osd.take_template_image_Button.clicked.connect(self.take_template_image)
         self._osd.activate_template_checkBox.toggled.connect(self.activate_template_changed)
 
@@ -1035,7 +1037,10 @@ class ConfocalGui(GUIBase):
 
     def activate_template_changed(self):
         print('activate_template_changed')
-        pass
+        if self._osd.activate_template_checkBox.isChecked():
+            self._optimizer_logic.fit_type = 'template'
+        else:
+            self._optimizer_logic.fit_type = 'normal'
 
     def menu_settings(self):
         """ This method opens the settings menu. """
