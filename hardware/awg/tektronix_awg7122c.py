@@ -204,9 +204,9 @@ class AWG7122C(Base, PulserInterface):
         else:
             constraints.sampled_file_length.max = 32000000
 
-        constraints.waveform_num.min = 1
+        constraints.waveform_num.min = 960
         constraints.waveform_num.max = 32000
-        constraints.waveform_num.step = 1
+        constraints.waveform_num.step = 4
         constraints.waveform_num.default = 1
 
         constraints.sequence_num.min = 1
