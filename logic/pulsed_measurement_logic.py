@@ -70,7 +70,7 @@ class PulsedMeasurementLogic(GenericLogic):
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
-    save_ft = StatusVar(default=False)
+    save_second_plot = StatusVar(default=False)
     second_plot_type = StatusVar(default='FFT')
 
     # signals
@@ -84,7 +84,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, str)
+    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
     sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
@@ -251,7 +251,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 self.fast_counter_record_length)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                  self.laser_ignore_list, self.alternating)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
                                                    self.current_channel_config_name,
                                                    self.analogue_amplitude, self.interleave_on)
@@ -327,12 +327,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return self.fast_counter_binwidth, self.fast_counter_record_length
 
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
-                                      sequence_length_s, laser_ignore_list, is_alternating, second_plot_type='FFT'):
+                                      sequence_length_s, laser_ignore_list, is_alternating):
         if len(controlled_vals) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
             self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                       self.number_of_lasers, self.sequence_length_s,
-                                                      self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                      self.laser_ignore_list, self.alternating)
             return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
                    self.laser_ignore_list, self.alternating
 
@@ -357,16 +357,15 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
-        self.second_plot_type = second_plot_type
         if self.fast_counter_gated:
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                  self.laser_ignore_list, self.alternating)
         return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
-               self.laser_ignore_list, self.alternating, self.second_plot_type
+               self.laser_ignore_list, self.alternating
 
     def get_fastcounter_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
@@ -977,13 +976,13 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True, save_ft=None):
+                              with_error=True, save_second_plot=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_ft: select wether the Fourier Transform is plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff) is saved
 
         @return str: filepath where data were saved
         """
@@ -1072,11 +1071,11 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
         # if nothing is specified, then take the local settings
-        if save_ft is None:
-            save_ft = self.save_ft
+        if save_second_plot is None:
+            save_second_plot = self.save_second_plot
 
         # Create the figure object
-        if save_ft:
+        if save_second_plot:
             fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
@@ -1165,7 +1164,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the fourier Transform
-        if save_ft:
+        if save_second_plot:
 
             # scale the x_axis for plotting
             max_val = np.max(self.signal_second_plot_x)
