@@ -109,6 +109,8 @@ the function are working on that card.
 
 There are quite a few options for setting up a National instruments card.
 
+Here is an example for a NI6323 card with the name Dev1.
+
 ````yaml
 mynicard:
     module.Class: 'national_instruments_x_series.NationalInstrumentsXSeries'
@@ -148,3 +150,42 @@ mynicard:
     odmr_trigger_channel: '/Dev1/PFI15'
 ````
 
+### Parameter explanation
+
+``clock_channel``: A counter channel that will generate the clock for the counter functionality.
+Required when using the CounterInterface of this module.
+
+``scanner_clock_channel``: a counter channel that will generate the pixel clock for confocal and ODMR scans
+
+``photon_sources``: connectors where pulse generating devices can be connected, like avalance photo diodes
+Required when using the CounterInterface of this module.
+
+``counter_channels``: counter channels that are used to count the pulses from ``photon_sources`` for
+counting cunctionality
+
+``counter_ai_channels``: optional analog inputs that are treated like ``counter_channels`` for counting functionality
+
+``scanner_counter_channels``: counter channels hat are used to record confocal or ODMR scans
+
+``scanner_ai_channels``: optional analog inputs that are used like ``scanner_counter_channels``
+
+``scanner_ao_channels``: analog outputs that are used to control a microscope scanner, one for each axis
+
+``scanner_position_ranges``: the real-world positions of the microscope scan ranges, one pair for each axis, in meters
+
+``scanner_voltage_ranges``: voltages that correspond the extreme values of the microscope scanner ranges,
+ one pair for each axis
+ 
+``default_samples_number``: 
+ 
+``default_clock_frequency``: the standard frequency for the counter sample clock
+ 
+``default_scanner_clock_frequency``:  the standard frequency for the microscope scanner or ODMR pixel clock
+ 
+``gate_in_channel``: input for gating the counting channels
+ 
+``counting_edge_rising``: whether to count rising or falling edges
+ 
+``odmr_trigger_channel``: output for the trigger pulse for ODMR microwave sources
+ 
+``pixel_clock_channel``: optional output for the confocal pixel clock
