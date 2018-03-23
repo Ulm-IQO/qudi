@@ -812,8 +812,7 @@ class PulsedMasterLogic(GenericLogic):
                                                                asset_params['num_of_lasers'],
                                                                asset_params['sequence_length'],
                                                                asset_params['laser_ignore_list'],
-                                                               asset_params['is_alternating'],
-                                                               second_plot_type='FFT')
+                                                               asset_params['is_alternating'])
         # Load asset into channel
         self.status_dict['loading_busy'] = True
         self.sigLoadAsset.emit(asset_name, load_dict)
