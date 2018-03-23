@@ -12,7 +12,7 @@ would give.
 
 #### Installation
 
-To install Qudi on your test machine, you can follow the dedicated [installation guide](installation.md).
+To install Qudi on your test machine, you can follow the dedicated [installation guide](@ref installation).
 
 The default configuration file `config/example/default.cfg` gives access to most GUI modules. You can try them without
 worrying of breaking anything.
@@ -32,7 +32,7 @@ The Qudi suite was originally built around a NI card controlled confocal fluores
 For this reason, let's assume your setup is similar.
 
 For a detailed explanation on the config file, please refer to the dedicated article 
-[How to use and understand a config file](how_to_use_config_file.md)
+[How to use and understand a config file](@ref config-explanation)
 
 ##### The setup
 
@@ -43,7 +43,7 @@ A confocal fluorescence microscope can be summarized as a detector of fluorescen
 ##### Qudi modules
 
 As a user, you interact with the GUI modules. Here we focus on two of them : `counter` and `confocal`.
-You can find detailed documentation in [Counter GUI] and [Confocal GUI](gui/confocal.md)
+You can find detailed documentation in [Counter GUI] and [Confocal GUI](@ref confocalgui)
 
 This GUI modules need to be connected to their logic module, which in turn need some hardware module preferably through 
 a dedicated interface.
