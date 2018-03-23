@@ -1334,6 +1334,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
         index = self._pa.second_plot_ComboBox.findText(self._second_plot_ComboBox_text)
         self._pa.second_plot_ComboBox.setCurrentIndex(index)
+        self._pulsed_master_logic._measurement_logic.second_plot_type = self._second_plot_ComboBox_text
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
@@ -1735,8 +1736,7 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
-        is_second = True if self._pa.second_plot_ComboBox.currentText() in ('FFT', 'Delta') else False
-        is_delta = True if self._pa.second_plot_ComboBox.currentText() == 'Delta' else False
+        second_plot = self._pa.second_plot_ComboBox.currentText()
 
         # create ErrorBarItems
         beamwidth = np.inf
@@ -1756,17 +1756,19 @@ class PulsedMeasurementGui(GUIBase):
             self.signal_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the secondary plot
-        if is_second:
-            if is_delta and not is_alternating:
-                self.log.error('Delta can only be selected for the second plot if the sequence is alternating.')
-            else:
+        if second_plot == 'Delta':
+            if is_alternating:
                 self.second_plot_image.setData(x=second_x_data, y=second_y_data)
+            else:
+                self.log.error('Delta can only be selected for the second plot if the sequence is '
+                               'alternating.')
+        elif second_plot == 'FFT':
+            self.second_plot_image.setData(x=second_x_data, y=second_y_data)
+            if is_alternating:
+                self.second_plot_image2.setData(x=second_x_data, y=second_y2_data)
         else:
             self.second_plot_image.setData(x=x_data, y=y_signal_data)
-        if is_alternating:
-            if is_second:
-                self.second_plot_image2.setData(x=second_x_data, y=second_y2_data)
-            else:
+            if is_alternating:
                 self.second_plot_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the error plot
@@ -1781,12 +1783,12 @@ class PulsedMeasurementGui(GUIBase):
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        save_ft = False if self._pa.second_plot_ComboBox.currentText() == 'None' else True
+        save_second_plot = self._pa.second_plot_ComboBox.currentText() != 'None'
 
         self._pulsed_master_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
                                                         tag=save_tag,
                                                         with_error=with_error,
-                                                        save_ft=save_ft)
+                                                        save_second_plot=save_second_plot)
         self._mw.action_save.setEnabled(True)
         return
 
@@ -2002,16 +2004,15 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-
-        #if self._mw.action_run_stop.isChecked():
-        #    return
+        # Do nothing if measurement is already running
+        if self._mw.action_run_stop.isChecked():
+            return
         laser_ignore_list = []
         if self._pa.ana_param_ignore_first_CheckBox.isChecked():
             laser_ignore_list.append(0)
         if self._pa.ana_param_ignore_last_CheckBox.isChecked():
             laser_ignore_list.append(-1)
         alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
-        second_plot_type = self._pa.second_plot_ComboBox.currentText()
         num_of_lasers = self._pa.ana_param_num_laser_pulse_SpinBox.value()
         controlled_vals_start = self._pa.ana_param_x_axis_start_ScienDSpinBox.value()
         controlled_vals_incr = self._pa.ana_param_x_axis_inc_ScienDSpinBox.value()
@@ -2028,12 +2029,11 @@ class PulsedMeasurementGui(GUIBase):
                                                                         num_of_lasers,
                                                                         sequence_length_s,
                                                                         laser_ignore_list,
-                                                                        alternating,
-                                                                        second_plot_type)
+                                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating, second_plot_type):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -2041,14 +2041,12 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param second_plot_type:
         @return:
         """
         # block signals
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(True)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(True)
         self._pa.ana_param_alternating_CheckBox.blockSignals(True)
-        self._pa.second_plot_ComboBox.blockSignals(True)
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(True)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(True)
@@ -2057,8 +2055,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_ignore_first_CheckBox.setChecked(0 in laser_ignore_list)
         self._pa.ana_param_ignore_last_CheckBox.setChecked(-1 in laser_ignore_list)
         self._pa.ana_param_alternating_CheckBox.setChecked(alternating)
-        index = self._pa.second_plot_ComboBox.findText(second_plot_type)
-        self._pa.second_plot_ComboBox.setCurrentIndex(index)
         self._pa.ana_param_num_laser_pulse_SpinBox.setValue(number_of_lasers)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(controlled_vals[0])
         if len(controlled_vals) > 1:
@@ -2094,7 +2090,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(False)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(False)
         self._pa.ana_param_alternating_CheckBox.blockSignals(False)
-        self._pa.second_plot_ComboBox.blockSignals(False)
         self._pa.ana_param_num_laser_pulse_SpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
@@ -2140,30 +2135,31 @@ class PulsedMeasurementGui(GUIBase):
 
     def change_second_plot(self):
         """ This method handles the second plot"""
+        second_plot = self._pa.second_plot_ComboBox.currentText()
+        is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
 
-        if self._pa.second_plot_ComboBox.currentText() == 'Delta' and not self._pa.ana_param_alternating_CheckBox.isChecked():
-            self.log.error('Delta can only be selected for the second plot if the sequence is alternating. '
-                           'Setting it to None instead.')
-            index = self._pa.second_plot_ComboBox.findText('None')
-            self._pa.second_plot_ComboBox.setCurrentIndex(index)
-
-        if self._pa.second_plot_ComboBox.currentText() == 'None':
+        if second_plot == 'None':
             self._pa.second_plot_GroupBox.setVisible(False)
         else:
             self._pa.second_plot_GroupBox.setVisible(True)
-
-            if self._pa.second_plot_ComboBox.currentText() in ('FFT', 'Delta'):
+            if second_plot in ('FFT', 'Delta'):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)':
+            elif second_plot == 'Log(x)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(y)':
+            elif second_plot == 'Log(y)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=True)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)Log(y)':
+            elif second_plot == 'Log(x)Log(y)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
-        self._pa.second_plot_GroupBox.setTitle(self._pa.second_plot_ComboBox.currentText())
-        self.update_analysis_settings()
-        self.measurement_sequence_settings_changed()
+        self._pulsed_master_logic._measurement_logic.second_plot_type = second_plot
+        self._pa.second_plot_GroupBox.setTitle(second_plot)
+
+        if second_plot == 'Delta' and not is_alternating:
+            self.log.error('Delta can only be selected for the second plot if the sequence is '
+                           'alternating. Setting it to None instead.')
+            index = self._pa.second_plot_ComboBox.findText('None')
+            self._pa.second_plot_ComboBox.setCurrentIndex(index)
+
         return
 
     def measurement_timer_changed(self):

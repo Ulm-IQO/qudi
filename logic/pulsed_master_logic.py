@@ -58,7 +58,7 @@ class PulsedMasterLogic(GenericLogic):
     sigStartPulser = QtCore.Signal()
     sigStopPulser = QtCore.Signal()
     sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool, str)
+    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
     sigUploadAsset = QtCore.Signal(str)
     sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
@@ -111,7 +111,7 @@ class PulsedMasterLogic(GenericLogic):
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, str)
+    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
@@ -389,7 +389,7 @@ class PulsedMasterLogic(GenericLogic):
         return pulsegenerator_constraints, fastcounter_constraints
 
     def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating, second_plot_type):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -397,16 +397,15 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param second_plot_type:
         @return:
         """
         self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, second_plot_type)
+                                                        alternating)
         return
 
     def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating, second_plot_type):
+                                              sequence_length_s, laser_ignore_list, alternating):
         """
 
         @param controlled_vals:
@@ -414,12 +413,11 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_length_s:
         @param laser_ignore_list:
         @param alternating:
-        @param second_plot_type:
         @return:
         """
         self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
                                                         sequence_length_s, laser_ignore_list,
-                                                        alternating, second_plot_type)
+                                                        alternating)
         return
 
     def fast_counter_settings_changed(self, bin_width_s, record_length_s):
@@ -673,21 +671,21 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_ft):
+    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_second_plot):
         """ Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_ft: select wether the Fourier Transform is plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff etc.) is saved
 
         @return str: filepath where data were saved
         """
         return self._measurement_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
                                                       tag=tag,
                                                       with_error=with_error,
-                                                      save_ft=save_ft)
+                                                      save_second_plot=save_second_plot)
 
     def clear_pulse_generator(self):
         """
