@@ -1142,10 +1142,17 @@ class PulsedMeasurementGui(GUIBase):
         self._ana_param_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
         self._ana_param_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
         self._ana_param_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
-        self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
-        self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
-        self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
-        self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+
+        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._ana_param_x_axis_name_text
+            self._ana_param_second_plot_x_axis_unit_text = self._ana_param_x_axis_unit_text
+            self._ana_param_second_plot_y_axis_name_text = self._ana_param_y_axis_name_text
+            self._ana_param_second_plot_y_axis_unit_text = self._ana_param_y_axis_unit_text
 
         self._pa.pulse_analysis_PlotWidget.setLabel(
             axis='bottom',
@@ -1244,6 +1251,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
         index = self._pa.second_plot_ComboBox.findText(self._second_plot_ComboBox_text)
         self._pa.second_plot_ComboBox.setCurrentIndex(index)
+        self._pulsed_master_logic._measurement_logic.second_plot_type = self._second_plot_ComboBox_text
 
         self._pa.ana_param_invoke_settings_CheckBox.setChecked(
             self._pulsed_master_logic.invoke_settings)
@@ -1631,7 +1639,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def signal_data_updated(self, x_data, y_signal_data, y2_signal_data, y_error_data,
-                            y2_error_data, fft_x_data, fft_y_data, fft_y2_data):
+                            y2_error_data, second_x_data, second_y_data, second_y2_data):
         """
 
         @param x_data:
@@ -1639,13 +1647,13 @@ class PulsedMeasurementGui(GUIBase):
         @param y2_signal_data:
         @param y_error_data:
         @param y2_error_data:
+        @param second_x_data:
+        @param second_y_data:
+        @param second_y2_data:
         @return:
         """
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
-        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
-            is_fft = True
-        else:
-            is_fft = False
+        second_plot = self._pa.second_plot_ComboBox.currentText()
 
         # create ErrorBarItems
         beamwidth = np.inf
@@ -1665,14 +1673,19 @@ class PulsedMeasurementGui(GUIBase):
             self.signal_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the secondary plot
-        if is_fft:
-            self.second_plot_image.setData(x=fft_x_data, y=fft_y_data)
+        if second_plot == 'Delta':
+            if is_alternating:
+                self.second_plot_image.setData(x=second_x_data, y=second_y_data)
+            else:
+                self.log.error('Delta can only be selected for the second plot if the sequence is '
+                               'alternating.')
+        elif second_plot == 'FFT':
+            self.second_plot_image.setData(x=second_x_data, y=second_y_data)
+            if is_alternating:
+                self.second_plot_image2.setData(x=second_x_data, y=second_y2_data)
         else:
             self.second_plot_image.setData(x=x_data, y=y_signal_data)
-        if is_alternating:
-            if is_fft:
-                self.second_plot_image2.setData(x=fft_x_data, y=fft_y2_data)
-            else:
+            if is_alternating:
                 self.second_plot_image2.setData(x=x_data, y=y2_signal_data)
 
         # dealing with the error plot
@@ -1687,14 +1700,12 @@ class PulsedMeasurementGui(GUIBase):
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
         controlled_val_unit = self._as.ana_param_x_axis_unit_LineEdit.text()
-        if self._pa.second_plot_ComboBox.currentText() == 'None':
-            save_ft = False
-        else:
-            save_ft = True
+        save_second_plot = self._pa.second_plot_ComboBox.currentText() != 'None'
+
         self._pulsed_master_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
                                                         tag=save_tag,
                                                         with_error=with_error,
-                                                        save_ft=save_ft)
+                                                        save_second_plot=save_second_plot)
         self._mw.action_save.setEnabled(True)
         return
 
@@ -1910,7 +1921,7 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-
+        # Do nothing if measurement is already running
         if self._mw.action_run_stop.isChecked():
             return
         laser_ignore_list = []
@@ -2041,19 +2052,31 @@ class PulsedMeasurementGui(GUIBase):
 
     def change_second_plot(self):
         """ This method handles the second plot"""
-        if self._pa.second_plot_ComboBox.currentText() == 'None':
+        second_plot = self._pa.second_plot_ComboBox.currentText()
+        is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
+
+        if second_plot == 'None':
             self._pa.second_plot_GroupBox.setVisible(False)
         else:
             self._pa.second_plot_GroupBox.setVisible(True)
-
-            if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            if second_plot in ('FFT', 'Delta'):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)':
+            elif second_plot == 'Log(x)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=False)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(y)':
+            elif second_plot == 'Log(y)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=True)
-            elif self._pa.second_plot_ComboBox.currentText() == 'Log(x)Log(y)':
+            elif second_plot == 'Log(x)Log(y)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
+
+        self._pulsed_master_logic._measurement_logic.second_plot_type = second_plot
+        self._pa.second_plot_GroupBox.setTitle(second_plot)
+
+        if second_plot == 'Delta' and not is_alternating:
+            self.log.error('Delta can only be selected for the second plot if the sequence is '
+                           'alternating. Setting it to None instead.')
+            index = self._pa.second_plot_ComboBox.findText('None')
+            self._pa.second_plot_ComboBox.setCurrentIndex(index)
+
         return
 
     def measurement_timer_changed(self):
