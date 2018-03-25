@@ -19,8 +19,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import abc
 from interface import fgen_ivi_interface
-from ..python_ivi_base import PythonIviBase
+from .python_ivi_base import PythonIviBase
 
 import inspect
 from qtpy.QtCore import QObject
@@ -109,7 +110,8 @@ class FGenMixin(fgen_ivi_interface.FGenInterface):
         self.driver.initiate_generation()
 
 
-class Output(QObject, fgen_ivi_interface.OutputInterface):
+class Output(QObject, fgen_ivi_interface.OutputInterface,
+             metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Base IVI methods for all function generators related to an output.
 
@@ -225,7 +227,8 @@ class Output(QObject, fgen_ivi_interface.OutputInterface):
         self.reference_clock_source_changed.emit(value)
 
 
-class StdFunc(QObject, fgen_ivi_interface.StdFuncInterface):
+class StdFunc(QObject, fgen_ivi_interface.StdFuncInterface,
+              metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that can produce manufacturer-supplied periodic waveforms
 
@@ -382,12 +385,15 @@ class ArbWfm_OutputsArbitraryMixin(fgen_ivi_interface.ArbWfm_OutputsArbitrary_In
 
     Implement as outputs[].arbitrary
 
-    See also: ArbWfm_ArbitraryWaveform_Interface
+    See also: ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_Arbitrary_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
     """
     @property
     def gain(self):
         """
-        Specifies the gain of the arbitrary waveform the function generator produces. This value is unitless.
+        Specifies the gain of the arbitrary waveform the function generator produces. This value is
+        unitless.
         """
         return self.parent().driver.outputs[self._output_index].arbitrary.gain
 
@@ -399,7 +405,8 @@ class ArbWfm_OutputsArbitraryMixin(fgen_ivi_interface.ArbWfm_OutputsArbitrary_In
     @property
     def offset(self):
         """
-        Specifies the offset of the arbitrary waveform the function generator produces. The units are volts.
+        Specifies the offset of the arbitrary waveform the function generator produces. The units
+        are volts.
         """
         return self.parent().driver.outputs[self._output_index].arbitrary.offset
 
@@ -407,23 +414,6 @@ class ArbWfm_OutputsArbitraryMixin(fgen_ivi_interface.ArbWfm_OutputsArbitrary_In
     def offset(self, value):
         self.parent().driver.outputs[self._output_index].arbitrary.offset = value
         self.offset_changed.emit(value)
-
-    @property
-    def waveform(self):
-        """
-        Identifies which arbitrary waveform the function generator produces. You create arbitrary
-        waveforms with the Create Arbitrary Waveform function. This function returns a handle that
-        identifies the particular waveform. To configure the function generator to produce a specific
-        waveform, set this attribute to the waveform’s handle.
-
-        FIXME
-        """
-        return self.parent().driver.outputs[self._output_index].arbitrary.waveform
-
-    @waveform.setter
-    def waveform(self, value):
-        self.parent().driver.outputs[self._output_index].arbitrary.waveform = value
-        self.waveform_changed.emit(value)
 
     def configure(self, waveform, gain, offset):
         """
@@ -436,16 +426,48 @@ class ArbWfm_OutputsArbitraryMixin(fgen_ivi_interface.ArbWfm_OutputsArbitrary_In
         )
 
 
-class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform_Interface):
+class ArbWfm_OutputsArbitraryWaveform_Mixin(
+    fgen_ivi_interface.ArbWfm_OutputsArbitraryWaveform_Interface):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms.
 
-    Implement as arbitrary.waveform
+    Arbitrary Waveform handle – A handle to an uploaded waveform
 
-    See also: ArbWfm_OutputsArbitrary_Interface
+    Implement as outputs[].arbitrary.waveform
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_Arbitrary_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
     """
-    waveform_cleared = Signal(str)
-    waveform_created = Signal(str)
+    waveform_handle_changed = Signal(str)
+
+    @property
+    def handle(self):
+        """
+        Identifies which arbitrary waveform the function generator produces. You create arbitrary
+        waveforms with the Create Arbitrary Waveform function. This function returns a handle that
+        identifies the particular waveform. To configure the function generator to produce a
+        specific waveform, set this attribute to the waveform’s handle.
+        """
+        return self.parent().driver.outputs[self._output_index].arbitrary.waveform.handle
+
+    @handle.setter
+    def handle(self, value):
+        self.parent().driver.outputs[self._output_index].arbitrary.waveform.handle = value
+        self.waveform_handle_changed.emit(value)
+
+
+class ArbWfm_Arbitrary_Mixin(fgen_ivi_interface.ArbWfm_Arbitrary_Interface):
+    """
+    Extension IVI methods for function generators that can produce arbitrary waveforms.
+
+    Implement as arbitrary
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
+    """
+    sample_rate_changed = Signal(float)
 
     @property
     def sample_rate(self):
@@ -455,13 +477,32 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         """
         return self.parent().driver.arbitrary.sample_rate
 
+    @sample_rate.setter
+    def sample_rate(self, value):
+        self.parent().driver.arbitrary.sample_rate = value
+        self.sample_rate_changed.emit(value)
+
+
+class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform_Interface):
+    """
+    Extension IVI methods for function generators that can produce arbitrary waveforms.
+
+    Implement as arbitrary.waveform
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_Arbitrary_Interface
+    """
+    waveform_cleared = Signal(str)
+    waveform_created = Signal(str)
+
     @property
     def number_waveforms_max(self):
         """
         Returns the maximum number of arbitrary waveforms that the function
         generator allows.
         """
-        return self.parent().driver.arbitrary.number_waveforms_max
+        return self.parent().driver.arbitrary.waveform.number_waveforms_max
 
     @property
     def size_max(self):
@@ -469,7 +510,7 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         Returns the maximum number of points the function generator allows in an
         arbitrary waveform.
         """
-        return self.parent().driver.arbitrary.size_max
+        return self.parent().driver.arbitrary.waveform.size_max
 
     @property
     def size_min(self):
@@ -477,7 +518,7 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         Returns the minimum number of points the function generator allows in an
         arbitrary waveform.
         """
-        return self.parent().driver.arbitrary.size_min
+        return self.parent().driver.arbitrary.waveform.size_min
 
     @property
     def quantum(self):
@@ -487,7 +528,7 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         allows. For example, if this attribute returns a value of 8, all waveform
         sizes must be a multiple of 8.
         """
-        return self.parent().driver.arbitrary.quantum
+        return self.parent().driver.arbitrary.waveform.quantum
 
     def clear(self, waveform):
         """
@@ -498,7 +539,7 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         or it is specified as part of an existing arbitrary waveform sequence,
         this function returns the Waveform In Use error.
         """
-        self.parent().driver.arbitrary.clear(waveform)
+        self.parent().driver.arbitrary.waveform.clear(waveform)
         self.waveform_cleared.emit(waveform)
 
     def create(self, data):
@@ -508,7 +549,7 @@ class ArbWfm_ArbitraryWaveform_Mixin(fgen_ivi_interface.ArbWfm_ArbitraryWaveform
         to the Handle parameter of the Configure Arbitrary Waveform function to
         produce that waveform.
         """
-        wfm_handle = self.parent().driver.arbitrary.create(data)
+        wfm_handle = self.parent().driver.arbitrary.waveform.create(data)
         self.waveform_created.emit(wfm_handle)
         return wfm_handle
 
@@ -644,7 +685,8 @@ class ArbSeq_Arbitrary_Mixin(fgen_ivi_interface.ArbSeq_Arbitrary_Interface):
 
 
 class ArbSeq_OutputsArbitrarySequence(QObject,
-                                      fgen_ivi_interface.ArbSeq_OutputsArbitrarySequence_Interface):
+                                      fgen_ivi_interface.ArbSeq_OutputsArbitrarySequence_Interface,
+                                      metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -667,7 +709,7 @@ class ArbSeq_OutputsArbitrarySequence(QObject,
             sequence_handle, gain, offset)
 
 
-class Trigger(QObject, fgen_ivi_interface.TriggerInterface):
+class Trigger(fgen_ivi_interface.TriggerInterface):
     """
     Extension IVI methods for function generators that support triggering
 
@@ -682,10 +724,6 @@ class Trigger(QObject, fgen_ivi_interface.TriggerInterface):
     Implement as outputs[].trigger
     """
     source_changed = Signal(str)
-
-    def __init__(self, output_index, **kwargs):
-        super().__init__(**kwargs)
-        self._output_index = output_index
 
     @property
     def source(self):
@@ -703,7 +741,8 @@ class Trigger(QObject, fgen_ivi_interface.TriggerInterface):
 
 class StartTrigger_OutputsTriggerStart(
     QObject,
-    fgen_ivi_interface.StartTrigger_OutputsTriggerStart_Interface):
+    fgen_ivi_interface.StartTrigger_OutputsTriggerStart_Interface,
+    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -789,7 +828,8 @@ class StartTrigger_OutputsTriggerStart(
         self.parent().driver.outputs[self._output_index].trigger.start.configure(source, slope)
 
 
-class StartTrigger_TriggerStart(QObject, fgen_ivi_interface.StartTrigger_TriggerStart_Interface):
+class StartTrigger_TriggerStart(QObject, fgen_ivi_interface.StartTrigger_TriggerStart_Interface,
+                                metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -806,7 +846,8 @@ class StartTrigger_TriggerStart(QObject, fgen_ivi_interface.StartTrigger_Trigger
 
 
 class StopTrigger_OutputsTriggerStop(QObject,
-                                     fgen_ivi_interface.StopTrigger_OutputsTriggerStop_Interface):
+                                     fgen_ivi_interface.StopTrigger_OutputsTriggerStop_Interface,
+                                     metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -891,7 +932,8 @@ class StopTrigger_OutputsTriggerStop(QObject,
         self.parent().driver.outputs[self._output_index].trigger.stop.configure(source, slope)
 
 
-class StopTrigger_TriggerStop(QObject, fgen_ivi_interface.StopTrigger_TriggerStop_Interface):
+class StopTrigger_TriggerStop(QObject, fgen_ivi_interface.StopTrigger_TriggerStop_Interface,
+                              metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -908,7 +950,8 @@ class StopTrigger_TriggerStop(QObject, fgen_ivi_interface.StopTrigger_TriggerSto
 
 
 class HoldTrigger_OutputsTriggerHold(QObject,
-                                     fgen_ivi_interface.HoldTrigger_OutputsTriggerHold_Interface):
+                                     fgen_ivi_interface.HoldTrigger_OutputsTriggerHold_Interface,
+                                     metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -994,7 +1037,8 @@ class HoldTrigger_OutputsTriggerHold(QObject,
         self.parent().driver.outputs[self._output_index].trigger.hold.configure(source, slope)
 
 
-class HoldTrigger_TriggerHold(QObject, fgen_ivi_interface.HoldTrigger_TriggerHold_Interface):
+class HoldTrigger_TriggerHold(QObject, fgen_ivi_interface.HoldTrigger_TriggerHold_Interface,
+                              metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -1012,7 +1056,8 @@ class HoldTrigger_TriggerHold(QObject, fgen_ivi_interface.HoldTrigger_TriggerHol
 
 class ResumeTrigger_OutputsTriggerResume(
     QObject,
-    fgen_ivi_interface.ResumeTrigger_OutputsTriggerResume_Interface):
+    fgen_ivi_interface.ResumeTrigger_OutputsTriggerResume_Interface,
+    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1098,7 +1143,8 @@ class ResumeTrigger_OutputsTriggerResume(
 
 
 class ResumeTrigger_TriggerResume(QObject,
-                                  fgen_ivi_interface.ResumeTrigger_TriggerResume_Interface):
+                                  fgen_ivi_interface.ResumeTrigger_TriggerResume_Interface,
+                                  metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1116,7 +1162,8 @@ class ResumeTrigger_TriggerResume(QObject,
 
 class AdvanceTrigger_OutputsTriggerAdvance(
     QObject,
-    fgen_ivi_interface.AdvanceTrigger_OutputsTriggerAdvance_Interface):
+    fgen_ivi_interface.AdvanceTrigger_OutputsTriggerAdvance_Interface,
+    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1196,7 +1243,8 @@ class AdvanceTrigger_OutputsTriggerAdvance(
 
 
 class AdvanceTrigger_TriggerAdvance(QObject,
-                                    fgen_ivi_interface.AdvanceTrigger_TriggerAdvance_Interface):
+                                    fgen_ivi_interface.AdvanceTrigger_TriggerAdvance_Interface,
+                                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1311,7 +1359,8 @@ class BurstOutputsMixin(fgen_ivi_interface.BurstOutputsInterface):
         self.burst_count_changed.emit(value)
 
 
-class ModulateAM_OutputsAM(QObject, fgen_ivi_interface.ModulateAM_OutputsAM_Interface):
+class ModulateAM_OutputsAM(QObject, fgen_ivi_interface.ModulateAM_OutputsAM_Interface,
+                           metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1389,7 +1438,8 @@ class ModulateAM_OutputsAM(QObject, fgen_ivi_interface.ModulateAM_OutputsAM_Inte
         self.source_changed.emit(value)
 
 
-class ModulateAM_AM(QObject, fgen_ivi_interface.ModulateAM_AM_Interface):
+class ModulateAM_AM(QObject, fgen_ivi_interface.ModulateAM_AM_Interface,
+                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1467,7 +1517,8 @@ class ModulateAM_AM(QObject, fgen_ivi_interface.ModulateAM_AM_Interface):
         self.parent().driver.am.configure_internal(modulation_depth, waveform, frequency)
 
 
-class ModulateFM_OutputsFM(QObject, fgen_ivi_interface.ModulateFM_OutputsFM_Interface):
+class ModulateFM_OutputsFM(QObject, fgen_ivi_interface.ModulateFM_OutputsFM_Interface,
+                           metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1540,7 +1591,8 @@ class ModulateFM_OutputsFM(QObject, fgen_ivi_interface.ModulateFM_OutputsFM_Inte
         self.source_changed.emit(value)
 
 
-class ModulateFM_FM(QObject, fgen_ivi_interface.ModulateFM_FM_Interface):
+class ModulateFM_FM(QObject, fgen_ivi_interface.ModulateFM_FM_Interface,
+                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1621,7 +1673,8 @@ class ModulateFM_FM(QObject, fgen_ivi_interface.ModulateFM_FM_Interface):
         self.parent().driver.fm.configure_internal(deviation, waveform, frequency)
 
 
-class SampleClock(QObject, fgen_ivi_interface.SampleClockInterface):
+class SampleClock(QObject, fgen_ivi_interface.SampleClockInterface,
+                  metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support external sample clocks
 
@@ -1671,10 +1724,6 @@ class TerminalConfigurationMixin(fgen_ivi_interface.TerminalConfigurationInterfa
     Implement as mixin to outputs[].
     """
     terminal_configuration_changed = Signal(str)
-
-    def __init__(self, output_index, **kwargs):
-        super().__init__(**kwargs)
-        self._output_index = output_index
 
     @property
     def terminal_configuration(self):
@@ -1767,8 +1816,7 @@ class ArbChannelWfm_ArbitraryWaveform_Mixin(
                                                                                waveforms)
 
 
-class ArbWfmBinary_OutputsArbitraryWaveform(
-    QObject,
+class ArbWfmBinary_OutputsArbitraryWaveform_Mixin(
     fgen_ivi_interface.ArbWfmBinary_OutputsArbitraryWaveform_Interface):
     """
     Extension IVI methods for function generators that support user-defined arbitrary binary
@@ -1783,9 +1831,6 @@ class ArbWfmBinary_OutputsArbitraryWaveform(
 
     See also: ArbWfmBinary_Arbitrary_Interface, ArbWfmBinary_ArbitraryWaveform_Interface
     """
-    def __init__(self, output_index, **kwargs):
-        super().__init__(**kwargs)
-        self._output_index = output_index
 
     def create_channel_waveform_int16(self, waveform):
         """
@@ -1926,7 +1971,8 @@ class ArbWfmBinary_ArbitraryWaveform_Mixin(
                                                                                      waveforms)
 
 
-class DataMarker(QObject, fgen_ivi_interface.DataMarkerInterface):
+class DataMarker(QObject, fgen_ivi_interface.DataMarkerInterface,
+                 metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support output of particular waveform data
     bits as markers
@@ -2097,7 +2143,8 @@ class ArbDataMaskMixin(fgen_ivi_interface.ArbDataMaskInterface):
         self.data_mask_changed.emit(value)
 
 
-class SparseMarker(QObject, fgen_ivi_interface.SparseMarkerInterface):
+class SparseMarker(QObject, fgen_ivi_interface.SparseMarkerInterface,
+                   metaclass=fgen_ivi_interface.InterfaceMetaclass):
     """
     Extension IVI methods for function generators that support output of markers associated with
     output data samples.
@@ -2279,55 +2326,69 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # arbitrary.waveform
-        class IviArbitraryWaveform(QObject):
+        class IviArbitraryWaveformMetaclass(type(QObject), abc.ABCMeta):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.fgen.ArbWfm in driver_capabilities:
+                    bases = bases + (ArbWfm_ArbitraryWaveform_Mixin,)
+                if ivi.fgen.ArbChannelWfm in driver_capabilities:
+                    bases = bases + (ArbChannelWfm_ArbitraryWaveform_Mixin,)
+                if ivi.fgen.ArbWfmBinary in driver_capabilities:
+                    bases = bases + (ArbWfmBinary_ArbitraryWaveform_Mixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviArbitraryWaveform(QObject, metaclass=IviArbitraryWaveformMetaclass):
             pass
-        if ivi.fgen.ArbWfm in driver_capabilities:
-            IviArbitraryWaveform.__bases__ = IviArbitraryWaveform.__bases__ + (
-                ArbWfm_ArbitraryWaveform_Mixin,)
-        if ivi.fgen.ArbChannelWfm in driver_capabilities:
-            IviArbitraryWaveform.__bases__ = IviArbitraryWaveform.__bases__ + (
-                ArbChannelWfm_ArbitraryWaveform_Mixin,)
-        if ivi.fgen.ArbWfmBinary in driver_capabilities:
-            IviArbitraryWaveform.__bases__ = IviArbitraryWaveform.__bases__ + (
-                ArbWfmBinary_ArbitraryWaveform_Mixin,)
         arb_wfm = IviArbitraryWaveform(parent=self)
 
         # arbitrary.sequence
-        class IviArbitrarySequence(QObject):
+        class IviArbitrarySequenceMetaclass(type(QObject), abc.ABCMeta):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.fgen.ArbSeq in driver_capabilities:
+                    bases = bases + (ArbSeq_ArbitrarySequence_Mixin,)
+                if ivi.fgen.ArbSeqDepth in driver_capabilities:
+                    bases = bases + (ArbSeqDepthMixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviArbitrarySequence(QObject, metaclass=IviArbitrarySequenceMetaclass):
             pass
 
-        if ivi.fgen.ArbSeq in driver_capabilities:
-            IviArbitrarySequence.__bases__ = IviArbitrarySequence.__bases__ + (
-                ArbSeq_ArbitrarySequence_Mixin,)
-        if ivi.fgen.ArbSeqDepth in driver_capabilities:
-            IviArbitrarySequence.__bases__ = IviArbitrarySequence.__bases__ + (
-                ArbSeqDepthMixin,)
         arb_seq = IviArbitrarySequence(parent=self)
 
         # arbitrary
-        class IviArbitrary(QObject):
+        # arbitrary.waveform
+        class IviArbitraryMetaclass(type(QObject), abc.ABCMeta):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.fgen.ArbWfm in driver_capabilities:
+                    bases = bases + (ArbWfm_Arbitrary_Mixin,)
+                if ivi.fgen.ArbSeq in driver_capabilities:
+                    bases = bases + (ArbSeq_Arbitrary_Mixin,)
+                if ivi.fgen.ArbDataMask in driver_capabilities:
+                    bases = bases + (ArbDataMaskMixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviArbitrary(QObject, metaclass=IviArbitraryMetaclass):
             def __init__(self, sequence, waveform, **kwargs):
-                super().__init__(**kwargs)
                 self.sequence = sequence
                 self.waveform = waveform
-
-        if ivi.fgen.ArbSeq in driver_capabilities:
-            IviArbitrary.__bases__ = IviArbitrary.__bases__ + (ArbSeq_Arbitrary_Mixin, )
-        if ivi.fgen.ArbDataMask in driver_capabilities:
-            IviArbitrary.__bases__ = IviArbitrary.__bases__ + (ArbDataMaskMixin,)
+                super().__init__(**kwargs)
 
         self.arbitrary = IviArbitrary(sequence=arb_seq, waveform=arb_wfm, parent=self)
 
         # trigger
-        class IviTrigger(QObject):
-            def __init__(self, start, stop, hold, resume, advance):
+        class IviTriggerMetaclass(type(QObject), abc.ABCMeta):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.fgen.InternalTrigger in driver_capabilities:
+                    bases = bases + (InternalTriggerMixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviTrigger(QObject, metaclass=IviTriggerMetaclass):
+            def __init__(self, start, stop, hold, resume, advance, **kwargs):
                 self.start = start
                 self.stop = stop
                 self.hold = hold
                 self.resume = resume
                 self.advance = advance
-        if ivi.fgen.InternalTrigger in driver_capabilities:
-            IviTrigger.__bases__ = IviTrigger.__bases__ + (InternalTriggerMixin,)
+                super().__init__(**kwargs)
         if ivi.fgen.StartTrigger in driver_capabilities:
             start = StartTrigger_TriggerStart(parent=self)
         else:
@@ -2348,7 +2409,12 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
             advance = AdvanceTrigger_TriggerAdvance(parent=self)
         else:
             advance = None
-        self.trigger = IviTrigger(start, stop, hold, resume, advance)
+        self.trigger = IviTrigger(start=start,
+                                  stop=stop,
+                                  hold=hold,
+                                  resume=resume,
+                                  advance=advance,
+                                  parent=self)
 
         # am
         if ivi.fgen.ModulateAM in driver_capabilities:
@@ -2385,53 +2451,68 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 standard_waveform = None
 
             # outputs[].arbitrary
-            class IviOutputsArbitrary(QObject):
+            class IviOutputsArbitraryMetaclass(type(QObject), abc.ABCMeta):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.fgen.ArbWfm in driver_capabilities:
+                        bases = bases + (ArbWfm_OutputsArbitraryMixin,)
+                    if ivi.fgen.ArbFrequency in driver_capabilities:
+                        bases = bases + (ArbFrequencyMixin,)
+                    if ivi.fgen.ArbChannelWfm in driver_capabilities:
+                        bases = bases + (ArbChannelWfm_OutputsArbitraryMixin,)
+                    if ivi.fgen.ArbWfmBinary in driver_capabilities:
+                        bases = bases + (ArbWfmBinary_Arbitrary_Mixin,)
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviOutputsArbitrary(QObject, metaclass=IviOutputsArbitraryMetaclass):
                 def __init__(self, output_index, sequence, waveform, **kwargs):
-                    super().__init__(**kwargs)
                     self._output_index = output_index
                     self.sequence = sequence
                     self.waveform = waveform
+                    super().__init__(**kwargs)
 
-            if ivi.fgen.ArbWfm in driver_capabilities:
-                IviOutputsArbitrary.__bases__ = IviOutputsArbitrary.__bases__ + (
-                    ArbWfm_OutputsArbitraryMixin, )
-            if ivi.fgen.ArbFrequency in driver_capabilities:
-                IviOutputsArbitrary.__bases__ = IviOutputsArbitrary.__bases__ + (ArbFrequencyMixin,)
-            if ivi.fgen.ArbChannelWfm in driver_capabilities:
-                IviOutputsArbitrary.__bases__ = IviOutputsArbitrary.__bases__ + (
-                    ArbChannelWfm_OutputsArbitraryMixin,)
-            if ivi.fgen.ArbWfmBinary in driver_capabilities:
-                IviOutputsArbitrary.__bases__ = IviOutputsArbitrary.__bases__ + (
-                    ArbWfmBinary_Arbitrary_Mixin,)
             # outputs[].arbitrary.sequence
             if ivi.fgen.ArbSeq in driver_capabilities:
                 outputs_arb_sequence = ArbSeq_OutputsArbitrarySequence(output_index=ii, parent=self)
             else:
                 outputs_arb_sequence = None
+
             # outputs[].arbitrary.waveform
-            if ivi.fgen.ArbWfmBinary in driver_capabilities:
-                outputs_arb_waveform = ArbWfmBinary_OutputsArbitraryWaveform(output_index=ii,
-                                                                             parent=self)
-            else:
-                outputs_arb_waveform = None
+            class IviOutputsArbitraryWaveformMetaclass(type(QObject), abc.ABCMeta):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.fgen.ArbWfmBinary in driver_capabilities:
+                        bases = bases + (ArbWfmBinary_OutputsArbitraryWaveform_Mixin,)
+                    if ivi.fgen.ArbWfm in driver_capabilities:
+                        bases = bases + (ArbWfm_OutputsArbitraryWaveform_Mixin,)
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviOutputsArbitraryWaveform(QObject,
+                                              metaclass=IviOutputsArbitraryWaveformMetaclass):
+                def __init__(self, output_index, **kwargs):
+                    self._output_index = output_index
+                    super().__init__(**kwargs)
+
+            outputs_arb_waveform = IviOutputsArbitraryWaveform(output_index=ii, parent=self)
             outputs_arbitrary = IviOutputsArbitrary(output_index=ii,
                                                     sequence=outputs_arb_sequence,
                                                     waveform=outputs_arb_waveform,
                                                     parent=self)
 
             # outputs[].trigger
-            class IviOutputsTrigger(QObject):
-                def __init__(self, start, stop, hold, resume, advance, **kwargs):
+            class IviOutputsTriggerMetaclass(type(QObject), abc.ABCMeta):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.fgen.Trigger in driver_capabilities:
+                        bases = bases + (Trigger,)
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviOutputsTrigger(QObject, metaclass=IviOutputsTriggerMetaclass):
+                def __init__(self, output_index, start, stop, hold, resume, advance, **kwargs):
+                    self._output_index = output_index
                     self.start = start
                     self.stop = stop
                     self.hold = hold
                     self.resume = resume
                     self.advance = advance
                     super().__init__(**kwargs)
-            if ivi.fgen.Trigger in driver_capabilities:
-                IviOutputsTrigger.__bases__ = IviOutputsTrigger.__bases__ + (Trigger, )
-            else:
-                IviOutputsTrigger.__bases__ = IviOutputsTrigger.__bases__ + (QObject,)
 
             if ivi.fgen.StartTrigger in driver_capabilities:
                 start = StartTrigger_OutputsTriggerStart(output_index=ii, parent=self)
@@ -2453,7 +2534,8 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 advance = AdvanceTrigger_OutputsTriggerAdvance(output_index=ii, parent=self)
             else:
                 advance = None
-            outputs_trigger = IviOutputsTrigger(start=start,
+            outputs_trigger = IviOutputsTrigger(output_index=ii,
+                                                start=start,
                                                 stop=stop,
                                                 hold=hold,
                                                 resume=resume,
@@ -2473,10 +2555,17 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 outputs_fm = None
 
             # output
-            class IviOutput(Output):
-                def __init__(self, output_index, standard_waveform, arbitrary, trigger, am, fm,
+            class IviOutputMetaclass(fgen_ivi_interface.InterfaceMetaclass):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.fgen.Burst in driver_capabilities:
+                        bases = bases + (BurstOutputsMixin,)
+                    if ivi.fgen.TerminalConfiguration in driver_capabilities:
+                        bases = bases + (TerminalConfigurationMixin,)
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviOutput(Output, metaclass=IviOutputMetaclass):
+                def __init__(self, standard_waveform, arbitrary, trigger, am, fm,
                              **kwargs):
-                    self._output_index = output_index
                     if standard_waveform is not None:
                         self.standard_waveform = standard_waveform
                     if arbitrary is not None:
@@ -2489,16 +2578,12 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                         self.fm = fm
                     super().__init__(**kwargs)
 
-            if ivi.gen.Burst in driver_capabilities:
-                IviOutput.__bases__ = IviOutput.__bases__ + (BurstOutputsMixin,)
-            if ivi.fgen.TerminalConfiguration in driver_capabilities:
-                IviOutput.__bases__ = IviOutput.__bases__ + (TerminalConfigurationMixin, )
-            self.outputs.append(IviOutput(output_index=ii,
-                                          standard_waveform=standard_waveform,
+            self.outputs.append(IviOutput(standard_waveform=standard_waveform,
                                           arbitrary=outputs_arbitrary,
                                           trigger=outputs_trigger,
                                           am=outputs_am,
                                           fm=outputs_fm,
+                                          output_index=ii,
                                           parent=self))
 
     def on_deactivate(self):
