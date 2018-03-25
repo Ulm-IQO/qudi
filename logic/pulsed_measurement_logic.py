@@ -788,24 +788,24 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
-        self.signal_fft_x = self.controlled_vals
-        self.signal_fft_y = np.zeros(len(self.controlled_vals))
-        self.signal_fft_y2 = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_x = self.controlled_vals
+        self.signal_second_plot_y = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_y2 = np.zeros(len(self.controlled_vals))
 
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
+                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True, save_ft=None):
+                              with_error=True, save_second_plot=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_ft: select wether the Fourier Transform is plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff) is saved
 
         @return str: filepath where data were saved
         """
@@ -894,11 +894,11 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
         # if nothing is specified, then take the local settings
-        if save_ft is None:
-            save_ft = self.save_ft
+        if save_second_plot is None:
+            save_second_plot = self.save_second_plot
 
         # Create the figure object
-        if save_ft:
+        if save_second_plot:
             fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
@@ -987,17 +987,13 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the fourier Transform
-        if save_ft:
+        if save_second_plot:
 
             # scale the x_axis for plotting
-            max_val = np.max(self.signal_fft_x)
+            max_val = np.max(self.signal_second_plot_x)
             scaled_float = units.ScaledFloat(max_val)
             x_axis_prefix = scaled_float.scale
-            x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
-
-            ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0],
-                     label='FT of data trace 1')
+            x_axis_ft_scaled = self.signal_second_plot_x / scaled_float.scale_val
 
             # since no ft units are provided, make a small work around:
             if controlled_val_unit == 's':
@@ -1007,8 +1003,21 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
 
-            ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
-            ax2.set_ylabel('Fourier amplitude (arb.u.)')
+            if self.second_plot_type == 'Delta':
+                x_axis_ft_label = 'controlled variable (' + controlled_val_unit + ')'
+                y_axis_ft_label = 'norm. sig (arb. u.)'
+                ft_label = ''
+            else:
+                x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
+                y_axis_ft_label = 'Fourier amplitude (arb. u.)'
+                ft_label = 'FT of data trace 1'
+
+            ax2.plot(x_axis_ft_scaled, self.signal_second_plot_y, '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label=ft_label)
+
+            ax2.set_xlabel(x_axis_ft_label)
+            ax2.set_ylabel(y_axis_ft_label)
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
@@ -1057,31 +1066,36 @@ class PulsedMeasurementLogic(GenericLogic):
                                    delimiter='\t')
         return filepath
 
-    def _compute_fft(self):
+    def _compute_second_plot(self):
         """ Computing the fourier transform of the data. """
 
-        # Do sanity checks:
-        if len(self.signal_plot_x) < 2:
-            self.log.debug('FFT of measurement could not be calculated. Only '
-                           'one data point.')
-            self.signal_fft_x = np.zeros(1)
-            self.signal_fft_y = np.zeros(1)
-            self.signal_fft_y2 = np.zeros(1)
-            return
+        if self.second_plot_type == 'Delta':
+            self.signal_second_plot_x = self.signal_plot_x
+            self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
+            self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
+        else:
+            # Do sanity checks:
+            if len(self.signal_plot_x) < 2:
+                self.log.debug('FFT of measurement could not be calculated. Only '
+                               'one data point.')
+                self.signal_second_plot_x = np.zeros(1)
+                self.signal_second_plot_y = np.zeros(1)
+                self.signal_second_plot_y2 = np.zeros(1)
+                return
 
-        if self.alternating:
-            x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+            if self.alternating:
+                x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
+                    self.signal_plot_x,
+                    self.signal_plot_y2,
+                    zeropad_num=0)
+
+            self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
                 self.signal_plot_x,
-                self.signal_plot_y2,
-                zeropad_num=0)
-
-        self.signal_fft_x, self.signal_fft_y = units.compute_ft(
-            self.signal_plot_x,
-            self.signal_plot_y,
-            zeropad_num=self.zeropad,
-            window=self.window,
-            base_corr=self.base_corr,
-            psd=self.psd)
+                self.signal_plot_y,
+                zeropad_num=self.zeropad,
+                window=self.window,
+                base_corr=self.base_corr,
+                psd=self.psd)
         return
 
 

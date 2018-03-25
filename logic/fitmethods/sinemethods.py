@@ -592,7 +592,10 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
     result_str_dict = dict()
 
     period = 1 / result.params['frequency'].value
-    period_err = 1 / result.params['frequency'].stderr
+    try:
+        period_err = 1 / result.params['frequency'].stderr
+    except ZeroDivisionError:
+        period_err = np.inf
 
     result_str_dict['Period'] = {'value': period if period else 0.0,
                                  'error': period_err if period_err else 0.0,
@@ -680,7 +683,10 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
     result_str_dict = dict()
 
     period = 1/result.params['frequency'].value
-    period_err = 1/result.params['frequency'].stderr
+    try:
+        period_err = 1 / result.params['frequency'].stderr
+    except ZeroDivisionError:
+        period_err = np.inf
 
     result_str_dict['Period'] = {'value': period if period else 0.0,
                                  'error': period_err if period_err else 0.0,
@@ -837,7 +843,10 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
     result_str_dict = dict()
 
     period = 1 / result.params['frequency'].value
-    period_err = 1 / result.params['frequency'].stderr
+    try:
+        period_err = 1 / result.params['frequency'].stderr
+    except ZeroDivisionError:
+        period_err = np.inf
 
     result_str_dict['Period'] = {'value': period if period else 0.0,
                                  'error': period_err if period_err else 0.0,
@@ -927,10 +936,16 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['s1_frequency'].value
-    period1_err = result.params['s1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['s1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
-    period2_err = result.params['s2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['s2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
@@ -1051,10 +1066,16 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['s1_frequency'].value
-    period1_err = result.params['s1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['s1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
-    period2_err = result.params['s2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['s2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
@@ -1189,10 +1210,16 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['e1_frequency'].value
-    period1_err = result.params['e1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['e1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['e2_frequency'].value
-    period2_err = result.params['e2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['e2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
@@ -1332,13 +1359,22 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['s1_frequency'].value
-    period1_err = result.params['s1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['s1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
-    period2_err = result.params['s2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['s2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     period3 = result.params['s3_frequency'].value
-    period3_err = result.params['s3_frequency'].stderr
+    try:
+        period3_err = 1 / result.params['s3_frequency'].stderr
+    except ZeroDivisionError:
+        period3_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
@@ -1477,13 +1513,22 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['s1_frequency'].value
-    period1_err = result.params['s1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['s1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
-    period2_err = result.params['s2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['s2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     period3 = result.params['s3_frequency'].value
-    period3_err = result.params['s3_frequency'].stderr
+    try:
+        period3_err = 1 / result.params['s3_frequency'].stderr
+    except ZeroDivisionError:
+        period3_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
@@ -1643,13 +1688,22 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
     period1 = result.params['e1_frequency'].value
-    period1_err = result.params['e1_frequency'].stderr
+    try:
+        period1_err = 1 / result.params['e1_frequency'].stderr
+    except ZeroDivisionError:
+        period1_err = np.inf
 
     period2 = result.params['e2_frequency'].value
-    period2_err = result.params['e2_frequency'].stderr
+    try:
+        period2_err = 1 / result.params['e2_frequency'].stderr
+    except ZeroDivisionError:
+        period2_err = np.inf
 
     period3 = result.params['e3_frequency'].value
-    period3_err = result.params['e3_frequency'].stderr
+    try:
+        period3_err = 1 / result.params['e3_frequency'].stderr
+    except ZeroDivisionError:
+        period3_err = np.inf
 
     result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
                                    'error': 1/period1_err if period1_err else 0.0,
