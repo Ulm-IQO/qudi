@@ -33,11 +33,6 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector
 from core.util.modules import get_home_dir
 from core.util.modules import get_main_dir
-
-from logic.pulse_objects import PulseBlockElement
-from logic.pulse_objects import PulseBlock
-from logic.pulse_objects import PulseBlockEnsemble
-from logic.pulse_objects import PulseSequence
 from logic.generic_logic import GenericLogic
 
 
@@ -146,9 +141,6 @@ class SequenceGeneratorLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # Get connector to pulse generator hardware
-        self._pulse_generator = self.get_connector('pulse_generator')
-
         # Read saved pulse objects from file
         self._get_blocks_from_file()
         self._get_ensembles_from_file()
@@ -159,9 +151,9 @@ class SequenceGeneratorLogic(GenericLogic):
         self._attach_predefined_methods()
 
         # Read activation_config from device.
-        channel_state = self._pulse_generator.get_active_channels()
+        channel_state = self.pulse_generator().get_active_channels()
         current_config = {chnl for chnl in channel_state if channel_state[chnl]}
-        avail_configs = self._pulse_generator.get_constraints().activation_config
+        avail_configs = self.pulse_generator().get_constraints().activation_config
         # Set first available config if read config is not valid.
         if current_config not in avail_configs.values():
             config_to_set = avail_configs[list(avail_configs)[0]]
@@ -170,7 +162,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     channel_state[chnl] = True
                 else:
                     channel_state[chnl] = False
-            set_channel_state = self._pulse_generator.set_active_channels(channel_state)
+            set_channel_state = self.pulse_generator().set_active_channels(channel_state)
             set_config = {chnl for chnl in set_channel_state if set_channel_state[chnl]}
             if set_config != config_to_set:
                 self.activation_config = ('', set_config)
@@ -191,7 +183,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
 
         # Read sample rate from device
-        self.sample_rate = self._pulse_generator.get_sample_rate()
+        self.sample_rate = self.pulse_generator().get_sample_rate()
 
         # Read pp-voltages from device
 
@@ -281,22 +273,6 @@ class SequenceGeneratorLogic(GenericLogic):
             os.makedirs(os.path.abspath(path))
         return os.path.abspath(path)
 
-    # def request_init_values(self):
-    #     """
-    #
-    #     @return:
-    #     """
-    #     self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
-    #     self.sigEnsembleDictUpdated.emit(self.saved_pulse_block_ensembles)
-    #     self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-    #     self.sigCurrentBlockUpdated.emit(self.current_block)
-    #     self.sigCurrentEnsembleUpdated.emit(self.current_ensemble)
-    #     self.sigCurrentSequenceUpdated.emit(self.current_sequence)
-    #     self.sigSettingsUpdated.emit(self.activation_config, self.laser_channel, self.sample_rate,
-    #                                  self.amplitude_dict, self.waveform_format)
-    #     self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
-    #     return
-
     def set_settings(self, settings_dict):
         """
         Sets all settings for the generator logic.
@@ -310,7 +286,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Try to set new activation config.
         if 'activation_config' in settings_dict:
-            avail_configs = self._pulse_generator.get_constraints().activation_config
+            avail_configs = self.pulse_generator().get_constraints().activation_config
             # If activation_config is not within pulser constraints, do not change it.
             if settings_dict['activation_config'] not in avail_configs:
                 self.log.error('Unable to set activation_config "{0}" since it can not be found in '
@@ -320,13 +296,13 @@ class SequenceGeneratorLogic(GenericLogic):
 
             else:
                 channels_to_activate = avail_configs[settings_dict['activation_config']]
-                channel_state = self._pulse_generator.get_active_channels()
+                channel_state = self.pulse_generator().get_active_channels()
                 for chnl in channel_state:
                     if chnl in channels_to_activate:
                         channel_state[chnl] = True
                     else:
                         channel_state[chnl] = False
-                set_channel_states = self._pulse_generator.set_active_channels(channel_state)
+                set_channel_states = self.pulse_generator().set_active_channels(channel_state)
                 set_activation_config = {chnl for chnl in set_channel_states if
                                          set_channel_states[chnl]}
                 for name, config in avail_configs.items():
@@ -376,7 +352,7 @@ class SequenceGeneratorLogic(GenericLogic):
         if 'sample_rate' in settings_dict:
             # If sample rate already set, do nothing
             if settings_dict['sample_rate'] != self.sample_rate:
-                sample_rate_constr = self._pulse_generator.get_constraints().sample_rate
+                sample_rate_constr = self.pulse_generator().get_constraints().sample_rate
                 # Check boundaries with constraints
                 if settings_dict['sample_rate'] > sample_rate_constr.max:
                     self.log.warning('Sample rate to set ({0}) larger than allowed maximum ({1}).\n'
@@ -391,7 +367,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                                sample_rate_constr.min))
                     settings_dict['sample_rate'] = sample_rate_constr.min
 
-                self.sample_rate = self._pulse_generator.set_sample_rate(
+                self.sample_rate = self.pulse_generator().set_sample_rate(
                     settings_dict['sample_rate'])
             actual_settings['sample_rate'] = self.sample_rate
 
@@ -399,9 +375,9 @@ class SequenceGeneratorLogic(GenericLogic):
         if 'analog_pp_amplitude' in settings_dict:
             # if no change is needed, do nothing
             if settings_dict['analog_pp_amplitude'] != self.analog_pp_amplitude:
-                analog_constr = self._pulse_generator.get_constraints().a_ch_amplitude
+                analog_constr = self.pulse_generator().get_constraints().a_ch_amplitude
                 # Get currently set pp-amplitudes
-                current_analog_amp = self._pulse_generator.get_analog_level(
+                current_analog_amp = self.pulse_generator().get_analog_level(
                     amplitude=list(settings_dict['analog_pp_amplitude']))
                 # Check boundaries with constraints
                 for chnl, value in settings_dict['analog_pp_amplitude'].items():
@@ -419,7 +395,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         self.log.error('Trying to set pp-amplitude for non-existent channel "{0}"!'
                                        ''.format(chnl))
 
-                self.analog_pp_amplitude, dummy = self._pulse_generator.set_analog_level(
+                self.analog_pp_amplitude, dummy = self.pulse_generator().set_analog_level(
                     amplitude=settings_dict['analog_pp_amplitude'])
 
             actual_settings['analog_pp_amplitude'] = self.analog_pp_amplitude
@@ -457,9 +433,10 @@ class SequenceGeneratorLogic(GenericLogic):
         @param name: string, name of the block to save
         @param block: PulseBlock object which will be serialized
         """
-        # TODO: Overwrite handling
+        if name in self.saved_pulse_blocks:
+            self.log.info('Found old PulseBlock with name "{0}".\n'
+                          'Old PulseBlock overwritten by new PulseBlock with the same name.')
         block.name = name
-        self.current_block = block
         self.saved_pulse_blocks[name] = block
         self._save_blocks_to_file()
         self.sigBlockDictUpdated.emit(self.saved_pulse_blocks)
@@ -476,7 +453,6 @@ class SequenceGeneratorLogic(GenericLogic):
                            ''.format(name))
             return
         block = self.saved_pulse_blocks[name]
-        self.current_block = block
         self.sigCurrentBlockUpdated.emit(self.current_block)
         return
 
@@ -986,11 +962,11 @@ class SequenceGeneratorLogic(GenericLogic):
             filename = name_tag
 
         # check for old waveforms associated with the ensemble and delete them from pulse generator.
-        uploaded_waveforms = self._pulse_generator.get_waveform_names()
+        uploaded_waveforms = self.pulse_generator().get_waveform_names()
         wfm_regex = re.compile(r'\b' + filename + r'_ch\d+$')
         for wfm_name in uploaded_waveforms:
             if wfm_regex.match(wfm_name):
-                self._pulse_generator.delete_waveform(wfm_name)
+                self.pulse_generator().delete_waveform(wfm_name)
                 self.log.debug('Old waveform deleted from pulse generator: "{0}".'.format(wfm_name))
 
         start_time = time.time()
@@ -1058,7 +1034,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         for chnl in pulse_function:
                             analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.analog_pp_amplitude[chnl])
                         # write temporary sample array to file
-                            written_samples, wfm_list = self._pulse_generator.write_waveform(
+                            written_samples, wfm_list = self.pulse_generator().write_waveform(
                                 name=filename,
                                 analog_samples=analog_samples,
                                 digital_samples=digital_samples,
@@ -1103,7 +1079,7 @@ class SequenceGeneratorLogic(GenericLogic):
             return dict(), dict(), offset_bin, wfm_list
         else:
             # If the sampling should not be chunkwise call the write_waveform method only once.
-            written_samples, wfm_list = self._pulse_generator.write_waveform(
+            written_samples, wfm_list = self.pulse_generator().write_waveform(
                 name=filename,
                 analog_samples=analog_samples,
                 digital_samples=digital_samples,
@@ -1154,8 +1130,8 @@ class SequenceGeneratorLogic(GenericLogic):
             return []
 
         # delete already written sequences on the device memory that have the same name
-        if sequence_name in self._pulse_generator.get_sequence_names():
-            self._pulse_generator.delete_sequence(sequence_name)
+        if sequence_name in self.pulse_generator().get_sequence_names():
+            self.pulse_generator().delete_sequence(sequence_name)
             self.log.debug('Old sequence deleted from pulse generator: "{0}".'
                            ''.format(sequence_name))
 
@@ -1248,7 +1224,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.save_sequence(sequence_name, sequence)
 
         # pass the whole information to the sequence creation method:
-        steps_written = self._pulse_generator.write_sequence(sequence_name,
+        steps_written = self.pulse_generator().write_sequence(sequence_name,
                                                              sequence_param_dict_list)
         if steps_written == len(sequence_param_dict_list):
             self.log.info('Time needed for sampling and writing Pulse Sequence to device: {0} sec.'
