@@ -161,6 +161,9 @@ class PulsedMeasurementGui(GUIBase):
     _ana_param_second_plot_y_axis_name_text = StatusVar('ana_param_second_plot_y_axis_name_LineEdit', 'Ft Signal')
     _ana_param_second_plot_y_axis_unit_text = StatusVar('ana_param_second_plot_y_axis_unit_LineEdit', '')
 
+    _show_raw_data = StatusVar(default=False)
+    _show_laser_index = StatusVar(default=0)
+
     _ana_param_errorbars = StatusVar('ana_param_errorbars_CheckBox', False)
     _second_plot_ComboBox_text = StatusVar('second_plot_ComboBox_text', 'None')
 
