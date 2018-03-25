@@ -106,7 +106,7 @@ class FGenInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class OutputInterface(metaclass=InterfaceMetaclass):
+class OutputInterface(metaclass=abc.ABCMeta):
     """
     Base IVI methods for all function generators related to an output.
 
@@ -214,7 +214,7 @@ class OutputInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class StdFuncInterface(metaclass=InterfaceMetaclass):
+class StdFuncInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce manufacturer-supplied periodic waveforms
 
@@ -336,37 +336,40 @@ class StdFuncInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
+class ArbWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms
 
-    The IviFgenArbWfm Extension Group supports function generators capable of producing userdefined arbitrary waveforms.
-    The user can modify parameters of the arbitrary waveform such as sample rate, waveform gain, and waveform offset.
-    The IviFgenArbWfm extension group includes functions for creating, configuring, and generating arbitrary waveforms,
-    and for returning information about arbitrary waveform creation. This extension affects instrument behavior when
-    the Output Mode attribute is set to Output Arbitrary or Output Sequence. Before a function generator can produce an
-    arbitrary waveform, the user must configure some signal generation properties. This specification provides
-    definitions for arbitrary waveform properties that must be followed when developing instrument drivers. The
-    definition of an arbitrary waveform and its properties are given in the following list:
+    The IviFgenArbWfm Extension Group supports function generators capable of producing userdefined
+    arbitrary waveforms. The user can modify parameters of the arbitrary waveform such as sample
+    rate, waveform gain, and waveform offset. The IviFgenArbWfm extension group includes functions
+    for creating, configuring, and generating arbitrary waveforms, nd for returning information
+    about arbitrary waveform creation. This extension affects instrument behavior when the Output
+    Mode attribute is set to Output Arbitrary or Output Sequence. Before a function generator can
+    produce an arbitrary waveform, the user must configure some signal generation properties. This
+    specification provides definitions for arbitrary waveform properties that must be followed when
+    developing instrument drivers. The definition of an arbitrary waveform and its properties are
+    given in the following list:
 
-    Arbitrary Waveform – A user-defined series of sequential data points, between –1.0 and 1.0 inclusive, that describe
-                         an output waveform.
-    Gain – The factor by which the function generator scales the arbitrary waveform data. For example, a gain value
-           of 2.0 causes the waveform data to range from –2.0V to +2.0V.
-    Offset – The value the function generator adds to the scaled arbitrary waveform data. For example, scaled arbitrary
-             waveform data that ranges from –1.0V to +1.0V is generated from 0.0V to 2.0V when the end user specifies a
-             waveform offset of 1.0V.
+    Gain – The factor by which the function generator scales the arbitrary waveform data. For
+           example, a gain value of 2.0 causes the waveform data to range from –2.0V to +2.0V.
+    Offset – The value the function generator adds to the scaled arbitrary waveform data. For
+             example, scaled arbitrary waveform data that ranges from –1.0V to +1.0V is generated
+             from 0.0V to 2.0V when the end user specifies a waveform offset of 1.0V.
 
     Implement as outputs[].arbitrary
 
-    See also: ArbWfm_ArbitraryWaveform_Interface
+    See also: ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_Arbitrary_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
     """
 
     @property
     @abc.abstractmethod
     def gain(self):
         """
-        Specifies the gain of the arbitrary waveform the function generator produces. This value is unitless.
+        Specifies the gain of the arbitrary waveform the function generator produces. This value is
+        unitless.
         """
         pass
 
@@ -378,29 +381,13 @@ class ArbWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def offset(self):
         """
-        Specifies the offset of the arbitrary waveform the function generator produces. The units are volts.
+        Specifies the offset of the arbitrary waveform the function generator produces. The units
+        are volts.
         """
         pass
 
     @offset.setter
     def offset(self, value):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def waveform(self):
-        """
-        Identifies which arbitrary waveform the function generator produces. You create arbitrary
-        waveforms with the Create Arbitrary Waveform function. This function returns a handle that
-        identifies the particular waveform. To configure the function generator to produce a specific
-        waveform, set this attribute to the waveform’s handle.
-
-        FIXME
-        """
-        pass
-
-    @waveform.setter
-    def waveform(self, value):
         pass
 
     def configure(self, waveform, gain, offset):
@@ -412,13 +399,44 @@ class ArbWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
+class ArbWfm_OutputsArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms.
 
-    Implement as arbitrary.waveform
+    Arbitrary Waveform handle – A handle to an uploaded waveform
 
-    See also: ArbWfm_OutputsArbitrary_Interface
+    Implement as outputs[].arbitrary.waveform
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_Arbitrary_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
+    """
+
+    @property
+    @abc.abstractmethod
+    def handle(self):
+        """
+        Identifies which arbitrary waveform the function generator produces. You create arbitrary
+        waveforms with the Create Arbitrary Waveform function. This function returns a handle that
+        identifies the particular waveform. To configure the function generator to produce a
+        specific waveform, set this attribute to the waveform’s handle.
+        """
+        pass
+
+    @handle.setter
+    def handle(self, value):
+        pass
+
+
+class ArbWfm_Arbitrary_Interface(metaclass=abc.ABCMeta):
+    """
+    Extension IVI methods for function generators that can produce arbitrary waveforms.
+
+    Implement as arbitrary
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_ArbitraryWaveform_Interface
     """
     @property
     @abc.abstractmethod
@@ -429,6 +447,21 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @sample_rate.setter
+    def sample_rate(self, value):
+        pass
+
+
+class ArbWfm_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
+    """
+    Extension IVI methods for function generators that can produce arbitrary waveforms.
+
+    Implement as arbitrary.waveform
+
+    See also: ArbWfm_OutputsArbitrary_Interface,
+              ArbWfm_OutputsArbitraryWaveform_Interface,
+              ArbWfm_Arbitrary_Interface
+    """
     @property
     @abc.abstractmethod
     def number_waveforms_max(self):
@@ -490,7 +523,7 @@ class ArbWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbFrequencyInterface(metaclass=InterfaceMetaclass):
+class ArbFrequencyInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms with variable rate
 
@@ -518,7 +551,7 @@ class ArbFrequencyInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbSeq_ArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
+class ArbSeq_ArbitrarySequence_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -602,7 +635,7 @@ class ArbSeq_ArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbSeq_Arbitrary_Interface(metaclass=InterfaceMetaclass):
+class ArbSeq_Arbitrary_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -626,7 +659,7 @@ class ArbSeq_Arbitrary_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbSeq_OutputsArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
+class ArbSeq_OutputsArbitrarySequence_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -644,7 +677,7 @@ class ArbSeq_OutputsArbitrarySequence_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class TriggerInterface(metaclass=InterfaceMetaclass):
+class TriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support triggering
 
@@ -672,7 +705,7 @@ class TriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class StartTrigger_OutputsTriggerStart_Interface(metaclass=InterfaceMetaclass):
+class StartTrigger_OutputsTriggerStart_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -750,7 +783,7 @@ class StartTrigger_OutputsTriggerStart_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class StartTrigger_TriggerStart_Interface(metaclass=InterfaceMetaclass):
+class StartTrigger_TriggerStart_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -767,7 +800,7 @@ class StartTrigger_TriggerStart_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class StopTrigger_OutputsTriggerStop_Interface(metaclass=InterfaceMetaclass):
+class StopTrigger_OutputsTriggerStop_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -845,7 +878,7 @@ class StopTrigger_OutputsTriggerStop_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class StopTrigger_TriggerStop_Interface(metaclass=InterfaceMetaclass):
+class StopTrigger_TriggerStop_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -862,7 +895,7 @@ class StopTrigger_TriggerStop_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class HoldTrigger_OutputsTriggerHold_Interface(metaclass=InterfaceMetaclass):
+class HoldTrigger_OutputsTriggerHold_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -941,7 +974,7 @@ class HoldTrigger_OutputsTriggerHold_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class HoldTrigger_TriggerHold_Interface(metaclass=InterfaceMetaclass):
+class HoldTrigger_TriggerHold_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -958,7 +991,7 @@ class HoldTrigger_TriggerHold_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=InterfaceMetaclass):
+class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1036,7 +1069,7 @@ class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=InterfaceMetaclass)
         pass
 
 
-class ResumeTrigger_TriggerResume_Interface(metaclass=InterfaceMetaclass):
+class ResumeTrigger_TriggerResume_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1053,7 +1086,7 @@ class ResumeTrigger_TriggerResume_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class AdvanceTrigger_OutputsTriggerAdvance_Interface(metaclass=InterfaceMetaclass):
+class AdvanceTrigger_OutputsTriggerAdvance_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1125,7 +1158,7 @@ class AdvanceTrigger_OutputsTriggerAdvance_Interface(metaclass=InterfaceMetaclas
         pass
 
 
-class AdvanceTrigger_TriggerAdvance_Interface(metaclass=InterfaceMetaclass):
+class AdvanceTrigger_TriggerAdvance_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1140,7 +1173,7 @@ class AdvanceTrigger_TriggerAdvance_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class InternalTriggerInterface(metaclass=InterfaceMetaclass):
+class InternalTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support internal triggering
 
@@ -1167,7 +1200,7 @@ class InternalTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class SoftwareTriggerInterface(metaclass=InterfaceMetaclass):
+class SoftwareTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support software triggering
 
@@ -1212,7 +1245,7 @@ class SoftwareTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class BurstOutputsInterface(metaclass=InterfaceMetaclass):
+class BurstOutputsInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support triggered burst output.
 
@@ -1240,7 +1273,7 @@ class BurstOutputsInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ModulateAM_OutputsAM_Interface(metaclass=InterfaceMetaclass):
+class ModulateAM_OutputsAM_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1312,7 +1345,7 @@ class ModulateAM_OutputsAM_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ModulateAM_AM_Interface(metaclass=InterfaceMetaclass):
+class ModulateAM_AM_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1388,7 +1421,7 @@ class ModulateAM_AM_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ModulateFM_OutputsFM_Interface(metaclass=InterfaceMetaclass):
+class ModulateFM_OutputsFM_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1534,7 +1567,7 @@ class ModulateFM_FM_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class SampleClockInterface(metaclass=InterfaceMetaclass):
+class SampleClockInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support external sample clocks
 
@@ -1574,7 +1607,7 @@ class SampleClockInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class TerminalConfigurationInterface(metaclass=InterfaceMetaclass):
+class TerminalConfigurationInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support single ended or differential
     output selection.
@@ -1602,7 +1635,7 @@ class TerminalConfigurationInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
+class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary waveform
     generation
@@ -1639,7 +1672,7 @@ class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
+class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
     """
     The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function
     generators capable of producing user-defined arbitrary waveforms for specific output channels.
@@ -1671,7 +1704,7 @@ class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
+class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary binary
     waveform generation
@@ -1722,7 +1755,7 @@ class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=InterfaceMetacla
         pass
 
 
-class ArbWfmBinary_Arbitrary_Interface(metaclass=InterfaceMetaclass):
+class ArbWfmBinary_Arbitrary_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary binary
     waveform generation
@@ -1762,7 +1795,7 @@ class ArbWfmBinary_Arbitrary_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
+class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary binary
     waveform generation
@@ -1823,7 +1856,7 @@ class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=InterfaceMetaclass):
         pass
 
 
-class DataMarkerInterface(metaclass=InterfaceMetaclass):
+class DataMarkerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support output of particular waveform data
     bits as markers
@@ -1953,7 +1986,7 @@ class DataMarkerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbDataMaskInterface(metaclass=InterfaceMetaclass):
+class ArbDataMaskInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support masking of waveform data bits
 
@@ -1983,7 +2016,7 @@ class ArbDataMaskInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class SparseMarkerInterface(metaclass=InterfaceMetaclass):
+class SparseMarkerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support output of markers associated with
     output data samples.
@@ -2113,7 +2146,7 @@ class SparseMarkerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ArbSeqDepthInterface(metaclass=InterfaceMetaclass):
+class ArbSeqDepthInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support producing sequences of sequences
     of waveforms.
