@@ -1488,7 +1488,7 @@ class ModulateFM_OutputsFM_Interface(metaclass=abc.ABCMeta):
         pass
 
 
-class ModulateFM_FM_Interface(metaclass=InterfaceMetaclass):
+class ModulateFM_FM_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support frequency modulation
 

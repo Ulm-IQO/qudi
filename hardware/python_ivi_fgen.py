@@ -29,6 +29,10 @@ from qtpy.QtCore import Signal
 import ivi.fgen
 
 
+class QtInterfaceMetaclass(type(QObject), abc.ABCMeta):
+    pass
+
+
 class FGenMixin(fgen_ivi_interface.FGenInterface):
     """
     Functions generators following the IVI specification.
@@ -111,7 +115,7 @@ class FGenMixin(fgen_ivi_interface.FGenInterface):
 
 
 class Output(QObject, fgen_ivi_interface.OutputInterface,
-             metaclass=fgen_ivi_interface.InterfaceMetaclass):
+             metaclass=QtInterfaceMetaclass):
     """
     Base IVI methods for all function generators related to an output.
 
@@ -228,7 +232,7 @@ class Output(QObject, fgen_ivi_interface.OutputInterface,
 
 
 class StdFunc(QObject, fgen_ivi_interface.StdFuncInterface,
-              metaclass=fgen_ivi_interface.InterfaceMetaclass):
+              metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that can produce manufacturer-supplied periodic waveforms
 
@@ -686,7 +690,7 @@ class ArbSeq_Arbitrary_Mixin(fgen_ivi_interface.ArbSeq_Arbitrary_Interface):
 
 class ArbSeq_OutputsArbitrarySequence(QObject,
                                       fgen_ivi_interface.ArbSeq_OutputsArbitrarySequence_Interface,
-                                      metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                      metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -742,7 +746,7 @@ class Trigger(fgen_ivi_interface.TriggerInterface):
 class StartTrigger_OutputsTriggerStart(
     QObject,
     fgen_ivi_interface.StartTrigger_OutputsTriggerStart_Interface,
-    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -829,7 +833,7 @@ class StartTrigger_OutputsTriggerStart(
 
 
 class StartTrigger_TriggerStart(QObject, fgen_ivi_interface.StartTrigger_TriggerStart_Interface,
-                                metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -847,7 +851,7 @@ class StartTrigger_TriggerStart(QObject, fgen_ivi_interface.StartTrigger_Trigger
 
 class StopTrigger_OutputsTriggerStop(QObject,
                                      fgen_ivi_interface.StopTrigger_OutputsTriggerStop_Interface,
-                                     metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                     metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -933,7 +937,7 @@ class StopTrigger_OutputsTriggerStop(QObject,
 
 
 class StopTrigger_TriggerStop(QObject, fgen_ivi_interface.StopTrigger_TriggerStop_Interface,
-                              metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                              metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -951,7 +955,7 @@ class StopTrigger_TriggerStop(QObject, fgen_ivi_interface.StopTrigger_TriggerSto
 
 class HoldTrigger_OutputsTriggerHold(QObject,
                                      fgen_ivi_interface.HoldTrigger_OutputsTriggerHold_Interface,
-                                     metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                     metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -1038,7 +1042,7 @@ class HoldTrigger_OutputsTriggerHold(QObject,
 
 
 class HoldTrigger_TriggerHold(QObject, fgen_ivi_interface.HoldTrigger_TriggerHold_Interface,
-                              metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                              metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -1057,7 +1061,7 @@ class HoldTrigger_TriggerHold(QObject, fgen_ivi_interface.HoldTrigger_TriggerHol
 class ResumeTrigger_OutputsTriggerResume(
     QObject,
     fgen_ivi_interface.ResumeTrigger_OutputsTriggerResume_Interface,
-    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1144,7 +1148,7 @@ class ResumeTrigger_OutputsTriggerResume(
 
 class ResumeTrigger_TriggerResume(QObject,
                                   fgen_ivi_interface.ResumeTrigger_TriggerResume_Interface,
-                                  metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                  metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -1163,7 +1167,7 @@ class ResumeTrigger_TriggerResume(QObject,
 class AdvanceTrigger_OutputsTriggerAdvance(
     QObject,
     fgen_ivi_interface.AdvanceTrigger_OutputsTriggerAdvance_Interface,
-    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1244,7 +1248,7 @@ class AdvanceTrigger_OutputsTriggerAdvance(
 
 class AdvanceTrigger_TriggerAdvance(QObject,
                                     fgen_ivi_interface.AdvanceTrigger_TriggerAdvance_Interface,
-                                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                                    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1360,7 +1364,7 @@ class BurstOutputsMixin(fgen_ivi_interface.BurstOutputsInterface):
 
 
 class ModulateAM_OutputsAM(QObject, fgen_ivi_interface.ModulateAM_OutputsAM_Interface,
-                           metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                           metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1439,7 +1443,7 @@ class ModulateAM_OutputsAM(QObject, fgen_ivi_interface.ModulateAM_OutputsAM_Inte
 
 
 class ModulateAM_AM(QObject, fgen_ivi_interface.ModulateAM_AM_Interface,
-                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1518,7 +1522,7 @@ class ModulateAM_AM(QObject, fgen_ivi_interface.ModulateAM_AM_Interface,
 
 
 class ModulateFM_OutputsFM(QObject, fgen_ivi_interface.ModulateFM_OutputsFM_Interface,
-                           metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                           metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1591,8 +1595,9 @@ class ModulateFM_OutputsFM(QObject, fgen_ivi_interface.ModulateFM_OutputsFM_Inte
         self.source_changed.emit(value)
 
 
-class ModulateFM_FM(QObject, fgen_ivi_interface.ModulateFM_FM_Interface,
-                    metaclass=fgen_ivi_interface.InterfaceMetaclass):
+class ModulateFM_FM(QObject,
+                    fgen_ivi_interface.ModulateFM_FM_Interface,
+                    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1674,7 +1679,7 @@ class ModulateFM_FM(QObject, fgen_ivi_interface.ModulateFM_FM_Interface,
 
 
 class SampleClock(QObject, fgen_ivi_interface.SampleClockInterface,
-                  metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                  metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support external sample clocks
 
@@ -1972,7 +1977,7 @@ class ArbWfmBinary_ArbitraryWaveform_Mixin(
 
 
 class DataMarker(QObject, fgen_ivi_interface.DataMarkerInterface,
-                 metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                 metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support output of particular waveform data
     bits as markers
@@ -2144,7 +2149,7 @@ class ArbDataMaskMixin(fgen_ivi_interface.ArbDataMaskInterface):
 
 
 class SparseMarker(QObject, fgen_ivi_interface.SparseMarkerInterface,
-                   metaclass=fgen_ivi_interface.InterfaceMetaclass):
+                   metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for function generators that support output of markers associated with
     output data samples.
@@ -2326,7 +2331,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # arbitrary.waveform
-        class IviArbitraryWaveformMetaclass(type(QObject), abc.ABCMeta):
+        class IviArbitraryWaveformMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.fgen.ArbWfm in driver_capabilities:
                     bases = bases + (ArbWfm_ArbitraryWaveform_Mixin,)
@@ -2341,7 +2346,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
         arb_wfm = IviArbitraryWaveform(parent=self)
 
         # arbitrary.sequence
-        class IviArbitrarySequenceMetaclass(type(QObject), abc.ABCMeta):
+        class IviArbitrarySequenceMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.fgen.ArbSeq in driver_capabilities:
                     bases = bases + (ArbSeq_ArbitrarySequence_Mixin,)
@@ -2356,7 +2361,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
 
         # arbitrary
         # arbitrary.waveform
-        class IviArbitraryMetaclass(type(QObject), abc.ABCMeta):
+        class IviArbitraryMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.fgen.ArbWfm in driver_capabilities:
                     bases = bases + (ArbWfm_Arbitrary_Mixin,)
@@ -2375,7 +2380,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
         self.arbitrary = IviArbitrary(sequence=arb_seq, waveform=arb_wfm, parent=self)
 
         # trigger
-        class IviTriggerMetaclass(type(QObject), abc.ABCMeta):
+        class IviTriggerMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.fgen.InternalTrigger in driver_capabilities:
                     bases = bases + (InternalTriggerMixin,)
@@ -2451,7 +2456,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 standard_waveform = None
 
             # outputs[].arbitrary
-            class IviOutputsArbitraryMetaclass(type(QObject), abc.ABCMeta):
+            class IviOutputsArbitraryMetaclass(QtInterfaceMetaclass):
                 def __new__(mcs, name, bases, attrs):
                     if ivi.fgen.ArbWfm in driver_capabilities:
                         bases = bases + (ArbWfm_OutputsArbitraryMixin,)
@@ -2477,7 +2482,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 outputs_arb_sequence = None
 
             # outputs[].arbitrary.waveform
-            class IviOutputsArbitraryWaveformMetaclass(type(QObject), abc.ABCMeta):
+            class IviOutputsArbitraryWaveformMetaclass(QtInterfaceMetaclass):
                 def __new__(mcs, name, bases, attrs):
                     if ivi.fgen.ArbWfmBinary in driver_capabilities:
                         bases = bases + (ArbWfmBinary_OutputsArbitraryWaveform_Mixin,)
@@ -2498,7 +2503,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                                                     parent=self)
 
             # outputs[].trigger
-            class IviOutputsTriggerMetaclass(type(QObject), abc.ABCMeta):
+            class IviOutputsTriggerMetaclass(QtInterfaceMetaclass):
                 def __new__(mcs, name, bases, attrs):
                     if ivi.fgen.Trigger in driver_capabilities:
                         bases = bases + (Trigger,)
@@ -2555,7 +2560,7 @@ class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
                 outputs_fm = None
 
             # output
-            class IviOutputMetaclass(fgen_ivi_interface.InterfaceMetaclass):
+            class IviOutputMetaclass(QtInterfaceMetaclass):
                 def __new__(mcs, name, bases, attrs):
                     if ivi.fgen.Burst in driver_capabilities:
                         bases = bases + (BurstOutputsMixin,)
