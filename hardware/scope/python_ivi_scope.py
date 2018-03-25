@@ -22,13 +22,20 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface import scope_ivi_interface
 from ..python_ivi_base import PythonIviBase
 
+import abc
 import inspect
 from qtpy.QtCore import QObject
 from qtpy.QtCore import Signal
 import ivi.scope
 
 
-class Acquisition(QObject, scope_ivi_interface.AcquisitionInterface):
+class QtInterfaceMetaclass(type(QObject), abc.ABCMeta):
+    pass
+
+
+class Acquisition(QObject,
+                  scope_ivi_interface.AcquisitionInterface,
+                  metaclass=QtInterfaceMetaclass):
     """
     The acquisition sub-system configures the acquisition type, the size of the waveform record,
     the length of time that corresponds to the overall waveform record, and the position of the
@@ -260,7 +267,7 @@ class Channel(QObject, scope_ivi_interface.ChannelInterface):
         return self._measurement
 
 
-class Measurement(QObject, scope_ivi_interface.MeasurementInterface):
+class Measurement(QObject, scope_ivi_interface.MeasurementInterface, metaclass=QtInterfaceMetaclass):
     """
     IVI Methods for Measurement
     """
@@ -320,7 +327,9 @@ class Measurement(QObject, scope_ivi_interface.MeasurementInterface):
         return self.parent().driver.measurement.initiate()
 
 
-class ChannelMeasurement(QObject, scope_ivi_interface.ChannelMeasurementInterface):
+class ChannelMeasurement(QObject,
+                         scope_ivi_interface.ChannelMeasurementInterface,
+                         metaclass=QtInterfaceMetaclass):
     def __init__(self, channel_index, **kwargs):
         self._channel_index = channel_index
         super().__init__(**kwargs)
@@ -407,7 +416,7 @@ class ChannelMeasurement(QObject, scope_ivi_interface.ChannelMeasurementInterfac
         return self.parent().driver.channels[self._channel_index].measurement.read_waveform()
 
 
-class Trigger(QObject, scope_ivi_interface.TriggerInterface):
+class Trigger(QObject, scope_ivi_interface.TriggerInterface, metaclass=QtInterfaceMetaclass):
     """
     IVI Methods for Trigger
     """
@@ -560,7 +569,7 @@ class Trigger(QObject, scope_ivi_interface.TriggerInterface):
         self.parent().driver.trigger.configure(trigger_type, holdoff)
 
 
-class EdgeTrigger(QObject, scope_ivi_interface.EdgeTriggerInterface):
+class EdgeTrigger(QObject, scope_ivi_interface.EdgeTriggerInterface, metaclass=QtInterfaceMetaclass):
     """
     IVI methods for Edge triggering
     """
@@ -630,7 +639,7 @@ class InterpolationAcquisitionMixin(scope_ivi_interface.InterpolationInterface):
         self.interpolation_changed.emit(value)
 
 
-class TVTrigger(QObject, scope_ivi_interface.TVTriggerInterface):
+class TVTrigger(QObject, scope_ivi_interface.TVTriggerInterface, metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting TV triggering
     """
@@ -720,7 +729,7 @@ class TVTrigger(QObject, scope_ivi_interface.TVTriggerInterface):
         self.parent().driver.trigger.tv.configure(source, signal_format, event, polarity)
 
 
-class RuntTrigger(QObject, scope_ivi_interface.RuntTriggerInterface):
+class RuntTrigger(QObject, scope_ivi_interface.RuntTriggerInterface, metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting runt triggering
     """
@@ -786,7 +795,7 @@ class RuntTrigger(QObject, scope_ivi_interface.RuntTriggerInterface):
         self.parent().driver.trigger.runt.configure(source, threshold_low, threshold_high, polarity)
 
 
-class WidthTrigger(QObject, scope_ivi_interface.WidthTriggerInterface):
+class WidthTrigger(QObject, scope_ivi_interface.WidthTriggerInterface, metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting width triggering
     """
@@ -874,10 +883,13 @@ class WidthTrigger(QObject, scope_ivi_interface.WidthTriggerInterface):
         Width Trigger. Set the trigger type and trigger coupling before calling
         this function.
         """
-        self.parent().driver.trigger.width.configure(source, level, threshold_low, threshold_high, polarity, condition)
+        self.parent().driver.trigger.width.configure(source, level, threshold_low, threshold_high,
+                                                     polarity, condition)
 
 
-class GlitchTrigger(QObject, scope_ivi_interface.GlitchTriggerInterface):
+class GlitchTrigger(QObject,
+                    scope_ivi_interface.GlitchTriggerInterface,
+                    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting glitch triggering
     """
@@ -953,7 +965,9 @@ class GlitchTrigger(QObject, scope_ivi_interface.GlitchTriggerInterface):
         self.parent().driver.trigger.glitch.configure(source, level, width, polarity, condition)
 
 
-class AcLineTrigger(QObject, scope_ivi_interface.AcLineTriggerInterface):
+class AcLineTrigger(QObject,
+                    scope_ivi_interface.AcLineTriggerInterface,
+                    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting AC line triggering
     """
@@ -1129,7 +1143,8 @@ class AutoSetupMixin(scope_ivi_interface.AutoSetupInterface):
 
 class WaveformMeasurementReferenceLevel(
     QObject,
-    scope_ivi_interface.WaveformMeasurement_ReferenceLevel_Interface):
+    scope_ivi_interface.WaveformMeasurement_ReferenceLevel_Interface,
+    metaclass=QtInterfaceMetaclass):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1457,18 +1472,23 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # dynamic acquisition class generator
-        class IviAcquisition(Acquisition):
+        class IviAcquisitionMetaclass(QtInterfaceMetaclass):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.scope.Interpolation in driver_capabilities:
+                    bases = bases + (InterpolationAcquisitionMixin,)
+                if ivi.scope.AverageAcquisition in driver_capabilities:
+                    bases = bases + (AverageAcquisitionMixin,)
+                if ivi.scope.AutoSetup in driver_capabilities:
+                    bases = bases + (AutoSetupMixin,)
+                if ivi.scope.MinMaxWaveform in driver_capabilities:
+                    bases = bases + (MinMaxWaveformAcquisitionMixin,)
+                if ivi.scope.SampleMode in driver_capabilities:
+                    bases = bases + (SampleModeMixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviAcquisition(Acquisition, metaclass=IviAcquisitionMetaclass):
             pass
-        if ivi.scope.Interpolation in driver_capabilities:
-            IviAcquisition.__bases__ = IviAcquisition.__bases__ + (InterpolationAcquisitionMixin, )
-        if ivi.scope.AverageAcquisition in driver_capabilities:
-            IviAcquisition.__bases__ = IviAcquisition.__bases__ + (AverageAcquisitionMixin, )
-        if ivi.scope.AutoSetup in driver_capabilities:
-            IviAcquisition.__bases__ = IviAcquisition.__bases__ + (AutoSetupMixin,)
-        if ivi.scope.MinMaxWaveform in driver_capabilities:
-            IviAcquisition.__bases__ = IviAcquisition.__bases__ + (MinMaxWaveformAcquisitionMixin, )
-        if ivi.scope.SampleMode in driver_capabilities:
-            IviAcquisition.__bases__ = IviAcquisition.__bases__ + (SampleModeMixin, )
+
         self._acquisition = IviAcquisition(parent=self)
 
         # dynamic measurement class generator
@@ -1477,30 +1497,47 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         self._measurement = IviMeasurement(parent=self)
 
         # dynamic trigger class generator
-        class IviTrigger(Trigger):
+        class IviTriggerMetaclass(QtInterfaceMetaclass):
+            def __new__(mcs, name, bases, attrs):
+                if ivi.scope.ContinuousAcquisition in driver_capabilities:
+                    bases = bases + (ContinuousAcquisitionMixin,)
+                if ivi.scope.TriggerModifier in driver_capabilities:
+                    bases = bases + (TriggerModifierMixin,)
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviTrigger(Trigger, metaclass=IviTriggerMetaclass):
             pass
-        if ivi.scope.ContinuousAcquisition in driver_capabilities:
-            IviTrigger.__bases__ = IviTrigger.__bases__ + (ContinuousAcquisitionMixin, )
-        if ivi.scope.TriggerModifier in driver_capabilities:
-            IviTrigger.__bases__ = IviTrigger.__bases__ + (TriggerModifierMixin, )
+
         self._trigger = IviTrigger(parent=self)
 
         self.channels = []
         for ii in range(len(self.driver.channels)):
-            class IviChannelMeasurement(ChannelMeasurement):
+            class IviChannelMeasurementMetaclass(QtInterfaceMetaclass):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.scope.WaveformMeasurement in driver_capabilities:
+                        bases = bases + (WaveformMeasurementChannelMeasurementMixin,)
+                    if ivi.scope.MinMaxWaveform in driver_capabilities:
+                        bases = bases + (MinMaxWaveformChannelMeasurementMixin,)
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviChannelMeasurement(ChannelMeasurement,
+                                        metaclass=IviChannelMeasurementMetaclass):
                 pass
-            if ivi.scope.WaveformMeasurement in driver_capabilities:
-                IviChannelMeasurement.__bases__ = IviChannelMeasurement.__bases__ + (WaveformMeasurementChannelMeasurementMixin,)
-            if ivi.scope.MinMaxWaveform in driver_capabilities:
-                IviChannelMeasurement.__bases__ = IviChannelMeasurement.__bases__ + \
-                                                  (MinMaxWaveformChannelMeasurementMixin, )
+
             channel_measurement = IviChannelMeasurement(channel_index=ii, parent=self)
+
+            class IviChannelMetaclass(QtInterfaceMetaclass):
+                def __new__(mcs, name, bases, attrs):
+                    if ivi.scope.ProbeAutoSense in driver_capabilities:
+                        bases = bases + (ProbeAutoSenseMixin,)
+                    return super().__new__(mcs, name, bases, attrs)
 
             class IviChannel(Channel):
                 pass
-            if ivi.scope.ProbeAutoSense in driver_capabilities:
-                IviChannel.__bases__ = IviChannel.__bases__ + (ProbeAutoSenseMixin, )
-            self.channels.append(IviChannel(channel_index=ii, channel_measurement=channel_measurement, parent=self))
+
+            self.channels.append(IviChannel(channel_index=ii,
+                                            channel_measurement=channel_measurement,
+                                            parent=self))
 
         if (ivi.scope.WaveformMeasurement in driver_capabilities):
             self._reference_level = WaveformMeasurementReferenceLevel(parent=self)

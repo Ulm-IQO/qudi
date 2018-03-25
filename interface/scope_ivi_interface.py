@@ -46,7 +46,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class AcquisitionInterface(metaclass=InterfaceMetaclass):
+class AcquisitionInterface(metaclass=abc.ABCMeta):
     """ Interface for the Acquisition subsytem.
 
     The acquisition sub-system configures the acquisition type, the size of the
@@ -309,7 +309,7 @@ class ChannelInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class MeasurementInterface(metaclass=InterfaceMetaclass):
+class MeasurementInterface(metaclass=abc.ABCMeta):
     """
     IVI Methods for Measurement
     """
@@ -372,7 +372,7 @@ class MeasurementInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+class ChannelMeasurementInterface(metaclass=abc.ABCMeta):
     """
     IVI Methods for channel[].measurement
     """
@@ -461,7 +461,7 @@ class ChannelMeasurementInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class TriggerInterface(metaclass=InterfaceMetaclass):
+class TriggerInterface(metaclass=abc.ABCMeta):
     """
     The trigger sub-system configures the type of event that triggers the oscilloscope.
     """
@@ -594,7 +594,7 @@ class TriggerInterface(metaclass=InterfaceMetaclass):
         """
 
 
-class EdgeTriggerInterface(metaclass=InterfaceMetaclass):
+class EdgeTriggerInterface(metaclass=abc.ABCMeta):
     """
     IVI methods for Edge triggering
     """
@@ -641,7 +641,7 @@ class EdgeTriggerInterface(metaclass=InterfaceMetaclass):
 
 # ************************ EXTENSIONS **************************************************************
 
-class InterpolationAcquisitionInterface(metaclass=InterfaceMetaclass):
+class InterpolationInterface(metaclass=abc.ABCMeta):
     """
     The IviScopeInterpolation extension group defines extensions for oscilloscopes capable of
     interpolating values in the waveform record that the oscilloscope’s acquisition sub-system was
@@ -669,7 +669,7 @@ class InterpolationAcquisitionInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class TVTriggerInterface(metaclass=InterfaceMetaclass):
+class TVTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting TV triggering
     """
@@ -756,7 +756,7 @@ class TVTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class RuntTriggerInterface(metaclass=InterfaceMetaclass):
+class RuntTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting runt triggering
     """
@@ -820,7 +820,7 @@ class RuntTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class GlitchTriggerInterface(metaclass=InterfaceMetaclass):
+class GlitchTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting glitch triggering
     """
@@ -894,7 +894,7 @@ class GlitchTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class WidthTriggerInterface(metaclass=InterfaceMetaclass):
+class WidthTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting width triggering
     """
@@ -982,7 +982,7 @@ class WidthTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class AcLineTriggerInterface(metaclass=InterfaceMetaclass):
+class AcLineTriggerInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting AC line triggering
     """
@@ -1005,7 +1005,7 @@ class AcLineTriggerInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class WaveformMeasurementReferenceLevelInterface(metaclass=InterfaceMetaclass):
+class WaveformMeasurement_ReferenceLevel_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1064,7 +1064,7 @@ class WaveformMeasurementReferenceLevelInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class WaveformMeasurementChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+class WaveformMeasurement_ChannelMeasurement_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting waveform measurements
 
@@ -1176,7 +1176,7 @@ class WaveformMeasurementChannelMeasurementInterface(metaclass=InterfaceMetaclas
         pass
 
 
-class MinMaxWaveformAcquisitionInterface(metaclass=InterfaceMetaclass):
+class MinMaxWaveform_Acquisition_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
@@ -1204,7 +1204,7 @@ class MinMaxWaveformAcquisitionInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class MinMaxWaveformChannelMeasurementInterface(metaclass=InterfaceMetaclass):
+class MinMaxWaveform_ChannelMeasurement_Interface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting minimum and maximum waveform acquisition
 
@@ -1308,7 +1308,7 @@ class MinMaxWaveformChannelMeasurementInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ProbeAutoSenseInterface(metaclass=InterfaceMetaclass):
+class ProbeAutoSenseInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting probe attenuation sensing
 
@@ -1339,7 +1339,7 @@ class ProbeAutoSenseInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class ContinuousAcquisitionInterface(metaclass=InterfaceMetaclass):
+class ContinuousAcquisitionInterface(metaclass=abc.ABCMeta):
     """
     The IviScopeContinuousAcquisition extension group provides support for oscilloscopes that can
     perform a continuous acquisition.
@@ -1364,7 +1364,7 @@ class ContinuousAcquisitionInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class AverageAcquisitionInterface(metaclass=InterfaceMetaclass):
+class AverageAcquisitionInterface(metaclass=abc.ABCMeta):
     """
     The IviScopeAverageAcquisition extension group provides support for oscilloscopes that can
     perform the average acquisition.
@@ -1387,7 +1387,7 @@ class AverageAcquisitionInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class SampleModeInterface(metaclass=InterfaceMetaclass):
+class SampleModeInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting equivalent and real time acquisition
 
@@ -1411,7 +1411,7 @@ class SampleModeInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class TriggerModifierInterface(metaclass=InterfaceMetaclass):
+class TriggerModifierInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting specific triggering subsystem behavior in the absence of a trigger
 
@@ -1437,7 +1437,7 @@ class TriggerModifierInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class AutoSetupInterface(metaclass=InterfaceMetaclass):
+class AutoSetupInterface(metaclass=abc.ABCMeta):
     """
     The IviScopeAutoSetup extension group provides support for oscilloscopes that can perform an
     auto-setup operation.
