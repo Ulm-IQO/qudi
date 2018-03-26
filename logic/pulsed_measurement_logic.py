@@ -70,7 +70,8 @@ class PulsedMeasurementLogic(GenericLogic):
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
-    save_ft = StatusVar(default=False)
+    save_second_plot = StatusVar(default=False)
+    second_plot_type = StatusVar(default='FFT')
 
     # signals
     sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray,
@@ -83,7 +84,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigMeasurementRunningUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool, str)
+    sigPulseSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
     sigPulseGeneratorSettingsUpdated = QtCore.Signal(float, str, dict, bool)
     sigUploadAssetComplete = QtCore.Signal(str)
     sigUploadedAssetsUpdated = QtCore.Signal(list)
@@ -116,7 +117,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = 100e-6
         self.loaded_asset_name = ''
         self.alternating = False
-        self.second_plot_type = 'FFT'
 
         # Pulse generator parameters
         self.current_channel_config_name = ''
@@ -140,9 +140,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.signal_plot_x = np.array([])
         self.signal_plot_y = np.array([])
         self.signal_plot_y2 = np.array([])
-        self.signal_fft_x = np.array([])
-        self.signal_fft_y = np.array([])
-        self.signal_fft_y2 = np.array([])
+        self.signal_second_plot_x = np.array([])
+        self.signal_second_plot_y = np.array([])
+        self.signal_second_plot_y2 = np.array([])
         self.measuring_error_plot_x = np.array([])
         self.measuring_error_plot_y = np.array([])
         self.measuring_error_plot_y2 = np.array([])
@@ -251,7 +251,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 self.fast_counter_record_length)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                  self.laser_ignore_list, self.alternating)
         self.sigPulseGeneratorSettingsUpdated.emit(self.sample_rate,
                                                    self.current_channel_config_name,
                                                    self.analogue_amplitude, self.interleave_on)
@@ -268,7 +268,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigUploadedAssetsUpdated.emit(self._pulse_generator_device.get_uploaded_asset_names())
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
+                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
         #self.sigFitUpdated.emit('No Fit', self.signal_plot_x_fit, self.signal_plot_y_fit,
         #                        {})
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
@@ -327,12 +327,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return self.fast_counter_binwidth, self.fast_counter_record_length
 
     def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
-                                      sequence_length_s, laser_ignore_list, is_alternating, second_plot_type='FFT'):
+                                      sequence_length_s, laser_ignore_list, is_alternating):
         if len(controlled_vals) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
             self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                       self.number_of_lasers, self.sequence_length_s,
-                                                      self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                      self.laser_ignore_list, self.alternating)
             return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
                    self.laser_ignore_list, self.alternating
 
@@ -357,16 +357,15 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sequence_length_s = sequence_length_s
         self.laser_ignore_list = laser_ignore_list
         self.alternating = is_alternating
-        self.second_plot_type = second_plot_type
         if self.fast_counter_gated:
             self.set_fast_counter_settings(self.fast_counter_binwidth,
                                            self.fast_counter_record_length)
         # emit update signal for master (GUI or other logic module)
         self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
                                                   self.number_of_lasers, self.sequence_length_s,
-                                                  self.laser_ignore_list, self.alternating, self.second_plot_type)
+                                                  self.laser_ignore_list, self.alternating)
         return self.controlled_vals, self.number_of_lasers, self.sequence_length_s, \
-               self.laser_ignore_list, self.alternating, self.second_plot_type
+               self.laser_ignore_list, self.alternating
 
     def get_fastcounter_constraints(self):
         """ Request the constrains from the hardware, in order to pass them
@@ -782,8 +781,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 # set laser to show
                 self.set_laser_to_show(self.show_laser_index, self.show_raw_data)
 
-                # Compute FFT of signal
-                self._compute_fft()
+                # Compute the second plot of signal
+                self._compute_second_plot()
 
             # recalculate time
             self.elapsed_time = time.time() - self.start_time
@@ -797,8 +796,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigElapsedTimeUpdated.emit(self.elapsed_time, self.elapsed_time_str)
             self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y,
                                            self.signal_plot_y2, self.measuring_error_plot_y,
-                                           self.measuring_error_plot_y2, self.signal_fft_x,
-                                           self.signal_fft_y, self.signal_fft_y2)
+                                           self.measuring_error_plot_y2, self.signal_second_plot_x,
+                                           self.signal_second_plot_y, self.signal_second_plot_y2)
             return
 
     def set_laser_to_show(self, laser_index, show_raw_data):
@@ -969,24 +968,24 @@ class PulsedMeasurementLogic(GenericLogic):
         number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
         self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
         self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
-        self.signal_fft_x = self.controlled_vals
-        self.signal_fft_y = np.zeros(len(self.controlled_vals))
-        self.signal_fft_y2 = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_x = self.controlled_vals
+        self.signal_second_plot_y = np.zeros(len(self.controlled_vals))
+        self.signal_second_plot_y2 = np.zeros(len(self.controlled_vals))
 
         self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
                                        self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_fft_x, self.signal_fft_y, self.signal_fft_y2)
+                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
         self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
         return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True, save_ft=None):
+                              with_error=True, save_second_plot=None):
         """ Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_ft: select wether the Fourier Transform is plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff) is saved
 
         @return str: filepath where data were saved
         """
@@ -1075,11 +1074,11 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_plot_x / scaled_float.scale_val
 
         # if nothing is specified, then take the local settings
-        if save_ft is None:
-            save_ft = self.save_ft
+        if save_second_plot is None:
+            save_second_plot = self.save_second_plot
 
         # Create the figure object
-        if save_ft:
+        if save_second_plot:
             fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
@@ -1168,17 +1167,13 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the fourier Transform
-        if save_ft:
+        if save_second_plot:
 
             # scale the x_axis for plotting
-            max_val = np.max(self.signal_fft_x)
+            max_val = np.max(self.signal_second_plot_x)
             scaled_float = units.ScaledFloat(max_val)
             x_axis_prefix = scaled_float.scale
-            x_axis_ft_scaled = self.signal_fft_x / scaled_float.scale_val
-
-            ax2.plot(x_axis_ft_scaled, self.signal_fft_y, '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0],
-                     label='FT of data trace 1')
+            x_axis_ft_scaled = self.signal_second_plot_x / scaled_float.scale_val
 
             # since no ft units are provided, make a small work around:
             if controlled_val_unit == 's':
@@ -1188,8 +1183,21 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
 
-            ax2.set_xlabel('Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')')
-            ax2.set_ylabel('Fourier amplitude (arb.u.)')
+            if self.second_plot_type == 'Delta':
+                x_axis_ft_label = 'controlled variable (' + controlled_val_unit + ')'
+                y_axis_ft_label = 'norm. sig (arb. u.)'
+                ft_label = ''
+            else:
+                x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
+                y_axis_ft_label = 'Fourier amplitude (arb. u.)'
+                ft_label = 'FT of data trace 1'
+
+            ax2.plot(x_axis_ft_scaled, self.signal_second_plot_y, '-o',
+                     linestyle=':', linewidth=0.5, color=colors[0],
+                     label=ft_label)
+
+            ax2.set_xlabel(x_axis_ft_label)
+            ax2.set_ylabel(y_axis_ft_label)
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
@@ -1238,31 +1246,30 @@ class PulsedMeasurementLogic(GenericLogic):
                                    delimiter='\t')
         return filepath
 
-    def _compute_fft(self):
+    def _compute_second_plot(self):
         """ Computing the fourier transform of the data. """
 
-        print(self.second_plot_type)
         if self.second_plot_type == 'Delta':
-            self.signal_fft_x = self.signal_plot_x
-            self.signal_fft_y = self.signal_plot_y - self.signal_plot_y2
-            self.signal_fft_y2 = self.signal_plot_y2 - self.signal_plot_y
+            self.signal_second_plot_x = self.signal_plot_x
+            self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
+            self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
         else:
             # Do sanity checks:
             if len(self.signal_plot_x) < 2:
                 self.log.debug('FFT of measurement could not be calculated. Only '
                                'one data point.')
-                self.signal_fft_x = np.zeros(1)
-                self.signal_fft_y = np.zeros(1)
-                self.signal_fft_y2 = np.zeros(1)
+                self.signal_second_plot_x = np.zeros(1)
+                self.signal_second_plot_y = np.zeros(1)
+                self.signal_second_plot_y2 = np.zeros(1)
                 return
 
             if self.alternating:
-                x_val_dummy, self.signal_fft_y2 = units.compute_ft(
+                x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
                     self.signal_plot_x,
                     self.signal_plot_y2,
                     zeropad_num=0)
 
-            self.signal_fft_x, self.signal_fft_y = units.compute_ft(
+            self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
                 self.signal_plot_x,
                 self.signal_plot_y,
                 zeropad_num=self.zeropad,
