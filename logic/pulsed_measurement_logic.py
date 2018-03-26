@@ -50,22 +50,32 @@ class PulsedMeasurementLogic(GenericLogic):
     pulsegenerator = Connector(interface='PulserInterface')
 
     # status variables
+    # ext. microwave settings
     __microwave_power = StatusVar(default=-30.0)
     __microwave_freq = StatusVar(default=2870e6)
     __use_ext_microwave = StatusVar(default=False)
 
+    # fast counter settings
     __fast_counter_record_length = StatusVar(default=3.0e-6)
     __fast_counter_binwidth = StatusVar(default=1.0e-9)
     __fast_counter_gates = StatusVar(default=0)
 
+    # measurement timer settings
     __timer_interval = StatusVar(default=5)
+
+    # Pulsed measurement settings
+    _invoke_settings_from_sequence = StatusVar(default=False)
+    _number_of_lasers = StatusVar(default=50)
+    _controlled_variable = StatusVar(default=list(range(50)))
+    _alternating = StatusVar(default=False)
+    _laser_ignore_list = StatusVar(default=list())
 
     # Container to store information about the currently running sequence
     _sequence_information = StatusVar(default={'alternating': False,
                                                'number_of_lasers': 50,
                                                'controlled_variable': np.arange(1, 51)})
 
-    # fourier transform status var:
+    # alternative signal computation settings:
     zeropad = StatusVar(default=0)
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
@@ -148,6 +158,9 @@ class PulsedMeasurementLogic(GenericLogic):
             self.set_microwave_settings(frequency=self.microwave_freq, power=self.microwave_power,
                                         use_ext_microwave=True)
 
+        # Convert controlled variable list into numpy.ndarray
+        self._controlled_variable = np.array(self._controlled_variable, dtype=float)
+
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
@@ -158,11 +171,10 @@ class PulsedMeasurementLogic(GenericLogic):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-
         if self.module_state() == 'locked':
             self.stop_pulsed_measurement()
 
-        self._statusVariables['controlled_vals'] = list(self.controlled_vals)
+        self._statusVariables['_controlled_variable'] = list(self._controlled_variable)
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
         return
@@ -294,7 +306,7 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
 
     ############################################################################
-    # External microwave control methods
+    # External microwave control methods and properties
     ############################################################################
     @property
     def ext_microwave_settings(self):
@@ -307,8 +319,12 @@ class PulsedMeasurementLogic(GenericLogic):
     @ext_microwave_settings.setter
     def ext_microwave_settings(self, settings_dict):
         if isinstance(settings_dict, dict):
-            self.set_fast_counter_settings(settings_dict)
+            self.set_microwave_settings(settings_dict)
         return
+
+    @property
+    def ext_microwave_constraints(self):
+        return self.microwave().get_limits()
 
     def microwave_on(self):
         """
@@ -395,8 +411,12 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
 
     ############################################################################
-    # Pulse generator control methods
+    # Pulse generator control methods and properties
     ############################################################################
+    @property
+    def pulse_generator_constraints(self):
+        return self.pulsegenerator().get_constraints()
+
     def pulse_generator_on(self):
         """Switching on the pulse generator. """
         err = self.pulsegenerator().pulser_on()
@@ -435,11 +455,84 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
 
     ############################################################################
-    # Measurement control methods
+    # Measurement control methods and properties
     ############################################################################
+    @property
+    def measurement_settings(self):
+        settings_dict = dict()
+        settings_dict['sequence_information'] = self._sequence_information
+        settings_dict['invoke_settings'] = bool(self._invoke_settings_from_sequence)
+        settings_dict['controlled_variable'] = np.array(self._controlled_variable, dtype=float)
+        settings_dict['number_of_lasers'] = int(self._number_of_lasers)
+        settings_dict['laser_ignore_list'] = list(self._laser_ignore_list)
+        settings_dict['alternating'] = bool(self._alternating)
+        return settings_dict
+
+    @measurement_settings.setter
+    def measurement_settings(self, settings_dict):
+        if isinstance(settings_dict, dict):
+            self.set_measurement_settings(settings_dict)
+        return
+
+    def set_measurement_settings(self,  settings_dict=None, **kwargs):
+        """
+        Apply new measurement settings.
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
+
+        @param settings_dict:
+        @param kwargs:
+        @return:
+        """
+        if self.module_state == 'locked':
+            self.log.error('Unable to apply new measurement settings. Measurement is running.')
+        else:
+            # Determine complete settings dictionary
+            if not isinstance(settings_dict, dict):
+                settings_dict = kwargs
+            else:
+                settings_dict.update(kwargs)
+
+            # Store sequence information if present
+            if 'sequence_information' in settings_dict:
+                self._sequence_information = settings_dict['sequence_information']
+
+            # Get all other parameters if present
+            if 'invoke_settings' in settings_dict:
+                self._invoke_settings_from_sequence = bool(settings_dict['invoke_settings'])
+            if 'controlled_variable' in settings_dict:
+                self._controlled_variable = np.array(settings_dict['controlled_variable'],
+                                                     dtype=float)
+            if 'number_of_lasers' in settings_dict:
+                self._number_of_lasers = int(settings_dict['number_of_lasers'])
+            if 'laser_ignore_list' in settings_dict:
+                self._laser_ignore_list = list(settings_dict['laser_ignore_list'])
+            if 'alternating' in settings_dict:
+                self._alternating = bool(settings_dict['alternating'])
+
+            # Apply settings according to the invoke settings flag
+            if self._invoke_settings_from_sequence:
+                self._apply_invoked_settings()
+
+            self._measurement_settings_sanity_check()
+
+        # emit update signal for master (GUI or other logic module)
+        self.sigMeasurementSettingsUpdated.emit(
+            {'sequence_information': self._sequence_information,
+             'invoke_settings': self._invoke_settings_from_sequence,
+             'controlled_variable': self._controlled_variable,
+             'number_of_lasers': self._number_of_lasers,
+             'laser_ignore_list': self._laser_ignore_list,
+             'alternating': self._alternating})
+        return self._sequence_information, self._invoke_settings_from_sequence, \
+               self._controlled_variable, self._number_of_lasers, self._laser_ignore_list, \
+               self._alternating
+
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
         """Start the analysis loop."""
-        #FIXME: Describe the idea of how the measurement is intended to be run
+        # FIXME: Describe the idea of how the measurement is intended to be run
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
         self.sigMeasurementRunningUpdated.emit(True, False)
@@ -594,6 +687,94 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
+    def do_fit(self, fit_method, x_data=None, y_data=None):
+        """Performs the chosen fit on the measured data.
+
+        @param string fit_method: name of the chosen fit method
+
+        @return float array pulsed_fit_x: Array containing the x-values of the fit
+        @return float array pulsed_fit_y: Array containing the y-values of the fit
+        @return dict fit_result: a dictionary containing the fit result
+        """
+
+        # Set current fit
+        self.fc.set_current_fit(fit_method)
+
+        if x_data is None or y_data is None:
+            x_data = self.signal_data[0]
+            y_data = self.signal_data[1:]
+            update_fit_data = True
+        else:
+            update_fit_data = False
+
+        fit_data = np.zeros(())
+        for y_arr in y_data:
+            pass
+
+        self.signal_plot_x_fit, self.signal_plot_y_fit, result = self.fc.do_fit(x_data, y_data)
+
+        fit_name = self.fc.current_fit
+        fit_result = self.fc.current_fit_result
+        fit_param = self.fc.current_fit_param
+
+        self.sigFitUpdated.emit(fit_name, self.signal_plot_x_fit, self.signal_plot_y_fit,
+                                fit_result)
+
+        return self.signal_plot_x_fit, self.signal_plot_y_fit, fit_result
+
+    def _apply_invoked_settings(self):
+        """
+        """
+        if not isinstance(self._sequence_information, dict):
+            self.log.error('Can\'t invoke measurement settings from sequence information '
+                           'since no _sequence_information container (dict) is given.')
+            return
+
+        if 'number_of_lasers' in self._sequence_information:
+            self._number_of_lasers = int(self._sequence_information['number_of_lasers'])
+        else:
+            self.log.error('Unable to invoke setting for "number_of_lasers".\n'
+                           'Sequence information container does not contain this parameter.')
+        if 'controlled_variable' in self._sequence_information:
+            self._controlled_variable = np.array(self._sequence_information['controlled_variable'],
+                                                 dtype=float)
+        else:
+            self.log.error('Unable to invoke setting for "controlled_variable".\n'
+                           'Sequence information container does not contain this parameter.')
+        if 'laser_ignore_list' in self._sequence_information:
+            self._laser_ignore_list = list(self._sequence_information['laser_ignore_list'])
+        else:
+            self.log.error('Unable to invoke setting for "laser_ignore_list".\n'
+                           'Sequence information container does not contain this parameter.')
+        if 'alternating' in self._sequence_information:
+            self._alternating = bool(self._sequence_information['alternating'])
+        else:
+            self.log.error('Unable to invoke setting for "alternating".\n'
+                           'Sequence information container does not contain this parameter.')
+
+        if self.fastcounter().is_gated() and self.__fast_counter_gates != self._number_of_lasers:
+            self.set_fast_counter_settings(number_of_gates=self._number_of_lasers)
+        return
+
+    def _measurement_settings_sanity_check(self):
+        number_of_analyzed_lasers = self._number_of_lasers - len(self._laser_ignore_list)
+        if len(self._controlled_variable) < 1:
+            self.log.error('Tried to set empty controlled variables array. This can not work.')
+
+        if self._alternating and (number_of_analyzed_lasers / 2) != len(self._controlled_variable):
+            self.log.error('Half of the number of laser pulses to analyze ({0}) does not match the '
+                           'number of controlled_variable ticks ({1:d}).'
+                           ''.format(number_of_analyzed_lasers / 2, len(self._controlled_variable)))
+        elif number_of_analyzed_lasers != len(self._controlled_variable):
+            self.log.error('Number of laser pulses to analyze ({0:d}) does not match the number of '
+                           'controlled_variable ticks ({1:d}).'
+                           ''.format(number_of_analyzed_lasers, len(self._controlled_variable)))
+
+        if self.fastcounter().is_gated() and self._number_of_lasers != self.__fast_counter_gates:
+            self.log.error('Gated fast counter gate number differs from number of laser pulses '
+                           'configured in measurement settings.')
+        return
+
     def _pulsed_analysis_loop(self):
         """ Acquires laser pulses from fast counter,
             calculates fluorescence signal and creates plots.
@@ -604,7 +785,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.__elapsed_time = time.time() - self.start_time
 
                 # Get counter raw data (including recalled raw data from previous measurement)
-                self.raw_data = self.__get_raw_data()
+                self.raw_data = self._get_raw_data()
 
                 # extract laser pulses from raw data
                 return_dict = self.pulseextractionlogic().extract_laser_pulses(
@@ -646,32 +827,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigMeasurementDataUpdated.emit()
             return
 
-    def __initialize_timer(self):
-        """
-        Initializes the QTimer controlling the measurement analysis loop.
-        No QTimer will be created if self.__timer_interval <= 0.
-        """
-        if self.__timer_interval > 0:
-            self.__analysis_timer = QtCore.QTimer()
-            self.__analysis_timer.setSingleShot(False)
-            self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))
-            self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
-                                                  QtCore.Qt.QueuedConnection)
-        else:
-            self.__analysis_timer = None
-        return
-
-    def __remove_timer(self):
-        """
-        Disconnects and removes the QTimer controlling the measurement analysis loop.
-        """
-        if self.__analysis_timer is not None:
-            self.__analysis_timer.stop()
-            self.__analysis_timer.timeout.disconnect()
-            self.__analysis_timer = None
-        return
-
-    def __get_raw_data(self):
+    def _get_raw_data(self):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
@@ -699,46 +855,60 @@ class PulsedMeasurementLogic(GenericLogic):
             fc_data = np.zeros(fc_data.shape, dtype='int64')
         return fc_data
 
+    def _initialize_data_arrays(self):
+        """
+        Initializing the signal, error, laser and raw data arrays.
+        """
+        # Determine signal array dimensions
+        signal_dim = 3 if self._alternating else 2
+
+        self.signal_data = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
+        self.signal_data[0] = self._controlled_variable
+
+        self.signal_alt_data = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
+        self.signal_alt_data[0] = self._controlled_variable
+
+        self.measurement_error = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
+        self.measurement_error[0] = self._controlled_variable
+
+        number_of_bins = int(self.__fast_counter_record_length / self.__fast_counter_binwidth)
+        if self.__fast_counter_gates > 0:
+            laser_length = number_of_bins
+        else:
+            laser_length = number_of_bins // self._number_of_lasers
+        self.laser_data = np.zeros((self._number_of_lasers, laser_length), dtype=float)
+        self.laser_data[0] = np.arange(1, laser_length + 1) * self.__fast_counter_binwidth
+
+        self.sigMeasurementDataUpdated.emit()
+        return
+
+    def __initialize_timer(self):
+        """
+        Initializes the QTimer controlling the measurement analysis loop.
+        No QTimer will be created if self.__timer_interval <= 0.
+        """
+        if self.__timer_interval > 0:
+            self.__analysis_timer = QtCore.QTimer()
+            self.__analysis_timer.setSingleShot(False)
+            self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))
+            self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
+                                                  QtCore.Qt.QueuedConnection)
+        else:
+            self.__analysis_timer = None
+        return
+
+    def __remove_timer(self):
+        """
+        Disconnects and removes the QTimer controlling the measurement analysis loop.
+        """
+        if self.__analysis_timer is not None:
+            self.__analysis_timer.stop()
+            self.__analysis_timer.timeout.disconnect()
+            self.__analysis_timer = None
+        return
+
     # FIXME: Revise everything below
-    def set_pulse_sequence_properties(self, controlled_vals, number_of_lasers,
-                                      laser_ignore_list, is_alternating):
-        if len(controlled_vals) < 1:
-            self.log.error('Tried to set empty controlled variables array. This can not work.')
-            self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
-                                                      self.number_of_lasers,
-                                                      self.laser_ignore_list, self.alternating)
-            return self.controlled_vals, self.number_of_lasers, \
-                   self.laser_ignore_list, self.alternating
 
-        if is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list))/2:
-            self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
-                             ''.format(len(controlled_vals),
-                                       (number_of_lasers - len(laser_ignore_list))/2,
-                                       len(controlled_vals) * 2 + len(laser_ignore_list)))
-            number_of_lasers = len(controlled_vals) * 2 + len(laser_ignore_list)
-        elif not is_alternating and len(controlled_vals) != (number_of_lasers - len(laser_ignore_list)):
-            self.log.warning('Number of controlled variable ticks ({0}) does not match the number '
-                             'of laser pulses to analyze ({1}).\nSetting number of lasers to {2}.'
-                             ''.format(len(controlled_vals),
-                                       number_of_lasers - len(laser_ignore_list),
-                                       len(controlled_vals) + len(laser_ignore_list)))
-            number_of_lasers = len(controlled_vals) + len(laser_ignore_list)
-
-        self.controlled_vals = controlled_vals
-        self.number_of_lasers = number_of_lasers
-        self._pulse_extraction_logic.number_of_lasers = number_of_lasers
-        self.laser_ignore_list = laser_ignore_list
-        self.alternating = is_alternating
-        if self._fast_counter_device.is_gated():
-            self.set_fast_counter_settings(self.fast_counter_binwidth,
-                                           self.fast_counter_record_length)
-        # emit update signal for master (GUI or other logic module)
-        self.sigPulseSequenceSettingsUpdated.emit(self.controlled_vals,
-                                                  self.number_of_lasers,
-                                                  self.laser_ignore_list, self.alternating)
-        return self.controlled_vals, self.number_of_lasers, \
-               self.laser_ignore_list, self.alternating
     ############################################################################
 
     def analysis_settings_changed(self, analysis_settings):
@@ -776,27 +946,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigExtractionSettingsUpdated.emit(extraction_settings)
         return extraction_settings
 
-    def _initialize_data_arrays(self):
-        """
-        Initializing the signal, error, laser and raw data arrays.
-        """
-        self.signal_plot_x = self.controlled_vals
-        self.signal_plot_y = np.zeros(len(self.controlled_vals))
-        self.signal_plot_y2 = np.zeros(len(self.controlled_vals))
-        self.measuring_error_plot_y = np.zeros(len(self.controlled_vals), dtype=float)
-        self.measuring_error_plot_y2 = np.zeros(len(self.controlled_vals), dtype=float)
-        number_of_bins = int(self.fast_counter_record_length / self.fast_counter_binwidth)
-        self.laser_plot_x = np.arange(1, number_of_bins + 1, dtype=int) * self.fast_counter_binwidth
-        self.laser_plot_y = np.zeros(number_of_bins, dtype=int)
-        self.signal_second_plot_x = self.controlled_vals
-        self.signal_second_plot_y = np.zeros(len(self.controlled_vals))
-        self.signal_second_plot_y2 = np.zeros(len(self.controlled_vals))
 
-        self.sigSignalDataUpdated.emit(self.signal_plot_x, self.signal_plot_y, self.signal_plot_y2,
-                                       self.measuring_error_plot_y, self.measuring_error_plot_y2,
-                                       self.signal_second_plot_x, self.signal_second_plot_y, self.signal_second_plot_y2)
-        self.sigLaserDataUpdated.emit(self.laser_plot_x, self.laser_plot_y)
-        return
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
                               with_error=True, save_second_plot=None):
@@ -1099,30 +1249,4 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
 
-    def do_fit(self, fit_method, x_data=None, y_data=None):
-        """Performs the chosen fit on the measured data.
 
-        @param string fit_method: name of the chosen fit method
-
-        @return float array pulsed_fit_x: Array containing the x-values of the fit
-        @return float array pulsed_fit_y: Array containing the y-values of the fit
-        @return dict fit_result: a dictionary containing the fit result
-        """
-
-        # Set current fit
-        self.fc.set_current_fit(fit_method)
-
-        if x_data is None or y_data is None:
-            x_data = self.signal_plot_x
-            y_data = self.signal_plot_y
-
-        self.signal_plot_x_fit, self.signal_plot_y_fit, result = self.fc.do_fit(x_data, y_data)
-
-        fit_name = self.fc.current_fit
-        fit_result = self.fc.current_fit_result
-        fit_param = self.fc.current_fit_param
-
-        self.sigFitUpdated.emit(fit_name, self.signal_plot_x_fit, self.signal_plot_y_fit,
-                                fit_result)
-
-        return self.signal_plot_x_fit, self.signal_plot_y_fit, fit_result
