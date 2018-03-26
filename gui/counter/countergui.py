@@ -77,7 +77,9 @@ class CounterGui(GUIBase):
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
+        self._mw.trace_selection_DockWidget.hide()
         self._mw.setDockNestingEnabled(True)
+
 
         # Plot labels.
         self._pw = self._mw.counter_trace_PlotWidget
@@ -120,6 +122,8 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.setValue(self._counting_logic.get_count_length())
         self._mw.count_freq_SpinBox.setValue(self._counting_logic.get_count_frequency())
         self._mw.oversampling_SpinBox.setValue(self._counting_logic.get_counting_samples())
+        self._display_trace = 1
+        self._trace_selection = [True, True, True, True]
 
         #####################
         # Connecting user interactions
@@ -129,6 +133,41 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
         self._mw.count_freq_SpinBox.valueChanged.connect(self.count_frequency_changed)
         self._mw.oversampling_SpinBox.valueChanged.connect(self.oversampling_changed)
+
+        if len(self.curves) >= 2:
+            self._mw.trace_1_checkbox.setChecked(True)
+        else:
+            self._mw.trace_1_checkbox.setEnabled(False)
+            self._mw.trace_1_radiobutton.setEnabled(False)
+
+        if len(self.curves) >= 4:
+            self._mw.trace_2_checkbox.setChecked(True)
+        else:
+            self._mw.trace_2_checkbox.setEnabled(False)
+            self._mw.trace_2_radiobutton.setEnabled(False)
+
+        if len(self.curves) >= 6:
+            self._mw.trace_3_checkbox.setChecked(True)
+        else:
+            self._mw.trace_3_checkbox.setEnabled(False)
+            self._mw.trace_3_radiobutton.setEnabled(False)
+
+        if len(self.curves) >= 8:
+            self._mw.trace_4_checkbox.setChecked(True)
+        else:
+            self._mw.trace_4_checkbox.setEnabled(False)
+            self._mw.trace_4_radiobutton.setEnabled(False)
+
+        self._mw.trace_1_checkbox.stateChanged.connect(self.trace_selection_changed)
+        self._mw.trace_2_checkbox.stateChanged.connect(self.trace_selection_changed)
+        self._mw.trace_3_checkbox.stateChanged.connect(self.trace_selection_changed)
+        self._mw.trace_4_checkbox.stateChanged.connect(self.trace_selection_changed)
+
+        self._mw.trace_1_radiobutton.setChecked(True)
+        self._mw.trace_1_radiobutton.released.connect(self.trace_display_changed)
+        self._mw.trace_2_radiobutton.released.connect(self.trace_display_changed)
+        self._mw.trace_3_radiobutton.released.connect(self.trace_display_changed)
+        self._mw.trace_4_radiobutton.released.connect(self.trace_display_changed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -177,6 +216,10 @@ class CounterGui(GUIBase):
         self._mw.count_length_SpinBox.valueChanged.disconnect()
         self._mw.count_freq_SpinBox.valueChanged.disconnect()
         self._mw.oversampling_SpinBox.valueChanged.disconnect()
+        self._mw.trace_1_checkbox.stateChanged.disconnect()
+        self._mw.trace_2_checkbox.stateChanged.disconnect()
+        self._mw.trace_3_checkbox.stateChanged.disconnect()
+        self._mw.trace_4_checkbox.stateChanged.disconnect()
         self._mw.restore_default_view_Action.triggered.disconnect()
         self.sigStartCounter.disconnect()
         self.sigStopCounter.disconnect()
@@ -195,19 +238,33 @@ class CounterGui(GUIBase):
         """ The function that grabs the data and sends it to the plot.
         """
 
-        if self._counting_logic.getState() == 'locked':
-            self._mw.count_value_Label.setText(
-                '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[0, -1]))
+        if self._counting_logic.module_state() == 'locked':
+            if 0 < self._counting_logic.countdata_smoothed[(self._display_trace-1), -1] < 10:
+                self._mw.count_value_Label.setText(
+                    '{0:,.6f}'.format(self._counting_logic.countdata_smoothed[(self._display_trace-1), -1]))
+            else:
+                self._mw.count_value_Label.setText(
+                    '{0:,.0f}'.format(self._counting_logic.countdata_smoothed[(self._display_trace-1), -1]))
 
             x_vals = (
                 np.arange(0, self._counting_logic.get_count_length())
                 / self._counting_logic.get_count_frequency())
 
+            ymax = -1
+            ymin = 2000000000
             for i, ch in enumerate(self._counting_logic.get_channels()):
                 self.curves[2 * i].setData(y=self._counting_logic.countdata[i], x=x_vals)
                 self.curves[2 * i + 1].setData(y=self._counting_logic.countdata_smoothed[i],
                                                x=x_vals
                                                )
+                if ymax < self._counting_logic.countdata[i].max() and self._trace_selection[i]:
+                    ymax = self._counting_logic.countdata[i].max()
+                if ymin > self._counting_logic.countdata[i].min() and self._trace_selection[i]:
+                    ymin = self._counting_logic.countdata[i].min()
+
+            if ymin == ymax:
+                ymax += 0.1
+            self._pw.setYRange(0.95*ymin, 1.05*ymax)
 
         if self._counting_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Save')
@@ -218,7 +275,7 @@ class CounterGui(GUIBase):
             self._mw.count_freq_SpinBox.setEnabled(True)
             self._mw.oversampling_SpinBox.setEnabled(True)
 
-        if self._counting_logic.getState() == 'locked':
+        if self._counting_logic.module_state() == 'locked':
             self._mw.start_counter_Action.setText('Stop counter')
             self._mw.start_counter_Action.setChecked(True)
         else:
@@ -229,13 +286,13 @@ class CounterGui(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._counting_logic.getState() == 'locked':
+        if self._counting_logic.module_state() == 'locked':
             self._mw.start_counter_Action.setText('Start counter')
             self.sigStopCounter.emit()
         else:
             self._mw.start_counter_Action.setText('Stop counter')
             self.sigStartCounter.emit()
-        return self._counting_logic.getState()
+        return self._counting_logic.module_state()
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
@@ -254,6 +311,49 @@ class CounterGui(GUIBase):
 
     ########
     # Input parameters changed via GUI
+
+    def trace_selection_changed(self):
+        """ Handling any change to the selection of the traces to display.
+        """
+        if self._mw.trace_1_checkbox.isChecked():
+            self._trace_selection[0] = True
+        else:
+            self._trace_selection[0] = False
+        if self._mw.trace_2_checkbox.isChecked():
+            self._trace_selection[1] = True
+        else:
+            self._trace_selection[1] = False
+        if self._mw.trace_3_checkbox.isChecked():
+            self._trace_selection[2] = True
+        else:
+            self._trace_selection[2] = False
+        if self._mw.trace_4_checkbox.isChecked():
+            self._trace_selection[3] = True
+        else:
+            self._trace_selection[3] = False
+
+        for i, ch in enumerate(self._counting_logic.get_channels()):
+            if self._trace_selection[i]:
+                self._pw.addItem(self.curves[2*i])
+                self._pw.addItem(self.curves[2*i + 1])
+            else:
+                self._pw.removeItem(self.curves[2*i])
+                self._pw.removeItem(self.curves[2*i + 1])
+
+    def trace_display_changed(self):
+        """ Handling of a change in teh selection of which counts should be shown.
+        """
+
+        if self._mw.trace_1_radiobutton.isChecked():
+            self._display_trace = 1
+        elif self._mw.trace_2_radiobutton.isChecked():
+            self._display_trace = 2
+        elif self._mw.trace_3_radiobutton.isChecked():
+            self._display_trace = 3
+        elif self._mw.trace_4_radiobutton.isChecked():
+            self._display_trace = 4
+        else:
+            self._display_trace = 1
 
     def count_length_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
@@ -295,10 +395,12 @@ class CounterGui(GUIBase):
         self._mw.counter_trace_DockWidget.show()
         # self._mw.slow_counter_control_DockWidget.show()
         self._mw.slow_counter_parameters_DockWidget.show()
+        self._mw.trace_selection_DockWidget.hide()
 
         # re-dock any floating dock widgets
         self._mw.counter_trace_DockWidget.setFloating(False)
         self._mw.slow_counter_parameters_DockWidget.setFloating(False)
+        self._mw.trace_selection_DockWidget.setFloating(True)
 
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
@@ -306,6 +408,9 @@ class CounterGui(GUIBase):
                                )
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
                                self._mw.slow_counter_parameters_DockWidget
+                               )
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(QtCore.Qt.LeftDockWidgetArea),
+                               self._mw.trace_selection_DockWidget
                                )
 
         # Set the toolbar to its initial top area

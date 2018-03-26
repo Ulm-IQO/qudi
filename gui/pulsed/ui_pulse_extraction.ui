@@ -48,7 +48,7 @@
         <item row="9" column="0">
          <widget class="QLabel" name="label_2">
           <property name="text">
-           <string>Min. Laser Length (bins)</string>
+           <string>Min. Laser Length (s)</string>
           </property>
          </widget>
         </item>
@@ -130,7 +130,7 @@
            <bool>true</bool>
           </property>
           <property name="text">
-           <string>Tolerance (bins)</string>
+           <string>Tolerance (s)</string>
           </property>
          </widget>
         </item>
@@ -142,12 +142,12 @@
          </widget>
         </item>
         <item row="9" column="5">
-         <widget class="QSpinBox" name="extract_param_tolerance_SpinBox">
+         <widget class="ScienDSpinBox" name="extract_param_tolerance_SpinBox">
           <property name="enabled">
            <bool>true</bool>
           </property>
           <property name="maximum">
-           <number>999999999</number>
+           <double>999999999.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -186,12 +186,12 @@
          <widget class="QComboBox" name="extract_param_extraction_method_comboBox"/>
         </item>
         <item row="9" column="2">
-         <widget class="QSpinBox" name="extract_param_min_laser_length_SpinBox">
+         <widget class="ScienDSpinBox" name="extract_param_min_laser_length_SpinBox">
           <property name="minimum">
-           <number>1</number>
+           <double>0.000000000000000</double>
           </property>
           <property name="maximum">
-           <number>999999999</number>
+           <double>999999999.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -334,7 +334,7 @@
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header location="global">pyqtgraph</header>
+   <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
    <class>ScienDSpinBox</class>
@@ -342,6 +342,23 @@
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>measuring_error_PlotWidget</tabstop>
+  <tabstop>extract_param_analysis_method_comboBox</tabstop>
+  <tabstop>extract_param_ana_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ana_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_extraction_method_comboBox</tabstop>
+  <tabstop>extract_param_conv_std_dev_DSpinBox</tabstop>
+  <tabstop>extract_param_conv_std_dev_slider</tabstop>
+  <tabstop>extract_param_threshold_SpinBox</tabstop>
+  <tabstop>extract_param_min_laser_length_SpinBox</tabstop>
+  <tabstop>extract_param_tolerance_SpinBox</tabstop>
+  <tabstop>laserpulses_display_raw_CheckBox</tabstop>
+  <tabstop>laserpulses_ComboBox</tabstop>
+  <tabstop>laserpulses_PlotWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

@@ -379,7 +379,7 @@ class ConfocalLogic(GenericLogic):
         """
         self._clock_frequency = int(clock_frequency)
         #checks if scanner is still running
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             return -1
         else:
             return 0
@@ -392,7 +392,7 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # TODO: this is dirty, but it works for now
-#        while self.getState() == 'locked':
+#        while self.module_state() == 'locked':
 #            time.sleep(0.01)
         self._scan_counter = 0
         self._zscan = zscan
@@ -423,7 +423,7 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         with self.threadlock:
-            if self.getState() == 'locked':
+            if self.module_state() == 'locked':
                 self.stopRequested = True
         self.signal_stop_scanning.emit()
         return 0
@@ -560,20 +560,20 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.lock()
+        self.module_state.lock()
 
-        self._scanning_device.lock()
+        self._scanning_device.module_state.lock()
         if self.initialize_image() < 0:
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             return -1
 
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
 
         if clock_status < 0:
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
@@ -581,8 +581,8 @@ class ConfocalLogic(GenericLogic):
 
         if scanner_status < 0:
             self._scanning_device.close_scanner_clock()
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
@@ -594,15 +594,15 @@ class ConfocalLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.lock()
-        self._scanning_device.lock()
+        self.module_state.lock()
+        self._scanning_device.module_state.lock()
 
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=self._clock_frequency)
 
         if clock_status < 0:
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
@@ -610,8 +610,8 @@ class ConfocalLogic(GenericLogic):
 
         if scanner_status < 0:
             self._scanning_device.close_scanner_clock()
-            self._scanning_device.unlock()
-            self.unlock()
+            self._scanning_device.module_state.unlock()
+            self.module_state.unlock()
             self.set_position('scanner')
             return -1
 
@@ -632,7 +632,7 @@ class ConfocalLogic(GenericLogic):
         except Exception as e:
             self.log.exception('Could not close the scanner clock.')
         try:
-            self._scanning_device.unlock()
+            self._scanning_device.module_state.unlock()
         except Exception as e:
             self.log.exception('Could not unlock scanning device.')
 
@@ -661,7 +661,7 @@ class ConfocalLogic(GenericLogic):
             self._current_a = a
 
         # Checks if the scanner is still running
-        if self.getState() == 'locked' or self._scanning_device.getState() == 'locked':
+        if self.module_state() == 'locked' or self._scanning_device.module_state() == 'locked':
             return -1
         else:
             self._change_position(tag)
@@ -712,7 +712,7 @@ class ConfocalLogic(GenericLogic):
             with self.threadlock:
                 self.kill_scanner()
                 self.stopRequested = False
-                self.unlock()
+                self.module_state.unlock()
                 self.signal_xy_image_updated.emit()
                 self.signal_depth_image_updated.emit()
                 self.set_position('scanner')

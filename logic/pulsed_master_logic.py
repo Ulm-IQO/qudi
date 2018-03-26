@@ -68,10 +68,10 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
     sigExtMicrowaveStartStop = QtCore.Signal(bool)
     sigTimerIntervalChanged = QtCore.Signal(float)
-    sigAnalysisSettingsChanged = QtCore.Signal(str, float, float, float, float)
+    sigAnalysisSettingsChanged = QtCore.Signal(dict)
     sigManuallyPullData = QtCore.Signal()
     sigRequestMeasurementInitValues = QtCore.Signal()
-    sigExtractionSettingsChanged = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsChanged = QtCore.Signal(dict)
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -118,9 +118,9 @@ class PulsedMasterLogic(GenericLogic):
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(str, float, float, float, float)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(str, float, int, int, int)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
     sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
@@ -522,34 +522,22 @@ class PulsedMasterLogic(GenericLogic):
                                            activation_config, analogue_amplitude, interleave_on)
         return
 
-    def analysis_settings_changed(self, method, signal_start_s, signal_end_s, norm_start_s,
-                                  norm_end_s):
+    def analysis_settings_changed(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict analysis_settings
         @return:
         """
-        self.sigAnalysisSettingsChanged.emit(method, signal_start_s, signal_end_s,
-                                             norm_start_s, norm_end_s)
+        self.sigAnalysisSettingsChanged.emit(analysis_settings)
         return
 
-    def analysis_settings_updated(self, method, signal_start_s, signal_end_s, norm_start_s,
-                                  norm_end_s):
+    def analysis_settings_updated(self, analysis_settings):
         """
 
-        @param method:
-        @param signal_start_bin:
-        @param signal_end_bin:
-        @param norm_start_bin:
-        @param norm_end_bin:
+        @param dict: analysis_settings:
         @return:
         """
-        self.sigAnalysisSettingsUpdated.emit(method, signal_start_s, signal_end_s,
-                                             norm_start_s, norm_end_s)
+        self.sigAnalysisSettingsUpdated.emit(analysis_settings)
         return
 
     def analysis_methods_updated(self, methods_dict):
@@ -621,6 +609,10 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
+        if not isinstance(stash_raw_data_tag, str):
+            self.log.warn('PulsedMaster: stop_measurement was called with stash_raw_data_tag not being a string. '
+                          'Setting it to an empty string to avoid crashes.')
+            stash_raw_data_tag = ''
         self.sigStopMeasurement.emit(stash_raw_data_tag)
         return
 
@@ -683,16 +675,21 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
-        """
+    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_second_plot):
+        """ Prepare data to be saved and create a proper plot of the data.
+        This is just handed over to the measurement logic.
 
-        @param controlled_val_unit:
-        @param save_tag:
-        @param with_error:
-        @return:
+        @param str controlled_val_unit: unit of the x axis of the plot
+        @param str tag: a filetag which will be included in the filename
+        @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff etc.) is saved
+
+        @return str: filepath where data were saved
         """
-        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
-        return
+        return self._measurement_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
+                                                      tag=tag,
+                                                      with_error=with_error,
+                                                      save_second_plot=save_second_plot)
 
     def clear_pulse_generator(self):
         """
@@ -889,34 +886,22 @@ class PulsedMasterLogic(GenericLogic):
                                        error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
         return
 
-    def extraction_settings_changed(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_changed(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
-        self.sigExtractionSettingsChanged.emit(method, conv_std_dev, count_threshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsChanged.emit(extraction_settings)
         return
 
-    def extraction_settings_updated(self, method, conv_std_dev, count_threshold,
-                                    threshold_tolerance_bins, min_laser_length):
+    def extraction_settings_updated(self, extraction_settings):
         """
 
-        @param method:
-        @param conv_std_dev:
-        @param count_threshold:
-        @param threshold_tolerance_bins:
-        @param min_laser_length:
+        @param dict extraction_settings:
         @return:
         """
-        self.sigExtractionSettingsUpdated.emit(method, conv_std_dev, count_threshold,
-                                               threshold_tolerance_bins, min_laser_length)
+        self.sigExtractionSettingsUpdated.emit(extraction_settings)
         return
 
     def extraction_methods_updated(self, methods_dict):

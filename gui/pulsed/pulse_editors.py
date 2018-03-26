@@ -54,11 +54,12 @@ class BlockEditor:
         self.be_widget = block_editor_widget
         self.parameter_dict = OrderedDict()
         self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                                         'view_stepsize': 1e-9, 'dec': 8, 'type': float}
-        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -999999999.99, 'max': np.inf,
-                                            'view_stepsize': 1e-9, 'dec': 8, 'type': float}
-        self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1, 'view_stepsize': 1,
-                                               'dec': 0, 'type': bool}
+                                         'view_stepsize': 1e-9, 'dec': 15, 'type': float}
+        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -np.inf,
+                                            'max': np.inf, 'view_stepsize': 1e-9, 'dec': 15,
+                                            'type': float}
+        self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1,
+                                               'view_stepsize': 1, 'dec': 0, 'type': bool}
         self.activation_config = None
         self.function_config = SamplingFunctions().func_config
         self._cfg_param_pbe = None
