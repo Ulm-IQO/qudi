@@ -352,85 +352,88 @@ class AWG7122C(Base, PulserInterface):
                                 First dimension is marker index; second dimension is sample number
         @return:
         """
-        # check input
-        if not ensemble_name:
-            self.log.error('Please specify an ensemble name for direct waveform creation.')
-            return -1
+        # # check input
+        # if not ensemble_name:
+        #     self.log.error('Please specify an ensemble name for direct waveform creation.')
+        #     return -1
+        #
+        # if type(analog_samples).__name__ != 'ndarray':
+        #     self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
+        #                      'Converting to numpy.ndarray of type float32.')
+        #     analog_samples = np.array(analog_samples, dtype='float32')
+        #
+        # if type(digital_samples).__name__ != 'ndarray':
+        #     self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
+        #                      'Converting to numpy.ndarray of type bool.')
+        #     digital_samples = np.array(digital_samples, dtype=bool)
+        #
+        # min_samples = int(self.ask('WLIS:WAV:LMIN?'))
+        # if analog_samples.shape[1] < min_samples or digital_samples.shape[1] < min_samples:
+        #     self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
+        #                    'Direct waveform creation failed.'.format(min_samples))
+        #     return -1
+        #
+        # if analog_samples.shape[1] != digital_samples.shape[1]:
+        #     self.log.error('Number of analog and digital samples must be the same.\n'
+        #                    'Direct waveform creation failed.')
+        #     return -1
+        #
+        # # determine active channels
+        # # activation_dict = self.get_active_channels()
+        # # active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
+        # # Todo: Remove this hard coded remark by proper solution of get_constraints
+        # active_chnl = self.get_constraints().activation_config['A1_M1_M2']
+        # active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl]
+        # active_analog.sort()
+        # active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl]
+        # active_digital.sort()
+        #
+        # print('active analog and digital',active_analog,active_digital)
+        # # Sanity check of channel numbers
+        # if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
+        #     self.log.error('Mismatch of channel activation and sample array dimensions for direct '
+        #                    'write.\nChannel activation is: {0} analog, {1} digital.\n'
+        #                    'Sample arrays have: {2} analog, {3} digital.'
+        #                    ''.format(len(active_analog), len(active_digital),
+        #                              analog_samples.shape[0], digital_samples.shape[0]))
+        #     return -1
+        #
+        # for a_ch in active_analog:
+        #     a_ch_num = int(a_ch.split('ch')[-1])
+        #     mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
+        #     mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
+        #     wfm_name = ensemble_name + '_ch' + str(a_ch_num)
+        #
+        #     # Encode marker information in an array of bytes (uint8)
+        #     if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
+        #         mrk1_index = active_digital.index(mrk_ch_1)
+        #         mrk2_index = active_digital.index(mrk_ch_2)
+        #         mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
+        #                            np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
+        #     if mrk_ch_1 in active_digital and mrk_ch_2 not in active_digital:
+        #         mrk1_index = active_digital.index(mrk_ch_1)
+        #         mrk_bytes = np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6)
+        #     else:
+        #         mrk_bytes = None
+        #
+        #     # Check if waveform already exists and delete if necessary.
+        #     if wfm_name in self._get_waveform_names_memory():
+        #         self.tell('WLIS:WAV:DEL "{0}"'.format(wfm_name))
+        #
+        #     # Create waveform in AWG workspace and fill in sample data
+        #     self.tell('WLIS:WAV:NEW "{0}", {1}'.format(wfm_name, digital_samples.shape[1]))
+        #     self.tell('WLIS:WAV:DATA "{0}",'.format(wfm_name),
+        #                           analog_samples[a_ch_num - 1])
+        #     if mrk_bytes is not None:
+        #         self.tell('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
+        #
+        # # Wait for everything to complete
+        # while int(self.ask('*OPC?')) != 1:
+        #     time.sleep(0.2)
+        # return 0
 
-        if type(analog_samples).__name__ != 'ndarray':
-            self.log.warning('Analog samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of type float32.')
-            analog_samples = np.array(analog_samples, dtype='float32')
-
-        if type(digital_samples).__name__ != 'ndarray':
-            self.log.warning('Digital samples for direct waveform creation have wrong data type.\n'
-                             'Converting to numpy.ndarray of type bool.')
-            digital_samples = np.array(digital_samples, dtype=bool)
-
-        min_samples = int(self.ask('WLIS:WAV:LMIN?'))
-        if analog_samples.shape[1] < min_samples or digital_samples.shape[1] < min_samples:
-            self.log.error('Minimum waveform length for AWG70000A series is {0} samples.\n'
-                           'Direct waveform creation failed.'.format(min_samples))
-            return -1
-
-        if analog_samples.shape[1] != digital_samples.shape[1]:
-            self.log.error('Number of analog and digital samples must be the same.\n'
-                           'Direct waveform creation failed.')
-            return -1
-
-        # determine active channels
-        # activation_dict = self.get_active_channels()
-        # active_chnl = [chnl for chnl in activation_dict if activation_dict[chnl]]
-        # Todo: Remove this hard coded remark by proper solution of get_constraints
-        active_chnl = self.get_constraints().activation_config['A1_M1_M2']
-        active_analog = [chnl for chnl in active_chnl if 'a_ch' in chnl]
-        active_analog.sort()
-        active_digital = [chnl for chnl in active_chnl if 'd_ch' in chnl]
-        active_digital.sort()
-
-        print('active analog and digital',active_analog,active_digital)
-        # Sanity check of channel numbers
-        if len(active_analog) != analog_samples.shape[0] or len(active_digital) != digital_samples.shape[0]:
-            self.log.error('Mismatch of channel activation and sample array dimensions for direct '
-                           'write.\nChannel activation is: {0} analog, {1} digital.\n'
-                           'Sample arrays have: {2} analog, {3} digital.'
-                           ''.format(len(active_analog), len(active_digital),
-                                     analog_samples.shape[0], digital_samples.shape[0]))
-            return -1
-
-        for a_ch in active_analog:
-            a_ch_num = int(a_ch.split('ch')[-1])
-            mrk_ch_1 = 'd_ch{0}'.format(a_ch_num * 2 - 2)
-            mrk_ch_2 = 'd_ch{0}'.format(a_ch_num * 2 - 1)
-            wfm_name = ensemble_name + '_ch' + str(a_ch_num)
-
-            # Encode marker information in an array of bytes (uint8)
-            if mrk_ch_1 in active_digital and mrk_ch_2 in active_digital:
-                mrk1_index = active_digital.index(mrk_ch_1)
-                mrk2_index = active_digital.index(mrk_ch_2)
-                mrk_bytes = np.add(np.left_shift(digital_samples[mrk2_index].astype('uint8'), 7),
-                                   np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6))
-            if mrk_ch_1 in active_digital and mrk_ch_2 not in active_digital:
-                mrk1_index = active_digital.index(mrk_ch_1)
-                mrk_bytes = np.left_shift(digital_samples[mrk1_index].astype('uint8'), 6)
-            else:
-                mrk_bytes = None
-
-            # Check if waveform already exists and delete if necessary.
-            if wfm_name in self._get_waveform_names_memory():
-                self.tell('WLIS:WAV:DEL "{0}"'.format(wfm_name))
-
-            # Create waveform in AWG workspace and fill in sample data
-            self.tell('WLIS:WAV:NEW "{0}", {1}'.format(wfm_name, digital_samples.shape[1]))
-            self.tell('WLIS:WAV:DATA "{0}",'.format(wfm_name),
-                                  analog_samples[a_ch_num - 1])
-            if mrk_bytes is not None:
-                self.tell('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
-
-        # Wait for everything to complete
-        while int(self.ask('*OPC?')) != 1:
-            time.sleep(0.2)
-        return 0
+        self.log.error('Direct write of ensembles is not implemented in AWG7122 hardware file')
+        return -1
 
     # TODO: direct write has to be implemented
     def direct_write_sequence(self, sequence_name, sequence_params):
@@ -440,56 +443,58 @@ class AWG7122C(Base, PulserInterface):
 
         @return:
         """
-        trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
-        active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
-        num_tracks = len(active_analog)
-        num_steps = len(sequence_params)
-
-        # Check if sequence already exists and delete if necessary.
-        if sequence_name in self._get_sequence_names_memory():
-            self.tell('SLIS:SEQ:DEL "{0}"'.format(sequence_name))
-
-        # Create new sequence and set jump timing to immediate
-        self.tell('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(sequence_name, num_steps, num_tracks))
-        self.tell('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(sequence_name))
-
-        # Fill in sequence information
-        for step in range(num_steps):
-            self.tell('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
-                                                                     trig_dict[sequence_params[step]['trigger_wait']]))
-            if sequence_params[step]['event_jump_to'] <= 0:
-                jumpto = 'NEXT'
-            else:
-                jumpto = str(sequence_params[step]['event_jump_to'])
-            self.tell('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
-                                                                     sequence_name, jumpto))
-            if sequence_params[step]['repetitions'] <= 0:
-                repeat = 'INF'
-            else:
-                repeat = str(sequence_params[step]['repetitions'])
-            self.tell('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
-                                                                    sequence_name, repeat))
-            if sequence_params[step]['go_to'] <= 0:
-                goto = 'NEXT'
-            else:
-                goto = str(sequence_params[step]['go_to'])
-            self.tell('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
-            waveform_name = sequence_params[step]['name'][0].rsplit('_ch', 1)[0]
-            if num_tracks == 1:
-                self.tell('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
-                                                                                sequence_name,
-                                                                                waveform_name + '_ch1'))
-            elif num_tracks == 2:
-                self.tell('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
-                                                                                sequence_name,
-                                                                                waveform_name + '_ch1'))
-                self.tell('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
-                                                                                sequence_name,
-                                                                                waveform_name + '_ch2'))
-        # Wait for everything to complete
-        while int(self.ask('*OPC?')) != 1:
-            time.sleep(0.2)
-        return 0
+        # trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
+        # active_analog = [chnl for chnl in self.get_active_channels() if 'a_ch' in chnl]
+        # num_tracks = len(active_analog)
+        # num_steps = len(sequence_params)
+        #
+        # # Check if sequence already exists and delete if necessary.
+        # if sequence_name in self._get_sequence_names_memory():
+        #     self.tell('SLIS:SEQ:DEL "{0}"'.format(sequence_name))
+        #
+        # # Create new sequence and set jump timing to immediate
+        # self.tell('SLIS:SEQ:NEW "{0}", {1}, {2}'.format(sequence_name, num_steps, num_tracks))
+        # self.tell('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(sequence_name))
+        #
+        # # Fill in sequence information
+        # for step in range(num_steps):
+        #     self.tell('SLIS:SEQ:STEP{0}:EJIN "{1}", {2}'.format(step + 1, sequence_name,
+        #                                                              trig_dict[sequence_params[step]['trigger_wait']]))
+        #     if sequence_params[step]['event_jump_to'] <= 0:
+        #         jumpto = 'NEXT'
+        #     else:
+        #         jumpto = str(sequence_params[step]['event_jump_to'])
+        #     self.tell('SLIS:SEQ:STEP{0}:EJUM "{1}", {2}'.format(step + 1,
+        #                                                              sequence_name, jumpto))
+        #     if sequence_params[step]['repetitions'] <= 0:
+        #         repeat = 'INF'
+        #     else:
+        #         repeat = str(sequence_params[step]['repetitions'])
+        #     self.tell('SLIS:SEQ:STEP{0}:RCO "{1}", {2}'.format(step + 1,
+        #                                                             sequence_name, repeat))
+        #     if sequence_params[step]['go_to'] <= 0:
+        #         goto = 'NEXT'
+        #     else:
+        #         goto = str(sequence_params[step]['go_to'])
+        #     self.tell('SLIS:SEQ:STEP{0}:GOTO "{1}", {2}'.format(step + 1, sequence_name, goto))
+        #     waveform_name = sequence_params[step]['name'][0].rsplit('_ch', 1)[0]
+        #     if num_tracks == 1:
+        #         self.tell('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+        #                                                                         sequence_name,
+        #                                                                         waveform_name + '_ch1'))
+        #     elif num_tracks == 2:
+        #         self.tell('SLIS:SEQ:STEP{0}:TASS1:WAV "{1}", "{2}"'.format(step + 1,
+        #                                                                         sequence_name,
+        #                                                                         waveform_name + '_ch1'))
+        #         self.tell('SLIS:SEQ:STEP{0}:TASS2:WAV "{1}", "{2}"'.format(step + 1,
+        #                                                                         sequence_name,
+        #                                                                         waveform_name + '_ch2'))
+        # # Wait for everything to complete
+        # while int(self.ask('*OPC?')) != 1:
+        #     time.sleep(0.2)
+        #return 0
+        self.log.error('Direct write of sequences is not implemented in AWG7122 hardware file')
+        return -1
 
     def load_asset(self, asset_name, load_dict=None):
         """ Loads a sequence or waveform to the specified channel of the pulsing
@@ -569,53 +574,6 @@ class AWG7122C(Base, PulserInterface):
         # Restore channel activation state
         self.set_active_channels(chnl_activation)
         return 0
-
-
-
-        # file_list = self._get_filenames_on_device()
-        # filename = []
-        #
-        # for file in file_list:
-        #     if file == asset_name+'_ch1.wfm' or file == asset_name+'_ch2.wfm':
-        #         filename.append(file)
-        #
-        #
-        # # Check if something could be found
-        # if len(filename) == 0:
-        #     self.log.error('No files associated with asset {0} were found on AWG7122c.'
-        #                 'Load to channels failed!'.format(asset_name)
-        #                 )        #         if asset.split("_")[-1][:3] == 'ch1':
-        #             self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
-        #         if asset.split("_")[-1][:3] == 'ch2':
-        #             self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
-        #         self.current_loaded_asset = asset_name
-        # else:
-        #     for channel in load_dict:
-        #     return -1
-        #
-        # self.log.info('The following files associated with the asset {0} were found on AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename))
-        #
-        # # load files in AWG Waveform list
-        # for asset in filename:
-        #     if asset.endswith('.wfm'):
-        #         self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
-        #     else:
-        #         self.log.error('Could not load asset {0} to AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename))
-        #
-        # file_path = self.ftp_path + self.get_asset_dir_on_device()
-        # # simply use the channel association of the filenames if no load_dict is given
-        # if load_dict == {}:
-        #     for asset in filename:
-        #         # load waveforms into channels as given in filename
-
-        #         # load waveforms into channels
-        #         name = load_dict[channel]
-        #         self.tell('SOUR'+str(channel)+':FUNC:USER "{0}/{1}"\n'.format(file_path, name))
-        #     self.current_loaded_asset = name
-        #
-        # return 0
 
     def get_loaded_asset(self):
         """ Retrieve the currently loaded asset name of the device.
