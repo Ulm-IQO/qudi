@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* All modules use new connector style where feasible.
 * Bug fix for waveform generation larger than ~2 GSamples
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
 * Default waveform format can now be set via optional config option for `SequenceGeneratorLogic`
