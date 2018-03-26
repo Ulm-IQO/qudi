@@ -40,7 +40,7 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._scanning_device = self.get_connector('confocalscanner1')
+        self._scanning_device = self.confocalscanner1()
 
         self.tilt_variable_ax = 1
         self.tilt_variable_ay = 1

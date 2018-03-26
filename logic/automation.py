@@ -274,7 +274,7 @@ class AutomationLogic(GenericLogic):
     def on_activate(self):
         """ Prepare logic module for work.
         """
-        self._taskrunner = self.get_connector('taskrunner')
+        self._taskrunner = self.taskrunner()
         #stuff = "a\txyz\n    b\tx\n    c\ty\n        d\tw\ne\tm\n"
         #tr = OrderedDict([
         #    ('a', OrderedDict([
