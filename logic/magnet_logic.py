@@ -194,21 +194,21 @@ class MagnetLogic(GenericLogic):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._magnet_device = self.get_connector('magnetstage')
-        self._save_logic = self.get_connector('savelogic')
+        self._magnet_device = self.magnetstage()
+        self._save_logic = self.savelogic()
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.get_connector('optimizerlogic')
-        self._confocal_logic = self.get_connector('scannerlogic')
-        self._counter_logic = self.get_connector('counterlogic')
-        self._odmr_logic = self.get_connector('odmrlogic')
+        self._optimizer_logic = self.optimizerlogic()
+        self._confocal_logic = self.scannerlogic()
+        self._counter_logic = self.counterlogic()
+        self._odmr_logic = self.odmrlogic()
 
-        self._gc_logic = self.get_connector('gatedcounterlogic')
-        self._ta_logic = self.get_connector('traceanalysis')
-        #self._odmr_logic = self.get_connector('odmrlogic')
+        self._gc_logic = self.gatedcounterlogic()
+        self._ta_logic = self.traceanalysis()
+        #self._odmr_logic = self.odmrlogic()
 
-        self._seq_gen_logic = self.get_connector('sequencegeneratorlogic')
+        self._seq_gen_logic = self.sequencegeneratorlogic()
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that

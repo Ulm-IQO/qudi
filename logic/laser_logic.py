@@ -41,7 +41,7 @@ class LaserLogic(GenericLogic):
     def on_activate(self):
         """ Prepare logic module for work.
         """
-        self._laser = self.get_connector('laser')
+        self._laser = self.laser()
         self.stopRequest = False
         self.bufferLength = 100
         self.data = {}
