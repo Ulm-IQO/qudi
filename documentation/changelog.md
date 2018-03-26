@@ -12,6 +12,8 @@ Changes/New features:
 * Bug fix for pulsed measurements with large photon count numbers (`numpy.int32` vs. `numpy.int64`)
 * Bug fixes and improvements for the scientific SpinBox introduced in v0.9
 * Tab order in pulsed measurement GUI is now more useful
+* Added delta plot of alternating sequence in the pulsed analysis window
+* Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
 * Various stability improvements and minor bug fixes
 
 Config changes:
