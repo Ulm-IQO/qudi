@@ -133,8 +133,8 @@ class PulsedMasterLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.pulsedmeasurementlogic()
+        self._generator_logic = self.sequencegeneratorlogic()
 
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,

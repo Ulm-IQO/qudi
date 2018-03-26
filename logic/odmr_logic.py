@@ -84,11 +84,11 @@ class ODMRLogic(GenericLogic):
         Initialisation performed during activation of the module.
         """
         # Get connectors
-        self._mw_device = self.get_connector('microwave1')
-        self._fit_logic = self.get_connector('fitlogic')
-        self._odmr_counter = self.get_connector('odmrcounter')
-        self._save_logic = self.get_connector('savelogic')
-        self._taskrunner = self.get_connector('taskrunner')
+        self._mw_device = self.microwave1()
+        self._fit_logic = self.fitlogic()
+        self._odmr_counter = self.odmrcounter()
+        self._save_logic = self.savelogic()
+        self._taskrunner = self.taskrunner()
 
         # Get hardware constraints
         limits = self.get_hw_constraints()

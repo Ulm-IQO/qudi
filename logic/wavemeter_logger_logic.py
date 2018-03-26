@@ -145,13 +145,13 @@ class WavemeterLoggerLogic(GenericLogic):
 
         self.stopRequested = False
 
-        self._wavemeter_device = self.get_connector('wavemeter1')
+        self._wavemeter_device = self.wavemeter1()
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.get_connector('savelogic')
-        self._counter_logic = self.get_connector('counterlogic')
+        self._save_logic = self.savelogic()
+        self._counter_logic = self.counterlogic()
 
-        self._fit_logic = self.get_connector('fitlogic')
+        self._fit_logic = self.fitlogic()
         self.fc = self._fit_logic.make_fit_container('Wavemeter counts', '1d')
         self.fc.set_units(['Hz', 'c/s'])
 
