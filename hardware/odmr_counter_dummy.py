@@ -47,7 +47,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._fit_logic = self.get_connector('fitlogic')
+        self._fit_logic = self.fitlogic()
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.

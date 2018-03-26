@@ -68,7 +68,7 @@ class SimpleDataGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._simple_logic = self.get_connector('simplelogic')
+        self._simple_logic = self.simplelogic()
 
         #####################
         # Configuring the dock widgets
