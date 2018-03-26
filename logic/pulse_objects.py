@@ -176,10 +176,7 @@ class PulseBlockEnsemble:
         self.name = name                    # Pulse_Block_Ensemble name
         self.block_list = block_list
         self.rotating_frame = rotating_frame
-        #length in s is estimated after generation
         self.length_s = 0
-        # the length in bins is set after sampling and used for new calculation of length_s
-        self.length_bins = 0
         self.analog_channels = 0
         self.digital_channels = 0
         self.controlled_vals_array = np.array([])
@@ -200,7 +197,6 @@ class PulseBlockEnsemble:
 
     def _refresh_parameters(self):
         self.length_s = 0
-        self.length_bins = None
         self.analog_channels = 0
         self.digital_channels = 0
         # calculate the tick values for the whole block_ensemble.
