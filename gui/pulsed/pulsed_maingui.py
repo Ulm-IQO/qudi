@@ -185,8 +185,8 @@ class PulsedMeasurementGui(GUIBase):
         Establish general connectivity and activate the different tabs of the
         GUI.
         """
-        self._pulsed_master_logic = self.get_connector('pulsedmasterlogic')
-        self._save_logic = self.get_connector('savelogic')
+        self._pulsed_master_logic = self.pulsedmasterlogic()
+        self._save_logic = self.savelogic()
 
         self._mw = PulsedMeasurementMainWindow()
         self._pa = PulseAnalysisTab()
@@ -271,7 +271,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pm.pm_laser_length_Widget.setRange(0.0, np.inf)
         self._pm.pm_rabi_period_Widget.setRange(0.0, np.inf)
         self._pm.pm_mw_amp_Widget.setValue(0.125)
-        self._pm.pm_mw_freq_Widget.setValue(2.87e6)
+        self._pm.pm_mw_freq_Widget.setValue(2.87e9)
         self._pm.pm_channel_amp_Widget.setValue(0.0)
         self._pm.pm_delay_length_Widget.setValue(500.0e-9)
         self._pm.pm_wait_time_Widget.setValue(1.5e-6)
@@ -1391,19 +1391,19 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configure the lasertrace plot display:
         self.sig_start_line = pg.InfiniteLine(pos=0,
-                                              pen=QtGui.QPen(palette.c3, 5e-9),
+                                              pen={'color': palette.c3, 'width': 1},
                                               movable=True)
         #self.sig_start_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.sig_end_line = pg.InfiniteLine(pos=0,
-                                            pen=QtGui.QPen(palette.c3, 5e-9),
+                                            pen={'color': palette.c3, 'width': 1},
                                             movable=True)
         #self.sig_end_line.setHoverPen(QtGui.QPen(palette.c3), width=10)
         self.ref_start_line = pg.InfiniteLine(pos=0,
-                                              pen=QtGui.QPen(palettedark.c4, 5e-9),
+                                              pen={'color': palette.c4, 'width': 1},
                                               movable=True)
         #self.ref_start_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         self.ref_end_line = pg.InfiniteLine(pos=0,
-                                            pen=QtGui.QPen(palettedark.c4, 5e-9),
+                                            pen={'color': palette.c4, 'width': 1},
                                             movable=True)
         #self.ref_end_line.setHoverPen(QtGui.QPen(palette.c4), width=10)
         # Configure the measuring error display:
@@ -2264,10 +2264,18 @@ class PulsedMeasurementGui(GUIBase):
         analysis_settings = dict()
         # Check if the signal has been emitted by a dragged line in the laser plot
         if self.sender().__class__.__name__ == 'InfiniteLine':
-            analysis_settings['signal_start_s'] = self.sig_start_line.value()
-            analysis_settings['signal_end_s'] = self.sig_end_line.value()
-            analysis_settings['norm_start_s'] = self.ref_start_line.value()
-            analysis_settings['norm_end_s'] = self.ref_end_line.value()
+            if self.sig_start_line.value() <= self.sig_end_line.value():
+                analysis_settings['signal_start_s'] = self.sig_start_line.value()
+                analysis_settings['signal_end_s'] = self.sig_end_line.value()
+            else:
+                analysis_settings['signal_start_s'] = self.sig_end_line.value()
+                analysis_settings['signal_end_s'] = self.sig_start_line.value()
+            if self.ref_start_line.value() <= self.ref_end_line.value():
+                analysis_settings['norm_start_s'] = self.ref_start_line.value()
+                analysis_settings['norm_end_s'] = self.ref_end_line.value()
+            else:
+                analysis_settings['norm_start_s'] = self.ref_end_line.value()
+                analysis_settings['norm_end_s'] = self.ref_start_line.value()
         else:
             signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
             analysis_settings['signal_start_s'] = self._pe.extract_param_ana_window_start_DSpinBox.value()

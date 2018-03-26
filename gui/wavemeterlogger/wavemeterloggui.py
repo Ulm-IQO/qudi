@@ -77,14 +77,14 @@ class WavemeterLogGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
 
-        self._wm_logger_logic = self.get_connector('wavemeterloggerlogic1')
-        self._save_logic = self.get_connector('savelogic')
+        self._wm_logger_logic = self.wavemeterloggerlogic1()
+        self._save_logic = self.savelogic()
 
         # setting up the window
         self._mw = WavemeterLogWindow()
 
         ## giving the plots names allows us to link their axes together
-        self._pw = self._mw.plotWidget # pg.PlotWidget(name='Counter1')
+        self._pw = self._mw.plotWidget  # pg.PlotWidget(name='Counter1')
         self._plot_item = self._pw.plotItem
 
         ## create a new ViewBox, link the right axis to its coordinate system

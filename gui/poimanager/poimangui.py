@@ -236,8 +236,8 @@ class PoiManagerGui(GUIBase):
         """
 
         # Connectors
-        self._poi_manager_logic = self.get_connector('poimanagerlogic1')
-        self._confocal_logic = self.get_connector('confocallogic1')
+        self._poi_manager_logic = self.poimanagerlogic1()
+        self._confocal_logic = self.confocallogic1()
         self.log.debug("POI Manager logic is {0}".format(self._poi_manager_logic))
         self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
