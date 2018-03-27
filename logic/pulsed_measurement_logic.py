@@ -85,7 +85,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # signals
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -130,7 +130,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # Fitting
-        self.fc = self._fit_logic.make_fit_container('pulsed', '1d')
+        self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
         self.fc.set_units(['s', 'arb.u.'])
 
         # Recall saved status variables
@@ -474,6 +474,27 @@ class PulsedMeasurementLogic(GenericLogic):
             self.set_measurement_settings(settings_dict)
         return
 
+    @property
+    def analysis_methods(self):
+        return self.pulseanalysislogic().analysis_methods
+
+    @property
+    def extraction_methods(self):
+        if self.fastcounter().is_gated():
+            return self.pulseextractionlogic().gated_extraction_methods
+        else:
+            return self.pulseextractionlogic().ungated_extraction_methods
+
+    @property
+    def analysis_settings(self):
+        return self.pulseanalysislogic().analysis_settings
+
+    @analysis_settings.setter
+    def analysis_settings(self, settings_dict):
+        self.pulseanalysislogic().analysis_settings = settings_dict
+
+    def set_analysis_settings(self):
+
     def set_measurement_settings(self,  settings_dict=None, **kwargs):
         """
         Apply new measurement settings.
@@ -687,40 +708,35 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
-    def do_fit(self, fit_method, x_data=None, y_data=None):
-        """Performs the chosen fit on the measured data.
-
-        @param string fit_method: name of the chosen fit method
-
-        @return float array pulsed_fit_x: Array containing the x-values of the fit
-        @return float array pulsed_fit_y: Array containing the y-values of the fit
-        @return dict fit_result: a dictionary containing the fit result
+    def do_fit(self, fit_method, data=None):
         """
+        Performs the chosen fit on the measured data.
 
+        @param str fit_method: name of the fit method to use
+        @param 2D numpy.ndarray data: the x and y data points for the fit (shape=(2,X))
+
+        @return (2D numpy.ndarray, result object): the resulting fit data and the fit result object
+        """
         # Set current fit
         self.fc.set_current_fit(fit_method)
 
-        if x_data is None or y_data is None:
-            x_data = self.signal_data[0]
-            y_data = self.signal_data[1:]
+        if data is None:
+            data = self.signal_data
             update_fit_data = True
         else:
             update_fit_data = False
 
-        fit_data = np.zeros(())
-        for y_arr in y_data:
-            pass
+        x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
 
-        self.signal_plot_x_fit, self.signal_plot_y_fit, result = self.fc.do_fit(x_data, y_data)
-
+        fit_data = np.array([x_fit, y_fit])
         fit_name = self.fc.current_fit
         fit_result = self.fc.current_fit_result
-        fit_param = self.fc.current_fit_param
 
-        self.sigFitUpdated.emit(fit_name, self.signal_plot_x_fit, self.signal_plot_y_fit,
-                                fit_result)
+        if update_fit_data:
+            self.signal_fit_data = fit_data
+            self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result)
 
-        return self.signal_plot_x_fit, self.signal_plot_y_fit, fit_result
+        return fit_data, fit_result
 
     def _apply_invoked_settings(self):
         """
@@ -917,22 +933,24 @@ class PulsedMeasurementLogic(GenericLogic):
         @param dict analysis_settings:
         @return:
         """
-        with self.threadlock:
-            for parameter in analysis_settings:
-                self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
 
-            # forward to the GUI the exact timing
-            if 'signal_start_s' in analysis_settings:
-                analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            if 'signal_end_s' in analysis_settings:
-                analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            if 'norm_start_s' in analysis_settings:
-                analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            if 'norm_end_s' in analysis_settings:
-                analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-            self.sigAnalysisSettingsUpdated.emit(analysis_settings)
-
-        return analysis_settings
+        # with self.threadlock:
+        #     for parameter in analysis_settings:
+        #         self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
+        #
+        #     # forward to the GUI the exact timing
+        #     if 'signal_start_s' in analysis_settings:
+        #         analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+        #     if 'signal_end_s' in analysis_settings:
+        #         analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+        #     if 'norm_start_s' in analysis_settings:
+        #         analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+        #     if 'norm_end_s' in analysis_settings:
+        #         analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
+        #     self.sigAnalysisSettingsUpdated.emit(analysis_settings)
+        #
+        # return analysis_settings
+        pass
 
     def extraction_settings_changed(self, extraction_settings):
         """
@@ -940,26 +958,25 @@ class PulsedMeasurementLogic(GenericLogic):
         @param dict extraction_settings:
         @return:
         """
-        with self.threadlock:
-            for parameter in extraction_settings:
-                self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
-            self.sigExtractionSettingsUpdated.emit(extraction_settings)
-        return extraction_settings
+        pass
+        # with self.threadlock:
+        #     for parameter in extraction_settings:
+        #         self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
+        #     self.sigExtractionSettingsUpdated.emit(extraction_settings)
+        # return extraction_settings
 
-
-
-    def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None,
-                              with_error=True, save_second_plot=None):
-        """ Prepare data to be saved and create a proper plot of the data
+    def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None, with_error=True,
+                              save_alt_plot=None):
+        """
+        Prepare data to be saved and create a proper plot of the data
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_second_plot: select wether the second plot (FFT, diff) is saved
+        @param bool save_alt_plot: select whether the alternative signal plot (FFT, diff) is saved
 
         @return str: filepath where data were saved
         """
-
         filepath = self._save_logic.get_path_for_module('PulsedMeasurement')
         timestamp = datetime.datetime.now()
 
