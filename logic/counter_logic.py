@@ -573,7 +573,7 @@ class CounterLogic(GenericLogic):
                 self._sampling_data = np.empty([len(chans) + 1, self._counting_samples])
                 self._sampling_data[0, :] = time.time() - self._saving_start_time
                 for i, ch in enumerate(chans):
-                    self._sampling_data[i+1, 0] = self.rawdata[i]
+                    self._sampling_data[i+1, :] = self.rawdata[i]
 
                 self._data_to_save.extend(list(self._sampling_data))
             # if we don't want to use oversampling
