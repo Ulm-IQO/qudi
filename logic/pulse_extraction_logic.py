@@ -44,8 +44,15 @@ class PulseExtractionLogic(GenericLogic):
 
     # Parameters used by all or some extraction methods.
     # The keywords for the function arguments must be the same as these variable names.
-    # If you add new parameters, make sure you include them in the extraction_settings property
-    # below.
+    # If you define a new extraction method you can use two different kinds of parameters:
+    # 1) The parameters defined in the __init__ of this module.
+    #    These must be non-optional arguments.
+    # 2) The StatusVars of this module. These parameters are optional arguments in your method
+    #    definition with default values. If you need to define a new parameter, you must add it to
+    #    these modules' StatusVars (with the same name as the argument keyword)
+    # Make sure that you define static methods, i.e. do not make use of something like "self.<name>"
+    # If you have properly defined your extraction method and added all parameters to this module
+    # the PulsedMainGui should automatically generate the appropriate elements.
     conv_std_dev = StatusVar(default=20.0)
     count_threshold = StatusVar(default=10)
     min_laser_length = StatusVar(default=200e-9)
@@ -53,6 +60,19 @@ class PulseExtractionLogic(GenericLogic):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+
+        # Dictionaries holding references to the extraction methods
+        self.gated_extraction_methods = None
+        self.ungated_extraction_methods = None
+
+        # ==========================================================================================
+        # WARNING:
+        # The variables declared below are not handled by the extraction_settings property.
+        # They need to be set directly by a master qudi module. Only add additional parameters here
+        # if they are needed in the controlling master module as well.
+        # If you add something make sure to exclude the attribute name explicitly in the
+        # extraction_settings property.
+        # ==========================================================================================
 
         # The width of a single time bin in the count data in seconds
         self.counter_bin_width = 1e-9
@@ -62,9 +82,6 @@ class PulseExtractionLogic(GenericLogic):
         self.number_of_lasers = 50
         # Dictionary container holding information about the currently running sequence
         self.sequence_information = None
-        # Dictionaries holding references to the extraction methods
-        self.gated_extraction_methods = None
-        self.ungated_extraction_methods = None
         return
 
     def on_activate(self):

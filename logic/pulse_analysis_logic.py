@@ -45,7 +45,15 @@ class PulseAnalysisLogic(GenericLogic):
 
     # Parameters used by all or some analysis methods.
     # The keywords for the function arguments must be the same as these variable names.
-    # If you add new parameters, make sure you include them in the analysis_settings property below.
+    # If you define a new analysis method you can use two different kinds of parameters:
+    # 1) The parameters defined in the __init__ of this module.
+    #    These must be non-optional arguments.
+    # 2) The StatusVars of this module. These parameters are optional arguments in your method
+    #    definition with default values. If you need to define a new parameter, you must add it to
+    #    these modules' StatusVars (with the same name as the argument keyword)
+    # Make sure that you define static methods, i.e. do not make use of something like "self.<name>"
+    # If you have properly defined your analysis method and added all parameters to this module
+    # the PulsedMainGui should automatically generate the appropriate elements.
     signal_start = StatusVar(default=0.0)
     signal_end = StatusVar(default=200.0e-9)
     norm_start = StatusVar(default=300.0e-9)
@@ -54,12 +62,22 @@ class PulseAnalysisLogic(GenericLogic):
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
+        # Dictionary holding references to the analysis methods
+        self.analysis_methods = None
+
+        # ==========================================================================================
+        # WARNING:
+        # The variables declared below are not handled by the analysis_settings property.
+        # They need to be set directly by a master qudi module. Only add additional parameters here
+        # if they are needed in the controlling master module as well.
+        # If you add something make sure to exclude the attribute name explicitly in the
+        # analysis_settings property.
+        # ==========================================================================================
+
         # Dictionary container holding information about the currently running sequence
         self.sequence_information = None
         # The width of a single time bin in the count data in seconds
         self.counter_bin_width = 1e-9
-        # Dictionary holding references to the analysis methods
-        self.analysis_methods = None
         return
 
     def on_activate(self):
@@ -140,11 +158,6 @@ class PulseAnalysisLogic(GenericLogic):
         @return: float array signal_data: Array with the computed signal
         @return: float array measuring_error: Array with the computed signal error
         """
-        # convert time to bin
-        # self.signal_start_bin = round(self.analysis_settings['signal_start_s'] / self.fast_counter_binwidth)
-        # self.signal_end_bin = round(self.analysis_settings['signal_end_s'] / self.fast_counter_binwidth)
-        # self.norm_start_bin = round(self.analysis_settings['norm_start_s'] / self.fast_counter_binwidth)
-        # self.norm_end_bin = round(self.analysis_settings['norm_end_s'] / self.fast_counter_binwidth)
         analysis_method = self.analysis_methods[self.current_analysis_method]
         kwargs = self._get_analysis_method_kwargs(analysis_method)
         return analysis_method(laser_data, **kwargs)
