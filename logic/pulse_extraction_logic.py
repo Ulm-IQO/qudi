@@ -140,7 +140,7 @@ class PulseExtractionLogic(GenericLogic):
                 setattr(self, name, value)
 
         # emit signal with all important parameters for the currently selected analysis method
-        # self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
+        self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
         return
 
     def extract_laser_pulses(self, count_data):
