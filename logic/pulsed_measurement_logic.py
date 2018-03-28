@@ -207,6 +207,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def fastcounter_constraints(self):
         return self.fastcounter().get_constraints()
 
+    @QtCore.Slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -273,6 +274,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self.fastcounter().stop_measure()
 
+    @QtCore.Slot(bool)
     def toggle_fast_counter(self, switch_on):
         """
         """
@@ -299,6 +301,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         return self.fastcounter().continue_measure()
 
+    @QtCore.Slot(bool)
     def fast_counter_pause_continue(self, continue_counter):
         """
         """
@@ -357,6 +360,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
         return err
 
+    @QtCore.Slot(bool)
     def toggle_microwave(self, switch_on):
         """
         Turn the external microwave output on/off.
@@ -373,6 +377,7 @@ class PulsedMeasurementLogic(GenericLogic):
             err = self.microwave_off()
         return err
 
+    @QtCore.Slot(dict)
     def set_microwave_settings(self, settings_dict=None, **kwargs):
         """
         Apply new settings to the external microwave device.
@@ -444,6 +449,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigPulserRunningUpdated.emit(False)
         return err
 
+    @QtCore.Slot(bool)
     def toggle_pulse_generator(self, switch_on):
         """
         Switch the pulse generator on or off.
@@ -522,6 +528,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.set_extraction_settings(settings_dict)
         return
 
+    @QtCore.Slot(dict)
     def set_analysis_settings(self, settings_dict=None, **kwargs):
         """
         Apply new analysis settings.
@@ -545,6 +552,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.pulseanalysislogic().analysis_settings = settings_dict
         return
 
+    @QtCore.Slot(dict)
     def set_extraction_settings(self, settings_dict=None, **kwargs):
         """
         Apply new analysis settings.
@@ -568,6 +576,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.pulseextractionlogic().extraction_settings = settings_dict
         return
 
+    @QtCore.Slot(dict)
     def set_measurement_settings(self,  settings_dict=None, **kwargs):
         """
         Apply new measurement settings.
@@ -629,6 +638,7 @@ class PulsedMeasurementLogic(GenericLogic):
                self._controlled_variable, self._number_of_lasers, self._laser_ignore_list, \
                self._alternating
 
+    @QtCore.Slot(str)
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
         """Start the analysis loop."""
         # FIXME: Describe the idea of how the measurement is intended to be run
@@ -680,6 +690,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.warning('Unable to start pulsed measurement. Measurement already running.')
         return
 
+    @QtCore.Slot(str)
     def stop_pulsed_measurement(self, stash_raw_data_tag=''):
         """
         Stop the measurement
@@ -717,6 +728,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
+    @QtCore.Slot()
     def pause_pulsed_measurement(self):
         """
         Pauses the measurement
@@ -741,6 +753,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
+    @QtCore.Slot()
     def continue_pulsed_measurement(self):
         """
         Continues the measurement
@@ -765,6 +778,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
+    @QtCore.Slot(float)
     def set_timer_interval(self, interval):
         """
         Change the interval of the measurement analysis timer
@@ -786,6 +800,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                       self.__timer_interval)
         return
 
+    @QtCore.Slot()
     def manually_pull_data(self):
         """ Analyse and display the data
         """
@@ -793,6 +808,8 @@ class PulsedMeasurementLogic(GenericLogic):
             self._pulsed_analysis_loop()
         return
 
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, np.ndarray)
     def do_fit(self, fit_method, data=None):
         """
         Performs the chosen fit on the measured data.
@@ -1013,7 +1030,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # FIXME: Revise everything below
 
     ############################################################################
-
+    @QtCore.Slot(str, str, bool, bool)
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None, with_error=True,
                               save_alt_plot=None):
         """
