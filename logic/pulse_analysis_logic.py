@@ -66,13 +66,13 @@ class PulseAnalysisLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         self.analysis_methods = OrderedDict()
-        filename_list = []
-        # The assumption is that in the directory pulsed_analysis_methods, there are
-        # *.py files, which contain only methods!
+
+        # Get all python modules to import from.
+        # The assumption is that in the directory pulsed_analysis_methods, there are *.py files,
+        # which contain only static methods!
         path = os.path.join(get_main_dir(), 'logic', 'pulsed_analysis_methods')
-        for entry in os.listdir(path):
-            if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
-                filename_list.append(entry[:-3])
+        filename_list = [name[:-3] for name in os.listdir(path) if
+                         os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
 
         for filename in filename_list:
             mod = importlib.import_module('logic.pulsed_analysis_methods.{0}'.format(filename))

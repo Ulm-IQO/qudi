@@ -71,15 +71,12 @@ class PulseExtractionLogic(GenericLogic):
         self.gated_extraction_methods = OrderedDict()
         self.ungated_extraction_methods = OrderedDict()
 
-        # filename_list = []
+        # Get all python modules to import from.
         # The assumption is that in the directory pulse_extraction_methods, there are
         # *.py files, which contain only methods!
         path = os.path.join(get_main_dir(), 'logic', 'pulse_extraction_methods')
         filename_list = [name[:-3] for name in os.listdir(path) if
                          os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
-        # for entry in os.listdir(path):
-        #     if os.path.isfile(os.path.join(path, entry)) and entry.endswith('.py'):
-        #         filename_list.append(entry[:-3])
 
         for filename in filename_list:
             mod = importlib.import_module('logic.pulse_extraction_methods.{0}'.format(filename))
@@ -89,11 +86,12 @@ class PulseExtractionLogic(GenericLogic):
                     ref = getattr(mod, method)
                     if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
                         # Bind the method as an attribute to the Class
-                        setattr(PulseExtractionLogic, method, staticmethod(ref))
                         # Add method to dictionary if it is an extraction method
                         if method.startswith('gated_'):
+                            setattr(PulseExtractionLogic, method, staticmethod(ref))
                             self.gated_extraction_methods[method[6:]] = getattr(self, method)
                         elif method.startswith('ungated_'):
+                            setattr(PulseExtractionLogic, method, staticmethod(ref))
                             self.ungated_extraction_methods[method[8:]] = getattr(self, method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
