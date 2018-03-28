@@ -1,79 +1,95 @@
 import numpy as np
 
 
-def analyse_mean_norm(self, laser_data):
+def analyse_mean_norm(laser_data, counter_bin_width, signal_start=0.0, signal_end=200e-9, norm_start=300e-9, norm_end=500e-9):
     """
 
     @param laser_data:
+    @param counter_bin_width:
+    @param signal_start:
+    @param signal_end:
+    @param norm_start:
+    @param norm_end:
     @return:
     """
+    # Get number of lasers
     num_of_lasers = laser_data.shape[0]
 
-    # Initialize the signal and normalization mean data arrays
-    reference_mean = np.zeros(num_of_lasers, dtype=float)
-    signal_mean = np.zeros(num_of_lasers, dtype=float)
-    signal_area = np.zeros(num_of_lasers, dtype=float)
-    reference_area = np.zeros(num_of_lasers, dtype=float)
-    measuring_error = np.zeros(num_of_lasers, dtype=float)
-    # initialize data arrays
+    if not isinstance(counter_bin_width, float):
+        return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
+
+    # Convert the times in seconds to bins (i.e. array indices)
+    signal_start_bin = round(signal_start / counter_bin_width)
+    signal_end_bin = round(signal_end / counter_bin_width)
+    norm_start_bin = round(norm_start / counter_bin_width)
+    norm_end_bin = round(norm_end / counter_bin_width)
+
+    # initialize data arrays for signal and measurement error
     signal_data = np.empty(num_of_lasers, dtype=float)
+    error_data = np.empty(num_of_lasers, dtype=float)
 
     # loop over all laser pulses and analyze them
-    for ii in range(num_of_lasers):
-        # calculate the mean of the data in the normalization window
-        norm_tmp_data = laser_data[ii][self.norm_start_bin:self.norm_end_bin]
-        if np.sum(norm_tmp_data) < 1:
-            reference_mean[ii] = 0.0
+    for ii, laser_arr in enumerate(laser_data):
+        # calculate the sum and mean of the data in the normalization window
+        tmp_data = laser_arr[norm_start_bin:norm_end_bin]
+        reference_sum = np.sum(tmp_data)
+        reference_mean = (reference_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
+
+        # calculate the sum and mean of the data in the signal window
+        tmp_data = laser_arr[signal_start_bin:signal_end_bin]
+        signal_sum = np.sum(tmp_data)
+        signal_mean = (signal_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
+
+        # Calculate normalized signal while avoiding division by zero
+        if reference_mean > 0 and signal_mean >= 0:
+            signal_data[ii] = signal_mean / reference_mean
         else:
-            reference_mean[ii] = norm_tmp_data.mean()
-        # calculate the mean of the data in the signal window
-        signal_tmp_data = laser_data[ii][self.signal_start_bin:self.signal_end_bin]
-        if np.sum(signal_tmp_data) < 1:
-            signal_mean[ii] = 0.0
-        else:
-            signal_mean[ii] = signal_tmp_data.mean() - reference_mean[ii]
-        # update the signal plot y-data
-        if reference_mean[ii] == 0.0:
             signal_data[ii] = 0.0
+
+        # Calculate measurement error while avoiding division by zero
+        if reference_sum > 0 and signal_sum > 0:
+            # calculate with respect to gaussian error 'evolution'
+            error_data[ii] = signal_data[ii] * np.sqrt(1 / signal_sum + 1 / reference_sum)
         else:
-            signal_data[ii] = 1. + (signal_mean[ii] / reference_mean[ii])
+            error_data[ii] = 0.0
 
-    # Compute the measuring error
-    for jj in range(num_of_lasers):
-        signal_area[jj] = laser_data[jj][self.signal_start_bin:self.signal_end_bin].sum()
-        reference_area[jj] = laser_data[jj][self.norm_start_bin:self.norm_end_bin].sum()
-        if reference_area[jj] == 0.:
-            measuring_error[jj] = 0.
-        elif signal_area[jj] == 0.:
-            measuring_error[jj] = 0.
-        else:
-            # with respect to gaußian error 'evolution'
-            measuring_error[jj] = signal_data[jj] * np.sqrt(
-                1 / signal_area[jj] + 1 / reference_area[jj])
-    return signal_data, measuring_error
+    return signal_data, error_data
 
 
-def analyse_mean(self, laser_data):
+def analyse_mean(laser_data, counter_bin_width, signal_start=0.0, signal_end=200e-9):
     """
 
     @param laser_data:
+    @param counter_bin_width:
+    @param signal_start:
+    @param signal_end:
     @return:
     """
+    # Get number of lasers
     num_of_lasers = laser_data.shape[0]
 
-    # Initialize the signal and normalization mean data arrays
-    signal_mean = np.zeros(num_of_lasers, dtype=float)
-    measuring_error = np.zeros(num_of_lasers, dtype=float)
+    if not isinstance(counter_bin_width, float):
+        return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
+
+    # Convert the times in seconds to bins (i.e. array indices)
+    signal_start_bin = round(signal_start / counter_bin_width)
+    signal_end_bin = round(signal_end / counter_bin_width)
+
+    # initialize data arrays for signal and measurement error
+    signal_data = np.empty(num_of_lasers, dtype=float)
+    error_data = np.empty(num_of_lasers, dtype=float)
 
     # loop over all laser pulses and analyze them
-    for ii in range(num_of_lasers):
-        # calculate the mean of the data in the signal window
-        signal_tmp_data = laser_data[ii][self.signal_start_bin:self.signal_end_bin]
-        if np.sum(signal_tmp_data) < 1:
-            signal_mean[ii] = 0.0
-            measuring_error[ii] = 0.
-        else:
-            signal_mean[ii] = signal_tmp_data.mean()
-            measuring_error[ii] = np.sqrt(signal_tmp_data.sum())/(self.signal_end_bin-self.signal_start_bin)
+    for ii, laser_arr in enumerate(laser_data):
+        # calculate the sum and mean of the data in the signal window
+        signal_mean = laser_arr[signal_start_bin:signal_end_bin].mean()
 
-    return signal_mean, measuring_error
+        # Avoid numpy C type variables overflow and NaN values
+        if signal_mean < 0 or signal_mean != signal_mean:
+            signal_data[ii] = 0.0
+            error_data[ii] = 0.0
+        else:
+            signal_data[ii] = signal_mean
+            error_data[ii] = np.sqrt(signal_mean)
+
+    return signal_data, error_data

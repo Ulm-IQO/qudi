@@ -233,9 +233,7 @@ class PulserDummy(Base, PulserInterface):
         if self.current_status == 1:
             self.current_status = 0
             self.log.info('PulserDummy: Switch off the Output.')
-            return 0
-        else:
-            return -1
+        return 0
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk):
         """

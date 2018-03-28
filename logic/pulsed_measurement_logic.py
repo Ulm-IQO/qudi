@@ -84,18 +84,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # signals
     sigMeasurementDataUpdated = QtCore.Signal()
-    sigTimerUpdated = QtCore.Signal(float, float)
+    sigTimerUpdated = QtCore.Signal(float, int, float)
     sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveSettingsUpdated = QtCore.Signal(dict)
     sigFastCounterSettingsUpdated = QtCore.Signal(dict)
-    sigPulseSequenceSettingsUpdated = QtCore.Signal(dict)
+    sigMeasurementSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
-    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
-    sigExtractionMethodsUpdated = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -104,6 +102,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer = None
         self.__start_time = 0
         self.__elapsed_time = 0
+        self.__elapsed_sweeps = 0  # FIXME: unused
 
         # threading
         self._threadlock = Mutex()
@@ -129,6 +128,11 @@ class PulsedMeasurementLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self.pulseanalysislogic().sigAnalysisSettingsUpdated.connect(
+            self.sigAnalysisSettingsUpdated)
+        self.pulseextractionlogic().sigExtractionSettingsUpdated.connect(
+            self.sigExtractionSettingsUpdated)
+
         # Fitting
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
         self.fc.set_units(['s', 'arb.u.'])
@@ -137,18 +141,15 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'fits' in self._statusVariables and isinstance(self._statusVariables.get('fits'), dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
 
-        # Hand information containers to extraction and analysis logic
-        self.pulseextractionlogic()._sequence_information = self._sequence_information
-
         # Turn off pulse generator
         self.pulse_generator_off()
 
         # Check and configure fast counter
         binning_constraints = self.fastcounter().get_constraints()['hardware_binwidth_list']
-        if self.fast_counter_binwidth not in binning_constraints:
-            self.fast_counter_binwidth = binning_constraints[0]
-        if self.fast_counter_record_length <= 0:
-            self.fast_counter_record_length = 3e-6
+        if self.__fast_counter_binwidth not in binning_constraints:
+            self.__fast_counter_binwidth = binning_constraints[0]
+        if self.__fast_counter_record_length <= 0:
+            self.__fast_counter_record_length = 3e-6
         self.fast_counter_off()
         self.set_fast_counter_settings()
 
@@ -177,6 +178,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self._statusVariables['_controlled_variable'] = list(self._controlled_variable)
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
+
+        self.pulseanalysislogic().sigAnalysisSettingsUpdated.disconnect()
+        self.pulseextractionlogic().sigExtractionSettingsUpdated.disconnect()
         return
 
     ############################################################################
@@ -239,8 +243,8 @@ class PulsedMeasurementLogic(GenericLogic):
                                                                      self.__fast_counter_gates)
 
             # Make sure the analysis and extraction logic take the correct binning into account
-            self.pulseanalysislogic().fast_counter_binwidth = self.__fast_counter_binwidth
-            self.pulseextractionlogic().fast_counter_binwidth = self.__fast_counter_binwidth
+            self.pulseanalysislogic().counter_bin_width = self.__fast_counter_binwidth
+            self.pulseextractionlogic().counter_bin_width = self.__fast_counter_binwidth
         else:
             self.log.warning('Fast counter is not idle (status: {0}).\n'
                              'Unable to apply new settings.'.format(counter_status))
@@ -491,9 +495,65 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @analysis_settings.setter
     def analysis_settings(self, settings_dict):
-        self.pulseanalysislogic().analysis_settings = settings_dict
+        if isinstance(settings_dict, dict):
+            self.set_analysis_settings(settings_dict)
+        return
 
-    def set_analysis_settings(self):
+    @property
+    def extraction_settings(self):
+        return self.pulseextractionlogic().extraction_settings
+
+    @extraction_settings.setter
+    def extraction_settings(self, settings_dict):
+        if isinstance(settings_dict, dict):
+            self.set_extraction_settings(settings_dict)
+        return
+
+    def set_analysis_settings(self, settings_dict=None, **kwargs):
+        """
+        Apply new analysis settings.
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
+
+        @param settings_dict:
+        @param kwargs:
+        @return:
+        """
+        # Determine complete settings dictionary
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
+        else:
+            settings_dict.update(kwargs)
+
+        # Use threadlock to update settings during a running measurement
+        with self._threadlock:
+            self.pulseanalysislogic().analysis_settings = settings_dict
+        return
+
+    def set_extraction_settings(self, settings_dict=None, **kwargs):
+        """
+        Apply new analysis settings.
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
+
+        @param settings_dict:
+        @param kwargs:
+        @return:
+        """
+        # Determine complete settings dictionary
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
+        else:
+            settings_dict.update(kwargs)
+
+        # Use threadlock to update settings during a running measurement
+        with self._threadlock:
+            self.pulseextractionlogic().extraction_settings = settings_dict
+        return
 
     def set_measurement_settings(self,  settings_dict=None, **kwargs):
         """
@@ -529,7 +589,7 @@ class PulsedMeasurementLogic(GenericLogic):
             if 'number_of_lasers' in settings_dict:
                 self._number_of_lasers = int(settings_dict['number_of_lasers'])
             if 'laser_ignore_list' in settings_dict:
-                self._laser_ignore_list = list(settings_dict['laser_ignore_list'])
+                self._laser_ignore_list = sorted(list(settings_dict['laser_ignore_list']))
             if 'alternating' in settings_dict:
                 self._alternating = bool(settings_dict['alternating'])
 
@@ -538,6 +598,11 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._apply_invoked_settings()
 
             self._measurement_settings_sanity_check()
+
+            # Give some measurement parameters to PulseExtractionLogic and PulseAnalysisLogic
+            self.pulseextractionlogic().number_of_lasers = self._number_of_lasers
+            self.pulseextractionlogic().sequence_information = self._sequence_information
+            self.pulseanalysislogic().sequence_information = self._sequence_information
 
         # emit update signal for master (GUI or other logic module)
         self.sigMeasurementSettingsUpdated.emit(
@@ -556,8 +621,8 @@ class PulsedMeasurementLogic(GenericLogic):
         # FIXME: Describe the idea of how the measurement is intended to be run
         #       and how the used thread principle was used in this method (or
         #       will be use in another method).
-        self.sigMeasurementRunningUpdated.emit(True, False)
-        with self.threadlock:
+        self.sigMeasurementStatusUpdated.emit(True, False)
+        with self._threadlock:
             if self.module_state() == 'idle':
                 # Lock module state
                 self.module_state.lock()
@@ -586,7 +651,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
-                self.sigTimerUpdated.emit(self.__elapsed_time, self.__timer_interval)
+                self.sigTimerUpdated.emit(self.__elapsed_time,
+                                          self.__elapsed_sweeps,
+                                          self.__timer_interval)
                 self.__initialize_timer()
 
                 # Set starting time and start timer (if present)
@@ -605,8 +672,12 @@ class PulsedMeasurementLogic(GenericLogic):
         Stop the measurement
         """
         # Get raw data and analyze it a last time just before stopping the measurement.
-        self._pulsed_analysis_loop()
-        with self.threadlock:
+        try:
+            self._pulsed_analysis_loop()
+        except:
+            pass
+
+        with self._threadlock:
             if self.module_state() == 'locked':
                 # stopping, disconnecting and removing the timer
                 self.__remove_timer()
@@ -630,14 +701,14 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.__is_paused = False
 
                 self.module_state.unlock()
-                self.sigMeasurementRunningUpdated.emit(False, False)
+                self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
     def pause_pulsed_measurement(self):
         """
         Pauses the measurement
         """
-        with self.threadlock:
+        with self._threadlock:
             if self.module_state() == 'locked':
                 # pausing the timer
                 if self.__analysis_timer is not None:
@@ -651,17 +722,17 @@ class PulsedMeasurementLogic(GenericLogic):
                 # Set measurement paused flag
                 self.__is_paused = True
 
-                self.sigMeasurementRunningUpdated.emit(True, True)
+                self.sigMeasurementStatusUpdated.emit(True, True)
             else:
                 self.log.warning('Unable to pause pulsed measurement. No measurement running.')
-                self.sigMeasurementRunningUpdated.emit(False, False)
+                self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
     def continue_pulsed_measurement(self):
         """
         Continues the measurement
         """
-        with self.threadlock:
+        with self._threadlock:
             if self.module_state() == 'locked':
                 if self.__use_ext_microwave:
                     self.microwave_on()
@@ -675,10 +746,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 # Set measurement paused flag
                 self.__is_paused = False
 
-                self.sigMeasurementRunningUpdated.emit(True, False)
+                self.sigMeasurementStatusUpdated.emit(True, False)
             else:
                 self.log.warning('Unable to continue pulsed measurement. No measurement running.')
-                self.sigMeasurementRunningUpdated.emit(False, False)
+                self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
     def set_timer_interval(self, interval):
@@ -687,7 +758,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @param int interval: Interval of the timer in s
         """
-        with self.threadlock:
+        with self._threadlock:
             self.__timer_interval = interval
             if self.__analysis_timer is not None:
                 if self.__timer_interval > 0:
@@ -758,7 +829,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.log.error('Unable to invoke setting for "controlled_variable".\n'
                            'Sequence information container does not contain this parameter.')
         if 'laser_ignore_list' in self._sequence_information:
-            self._laser_ignore_list = list(self._sequence_information['laser_ignore_list'])
+            self._laser_ignore_list = sorted(list(self._sequence_information['laser_ignore_list']))
         else:
             self.log.error('Unable to invoke setting for "laser_ignore_list".\n'
                            'Sequence information container does not contain this parameter.')
@@ -795,18 +866,16 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Acquires laser pulses from fast counter,
             calculates fluorescence signal and creates plots.
         """
-        with self.threadlock:
+        with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.start_time
+                self.__elapsed_time = time.time() - self.__start_time
 
                 # Get counter raw data (including recalled raw data from previous measurement)
                 self.raw_data = self._get_raw_data()
 
                 # extract laser pulses from raw data
-                return_dict = self.pulseextractionlogic().extract_laser_pulses(
-                    self.raw_data,
-                    self.fastcounter.is_gated())
+                return_dict = self.pulseextractionlogic().extract_laser_pulses(self.raw_data)
                 self.laser_data = return_dict['laser_counts_arr']
 
                 # analyze pulses and get data points for signal array. Also check if extraction
@@ -818,12 +887,15 @@ class PulsedMeasurementLogic(GenericLogic):
                     tmp_signal, tmp_error = self.pulseanalysislogic().analyze_data(self.laser_data)
 
                 # exclude laser pulses to ignore
-                if len(self._sequence_information['laser_ignore_list']) > 0:
-                    ignore_indices = self._sequence_information['laser_ignore_list']
-                    if -1 in ignore_indices:
-                        ignore_indices[ignore_indices.index(-1)] = len(ignore_indices) - 1
-                    tmp_signal = np.delete(tmp_signal, ignore_indices)
-                    tmp_error = np.delete(tmp_error, ignore_indices)
+                if len(self._laser_ignore_list) > 0:
+                    # Convert relative negative indices into absolute positive indices
+                    while self._laser_ignore_list[0] < 0:
+                        neg_index = self._laser_ignore_list[0]
+                        self._laser_ignore_list[0] = len(self._laser_ignore_list) + neg_index
+                        self._laser_ignore_list.sort()
+
+                    tmp_signal = np.delete(tmp_signal, self._laser_ignore_list)
+                    tmp_error = np.delete(tmp_error, self._laser_ignore_list)
 
                 # order data according to alternating flag
                 if self._sequence_information['alternating']:
@@ -839,7 +911,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._compute_alt_data()
 
             # emit signals
-            self.sigElapsedTimeUpdated.emit(self.__elapsed_time, self.__timer_interval)
+            self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
+                                      self.__timer_interval)
             self.sigMeasurementDataUpdated.emit()
             return
 
@@ -926,44 +999,6 @@ class PulsedMeasurementLogic(GenericLogic):
     # FIXME: Revise everything below
 
     ############################################################################
-
-    def analysis_settings_changed(self, analysis_settings):
-        """
-
-        @param dict analysis_settings:
-        @return:
-        """
-
-        # with self.threadlock:
-        #     for parameter in analysis_settings:
-        #         self._pulse_analysis_logic.analysis_settings[parameter] = analysis_settings[parameter]
-        #
-        #     # forward to the GUI the exact timing
-        #     if 'signal_start_s' in analysis_settings:
-        #         analysis_settings['signal_start_s'] = round(analysis_settings['signal_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-        #     if 'signal_end_s' in analysis_settings:
-        #         analysis_settings['signal_end_s'] = round(analysis_settings['signal_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-        #     if 'norm_start_s' in analysis_settings:
-        #         analysis_settings['norm_start_s'] = round(analysis_settings['norm_start_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-        #     if 'norm_end_s' in analysis_settings:
-        #         analysis_settings['norm_end_s'] = round(analysis_settings['norm_end_s'] / self.fast_counter_binwidth) * self.fast_counter_binwidth
-        #     self.sigAnalysisSettingsUpdated.emit(analysis_settings)
-        #
-        # return analysis_settings
-        pass
-
-    def extraction_settings_changed(self, extraction_settings):
-        """
-
-        @param dict extraction_settings:
-        @return:
-        """
-        pass
-        # with self.threadlock:
-        #     for parameter in extraction_settings:
-        #         self._pulse_extraction_logic.extraction_settings[parameter] = extraction_settings[parameter]
-        #     self.sigExtractionSettingsUpdated.emit(extraction_settings)
-        # return extraction_settings
 
     def save_measurement_data(self, controlled_val_unit='arb.u.', tag=None, with_error=True,
                               save_alt_plot=None):
@@ -1233,37 +1268,38 @@ class PulsedMeasurementLogic(GenericLogic):
                                    delimiter='\t')
         return filepath
 
-    def _compute_second_plot(self):
+    def _compute_alt_data(self):
         """ Computing the fourier transform of the data. """
-
-        if self.second_plot_type == 'Delta':
-            self.signal_second_plot_x = self.signal_plot_x
-            self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
-            self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
-        else:
-            # Do sanity checks:
-            if len(self.signal_plot_x) < 2:
-                self.log.debug('FFT of measurement could not be calculated. Only '
-                               'one data point.')
-                self.signal_second_plot_x = np.zeros(1)
-                self.signal_second_plot_y = np.zeros(1)
-                self.signal_second_plot_y2 = np.zeros(1)
-                return
-
-            if self.alternating:
-                x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
-                    self.signal_plot_x,
-                    self.signal_plot_y2,
-                    zeropad_num=0)
-
-            self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
-                self.signal_plot_x,
-                self.signal_plot_y,
-                zeropad_num=self.zeropad,
-                window=self.window,
-                base_corr=self.base_corr,
-                psd=self.psd)
-        return
+        pass
+        #
+        # if self.second_plot_type == 'Delta':
+        #     self.signal_second_plot_x = self.signal_plot_x
+        #     self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
+        #     self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
+        # else:
+        #     # Do sanity checks:
+        #     if len(self.signal_plot_x) < 2:
+        #         self.log.debug('FFT of measurement could not be calculated. Only '
+        #                        'one data point.')
+        #         self.signal_second_plot_x = np.zeros(1)
+        #         self.signal_second_plot_y = np.zeros(1)
+        #         self.signal_second_plot_y2 = np.zeros(1)
+        #         return
+        #
+        #     if self.alternating:
+        #         x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
+        #             self.signal_plot_x,
+        #             self.signal_plot_y2,
+        #             zeropad_num=0)
+        #
+        #     self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
+        #         self.signal_plot_x,
+        #         self.signal_plot_y,
+        #         zeropad_num=self.zeropad,
+        #         window=self.window,
+        #         base_corr=self.base_corr,
+        #         psd=self.psd)
+        # return
 
 
 
