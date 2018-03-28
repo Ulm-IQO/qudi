@@ -56,6 +56,8 @@ class PulseExtractionLogic(GenericLogic):
 
         # The width of a single time bin in the count data in seconds
         self.counter_bin_width = 1e-9
+        # Flag indicating if the count data comes from a gated counter (True) or not (False)
+        self.is_gated = False
         # The number of laser pulses to find in the time trace
         self.number_of_lasers = 50
         # Dictionary container holding information about the currently running sequence
@@ -111,7 +113,10 @@ class PulseExtractionLogic(GenericLogic):
         @return dict:
         """
         # Get reference to the extraction method
-        method = self.extraction_methods.get(self.current_extraction_method)
+        if self.is_gated:
+            method = self.gated_extraction_methods.get(self.current_extraction_method)
+        else:
+            method = self.ungated_extraction_methods.get(self.current_extraction_method)
         # Get keyword arguments for the currently selected method
         settings_dict = self._get_extraction_method_kwargs(method)
         # Remove arguments that have a corresponding attribute defined in __init__
@@ -135,7 +140,7 @@ class PulseExtractionLogic(GenericLogic):
                 setattr(self, name, value)
 
         # emit signal with all important parameters for the currently selected analysis method
-        self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
+        # self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
         return
 
     def extract_laser_pulses(self, count_data):
@@ -144,8 +149,13 @@ class PulseExtractionLogic(GenericLogic):
         @param count_data:
         @return:
         """
-        is_gated = len(count_data.shape) > 1
-        if is_gated:
+        if len(count_data.shape) > 1 and not self.is_gated:
+            self.log.error('"is_gated" flag is set to False but the count data to extract laser '
+                           'pulses from is in the format of a gated timetrace (2D numpy array).')
+        elif len(count_data.shape) == 1 and self.is_gated:
+            self.log.error('"is_gated" flag is set to True but the count data to extract laser '
+                           'pulses from is in the format of an ungated timetrace (1D numpy array).')
+        if self.is_gated:
             extraction_method = self.gated_extraction_methods[self.current_extraction_method]
         else:
             extraction_method = self.ungated_extraction_methods[self.current_extraction_method]
