@@ -20,8 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from collections import OrderedDict
-from core.module import Connector, ConfigOption, StatusVar
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 import numpy as np
@@ -33,7 +32,6 @@ class PulsedMasterLogic(GenericLogic):
     sequence_generator_logic and pulsed measurements via pulsed_measurement_logic.
     Basically glue logic to pass information between logic modules.
     """
-
     _modclass = 'pulsedmasterlogic'
     _modtype = 'logic'
 
@@ -41,33 +39,34 @@ class PulsedMasterLogic(GenericLogic):
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
-    # status vars
-    invoke_settings = StatusVar('invoke_settings', False)
-
-    # pulsed_measurement_logic signals
-    sigLaserToShowChanged = QtCore.Signal(int, bool)
+    # PulsedMeasurementLogic control signals
     sigDoFit = QtCore.Signal(str)
-    sigStartMeasurement = QtCore.Signal(str)
-    sigStopMeasurement = QtCore.Signal(str)
-    sigPauseMeasurement = QtCore.Signal()
-    sigContinueMeasurement = QtCore.Signal()
-    sigStartPulser = QtCore.Signal()
-    sigStopPulser = QtCore.Signal()
-    sigFastCounterSettingsChanged = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsChanged = QtCore.Signal(np.ndarray, int, float, list, bool)
-    sigPulseGeneratorSettingsChanged = QtCore.Signal(float, str, dict, bool)
-    sigUploadAsset = QtCore.Signal(str)
-    sigDirectWriteEnsemble = QtCore.Signal(str, np.ndarray, np.ndarray)
-    sigDirectWriteSequence = QtCore.Signal(str, list)
-    sigLoadAsset = QtCore.Signal(str, dict)
-    sigClearPulseGenerator = QtCore.Signal()
-    sigExtMicrowaveSettingsChanged = QtCore.Signal(float, float, bool)
-    sigExtMicrowaveStartStop = QtCore.Signal(bool)
-    sigTimerIntervalChanged = QtCore.Signal(float)
+    sigToggleMeasurement = QtCore.Signal(bool, str)
+    sigToggleMeasurementPause = QtCore.Signal(bool)
+    sigTogglePulser = QtCore.Signal(bool)
+    sigToggleExtMicrowave = QtCore.Signal(bool)
+    sigFastCounterSettingsChanged = QtCore.Signal(dict)
+    sigMeasurementSettingsChanged = QtCore.Signal(dict)
+    sigExtMicrowaveSettingsChanged = QtCore.Signal(dict)
     sigAnalysisSettingsChanged = QtCore.Signal(dict)
-    sigManuallyPullData = QtCore.Signal()
-    sigRequestMeasurementInitValues = QtCore.Signal()
     sigExtractionSettingsChanged = QtCore.Signal(dict)
+    sigTimerIntervalChanged = QtCore.Signal(float)
+    sigManuallyPullData = QtCore.Signal()
+
+    # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
+    sigMeasurementDataUpdated = QtCore.Signal()
+    sigTimerUpdated = QtCore.Signal(float, int, float)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
+    sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
+    sigPulserRunningUpdated = QtCore.Signal(bool)
+    sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
+    sigExtMicrowaveSettingsUpdated = QtCore.Signal(dict)
+    sigFastCounterSettingsUpdated = QtCore.Signal(dict)
+    sigMeasurementSettingsUpdated = QtCore.Signal(dict)
+    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
+    sigExtractionSettingsUpdated = QtCore.Signal(dict)
+
+
 
     # sequence_generator_logic signals
     sigSavePulseBlock = QtCore.Signal(str, object)
@@ -85,40 +84,6 @@ class PulsedMasterLogic(GenericLogic):
     sigRequestGeneratorInitValues = QtCore.Signal()
     sigGeneratePredefinedSequence = QtCore.Signal(str, dict)
 
-    # signals for master module (i.e. GUI)
-    sigSavedPulseBlocksUpdated = QtCore.Signal(dict)
-    sigSavedBlockEnsemblesUpdated = QtCore.Signal(dict)
-    sigSavedSequencesUpdated = QtCore.Signal(dict)
-    sigCurrentPulseBlockUpdated = QtCore.Signal(object)
-    sigCurrentBlockEnsembleUpdated = QtCore.Signal(object, dict)
-    sigCurrentSequenceUpdated = QtCore.Signal(object, dict)
-    sigEnsembleSaUpComplete = QtCore.Signal(str)
-    sigSequenceSaUpComplete = QtCore.Signal(str)
-    sigGeneratorSettingsUpdated = QtCore.Signal(str, list, float, dict, str, str)
-    sigPredefinedSequencesUpdated = QtCore.Signal(dict)
-    sigPredefinedSequenceGenerated = QtCore.Signal(str)
-
-    sigSignalDataUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray,
-                                         np.ndarray, np.ndarray, np.ndarray)
-    sigLaserDataUpdated = QtCore.Signal(np.ndarray, np.ndarray)
-    sigLaserToShowUpdated = QtCore.Signal(int, bool)
-    sigElapsedTimeUpdated = QtCore.Signal(float, str)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, np.ndarray, object)
-    sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
-    sigPulserRunningUpdated = QtCore.Signal(bool)
-    sigFastCounterSettingsUpdated = QtCore.Signal(float, float)
-    sigMeasurementSequenceSettingsUpdated = QtCore.Signal(np.ndarray, int, float, list, bool)
-    sigPulserSettingsUpdated = QtCore.Signal(float, str, list, dict, bool)
-    sigUploadedAssetsUpdated = QtCore.Signal(list)
-    sigLoadedAssetUpdated = QtCore.Signal(str, str)
-    sigExtMicrowaveSettingsUpdated = QtCore.Signal(float, float, bool)
-    sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
-    sigTimerIntervalUpdated = QtCore.Signal(float)
-    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
-    sigAnalysisMethodsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(dict)
-    sigExtractionMethodsUpdated = QtCore.Signal(dict)
-
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
 
@@ -126,163 +91,80 @@ class PulsedMasterLogic(GenericLogic):
         """
         super().__init__(config=config, **kwargs)
 
+        # Dictionary servings as status register
+        self.status_dict = dict()
+        return
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_connector('sequencegeneratorlogic')
-
-        # Signals controlling the pulsed_measurement_logic
-        self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
-                                                     QtCore.Qt.QueuedConnection)
-        self.sigMeasurementSequenceSettingsChanged.connect(
-            self._measurement_logic.set_pulse_sequence_properties, QtCore.Qt.QueuedConnection)
-        self.sigFastCounterSettingsChanged.connect(
-            self._measurement_logic.set_fast_counter_settings, QtCore.Qt.QueuedConnection)
-        self.sigExtMicrowaveSettingsChanged.connect(self._measurement_logic.set_microwave_params,
-                                                    QtCore.Qt.QueuedConnection)
-        self.sigExtMicrowaveStartStop.connect(self._measurement_logic.microwave_on_off,
-                                              QtCore.Qt.QueuedConnection)
-        self.sigPulseGeneratorSettingsChanged.connect(
-            self._measurement_logic.set_pulse_generator_settings, QtCore.Qt.QueuedConnection)
-        self.sigAnalysisSettingsChanged.connect(self._measurement_logic.analysis_settings_changed,
-                                                QtCore.Qt.QueuedConnection)
-        self.sigDoFit.connect(self._measurement_logic.do_fit, QtCore.Qt.QueuedConnection)
-        self.sigTimerIntervalChanged.connect(self._measurement_logic.set_timer_interval,
-                                             QtCore.Qt.QueuedConnection)
-        self.sigManuallyPullData.connect(self._measurement_logic.manually_pull_data,
-                                         QtCore.Qt.QueuedConnection)
-        self.sigStartMeasurement.connect(self._measurement_logic.start_pulsed_measurement,
-                                         QtCore.Qt.QueuedConnection)
-        self.sigStopMeasurement.connect(self._measurement_logic.stop_pulsed_measurement,
-                                        QtCore.Qt.QueuedConnection)
-        self.sigPauseMeasurement.connect(self._measurement_logic.pause_pulsed_measurement,
-                                         QtCore.Qt.QueuedConnection)
-        self.sigContinueMeasurement.connect(self._measurement_logic.continue_pulsed_measurement,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigStartPulser.connect(self._measurement_logic.pulse_generator_on,
-                                    QtCore.Qt.QueuedConnection)
-        self.sigStopPulser.connect(self._measurement_logic.pulse_generator_off,
-                                   QtCore.Qt.QueuedConnection)
-        self.sigClearPulseGenerator.connect(self._measurement_logic.clear_pulser,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigUploadAsset.connect(self._measurement_logic.upload_asset,
-                                    QtCore.Qt.QueuedConnection)
-        self.sigLoadAsset.connect(self._measurement_logic.load_asset, QtCore.Qt.QueuedConnection)
-        self.sigDirectWriteEnsemble.connect(self._measurement_logic.direct_write_ensemble,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigDirectWriteSequence.connect(self._measurement_logic.direct_write_sequence,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigLaserToShowChanged.connect(self._measurement_logic.set_laser_to_show,
-                                           QtCore.Qt.QueuedConnection)
-        self.sigExtractionSettingsChanged.connect(self._measurement_logic.extraction_settings_changed,
-                                                  QtCore.Qt.QueuedConnection)
-
-        # Signals controlling the sequence_generator_logic
-        self.sigRequestGeneratorInitValues.connect(self._generator_logic.request_init_values,
-                                                   QtCore.Qt.QueuedConnection)
-        self.sigSavePulseBlock.connect(self._generator_logic.save_block, QtCore.Qt.QueuedConnection)
-        self.sigSaveBlockEnsemble.connect(self._generator_logic.save_ensemble,
-                                          QtCore.Qt.QueuedConnection)
-        self.sigSaveSequence.connect(self._generator_logic.save_sequence,
-                                     QtCore.Qt.QueuedConnection)
-        self.sigLoadPulseBlock.connect(self._generator_logic.load_block, QtCore.Qt.QueuedConnection)
-        self.sigLoadBlockEnsemble.connect(self._generator_logic.load_ensemble,
-                                          QtCore.Qt.QueuedConnection)
-        self.sigLoadSequence.connect(self._generator_logic.load_sequence,
-                                     QtCore.Qt.QueuedConnection)
-        self.sigDeletePulseBlock.connect(self._generator_logic.delete_block,
-                                         QtCore.Qt.QueuedConnection)
-        self.sigDeleteBlockEnsemble.connect(self._generator_logic.delete_ensemble,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigDeleteSequence.connect(self._generator_logic.delete_sequence,
-                                       QtCore.Qt.QueuedConnection)
-        self.sigSampleBlockEnsemble.connect(self._generator_logic.sample_pulse_block_ensemble,
-                                            QtCore.Qt.QueuedConnection)
-        self.sigSampleSequence.connect(self._generator_logic.sample_pulse_sequence,
-                                       QtCore.Qt.QueuedConnection)
-        self.sigGeneratorSettingsChanged.connect(self._generator_logic.set_settings,
-                                                 QtCore.Qt.QueuedConnection)
-        self.sigGeneratePredefinedSequence.connect(
-            self._generator_logic.generate_predefined_sequence, QtCore.Qt.QueuedConnection)
-
-        # connect signals coming from the pulsed_measurement_logic
-        self._measurement_logic.sigSignalDataUpdated.connect(self.signal_data_updated,
-                                                             QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigLaserDataUpdated.connect(self.laser_data_updated,
-                                                            QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigLaserToShowUpdated.connect(self.laser_to_show_updated,
-                                                              QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigElapsedTimeUpdated.connect(self.measurement_time_updated,
-                                                              QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigFitUpdated.connect(self.fit_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigMeasurementRunningUpdated.connect(
-            self.measurement_status_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigPulserRunningUpdated.connect(self.pulser_running_updated,
-                                                                QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigFastCounterSettingsUpdated.connect(
-            self.fast_counter_settings_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigPulseSequenceSettingsUpdated.connect(
-            self.measurement_sequence_settings_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigPulseGeneratorSettingsUpdated.connect(
-            self.pulse_generator_settings_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigUploadAssetComplete.connect(self.upload_asset_finished,
-                                                                 QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigUploadedAssetsUpdated.connect(self.uploaded_assets_updated,
-                                                                 QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigLoadedAssetUpdated.connect(self.loaded_asset_updated,
-                                                              QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigExtMicrowaveSettingsUpdated.connect(
-            self.ext_microwave_settings_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigExtMicrowaveRunningUpdated.connect(
-            self.ext_microwave_running_updated, QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigTimerIntervalUpdated.connect(self.analysis_interval_updated,
-                                                                QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated,
-                                                                   QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigAnalysisMethodsUpdated.connect(self.analysis_methods_updated,
-                                                                  QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigExtractionSettingsUpdated.connect(self.extraction_settings_updated,
-                                                                     QtCore.Qt.QueuedConnection)
-        self._measurement_logic.sigExtractionMethodsUpdated.connect(self.extraction_methods_updated,
-                                                                    QtCore.Qt.QueuedConnection)
-
-        # connect signals coming from the sequence_generator_logic
-        self._generator_logic.sigBlockDictUpdated.connect(self.saved_pulse_blocks_updated,
-                                                          QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigEnsembleDictUpdated.connect(self.saved_block_ensembles_updated,
-                                                             QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigSequenceDictUpdated.connect(self.saved_sequences_updated,
-                                                             QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigSampleEnsembleComplete.connect(self.sample_ensemble_finished,
-                                                                QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigSampleSequenceComplete.connect(self.sample_sequence_finished,
-                                                                QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigCurrentBlockUpdated.connect(self.current_pulse_block_updated,
-                                                             QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigCurrentEnsembleUpdated.connect(self.current_block_ensemble_updated,
-                                                                QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigCurrentSequenceUpdated.connect(self.current_sequence_updated,
-                                                                QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigSettingsUpdated.connect(self.generator_settings_updated,
-                                                         QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigPredefinedSequencesUpdated.connect(
-            self.predefined_sequences_updated, QtCore.Qt.QueuedConnection)
-        self._generator_logic.sigPredefinedSequenceGenerated.connect(
-            self.predefined_sequence_generated, QtCore.Qt.QueuedConnection)
-
-        self.status_dict = OrderedDict()
-        self.status_dict['sauplo_ensemble_busy'] = False
-        self.status_dict['sauplo_sequence_busy'] = False
-        self.status_dict['saup_ensemble_busy'] = False
-        self.status_dict['saup_sequence_busy'] = False
-        self.status_dict['sampling_busy'] = False
-        self.status_dict['upload_busy'] = False
+        # Initialize status register
+        self.status_dict = dict()
+        self.status_dict['genload_ensemble_busy'] = False
+        self.status_dict['genload_sequence_busy'] = False
+        self.status_dict['generate_ensemble_busy'] = False
+        self.status_dict['generate_sequence_busy'] = False
+        self.status_dict['generate_busy'] = False
         self.status_dict['loading_busy'] = False
 
         self.status_dict['pulser_running'] = False
         self.status_dict['measurement_running'] = False
         self.status_dict['microwave_running'] = False
+
+        # Connect signals controlling PulsedMeasurementLogic
+        self.sigDoFit.connect(
+            self.pulsedmeasurementlogic().do_fit, QtCore.Qt.QueuedConnection)
+        self.sigToggleMeasurement.connect(
+            self.pulsedmeasurementlogic().toggle_pulsed_measurement, QtCore.Qt.QueuedConnection)
+        self.sigToggleMeasurementPause.connect(
+            self.pulsedmeasurementlogic().toggle_measurement_pause, QtCore.Qt.QueuedConnection)
+        self.sigTogglePulser.connect(
+            self.pulsedmeasurementlogic().toggle_pulse_generator, QtCore.Qt.QueuedConnection)
+        self.sigToggleExtMicrowave.connect(
+            self.pulsedmeasurementlogic().toggle_microwave, QtCore.Qt.QueuedConnection)
+        self.sigFastCounterSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_fast_counter_settings, QtCore.Qt.QueuedConnection)
+        self.sigMeasurementSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_measurement_settings, QtCore.Qt.QueuedConnection)
+        self.sigExtMicrowaveSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_microwave_settings, QtCore.Qt.QueuedConnection)
+        self.sigAnalysisSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_analysis_settings, QtCore.Qt.QueuedConnection)
+        self.sigExtractionSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_extraction_settings, QtCore.Qt.QueuedConnection)
+        self.sigTimerIntervalChanged.connect(
+            self.pulsedmeasurementlogic().set_timer_interval, QtCore.Qt.QueuedConnection)
+        self.sigManuallyPullData.connect(
+            self.pulsedmeasurementlogic().manually_pull_data, QtCore.Qt.QueuedConnection)
+
+        # Connect signals coming from PulsedMeasurementLogic
+        self.pulsedmeasurementlogic().sigMeasurementDataUpdated.connect(
+            self.sigMeasurementDataUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigTimerUpdated.connect(
+            self.sigTimerUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigFitUpdated.connect(
+            self.sigFitUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigMeasurementStatusUpdated.connect(
+            self.measurement_status_updated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigPulserRunningUpdated.connect(
+            self.pulser_running_updated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigExtMicrowaveRunningUpdated.connect(
+            self.ext_microwave_running_updated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigExtMicrowaveSettingsUpdated.connect(
+            self.sigExtMicrowaveSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigFastCounterSettingsUpdated.connect(
+            self.sigFastCounterSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigMeasurementSettingsUpdated.connect(
+            self.sigMeasurementSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigAnalysisSettingsUpdated.connect(
+            self.sigAnalysisSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.connect(
+            self.sigExtractionSettingsUpdated, QtCore.Qt.QueuedConnection)
+
+        # Connect signals controlling SequenceGeneratorLogic
+
+        # Connect signals coming from SequenceGeneratorLogic
+        return
 
     def on_deactivate(self):
         """
@@ -290,332 +172,233 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         # Disconnect all signals
-        # Signals controlling the pulsed_measurement_logic
-        self.sigRequestMeasurementInitValues.disconnect()
-        self.sigMeasurementSequenceSettingsChanged.disconnect()
-        self.sigFastCounterSettingsChanged.disconnect()
-        self.sigExtMicrowaveSettingsChanged.disconnect()
-        self.sigExtMicrowaveStartStop.disconnect()
-        self.sigPulseGeneratorSettingsChanged.disconnect()
-        self.sigAnalysisSettingsChanged.disconnect()
+        # Disconnect signals controlling PulsedMeasurementLogic
         self.sigDoFit.disconnect()
+        self.sigToggleMeasurement.disconnect()
+        self.sigToggleMeasurementPause.disconnect()
+        self.sigTogglePulser.disconnect()
+        self.sigToggleExtMicrowave.disconnect()
+        self.sigFastCounterSettingsChanged.disconnect()
+        self.sigMeasurementSettingsChanged.disconnect()
+        self.sigExtMicrowaveSettingsChanged.disconnect()
+        self.sigAnalysisSettingsChanged.disconnect()
+        self.sigExtractionSettingsChanged.disconnect()
         self.sigTimerIntervalChanged.disconnect()
         self.sigManuallyPullData.disconnect()
-        self.sigStartMeasurement.disconnect()
-        self.sigStopMeasurement.disconnect()
-        self.sigPauseMeasurement.disconnect()
-        self.sigContinueMeasurement.disconnect()
-        self.sigStartPulser.disconnect()
-        self.sigStopPulser.disconnect()
-        self.sigClearPulseGenerator.disconnect()
-        self.sigUploadAsset.disconnect()
-        self.sigLoadAsset.disconnect()
-        self.sigDirectWriteEnsemble.disconnect()
-        self.sigDirectWriteSequence.disconnect()
-        self.sigLaserToShowChanged.disconnect()
-        self.sigExtractionSettingsChanged.disconnect()
-        # Signals controlling the sequence_generator_logic
-        self.sigRequestGeneratorInitValues.disconnect()
-        self.sigSavePulseBlock.disconnect()
-        self.sigSaveBlockEnsemble.disconnect()
-        self.sigSaveSequence.disconnect()
-        self.sigLoadPulseBlock.disconnect()
-        self.sigLoadBlockEnsemble.disconnect()
-        self.sigLoadSequence.disconnect()
-        self.sigDeletePulseBlock.disconnect()
-        self.sigDeleteBlockEnsemble.disconnect()
-        self.sigDeleteSequence.disconnect()
-        self.sigSampleBlockEnsemble.disconnect()
-        self.sigSampleSequence.disconnect()
-        self.sigGeneratorSettingsChanged.disconnect()
-        self.sigGeneratePredefinedSequence.disconnect()
-        # Signals coming from the pulsed_measurement_logic
-        self._measurement_logic.sigSignalDataUpdated.disconnect()
-        self._measurement_logic.sigLaserDataUpdated.disconnect()
-        self._measurement_logic.sigLaserToShowUpdated.disconnect()
-        self._measurement_logic.sigElapsedTimeUpdated.disconnect()
-        self._measurement_logic.sigFitUpdated.disconnect()
-        self._measurement_logic.sigMeasurementRunningUpdated.disconnect()
-        self._measurement_logic.sigPulserRunningUpdated.disconnect()
-        self._measurement_logic.sigFastCounterSettingsUpdated.disconnect()
-        self._measurement_logic.sigPulseSequenceSettingsUpdated.disconnect()
-        self._measurement_logic.sigPulseGeneratorSettingsUpdated.disconnect()
-        self._measurement_logic.sigUploadAssetComplete.disconnect()
-        self._measurement_logic.sigUploadedAssetsUpdated.disconnect()
-        self._measurement_logic.sigLoadedAssetUpdated.disconnect()
-        self._measurement_logic.sigExtMicrowaveSettingsUpdated.disconnect()
-        self._measurement_logic.sigExtMicrowaveRunningUpdated.disconnect()
-        self._measurement_logic.sigTimerIntervalUpdated.disconnect()
-        self._measurement_logic.sigAnalysisSettingsUpdated.disconnect()
-        self._measurement_logic.sigAnalysisMethodsUpdated.disconnect()
-        self._measurement_logic.sigExtractionSettingsUpdated.disconnect()
-        self._measurement_logic.sigExtractionMethodsUpdated.disconnect()
-        # Signals coming from the sequence_generator_logic
-        self._generator_logic.sigBlockDictUpdated.disconnect()
-        self._generator_logic.sigEnsembleDictUpdated.disconnect()
-        self._generator_logic.sigSequenceDictUpdated.disconnect()
-        self._generator_logic.sigSampleEnsembleComplete.disconnect()
-        self._generator_logic.sigSampleSequenceComplete.disconnect()
-        self._generator_logic.sigCurrentBlockUpdated.disconnect()
-        self._generator_logic.sigCurrentEnsembleUpdated.disconnect()
-        self._generator_logic.sigCurrentSequenceUpdated.disconnect()
-        self._generator_logic.sigSettingsUpdated.disconnect()
-        self._generator_logic.sigPredefinedSequencesUpdated.disconnect()
-        self._generator_logic.sigPredefinedSequenceGenerated.disconnect()
+        # Disconnect signals coming from PulsedMeasurementLogic
+        self.pulsedmeasurementlogic().sigMeasurementDataUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigTimerUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigFitUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigMeasurementStatusUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigPulserRunningUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigExtMicrowaveRunningUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigExtMicrowaveSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigFastCounterSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigMeasurementSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigAnalysisSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.disconnect()
+
+        # Disconnect signals controlling SequenceGeneratorLogic
+
+        # Disconnect signals coming from SequenceGeneratorLogic
         return
+
+    #######################################################################
+    ###             Pulsed measurement properties                       ###
+    #######################################################################
+    @property
+    def fast_counter_constraints(self):
+        return self.pulsedmeasurementlogic().fastcounter_constraints
+
+    @property
+    def fast_counter_settings(self):
+        return self.pulsedmeasurementlogic().fast_counter_settings
+
+    @property
+    def ext_microwave_constraints(self):
+        return self.pulsedmeasurementlogic().ext_microwave_constraints
+
+    @property
+    def ext_microwave_settings(self):
+        return self.pulsedmeasurementlogic().ext_microwave_settings
+
+    @property
+    def measurement_settings(self):
+        return self.pulsedmeasurementlogic().measurement_settings
+
+    @property
+    def timer_interval(self):
+        return self.pulsedmeasurementlogic().timer_interval
+
+    @property
+    def analysis_methods(self):
+        return self.pulsedmeasurementlogic().analysis_methods
+
+    @property
+    def extraction_methods(self):
+        return self.pulsedmeasurementlogic().extraction_methods
+
+    @property
+    def analysis_settings(self):
+        return self.pulsedmeasurementlogic().analysis_settings
+
+    @property
+    def extraction_settings(self):
+        return self.pulsedmeasurementlogic().extraction_settings
+
+    @property
+    def signal_data(self):
+        return self.pulsedmeasurementlogic().signal_data
+
+    @property
+    def signal_alt_data(self):
+        return self.pulsedmeasurementlogic().signal_alt_data
+
+    @property
+    def measurement_error(self):
+        return self.pulsedmeasurementlogic().measurement_error
+
+    @property
+    def raw_data(self):
+        return self.pulsedmeasurementlogic().raw_data
+
+    @property
+    def laser_data(self):
+        return self.pulsedmeasurementlogic().laser_data
 
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
-    def request_measurement_init_values(self):
+    def set_measurement_settings(self, settings_dict=None, **kwargs):
         """
 
-        @return:
+        @param settings_dict:
+        @param kwargs:
         """
-        self.sigRequestMeasurementInitValues.emit()
+        if isinstance(settings_dict, dict):
+            self.sigMeasurementSettingsChanged.emit(settings_dict)
+        else:
+            self.sigMeasurementSettingsChanged.emit(kwargs)
         return
 
-    def get_hardware_constraints(self):
+    def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
 
-        @return:
+        @param settings_dict:
+        @param kwargs:
         """
-        fastcounter_constraints = self._measurement_logic.get_fastcounter_constraints()
-        pulsegenerator_constraints = self._measurement_logic.get_pulser_constraints()
-        return pulsegenerator_constraints, fastcounter_constraints
-
-    def measurement_sequence_settings_changed(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating):
-        """
-
-        @param controlled_vals:
-        @param number_of_lasers:
-        @param sequence_length_s:
-        @param laser_ignore_list:
-        @param alternating:
-        @return:
-        """
-        self.sigMeasurementSequenceSettingsChanged.emit(controlled_vals, number_of_lasers,
-                                                        sequence_length_s, laser_ignore_list,
-                                                        alternating)
+        if isinstance(settings_dict, dict):
+            self.sigFastCounterSettingsChanged.emit(settings_dict)
+        else:
+            self.sigFastCounterSettingsChanged.emit(kwargs)
         return
 
-    def measurement_sequence_settings_updated(self, controlled_vals, number_of_lasers,
-                                              sequence_length_s, laser_ignore_list, alternating):
+    def set_ext_microwave_settings(self, settings_dict=None, **kwargs):
         """
 
-        @param controlled_vals:
-        @param number_of_lasers:
-        @param sequence_length_s:
-        @param laser_ignore_list:
-        @param alternating:
-        @return:
+        @param settings_dict:
+        @param kwargs:
         """
-        self.sigMeasurementSequenceSettingsUpdated.emit(controlled_vals, number_of_lasers,
-                                                        sequence_length_s, laser_ignore_list,
-                                                        alternating)
+        if isinstance(settings_dict, dict):
+            self.sigExtMicrowaveSettingsChanged.emit(settings_dict)
+        else:
+            self.sigExtMicrowaveSettingsChanged.emit(kwargs)
         return
 
-    def fast_counter_settings_changed(self, bin_width_s, record_length_s):
+    def set_analysis_settings(self, settings_dict=None, **kwargs):
         """
 
-        @param bin_width_s:
-        @param record_length_s:
-        @return:
+        @param settings_dict:
+        @param kwargs:
         """
-        self.sigFastCounterSettingsChanged.emit(bin_width_s, record_length_s)
+        if isinstance(settings_dict, dict):
+            self.sigAnalysisSettingsChanged.emit(settings_dict)
+        else:
+            self.sigAnalysisSettingsChanged.emit(kwargs)
         return
 
-    def fast_counter_settings_updated(self, bin_width_s, record_length_s):
+    def set_extraction_settings(self, settings_dict=None, **kwargs):
         """
 
-        @param bin_width_s:
-        @param record_length_s:
-        @param number_of_lasers:
-        @return:
+        @param settings_dict:
+        @param kwargs:
         """
-        self.sigFastCounterSettingsUpdated.emit(bin_width_s, record_length_s)
+        if isinstance(settings_dict, dict):
+            self.sigExtractionSettingsChanged.emit(settings_dict)
+        else:
+            self.sigExtractionSettingsChanged.emit(kwargs)
         return
 
-    def ext_microwave_settings_changed(self, frequency_hz, power_dbm, use_ext_microwave):
+    def set_timer_interval(self, interval):
         """
 
-        @param frequency_hz:
-        @param power_dbm:
-        @param use_ext_microwave:
-        @return:
+        @param int|float interval: The timer interval to set in seconds.
         """
-        self.sigExtMicrowaveSettingsChanged.emit(frequency_hz, power_dbm, use_ext_microwave)
+        if isinstance(interval, (int, float)):
+            self.sigTimerIntervalChanged.emit(interval)
         return
 
-    def ext_microwave_settings_updated(self, frequency_hz, power_dbm, use_ext_microwave):
+    def manually_pull_data(self):
         """
-
-        @param frequency_hz:
-        @param power_dbm:
-        @param use_ext_microwave:
-        @return:
         """
-        self.sigExtMicrowaveSettingsUpdated.emit(frequency_hz, power_dbm, use_ext_microwave)
+        self.sigManuallyPullData.emit()
         return
 
-    def ext_microwave_toggled(self, output_on):
+    def toggle_ext_microwave(self, switch_on):
         """
 
-        @param output_on:
-        @return:
+        @param switch_on:
         """
-        self.sigExtMicrowaveStartStop.emit(output_on)
+        if isinstance(switch_on, bool):
+            self.sigToggleExtMicrowave.emit(switch_on)
         return
 
     def ext_microwave_running_updated(self, is_running):
         """
 
         @param is_running:
-        @return:
         """
-        self.status_dict['microwave_running'] = is_running
-        self.sigExtMicrowaveRunningUpdated.emit(is_running)
+        if isinstance(is_running, bool):
+            self.status_dict['microwave_running'] = is_running
+            self.sigExtMicrowaveRunningUpdated.emit(is_running)
         return
 
-    def pulse_generator_settings_changed(self, sample_rate_hz, activation_config_name,
-                                         analogue_amplitude, interleave_on):
+    def toggle_pulse_generator(self, switch_on):
         """
 
-        @param sample_rate_hz:
-        @param activation_config_name:
-        @param analogue_amplitude:
-        @param interleave_on:
-        @return:
+        @param switch_on:
         """
-        self.sigPulseGeneratorSettingsChanged.emit(sample_rate_hz, activation_config_name,
-                                                   analogue_amplitude, interleave_on)
+        if isinstance(switch_on, bool):
+            self.sigTogglePulser.emit(switch_on)
         return
 
-    def pulse_generator_settings_updated(self, sample_rate_hz, activation_config_name,
-                                         analogue_amplitude, interleave_on):
+    def pulser_running_updated(self, is_running):
         """
 
-        @param sample_rate_hz:
-        @param activation_config_name:
-        @param analogue_amplitude:
-        @param interleave_on:
-        @return:
+        @param is_running:
         """
-        constraints = self._generator_logic.get_pulser_constraints()
-        activation_config = constraints.activation_config[activation_config_name]
-        self.sigPulserSettingsUpdated.emit(sample_rate_hz, activation_config_name,
-                                           activation_config, analogue_amplitude, interleave_on)
+        if isinstance(is_running, bool):
+            self.status_dict['pulser_running'] = is_running
+            self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def analysis_settings_changed(self, analysis_settings):
+    def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
         """
 
-        @param dict analysis_settings
-        @return:
+        @param bool start:
+        @param str stash_raw_data_tag:
         """
-        self.sigAnalysisSettingsChanged.emit(analysis_settings)
+        if isinstance(start, bool) and isinstance(stash_raw_data_tag, str):
+            self.sigToggleMeasurement.emit(start, stash_raw_data_tag)
         return
 
-    def analysis_settings_updated(self, analysis_settings):
+    def toggle_pulsed_measurement_pause(self, pause):
         """
 
-        @param dict: analysis_settings:
-        @return:
+        @param pause:
         """
-        self.sigAnalysisSettingsUpdated.emit(analysis_settings)
-        return
-
-    def analysis_methods_updated(self, methods_dict):
-        """
-
-        @param methods_dict:
-        @return:
-        """
-        self.sigAnalysisMethodsUpdated.emit(methods_dict)
-        return
-
-    def do_fit(self, fit_function):
-        """
-
-        @param fit_function:
-        @return:
-        """
-        self.sigDoFit.emit(fit_function)
-        return
-
-    def fit_updated(self, fit_function, fit_data_x, fit_data_y, result_dict):
-        """
-
-        @param fit_function:
-        @param fit_data_x:
-        @param fit_data_y:
-        @param result_dict:
-        @return:
-        """
-        self.sigFitUpdated.emit(fit_function, fit_data_x, fit_data_y, result_dict)
-        return
-
-    def analysis_interval_changed(self, analysis_interval_s):
-        """
-
-        @param analysis_interval_s:
-        @return:
-        """
-        self.sigTimerIntervalChanged.emit(analysis_interval_s)
-        return
-
-    def analysis_interval_updated(self, analysis_interval_s):
-        """
-
-        @param analysis_interval_s:
-        @return:
-        """
-        self.sigTimerIntervalUpdated.emit(analysis_interval_s)
-        return
-
-    def manually_pull_data(self):
-        """
-
-        @return:
-        """
-        self.sigManuallyPullData.emit()
-        return
-
-    def start_measurement(self, stashed_raw_data_tag=''):
-        """
-
-        @return:
-        """
-        self.sigStartMeasurement.emit(stashed_raw_data_tag)
-        return
-
-    def stop_measurement(self, stash_raw_data_tag=''):
-        """
-
-        @return:
-        """
-        if not isinstance(stash_raw_data_tag, str):
-            self.log.warn('PulsedMaster: stop_measurement was called with stash_raw_data_tag not being a string. '
-                          'Setting it to an empty string to avoid crashes.')
-            stash_raw_data_tag = ''
-        self.sigStopMeasurement.emit(stash_raw_data_tag)
-        return
-
-    def pause_measurement(self):
-        """
-
-        @return:
-        """
-        self.sigPauseMeasurement.emit()
-        return
-
-    def continue_measurement(self):
-        """
-
-        @return:
-        """
-        self.sigContinueMeasurement.emit()
+        if isinstance(pause, bool):
+            self.sigToggleMeasurementPause.emit(pause)
         return
 
     def measurement_status_updated(self, is_running, is_paused):
@@ -623,42 +406,19 @@ class PulsedMasterLogic(GenericLogic):
 
         @param is_running:
         @param is_paused:
-        @return:
         """
-        self.status_dict['measurement_running'] = is_running
-        self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
+        if isinstance(is_running, bool) and isinstance(is_paused, bool):
+            self.status_dict['measurement_running'] = is_running
+            self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
         return
 
-    def measurement_time_updated(self, elapsed_time, elapsed_time_string):
+    def do_fit(self, fit_function):
         """
 
-        @param elapsed_time:
-        @param elapsed_time_string:
-        @return:
+        @param fit_function:
         """
-        self.sigElapsedTimeUpdated.emit(elapsed_time, elapsed_time_string)
-        return
-
-    def toggle_pulse_generator(self, switch_on):
-        """
-
-        @param switch_on:
-        @return:
-        """
-        if switch_on:
-            self.sigStartPulser.emit()
-        else:
-            self.sigStopPulser.emit()
-        return
-
-    def pulser_running_updated(self, is_running):
-        """
-
-        @param is_running:
-        @return:
-        """
-        self.status_dict['pulser_running'] = is_running
-        self.sigPulserRunningUpdated.emit(is_running)
+        if isinstance(fit_function, str):
+            self.sigDoFit.emit(fit_function)
         return
 
     def save_measurement_data(self, controlled_val_unit, tag, with_error, save_second_plot):
@@ -672,11 +432,16 @@ class PulsedMasterLogic(GenericLogic):
 
         @return str: filepath where data were saved
         """
-        return self._measurement_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
-                                                      tag=tag,
-                                                      with_error=with_error,
-                                                      save_second_plot=save_second_plot)
+        return self._measurement_logic.save_measurement_data(
+            controlled_val_unit=controlled_val_unit,
+            tag=tag,
+            with_error=with_error,
+            save_second_plot=save_second_plot)
 
+
+    #######################################################################
+    ###             Sequence generator methods                          ###
+    #######################################################################
     def clear_pulse_generator(self):
         """
 
@@ -826,92 +591,6 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['loading_busy'] = False
         self.sigLoadedAssetUpdated.emit(asset_name, asset_type)
         return asset_name, asset_type
-
-    def laser_to_show_changed(self, laser_pulse_index, get_raw_pulse):
-        """
-
-        @param laser_pulse_index:
-        @param get_raw_pulse:
-        @return:
-        """
-        self.sigLaserToShowChanged.emit(laser_pulse_index, get_raw_pulse)
-        return
-
-    def laser_to_show_updated(self, laser_pulse_index, get_raw_pulse):
-        """
-
-        @param laser_pulse_index:
-        @param get_raw_pulse:
-        @return:
-        """
-        self.sigLaserToShowUpdated.emit(laser_pulse_index, get_raw_pulse)
-        return
-
-    def laser_data_updated(self, laser_data_x, laser_data_y):
-        """
-
-        @param laser_data_x:
-        @param laser_data_y:
-        @return:
-        """
-        self.sigLaserDataUpdated.emit(laser_data_x, laser_data_y)
-        return
-
-    def signal_data_updated(self, signal_data_x, signal_data_y, signal_data_y2, error_data_y,
-                            error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2):
-        """
-
-        @param signal_data_x:
-        @param signal_data_y:
-        @param signal_data_y2:
-        @param error_data_y:
-        @param error_data_y2:
-        @return:
-        """
-        self.sigSignalDataUpdated.emit(signal_data_x, signal_data_y, signal_data_y2, error_data_y,
-                                       error_data_y2, signal_fft_x, signal_fft_y, signal_fft_y2)
-        return
-
-    def extraction_settings_changed(self, extraction_settings):
-        """
-
-        @param dict extraction_settings:
-        @return:
-        """
-        self.sigExtractionSettingsChanged.emit(extraction_settings)
-        return
-
-    def extraction_settings_updated(self, extraction_settings):
-        """
-
-        @param dict extraction_settings:
-        @return:
-        """
-        self.sigExtractionSettingsUpdated.emit(extraction_settings)
-        return
-
-    def extraction_methods_updated(self, methods_dict):
-        """
-
-        @param methods_dict:
-        @return:
-        """
-        self.sigExtractionMethodsUpdated.emit(methods_dict)
-        return
-
-
-    #######################################################################
-    ###             Sequence generator methods                          ###
-    #######################################################################
-    def request_generator_init_values(self):
-        """
-
-        @return:
-        """
-        self.sigRequestGeneratorInitValues.emit()
-        self.sigEnsembleSaUpComplete.emit('')
-        self.sigSequenceSaUpComplete.emit('')
-        return
 
     def save_pulse_block(self, block_name, block_object):
         """

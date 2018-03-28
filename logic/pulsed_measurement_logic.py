@@ -584,7 +584,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot(dict)
-    def set_measurement_settings(self,  settings_dict=None, **kwargs):
+    def set_measurement_settings(self, settings_dict=None, **kwargs):
         """
         Apply new measurement settings.
         Either accept a settings dictionary as positional argument or keyword arguments.
@@ -644,6 +644,19 @@ class PulsedMeasurementLogic(GenericLogic):
         return self._sequence_information, self._invoke_settings_from_sequence, \
                self._controlled_variable, self._number_of_lasers, self._laser_ignore_list, \
                self._alternating
+
+    @QtCore.Slot(bool, str)
+    def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
+        """
+        Convenience method to start/stop measurement
+
+        @param bool start: Start the measurement (True) or stop the measurement (False)
+        """
+        if start:
+            self.start_pulsed_measurement(stash_raw_data_tag)
+        else:
+            self.stop_pulsed_measurement(stash_raw_data_tag)
+        return
 
     @QtCore.Slot(str)
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
@@ -733,6 +746,19 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigMeasurementStatusUpdated.emit(False, False)
         return
 
+    @QtCore.Slot(bool)
+    def toggle_measurement_pause(self, pause):
+        """
+        Convenience method to pause/continue measurement
+
+        @param bool pause: Pause the measurement (True) or continue the measurement (False)
+        """
+        if pause:
+            self.pause_pulsed_measurement()
+        else:
+            self.continue_pulsed_measurement()
+        return
+
     @QtCore.Slot()
     def pause_pulsed_measurement(self):
         """
@@ -784,11 +810,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot(float)
+    @QtCore.Slot(int)
     def set_timer_interval(self, interval):
         """
         Change the interval of the measurement analysis timer
 
-        @param int interval: Interval of the timer in s
+        @param int|float interval: Interval of the timer in s
         """
         with self._threadlock:
             self.__timer_interval = interval
