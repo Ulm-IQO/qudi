@@ -392,7 +392,6 @@ class PoiManagerGui(GUIBase):
         self._mw.autofind_pois_Action.triggered.connect(self.do_autofind_poi_procedure)
         self._mw.optimize_roi_Action.triggered.connect(self.optimize_roi)
 
-
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
         self._mw.refind_poi_Action.triggered.connect(self.update_poi_pos)
@@ -409,7 +408,6 @@ class PoiManagerGui(GUIBase):
         self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
 
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
-
 
         # This needs to be activated so that it only listens to user input, and ignores
         # algorithmic index changes
