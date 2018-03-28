@@ -684,12 +684,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigTimerUpdated.emit(self.__elapsed_time,
                                           self.__elapsed_sweeps,
                                           self.__timer_interval)
-                self.__initialize_timer()
 
                 # Set starting time and start timer (if present)
                 self.__start_time = time.time()
-                if self.__analysis_timer is not None:
-                    self.__analysis_timer.start()
+                self.__analysis_timer.start()
 
                 # Set measurement paused flag
                 self.__is_paused = False
@@ -710,8 +708,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         with self._threadlock:
             if self.module_state() == 'locked':
-                # stopping, disconnecting and removing the timer
-                self.__remove_timer()
+                # stopping the timer
+                self.__analysis_timer.stop()
 
                 # Turn off fast counter
                 self.fast_counter_off()
@@ -1005,31 +1003,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_data[0] = np.arange(1, laser_length + 1) * self.__fast_counter_binwidth
 
         self.sigMeasurementDataUpdated.emit()
-        return
-
-    def __initialize_timer(self):
-        """
-        Initializes the QTimer controlling the measurement analysis loop.
-        No QTimer will be created if self.__timer_interval <= 0.
-        """
-        if self.__timer_interval > 0:
-            self.__analysis_timer = QtCore.QTimer()
-            self.__analysis_timer.setSingleShot(False)
-            self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))
-            self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
-                                                  QtCore.Qt.QueuedConnection)
-        else:
-            self.__analysis_timer = None
-        return
-
-    def __remove_timer(self):
-        """
-        Disconnects and removes the QTimer controlling the measurement analysis loop.
-        """
-        if self.__analysis_timer is not None:
-            self.__analysis_timer.stop()
-            self.__analysis_timer.timeout.disconnect()
-            self.__analysis_timer = None
         return
 
     # FIXME: Revise everything below
