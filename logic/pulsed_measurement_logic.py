@@ -165,6 +165,9 @@ class PulsedMeasurementLogic(GenericLogic):
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
+        # Tell the PulseExtractionLogic if the fast counter is gated or not
+        self.pulseextractionlogic().is_gated = self.fastcounter().is_gated()
+
         # recalled saved raw data dict key
         self._recalled_raw_data_tag = None
         return
