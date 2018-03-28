@@ -479,6 +479,16 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @property
+    def timer_interval(self):
+        return float(self.__timer_interval)
+
+    @timer_interval.setter
+    def timer_interval(self, value):
+        if isinstance(value, (int, float)):
+            self.set_timer_interval(value)
+        return
+
+    @property
     def analysis_methods(self):
         return self.pulseanalysislogic().analysis_methods
 
@@ -769,7 +779,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.__initialize_timer()
                 if not self.__is_paused:
                     self.__analysis_timer.start()
-            self.sigTimerUpdated.emit(self.__elapsed_time, self.__timer_interval)
+            self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
+                                      self.__timer_interval)
         return
 
     def manually_pull_data(self):
