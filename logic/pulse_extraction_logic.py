@@ -46,10 +46,10 @@ class PulseExtractionLogic(GenericLogic):
     # The keywords for the function arguments must be the same as these variable names.
     # If you add new parameters, make sure you include them in the extraction_settings property
     # below.
-    conv_std_dev = StatusVar(default=10.0)
+    conv_std_dev = StatusVar(default=20.0)
     count_threshold = StatusVar(default=10)
-    threshold_tolerance = StatusVar(default=20e-9)
     min_laser_length = StatusVar(default=200e-9)
+    threshold_tolerance = StatusVar(default=20e-9)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -86,14 +86,14 @@ class PulseExtractionLogic(GenericLogic):
                 try:
                     # Check for callable function or method:
                     ref = getattr(mod, method)
-                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                    if method.startswith(('gated_', 'ungated_')) and callable(ref) and (
+                            inspect.ismethod(ref) or inspect.isfunction(ref)):
                         # Bind the method as an attribute to the Class
-                        # Add method to dictionary if it is an extraction method
+                        setattr(PulseExtractionLogic, method, staticmethod(ref))
+                        # Add method to appropriate dictionary
                         if method.startswith('gated_'):
-                            setattr(PulseExtractionLogic, method, staticmethod(ref))
                             self.gated_extraction_methods[method[6:]] = getattr(self, method)
                         elif method.startswith('ungated_'):
-                            setattr(PulseExtractionLogic, method, staticmethod(ref))
                             self.ungated_extraction_methods[method[8:]] = getattr(self, method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
@@ -134,9 +134,7 @@ class PulseExtractionLogic(GenericLogic):
                 self.log.warning('No extraction setting "{0}" found in PulseExtractionLogic.\n'
                                  'Creating it now but this can lead to problems.\nThis parameter '
                                  'is probably not part of any extraction method.'.format(name))
-            if name == 'count_data':
-                pass
-            else:
+            if name != 'count_data':
                 setattr(self, name, value)
 
         # emit signal with all important parameters for the currently selected analysis method
@@ -187,6 +185,6 @@ class PulseExtractionLogic(GenericLogic):
             else:
                 kwargs_dict[name] = method_signature.parameters[name].default
                 self.log.warning('Parameter "{0}" for extraction method "{1}" is no attribute of '
-                               'PulseExtractionLogic.\nTaking default value of "{2}" instead.'
-                               ''.format(name, method.__name__, kwargs_dict[name]))
+                                 'PulseExtractionLogic.\nTaking default value of "{2}" instead.'
+                                 ''.format(name, method.__name__, kwargs_dict[name]))
         return kwargs_dict
