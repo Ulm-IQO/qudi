@@ -99,7 +99,9 @@ class PulsedMeasurementLogic(GenericLogic):
         super().__init__(config=config, **kwargs)
 
         # timer for measurement
-        self.__analysis_timer = None
+        self.__analysis_timer = QtCore.QTimer()
+        self.__analysis_timer.setSingleShot(False)
+        self.__analysis_timer.setInterval(round(1000. * self.__timer_interval))
         self.__start_time = 0
         self.__elapsed_time = 0
         self.__elapsed_sweeps = 0  # FIXME: unused
@@ -132,6 +134,9 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigAnalysisSettingsUpdated)
         self.pulseextractionlogic().sigExtractionSettingsUpdated.connect(
             self.sigExtractionSettingsUpdated)
+        self.__analysis_timer.stop()
+        self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
+                                              QtCore.Qt.QueuedConnection)
 
         # Fitting
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
@@ -182,6 +187,8 @@ class PulsedMeasurementLogic(GenericLogic):
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
+        self.__analysis_timer.stop()
+        self.__analysis_timer.timeout.disconnect()
         self.pulseanalysislogic().sigAnalysisSettingsUpdated.disconnect()
         self.pulseextractionlogic().sigExtractionSettingsUpdated.disconnect()
         return
@@ -736,7 +743,7 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # pausing the timer
-                if self.__analysis_timer is not None:
+                if self.__analysis_timer.isActive():
                     self.__analysis_timer.stop()
 
                 self.fast_counter_pause()
@@ -766,7 +773,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_on()
 
                 # un-pausing the timer
-                if self.__analysis_timer is not None:
+                if not self.__analysis_timer.isActive():
                     self.__analysis_timer.start()
 
                 # Set measurement paused flag
@@ -787,15 +794,13 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self._threadlock:
             self.__timer_interval = interval
-            if self.__analysis_timer is not None:
-                if self.__timer_interval > 0:
-                    self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))
-                else:
-                    self.__remove_timer()
-            elif self.__timer_interval > 0 and self.module_state() == 'locked':
-                self.__initialize_timer()
-                if not self.__is_paused:
+            if self.__timer_interval > 0:
+                self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))
+                if self.module_state() == 'locked' and not self.__is_paused:
                     self.__analysis_timer.start()
+            else:
+                self.__analysis_timer.stop()
+
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
                                       self.__timer_interval)
         return
