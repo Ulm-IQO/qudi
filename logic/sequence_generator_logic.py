@@ -30,10 +30,10 @@ import time
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar, Connector
-from core.util.modules import get_home_dir
+from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
+from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseSequence
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -55,23 +55,32 @@ class SequenceGeneratorLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    pulse_generator = Connector(interface='PulserInterface')
+    pulsegenerator = Connector(interface='PulserInterface')
+
+    # configuration options
+    _additional_methods_dir = ConfigOption('additional_methods_dir', default='', missing='nothing')
+    _overhead_bytes = ConfigOption('overhead_bytes', default=0, missing='nothing')
 
     # status vars
-    laser_channel = StatusVar('laser_channel', 'd_ch1')
+    # Descriptor to indicate the laser channel
+    _laser_channel = StatusVar(default='d_ch1')
+    # The created pulse objects (PulseBlock, PulseBlockEnsemble, PusleSequence) are saved in
+    # these dictionaries. The keys are the names.
+    _saved_pulse_blocks = StatusVar(default=OrderedDict())
+    _saved_pulse_block_ensembles = StatusVar(default=OrderedDict())
+    _saved_pulse_sequences = StatusVar(default=OrderedDict())
 
     # define signals
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigSampleEnsembleComplete = QtCore.Signal(str, dict, dict)
-    sigSampleSequenceComplete = QtCore.Signal(str, list)
-    sigCurrentBlockUpdated = QtCore.Signal(object)
-    sigCurrentEnsembleUpdated = QtCore.Signal(object)
-    sigCurrentSequenceUpdated = QtCore.Signal(object)
-    sigSettingsUpdated = QtCore.Signal(dict)
-    sigPredefinedSequencesUpdated = QtCore.Signal(dict)
-    sigPredefinedSequenceGenerated = QtCore.Signal(str)
+    sigGenerateEnsembleComplete = QtCore.Signal(object)
+    sigGenerateSequenceComplete = QtCore.Signal(object)
+    sigLoadedAssetUpdated = QtCore.Signal(str, str)
+    sigGeneratorSettingsUpdated = QtCore.Signal(dict)
+    sigSamplingSettingsUpdated = QtCore.Signal(dict)
+
+    sigPredefinedSequenceGenerated = QtCore.Signal(object)  # TODO: Needed???
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -81,331 +90,421 @@ class SequenceGeneratorLogic(GenericLogic):
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
-            if not os.path.exists(self.pulsed_file_dir):
-                homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directort defined in "pulsed_file_dir" in the config for '
-                                 'SequenceGeneratorLogic class does not exist! The default home '
-                                 'directory\n{0}'
-                                 '\nwill be taken instead.'.format(self.pulsed_file_dir))
-        else:
-            homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No directory with the attribute "pulsed_file_dir" is defined for the '
-                             'SequenceGeneratorLogic! The default home directory\n{0}\nwill be '
-                             'taken instead.'.format(self.pulsed_file_dir))
-
-        # Byte size of the max. memory usage during sampling/write-to-file process
-        if 'overhead_bytes' in config.keys():
-            self.sampling_overhead_bytes = config['overhead_bytes']
-        else:
-            self.sampling_overhead_bytes = None
+        # Additional handling of config options
+        # Byte size of the max. memory usage during sampling process
+        if 'overhead_bytes' not in config.keys():
             self.log.warning('No max. memory overhead specified in config.\nIn order to avoid '
                              'memory overflow during sampling/writing of Pulse objects you must '
                              'set "overhead_bytes".')
-
         # directory for additional generate methods to import
         # (other than qudi/logic/predefined_methods)
         if 'additional_methods_dir' in config.keys():
-            if os.path.exists(config['additional_methods_dir']):
-                self.additional_methods_dir = config['additional_methods_dir']
-            else:
+            if not os.path.exists(config['additional_methods_dir']):
                 self.additional_methods_dir = None
                 self.log.error('Specified path "{0}" for import of additional generate methods '
                                'does not exist.'.format(config['additional_methods_dir']))
-        else:
-            self.additional_methods_dir = None
-
-        # The created pulse objects (PulseBlock, PulseBlockEnsemble, PusleSequence) are saved in
-        # these dictionaries. The keys are the names.
-        self.saved_pulse_blocks = OrderedDict()
-        self.saved_pulse_block_ensembles = OrderedDict()
-        self.saved_pulse_sequences = OrderedDict()
-
-        self.block_dir = self._get_dir_for_name('pulse_block_objects')
-        self.ensemble_dir = self._get_dir_for_name('pulse_ensemble_objects')
-        self.sequence_dir = self._get_dir_for_name('sequence_objects')
 
         # a dictionary with all predefined generator methods and measurement sequence names
-        self.generate_methods = None
+        self.__generate_methods = None
 
-        # current pulse generator parameters that are frequently used by this logic.
+        # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
-        self.activation_config = ('', set())
-        self.sample_rate = 0.0
-        self.analog_pp_amplitude = dict()
+        self.__activation_config = ('', set())  # Activation config name and set of active channels
+        self.__sample_rate = 0.0  # Sample rate in samples/s
+        self.__analog_levels = (dict(), dict())  # Tuple of two dict (<pp_amplitude>, <offset>)
+                                                 # Dict keys are analog channel descriptors
+        self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
+                                                  # Dict keys are digital channel descriptors
+        self.__interleave = False  # Flag to indicate use of interleave
         return
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # Read saved pulse objects from file
-        self._get_blocks_from_file()
-        self._get_ensembles_from_file()
-        self._get_sequences_from_file()
-
         # Get method definitions for prefined pulse sequences from seperate modules and attach them
         # to this module.
         self._attach_predefined_methods()
 
-        # Read activation_config from device.
-        channel_state = self.pulse_generator().get_active_channels()
-        current_config = {chnl for chnl in channel_state if channel_state[chnl]}
-        avail_configs = self.pulse_generator().get_constraints().activation_config
-        # Set first available config if read config is not valid.
-        if current_config not in avail_configs.values():
-            config_to_set = avail_configs[list(avail_configs)[0]]
-            for chnl in channel_state:
-                if chnl in config_to_set:
-                    channel_state[chnl] = True
-                else:
-                    channel_state[chnl] = False
-            set_channel_state = self.pulse_generator().set_active_channels(channel_state)
-            set_config = {chnl for chnl in set_channel_state if set_channel_state[chnl]}
-            if set_config != config_to_set:
-                self.activation_config = ('', set_config)
-                self.log.error('Error during activation.\n'
-                               'Unable to set activation_config that was taken from pulse '
-                               'generator constraints.\n'
-                               'Probably one or more activation_configs in constraints invalid.')
-            else:
-                self.activation_config = (list(avail_configs)[0], set_config)
-        else:
-            for name, config in avail_configs.items():
-                if config == current_config:
-                    self.activation_config = (name, current_config)
-                    break
-
-        # Information on used channel configuration for sequence generation
-        self.analog_channels = len([chnl for chnl in self.activation_config if 'a_ch' in chnl])
-        self.digital_channels = len([chnl for chnl in self.activation_config if 'd_ch' in chnl])
-
-        # Read sample rate from device
-        self.sample_rate = self.pulse_generator().get_sample_rate()
-
-        # Read pp-voltages from device
-
-        settings = dict()
-        settings['activation_config'] = self.activation_config
-        settings['laser_channel'] = self.laser_channel
-        settings['sample_rate'] = self.sample_rate
-        settings['analog_pp_amplitude'] = self.analog_pp_amplitude
-        self.sigSettingsUpdated.emit(settings)
+        # Read back settings from device and update instance variables accordingly
+        self._read_settings_from_device()
+        return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
         return
 
-    def _attach_predefined_methods(self):
-        """
-        Retrieve in the folder all files for predefined methods and attach their methods to the
+    ############################################################################
+    # Pulse generator control methods and properties
+    ############################################################################
+    @property
+    def pulse_generator_settings(self):
+        settings_dict = dict()
+        settings_dict['activation_config'] = tuple(self.__activation_config)
+        settings_dict['sample_rate'] = float(self.__sample_rate)
+        settings_dict['analog_levels'] = dict(self.__analog_levels)
+        settings_dict['digital_levels'] = dict(self.__digital_levels)
+        settings_dict['interleave'] = bool(self.__interleave)
+        return settings_dict
 
+    @pulse_generator_settings.setter
+    def pulse_generator_settings(self, settings_dict):
+        if isinstance(settings_dict, dict):
+            self.set_pulse_generator_settings(settings_dict)
+        return
+
+    @property
+    def pulse_generator_constraints(self):
+        return self.pulsegenerator().get_constraints()
+
+    @property
+    def generated_waveforms(self):
+        return self.pulsegenerator().get_waveform_names()
+
+    @property
+    def generated_sequences(self):
+        return self.pulsegenerator().get_sequence_names()
+
+    @property
+    def loaded_asset(self):
+        asset_names, asset_type = self.pulsegenerator().get_loaded_asset()
+        name_list = list(asset_names.values())
+        if asset_type == 'waveform' and len(name_list) > 0:
+            return_type = 'PulseBlockEnsemble'
+            return_name = name_list[0].rsplit('_', 1)[0]
+            for name in name_list:
+                if name.rsplit('_', 1)[0] != return_name:
+                    return '', ''
+        elif asset_type == 'sequence' and len(name_list) > 0:
+            return_type = 'PulseSequence'
+            return_name = name_list[0]
+            for name in name_list:
+                if name != return_name:
+                    return '', ''
+        else:
+            return '', ''
+        return return_name, return_type
+
+    @QtCore.Slot(dict)
+    def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
+        """
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
+
+        @param settings_dict:
+        @param kwargs:
         @return:
         """
-        self.generate_methods = OrderedDict()
-        filenames_list = []
-        additional_filenames_list = []
+        # Check if pulse generator is running and do nothing if that is the case
+        pulser_status, status_dict = self.pulsegenerator().get_status()
+        if pulser_status == 0:
+            # Determine complete settings dictionary
+            if not isinstance(settings_dict, dict):
+                settings_dict = kwargs
+            else:
+                settings_dict.update(kwargs)
+
+            # Set parameters if present
+            if 'activation_config' in settings_dict:
+                activation_config = settings_dict['activation_config']
+                available_configs = self.pulse_generator_constraints.activation_config
+                set_config = None
+                # Allow argument types str, set and tuple
+                if isinstance(activation_config, str):
+                    if activation_config in available_configs.keys():
+                        set_config = self._apply_activation_config(
+                            available_configs[activation_config])
+                        self.__activation_config = (activation_config, set_config)
+                    else:
+                        self.log.error('Unable to set activation config by name.\n'
+                                       '"{0}" not found in pulser constraints.'
+                                       ''.format(activation_config))
+                elif isinstance(activation_config, set):
+                    if activation_config in available_configs.values():
+                        set_config = self._apply_activation_config(activation_config)
+                        config_name = list(available_configs)[
+                            list(available_configs.values()).index(activation_config)]
+                        self.__activation_config = (config_name, set_config)
+                    else:
+                        self.log.error('Unable to set activation config "{0}".\n'
+                                       'Not found in pulser constraints.'.format(activation_config))
+                elif isinstance(activation_config, tuple):
+                    if activation_config in available_configs.items():
+                        set_config = self._apply_activation_config(activation_config[1])
+                        self.__activation_config = (activation_config[0], set_config)
+                    else:
+                        self.log.error('Unable to set activation config "{0}".\n'
+                                       'Not found in pulser constraints.'.format(activation_config))
+                # Check if the ultimately set config is part of the constraints
+                if set_config is not None and set_config not in available_configs.values():
+                    self.log.error('Something went wrong while setting new activation config.')
+                    self.__activation_config = ('', set_config)
+
+            if 'sample_rate' in settings_dict:
+                self.__sample_rate = self.pulsegenerator().set_sample_rate(
+                    float(settings_dict['sample_rate']))
+
+            if 'analog_levels' in settings_dict:
+                self.__analog_levels = self.pulsegenerator().set_analog_level(
+                    *settings_dict['analog_levels'])
+
+            if 'digital_levels' in settings_dict:
+                self.__digital_levels = self.pulsegenerator().set_digital_level(
+                    *settings_dict['digital_levels'])
+
+            if 'interleave' in settings_dict:
+                self.__interleave = self.pulsegenerator().set_interleave(
+                    bool(settings_dict['interleave']))
+
+        elif len(kwargs) != 0 or isinstance(settings_dict, dict):
+            # Only throw warning when arguments have been passed to this method
+            self.log.warning('Pulse generator is not idle (status: {0:d}, "{1}").\n'
+                             'Unable to apply new settings.'.format(pulser_status,
+                                                                    status_dict[pulser_status]))
+
+        # emit update signal for master (GUI or other logic module)
+        self.sigGeneratorSettingsUpdated.emit(self.pulse_generator_settings)
+        return self.pulse_generator_settings
+
+    @QtCore.Slot()
+    def clear_pulser(self):
+        """
+        """
+        self.pulsegenerator().clear_all()
+        self.sigLoadedAssetUpdated.emit('', '')
+        return
+
+    @QtCore.Slot(str)
+    @QtCore.Slot(object)
+    def load_ensemble(self, ensemble):
+        """
+
+        @param str|PulseBlockEnsemble ensemble:
+        """
+        # If str has been passed, get the ensemble object from saved ensembles
+        if isinstance(ensemble, str):
+            ensemble = self.get_saved_ensemble(str)
+            if ensemble is None:
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                return
+        if not isinstance(ensemble, PulseBlockEnsemble):
+            self.log.error('Unable to load PulseBlockEnsemble into pulser channels.\nArgument ({0})'
+                           ' is no instance of PulseBlockEnsemble.'.format(type(ensemble)))
+            self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+            return
+
+        # Check if the PulseBlockEnsemble has been sampled already.
+        if hasattr(ensemble, 'sampling_information'):
+            if ensemble.sampling_information is None:
+                self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
+                               'It has not been generated yet.')
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                return
+            # Check if the corresponding waveforms are present in the pulse generator memory
+            ready_waveforms = self.generated_waveforms
+            for waveform in ensemble.sampling_information['waveforms']:
+                if waveform not in ready_waveforms:
+                    self.log.error('Waveform "{0}" associated with PulseBlockEnsemble "{1}" not '
+                                   'found on pulse generator device.\nPlease re-generate the '
+                                   'PulseBlockEnsemble.'.format(waveform, ensemble.name))
+                    self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                    return
+            # Actually load the waveforms to the generic channels
+            self.pulsegenerator().load_waveform(ensemble.sampling_information['waveforms'])
+        else:
+            self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
+                           'It has not been generated yet.')
+        self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+        return
+
+    @QtCore.Slot(str)
+    @QtCore.Slot(object)
+    def load_sequence(self, sequence):
+        """
+
+        @param str|PulseSequence sequence:
+        """
+        # If str has been passed, get the sequence object from saved sequences
+        if isinstance(ensemble, str):
+            sequence = self.get_saved_sequence(str)
+            if sequence is None:
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                return
+        if not isinstance(sequence, PulseSequence):
+            self.log.error('Unable to load PulseSequence into pulser channels.\nArgument ({0})'
+                           ' is no instance of PulseSequence.'.format(type(sequence)))
+            self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+            return
+
+        # Check if the PulseSequence has been sampled already.
+        if hasattr(sequence, 'sampling_information') and sequence.name in self.generated_sequences:
+            if sequence.sampling_information is None:
+                self.log.error('Loading of PulseSequence "{0}" failed.\n'
+                               'It has not been generated yet.')
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                return
+            # Check if the corresponding waveforms are present in the pulse generator memory
+            ready_waveforms = self.generated_waveforms
+            for waveform in sequence.sampling_information['waveforms']:
+                if waveform not in ready_waveforms:
+                    self.log.error('Waveform "{0}" associated with PulseSequence "{1}" not '
+                                   'found on pulse generator device.\nPlease re-generate the '
+                                   'PulseSequence.'.format(waveform, sequence.name))
+                    self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                    return
+            # Actually load the waveforms to the generic channels
+            self.pulsegenerator().load_waveform(sequence.sampling_information['waveforms'])
+        else:
+            self.log.error('Loading of PulseSequence "{0}" failed.\n'
+                           'It has not been generated yet.')
+        self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+        return
+
+    def _attach_predefined_methods(self):
+        """
+        Retrieve in the folder all files for predefined methods and attach their methods
+        """
+        self.__generate_methods = OrderedDict()
+
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
         path = os.path.join(get_main_dir(), 'logic', 'predefined_methods')
-        for entry in os.listdir(path):
-            filepath = os.path.join(path, entry)
-            if os.path.isfile(filepath) and entry.endswith('.py'):
-                filenames_list.append(entry[:-3])
-        # Also attach methods from the non-default additional methods directory if defined in config
-        if self.additional_methods_dir is not None:
-            # attach to path
-            sys.path.append(self.additional_methods_dir)
-            for entry in os.listdir(self.additional_methods_dir):
-                filepath = os.path.join(self.additional_methods_dir, entry)
-                if os.path.isfile(filepath) and entry.endswith('.py'):
-                    additional_filenames_list.append(entry[:-3])
+        filename_list = [name[:-3] for name in os.listdir(path) if
+                         os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
 
-        for filename in filenames_list:
+        # Also attach methods from the non-default additional methods directory if defined in config
+        if self._additional_methods_dir:
+            # attach to path
+            sys.path.append(self._additional_methods_dir)
+            path = self._additional_methods_dir
+            filename_list.extend([name[:-3] for name in os.listdir(path) if
+                                 os.path.isfile(os.path.join(path, name)) and name.endswith('.py')])
+
+        # Import and attach methods to self
+        for filename in filename_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
-            # To allow changes in predefined methods during runtime by simply reloading
-            # sequence_generator_logic.
+            # To allow changes in predefined methods during runtime by simply reloading the module.
             importlib.reload(mod)
             for method in dir(mod):
                 try:
                     # Check for callable function or method:
                     ref = getattr(mod, method)
                     if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
-                        # Bind the method as an attribute to the Class
-                        setattr(SequenceGeneratorLogic, method, getattr(mod, method))
+                        # Bind the method as an attribute to self
+                        setattr(self, method, ref)
                         # Add method to dictionary if it is a generator method
                         if method.startswith('generate_'):
-                            self.generate_methods[method[9:]] = eval('self.'+method)
+                            self.__generate_methods[method[9:]] = getattr(self, method)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filename))
-
-        for filename in additional_filenames_list:
-            mod = importlib.import_module(filename)
-            for method in dir(mod):
-                try:
-                    # Check for callable function or method:
-                    ref = getattr(mod, method)
-                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
-                        # Bind the method as an attribute to the Class
-                        setattr(SequenceGeneratorLogic, method, getattr(mod, method))
-                        # Add method to dictionary if it is a generator method
-                        if method.startswith('generate_'):
-                            self.generate_methods[method[9:]] = eval('self.'+method)
-                except:
-                    self.log.error('It was not possible to import element {0} from {1} into '
-                                   'SequenceGenerationLogic.'.format(method, filepath))
-
-        self.sigPredefinedSequencesUpdated.emit(self.generate_methods)
         return
 
-    def _get_dir_for_name(self, name):
-        """ Get the path to the pulsed sub-directory 'name'.
-
-        @param str name: name of the folder
-        @return: str, absolute path to the directory with folder 'name'.
+    def _read_settings_from_device(self):
         """
-        path = os.path.join(self.pulsed_file_dir, name)
-        if not os.path.exists(path):
-            os.makedirs(os.path.abspath(path))
-        return os.path.abspath(path)
-
-    def set_settings(self, settings_dict):
         """
-        Sets all settings for the generator logic.
+        # Read activation_config from device.
+        channel_state = self.pulsegenerator().get_active_channels()
+        current_config = {chnl for chnl in channel_state if channel_state[chnl]}
 
-        @param settings_dict: dict, A dictionary containing the settings to change.
-
-        @return dict: A dictionary containing the actually set values for all changed settings
-        """
-        # The returned dictionary. It will contain the actually set parameter values.
-        actual_settings = dict()
-
-        # Try to set new activation config.
-        if 'activation_config' in settings_dict:
-            avail_configs = self.pulse_generator().get_constraints().activation_config
-            # If activation_config is not within pulser constraints, do not change it.
-            if settings_dict['activation_config'] not in avail_configs:
-                self.log.error('Unable to set activation_config "{0}" since it can not be found in '
-                               'pulser constraints.\nPrevious config "{1}" will stay in effect.'
-                               ''.format(settings_dict['activation_config'],
-                                         self.activation_config[0]))
-
+        # Check if the read back config is a valid config in constraints
+        avail_configs = self.pulse_generator_constraints.activation_config
+        if current_config in avail_configs.values():
+            # Read config found in constraints
+            config_name = list(avail_configs)[list(avail_configs.values()).index(current_config)]
+            self.__activation_config = (config_name, current_config)
+        else:
+            # Set first valid config if read config is not valid.
+            config_to_set = list(avail_configs.items())[0]
+            set_config = self._apply_activation_config(config_to_set[1])
+            if set_config != config_to_set[1]:
+                self.__activation_config = ('', set_config)
+                self.log.error('Error during activation.\n'
+                               'Unable to set activation_config that was taken from pulse '
+                               'generator constraints.\n'
+                               'Probably one or more activation_configs in constraints invalid.')
             else:
-                channels_to_activate = avail_configs[settings_dict['activation_config']]
-                channel_state = self.pulse_generator().get_active_channels()
-                for chnl in channel_state:
-                    if chnl in channels_to_activate:
-                        channel_state[chnl] = True
-                    else:
-                        channel_state[chnl] = False
-                set_channel_states = self.pulse_generator().set_active_channels(channel_state)
-                set_activation_config = {chnl for chnl in set_channel_states if
-                                         set_channel_states[chnl]}
-                for name, config in avail_configs.items():
-                    if config == set_activation_config:
-                        self.activation_config = (name, config)
-                        break
-                if self.activation_config[1] != set_activation_config:
-                    self.activation_config[0] = ''
-                    self.log.error('Setting activation_config "{0}" failed.\n'
-                                   'Reload module to avoid undexpected behaviour.'
-                                   ''.format(settings_dict['activation_config']))
+                self.__activation_config = config_to_set
 
-                self.analog_channels = len(
-                    [chnl for chnl in self.activation_config[1] if 'a_ch' in chnl])
-                self.digital_channels = len(
-                    [chnl for chnl in self.activation_config[1] if 'd_ch' in chnl])
+        # Read sample rate from device
+        self.__sample_rate = float(self.pulsegenerator().get_sample_rate())
 
-                # Check if the laser channel is being set at the same time. If not, check if a
-                # change of laser channel is necessary due to the changed activation_config.
-                # If the laser_channel needs to be changed add it to settings_dict.
-                if 'laser_channel' not in settings_dict and self.laser_channel not in self.activation_config[1]:
-                    settings_dict['laser_channel'] = self.laser_channel
-            actual_settings['activation_config'] = self.activation_config[0]
+        # Read analog levels from device
+        self.__analog_levels = self.pulsegenerator().get_analog_level()
 
-        # Try to set new laser_channel. Check if it's part of the current activation_config and
-        # adjust to first valid digital channel if not.
-        if 'laser_channel' in settings_dict:
-            if settings_dict['laser_channel'] in self.activation_config[1]:
-                self.laser_channel = settings_dict['laser_channel']
-            elif self.digital_channels > 0:
-                for chnl in self.activation_config[1]:
-                    if 'd_ch' in chnl:
-                        new_laser_channel = chnl
-                        break
-                self.log.warning('Unable to set laser_channel "{0}" since it is not in current '
-                                 'activation_config.\nLaser_channel set to "{1}" instead.'
-                                 ''.format(self.laser_channel, new_laser_channel))
-                self.laser_channel = new_laser_channel
+        # Read digital levels from device
+        self.__digital_levels = self.pulsegenerator().get_digital_level()
+
+        # Read interleave flag from device
+        self.__interleave = self.pulsegenerator().get_interleave()
+
+        # Notify new settings to listening module
+        self.set_pulse_generator_settings()
+        return
+
+    def _apply_activation_config(self, activation_config):
+        """
+
+        @param set activation_config: A set of channels to set active (all others inactive)
+        """
+        channel_state = self.pulsegenerator().get_active_channels()
+        for chnl in channel_state:
+            if chnl in activation_config:
+                channel_state[chnl] = True
             else:
-                self.log.error('Unable to set new laser_channel "{0}". '
-                               'No digital channel in current activation_config.'
-                               ''.format(settings_dict['laser_channel']))
-                self.laser_channel = ''
-            actual_settings['laser_channel'] = self.laser_channel
+                channel_state[chnl] = False
+        set_state = self.pulsegenerator().set_active_channels(channel_state)
+        set_config = set([chnl for chnl in set_state if set_state[chnl]])
+        return set_config
 
-        # Try to set the sample rate
-        if 'sample_rate' in settings_dict:
-            # If sample rate already set, do nothing
-            if settings_dict['sample_rate'] != self.sample_rate:
-                sample_rate_constr = self.pulse_generator().get_constraints().sample_rate
-                # Check boundaries with constraints
-                if settings_dict['sample_rate'] > sample_rate_constr.max:
-                    self.log.warning('Sample rate to set ({0}) larger than allowed maximum ({1}).\n'
-                                     'New sample rate will be set to maximum value.'
-                                     ''.format(settings_dict['sample_rate'],
-                                               sample_rate_constr.max))
-                    settings_dict['sample_rate'] = sample_rate_constr.max
-                elif settings_dict['sample_rate'] < sample_rate_constr.min:
-                    self.log.warning('Sample rate to set ({0}) smaller than allowed minimum ({1}).'
-                                     '\nNew sample rate will be set to minimum value.'
-                                     ''.format(settings_dict['sample_rate'],
-                                               sample_rate_constr.min))
-                    settings_dict['sample_rate'] = sample_rate_constr.min
+    ############################################################################
+    # Waveform/Sequence generation control methods and properties
+    ############################################################################
+    @property
+    def generate_methods(self):
+        return self.__generate_methods
 
-                self.sample_rate = self.pulse_generator().set_sample_rate(
-                    settings_dict['sample_rate'])
-            actual_settings['sample_rate'] = self.sample_rate
+    @property
+    def sampling_settings(self):
+        settings_dict = dict()
+        settings_dict['laser_channel'] = self._laser_channel
+        return settings_dict
 
-        # Try to set the pp-amplitudes for analog channels
-        if 'analog_pp_amplitude' in settings_dict:
-            # if no change is needed, do nothing
-            if settings_dict['analog_pp_amplitude'] != self.analog_pp_amplitude:
-                analog_constr = self.pulse_generator().get_constraints().a_ch_amplitude
-                # Get currently set pp-amplitudes
-                current_analog_amp = self.pulse_generator().get_analog_level(
-                    amplitude=list(settings_dict['analog_pp_amplitude']))
-                # Check boundaries with constraints
-                for chnl, value in settings_dict['analog_pp_amplitude'].items():
-                    if value > analog_constr.max:
-                        self.log.warning('pp-amplitude to set ({0}) larger than allowed maximum '
-                                         '({1}).\nNew pp-amplitude will be set to maximum value.'
-                                         ''.format(value, analog_constr.max))
-                        settings_dict['analog_pp_amplitude'][chnl] = analog_constr.max
-                    elif settings_dict['sample_rate'] < sample_rate_constr.min:
-                        self.log.warning('pp-amplitude to set ({0}) smaller than allowed minimum '
-                                         '({1}).\nNew pp-amplitude will be set to minimum value.'
-                                         ''.format(value, analog_constr.min))
-                        settings_dict['analog_pp_amplitude'][chnl] = analog_constr.min
-                    if chnl not in current_analog_amp:
-                        self.log.error('Trying to set pp-amplitude for non-existent channel "{0}"!'
-                                       ''.format(chnl))
+    @sampling_settings.setter
+    def sampling_settings(self, settings_dict):
+        if isinstance(settings_dict, dict):
+            self.set_sampling_settings(settings_dict)
+        return
 
-                self.analog_pp_amplitude, dummy = self.pulse_generator().set_analog_level(
-                    amplitude=settings_dict['analog_pp_amplitude'])
+    @QtCore.Slot(dict)
+    def set_sampling_settings(self, settings_dict=None, **kwargs):
+        """
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
 
-            actual_settings['analog_pp_amplitude'] = self.analog_pp_amplitude
+        @param settings_dict:
+        @param kwargs:
+        @return:
+        """
+        # Check if generation is in progress and do nothing if that is the case
+        if self.module_state() != 'locked':
+            # Determine complete settings dictionary
+            if not isinstance(settings_dict, dict):
+                settings_dict = kwargs
+            else:
+                settings_dict.update(kwargs)
 
-        self.sigSettingsUpdated.emit(actual_settings)
-        return actual_settings
+        else:
+            self.log.error('Unable to apply new sampling settings.\n'
+                           'SequenceGeneratorLogic is busy generating a waveform/sequence.')
 
-# -----------------------------------------------------------------------------
-#                    BEGIN sequence/block generation
-# -----------------------------------------------------------------------------
+        self.sigSamplingSettingsUpdated.emit(self.sampling_settings)
+        return self.sampling_settings
+
     def get_saved_asset(self, name):
         """
         Returns the data object for a saved Ensemble/Sequence with name "name". Searches in the
@@ -962,11 +1061,11 @@ class SequenceGeneratorLogic(GenericLogic):
             filename = name_tag
 
         # check for old waveforms associated with the ensemble and delete them from pulse generator.
-        uploaded_waveforms = self.pulse_generator().get_waveform_names()
+        uploaded_waveforms = self.pulsegenerator().get_waveform_names()
         wfm_regex = re.compile(r'\b' + filename + r'_ch\d+$')
         for wfm_name in uploaded_waveforms:
             if wfm_regex.match(wfm_name):
-                self.pulse_generator().delete_waveform(wfm_name)
+                self.pulsegenerator().delete_waveform(wfm_name)
                 self.log.debug('Old waveform deleted from pulse generator: "{0}".'.format(wfm_name))
 
         start_time = time.time()
@@ -1034,7 +1133,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         for chnl in pulse_function:
                             analog_samples[chnl] = np.float32(pulse_function[chnl].get_samples(time_arr)/self.analog_pp_amplitude[chnl])
                         # write temporary sample array to file
-                            written_samples, wfm_list = self.pulse_generator().write_waveform(
+                            written_samples, wfm_list = self.pulsegenerator().write_waveform(
                                 name=filename,
                                 analog_samples=analog_samples,
                                 digital_samples=digital_samples,
@@ -1079,7 +1178,7 @@ class SequenceGeneratorLogic(GenericLogic):
             return dict(), dict(), offset_bin, wfm_list
         else:
             # If the sampling should not be chunkwise call the write_waveform method only once.
-            written_samples, wfm_list = self.pulse_generator().write_waveform(
+            written_samples, wfm_list = self.pulsegenerator().write_waveform(
                 name=filename,
                 analog_samples=analog_samples,
                 digital_samples=digital_samples,
@@ -1130,8 +1229,8 @@ class SequenceGeneratorLogic(GenericLogic):
             return []
 
         # delete already written sequences on the device memory that have the same name
-        if sequence_name in self.pulse_generator().get_sequence_names():
-            self.pulse_generator().delete_sequence(sequence_name)
+        if sequence_name in self.pulsegenerator().get_sequence_names():
+            self.pulsegenerator().delete_sequence(sequence_name)
             self.log.debug('Old sequence deleted from pulse generator: "{0}".'
                            ''.format(sequence_name))
 
@@ -1224,7 +1323,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.save_sequence(sequence_name, sequence)
 
         # pass the whole information to the sequence creation method:
-        steps_written = self.pulse_generator().write_sequence(sequence_name,
+        steps_written = self.pulsegenerator().write_sequence(sequence_name,
                                                              sequence_param_dict_list)
         if steps_written == len(sequence_param_dict_list):
             self.log.info('Time needed for sampling and writing Pulse Sequence to device: {0} sec.'
@@ -1243,3 +1342,132 @@ class SequenceGeneratorLogic(GenericLogic):
     #---------------------------------------------------------------------------
     #                    END sequence/block sampling
     #---------------------------------------------------------------------------
+    # def set_settings(self, settings_dict):
+    #     """
+    #     Sets all settings for the generator logic.
+    #
+    #     @param settings_dict: dict, A dictionary containing the settings to change.
+    #
+    #     @return dict: A dictionary containing the actually set values for all changed settings
+    #     """
+    #     # The returned dictionary. It will contain the actually set parameter values.
+    #     actual_settings = dict()
+    #
+    #     # Try to set new activation config.
+    #     if 'activation_config' in settings_dict:
+    #         avail_configs = self.pulsegenerator().get_constraints().activation_config
+    #         # If activation_config is not within pulser constraints, do not change it.
+    #         if settings_dict['activation_config'] not in avail_configs:
+    #             self.log.error('Unable to set activation_config "{0}" since it can not be found in '
+    #                            'pulser constraints.\nPrevious config "{1}" will stay in effect.'
+    #                            ''.format(settings_dict['activation_config'],
+    #                                      self.activation_config[0]))
+    #
+    #         else:
+    #             channels_to_activate = avail_configs[settings_dict['activation_config']]
+    #             channel_state = self.pulsegenerator().get_active_channels()
+    #             for chnl in channel_state:
+    #                 if chnl in channels_to_activate:
+    #                     channel_state[chnl] = True
+    #                 else:
+    #                     channel_state[chnl] = False
+    #             set_channel_states = self.pulsegenerator().set_active_channels(channel_state)
+    #             set_activation_config = {chnl for chnl in set_channel_states if
+    #                                      set_channel_states[chnl]}
+    #             for name, config in avail_configs.items():
+    #                 if config == set_activation_config:
+    #                     self.activation_config = (name, config)
+    #                     break
+    #             if self.activation_config[1] != set_activation_config:
+    #                 self.activation_config[0] = ''
+    #                 self.log.error('Setting activation_config "{0}" failed.\n'
+    #                                'Reload module to avoid undexpected behaviour.'
+    #                                ''.format(settings_dict['activation_config']))
+    #
+    #             self.analog_channels = len(
+    #                 [chnl for chnl in self.activation_config[1] if 'a_ch' in chnl])
+    #             self.digital_channels = len(
+    #                 [chnl for chnl in self.activation_config[1] if 'd_ch' in chnl])
+    #
+    #             # Check if the laser channel is being set at the same time. If not, check if a
+    #             # change of laser channel is necessary due to the changed activation_config.
+    #             # If the laser_channel needs to be changed add it to settings_dict.
+    #             if 'laser_channel' not in settings_dict and self.laser_channel not in self.activation_config[1]:
+    #                 settings_dict['laser_channel'] = self.laser_channel
+    #         actual_settings['activation_config'] = self.activation_config[0]
+    #
+    #     # Try to set new laser_channel. Check if it's part of the current activation_config and
+    #     # adjust to first valid digital channel if not.
+    #     if 'laser_channel' in settings_dict:
+    #         if settings_dict['laser_channel'] in self.activation_config[1]:
+    #             self.laser_channel = settings_dict['laser_channel']
+    #         elif self.digital_channels > 0:
+    #             for chnl in self.activation_config[1]:
+    #                 if 'd_ch' in chnl:
+    #                     new_laser_channel = chnl
+    #                     break
+    #             self.log.warning('Unable to set laser_channel "{0}" since it is not in current '
+    #                              'activation_config.\nLaser_channel set to "{1}" instead.'
+    #                              ''.format(self.laser_channel, new_laser_channel))
+    #             self.laser_channel = new_laser_channel
+    #         else:
+    #             self.log.error('Unable to set new laser_channel "{0}". '
+    #                            'No digital channel in current activation_config.'
+    #                            ''.format(settings_dict['laser_channel']))
+    #             self.laser_channel = ''
+    #         actual_settings['laser_channel'] = self.laser_channel
+    #
+    #     # Try to set the sample rate
+    #     if 'sample_rate' in settings_dict:
+    #         # If sample rate already set, do nothing
+    #         if settings_dict['sample_rate'] != self.sample_rate:
+    #             sample_rate_constr = self.pulsegenerator().get_constraints().sample_rate
+    #             # Check boundaries with constraints
+    #             if settings_dict['sample_rate'] > sample_rate_constr.max:
+    #                 self.log.warning('Sample rate to set ({0}) larger than allowed maximum ({1}).\n'
+    #                                  'New sample rate will be set to maximum value.'
+    #                                  ''.format(settings_dict['sample_rate'],
+    #                                            sample_rate_constr.max))
+    #                 settings_dict['sample_rate'] = sample_rate_constr.max
+    #             elif settings_dict['sample_rate'] < sample_rate_constr.min:
+    #                 self.log.warning('Sample rate to set ({0}) smaller than allowed minimum ({1}).'
+    #                                  '\nNew sample rate will be set to minimum value.'
+    #                                  ''.format(settings_dict['sample_rate'],
+    #                                            sample_rate_constr.min))
+    #                 settings_dict['sample_rate'] = sample_rate_constr.min
+    #
+    #             self.sample_rate = self.pulsegenerator().set_sample_rate(
+    #                 settings_dict['sample_rate'])
+    #         actual_settings['sample_rate'] = self.sample_rate
+    #
+    #     # Try to set the pp-amplitudes for analog channels
+    #     if 'analog_pp_amplitude' in settings_dict:
+    #         # if no change is needed, do nothing
+    #         if settings_dict['analog_pp_amplitude'] != self.analog_pp_amplitude:
+    #             analog_constr = self.pulsegenerator().get_constraints().a_ch_amplitude
+    #             # Get currently set pp-amplitudes
+    #             current_analog_amp = self.pulsegenerator().get_analog_level(
+    #                 amplitude=list(settings_dict['analog_pp_amplitude']))
+    #             # Check boundaries with constraints
+    #             for chnl, value in settings_dict['analog_pp_amplitude'].items():
+    #                 if value > analog_constr.max:
+    #                     self.log.warning('pp-amplitude to set ({0}) larger than allowed maximum '
+    #                                      '({1}).\nNew pp-amplitude will be set to maximum value.'
+    #                                      ''.format(value, analog_constr.max))
+    #                     settings_dict['analog_pp_amplitude'][chnl] = analog_constr.max
+    #                 elif settings_dict['sample_rate'] < sample_rate_constr.min:
+    #                     self.log.warning('pp-amplitude to set ({0}) smaller than allowed minimum '
+    #                                      '({1}).\nNew pp-amplitude will be set to minimum value.'
+    #                                      ''.format(value, analog_constr.min))
+    #                     settings_dict['analog_pp_amplitude'][chnl] = analog_constr.min
+    #                 if chnl not in current_analog_amp:
+    #                     self.log.error('Trying to set pp-amplitude for non-existent channel "{0}"!'
+    #                                    ''.format(chnl))
+    #
+    #             self.analog_pp_amplitude, dummy = self.pulsegenerator().set_analog_level(
+    #                 amplitude=settings_dict['analog_pp_amplitude'])
+    #
+    #         actual_settings['analog_pp_amplitude'] = self.analog_pp_amplitude
+    #
+    #     self.sigSettingsUpdated.emit(actual_settings)
+    #     return actual_settings
