@@ -607,7 +607,7 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     period = 1 / result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -624,6 +624,10 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
+                                 'error': result.params['offset'].stderr,
+                                 'unit': units[1]}
+
+    result_str_dict['Contrast'] = {'value': ,
                                  'error': result.params['offset'].stderr,
                                  'unit': units[1]}
 
@@ -702,7 +706,7 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
 
     period = 1/result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -866,7 +870,7 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
 
     period = 1 / result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -964,13 +968,13 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
 
     period1 = result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
@@ -1095,13 +1099,13 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     period1 = result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
@@ -1241,13 +1245,13 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
 
     period1 = result.params['e1_frequency'].value
     try:
-        period1_err = 1 / result.params['e1_frequency'].stderr
+        period1_err = result.params['e1_frequency'].stderr / (result.params['e1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['e2_frequency'].value
     try:
-        period2_err = 1 / result.params['e2_frequency'].stderr
+        period2_err = result.params['e2_frequency'].stderr / (result.params['e2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
@@ -1390,19 +1394,19 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
 
     period1 = result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
     period3 = result.params['s3_frequency'].value
     try:
-        period3_err = 1 / result.params['s3_frequency'].stderr
+        period3_err = result.params['s3_frequency'].stderr / (result.params['s3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
@@ -1549,19 +1553,19 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     period1 = result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
     period3 = result.params['s3_frequency'].value
     try:
-        period3_err = 1 / result.params['s3_frequency'].stderr
+        period3_err = result.params['s3_frequency'].stderr / (result.params['s3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
@@ -1727,19 +1731,19 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
 
     period1 = result.params['e1_frequency'].value
     try:
-        period1_err = 1 / result.params['e1_frequency'].stderr
+        period1_err = result.params['e1_frequency'].stderr / (result.params['e1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
     period2 = result.params['e2_frequency'].value
     try:
-        period2_err = 1 / result.params['e2_frequency'].stderr
+        period2_err = result.params['e2_frequency'].stderr / (result.params['e2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
     period3 = result.params['e3_frequency'].value
     try:
-        period3_err = 1 / result.params['e3_frequency'].stderr
+        period3_err = result.params['e3_frequency'].stderr / (result.params['e3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
