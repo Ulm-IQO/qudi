@@ -21,7 +21,8 @@ the Free Software Foundation, either version 3 of the License, or
 
 QuDi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
@@ -35,17 +36,23 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import logging
 logger = logging.getLogger(__name__)
 
-import numpy as np
+import importlib
 import sys
+import os
+
+import numpy as np
+
 from scipy.interpolate import InterpolatedUnivariateSpline
-from lmfit import Parameters, models
-import matplotlib.pylab as plt
 from scipy.signal import wiener, filtfilt, butter, gaussian, freqz
 from scipy.ndimage import filters
-import importlib
+
+from lmfit import Parameters, models
+
+import matplotlib.pylab as plt
+
 from os import listdir,getcwd
 from os.path import isfile, join
-import os
+
 
 #from scipy import special
 #from scipy.special import gammaln as gamln
