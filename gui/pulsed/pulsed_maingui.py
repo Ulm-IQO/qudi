@@ -2075,7 +2075,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
-            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items() and self._pa.second_plot_ComboBox.currentText() != 'Delta':
                 self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         else:
             if self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items():
@@ -2142,6 +2142,12 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.second_plot_GroupBox.setVisible(False)
         else:
             self._pa.second_plot_GroupBox.setVisible(True)
+
+            if second_plot == 'Delta' and self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
+            if second_plot != 'Delta' and self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
+
             if second_plot in ('FFT', 'Delta'):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
             elif second_plot == 'Log(x)':
