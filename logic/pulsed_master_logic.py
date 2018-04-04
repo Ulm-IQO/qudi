@@ -28,9 +28,23 @@ import numpy as np
 
 class PulsedMasterLogic(GenericLogic):
     """
-    This logic module controls the sequence/waveform generation and management via
-    sequence_generator_logic and pulsed measurements via pulsed_measurement_logic.
-    Basically glue logic to pass information between logic modules.
+    This logic module combines the functionality of two modules.
+
+    It can be used to generate pulse sequences/waveforms and to control the settings for the pulse
+    generator via SequenceGeneratorLogic. Essentially this part controls what is played on the
+    pulse generator.
+    Furthermore it can be used to set up a pulsed measurement with an already set-up pulse generator
+    together with a fast counting device via PulsedMeasurementLogic.
+
+    The main purpose for this module is to provide a single interface while maintaining a modular
+    structure for complex pulsed measurements. Each of the sub-modules can be used without this
+    module but more care has to be taken in that case.
+    Automatic transfer of information from one sub-module to the other for convenience is also
+    handled here.
+    Another important aspect is the use of this module in scripts (e.g. jupyter notebooks).
+    All calls to sub-module setter functions (PulsedMEasurementLogic and SequenceGeneratorLogic)
+    are decoupled from the calling thread via Qt queued connections.
+    This ensures a more intuitive and less error prone use of scripting.
     """
     _modclass = 'pulsedmasterlogic'
     _modtype = 'logic'
@@ -100,13 +114,9 @@ class PulsedMasterLogic(GenericLogic):
         """
         # Initialize status register
         self.status_dict = dict()
-        self.status_dict['genload_ensemble_busy'] = False
-        self.status_dict['genload_sequence_busy'] = False
-        self.status_dict['generate_ensemble_busy'] = False
-        self.status_dict['generate_sequence_busy'] = False
+        self.status_dict['genload_busy'] = False
         self.status_dict['generate_busy'] = False
         self.status_dict['loading_busy'] = False
-
         self.status_dict['pulser_running'] = False
         self.status_dict['measurement_running'] = False
         self.status_dict['microwave_running'] = False
