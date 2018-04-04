@@ -772,10 +772,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 if self.alternating:
                     self.signal_plot_y = tmp_signal[::2]
                     self.signal_plot_y2 = tmp_signal[1::2]
-                    if self.second_plot_type == 'Delta':
-                        self.measuring_error_plot_y = np.sqrt(tmp_error[::2]**2 + tmp_error[1::2]**2)
-                    else:
-                        self.measuring_error_plot_y = tmp_error[::2]
+                    self.measuring_error_plot_y = tmp_error[::2]
                     self.measuring_error_plot_y2 = tmp_error[1::2]
                 else:
                     self.signal_plot_y = tmp_signal
@@ -1040,9 +1037,12 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.alternating:
             data['Signal2 (norm.)'] = self.signal_plot_y2
         if with_error:
-            data['Error (norm.)'] = self.measuring_error_plot_y
-            if self.alternating:
-                data['Error2 (norm.)'] = self.measuring_error_plot_y2
+            if self.second_plot_type == 'Delta':
+                data['Error (norm.)'] = np.sqrt(self.measuring_error_plot_y**2 + self.measuring_error_plot_y2**2)
+            else:
+                data['Error (norm.)'] = self.measuring_error_plot_y
+                if self.alternating:
+                    data['Error2 (norm.)'] = self.measuring_error_plot_y2
 
         # write the parameters:
         parameters = OrderedDict()
