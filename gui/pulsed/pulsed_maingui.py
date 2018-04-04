@@ -1379,6 +1379,10 @@ class PulsedMeasurementGui(GUIBase):
                                                         y=np.zeros(10),
                                                         top=0., bottom=0.,
                                                         pen=palette.c5)
+        self.second_image_error_bars = pg.ErrorBarItem(x=np.array(range(10)),
+                                                        y=np.zeros(10),
+                                                        top=0., bottom=0.,
+                                                        pen=palette.c5)
 
         # Configure the second pulse analysis display:
         self.second_plot_image = pg.PlotDataItem(np.array(range(10)),
@@ -1759,6 +1763,9 @@ class PulsedMeasurementGui(GUIBase):
         if second_plot == 'Delta':
             if is_alternating:
                 self.second_plot_image.setData(x=second_x_data, y=second_y_data)
+                delta_y_error_data = np.sqrt(y_error_data**2 + y2_error_data**2)
+                self.second_image_error_bars.setData(x=second_x_data, y=second_y_data, top=delta_y_error_data,
+                                                     bottom=delta_y_error_data, beam=beamwidth)
             else:
                 self.log.error('Delta can only be selected for the second plot if the sequence is '
                                'alternating.')
@@ -2073,9 +2080,11 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
             if self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items() and self.signal_image_error_bars2 not in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
+            if self.second_image_error_bars not in self._pa.pulse_analysis_second_PlotWidget.items() and self._pa.second_plot_ComboBox.currentText() == 'Delta':
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_image_error_bars)
             if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
-            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items() and self._pa.second_plot_ComboBox.currentText() != 'Delta':
                 self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         else:
             if self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items():
@@ -2120,15 +2129,19 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         show_bars = self._pa.ana_param_errorbars_CheckBox.isChecked()
-        is_alternating = self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items()
+        is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
         if show_bars:
             if self.signal_image_error_bars not in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars)
+            if self.second_image_error_bars not in self._pa.pulse_analysis_second_PlotWidget.items() and self._pa.second_plot_ComboBox.currentText() == 'Delta':
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_image_error_bars)
             if is_alternating and self.signal_image_error_bars2 not in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
         else:
             if self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars)
+            if self.second_image_error_bars in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_image_error_bars)
             if is_alternating and self.signal_image_error_bars2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
         return
@@ -2138,10 +2151,26 @@ class PulsedMeasurementGui(GUIBase):
         second_plot = self._pa.second_plot_ComboBox.currentText()
         is_alternating = self._pa.ana_param_alternating_CheckBox.isChecked()
 
+        # for second plot None deactivate the widget, otherwise display it
         if second_plot == 'None':
             self._pa.second_plot_GroupBox.setVisible(False)
         else:
             self._pa.second_plot_GroupBox.setVisible(True)
+
+            # Delta is special, because it is only one plot with error bars
+            if second_plot == 'Delta':
+                if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
+                if self.second_image_error_bars not in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_image_error_bars)
+            else:
+                # everything but Delta has two plots but no errorbars
+                if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
+                if self.second_image_error_bars in self._pa.pulse_analysis_second_PlotWidget.items():
+                    self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_image_error_bars)
+
+            # change the axes scaling from/to logarithmic
             if second_plot in ('FFT', 'Delta'):
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=False, y=False)
             elif second_plot == 'Log(x)':
@@ -2151,9 +2180,31 @@ class PulsedMeasurementGui(GUIBase):
             elif second_plot == 'Log(x)Log(y)':
                 self._pa.pulse_analysis_second_PlotWidget.setLogMode(x=True, y=True)
 
+        # hand the second plot type to the logic for it to calculate the correct second plot data
         self._pulsed_master_logic._measurement_logic.second_plot_type = second_plot
-        self._pa.second_plot_GroupBox.setTitle(second_plot)
 
+        # update the title and the labels of the plot
+        self._pa.second_plot_GroupBox.setTitle(second_plot)
+        if self._pa.second_plot_ComboBox.currentText() == 'FFT':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._ana_param_x_axis_name_text
+            self._ana_param_second_plot_x_axis_unit_text = self._ana_param_x_axis_unit_text
+            self._ana_param_second_plot_y_axis_name_text = self._ana_param_y_axis_name_text
+            self._ana_param_second_plot_y_axis_unit_text = self._ana_param_y_axis_unit_text
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='bottom',
+            text=self._ana_param_second_plot_x_axis_name_text,
+            units=self._ana_param_second_plot_x_axis_unit_text)
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='left',
+            text=self._ana_param_second_plot_y_axis_name_text,
+            units=self._ana_param_second_plot_y_axis_unit_text)
+
+        # handle errors: Delta can only be selected, if the sequence is alternating
         if second_plot == 'Delta' and not is_alternating:
             self.log.error('Delta can only be selected for the second plot if the sequence is '
                            'alternating. Setting it to None instead.')
