@@ -408,6 +408,7 @@ class SaveLogic(GenericLogic):
 
         # Reshape data if multiple 1D arrays have been passed to this method.
         # If a 2D array has been passed, reformat the specifier
+        input_data = data
         if len(data) != 1:
             identifier_str = ''
             if multiple_dtypes:
@@ -470,12 +471,19 @@ class SaveLogic(GenericLogic):
 
         # write data to file
         # FIXME: Implement other file formats
+        # write to textfile
         if filetype == 'text':
             self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
                                     append=False)
+        # write npz file and save parameters in textfile
+        elif filetype == 'npz':
+            np.savez_compressed(filepath + '/' + filename[:-4], **input_data)
+            self.save_array_as_text(data=[], filename=filename[:-4]+'_params.dat', filepath=filepath,
+                                    fmt=fmt, header=header, delimiter=delimiter, comments='#',
+                                    append=False)
         else:
-            self.log.error('Only saving of data as textfile is implemented. Filetype "{0}" is not '
+            self.log.error('Only saving of data as textfile and npz-file is implemented. Filetype "{0}" is not '
                            'supported yet. Saving as textfile.'.format(filetype))
             self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
