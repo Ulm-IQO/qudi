@@ -347,6 +347,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <addaction name="action_start_scanning"/>
    <addaction name="action_stop_scanning"/>
    <addaction name="separator"/>
+   <addaction name="action_stabilize_cavity"/>
+   <addaction name="action_stop_stabilization"/>
+   <addaction name="separator"/>
    <addaction name="action_Save"/>
   </widget>
   <widget class="QDockWidget" name="stabilisation_parameters_DockWidget">
@@ -543,39 +546,33 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>Save Data</string>
    </property>
   </action>
-  <action name="slow_counter_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
+  <action name="action_stabilize_cavity">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position-poi.png</normaloff>../../artwork/icons/qudiTheme/22x22/optimize-position-poi.png</iconset>
    </property>
    <property name="text">
-    <string>&amp;Slow counter</string>
+    <string>Stabilize cavity</string>
    </property>
    <property name="toolTip">
-    <string>Show the Slow counter</string>
+    <string>Start stabilization of the cavity</string>
    </property>
   </action>
-  <action name="slow_counter_parameters_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
+  <action name="action_stop_stabilization">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
    </property>
    <property name="text">
-    <string>Slow &amp;counter parameters</string>
+    <string>Stop stabilization</string>
    </property>
    <property name="toolTip">
-    <string>Show Slow counter parameters</string>
+    <string>Stops the stabilization of the cavity</string>
    </property>
   </action>
   <action name="restore_default_view_Action">
    <property name="text">
     <string>&amp;Restore default</string>
-   </property>
-  </action>
-  <action name="counting_controls_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Counting controls</string>
    </property>
   </action>
   <action name="actionClose">
@@ -616,7 +613,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
  <resources/>
  <connections>
   <connection>
-   <sender>slow_counter_view_Action</sender>
+   <sender>action_stabilize_cavity</sender>
    <signal>triggered(bool)</signal>
    <receiver>cavity_scan_DockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -634,7 +631,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   <connection>
    <sender>cavity_scan_DockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>slow_counter_view_Action</receiver>
+   <receiver>action_stabilize_cavity</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -648,7 +645,7 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </hints>
   </connection>
   <connection>
-   <sender>slow_counter_parameters_view_Action</sender>
+   <sender>action_stop_stabilization</sender>
    <signal>triggered(bool)</signal>
    <receiver>scan_parameters_DockWidget</receiver>
    <slot>setVisible(bool)</slot>
@@ -666,44 +663,12 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
   <connection>
    <sender>scan_parameters_DockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>slow_counter_parameters_view_Action</receiver>
+   <receiver>action_stop_stabilization</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
      <x>399</x>
      <y>709</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>counting_controls_view_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>scan_control_ToolBar</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>399</x>
-     <y>41</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>scan_control_ToolBar</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>counting_controls_view_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>399</x>
-     <y>41</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
