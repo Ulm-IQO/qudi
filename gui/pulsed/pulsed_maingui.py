@@ -1763,8 +1763,9 @@ class PulsedMeasurementGui(GUIBase):
         if second_plot == 'Delta':
             if is_alternating:
                 self.second_plot_image.setData(x=second_x_data, y=second_y_data)
-                self.second_image_error_bars.setData(x=second_x_data, y=second_y_data, top=y_error_data,
-                                                     bottom=y_error_data, beam=beamwidth)
+                delta_y_error_data = np.sqrt(y_error_data**2 + y2_error_data**2)
+                self.second_image_error_bars.setData(x=second_x_data, y=second_y_data, top=delta_y_error_data,
+                                                     bottom=delta_y_error_data, beam=beamwidth)
             else:
                 self.log.error('Delta can only be selected for the second plot if the sequence is '
                                'alternating.')
