@@ -772,7 +772,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 if self.alternating:
                     self.signal_plot_y = tmp_signal[::2]
                     self.signal_plot_y2 = tmp_signal[1::2]
-                    self.measuring_error_plot_y = tmp_error[::2]
+                    if self.second_plot_type == 'Delta':
+                        self.measuring_error_plot_y = np.sqrt(tmp_error[::2]**2 + tmp_error[1::2]**2)
+                    else:
+                        self.measuring_error_plot_y = tmp_error[::2]
                     self.measuring_error_plot_y2 = tmp_error[1::2]
                 else:
                     self.signal_plot_y = tmp_signal
