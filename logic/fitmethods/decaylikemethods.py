@@ -364,7 +364,7 @@ def estimate_decayexponentialstretched(self, x_axis, data, params):
 
     # Smooth very radically the provided data, so that noise fluctuations will
     # not disturb the parameter estimation.
-    std_dev = 10
+    std_dev = min([10, int(np.ceil(len(x_axis)/10))])
     data_smoothed = filters.gaussian_filter1d(data, std_dev)
 
     # calculation of offset, take the last 10% from the end of the data
@@ -406,6 +406,6 @@ def estimate_decayexponentialstretched(self, x_axis, data, params):
     params['lifetime'].set(value=lifetime, min=min_lifetime)
 
     # as an arbitrary starting point:
-    params['beta'].set(value=2, min=0)
+    params['beta'].set(value=0.5, min=0)
 
     return error, params
