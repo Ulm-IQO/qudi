@@ -34,7 +34,7 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?))')
+    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'integer': 2,
@@ -116,7 +116,7 @@ class IntegerValidator(QtGui.QValidator):
     Also supports non-fractional SI unit prefix like 'M', 'k' etc.
     """
 
-    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?))')
+    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?)\s*)')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'exponent': 2,
@@ -306,7 +306,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         text = self.cleanText()
         value = self.valueFromText(text)
-        if not value:
+        if value is False:
             return
         value, in_range = self.check_range(value)
 
@@ -1020,7 +1020,7 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         """
         text = self.cleanText()
         value = self.valueFromText(text)
-        if not value:
+        if value is False:
             return
         value, in_range = self.check_range(value)
 

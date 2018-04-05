@@ -1,5 +1,24 @@
 # Changelog {#changelog}
 
+## Pre-release
+
+Changes/New features:
+
+* All modules use new connector style where feasible.
+* Bug fix for waveform generation larger than ~2 GSamples
+* Bug fix for POI manager was losing active POI when moving crosshair in confocal
+* Default waveform format can now be set via optional config option for `SequenceGeneratorLogic`
+* Added a how-to-get-started guide to the documentation
+* Added chirp function to available analog shapes in pulsed measurements
+* Bug fix for pulsed measurements with large photon count numbers (`numpy.int32` vs. `numpy.int64`)
+* Bug fixes and improvements for the scientific SpinBox introduced in v0.9
+* Tab order in pulsed measurement GUI is now more useful
+* Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
+* Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
+* Various stability improvements and minor bug fixes
+
+Config changes:
+
 ## Release 0.9
 Released on 6 Mar 2018
 Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.9

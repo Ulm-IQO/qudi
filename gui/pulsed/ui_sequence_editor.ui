@@ -447,6 +447,27 @@ Sequence</string>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>sequence_add_last_PushButton</tabstop>
+  <tabstop>sequence_del_last_PushButton</tabstop>
+  <tabstop>sequence_add_sel_PushButton</tabstop>
+  <tabstop>sequence_del_sel_PushButton</tabstop>
+  <tabstop>sequence_clear_PushButton</tabstop>
+  <tabstop>curr_sequence_length_DSpinBox</tabstop>
+  <tabstop>curr_sequence_bins_SpinBox</tabstop>
+  <tabstop>curr_sequence_size_DSpinBox</tabstop>
+  <tabstop>curr_sequence_rot_frame_CheckBox</tabstop>
+  <tabstop>curr_sequence_name_LineEdit</tabstop>
+  <tabstop>curr_sequence_generate_PushButton</tabstop>
+  <tabstop>saved_sequences_ComboBox</tabstop>
+  <tabstop>curr_sequence_del_PushButton</tabstop>
+  <tabstop>curr_sequence_load_PushButton</tabstop>
+  <tabstop>gen_sequence_ComboBox</tabstop>
+  <tabstop>saup_sequence_PushButton</tabstop>
+  <tabstop>sauplo_sequence_PushButton</tabstop>
+  <tabstop>load_sequence_PushButton</tabstop>
+  <tabstop>sequence_editor_TableWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

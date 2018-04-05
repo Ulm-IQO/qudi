@@ -45,7 +45,7 @@ class AutomationGui(GUIBase):
         """
         self._mw = AutomationMainWindow()
         self.restoreWindowPos(self._mw)
-        self.logic = self.get_connector('automationlogic')
+        self.logic = self.automationlogic()
         self._mw.autoTreeView.setModel(self.logic.model)
         #self._mw.taskTableView.clicked.connect(self.setRunToolState)
         #self._mw.actionStart_Task.triggered.connect(self.manualStart)
