@@ -69,6 +69,26 @@ https://www.jetbrains.com/pycharm/help/configuring-python-interpreter-for-a-proj
 
 8. Now you can open `start.py` in the PyCharm project and execute it by right clicking the file tab and choosing execute.
 
+#### Desktop shortcut
+
+You can create a Desktop shortcut to launch Qudi easily on your machine.
+
+- On your Desktop, right click and go to ``New->Shortcut``
+- For the location you need to copy the following target :
+    - %windir%\System32\cmd.exe "/K" C:\ProgramData\Miniconda3\Scripts\activate.bat
+    "C:\Users\username\Miniconda3\envs\qudi" &#65120;&#65120; python "start.py"
+        - The &#65120; might cause troube when copy/pasting, you might need to add it by hand
+        - ``C:\ProgramData\Miniconda3\Scripts\activate.bat`` is the Anaconda activation file, it might be in another
+        location depending on your installation
+        - ``C:\Users\username\Miniconda3\envs\qudi`` is the environment folder for Qudi. You can find it by typing
+        ``conda info`` in the terminal while qudi is activated
+- Click ``Next``
+- Give the name you want fot the shortcut : ``Qudi``
+- Click ``Finish``
+- Right click on the newly created shortcut and go to `Proprerties`
+- In the ``Start in :`` line, write the path to to Qudi folder where the ``start.py`` can be found
+- (Optionally) Click ``Change Icon...`` and browse for the ``artwork\logo\logo_qudi.ico`` logo
+
 
 ## Linux installation
 
