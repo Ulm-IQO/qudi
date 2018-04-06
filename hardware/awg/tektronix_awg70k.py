@@ -1384,6 +1384,31 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SLISt:SEQuence:STEP' + str(last_step) + ':GOTO ' + '"' + sequencename + '",  FIRST \n')
         return last_step
 
+    def _force_jump_sequence(self, final_step, channel=1):
+        """
+        This command forces the sequencer to jump to the specified step per channel. A
+        force jump does not require a trigger event to execute the jump.
+        For two channel instruments, if both channels are playing the same sequence, then
+        both channels jump simultaneously to the same sequence step.
+
+        @param channel: determines the channel number. If omitted, interpreted as 1
+        @param final_step: Step to jump to. Possible options are
+            FIRSt - This enables the sequencer to jump to first step in the sequence.
+            CURRent - This enables the sequencer to jump to the current sequence step,
+            essentially starting the current step over.
+            LAST - This enables the sequencer to jump to the last step in the sequence.
+            END - This enables the sequencer to go to the end and play 0 V until play is
+            stopped.
+            <NR1> - This enables the sequencer to jump to the specified step, where the
+            value is between 1 and 16383.
+
+        """
+        self.awg.write('SOURCE' + str(channel) + ':JUMP:FORCE ' + str(final_step) + '\n')
+
+        return
+
+
+
     def _init_loaded_asset(self):
         """
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
