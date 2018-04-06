@@ -1685,7 +1685,6 @@ def estimate_sinetriplewithexpdecay(self, x_axis, data, params):
 
     return error, params
 
-<<<<<<< HEAD
 def estimate_sinetriplewithexpdecay_14N(self, x_axis, data, params):
     """ Provides an estimator for initial values of three sine with offset and
         exponential decay fitting.
@@ -1748,8 +1747,6 @@ def estimate_sinetriplewithexpdecay_14N(self, x_axis, data, params):
     return error, params
 
 
-=======
->>>>>>> remotes/origin/master
 #########################################################################
 # Sum of three individual Sinus with offset and three exponential decay #
 #########################################################################
