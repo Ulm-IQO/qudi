@@ -167,13 +167,13 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # get all the connectors:
-        self._pulse_analysis_logic = self.get_connector('pulseanalysislogic')
-        self._pulse_extraction_logic = self.get_connector('pulseextractionlogic')
-        self._fast_counter_device = self.get_connector('fastcounter')
-        self._save_logic = self.get_connector('savelogic')
-        self._fit_logic = self.get_connector('fitlogic')
-        self._pulse_generator_device = self.get_connector('pulsegenerator')
-        self._mycrowave_source_device = self.get_connector('microwave')
+        self._pulse_analysis_logic = self.pulseanalysislogic()
+        self._pulse_extraction_logic = self.pulseextractionlogic()
+        self._fast_counter_device = self.fastcounter()
+        self._save_logic = self.savelogic()
+        self._fit_logic = self.fitlogic()
+        self._pulse_generator_device = self.pulsegenerator()
+        self._mycrowave_source_device = self.microwave()
 
         # Fitting
         self.fc = self._fit_logic.make_fit_container('pulsed', '1d')
@@ -1037,9 +1037,12 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.alternating:
             data['Signal2 (norm.)'] = self.signal_plot_y2
         if with_error:
-            data['Error (norm.)'] = self.measuring_error_plot_y
-            if self.alternating:
-                data['Error2 (norm.)'] = self.measuring_error_plot_y2
+            if self.second_plot_type == 'Delta':
+                data['Error (norm.)'] = np.sqrt(self.measuring_error_plot_y**2 + self.measuring_error_plot_y2**2)
+            else:
+                data['Error (norm.)'] = self.measuring_error_plot_y
+                if self.alternating:
+                    data['Error2 (norm.)'] = self.measuring_error_plot_y2
 
         # write the parameters:
         parameters = OrderedDict()
