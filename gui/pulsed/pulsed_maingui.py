@@ -1522,10 +1522,6 @@ class PulsedMeasurementGui(GUIBase):
         # apply hardware constraints
         self._analysis_apply_hardware_constraints()
 
-        self.toggle_settings_editor()
-        self.toggle_error_bars()
-        self.change_second_plot()
-
         # initialize values
         self._pulsed_master_logic.request_measurement_init_values()
         return
@@ -2091,6 +2087,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
             if self.signal_image_error_bars2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
+            if self.second_image_error_bars in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_image_error_bars)
             if self.measuring_error_image2 in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.removeItem(self.measuring_error_image2)
             if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
@@ -2103,6 +2101,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_x_axis_start_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
+
+        # update dependent GUI elements
+        self.toggle_settings_editor()
+        self.toggle_error_bars()
+        self.change_second_plot()
         return
 
     def toggle_settings_editor(self):
@@ -2161,7 +2164,7 @@ class PulsedMeasurementGui(GUIBase):
             if second_plot == 'Delta':
                 if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
                     self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
-                if self.second_image_error_bars not in self._pa.pulse_analysis_second_PlotWidget.items():
+                if self.second_image_error_bars not in self._pa.pulse_analysis_second_PlotWidget.items() and self._pa.ana_param_errorbars_CheckBox.isChecked():
                     self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_image_error_bars)
             else:
                 # everything but Delta has two plots but no errorbars
