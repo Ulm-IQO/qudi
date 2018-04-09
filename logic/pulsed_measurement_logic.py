@@ -1037,12 +1037,9 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.alternating:
             data['Signal2 (norm.)'] = self.signal_plot_y2
         if with_error:
-            if self.second_plot_type == 'Delta':
-                data['Error (norm.)'] = np.sqrt(self.measuring_error_plot_y**2 + self.measuring_error_plot_y2**2)
-            else:
-                data['Error (norm.)'] = self.measuring_error_plot_y
-                if self.alternating:
-                    data['Error2 (norm.)'] = self.measuring_error_plot_y2
+            data['Error (norm.)'] = self.measuring_error_plot_y
+            if self.alternating:
+                data['Error2 (norm.)'] = self.measuring_error_plot_y2
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1189,7 +1186,15 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.second_plot_type == 'Delta':
                 x_axis_ft_label = 'controlled variable (' + controlled_val_unit + ')'
                 y_axis_ft_label = 'norm. sig (arb. u.)'
-                ft_label = ''
+                ft_label = 'Delta of data traces'
+
+                if with_error:
+                    delta_plot_y_error = np.sqrt(self.measuring_error_plot_y**2 + self.measuring_error_plot_y2**2)
+                    ax2.errorbar(x=x_axis_ft_scaled, y=self.signal_second_plot_y,
+                                 yerr=delta_plot_y_error, fmt='-o',
+                                 linestyle=':', linewidth=0.5, color=colors[0],
+                                 ecolor=colors[1], capsize=3, capthick=0.9,
+                                 elinewidth=1.2, label=ft_label)
             else:
                 x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
                 y_axis_ft_label = 'Fourier amplitude (arb. u.)'
@@ -1198,6 +1203,7 @@ class PulsedMeasurementLogic(GenericLogic):
             ax2.plot(x_axis_ft_scaled, self.signal_second_plot_y, '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
                      label=ft_label)
+
 
             ax2.set_xlabel(x_axis_ft_label)
             ax2.set_ylabel(y_axis_ft_label)
