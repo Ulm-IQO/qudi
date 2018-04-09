@@ -43,8 +43,15 @@
     <addaction name="actionVertical_Binning_Plot"/>
     <addaction name="actionHorizontal_Bining_Plot"/>
    </widget>
+   <widget class="QMenu" name="menuAcqusition">
+    <property name="title">
+     <string>Acqusition</string>
+    </property>
+    <addaction name="actionStart"/>
+   </widget>
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
+   <addaction name="menuAcqusition"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="acquisitionControlWidget">
@@ -353,6 +360,20 @@
     </layout>
    </widget>
   </widget>
+  <widget class="QToolBar" name="toolBar">
+   <property name="windowTitle">
+    <string>toolBar</string>
+   </property>
+   <attribute name="toolBarArea">
+    <enum>TopToolBarArea</enum>
+   </attribute>
+   <attribute name="toolBarBreak">
+    <bool>true</bool>
+   </attribute>
+   <addaction name="separator"/>
+   <addaction name="actionStart"/>
+   <addaction name="actionAbort"/>
+  </widget>
   <action name="actionSave">
    <property name="text">
     <string>Save</string>
@@ -422,6 +443,24 @@
    </property>
    <property name="text">
     <string>Horizontal Bining Plot</string>
+   </property>
+  </action>
+  <action name="actionStart">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>Start</string>
+   </property>
+  </action>
+  <action name="actionAbort">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-counter.png</iconset>
+   </property>
+   <property name="text">
+    <string>Abort</string>
    </property>
   </action>
  </widget>
@@ -509,8 +548,8 @@
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>525</x>
-     <y>501</y>
+     <x>273</x>
+     <y>642</y>
     </hint>
    </hints>
   </connection>
@@ -521,8 +560,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>525</x>
-     <y>501</y>
+     <x>273</x>
+     <y>642</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
@@ -541,8 +580,8 @@
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>165</x>
-     <y>496</y>
+     <x>1091</x>
+     <y>642</y>
     </hint>
    </hints>
   </connection>
@@ -553,8 +592,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>165</x>
-     <y>496</y>
+     <x>1091</x>
+     <y>642</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
@@ -573,8 +612,8 @@
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>635</x>
-     <y>336</y>
+     <x>1199</x>
+     <y>468</y>
     </hint>
    </hints>
   </connection>
@@ -585,8 +624,8 @@
    <slot>setDisabled(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>635</x>
-     <y>336</y>
+     <x>1199</x>
+     <y>468</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
@@ -606,7 +645,7 @@
     </hint>
     <hint type="destinationlabel">
      <x>375</x>
-     <y>326</y>
+     <y>787</y>
     </hint>
    </hints>
   </connection>
@@ -618,7 +657,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>375</x>
-     <y>326</y>
+     <y>787</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
