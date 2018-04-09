@@ -167,7 +167,7 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
         else:
             return -1
 
-    def get_objective_temperature(self):
+    def get_setpoint_temperature(self):
         return self._temperature
 
     def get_ready_state(self):

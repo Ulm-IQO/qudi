@@ -147,7 +147,7 @@ class SpectrometerCameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_measured_temperature(self):
+    def get_setpoint_temperature(self):
         """ Get the temperature the system is going to try to achieve
 
         @return: float : temperature in Celsius
@@ -194,7 +194,6 @@ class ReadMode(Enum):
 class SpectrometerCameraConstraints:
 
     def __init__(self):
-        # maximum numer of possible detectors for slow counter
         self.read_mode = []
         self.cooling = False
         self.max_cooling = -50.0

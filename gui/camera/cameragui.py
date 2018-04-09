@@ -54,6 +54,7 @@ class CameraGUI(GUIBase):
     _modclass = 'CameraGui'
     _modtype = 'gui'
 
+    camera_logic = Connector(interface='CameraLogic')
 
     def __init__(self, config, **kwargs):
         self.camera_logic = None
@@ -66,10 +67,24 @@ class CameraGUI(GUIBase):
         """ Initializes all needed UI files and establishes the connectors.
         """
 
+        self._camera_logic = self.camera_logic()
+
         # Windows
         self._mw = CameraWindow()
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
+
+        self._mw.action_start.setEnabled(True)
+        self._mw.action_abort.setEnabled(False)
+
+        # Cooling dependent GUI
+        self.constraints = self._camera_logic.get_constraints()
+
+        if self.constraints.cooler is True:
+            self._mw.cooling_on_checkbox.setValue(self._camera_logic.get_cooler_on_state())
+        else:
+            self._mw.temperatureControllerWidget.setEnabled(False)
+            self._mw.temperatureCurvesWidget.setEnabled(False)
 
 
 
