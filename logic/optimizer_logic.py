@@ -22,10 +22,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 import time
+import scipy.signal as sig
 
 from logic.generic_logic import GenericLogic
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
+
+import matplotlib.pylab as plt
 
 
 class OptimizerLogic(GenericLogic):
@@ -407,34 +410,51 @@ class OptimizerLogic(GenericLogic):
 
     def template_fit(self, xy_axes, data, template):
         (x, y) = xy_axes
-        #print('x', x)
-        #print('y', y)
-        #x0 = np.average(x)
-        #y0 = np.average(y)
-        x0, y0 = template.shape()
+        print(template)
+        print(data)
+        x0, y0 = self.optimizer_XY_res, self.optimizer_XY_res
         print('(x0, y0) = ({0:f}, {1:f})'.format(x0, y0))
 
-        ft_data = np.fft.fft(data)
-        ft_template = np.fft.fft(template)
-        #print('data', data)
-        #print('ft_data', ft_data)
-        #print('template', template)
-        #print('ft_template', ft_template)
-        conv = abs(np.fft.ifft(ft_data * ft_template))  # Jochen
-        #print('conv_fft', conv)
-        left_right = np.fliplr(conv)
-        #print('conv_left_right', left_right)
-        conv = np.flipud(left_right)
-        print('updown', conv)
-        conv = np.roll(conv, int(y0 / 2), 0)
-        print(conv)
-        conv = np.roll(conv, int(x0 / 2), 1)
-        print(conv)
-        left_right = np.fliplr(conv)
-        #print('conv_left_right', left_right)
-        conv = np.flipud(left_right)
-        print(conv)
-        #fit gaussian (or max)
+        #plt.close('all')
+        #fig, ax = plt.subplots(2, 2)
+        #fig.set_size_inches(7, 6)
+
+        #ax[0, 0].imshow(template, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+        #ax[0, 1].imshow(data, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+        #ax[1, 1].imshow(np.flipud(np.fliplr(template)), cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+
+        convoluted_image = sig.convolve2d(np.flipud(np.fliplr(template)),
+                                   data,
+                                   mode='full',
+                                   fillvalue=np.mean(template)
+                                   )
+
+        #ax[1, 0].imshow(convoluted_image, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+        #plt.show()
+
+        # shift of picture 2 with respect to picture 1
+        max_index = np.array(np.unravel_index(convoluted_image.argmax(), convoluted_image.shape))
+        shift_measured_index = [max_index[0] - convoluted_image.shape[0] / 2,
+                                max_index[1] - convoluted_image.shape[1] / 2]
+
+        # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
+        shift_measured = [(shift_measured_index[0] + 0.5) / x0 * (x.max() - x.min()),
+                          (shift_measured_index[1] + 0.5) / y0 * (y.max() - y.min())]
+        print(shift_measured_index, shift_measured)
+
+        class _param():
+            best_values = dict()
+            success = False
+
+        results = _param()
+        results.best_values['center_x'] = self.optim_pos_x + shift_measured[0]
+        results.best_values['center_y'] = self.optim_pos_x + shift_measured[1]
+        # sigma is set to represent an uncertainty of one pixel in the template
+        results.best_values['sigma_x'] = 1 / x0 * (x.max() - x.min())
+        results.best_values['sigma_y'] = 1 / y0 * (y.max() - y.min())
+        results.success = True
+
+        return results
 
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
@@ -452,19 +472,13 @@ class OptimizerLogic(GenericLogic):
                 estimator=self._fit_logic.estimate_twoDgaussian_MLE
             )
         else:
-            xy_fit_data = self.xy_refocus_image[:, :, 3+self.opt_channel]#.ravel()
-            xy_template_data = self.xy_template_image[:, :, 3+self.opt_channel]#.ravel()
-            self.template_fit(
+            xy_fit_data = self.xy_refocus_image[:, :, 3 + self.opt_channel]
+            xy_template_data = self.xy_template_image[:, :, 3 + self.opt_channel]
+            result_2D_gaus = self.template_fit(
                 xy_axes=axes,
                 data=xy_fit_data,
                 template=xy_template_data
             )
-#            result_2D_gaus = self._fit_logic.make_twoDtemplate_fit(
-#                xy_axes=axes,
-#                data=xy_fit_data,
-#                estimator=self._fit_logic.estimate_twoDtemplate,
-#                template=xy_template_data
-#            )
             # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
