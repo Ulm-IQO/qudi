@@ -68,15 +68,10 @@ class PulseBlockElement(object):
         else:
             self.digital_high = digital_high
 
-        # calculate number of digital and analogue channels
-        if pulse_function is not None:
-            self.analog_channels = len(pulse_function)
-        else:
-            self.analog_channels = 0
-        if digital_high is not None:
-            self.digital_channels = len(digital_high)
-        else:
-            self.digital_channels = 0
+        # determine set of used digital and analog channels
+        self.analog_channels = set(self.pulse_function)
+        self.digital_channels = set(self.digital_high)
+        self.channel_set = self.analog_channels.union(self.digital_channels)
 
 
 class PulseBlock(object):
@@ -100,6 +95,7 @@ class PulseBlock(object):
         self.increment_s = None
         self.analog_channels = None
         self.digital_channels = None
+        self.channel_set = None
         self.use_as_tick = None
         self._refresh_parameters()
 
@@ -112,8 +108,7 @@ class PulseBlock(object):
         # the Pulse_Block parameter
         self.init_length_s = 0.0
         self.increment_s = 0.0
-        self.analog_channels = None
-        self.digital_channels = None
+        self.channel_set = None
         self.use_as_tick = False
 
         # calculate the tick value for the whole block. Basically sum all the
@@ -131,28 +126,21 @@ class PulseBlock(object):
                 self.controlled_vals_start += elem.init_length_s
                 self.controlled_vals_increment += elem.increment_s
 
-            if elem.pulse_function is not None:
-                if self.analog_channels is None:
-                    self.analog_channels = list(elem.pulse_function)
-                elif self.analog_channels != list(elem.pulse_function):
-                    raise ValueError('Usage of different sets of analog channels in the same PulseBlock'
-                                     ' is prohibited.\nPulseBlock creation failed!\nUsed analog channel'
-                                     ' sets are:\n{0}\n{1}'.format(self.analog_channels,
-                                                                   list(elem.pulse_function)))
-                    return
+            if self.channel_set is None:
+                self.channel_set = elem.channel_set
+            elif self.channel_set != elem.channel_set:
+                raise ValueError('Usage of different sets of analog and digital channels in the '
+                                 'same PulseBlock is prohibited.\nPulseBlock creation failed!\n'
+                                 'Used channel sets are:\n{0}\n{1}'.format(self.channel_set,
+                                                                           elem.channel_set))
+                break
 
-            if elem.digital_high is not None:
-                if self.digital_channels is None:
-                    self.digital_channels = list(elem.digital_high)
-                elif self.digital_channels != list(elem.digital_high):
-                    raise ValueError('Usage of different sets of digital channels in the same '
-                                     'PulseBlock is prohibited.\nPulseBlock creation failed!\n'
-                                     'Used digital channel sets are:\n'
-                                     '{0}\n{1}'.format(self.digital_channels, list(elem.digital_high)))
-                    return
+        self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
+        self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
+        return
 
     def replace_element(self, position, element):
-        if isinstance(element, PulseBlockElement) and (len(self.element_list) > position):
+        if isinstance(element, PulseBlockElement) and len(self.element_list) > position:
             self.element_list[position] = element
             self._refresh_parameters()
             return 0
@@ -202,9 +190,10 @@ class PulseBlockEnsemble(object):
         else:
             self.block_list = block_list
         self.rotating_frame = rotating_frame
-        self.length_s = 0
+        self.length_s = 0.0
         self.analog_channels = None
-        self.digital_channels = None
+        self.analog_channels = None
+        self.channel_set = None
         self.controlled_vals_array = np.array([])
         self._refresh_parameters()
 
@@ -228,35 +217,14 @@ class PulseBlockEnsemble(object):
         return
 
     def _refresh_parameters(self):
-        self.length_s = 0
-        self.analog_channels = None
-        self.digital_channels = None
-        # calculate the tick values for the whole block_ensemble.
+        self.length_s = 0.0
+        self.channel_set = None
         self.controlled_vals_array = np.array([])
+
         for block, reps in self.block_list:
-            # Get channels from the block information
-            if self.analog_channels is None:
-                self.analog_channels = block.analog_channels
-            elif self.analog_channels != block.analog_channels:
-                raise ValueError('Usage of different sets of analog channels in the same '
-                                 'PulseBlockEnsemble is prohibited.\n'
-                                 'PulseBlockEnsemble creation failed!\n'
-                                 'Used analog channel sets are:\n'
-                                 '{0}\n{1}'.format(self.analog_channels, block.analog_channels))
-                return
-
-            if self.digital_channels is None:
-                self.digital_channels = block.digital_channels
-            elif self.digital_channels != block.digital_channels:
-                raise ValueError('Usage of different sets of digital channels in the same '
-                                 'PulseBlockEnsemble is prohibited.\n'
-                                 'PulseBlockEnsemble creation failed!\n'
-                                 'Used digital channel sets are:\n'
-                                 '{0}\n{1}'.format(self.digital_channels, block.digital_channels))
-                return
-
             # Get and set information about the length of the ensemble
-            self.length_s += (block.init_length_s * (reps+1) + block.increment_s * (reps*(reps+1)/2))
+            self.length_s += (block.init_length_s * (reps + 1) + block.increment_s * (
+                        reps * (reps + 1) / 2))
 
             # Calculate the measurement ticks list for this ensemble
             if block.use_as_tick:
@@ -265,12 +233,25 @@ class PulseBlockEnsemble(object):
                 if incr == 0.0:
                     arr = np.array([])
                 else:
-                    arr = np.arange(start, start+(reps+1)*incr, incr)
+                    arr = np.arange(start, start + (reps + 1) * incr, incr)
                 self.controlled_vals_array = np.append(self.controlled_vals_array, arr)
+
+            # Get channels from the block information
+            if self.channel_set is None:
+                self.channel_set = block.channel_set
+            elif self.channel_set != block.channel_set:
+                raise ValueError('Usage of different sets of analog and digital channels in the '
+                                 'same PulseBlockEnsemble is prohibited.\nPulseBlockEnsemble '
+                                 'creation failed!\nUsed channel sets are:\n{0}\n{1}'
+                                 ''.format(self.channel_set, block.channel_set))
+                break
+
+        self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
+        self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
 
     def replace_block(self, position, block, reps=0):
-        if isinstance(block, PulseBlock) and (len(self.block_list) > position):
+        if isinstance(block, PulseBlock) and len(self.block_list) > position:
             self.block_list[position] = (block, reps)
             self._refresh_parameters()
             return 0
@@ -304,7 +285,7 @@ class PulseSequence(object):
     Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
-    def __init__(self, name, ensemble_list=None, rotating_frame=True):
+    def __init__(self, name, ensemble_list=None, rotating_frame=False):
         """
         The constructor for a PulseSequence objects needs to have:
 
@@ -347,10 +328,9 @@ class PulseSequence(object):
         self.length_s = 0.0
         self.analog_channels = None
         self.digital_channels = None
-        self.controlled_vals_array = np.array([])
-        # here all DIFFERENT kind of ensembles will be saved in, i.e. with different names.
-        self.different_ensembles = dict()
+        self.channel_set = None
         self._refresh_parameters()
+
         # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
         # Waveforms like pulser settings used during sampling (sample_rate, activation_config etc.)
@@ -376,15 +356,9 @@ class PulseSequence(object):
 
         @return:
         """
-        self.length_s = 0
-        self.analog_channels = None
-        self.digital_channels = None
-        self.different_ensembles = dict()
-        self.controlled_vals_array = np.array([])
+        self.length_s = 0.0
+        self.channel_set = None
 
-        # to make a reasonable measurement tick list, the last biggest tick value after all
-        # the repetitions of a block is used as the offset_time for the next block.
-        offset_tick_bin = 0
         for ensemble, seq_dict in self.ensemble_list:
             if self.length_s >= 0:
                 if 'repetitions' in seq_dict:
@@ -397,42 +371,18 @@ class PulseSequence(object):
                 else:
                     self.length_s += (ensemble.length_s * (reps+1))
 
-            # Get channels from the block ensemble information
-            if self.analog_channels is None:
-                self.analog_channels = ensemble.analog_channels
-            elif self.analog_channels != ensemble.analog_channels:
-                raise ValueError('Usage of different sets of analog channels in the same '
-                                 'PulseSequence is prohibited.\n'
-                                 'PulseSequence creation failed!\n'
-                                 'Used analog channel sets are:\n'
-                                 '{0}\n{1}'.format(self.analog_channels,
-                                                   ensemble.analog_channels))
-                return
+            # Get channels from the block information
+            if self.channel_set is None:
+                self.channel_set = ensemble.channel_set
+            elif self.channel_set != ensemble.channel_set:
+                raise ValueError('Usage of different sets of analog and digital channels in the '
+                                 'same PulseBlockEnsemble is prohibited.\nPulseBlockEnsemble '
+                                 'creation failed!\nUsed channel sets are:\n{0}\n{1}'
+                                 ''.format(self.channel_set, ensemble.channel_set))
+                break
 
-            if self.digital_channels is None:
-                self.digital_channels = ensemble.digital_channels
-            elif self.digital_channels != ensemble.digital_channels:
-                raise ValueError('Usage of different sets of digital channels in the same '
-                                 'PulseSequence is prohibited.\n'
-                                 'PulseSequence creation failed!\n'
-                                 'Used digital channel sets are:\n'
-                                 '{0}\n{1}'.format(self.digital_channels,
-                                                   ensemble.digital_channels))
-                return
-
-            if ensemble.name not in self.different_ensembles:
-                self.different_ensembles[ensemble.name] = ensemble
-
-            if hasattr(ensemble, 'controlled_vals_array'):
-                self.controlled_vals_array = np.append(self.controlled_vals_array,
-                                                       offset_tick_bin +
-                                                       ensemble.controlled_vals_array)
-
-            # for the next repetition or pulse_block_ensemble, add last number from the
-            # controlled_vals_array as offset_tick_bin. Otherwise the controlled_vals_array will
-            # be a mess:
-            if len(self.controlled_vals_array) > 0:
-                offset_tick_bin = self.controlled_vals_array[-1]
+        self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
+        self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
 
     def replace_ensemble(self, position, ensemble, seq_param=None):
@@ -442,7 +392,7 @@ class PulseSequence(object):
         @param object ensemble: PulseBlockEnsemble instance
         @param dict seq_param: Sequence step parameter dictionary. Use present one if None.
         """
-        if isinstance(ensemble, PulseBlockEnsemble) and (len(self.ensemble_list) > position):
+        if isinstance(ensemble, PulseBlockEnsemble) and len(self.ensemble_list) > position:
             if seq_param is None:
                 self.ensemble_list[position][0] = ensemble
             else:

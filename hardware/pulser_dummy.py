@@ -61,7 +61,7 @@ class PulserDummy(Base, PulserInterface):
         self.digital_low_dict = {'d_ch1': 0.0, 'd_ch2': 0.0, 'd_ch3': 0.0, 'd_ch4': 0.0,
                                  'd_ch5': 0.0, 'd_ch6': 0.0, 'd_ch7': 0.0, 'd_ch8': 0.0}
 
-        self.waveform_list = list()
+        self.waveform_set = set()
         self.sequence_dict = dict()
 
         self.current_loaded_assets = dict()
@@ -255,6 +255,8 @@ class PulserDummy(Base, PulserInterface):
         @return: (int, list) number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
+        waveforms = list()
+
         # Sanity checks
         if len(analog_samples) > 0:
             number_of_samples = len(analog_samples[list(analog_samples)[0]])
@@ -263,39 +265,34 @@ class PulserDummy(Base, PulserInterface):
         else:
             self.log.error('No analog or digital samples passed to write_waveform method in dummy '
                            'pulser.')
-            return -1, []
+            return -1, waveforms
 
         for chnl, samples in analog_samples.items():
             if len(samples) != number_of_samples:
                 self.log.error('Unequal length of sample arrays for different channels in dummy '
                                'pulser.')
-                return -1, []
+                return -1, waveforms
         for chnl, samples in digital_samples.items():
             if len(samples) != number_of_samples:
                 self.log.error('Unequal length of sample arrays for different channels in dummy '
                                'pulser.')
-                return -1, []
+                return -1, waveforms
 
         # Determine if only digital samples are active. In that case each channel will get a
         # waveform. Otherwise only the analog channels will have a waveform with digital channel
         # samples included (as it is the case in Tektronix and Keysight AWGs).
         # Simulate a 1Gbit/s transfer speed. Assume each analog waveform sample is 5 bytes large
         # (4 byte float and 1 byte marker bitmask). Assume each digital waveform sample is 1 byte.
-        waveforms = list()
-        if len(analog_samples) != 0:
+        if len(analog_samples) > 0:
             for chnl in analog_samples:
                 waveforms.append(name + chnl[1:])
-                if waveforms[-1] in self.waveform_list:
-                    del self.waveform_list[self.waveform_list.index(waveforms[-1])]
                 time.sleep(number_of_samples * 5 * 8 / 1024 ** 3)
         else:
             for chnl in digital_samples:
                 waveforms.append(name + chnl[1:])
-                if waveforms[-1] in self.waveform_list:
-                    del self.waveform_list[self.waveform_list.index(waveforms[-1])]
                 time.sleep(number_of_samples * 8 / 1024 ** 3)
 
-        self.waveform_list.extend(waveforms)
+        self.waveform_set.update(waveforms)
 
         self.log.info('Waveforms with nametag "{0}" directly written on dummy pulser.'.format(name))
         return number_of_samples, waveforms
@@ -313,7 +310,7 @@ class PulserDummy(Base, PulserInterface):
         # Check if all waveforms are present on virtual device memory
         for waveform_tuple, param_dict in sequence_parameter_list:
             for waveform in waveform_tuple:
-                if waveform not in self.waveform_list:
+                if waveform not in self.waveform_set:
                     self.log.error('Failed to create sequence "{0}" due to waveform "{1}" not '
                                    'present in device memory.'.format(name, waveform))
                     return -1
@@ -325,14 +322,14 @@ class PulserDummy(Base, PulserInterface):
         time.sleep(1)
 
         self.log.info('Sequence with name "{0}" directly written on dummy pulser.'.format(name))
-        return 0
+        return len(sequence_parameter_list)
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return self.waveform_list
+        return list(self.waveform_set)
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
@@ -354,8 +351,8 @@ class PulserDummy(Base, PulserInterface):
 
         deleted_waveforms = list()
         for waveform in waveform_name:
-            if waveform in self.waveform_list:
-                del self.waveform_list[self.waveform_list.index(waveform)]
+            if waveform in self.waveform_set:
+                self.waveform_set.remove(waveform)
                 deleted_waveforms.append(waveform)
 
         return deleted_waveforms
@@ -417,7 +414,7 @@ class PulserDummy(Base, PulserInterface):
         # active. Create new load dict.
         new_loaded_assets = dict()
         for channel, waveform in load_dict.items():
-            if waveform not in self.waveform_list:
+            if waveform not in self.waveform_set:
                 self.log.error('Loading failed. Waveform "{0}" not found on device memory.'
                                ''.format(waveform))
                 return self.current_loaded_assets
@@ -518,7 +515,7 @@ class PulserDummy(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
         self.current_loaded_assets = dict()
-        self.waveform_list = list()
+        self.waveform_set = set()
         self.sequence_dict = dict()
         return 0
 
@@ -605,23 +602,23 @@ class PulserDummy(Base, PulserInterface):
         if offset is None:
             offset = []
 
-        ampl = {}
-        off = {}
+        ampl = dict()
+        off = dict()
 
-        if (amplitude == []) and (offset == []):
+        if not amplitude and not offset:
 
-            for a_ch in self.amplitude_list:
-                ampl[a_ch] = self.amplitude_list[a_ch]
+            for a_ch, pp_amp in self.amplitude_dict.items():
+                ampl[a_ch] = pp_amp
 
-            for a_ch in self.offset_list:
-                off[a_ch] = self.offset_list[a_ch]
+            for a_ch, offset in self.offset_dict.items():
+                off[a_ch] = offset
 
         else:
             for a_ch in amplitude:
-                ampl[a_ch] = self.amplitude_list[a_ch]
+                ampl[a_ch] = self.amplitude_dict[a_ch]
 
             for a_ch in offset:
-                off[a_ch] = self.offset_list[a_ch]
+                off[a_ch] = self.offset_dict[a_ch]
 
         return ampl, off
 
@@ -655,15 +652,15 @@ class PulserDummy(Base, PulserInterface):
         (amplitude, offset) and (value high, value low)!
         """
         if amplitude is None:
-            amplitude = {}
+            amplitude = dict()
         if offset is None:
-            offset = {}
+            offset = dict()
 
-        for a_ch in amplitude:
-            self.amplitude_list[a_ch] = amplitude[a_ch]
+        for a_ch, amp in amplitude.items():
+            self.amplitude_dict[a_ch] = amp
 
-        for a_ch in offset:
-            self.offset_list[a_ch] = offset[a_ch]
+        for a_ch, off in offset.items():
+            self.offset_dict[a_ch] = off
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
@@ -707,23 +704,16 @@ class PulserDummy(Base, PulserInterface):
         if high is None:
             high = []
 
-        low_val = {}
-        high_val = {}
-
-        if (low == []) and (high == []):
-
-            for d_ch in self.digital_low_list:
-                low_val[d_ch] = self.digital_low_list[d_ch]
-
-            for d_ch in self.digital_high_list:
-                high_val[d_ch] = self.digital_high_list[d_ch]
-
+        if not low and not high:
+            low_val = self.digital_low_dict
+            high_val = self.digital_high_dict
         else:
+            low_val = dict()
+            high_val = dict()
             for d_ch in low:
-                low_val[d_ch] = self.digital_low_list[d_ch]
-
+                low_val[d_ch] = self.digital_low_dict[d_ch]
             for d_ch in high:
-                high_val[d_ch] = self.digital_high_list[d_ch]
+                high_val[d_ch] = self.digital_high_dict[d_ch]
 
         return low_val, high_val
 
@@ -755,15 +745,15 @@ class PulserDummy(Base, PulserInterface):
         (amplitude, offset) and (value high, value low)!
         """
         if low is None:
-            low = {}
+            low = dict()
         if high is None:
-            high = {}
+            high = dict()
 
-        for d_ch in low:
-            self.digital_low_list[d_ch] = low[d_ch]
+        for d_ch, low_voltage in low.items():
+            self.digital_low_dict[d_ch] = low_voltage
 
-        for d_ch in high:
-            self.digital_high_list[d_ch] = high[d_ch]
+        for d_ch, high_voltage in high.items():
+            self.digital_high_dict[d_ch] = high_voltage
 
         return self.get_digital_level(low=list(low), high=list(high))
 
