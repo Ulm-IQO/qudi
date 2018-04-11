@@ -330,16 +330,12 @@ class ConfocalGui(GUIBase):
 
         # Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(
-            pen=QtGui.QPen(
-                palette.green,
-                self._optimizer_logic.refocus_XY_size / 50),
+            pen={'color': palette.green, 'width': 1},
             pos=50,
             angle=90,
             movable=False)
         self.hLine = pg.InfiniteLine(
-            pen=QtGui.QPen(
-                palette.green,
-                self._optimizer_logic.refocus_XY_size / 50),
+            pen={'color': palette.green, 'width': 1},
             pos=50,
             angle=0,
             movable=False)
@@ -1004,7 +1000,7 @@ class ConfocalGui(GUIBase):
         Also, if the refocus was initiated here in confocalgui then we need to handle the
         "returned" optimal position.
         """
-        if caller_tag == 'confocalgui':
+        if caller_tag in ('confocalgui', 'template_image'):
             self._scanning_logic.set_position(
                 'optimizer',
                 x=optimal_pos[0],
@@ -1038,7 +1034,12 @@ class ConfocalGui(GUIBase):
     def activate_template_changed(self):
         print('activate_template_changed')
         if self._osd.activate_template_checkBox.isChecked():
-            self._optimizer_logic.fit_type = 'template'
+            xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
+            if np.max(xy_template_image) != 0:
+                self._optimizer_logic.fit_type = 'template'
+            else:
+                self.log.error('No template image was taken at this time. '
+                               'Therefore the fit method cannot be set to template fitting.')
         else:
             self._optimizer_logic.fit_type = 'normal'
 
@@ -1145,25 +1146,32 @@ class ConfocalGui(GUIBase):
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
         self.disable_scan_actions()
-        self._scanning_logic.start_scanning(zscan=False,tag='gui')
+        self._scanning_logic.start_scanning(zscan=False, tag='gui')
 
     def continue_xy_scan_clicked(self):
         """ Continue xy scan. """
         self.disable_scan_actions()
-        self._scanning_logic.continue_scanning(zscan=False,tag='gui')
+        self._scanning_logic.continue_scanning(zscan=False, tag='gui')
 
     def continue_depth_scan_clicked(self):
         """ Continue depth scan. """
         self.disable_scan_actions()
-        self._scanning_logic.continue_scanning(zscan=True,tag='gui')
+        self._scanning_logic.continue_scanning(zscan=True, tag='gui')
 
-    def depth_scan_clicked(self,tag='gui'):
+    def depth_scan_clicked(self):
         """ Start depth scan. """
         self.disable_scan_actions()
-        self._scanning_logic.start_scanning(zscan=True)
+        self._scanning_logic.start_scanning(zscan=True, tag='gui')
 
     def refocus_clicked(self):
         """ Start optimize position. """
+        if self._osd.activate_template_checkBox.isChecked():
+            xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
+            if np.max(xy_template_image) == 0:
+                self.log.error('No template image was taken at this time. '
+                               'Therefore the fit method cannot be set to template fitting.')
+                return
+
         self.disable_scan_actions()
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()

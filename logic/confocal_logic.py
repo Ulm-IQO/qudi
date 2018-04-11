@@ -384,10 +384,11 @@ class ConfocalLogic(GenericLogic):
         else:
             return 0
 
-    def start_scanning(self, zscan = False, tag='logic'):
+    def start_scanning(self, zscan=False, tag='logic'):
         """Starts scanning
 
         @param bool zscan: zscan if true, xyscan if false
+        @param str tag: Caller tag of the module that
 
         @return int: error code (0:OK, -1:error)
         """
@@ -401,10 +402,11 @@ class ConfocalLogic(GenericLogic):
         else:
             self._xyscan_continuable = True
 
+        print("caller tag: ", tag)
         self.signal_start_scanning.emit(tag)
         return 0
 
-    def continue_scanning(self,zscan,tag='logic'):
+    def continue_scanning(self, zscan, tag='logic'):
         """Continue scanning
 
         @return int: error code (0:OK, -1:error)
