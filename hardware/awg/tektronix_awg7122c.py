@@ -522,7 +522,7 @@ class AWG7122C(Base, PulserInterface):
             message = int(self.ask('AWGC:RSTate?\n'))
         except:
             # if nothing comes back than the output should be marked as error
-            return -1
+            return (-1, status_dic)
 
         if message == 2:
             return (1, status_dic)
