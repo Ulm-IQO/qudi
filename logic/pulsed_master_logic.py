@@ -42,7 +42,7 @@ class PulsedMasterLogic(GenericLogic):
     Automatic transfer of information from one sub-module to the other for convenience is also
     handled here.
     Another important aspect is the use of this module in scripts (e.g. jupyter notebooks).
-    All calls to sub-module setter functions (PulsedMEasurementLogic and SequenceGeneratorLogic)
+    All calls to sub-module setter functions (PulsedMeasurementLogic and SequenceGeneratorLogic)
     are decoupled from the calling thread via Qt queued connections.
     This ensures a more intuitive and less error prone use of scripting.
     """
@@ -80,23 +80,32 @@ class PulsedMasterLogic(GenericLogic):
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
 
-
-
-    # sequence_generator_logic signals
-    sigSavePulseBlock = QtCore.Signal(str, object)
-    sigSaveBlockEnsemble = QtCore.Signal(str, object)
-    sigSaveSequence = QtCore.Signal(str, object)
+    # SequenceGeneratorLogic control signals
+    sigSavePulseBlock = QtCore.Signal(object)
+    sigSaveBlockEnsemble = QtCore.Signal(object)
+    sigSaveSequence = QtCore.Signal(object)
     sigDeletePulseBlock = QtCore.Signal(str)
     sigDeleteBlockEnsemble = QtCore.Signal(str)
     sigDeleteSequence = QtCore.Signal(str)
-    sigLoadPulseBlock = QtCore.Signal(str)
     sigLoadBlockEnsemble = QtCore.Signal(str)
     sigLoadSequence = QtCore.Signal(str)
-    sigSampleBlockEnsemble = QtCore.Signal(str, bool)
-    sigSampleSequence = QtCore.Signal(str, bool)
-    sigGeneratorSettingsChanged = QtCore.Signal(list, str, float, dict, str)
-    sigRequestGeneratorInitValues = QtCore.Signal()
+    sigSampleBlockEnsemble = QtCore.Signal(str)
+    sigSampleSequence = QtCore.Signal(str)
+    sigClearPulseGenerator = QtCore.Signal()
+    sigGeneratorSettingsChanged = QtCore.Signal(dict)
+    sigSamplingSettingsChanged = QtCore.Signal(dict)
     sigGeneratePredefinedSequence = QtCore.Signal(str, dict)
+
+    # signals for master module (i.e. GUI) coming from SequenceGeneratorLogic
+    sigBlockDictUpdated = QtCore.Signal(dict)
+    sigEnsembleDictUpdated = QtCore.Signal(dict)
+    sigSequenceDictUpdated = QtCore.Signal(dict)
+    sigGenerateEnsembleComplete = QtCore.Signal(object)
+    sigGenerateSequenceComplete = QtCore.Signal(object)
+    sigLoadedAssetUpdated = QtCore.Signal(str, str)
+    sigGeneratorSettingsUpdated = QtCore.Signal(dict)
+    sigSamplingSettingsUpdated = QtCore.Signal(dict)
+    sigPredefinedSequenceGenerated = QtCore.Signal(object)
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
@@ -113,13 +122,12 @@ class PulsedMasterLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # Initialize status register
-        self.status_dict = dict()
-        self.status_dict['genload_busy'] = False
-        self.status_dict['generate_busy'] = False
-        self.status_dict['loading_busy'] = False
-        self.status_dict['pulser_running'] = False
-        self.status_dict['measurement_running'] = False
-        self.status_dict['microwave_running'] = False
+        self.status_dict = {'genload_busy': False,
+                            'generate_busy': False,
+                            'loading_busy': False,
+                            'pulser_running': False,
+                            'measurement_running': False,
+                            'microwave_running': False}
 
         # Connect signals controlling PulsedMeasurementLogic
         self.sigDoFit.connect(
@@ -172,8 +180,51 @@ class PulsedMasterLogic(GenericLogic):
             self.sigExtractionSettingsUpdated, QtCore.Qt.QueuedConnection)
 
         # Connect signals controlling SequenceGeneratorLogic
+        self.sigSavePulseBlock.connect(
+            self.sequencegeneratorlogic().save_block, QtCore.Qt.QueuedConnection)
+        self.sigSaveBlockEnsemble.connect(
+            self.sequencegeneratorlogic().save_ensemble, QtCore.Qt.QueuedConnection)
+        self.sigSaveSequence.connect(
+            self.sequencegeneratorlogic().save_sequence, QtCore.Qt.QueuedConnection)
+        self.sigDeletePulseBlock.connect(
+            self.sequencegeneratorlogic().delete_block, QtCore.Qt.QueuedConnection)
+        self.sigDeleteBlockEnsemble.connect(
+            self.sequencegeneratorlogic().delete_ensemble, QtCore.Qt.QueuedConnection)
+        self.sigDeleteSequence.connect(
+            self.sequencegeneratorlogic().delete_sequence, QtCore.Qt.QueuedConnection)
+        self.sigLoadBlockEnsemble.connect(
+            self.sequencegeneratorlogic().load_ensemble, QtCore.Qt.QueuedConnection)
+        self.sigLoadSequence.connect(
+            self.sequencegeneratorlogic().load_sequence, QtCore.Qt.QueuedConnection)
+        self.sigSampleBlockEnsemble.connect(
+            self.sequencegeneratorlogic().sample_pulse_block_ensemble, QtCore.Qt.QueuedConnection)
+        self.sigSampleSequence.connect(
+            self.sequencegeneratorlogic().sample_pulse_sequence, QtCore.Qt.QueuedConnection)
+        self.sigClearPulseGenerator.connect(
+            self.sequencegeneratorlogic().clear_pulser, QtCore.Qt.QueuedConnection)
+        self.sigGeneratorSettingsChanged.connect(
+            self.sequencegeneratorlogic().set_pulse_generator_settings, QtCore.Qt.QueuedConnection)
+        self.sigSamplingSettingsChanged.connect(
+            self.sequencegeneratorlogic().set_sampling_settings, QtCore.Qt.QueuedConnection)
+        self.sigGeneratePredefinedSequence.connect(
+            self.sequencegeneratorlogic().generate_predefined_sequence, QtCore.Qt.QueuedConnection)
 
         # Connect signals coming from SequenceGeneratorLogic
+        self.sequencegeneratorlogic().sigBlockDictUpdated.connect(
+            self.sigBlockDictUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigEnsembleDictUpdated.connect(
+            self.sigEnsembleDictUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigSequenceDictUpdated.connect(
+            self.sigSequenceDictUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigGeneratorSettingsUpdated.connect(
+            self.sigGeneratorSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigSamplingSettingsUpdated.connect(
+            self.sigSamplingSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigPredefinedSequenceGenerated.connect(
+            self.sigPredefinedSequenceGenerated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigGenerateEnsembleComplete.connect()
+        self.sequencegeneratorlogic().sigGenerateSequenceComplete.connect()
+        self.sequencegeneratorlogic().sigLoadedAssetUpdated.connect()
         return
 
     def on_deactivate(self):
@@ -209,8 +260,30 @@ class PulsedMasterLogic(GenericLogic):
         self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.disconnect()
 
         # Disconnect signals controlling SequenceGeneratorLogic
-
+        self.sigSavePulseBlock.disconnect()
+        self.sigSaveBlockEnsemble.disconnect()
+        self.sigSaveSequence.disconnect()
+        self.sigDeletePulseBlock.disconnect()
+        self.sigDeleteBlockEnsemble.disconnect()
+        self.sigDeleteSequence.disconnect()
+        self.sigLoadBlockEnsemble.disconnect()
+        self.sigLoadSequence.disconnect()
+        self.sigSampleBlockEnsemble.disconnect()
+        self.sigSampleSequence.disconnect()
+        self.sigClearPulseGenerator.disconnect()
+        self.sigGeneratorSettingsChanged.disconnect()
+        self.sigSamplingSettingsChanged.disconnect()
+        self.sigGeneratePredefinedSequence.disconnect()
         # Disconnect signals coming from SequenceGeneratorLogic
+        self.sequencegeneratorlogic().sigBlockDictUpdated.disconnect()
+        self.sequencegeneratorlogic().sigEnsembleDictUpdated.disconnect()
+        self.sequencegeneratorlogic().sigSequenceDictUpdated.disconnect()
+        self.sequencegeneratorlogic().sigGeneratorSettingsUpdated.disconnect()
+        self.sequencegeneratorlogic().sigSamplingSettingsUpdated.disconnect()
+        self.sequencegeneratorlogic().sigPredefinedSequenceGenerated.disconnect()
+        self.sequencegeneratorlogic().sigGenerateEnsembleComplete.disconnect()
+        self.sequencegeneratorlogic().sigGenerateSequenceComplete.disconnect()
+        self.sequencegeneratorlogic().sigLoadedAssetUpdated.disconnect()
         return
 
     #######################################################################
