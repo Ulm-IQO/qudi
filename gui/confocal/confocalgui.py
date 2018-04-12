@@ -330,12 +330,12 @@ class ConfocalGui(GUIBase):
 
         # Add crosshair to the xy refocus scan
         self.vLine = pg.InfiniteLine(
-            pen={'color': palette.green, 'width': 1},
+            pen={'color': palette.green, 'width': 3},
             pos=50,
             angle=90,
             movable=False)
         self.hLine = pg.InfiniteLine(
-            pen={'color': palette.green, 'width': 1},
+            pen={'color': palette.green, 'width': 3},
             pos=50,
             angle=0,
             movable=False)
@@ -763,10 +763,10 @@ class ConfocalGui(GUIBase):
         # Set up the template tab
         ############################################################
 
-        self._osd.activate_template_checkBox.setChecked(True if self._optimizer_logic.fit_type == 'template' else False)
+        self._osd.activate_xy_template_checkBox.setChecked(self._optimizer_logic.fit_type == 'xy_template')
 
-        self._osd.take_template_image_Button.clicked.connect(self.take_template_image)
-        self._osd.activate_template_checkBox.toggled.connect(self.activate_template_changed)
+        self._osd.acquire_xy_template_image_Button.clicked.connect(self.acquire_xy_template_image)
+        self._osd.activate_xy_template_checkBox.toggled.connect(self.activate_template_changed)
 
         # Load the image for the optimizer tab
         self.xy_template_image = pg.ImageItem(
@@ -774,8 +774,8 @@ class ConfocalGui(GUIBase):
             axisOrder='row-major')
         self.xy_template_image.setRect(
             QtCore.QRectF(
-                self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                -self._optimizer_logic.refocus_XY_size / 2.,
+                -self._optimizer_logic.refocus_XY_size / 2.,
                 self._optimizer_logic.refocus_XY_size,
                 self._optimizer_logic.refocus_XY_size
             )
@@ -783,13 +783,30 @@ class ConfocalGui(GUIBase):
 
         # Add the display item to the xy and depth VieWidget, which was defined in
         # the UI file.
-        self._osd.template_plot_widget.addItem(self.xy_template_image)
+        self._osd.template_xy_plot_widget.addItem(self.xy_template_image)
 
         # Labelling axes
-        self._osd.template_plot_widget.setLabel('bottom', 'X position', units='m')
-        self._osd.template_plot_widget.setLabel('left', 'Y position', units='m')
+        self._osd.template_xy_plot_widget.setLabel('bottom', 'X relative', units='m')
+        self._osd.template_xy_plot_widget.setLabel('left', 'Y relative', units='m')
 
         self.xy_template_image.setLookupTable(self.my_colors.lut)
+
+        # Add crosshair to the xy refocus scan
+        self.template_vLine = pg.InfiniteLine(
+            pen={'color': palette.green, 'width': 3},
+            pos=self._optimizer_logic.template_cursor[0],
+            angle=90,
+            movable=True)
+        self.template_hLine = pg.InfiniteLine(
+            pen={'color': palette.green, 'width': 3},
+            pos=self._optimizer_logic.template_cursor[1],
+            angle=0,
+            movable=True)
+        self._osd.template_xy_plot_widget.addItem(self.template_vLine, ignoreBounds=True)
+        self._osd.template_xy_plot_widget.addItem(self.template_hLine, ignoreBounds=True)
+
+        self.template_vLine.sigPositionChangeFinished.connect(self.template_cursor_changed)
+        self.template_hLine.sigPositionChangeFinished.connect(self.template_cursor_changed)
 
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
@@ -1000,7 +1017,7 @@ class ConfocalGui(GUIBase):
         Also, if the refocus was initiated here in confocalgui then we need to handle the
         "returned" optimal position.
         """
-        if caller_tag in ('confocalgui', 'template_image'):
+        if caller_tag in ('confocalgui', 'xy_template_image', 'z_template_image'):
             self._scanning_logic.set_position(
                 'optimizer',
                 x=optimal_pos[0],
@@ -1008,6 +1025,11 @@ class ConfocalGui(GUIBase):
                 z=optimal_pos[2],
                 a=0.0
             )
+
+        # Crosshair in optimizer
+        self.vLine.setValue(self._optimizer_logic.optim_pos_x)
+        self.hLine.setValue(self._optimizer_logic.optim_pos_y)
+
         self.enable_scan_actions()
 
     def set_history_actions(self, enable):
@@ -1021,22 +1043,29 @@ class ConfocalGui(GUIBase):
         else:
             self._mw.actionBack.setEnabled(False)
 
-    def take_template_image(self):
+    def acquire_xy_template_image(self):
         """ Start to take a template image. """
-        print('take_template_image')
         self.disable_scan_actions()
         self.update_optimizer_settings()
 
         # Get the current crosshair position to send to optimizer
         crosshair_pos = self._scanning_logic.get_position()
-        self.sigStartOptimizer.emit(crosshair_pos, 'template_image')
+        self.sigStartOptimizer.emit(crosshair_pos, 'xy_template_image')
+
+    def acquire_z_template(self):
+        """ Start to take a template image. """
+        self.disable_scan_actions()
+        self.update_optimizer_settings()
+
+        # Get the current crosshair position to send to optimizer
+        crosshair_pos = self._scanning_logic.get_position()
+        self.sigStartOptimizer.emit(crosshair_pos, 'z_template_image')
 
     def activate_template_changed(self):
-        print('activate_template_changed')
-        if self._osd.activate_template_checkBox.isChecked():
+        if self._osd.activate_xy_template_checkBox.isChecked():
             xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
             if np.max(xy_template_image) != 0:
-                self._optimizer_logic.fit_type = 'template'
+                self._optimizer_logic.fit_type = 'xy_template'
             else:
                 self.log.error('No template image was taken at this time. '
                                'Therefore the fit method cannot be set to template fitting.')
@@ -1108,6 +1137,16 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.check_optimization_sequence()
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.paramUseSettings
+
+        self.xy_template_image.setRect(
+            QtCore.QRectF(
+                -self._optimizer_logic.refocus_XY_size / 2.,
+                -self._optimizer_logic.refocus_XY_size / 2.,
+                self._optimizer_logic.refocus_XY_size,
+                self._optimizer_logic.refocus_XY_size
+            )
+        )
+
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
@@ -1165,7 +1204,7 @@ class ConfocalGui(GUIBase):
 
     def refocus_clicked(self):
         """ Start optimize position. """
-        if self._osd.activate_template_checkBox.isChecked():
+        if self._osd.activate_xy_template_checkBox.isChecked():
             xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
             if np.max(xy_template_image) == 0:
                 self.log.error('No template image was taken at this time. '
@@ -1650,6 +1689,15 @@ class ConfocalGui(GUIBase):
         # Unlock state widget if scan is finished
         if self._scanning_logic.module_state() != 'locked':
             self.enable_scan_actions()
+
+    def template_cursor_changed(self):
+        if self._optimizer_logic.module_state() == 'locked':
+            self.log.error('The template cursor cannot be changed, while the optimizer is scanning.')
+            self.template_vLine.setValue(self._optimizer_logic.template_cursor[0])
+            self.template_vLine.setValue(self._optimizer_logic.template_cursor[1])
+        else:
+            self._optimizer_logic.template_cursor[0] = self.template_vLine.value()
+            self._optimizer_logic.template_cursor[1] = self.template_hLine.value()
 
     def refresh_refocus_image(self):
         """Refreshes the xy image, the crosshair and the colorbar. """

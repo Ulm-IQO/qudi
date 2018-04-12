@@ -58,6 +58,7 @@ class OptimizerLogic(GenericLogic):
     surface_subtr_scan_offset = StatusVar('surface_subtraction_offset', 1e-6)
     opt_channel = StatusVar('optimization_channel', 0)
     fit_type = StatusVar('fit_type', 'normal')
+    template_cursor = StatusVar(default=[0, 0, 0, 0])
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -220,6 +221,12 @@ class OptimizerLogic(GenericLogic):
         else:
             pass  # TODO: throw error
 
+        # if the template has a cursor shift, it needs to be subtracted before scanning
+        if self.fit_type == 'xy_template':
+            self._initial_pos_x = self._initial_pos_x - self.template_cursor[0]
+            self._initial_pos_y = self._initial_pos_y - self.template_cursor[1]
+            self._initial_pos_z = self._initial_pos_z - self.template_cursor[2]
+
         # Keep track of where the start_refocus was initiated
         self._caller_tag = caller_tag
 
@@ -261,6 +268,7 @@ class OptimizerLogic(GenericLogic):
         # optimization steps that have occurred.
         x0 = self.optim_pos_x
         y0 = self.optim_pos_y
+        z0 = self.optim_pos_z
 
         # defining position intervals for refocus
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
@@ -270,7 +278,7 @@ class OptimizerLogic(GenericLogic):
 
         self._X_values = np.linspace(xmin, xmax, num=self.optimizer_XY_res)
         self._Y_values = np.linspace(ymin, ymax, num=self.optimizer_XY_res)
-        self._Z_values = self.optim_pos_z * np.ones(self._X_values.shape)
+        self._Z_values = z0 * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
@@ -282,9 +290,9 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+        self.xy_refocus_image[:, :, 2] = z0 * np.ones((len(self._Y_values), len(self._X_values)))
 
-        if self._caller_tag == 'template_image' or np.max(self.xy_template_image) == 0:
+        if self._caller_tag == 'xy_template_image' or np.max(self.xy_template_image) == 0:
             self.xy_template_image = np.zeros((
                 len(self._Y_values),
                 len(self._X_values),
@@ -292,7 +300,7 @@ class OptimizerLogic(GenericLogic):
             self.xy_template_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
             y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
             self.xy_template_image[:, :, 1] = y_value_matrix.transpose()
-            self.xy_template_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+            self.xy_template_image[:, :, 2] = z0 * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -395,7 +403,7 @@ class OptimizerLogic(GenericLogic):
         s_ch = len(self.get_scanner_count_channels())
         self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
 
-        if self._caller_tag == 'template_image':
+        if self._caller_tag == 'xy_template_image':
             self.xy_template_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
 
         self.sigImageUpdated.emit()
@@ -410,58 +418,64 @@ class OptimizerLogic(GenericLogic):
     def template_fit(self, xy_axes, data, template):
         fit_template = template#-template.min()
         fit_data = data#-data.min()
-
-        plt.close('all')
-        fig, ax = plt.subplots(2, 2)
-        fig.set_size_inches(7, 6)
-
-        ax[0, 0].imshow(fit_template, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-        ax[0, 0].set_title('template')
-        ax[0, 1].imshow(fit_data, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-        ax[0, 1].set_title('data')
-
+        
+        plot = True
+        if plot:
+            plt.close('all')
+            fig, ax = plt.subplots(2, 2)
+            fig.set_size_inches(7, 6)
+    
+            ax[0, 0].imshow(fit_template, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+            ax[0, 0].set_title('xy_template')
+            ax[0, 1].imshow(fit_data, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+            ax[0, 1].set_title('data')
+    
+            convoluted_image2 = sig.convolve2d(np.flipud(np.fliplr(fit_template)),
+                                               fit_data,
+                                               mode='full',
+                                               fillvalue=np.mean(fit_template)
+                                               )
+    
+            ax[1, 0].imshow(convoluted_image2, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+            ax[1, 0].set_title('convolution')
+        
+        # It turns out the best results are achieved when the convolutions fills 
+        # the edges with 70% of the mean of the whole picture.
         convoluted_image = sig.convolve2d(np.flipud(np.fliplr(fit_template)),
                                           fit_data,
                                           mode='full',
-                                          fillvalue=np.mean(fit_template)
+                                          fillvalue=fit_template.min() + 0.7*(np.mean(fit_template)-fit_template.min())
                                           )
+        if plot:
+            ax[1, 1].imshow(convoluted_image, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
+            ax[1, 1].set_title('second convolution')
+            plt.savefig('template_fit.png')
+            plt.close('all')
 
-        ax[1, 0].imshow(convoluted_image, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-        ax[1, 0].set_title('convolution')
-
-        convoluted_image2 = sig.convolve2d(np.flipud(np.fliplr(fit_template)),
-                                           fit_data,
-                                           mode='full',
-                                           fillvalue=fit_template.min() + 0.7*(np.mean(fit_template)-fit_template.min())
-                                           )
-        ax[1, 1].imshow(convoluted_image2, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-        ax[1, 1].set_title('second convolution')
-        plt.savefig('template_fit.png')
-        plt.close('all')
-
+        # get the dimensions in order
         (x, y) = xy_axes
         x0, y0 = self.optimizer_XY_res, self.optimizer_XY_res
         xc, yc = convoluted_image.shape[0], convoluted_image.shape[1]
-        #print('(x0, y0) = ({0:.0f}, {1:.0f}) - (xc, yc) = ({2:.0f}, {3:.0f})'.format(x0, y0, xc, yc))
 
         # shift of picture 2 with respect to picture 1
-        max_index = np.array(np.unravel_index(convoluted_image2.argmax(), convoluted_image2.shape))
-        shift_measured_index = [max_index[1] - (xc / 2.)+0.5,
-                                max_index[0] - (yc / 2.)+0.5]
-
+        max_index = np.array(np.unravel_index(convoluted_image.argmax(), convoluted_image.shape))
+        image_index_shift = [max_index[1] - (xc / 2.)+0.5,
+                             max_index[0] - (yc / 2.)+0.5]
 
         # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
-        shift_measured = [(shift_measured_index[0]) / x0 * (x.max() - x.min()),
-                          (shift_measured_index[1]) / y0 * (y.max() - y.min())]
-        print(shift_measured_index, shift_measured)
+        image_shift = [(image_index_shift[0]) / x0 * (x.max() - x.min()),
+                       (image_index_shift[1]) / y0 * (y.max() - y.min())]
+        #position_shift = [image_shift[0] + self.template_cursor[0],
+        #                  image_shift[1] + self.template_cursor[1]]
+        print(image_index_shift, image_shift)#, position_shift)
 
         class _param():
             best_values = dict()
             success = False
 
         results = _param()
-        results.best_values['center_x'] = self.optim_pos_x + shift_measured[0]
-        results.best_values['center_y'] = self.optim_pos_y + shift_measured[1]
+        results.best_values['center_x'] = self.optim_pos_x + image_shift[0]
+        results.best_values['center_y'] = self.optim_pos_y + image_shift[1]
         # sigma is set to represent an uncertainty of one pixel in the template
         results.best_values['sigma_x'] = 1 / x0 * (x.max() - x.min())
         results.best_values['sigma_y'] = 1 / y0 * (y.max() - y.min())
@@ -471,6 +485,19 @@ class OptimizerLogic(GenericLogic):
 
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
+
+        # for acquiring the template image, no fit needs to be done, so return the initial position
+        if self._caller_tag == 'xy_template_image':
+            self.optim_pos_x = self._initial_pos_x
+            self.optim_pos_y = self._initial_pos_y
+            self.optim_sigma_x = 0.
+            self.optim_sigma_y = 0.
+
+            # emit image updated signal so crosshair can be updated from this fit
+            self.sigImageUpdated.emit()
+            self._sigDoNextOptimizationStep.emit()
+            return
+
         print('fitting: {0:s}'.format(self.fit_type))
 
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
@@ -478,7 +505,7 @@ class OptimizerLogic(GenericLogic):
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
 
-        if self.fit_type != 'template':
+        if self.fit_type != 'xy_template':
             result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
                 xy_axes=axes,
                 data=xy_fit_data,
@@ -597,6 +624,14 @@ class OptimizerLogic(GenericLogic):
 
         self.kill_scanner()
 
+        if self.fit_type == 'xy_template':
+            self._initial_pos_x += self.template_cursor[0]
+            self._initial_pos_y += self.template_cursor[1]
+            self._initial_pos_z += self.template_cursor[2]
+            self.optim_pos_x += self.template_cursor[0]
+            self.optim_pos_y += self.template_cursor[1]
+            self.optim_pos_z += self.template_cursor[2]
+
         self.log.info(
                 'Optimised from ({0:.3e},{1:.3e},{2:.3e}) to local '
                 'maximum at ({3:.3e},{4:.3e},{5:.3e}).'.format(
@@ -616,9 +651,12 @@ class OptimizerLogic(GenericLogic):
     def _scan_z_line(self):
         """Scans the z line for refocus."""
 
+        x0 = self.optim_pos_x
+        y0 = self.optim_pos_y
+
         # Moves to the start value of the z-scan
         status = self._move_to_start_pos(
-            [self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
+            [x0, y0, self._zimage_Z_values[0]])
         if status < 0:
             self.log.error('Error during move to starting point.')
             self.stop_refocus()
@@ -628,8 +666,8 @@ class OptimizerLogic(GenericLogic):
 
         # defining trace of positions for z-refocus
         scan_z_line = self._zimage_Z_values
-        scan_x_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
-        scan_y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
+        scan_x_line = x0 * np.ones(self._zimage_Z_values.shape)
+        scan_y_line = y0 * np.ones(self._zimage_Z_values.shape)
 
         if n_ch <= 3:
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line)[0:n_ch])
@@ -650,8 +688,8 @@ class OptimizerLogic(GenericLogic):
         if self.do_surface_subtraction:
             # Move to start of z-scan
             status = self._move_to_start_pos([
-                self.optim_pos_x + self.surface_subtr_scan_offset,
-                self.optim_pos_y,
+                x0 + self.surface_subtr_scan_offset,
+                y0,
                 self._zimage_Z_values[0]])
             if status < 0:
                 self.log.error('Error during move to starting point.')
@@ -684,7 +722,7 @@ class OptimizerLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         self.module_state.lock()
-        clock_frequency = self._template_clock_frequency if self._caller_tag == 'template_image' else self._clock_frequency
+        clock_frequency = self._template_clock_frequency if self._caller_tag == 'xy_template_image' else self._clock_frequency
         clock_status = self._scanning_device.set_up_scanner_clock(
             clock_frequency=clock_frequency)
         if clock_status < 0:
@@ -721,7 +759,7 @@ class OptimizerLogic(GenericLogic):
         """Handle the steps through the specified optimization sequence
         """
         # If template image requested, just take a XY scan and save it as template image
-        if self._caller_tag == 'template_image':
+        if self._caller_tag == 'xy_template_image':
             if self._optimization_step >= 1:
                 self._sigFinishedAllOptimizationSteps.emit()
             else:
