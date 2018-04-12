@@ -74,11 +74,13 @@ class SequenceGeneratorLogic(GenericLogic):
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigGenerateEnsembleComplete = QtCore.Signal(object)
-    sigGenerateSequenceComplete = QtCore.Signal(object)
+    sigSampleEnsembleComplete = QtCore.Signal(object)
+    sigSampleSequenceComplete = QtCore.Signal(object)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
     sigGeneratorSettingsUpdated = QtCore.Signal(dict)
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
+    sigAvailableWaveformsUpdated = QtCore.Signal(list)
+    sigAvailableSequencesUpdated = QtCore.Signal(list)
 
     sigPredefinedSequenceGenerated = QtCore.Signal(object)  # TODO: Needed???
 
@@ -143,7 +145,7 @@ class SequenceGeneratorLogic(GenericLogic):
         """ Deinitialisation performed during deactivation of the module.
         """
         # Cleanup temporary backup files
-        self._cleanup_tmp_files()
+        #self._cleanup_tmp_files()
         return
 
     ############################################################################
@@ -170,11 +172,11 @@ class SequenceGeneratorLogic(GenericLogic):
         return self.pulsegenerator().get_constraints()
 
     @property
-    def generated_waveforms(self):
+    def sampled_waveforms(self):
         return self.pulsegenerator().get_waveform_names()
 
     @property
-    def generated_sequences(self):
+    def sampled_sequences(self):
         return self.pulsegenerator().get_sequence_names()
 
     @property
@@ -298,6 +300,8 @@ class SequenceGeneratorLogic(GenericLogic):
             seq.sampling_information = dict()
         for ens in self._saved_pulse_block_ensembles.values():
             ens.sampling_information = dict()
+        self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
+        self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         self.sigLoadedAssetUpdated.emit('', '')
         return
 
@@ -323,7 +327,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Check if the PulseBlockEnsemble has been sampled already.
         if ensemble.sampling_information:
             # Check if the corresponding waveforms are present in the pulse generator memory
-            ready_waveforms = self.generated_waveforms
+            ready_waveforms = self.sampled_waveforms
             for waveform in ensemble.sampling_information['waveforms']:
                 if waveform not in ready_waveforms:
                     self.log.error('Waveform "{0}" associated with PulseBlockEnsemble "{1}" not '
@@ -359,9 +363,9 @@ class SequenceGeneratorLogic(GenericLogic):
             return
 
         # Check if the PulseSequence has been sampled already.
-        if sequence.sampling_information and sequence.name in self.generated_sequences:
+        if sequence.sampling_information and sequence.name in self.sampled_sequences:
             # Check if the corresponding waveforms are present in the pulse generator memory
-            ready_waveforms = self.generated_waveforms
+            ready_waveforms = self.sampled_waveforms
             for waveform in sequence.sampling_information['waveforms']:
                 if waveform not in ready_waveforms:
                     self.log.error('Waveform "{0}" associated with PulseSequence "{1}" not '
@@ -666,6 +670,7 @@ class SequenceGeneratorLogic(GenericLogic):
             # check if ensemble has already been sampled and delete associated waveforms
             if ensemble.sampling_information:
                 self._delete_waveform(ensemble.sampling_information['waveforms'])
+                self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
             # delete PulseBlockEnsemble
             del(self._saved_pulse_block_ensembles[name])
             self._save_ensembles_to_tmp_file()
@@ -990,6 +995,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # TODO: Implement _analyze_pulse_sequence method.
         return dict()
 
+    @QtCore.Slot(str)
     def sample_pulse_block_ensemble(self, ensemble, offset_bin=0, name_tag=None):
         """ General sampling of a PulseBlockEnsemble object, which serves as the construction plan.
 
@@ -1036,12 +1042,12 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble = self.get_ensemble(ensemble)
             if not ensemble:
                 self.log.error('Unable to sample PulseBlockEnsemble. Not found in saved ensembles.')
-                self.sigGenerateEnsembleComplete.emit(None)
+                self.sigSampleEnsembleComplete.emit(None)
                 return -1, list()
         elif not isinstance(ensemble, PulseBlockEnsemble):
             self.log.error('Unable to sample PulseBlockEnsemble.\n'
                            'First argument type is neither str nor PulseBlockEnsemble instance.')
-            self.sigGenerateEnsembleComplete.emit(None)
+            self.sigSampleEnsembleComplete.emit(None)
             return -1, list()
         else:
             # Make sure the PulseBlockEnsemble is contained in the saved ensembles dict
@@ -1051,7 +1057,7 @@ class SequenceGeneratorLogic(GenericLogic):
         if self.module_state() == 'idle':
             self.module_state.lock()
         elif not self.__sequence_generation_in_progress:
-            self.sigGenerateEnsembleComplete.emit(None)
+            self.sigSampleEnsembleComplete.emit(None)
             return -1, list()
 
         # Check if number of channels in PulseBlockEnsemble matches the hardware settings
@@ -1062,7 +1068,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                      ensemble.channel_set))
             if not self.__sequence_generation_in_progress:
                 self.module_state.unlock()
-            self.sigGenerateEnsembleComplete.emit(None)
+            self.sigSampleEnsembleComplete.emit(None)
             return -1, list()
 
         # Set the waveform name (excluding the device specific channel naming suffix, i.e. '_ch1')
@@ -1070,7 +1076,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # check for old waveforms associated with the ensemble and delete them from pulse generator.
         # Also delete the sampling information afterwards since it is no longer valid.
-        self._delet_waveform_by_nametag(waveform_name)
+        self._delete_waveform_by_nametag(waveform_name)
         if waveform_name == ensemble.name:
             ensemble.sampling_information = dict()
             self._saved_pulse_block_ensembles[ensemble.name] = ensemble
@@ -1109,7 +1115,7 @@ class SequenceGeneratorLogic(GenericLogic):
                            ''.format(ensemble.name))
             if not self.__sequence_generation_in_progress:
                 self.module_state.unlock()
-            self.sigGenerateEnsembleComplete.emit(None)
+            self.sigSampleEnsembleComplete.emit(None)
             return -1, list()
 
         # Index to keep track of the sample array entries already processed
@@ -1179,7 +1185,8 @@ class SequenceGeneratorLogic(GenericLogic):
                                                ''.format(block.name, ensemble.name))
                                 if not self.__sequence_generation_in_progress:
                                     self.module_state.unlock()
-                                self.sigGenerateEnsembleComplete.emit(None)
+                                self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
+                                self.sigSampleEnsembleComplete.emit(None)
                                 return -1, list()
 
                             # Reset array write start pointer
@@ -1215,9 +1222,11 @@ class SequenceGeneratorLogic(GenericLogic):
                       ''.format(int(np.rint(time.time() - start_time))))
         if not self.__sequence_generation_in_progress:
             self.module_state.unlock()
-        self.sigGenerateEnsembleComplete.emit(ensemble)
+        self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
+        self.sigSampleEnsembleComplete.emit(ensemble)
         return offset_bin, list(written_waveforms)
 
+    @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
         """ Samples the PulseSequence object, which serves as the construction plan.
 
@@ -1240,12 +1249,12 @@ class SequenceGeneratorLogic(GenericLogic):
             sequence = self.get_sequence(sequence)
             if not sequence:
                 self.log.error('Unable to sample PulseSequence. Not found in saved sequences.')
-                self.sigGenerateSequenceComplete.emit(None)
+                self.sigSampleSequenceComplete.emit(None)
                 return
         elif not isinstance(sequence, PulseSequence):
             self.log.error('Unable to sample PulseSequence.\n'
                            'First argument type is neither str nor PulseSequence instance.')
-            self.sigGenerateSequenceComplete.emit(None)
+            self.sigSampleSequenceComplete.emit(None)
             return
         else:
             # Make sure the PulseSequence is contained in the saved sequences dict
@@ -1258,11 +1267,11 @@ class SequenceGeneratorLogic(GenericLogic):
         else:
             self.log.error('Cannot sample sequence "{0}" because the SequenceGeneratorLogic is '
                            'still busy (locked).\nFunction call ignored.'.format(sequence.name))
-            self.sigGenerateSequenceComplete.emit(None)
+            self.sigSampleSequenceComplete.emit(None)
             return
 
         # delete already written sequences on the device memory.
-        if sequence.name in self.generated_sequences:
+        if sequence.name in self.sampled_sequences:
             self.pulsegenerator().delete_sequence(sequence.name)
         # Clear sampling_information container.
         sequence.sampling_information = dict()
@@ -1307,7 +1316,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                ''.format(ensemble.name, sequence.name))
                 self.module_state.unlock()
                 self.__sequence_generation_in_progress = False
-                self.sigGenerateSequenceComplete.emit(None)
+                self.sigSampleSequenceComplete.emit(None)
                 return
 
             # Add created waveform names to the set
@@ -1344,22 +1353,24 @@ class SequenceGeneratorLogic(GenericLogic):
         # unlock module
         self.module_state.unlock()
         self.__sequence_generation_in_progress = False
-        self.sigGenerateSequenceComplete.emit(sequence)
+        self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
+        self.sigSampleSequenceComplete.emit(sequence)
         return
 
     def _delete_waveform(self, names):
         if isinstance(names, str):
             names = [names]
-        current_waveforms = self.generated_waveforms
+        current_waveforms = self.sampled_waveforms
         for wfm in names:
             if wfm in current_waveforms:
                 self.pulsegenerator().delete_waveform(wfm)
+        self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         return
 
-    def _delet_waveform_by_nametag(self, nametag):
+    def _delete_waveform_by_nametag(self, nametag):
         if not isinstance(nametag, str):
             return
-        wfm_to_delete = [wfm for wfm in self.generated_waveforms if
+        wfm_to_delete = [wfm for wfm in self.sampled_waveforms if
                          wfm.rsplit('_', 1)[0] == nametag]
         self._delete_waveform(wfm_to_delete)
         return
@@ -1367,10 +1378,11 @@ class SequenceGeneratorLogic(GenericLogic):
     def _delete_sequence(self, names):
         if isinstance(names, str):
             names = [names]
-        current_sequences = self.generated_sequences
+        current_sequences = self.sampled_sequences
         for seq in names:
             if seq in current_sequences:
                 self.pulsegenerator().delete_sequence(seq)
+        self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         return
 
     #---------------------------------------------------------------------------
