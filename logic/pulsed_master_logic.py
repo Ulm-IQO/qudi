@@ -100,8 +100,10 @@ class PulsedMasterLogic(GenericLogic):
     sigBlockDictUpdated = QtCore.Signal(dict)
     sigEnsembleDictUpdated = QtCore.Signal(dict)
     sigSequenceDictUpdated = QtCore.Signal(dict)
-    sigGenerateEnsembleComplete = QtCore.Signal(object)
-    sigGenerateSequenceComplete = QtCore.Signal(object)
+    sigAvailableWaveformsUpdated = QtCore.Signal(list)
+    sigAvailableSequencesUpdated = QtCore.Signal(list)
+    sigSampleEnsembleComplete = QtCore.Signal(object)
+    sigSampleSequenceComplete = QtCore.Signal(object)
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
     sigGeneratorSettingsUpdated = QtCore.Signal(dict)
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
@@ -122,8 +124,9 @@ class PulsedMasterLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # Initialize status register
-        self.status_dict = {'genload_busy': False,
-                            'generate_busy': False,
+        self.status_dict = {'sampling_ensemble_busy': False,
+                            'sampling_sequence_busy': False,
+                            'sampload_busy': False,
                             'loading_busy': False,
                             'pulser_running': False,
                             'measurement_running': False,
@@ -216,15 +219,22 @@ class PulsedMasterLogic(GenericLogic):
             self.sigEnsembleDictUpdated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigSequenceDictUpdated.connect(
             self.sigSequenceDictUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigAvailableWaveformsUpdated.connect(
+            self.sigAvailableWaveformsUpdated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigAvailableSequencesUpdated.connect(
+            self.sigAvailableSequencesUpdated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigGeneratorSettingsUpdated.connect(
             self.sigGeneratorSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigSamplingSettingsUpdated.connect(
             self.sigSamplingSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigPredefinedSequenceGenerated.connect(
             self.sigPredefinedSequenceGenerated, QtCore.Qt.QueuedConnection)
-        self.sequencegeneratorlogic().sigGenerateEnsembleComplete.connect()
-        self.sequencegeneratorlogic().sigGenerateSequenceComplete.connect()
-        self.sequencegeneratorlogic().sigLoadedAssetUpdated.connect()
+        self.sequencegeneratorlogic().sigSampleEnsembleComplete.connect(
+            self.sample_ensemble_finished, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigSampleSequenceComplete.connect(
+            self.sample_sequence_finished, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigLoadedAssetUpdated.connect(
+            self.loaded_asset_updated, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -278,11 +288,13 @@ class PulsedMasterLogic(GenericLogic):
         self.sequencegeneratorlogic().sigBlockDictUpdated.disconnect()
         self.sequencegeneratorlogic().sigEnsembleDictUpdated.disconnect()
         self.sequencegeneratorlogic().sigSequenceDictUpdated.disconnect()
+        self.sequencegeneratorlogic().sigAvailableWaveformsUpdated.disconnect()
+        self.sequencegeneratorlogic().sigAvailableSequencesUpdated.disconnect()
         self.sequencegeneratorlogic().sigGeneratorSettingsUpdated.disconnect()
         self.sequencegeneratorlogic().sigSamplingSettingsUpdated.disconnect()
         self.sequencegeneratorlogic().sigPredefinedSequenceGenerated.disconnect()
-        self.sequencegeneratorlogic().sigGenerateEnsembleComplete.disconnect()
-        self.sequencegeneratorlogic().sigGenerateSequenceComplete.disconnect()
+        self.sequencegeneratorlogic().sigSampleEnsembleComplete.disconnect()
+        self.sequencegeneratorlogic().sigSampleSequenceComplete.disconnect()
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.disconnect()
         return
 
@@ -352,6 +364,7 @@ class PulsedMasterLogic(GenericLogic):
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
+    @QtCore.Slot(dict)
     def set_measurement_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -364,6 +377,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigMeasurementSettingsChanged.emit(kwargs)
         return
 
+    @QtCore.Slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -376,6 +390,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigFastCounterSettingsChanged.emit(kwargs)
         return
 
+    @QtCore.Slot(dict)
     def set_ext_microwave_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -388,6 +403,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigExtMicrowaveSettingsChanged.emit(kwargs)
         return
 
+    @QtCore.Slot(dict)
     def set_analysis_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -400,6 +416,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigAnalysisSettingsChanged.emit(kwargs)
         return
 
+    @QtCore.Slot(dict)
     def set_extraction_settings(self, settings_dict=None, **kwargs):
         """
 
@@ -412,6 +429,8 @@ class PulsedMasterLogic(GenericLogic):
             self.sigExtractionSettingsChanged.emit(kwargs)
         return
 
+    @QtCore.Slot(int)
+    @QtCore.Slot(float)
     def set_timer_interval(self, interval):
         """
 
@@ -421,12 +440,14 @@ class PulsedMasterLogic(GenericLogic):
             self.sigTimerIntervalChanged.emit(interval)
         return
 
+    @QtCore.Slot()
     def manually_pull_data(self):
         """
         """
         self.sigManuallyPullData.emit()
         return
 
+    @QtCore.Slot(bool)
     def toggle_ext_microwave(self, switch_on):
         """
 
@@ -436,6 +457,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigToggleExtMicrowave.emit(switch_on)
         return
 
+    @QtCore.Slot(bool)
     def ext_microwave_running_updated(self, is_running):
         """
 
@@ -446,6 +468,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigExtMicrowaveRunningUpdated.emit(is_running)
         return
 
+    @QtCore.Slot(bool)
     def toggle_pulse_generator(self, switch_on):
         """
 
@@ -455,6 +478,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigTogglePulser.emit(switch_on)
         return
 
+    @QtCore.Slot(bool)
     def pulser_running_updated(self, is_running):
         """
 
@@ -465,6 +489,8 @@ class PulsedMasterLogic(GenericLogic):
             self.sigPulserRunningUpdated.emit(is_running)
         return
 
+    @QtCore.Slot(bool)
+    @QtCore.Slot(bool, str)
     def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
         """
 
@@ -475,6 +501,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigToggleMeasurement.emit(start, stash_raw_data_tag)
         return
 
+    @QtCore.Slot(bool)
     def toggle_pulsed_measurement_pause(self, pause):
         """
 
@@ -484,6 +511,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigToggleMeasurementPause.emit(pause)
         return
 
+    @QtCore.Slot(bool, bool)
     def measurement_status_updated(self, is_running, is_paused):
         """
 
@@ -495,6 +523,7 @@ class PulsedMasterLogic(GenericLogic):
             self.sigMeasurementStatusUpdated.emit(is_running, is_paused)
         return
 
+    @QtCore.Slot(str)
     def do_fit(self, fit_function):
         """
 
@@ -504,282 +533,206 @@ class PulsedMasterLogic(GenericLogic):
             self.sigDoFit.emit(fit_function)
         return
 
-    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_second_plot):
-        """ Prepare data to be saved and create a proper plot of the data.
+    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_alt_plot):
+        """
+        Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
         @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_second_plot: select wether the second plot (FFT, diff etc.) is saved
+        @param bool save_alt_plot: select whether the second plot (FFT, diff etc.) is saved
 
         @return str: filepath where data were saved
         """
-        return self._measurement_logic.save_measurement_data(
-            controlled_val_unit=controlled_val_unit,
-            tag=tag,
-            with_error=with_error,
-            save_second_plot=save_second_plot)
+        self.pulsedmeasurementlogic().save_measurement_data(controlled_val_unit, tag, with_error,
+                                                            save_alt_plot)
+        return
 
+    #######################################################################
+    ###             Sequence generator properties                       ###
+    #######################################################################
+    @property
+    def pulse_generator_constraints(self):
+        return self.sequencegeneratorlogic().pulse_generator_constraints
+
+    @property
+    def pulse_generator_settings(self):
+        return self.sequencegeneratorlogic().pulse_generator_settings
+
+    @property
+    def sampling_settings(self):
+        return self.sequencegeneratorlogic().sampling_settings
+
+    @property
+    def analog_channels(self):
+        return self.sequencegeneratorlogic().analog_channels
+
+    @property
+    def digital_channels(self):
+        return self.sequencegeneratorlogic().digital_channels
+
+    @property
+    def saved_pulse_blocks(self):
+        return self.sequencegeneratorlogic().saved_pulse_blocks
+
+    @property
+    def saved_pulse_block_ensembles(self):
+        return self.sequencegeneratorlogic().saved_pulse_block_ensembles
+
+    @property
+    def saved_pulse_sequences(self):
+        return self.sequencegeneratorlogic().saved_pulse_sequences
+
+    @property
+    def sampled_waveforms(self):
+        return self.sequencegeneratorlogic().sampled_waveforms
+
+    @property
+    def sampled_sequences(self):
+        return self.sequencegeneratorlogic().sampled_sequences
+
+    @property
+    def loaded_asset(self):
+        return self.sequencegeneratorlogic().loaded_asset
+
+    @property
+    def generate_methods(self):
+        return self.sequencegeneratorlogic().generate_methods
 
     #######################################################################
     ###             Sequence generator methods                          ###
     #######################################################################
+    @QtCore.Slot()
     def clear_pulse_generator(self):
-        """
-
-        @return:
-        """
-        self.sigClearPulseGenerator.emit()
-        return
-
-    def upload_ensemble(self, ensemble_name, analog_samples=None, digital_samples=None):
-        """
-
-        @param ensemble_name:
-        @param analog_samples:
-        @param digital_samples:
-        @return:
-        """
-        if self.direct_write and (analog_samples is None or digital_samples is None):
-            self.log.error('Upload ensemble failed because direct write is enabled but no sample '
-                           'arrays are given.')
-            return
-        self.status_dict['upload_busy'] = True
-        if self.direct_write:
-            self.sigDirectWriteEnsemble.emit(ensemble_name, analog_samples, digital_samples)
+        still_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
+            'sampling_sequence_busy'] or self.status_dict['loading_busy'] or self.status_dict[
+                                   'sampload_busy']
+        if still_busy:
+            self.log.error('Can not clear pulse generator. Sampling/Loading still in progress.')
         else:
-            self.sigUploadAsset.emit(ensemble_name)
+            self.sigClearPulseGenerator.emit()
         return
 
-    def upload_sequence(self, sequence_name, sequence_params=None):
-        """
-
-        @param sequence_name:
-        @param sequence_params:
-        @return:
-        """
-        if self.direct_write and sequence_params is None:
-            self.log.error('Upload sequence failed because direct write is enabled but no '
-                           'sequence_params dict is given.')
-            return
-        self.status_dict['upload_busy'] = True
-        if self.direct_write:
-            self.sigDirectWriteSequence.emit(sequence_name, sequence_params)
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, bool)
+    def sample_ensemble(self, ensemble_name, with_load=False):
+        already_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
+            'sampling_sequence_busy'] or self.sequencegeneratorlogic().module_state() == 'locked'
+        if already_busy:
+            self.log.error('Sampling of a different asset already in progress.\n'
+                           'PulseBlockEnsemble "{0}" not sampled!'.format(ensemble_name))
         else:
-            self.sigUploadAsset.emit(sequence_name)
+            if with_load:
+                self.status_dict['sampload_busy'] = True
+            self.status_dict['sampling_ensemble_busy'] = True
+            self.sigSampleBlockEnsemble.emit(ensemble_name)
         return
 
-    def upload_asset_finished(self, asset_name):
-        """
-
-        @param asset_name:
-        @return:
-        """
-        if asset_name in self._generator_logic.saved_pulse_sequences:
-            if self.status_dict['sauplo_sequence_busy']:
-                self.load_asset_into_channels(asset_name)
-            self.log.debug('Sequence "{0}" uploaded to pulse generator device!'.format(asset_name))
-            self.status_dict['upload_busy'] = False
-            if self.status_dict['saup_sequence_busy']:
-                self.status_dict['saup_sequence_busy'] = False
-                self.sigSequenceSaUpComplete.emit(asset_name)
-        elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
-            if self.status_dict['sauplo_ensemble_busy']:
-                self.load_asset_into_channels(asset_name)
-            self.log.debug('Ensemble "{0}" uploaded to pulse generator device!'.format(asset_name))
-            self.status_dict['upload_busy'] = False
-            if self.status_dict['saup_ensemble_busy']:
-                self.status_dict['saup_ensemble_busy'] = False
-                self.sigEnsembleSaUpComplete.emit(asset_name)
-        return
-
-    def uploaded_assets_updated(self, asset_names_list):
-        """
-
-        @param asset_names_list:
-        @return:
-        """
-        self.sigUploadedAssetsUpdated.emit(asset_names_list)
-        return
-
-    def load_asset_into_channels(self, asset_name, load_dict=None):
-        """
-
-        @param asset_name:
-        @param load_dict:
-        @param bool invoke_settings: Specifies whether the measurement parameters should be chosen
-                                     according to the loaded assets metadata.
-        @return:
-        """
-        if load_dict is None:
-            load_dict = dict()
-        # invoke measurement parameters from asset object
-        if self.invoke_settings:
-            # get asset object
-            if asset_name in self._generator_logic.saved_pulse_sequences:
-                self.log.debug('Invoking measurement settings from PulseSequence object.')
-                asset_obj = self._generator_logic.saved_pulse_sequences[asset_name]
-            elif asset_name in self._generator_logic.saved_pulse_block_ensembles:
-                self.log.debug('Invoking measurement settings from PulseBlockEnsemble object.')
-                asset_obj = self._generator_logic.saved_pulse_block_ensembles[asset_name]
+    @QtCore.Slot(object)
+    def sample_ensemble_finished(self, ensemble):
+        self.status_dict['sampling_ensemble_busy'] = False
+        self.sigSampleEnsembleComplete.emit(ensemble)
+        if self.status_dict['sampload_busy'] and not self.status_dict['sampling_sequence_busy']:
+            if ensemble is None:
+                self.status_dict['sampload_busy'] = False
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
             else:
-                asset_obj = None
-                self.log.error('No PulseBlockEnsemble or PulseSequence object by name "{0}" found '
-                               'in saved assets. Will not invoke measurement settings.'
-                               ''.format(asset_name))
-
-            # Only invoke settings if an asset object has been found in the sequence_generator_logic
-            if asset_obj is not None:
-                # Get parameters from asset object
-                asset_params = self._get_asset_parameters(asset_obj)
-                # Only invoke settings if asset_params are valid
-                if asset_params['err_code'] >= 0:
-                    interleave = self._measurement_logic.interleave_on
-                    fc_binwidth_s = self._measurement_logic.fast_counter_binwidth
-                    if self._measurement_logic.fast_counter_gated:
-                        fc_record_length_s = asset_params['max_laser_length']
-                    else:
-                        fc_record_length_s = asset_params['sequence_length']
-                    self.fast_counter_settings_changed(fc_binwidth_s, fc_record_length_s)
-                    self.pulse_generator_settings_changed(asset_params['sample_rate'],
-                                                          asset_params['config_name'],
-                                                          asset_params['amplitude_dict'],
-                                                          interleave)
-                    self.measurement_sequence_settings_changed(asset_params['controlled_vals_arr'],
-                                                               asset_params['num_of_lasers'],
-                                                               asset_params['sequence_length'],
-                                                               asset_params['laser_ignore_list'],
-                                                               asset_params['is_alternating'])
-        # Load asset into channel
-        self.status_dict['loading_busy'] = True
-        self.sigLoadAsset.emit(asset_name, load_dict)
+                self.load_ensemble(ensemble.name)
         return
 
-    def loaded_asset_updated(self, asset_name):
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, bool)
+    def sample_sequence(self, sequence_name, with_load=False):
+        already_busy = self.status_dict['sampling_ensemble_busy'] or self.status_dict[
+            'sampling_sequence_busy'] or self.sequencegeneratorlogic().module_state() == 'locked'
+        if already_busy:
+            self.log.error('Sampling of a different asset already in progress.\n'
+                           'PulseSequence "{0}" not sampled!'.format(sequence_name))
+        else:
+            if with_load:
+                self.status_dict['sampload_busy'] = True
+            self.status_dict['sampling_sequence_busy'] = True
+            self.sigSampleSequence.emit(sequence_name)
+        return
+
+    @QtCore.Slot(object)
+    def sample_sequence_finished(self, sequence):
+        self.status_dict['sampling_sequence_busy'] = False
+        self.sigSampleSequenceComplete.emit(sequence)
+        if self.status_dict['sampload_busy']:
+            if sequence is None:
+                self.status_dict['sampload_busy'] = False
+                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+            else:
+                self.load_sequence(sequence.name)
+        return
+
+    @QtCore.Slot(str)
+    def load_ensemble(self, ensemble_name):
+        if self.status_dict['loading_busy']:
+            self.log.error('Loading of a different asset already in progress.\n'
+                           'PulseBlockEnsemble "{0}" not loaded!'.format(ensemble_name))
+        else:
+            self.status_dict['loading_busy'] = True
+            self.sigLoadBlockEnsemble.emit(ensemble_name)
+        return
+
+    @QtCore.Slot(str)
+    def load_sequence(self, sequence_name):
+        if self.status_dict['loading_busy']:
+            self.log.error('Loading of a different asset already in progress.\n'
+                           'PulseSequence "{0}" not loaded!'.format(sequence_name))
+        else:
+            self.status_dict['loading_busy'] = True
+            self.sigLoadSequence.emit(sequence_name)
+        return
+
+    @QtCore.Slot(str, str)
+    def loaded_asset_updated(self, asset_name, asset_type):
         """
 
         @param asset_name:
+        @param asset_type:
         @return:
         """
-        if asset_name is not None and asset_name != '' and asset_name != str(None):
-            asset_object = self._generator_logic.get_saved_asset(asset_name)
-            asset_type = type(asset_object).__name__
-        else:
-            asset_type = 'No asset loaded'
-        self.log.debug('Asset "{0}" of type "{1}" loaded into pulse generator channel(s)!'
-                       ''.format(asset_name, asset_type))
-        self.status_dict['sauplo_ensemble_busy'] = False
-        self.status_dict['sauplo_sequence_busy'] = False
+        self.status_dict['sampload_busy'] = False
         self.status_dict['loading_busy'] = False
         self.sigLoadedAssetUpdated.emit(asset_name, asset_type)
-        return asset_name, asset_type
-
-    def save_pulse_block(self, block_name, block_object):
-        """
-
-        @param block_name:
-        @param block_object:
-        @return:
-        """
-        self.sigSavePulseBlock.emit(block_name, block_object)
         return
 
-    def save_block_ensemble(self, ensemble_name, ensemble_object):
+    @QtCore.Slot(object)
+    def save_pulse_block(self, block_instance):
         """
 
-        @param ensemble_name:
-        @param ensemble_object:
+        @param block_instance:
         @return:
         """
-        # add non-crucial parameters. Metadata for pulser settings upon load into channels.
-        ensemble_object.sample_rate = self._generator_logic.sample_rate
-        ensemble_object.activation_config = self._generator_logic.activation_config
-        ensemble_object.amplitude_dict = self._generator_logic.amplitude_dict
-        ensemble_object.laser_channel = self._generator_logic.laser_channel
-        self.sigSaveBlockEnsemble.emit(ensemble_name, ensemble_object)
+        self.sigSavePulseBlock.emit(block_instance)
         return
 
-    def save_sequence(self, sequence_name, sequence_object):
+    @QtCore.Slot(object)
+    def save_block_ensemble(self, ensemble_instance):
         """
 
-        @param sequence_name:
-        @param sequence_object:
+
+        @param ensemble_instance:
         @return:
         """
-        sequence_object.sample_rate = self._generator_logic.sample_rate
-        sequence_object.activation_config = self._generator_logic.activation_config
-        sequence_object.amplitude_dict = self._generator_logic.amplitude_dict
-        sequence_object.laser_channel = self._generator_logic.laser_channel
-        self.sigSaveSequence.emit(sequence_name, sequence_object)
+        self.sigSaveBlockEnsemble.emit(ensemble_instance)
         return
 
-    def load_pulse_block(self, block_name):
+    @QtCore.Slot(object)
+    def save_sequence(self, sequence_instance):
         """
 
-        @param block_name:
+        @param sequence_instance:
         @return:
         """
-        self.sigLoadPulseBlock.emit(block_name)
+        self.sigSaveSequence.emit(sequence_instance)
         return
 
-    def load_block_ensemble(self, ensemble_name):
-        """
-
-        @param ensemble_name:
-        @return:
-        """
-        self.sigLoadBlockEnsemble.emit(ensemble_name)
-        return
-
-    def load_sequence(self, sequence_name):
-        """
-
-        @param sequence_name:
-        @return:
-        """
-        self.sigLoadSequence.emit(sequence_name)
-        return
-
-    def current_pulse_block_updated(self, block_object):
-        """
-
-        @param block_object:
-        @return:
-        """
-        self.sigCurrentPulseBlockUpdated.emit(block_object)
-        return
-
-    def current_block_ensemble_updated(self, ensemble_object):
-        """
-
-        @param ensemble_object:
-        @return:
-        """
-        if ensemble_object is not None:
-            ensemble_params = self._get_asset_parameters(ensemble_object)
-            if ensemble_params['err_code'] < 0:
-                ensemble_params = {}
-        else:
-            ensemble_params = {}
-        self.sigCurrentBlockEnsembleUpdated.emit(ensemble_object, ensemble_params)
-        return
-
-    def current_sequence_updated(self, sequence_object):
-        """
-
-        @param sequence_object:
-        @return:
-        """
-        if sequence_object is not None:
-            sequence_params = self._get_asset_parameters(sequence_object)
-            if sequence_params['err_code'] < 0:
-                sequence_params = {}
-        else:
-            sequence_params = {}
-        self.sigCurrentSequenceUpdated.emit(sequence_object, sequence_params)
-        return
-
+    @QtCore.Slot(str)
     def delete_pulse_block(self, block_name):
         """
 
@@ -789,6 +742,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeletePulseBlock.emit(block_name)
         return
 
+    @QtCore.Slot(str)
     def delete_block_ensemble(self, ensemble_name):
         """
 
@@ -798,6 +752,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
+    @QtCore.Slot(str)
     def delete_sequence(self, sequence_name):
         """
 
@@ -807,198 +762,56 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeleteSequence.emit(sequence_name)
         return
 
-    def saved_pulse_blocks_updated(self, block_dict):
+    @QtCore.Slot(dict)
+    def set_pulse_generator_settings(self, settings_dict=None, **kwargs):
         """
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
 
-        @param block_dict:
+        @param settings_dict:
+        @param kwargs:
         @return:
         """
-        self.sigSavedPulseBlocksUpdated.emit(block_dict)
-        return
-
-    def saved_block_ensembles_updated(self, ensemble_dict):
-        """
-
-        @param ensemble_dict:
-        @return:
-        """
-        self.sigSavedBlockEnsemblesUpdated.emit(ensemble_dict)
-        return
-
-    def saved_sequences_updated(self, sequence_dict):
-        """
-
-        @param sequence_dict:
-        @return:
-        """
-        self.sigSavedSequencesUpdated.emit(sequence_dict)
-        return
-
-    def sample_block_ensemble(self, ensemble_name, with_load=False):
-        """
-
-        @param ensemble_name:
-        @param with_load:
-        @return:
-        """
-        if with_load:
-            self.status_dict['sauplo_ensemble_busy'] = True
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
         else:
-            self.status_dict['saup_ensemble_busy'] = True
-        self.status_dict['sampling_busy'] = True
-        self.sigSampleBlockEnsemble.emit(ensemble_name, not self.direct_write)
+            settings_dict.update(kwargs)
+        self.sigGeneratorSettingsChanged.emit(settings_dict)
         return
 
-    def sample_sequence(self, sequence_name, with_load=False):
+    @QtCore.Slot(dict)
+    def set_sampling_settings(self, settings_dict=None, **kwargs):
         """
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
 
-        @param sequence_name:
-        @param with_load:
+        @param settings_dict:
+        @param kwargs:
         @return:
         """
-        if with_load:
-            self.status_dict['sauplo_sequence_busy'] = True
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
         else:
-            self.status_dict['saup_sequence_busy'] = True
-        self.status_dict['sampling_busy'] = True
-        self.sigSampleSequence.emit(sequence_name, not self.direct_write)
+            settings_dict.update(kwargs)
+        self.sigSamplingSettingsChanged.emit(settings_dict)
         return
 
-    def sample_ensemble_finished(self, ensemble_name, analog_samples, digital_samples):
-        """
-
-        @return:
-        """
-        self.upload_ensemble(ensemble_name, analog_samples, digital_samples)
-        self.log.debug('Sampling of ensemble "{0}" finished!'.format(ensemble_name))
-        if self.status_dict['saup_ensemble_busy'] or self.status_dict['sauplo_ensemble_busy']:
-            self.status_dict['sampling_busy'] = False
-        return
-
-    def sample_sequence_finished(self, sequence_name, sequence_params):
-        """
-
-        @return:
-        """
-        self.upload_sequence(sequence_name, sequence_params)
-        self.log.debug('Sampling of sequence "{0}" finished!'.format(sequence_name))
-        self.status_dict['sampling_busy'] = False
-        return
-
-    def generator_settings_changed(self, activation_config_name, laser_channel, sample_rate,
-                                   amplitude_dict, sampling_format):
-        """
-
-        @param activation_config_name:
-        @param laser_channel:
-        @param sample_rate:
-        @param amplitude_dict:
-        @param sampling_format:
-        @return:
-        """
-        # get pulser constraints
-        pulser_constraints = self._measurement_logic.get_pulser_constraints()
-        # activation config
-        config_constraint = pulser_constraints.activation_config
-        if activation_config_name not in config_constraint:
-            new_config_name = list(config_constraint.keys())[0]
-            self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
-                             'Choosing first valid config "{1}" '
-                             'instead.'.format(activation_config_name, new_config_name))
-            activation_config_name = new_config_name
-        activation_config = config_constraint[activation_config_name]
-        # laser channel
-        if laser_channel not in activation_config:
-            old_laser_chnl = laser_channel
-            laser_channel = None
-            for chnl in activation_config:
-                if chnl.startswith('d_ch'):
-                    laser_channel = chnl
-                    break
-            if laser_channel is None:
-                for chnl in activation_config:
-                    if chnl.startswith('a_ch'):
-                        laser_channel = chnl
-                        break
-            self.log.warning('Laser channel "{0}" could not be found in generator activation '
-                             'config "{1}". Using first valid channel "{2}" instead.'
-                             ''.format(old_laser_chnl, activation_config, laser_channel))
-        # sample rate
-        samplerate_constraint = pulser_constraints.sample_rate
-        if sample_rate < samplerate_constraint.min or sample_rate > samplerate_constraint.max:
-            self.log.warning('Sample rate of {0} MHz lies not within pulse generator constraints. '
-                             'Using max. allowed sample rate of {1} MHz instead.'
-                             ''.format(sample_rate, samplerate_constraint.max))
-            sample_rate = samplerate_constraint.max
-        # amplitude dictionary
-        # FIXME: check with pulser constraints
-        self.sigGeneratorSettingsChanged.emit(activation_config, laser_channel, sample_rate,
-                                              amplitude_dict, sampling_format)
-        return
-
-    def generator_settings_updated(self, activation_config, laser_channel, sample_rate,
-                                   amplitude_dict, waveform_format):
-        """
-
-        @param activation_config:
-        @param sample_rate:
-        @param amplitude_dict:
-        @param laser_channel:
-        @param sampling_format:
-        @return:
-        """
-        # retrieve hardware constraints
-        pulser_constraints = self._measurement_logic.get_pulser_constraints()
-        # check activation_config
-        config_dict = pulser_constraints.activation_config
-        activation_config_name = ''
-        for key in config_dict.keys():
-            if config_dict[key] == activation_config:
-                activation_config_name = key
-        if activation_config_name == '':
-            activation_config_name = list(config_dict.keys())[0]
-            activation_config = config_dict[activation_config_name]
-            self.log.warning('Activation config "{0}" could not be found in pulser constraints. '
-                             'Taking first valid config "{1}" '
-                             'instead.'.format(activation_config, activation_config_name))
-            self.generator_settings_changed(activation_config_name, laser_channel, sample_rate,
-                                            amplitude_dict, waveform_format)
-        else:
-            self.sigGeneratorSettingsUpdated.emit(activation_config_name, activation_config,
-                                                  sample_rate, amplitude_dict, laser_channel,
-                                                  waveform_format)
-            if self.couple_generator_hw:
-                self.sigPulserSettingsUpdated.emit(sample_rate, activation_config_name,
-                                                   activation_config, amplitude_dict,
-                                                   self._measurement_logic.interleave_on)
-        return
-
-    def generate_predefined_sequence(self, generator_method_name, kwarg_dict):
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, dict)
+    def generate_predefined_sequence(self, generator_method_name, kwarg_dict=None):
         """
 
         @param generator_method_name:
         @param kwarg_dict:
         @return:
         """
+        if not isinstance(kwarg_dict, dict):
+            kwarg_dict = dict()
         self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
-        return
-
-    def predefined_sequence_generated(self, generator_method_name):
-        """
-
-        @param generator_method_name:
-        @return:
-        """
-        self.sigPredefinedSequenceGenerated.emit(generator_method_name)
-        return
-
-    def predefined_sequences_updated(self, generator_methods_dict):
-        """
-
-        @param generator_methods_dict:
-        @return:
-        """
-        self.sigPredefinedSequencesUpdated.emit(generator_methods_dict)
         return
 
     #######################################################################
