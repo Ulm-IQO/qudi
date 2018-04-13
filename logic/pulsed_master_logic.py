@@ -55,8 +55,6 @@ class PulsedMasterLogic(GenericLogic):
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
-    test = StatusVar('test')
-
     # PulsedMeasurementLogic control signals
     sigDoFit = QtCore.Signal(str)
     sigToggleMeasurement = QtCore.Signal(bool, str)
@@ -127,9 +125,6 @@ class PulsedMasterLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        elem = PulseBlockElement(pulse_function={'a_ch1': Sin(), 'a_ch2': Sin()},
-                                 digital_high={'d_ch1': True, 'd_ch2': True, 'd_ch3': False, 'd_ch4': False})
-        self.test = elem
 
         # Initialize status register
         self.status_dict = {'sampling_ensemble_busy': False,
@@ -305,20 +300,6 @@ class PulsedMasterLogic(GenericLogic):
         self.sequencegeneratorlogic().sigSampleSequenceComplete.disconnect()
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.disconnect()
         return
-
-    @test.constructor
-    def set_element_from_dict(self, element_dict):
-        if element_dict is None:
-            return None
-        else:
-            return PulseBlockElement.element_from_dict(element_dict)
-
-    @test.representer
-    def save_element_to_dict(self, element):
-        if isinstance(element, PulseBlockElement):
-            return element.get_dict_representation()
-        else:
-            return None
 
     #######################################################################
     ###             Pulsed measurement properties                       ###

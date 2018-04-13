@@ -185,10 +185,24 @@ class PulseBlock(object):
         else:
             return -1
 
+    def get_dict_representation(self):
+        dict_repr = dict()
+        dict_repr['name'] = self.name
+        dict_repr['element_list'] = list()
+        for element in self.element_list:
+            dict_repr['element_list'].append(element.get_dict_representation())
+        return dict_repr
+
+    @staticmethod
+    def block_from_dict(block_dict):
+        for ii, element_dict in enumerate(block_dict['element_list']):
+            block_dict['element_list'][ii] = PulseBlockElement.element_from_dict(element_dict)
+        return PulseBlock(**block_dict)
+
 
 class PulseBlockEnsemble(object):
     """
-    Represents a collection of Pulse_Block objects which is called a Pulse_Block_Ensemble.
+    Represents a collection of PulseBlock objects which is called a PulseBlockEnsemble.
 
     This object is used as a construction plan to create one sampled file.
     """
@@ -197,104 +211,74 @@ class PulseBlockEnsemble(object):
         The constructor for a Pulse_Block_Ensemble needs to have:
 
         @param str name: chosen name for the PulseBlockEnsemble
-        @param list block_list: contains the PulseBlock objects with their number of repetitions,
-                                e.g. [(PulseBlock, repetitions), (PulseBlock, repetitions), ...])
+        @param list block_list: contains the PulseBlock names with their number of repetitions,
+                                e.g. [(name, repetitions), (name, repetitions), ...])
         @param bool rotating_frame: indicates whether the phase should be preserved for all the
                                     functions.
         """
         # FIXME: Sanity checking needed here
-        self.name = name                    # Pulse_Block_Ensemble name
-        if block_list is None:
-            self.block_list = list()
-        else:
-            self.block_list = block_list
+        self.name = name
         self.rotating_frame = rotating_frame
-        self.length_s = 0.0
-        self.analog_channels = None
-        self.analog_channels = None
-        self.channel_set = None
-        self.controlled_vals_array = np.array([])
-        self._refresh_parameters()
+        if isinstance(block_list, list):
+            self.block_list = block_list
+        else:
+            self.block_list = list()
 
         # Dictionary container to store information related to the actually sampled
         # Waveform like pulser settings used during sampling (sample_rate, activation_config etc.)
         # and additional information about the discretization of the waveform (timebin positions of
-        # the PulseBlockElement transitions etc.)
-        # This container is not necessary for the sampling process but serves only the purpose of
-        # holding optional information for different modules.
+        # the PulseBlockElement transitions etc.) as well as the names of the created waveforms.
+        # This container will be populated during sampling and will be emptied upon deletion of the
+        # corresponding waveforms from the pulse generator
         self.sampling_information = dict()
-        # self.sample_rate = None
-        # self.activation_config = None
-        # self.amplitude_dict = None
-        # self.laser_channel = None
-        # self.alternating = None
-        # self.laser_ignore_list = None
-        # self.length_bins = None
-        # self.length_elements_bins = None
-        # self.number_of_elements = None
-        # self.digital_rising_bins = None
+        # Dictionary container to store additional information about for measurement settings
+        # (ignore_lasers, controlled_values, alternating etc.).
+        # This container needs to be populated by the script creating the PulseBlockEnsemble
+        # before saving it.
+        self.measurement_information = dict()
         return
 
-    def _refresh_parameters(self):
-        self.length_s = 0.0
-        self.channel_set = None
-        self.controlled_vals_array = np.array([])
-
-        for block, reps in self.block_list:
-            # Get and set information about the length of the ensemble
-            self.length_s += (block.init_length_s * (reps + 1) + block.increment_s * (
-                        reps * (reps + 1) / 2))
-
-            # Calculate the measurement ticks list for this ensemble
-            if block.use_as_tick:
-                start = block.controlled_vals_start
-                incr = block.controlled_vals_increment
-                if incr == 0.0:
-                    arr = np.array([])
-                else:
-                    arr = np.arange(start, start + (reps + 1) * incr, incr)
-                self.controlled_vals_array = np.append(self.controlled_vals_array, arr)
-
-            # Get channels from the block information
-            if self.channel_set is None:
-                self.channel_set = block.channel_set
-            elif self.channel_set != block.channel_set:
-                raise ValueError('Usage of different sets of analog and digital channels in the '
-                                 'same PulseBlockEnsemble is prohibited.\nPulseBlockEnsemble '
-                                 'creation failed!\nUsed channel sets are:\n{0}\n{1}'
-                                 ''.format(self.channel_set, block.channel_set))
-                break
-
-        self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
-        self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
-        return
-
-    def replace_block(self, position, block, reps=0):
-        if isinstance(block, PulseBlock) and len(self.block_list) > position:
-            self.block_list[position] = (block, reps)
-            self._refresh_parameters()
+    def replace_block(self, position, block_name, reps=0):
+        if isinstance(block_name, str) and len(self.block_list) > position and reps >= 0:
+            self.block_list[position] = (block_name, reps)
             return 0
         else:
             return -1
 
     def delete_block(self, position):
         if len(self.block_list) > position:
-            del(self.block_list[position])
-            self._refresh_parameters()
+            del self.block_list[position]
             return 0
         else:
             return -1
 
-    def append_block(self, block, reps=0, at_beginning=False):
-        if isinstance(block, PulseBlock):
+    def append_block(self, block_name, reps=0, at_beginning=False):
+        if isinstance(block_name, str) and reps >= 0:
             if at_beginning:
-                self.block_list.insert(0, (block, reps))
+                self.block_list.insert(0, (block_name, reps))
             else:
-                self.block_list.append((block, reps))
-            self._refresh_parameters()
+                self.block_list.append((block_name, reps))
             return 0
         else:
             return -1
+
+    def get_dict_representation(self):
+        dict_repr = dict()
+        dict_repr['name'] = self.name
+        dict_repr['rotating_frame'] = self.rotating_frame
+        dict_repr['block_list'] = self.block_list
+        dict_repr['sampling_information'] = self.sampling_information
+        dict_repr['measurement_information'] = self.measurement_information
+        return dict_repr
+
+    @staticmethod
+    def ensemble_from_dict(ensemble_dict):
+        new_ens = PulseBlockEnsemble(name=ensemble_dict['name'],
+                                     block_list=ensemble_dict['block_list'],
+                                     rotating_frame=ensemble_dict['rotating_frame'])
+        new_ens.sampling_information = ensemble_dict['sampling_information']
+        new_ens.measurement_information = ensemble_dict['measurement_information']
+        return new_ens
 
 
 class PulseSequence(object):
@@ -310,7 +294,8 @@ class PulseSequence(object):
 
         @param str name: the actual name of the sequence
         @param list ensemble_list: list containing a tuple of two entries:
-                    [(PulseBlockEnsemble, seq_param), (PulseBlockEnsemble, seq_param), ...]
+                                          [(PulseBlockEnsemble name, seq_param),
+                                           (PulseBlockEnsemble name, seq_param), ...]
                                           The seq_param is a dictionary, where the various sequence
                                           parameters are saved with their keywords and the
                                           according parameter (as item).
@@ -333,22 +318,17 @@ class PulseSequence(object):
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
-                                            seq_param = {'reps': 12}
-                                          and so the respective sequence step will play 13 times.
+                                            seq_param = {'repetitions': 41}
+                                          and so the respective sequence step will play 42 times.
         @param bool rotating_frame: indicates, whether the phase has to be preserved in all
-                                    oscillating functions.
+                                    analog signals ACROSS different waveforms
         """
         self.name = name
+        self.rotating_frame = rotating_frame
         if ensemble_list is None:
             self.ensemble_list = list()
         else:
             self.ensemble_list = ensemble_list
-        self.rotating_frame = rotating_frame
-        self.length_s = 0.0
-        self.analog_channels = None
-        self.digital_channels = None
-        self.channel_set = None
-        self._refresh_parameters()
 
         # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
@@ -358,65 +338,25 @@ class PulseSequence(object):
         # This container is not necessary for the sampling process but serves only the purpose of
         # holding optional information for different modules.
         self.sampling_information = dict()
-        # self.sample_rate = None
-        # self.activation_config = None
-        # self.amplitude_dict = None
-        # self.laser_channel = None
-        # self.alternating = None
-        # self.laser_ignore_list = None
-        # self.length_bins = None
-        # self.length_elements_bins = None
-        # self.number_of_elements = None
-        # self.digital_rising_bins = None
+        # Dictionary container to store additional information about for measurement settings
+        # (ignore_lasers, controlled_values, alternating etc.).
+        # This container needs to be populated by the script creating the PulseSequence
+        # before saving it.
+        self.measurement_information = dict()
         return
 
-    def _refresh_parameters(self):
-        """
-
-        @return:
-        """
-        self.length_s = 0.0
-        self.channel_set = None
-
-        for ensemble, seq_dict in self.ensemble_list:
-            if self.length_s >= 0:
-                if 'repetitions' in seq_dict:
-                    reps = seq_dict['repetitions']
-                else:
-                    reps = 0
-
-                if reps == -1:
-                    self.length_s = -1
-                else:
-                    self.length_s += (ensemble.length_s * (reps+1))
-
-            # Get channels from the block information
-            if self.channel_set is None:
-                self.channel_set = ensemble.channel_set
-            elif self.channel_set != ensemble.channel_set:
-                raise ValueError('Usage of different sets of analog and digital channels in the '
-                                 'same PulseBlockEnsemble is prohibited.\nPulseBlockEnsemble '
-                                 'creation failed!\nUsed channel sets are:\n{0}\n{1}'
-                                 ''.format(self.channel_set, ensemble.channel_set))
-                break
-
-        self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
-        self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
-        return
-
-    def replace_ensemble(self, position, ensemble, seq_param=None):
+    def replace_ensemble(self, position, ensemble_name, seq_param=None):
         """ Replace a sequence step at a given position.
 
         @param int position: position in the ensemble list
-        @param object ensemble: PulseBlockEnsemble instance
+        @param str ensemble_name: PulseBlockEnsemble name
         @param dict seq_param: Sequence step parameter dictionary. Use present one if None.
         """
-        if isinstance(ensemble, PulseBlockEnsemble) and len(self.ensemble_list) > position:
+        if isinstance(ensemble_name, str) and len(self.ensemble_list) > position:
             if seq_param is None:
-                self.ensemble_list[position][0] = ensemble
+                self.ensemble_list[position][0] = ensemble_name
             else:
-                self.ensemble_list[position] = (ensemble, seq_param)
-            self._refresh_parameters()
+                self.ensemble_list[position] = (ensemble_name, seq_param)
             return 0
         else:
             return -1
@@ -427,26 +367,42 @@ class PulseSequence(object):
         @param int position: position within the list self.ensemble_list.
         """
         if len(self.ensemble_list) > position:
-            del(self.ensemble_list[position])
-            self._refresh_parameters()
+            del self.ensemble_list[position]
             return 0
         else:
             return -1
 
-    def append_ensemble(self, ensemble, seq_param, at_beginning=False):
+    def append_ensemble(self, ensemble_name, seq_param, at_beginning=False):
         """ Append either at the front or at the back an ensemble_param
 
-        @param object ensemble: PulseBlockEnsemble instance
+        @param str ensemble_name: PulseBlockEnsemble name
         @param dict seq_param: Sequence step parameter dictionary.
         @param bool at_beginning: If flase append to end (default), if true then
                                   inset at beginning.
         """
-        if isinstance(ensemble, PulseBlockEnsemble):
+        if isinstance(ensemble_name, str):
             if at_beginning:
-                self.ensemble_list.insert((ensemble, seq_param))
+                self.ensemble_list.insert((ensemble_name, seq_param))
             else:
-                self.ensemble_list.append((ensemble, seq_param))
-            self._refresh_parameters()
+                self.ensemble_list.append((ensemble_name, seq_param))
             return 0
         else:
             return -1
+
+    def get_dict_representation(self):
+        dict_repr = dict()
+        dict_repr['name'] = self.name
+        dict_repr['rotating_frame'] = self.rotating_frame
+        dict_repr['ensemble_list'] = self.ensemble_list
+        dict_repr['sampling_information'] = self.sampling_information
+        dict_repr['measurement_information'] = self.measurement_information
+        return dict_repr
+
+    @staticmethod
+    def sequence_from_dict(sequence_dict):
+        new_seq = PulseSequence(name=sequence_dict['name'],
+                                ensemble_list=sequence_dict['ensemble_list'],
+                                rotating_frame=sequence_dict['rotating_frame'])
+        new_seq.sampling_information = sequence_dict['sampling_information']
+        new_seq.measurement_information = sequence_dict['measurement_information']
+        return new_seq
