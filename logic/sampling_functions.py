@@ -143,6 +143,14 @@ class SamplingFunctions():
         result_arr = amp * np.sin(2*np.pi * freq * time_arr + phase)
         return result_arr
 
+    def _sinenvsin(self, time_arr, parameters):
+        amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
+        freq = parameters['frequency1']
+        phase = np.pi * parameters['phase1'] / 180
+        result_arr = (amp * np.sin(2*np.pi * freq * time_arr + phase) *
+                      np.sin(np.pi * np.arange(1, time_arr.size+1)/(time_arr.size+1)))
+        return result_arr
+
     def _cos(self, time_arr, parameters):
         amp = 2*parameters['amplitude1'] #conversion so that the AWG actually outputs the specified voltage
         freq = parameters['frequency1']
