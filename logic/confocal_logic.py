@@ -402,7 +402,6 @@ class ConfocalLogic(GenericLogic):
         else:
             self._xyscan_continuable = True
 
-        print("caller tag: ", tag)
         self.signal_start_scanning.emit(tag)
         return 0
 
