@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from collections import OrderedDict
+import logic.sampling_functions as sf
 
 
 class PulseBlockElement(object):
@@ -72,6 +73,24 @@ class PulseBlockElement(object):
         self.analog_channels = set(self.pulse_function)
         self.digital_channels = set(self.digital_high)
         self.channel_set = self.analog_channels.union(self.digital_channels)
+
+    def get_dict_representation(self):
+        dict_repr = dict()
+        dict_repr['init_length_s'] = self.init_length_s
+        dict_repr['increment_s'] = self.increment_s
+        dict_repr['digital_high'] = self.digital_high
+        dict_repr['use_as_tick'] = self.use_as_tick
+        dict_repr['pulse_function'] = dict()
+        for chnl, func in self.pulse_function.items():
+            dict_repr['pulse_function'][chnl] = func.get_dict_representation()
+        return dict_repr
+
+    @staticmethod
+    def element_from_dict(element_dict):
+        for chnl, sample_dict in element_dict['pulse_function'].items():
+            sf_class = getattr(sf, sample_dict['name'])
+            element_dict['pulse_function'][chnl] = sf_class(**sample_dict['params'])
+        return PulseBlockElement(**element_dict)
 
 
 class PulseBlock(object):
