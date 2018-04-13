@@ -39,6 +39,7 @@ from menu import ModMenu
 from port import QudiPortType
 from config_model import ModuleConfigModel
 from collections import OrderedDict
+
 import listmods
 import logging
 import argparse
@@ -48,6 +49,7 @@ class ModNode:
     def __init__(self, module, node):
         self.module = module
         self.node = node
+        self.cfgmodel = ModuleConfigModel(module)
 
 class ConfigMainWindow(QtWidgets.QMainWindow):
     """ This class represents the Manager Window.
@@ -64,7 +66,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         super().__init__()
         uic.loadUi(ui_file, self)
 
-        self.modules = dict()
+        self.modnodes = dict()
         self.globalsection = OrderedDict()
         self.currentFile = ''
 
@@ -156,7 +158,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         node.setGraphPos(QtCore.QPointF(pos[0], pos[1]))
 
         # save the module instance and node relatonship
-        self.modules[name] = ModNode(module, node)
+        self.modnodes[name] = ModNode(module, node)
         # add node to view
         g.addNode(node)
 
@@ -233,18 +235,18 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
                     dst_mod_name = conf_mod_name
                     for conn_in, conn_out in conf_mod_values['connect'].items():
                         src_mod_name = conn_out
-                        if conf_mod_name not in self.modules:
+                        if conf_mod_name not in self.modnodes:
                             self.log.error(
                                 'Target module {} not present while connecting {} to {}'
                                 ''.format(dst_mod_name, conn_in, src_mod_name))
                             continue
-                        conn_names_dst = [c.name for cn, c in self.modules[dst_mod_name].module.connections.items()]
+                        conn_names_dst = [c.name for cn, c in self.modnodes[dst_mod_name].module.connections.items()]
                         if conn_in not in conn_names_dst:
                             self.log.error(
                                 'Target connector {} not present while connecting {} to {}.{}'
                                 ''.format(conn_in, src_mod_name, dst_mod_name, conn_in))
                             continue
-                        if src_mod_name not in self.modules:
+                        if src_mod_name not in self.modnodes:
                             self.log.error(
                                 'Source module {} not present while connecting it to {}.{}'
                                 ''.format(src_mod_name, dst_mod_name, conn_in))
@@ -252,9 +254,9 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
 
                         try:
                             self.graphView.connectPorts(
-                                self.modules[src_mod_name].node,
+                                self.modnodes[src_mod_name].node,
                                 'out',
-                                self.modules[dst_mod_name].node,
+                                self.modnodes[dst_mod_name].node,
                                 conn_in)
                         except:
                             self.log.exception(
@@ -275,7 +277,7 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         for key, value in self.globalsection.items():
             config['global'][key] = value
 
-        for mod_name, mod in self.modules.items():
+        for mod_name, mod in self.modnodes.items():
             entry = OrderedDict()
             path = mod.module.path.split('.')
 
@@ -305,11 +307,32 @@ class ConfigMainWindow(QtWidgets.QMainWindow):
         pass
 
     def nodeNameChanged(self, oldName, newName):
-        pass
+        if oldName == newName:
+            return
+
+        modnode = self.modnodes.pop(oldName)
+        if newName in self.modnodes:
+            newName = newName + '2'
+        self.modnodes[newName] = modnode
 
     @QtCore.Slot(list, list)
     def selectedNodesChanged(self, oldSelection, newSelection):
-        self.tableView.setModel()
+        if len(newSelection) > 0:
+            self.setConfigEditor(newSelection[0])
+
+    def setConfigEditor(self, node):
+            name = node.getName()
+            modnode = self.modnodes[name]
+            try:
+                self.nameLineEdit.textEdited.disconnect()
+            except:
+                pass
+            self.nameLineEdit.setText(name)
+            self.nameLineEdit.textEdited.connect(modnode.node.setName)
+            self.mcLabel.setText(modnode.module.path)
+            self.tableView.setModel(modnode.cfgmodel)
+            self.tableView.resizeColumnsToContents()
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(prog='config_gui')
