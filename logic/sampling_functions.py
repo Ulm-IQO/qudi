@@ -26,14 +26,34 @@ from collections import OrderedDict
 __all__ = ['Idle', 'DC', 'Sin', 'DoubleSin', 'TripleSin']
 
 
-class Idle(object):
+class SamplingBase(object):
     """
-    Object representing an idle element (zero voltage)
+    Base class for all sampling functions
     """
     params = OrderedDict()
 
     def __init__(self):
-        return
+        pass
+
+    def get_dict_representation(self):
+        dict_repr = dict()
+        dict_repr['name'] = self.__class__.__name__
+        dict_repr['params'] = dict()
+        for param in self.params:
+            dict_repr['params'][param] = getattr(self, param)
+        return dict_repr
+
+    @staticmethod
+    def get_instance_from_dict(representer_dict):
+        return Sin()
+
+
+class Idle(SamplingBase):
+    """
+    Object representing an idle element (zero voltage)
+    """
+    def __init__(self):
+        pass
 
     @staticmethod
     def get_samples(time_array):
@@ -41,7 +61,7 @@ class Idle(object):
         return samples_arr
 
 
-class DC(object):
+class DC(SamplingBase):
     """
     Object representing an DC element (constant voltage)
     """
@@ -65,7 +85,7 @@ class DC(object):
         return samples_arr
 
 
-class Sin(object):
+class Sin(SamplingBase):
     """
     Object representing a sine wave element
     """
@@ -102,7 +122,7 @@ class Sin(object):
         return samples_arr
 
 
-class DoubleSin(object):
+class DoubleSin(SamplingBase):
     """
     Object representing a double sine wave element (Superposition of two sine waves; NOT normalized)
     """
@@ -164,7 +184,7 @@ class DoubleSin(object):
         return samples_arr
 
 
-class TripleSin(object):
+class TripleSin(SamplingBase):
     """
     Object representing a triple sine wave element
     (Superposition of three sine waves; NOT normalized)
