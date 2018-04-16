@@ -49,6 +49,8 @@ class PulsedMeasurementLogic(GenericLogic):
     microwave = Connector(interface='MWInterface')
     pulsegenerator = Connector(interface='PulserInterface')
 
+    raw_data_save_type = ConfigOption('raw_data_save_type', 'text')
+
     # status vars
     fast_counter_record_length = StatusVar(default=3.e-6)
     sequence_length_s = StatusVar(default=100e-6)
@@ -1252,7 +1254,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._save_logic.save_data(data, timestamp=timestamp,
                                    parameters=parameters, fmt='%d',
                                    filepath=filepath, filelabel=filelabel,
-                                   delimiter='\t')
+                                   delimiter='\t',filetype=self.raw_data_save_type)
         return filepath
 
     def _compute_second_plot(self):
