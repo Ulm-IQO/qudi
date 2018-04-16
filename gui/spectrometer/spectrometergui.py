@@ -58,7 +58,7 @@ class SpectrometerGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
 
-        self._spectrum_logic = self.get_connector('spectrumlogic1')
+        self._spectrum_logic = self.spectrumlogic1()
 
         # setting up the window
         self._mw = SpectrometerWindow()

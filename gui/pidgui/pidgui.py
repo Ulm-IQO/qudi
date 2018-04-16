@@ -71,7 +71,7 @@ class PIDGui(GUIBase):
         """ Definition and initialisation of the GUI plus staring the measurement.
 
         """
-        self._pid_logic = self.get_connector('pidlogic')
+        self._pid_logic = self.pidlogic()
 
         #####################
         # Configuring the dock widgets

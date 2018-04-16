@@ -70,7 +70,7 @@ class QdplotLogic(GenericLogic):
         self.set_hlabel()
         self.set_vlabel()
 
-        self._save_logic = self.get_connector('savelogic')
+        self._save_logic = self.savelogic()
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -80,8 +80,8 @@ class QdplotLogic(GenericLogic):
     def set_data(self, x=None, y=None, clear_old=True):
         """Set the data to plot
 
-        @param np.ndarray/list or list of np.ndarrays/lists x: data of independents variable(s)
-        @param np.ndarray/list or list of np.ndarrays/lists y: data of dependent variable(s)
+        @param np.ndarray or list of np.ndarrays x: data of independents variable(s)
+        @param np.ndarray or list of np.ndarrays y: data of dependent variable(s)
         @param bool clear_old: clear old plots in GUI if True
         """
 
@@ -94,13 +94,13 @@ class QdplotLogic(GenericLogic):
             return -1
 
         self.clear_old = clear_old
-        # check if input is only an array (single plot) or a list of arrays (several plots)
-        if len(x) == 1:
-            self.indep_vals = [x]
-            self.depen_vals = [y]
-        else:
+        # check if input is only an array (single plot) or a list of arrays (one or several plots)
+        if type(x[0]) is np.ndarray:  # if x is an array, type(x[0]) is a np.float
             self.indep_vals = x
             self.depen_vals = y
+        else:
+            self.indep_vals = [x]
+            self.depen_vals = [y]
 
         self.sigPlotDataUpdated.emit()
         self.sigPlotParamsUpdated.emit()

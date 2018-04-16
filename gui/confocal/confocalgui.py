@@ -221,9 +221,9 @@ class ConfocalGui(GUIBase):
         """
 
         # Getting an access to all connectors:
-        self._scanning_logic = self.get_connector('confocallogic1')
-        self._save_logic = self.get_connector('savelogic')
-        self._optimizer_logic = self.get_connector('optimizerlogic1')
+        self._scanning_logic = self.confocallogic1()
+        self._save_logic = self.savelogic()
+        self._optimizer_logic = self.optimizerlogic1()
 
         self._hardware_state = True
 
@@ -456,14 +456,26 @@ class ConfocalGui(GUIBase):
 
         # Just to be sure, set also the possible maximal values for the spin
         # boxes of the current values:
-        self._mw.x_current_InputWidget.setRange(self._scanning_logic.x_range[0], self._scanning_logic.x_range[1])
-        self._mw.y_current_InputWidget.setRange(self._scanning_logic.y_range[0], self._scanning_logic.y_range[1])
-        self._mw.z_current_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
+        self._mw.x_current_InputWidget.setRange(self._scanning_logic.x_range[0],
+                                                self._scanning_logic.x_range[1])
+        self._mw.y_current_InputWidget.setRange(self._scanning_logic.y_range[0],
+                                                self._scanning_logic.y_range[1])
+        self._mw.z_current_InputWidget.setRange(self._scanning_logic.z_range[0],
+                                                self._scanning_logic.z_range[1])
 
-        # set minimal steps for the current value
-        self._mw.x_current_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_current_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_current_InputWidget.setOpts(minStep=1e-6)
+        # set the maximal ranges for the imagerange from the logic:
+        self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0],
+                                            self._scanning_logic.x_range[1])
+        self._mw.x_max_InputWidget.setRange(self._scanning_logic.x_range[0],
+                                            self._scanning_logic.x_range[1])
+        self._mw.y_min_InputWidget.setRange(self._scanning_logic.y_range[0],
+                                            self._scanning_logic.y_range[1])
+        self._mw.y_max_InputWidget.setRange(self._scanning_logic.y_range[0],
+                                            self._scanning_logic.y_range[1])
+        self._mw.z_min_InputWidget.setRange(self._scanning_logic.z_range[0],
+                                            self._scanning_logic.z_range[1])
+        self._mw.z_max_InputWidget.setRange(self._scanning_logic.z_range[0],
+                                            self._scanning_logic.z_range[1])
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
@@ -473,23 +485,6 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
         self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
-
-
-        # set the maximal ranges for the imagerange from the logic:
-        self._mw.x_min_InputWidget.setRange(self._scanning_logic.x_range[0], self._scanning_logic.x_range[1])
-        self._mw.x_max_InputWidget.setRange(self._scanning_logic.x_range[0], self._scanning_logic.x_range[1])
-        self._mw.y_min_InputWidget.setRange(self._scanning_logic.y_range[0], self._scanning_logic.y_range[1])
-        self._mw.y_max_InputWidget.setRange(self._scanning_logic.y_range[0], self._scanning_logic.y_range[1])
-        self._mw.z_min_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
-        self._mw.z_max_InputWidget.setRange(self._scanning_logic.z_range[0], self._scanning_logic.z_range[1])
-
-        # set the minimal step size
-        self._mw.x_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.x_max_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_max_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_max_InputWidget.setOpts(minStep=1e-6)
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)

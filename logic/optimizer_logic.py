@@ -86,8 +86,8 @@ class OptimizerLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanning_device = self.get_connector('confocalscanner1')
-        self._fit_logic = self.get_connector('fitlogic')
+        self._scanning_device = self.confocalscanner1()
+        self._fit_logic = self.fitlogic()
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
