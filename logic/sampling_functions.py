@@ -43,10 +43,6 @@ class SamplingBase(object):
             dict_repr['params'][param] = getattr(self, param)
         return dict_repr
 
-    @staticmethod
-    def get_instance_from_dict(representer_dict):
-        return Sin()
-
 
 class Idle(SamplingBase):
     """
