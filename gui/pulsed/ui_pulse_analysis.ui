@@ -22,13 +22,6 @@
      <layout class="QGridLayout" name="gridLayout_26">
       <item row="0" column="1">
        <layout class="QGridLayout" name="gridLayout_24">
-        <item row="3" column="0">
-         <widget class="QLabel" name="label_35">
-          <property name="text">
-           <string>Pulser sample rate:</string>
-          </property>
-         </widget>
-        </item>
         <item row="1" column="1">
          <widget class="ScienDSpinBox" name="ext_control_mw_freq_DoubleSpinBox">
           <property name="enabled">
@@ -95,55 +88,10 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_28">
-          <property name="text">
-           <string>Pulser activation config:</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0" colspan="2">
+        <item row="3" column="0" colspan="2">
          <widget class="QLineEdit" name="pulser_activation_config_LineEdit">
           <property name="readOnly">
            <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QComboBox" name="pulser_activation_config_ComboBox"/>
-        </item>
-        <item row="3" column="1">
-         <widget class="ScienDSpinBox" name="pulser_sample_freq_DSpinBox">
-          <property name="suffix">
-           <string>Hz</string>
-          </property>
-          <property name="decimals">
-           <number>3</number>
-          </property>
-          <property name="maximum">
-           <double>100000.000000000000000</double>
-          </property>
-          <property name="singleStep">
-           <double>1.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="label_5">
-          <property name="font">
-           <font>
-            <pointsize>10</pointsize>
-           </font>
-          </property>
-          <property name="text">
-           <string>Interleave?</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QCheckBox" name="pulser_use_interleave_CheckBox">
-          <property name="text">
-           <string/>
           </property>
          </widget>
         </item>
@@ -255,13 +203,13 @@
            <string>s</string>
           </property>
           <property name="decimals">
-           <number>1</number>
+           <number>2</number>
           </property>
           <property name="maximum">
            <double>100000000.000000000000000</double>
           </property>
           <property name="value">
-           <double>3000.000000000000000</double>
+           <double>1.000000000000000</double>
           </property>
          </widget>
         </item>
@@ -604,9 +552,6 @@
   <tabstop>ext_control_use_mw_CheckBox</tabstop>
   <tabstop>ext_control_mw_freq_DoubleSpinBox</tabstop>
   <tabstop>ext_control_mw_power_DoubleSpinBox</tabstop>
-  <tabstop>pulser_sample_freq_DSpinBox</tabstop>
-  <tabstop>pulser_activation_config_ComboBox</tabstop>
-  <tabstop>pulser_use_interleave_CheckBox</tabstop>
   <tabstop>pulser_activation_config_LineEdit</tabstop>
   <tabstop>ana_param_ignore_first_CheckBox</tabstop>
   <tabstop>ana_param_ignore_last_CheckBox</tabstop>

@@ -161,11 +161,17 @@ sel.</string>
    </item>
    <item row="0" column="2">
     <widget class="QComboBox" name="gen_activation_config_ComboBox">
+     <property name="enabled">
+      <bool>true</bool>
+     </property>
      <property name="minimumSize">
       <size>
        <width>150</width>
        <height>20</height>
       </size>
+     </property>
+     <property name="editable">
+      <bool>false</bool>
      </property>
     </widget>
    </item>
@@ -200,8 +206,20 @@ sel.</string>
      <property name="alignment">
       <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
      </property>
+     <property name="readOnly">
+      <bool>false</bool>
+     </property>
+     <property name="buttonSymbols">
+      <enum>QAbstractSpinBox::UpDownArrows</enum>
+     </property>
+     <property name="keyboardTracking">
+      <bool>true</bool>
+     </property>
      <property name="suffix">
       <string>Hz</string>
+     </property>
+     <property name="decimals">
+      <number>3</number>
      </property>
      <property name="maximum">
       <double>100000.000000000000000</double>
@@ -235,6 +253,9 @@ sel.</string>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
+       <property name="keyboardTracking">
+        <bool>false</bool>
+       </property>
       </widget>
      </item>
      <item row="0" column="3">
@@ -244,6 +265,9 @@ sel.</string>
        </property>
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="keyboardTracking">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
@@ -440,7 +464,7 @@ last</string>
          <string>s</string>
         </property>
         <property name="decimals">
-         <number>5</number>
+         <number>3</number>
         </property>
        </widget>
       </item>
@@ -472,13 +496,13 @@ last</string>
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
         <property name="suffix">
-         <string>MB</string>
+         <string>B</string>
         </property>
         <property name="decimals">
-         <number>2</number>
+         <number>3</number>
         </property>
         <property name="maximum">
-         <double>200000.000000000000000</double>
+         <double>100000000000000000.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -621,7 +645,7 @@ last</string>
        </widget>
       </item>
       <item row="1" column="1" colspan="2">
-       <widget class="QSpinBox" name="curr_ensemble_bins_SpinBox">
+       <widget class="ScienSpinBox" name="curr_ensemble_bins_SpinBox">
         <property name="maximumSize">
          <size>
           <width>80</width>
@@ -644,7 +668,7 @@ last</string>
          <string/>
         </property>
         <property name="maximum">
-         <number>1000000000</number>
+         <number>999999999</number>
         </property>
        </widget>
       </item>
@@ -780,11 +804,11 @@ last</string>
       </font>
      </property>
      <property name="title">
-      <string>Sample, upload and load Ensembles</string>
+      <string>Sample and load Ensembles</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_38">
       <item row="1" column="1">
-       <widget class="QPushButton" name="sauplo_ensemble_PushButton">
+       <widget class="QPushButton" name="samplo_ensemble_PushButton">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
           <horstretch>0</horstretch>
@@ -793,20 +817,32 @@ last</string>
         </property>
         <property name="minimumSize">
          <size>
-          <width>100</width>
+          <width>150</width>
           <height>0</height>
          </size>
         </property>
         <property name="text">
-         <string>Sample + Upload + Load
+         <string>Sample + Load
 Ensemble</string>
         </property>
        </widget>
       </item>
       <item row="1" column="0">
-       <widget class="QPushButton" name="saup_ensemble_PushButton">
+       <widget class="QPushButton" name="sample_ensemble_PushButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Sample + Upload
+         <string>Sample
 Ensemble</string>
         </property>
        </widget>
@@ -820,9 +856,15 @@ Ensemble</string>
       </item>
       <item row="1" column="2">
        <widget class="QPushButton" name="load_ensemble_PushButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="minimumSize">
          <size>
-          <width>100</width>
+          <width>150</width>
           <height>0</height>
          </size>
         </property>
@@ -832,6 +874,23 @@ Ensemble</string>
        </widget>
       </item>
      </layout>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Interleave?</string>
+     </property>
+     <property name="alignment">
+      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QCheckBox" name="pulser_use_interleave_CheckBox">
+     <property name="text">
+      <string/>
+     </property>
     </widget>
    </item>
   </layout>
@@ -849,6 +908,8 @@ Ensemble</string>
   <zorder>gen_activation_config_ComboBox</zorder>
   <zorder>ensemble_GroupBox</zorder>
   <zorder>horizontalSpacer</zorder>
+  <zorder>label</zorder>
+  <zorder>pulser_use_interleave_CheckBox</zorder>
  </widget>
  <customwidgets>
   <customwidget>
@@ -865,6 +926,11 @@ Ensemble</string>
    <class>EnsembleEditor</class>
    <extends>QTableView</extends>
    <header>gui.pulsed.pulse_editors_new.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
@@ -900,11 +966,9 @@ Ensemble</string>
   <tabstop>curr_ensemble_del_PushButton</tabstop>
   <tabstop>curr_ensemble_load_PushButton</tabstop>
   <tabstop>gen_ensemble_ComboBox</tabstop>
-  <tabstop>saup_ensemble_PushButton</tabstop>
-  <tabstop>sauplo_ensemble_PushButton</tabstop>
+  <tabstop>sample_ensemble_PushButton</tabstop>
+  <tabstop>samplo_ensemble_PushButton</tabstop>
   <tabstop>load_ensemble_PushButton</tabstop>
-  <tabstop>block_editor_TableWidget</tabstop>
-  <tabstop>block_organizer_TableWidget</tabstop>
  </tabstops>
  <resources/>
  <connections/>
