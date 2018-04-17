@@ -517,7 +517,7 @@
     </widget>
    </item>
    <item row="4" column="5">
-    <widget class="QSpinBox" name="time_param_elapsed_sweep_SpinBox">
+    <widget class="ScienSpinBox" name="time_param_elapsed_sweep_SpinBox">
      <property name="readOnly">
       <bool>true</bool>
      </property>
@@ -546,6 +546,11 @@
    <class>FitSettingsComboBox</class>
    <extends>QComboBox</extends>
    <header>gui/fitsettings</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
