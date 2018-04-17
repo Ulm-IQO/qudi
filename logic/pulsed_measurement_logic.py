@@ -76,6 +76,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                'controlled_variable': np.arange(1, 51)})
 
     # alternative signal computation settings:
+    _alt_data_type = StatusVar(default='None')
     zeropad = StatusVar(default=0)
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
