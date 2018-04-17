@@ -108,7 +108,7 @@
          <string>s</string>
         </property>
         <property name="decimals">
-         <number>6</number>
+         <number>3</number>
         </property>
         <property name="maximum">
          <double>100000000.000000000000000</double>
@@ -158,7 +158,13 @@
          <enum>QAbstractSpinBox::NoButtons</enum>
         </property>
         <property name="suffix">
-         <string>MB</string>
+         <string>B</string>
+        </property>
+        <property name="decimals">
+         <number>3</number>
+        </property>
+        <property name="maximum">
+         <double>99999999999999.000000000000000</double>
         </property>
        </widget>
       </item>
@@ -213,7 +219,7 @@
        </widget>
       </item>
       <item row="1" column="1">
-       <widget class="QSpinBox" name="curr_sequence_bins_SpinBox">
+       <widget class="ScienSpinBox" name="curr_sequence_bins_SpinBox">
         <property name="maximumSize">
          <size>
           <width>100</width>
@@ -233,7 +239,7 @@
          <string>bins</string>
         </property>
         <property name="maximum">
-         <number>1000</number>
+         <number>999999999</number>
         </property>
        </widget>
       </item>
@@ -378,24 +384,48 @@ sel.</string>
    <item row="1" column="2" colspan="2">
     <widget class="QGroupBox" name="groupBox_12">
      <property name="title">
-      <string>Sample, upload and load Sequence</string>
+      <string>Sample and load Sequence</string>
      </property>
      <layout class="QGridLayout" name="gridLayout_44">
       <item row="1" column="1">
-       <widget class="QPushButton" name="saup_sequence_PushButton">
+       <widget class="QPushButton" name="sample_sequence_PushButton">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Sample + Upload
+         <string>Sample
 Sequence</string>
         </property>
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="QPushButton" name="sauplo_sequence_PushButton">
+       <widget class="QPushButton" name="samplo_sequence_PushButton">
         <property name="enabled">
          <bool>true</bool>
         </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
+        </property>
         <property name="text">
-         <string>Sample + Upload + Load
+         <string>Sample + Load
 Sequence</string>
         </property>
        </widget>
@@ -404,6 +434,18 @@ Sequence</string>
        <widget class="QPushButton" name="load_sequence_PushButton">
         <property name="enabled">
          <bool>true</bool>
+        </property>
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+          <horstretch>0</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>150</width>
+          <height>0</height>
+         </size>
         </property>
         <property name="text">
          <string>Load to channel</string>
@@ -442,6 +484,11 @@ Sequence</string>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
    <class>SequenceEditor</class>
    <extends>QTableView</extends>
    <header>gui.pulsed.pulse_editors_new.h</header>
@@ -463,10 +510,9 @@ Sequence</string>
   <tabstop>curr_sequence_del_PushButton</tabstop>
   <tabstop>curr_sequence_load_PushButton</tabstop>
   <tabstop>gen_sequence_ComboBox</tabstop>
-  <tabstop>saup_sequence_PushButton</tabstop>
-  <tabstop>sauplo_sequence_PushButton</tabstop>
+  <tabstop>sample_sequence_PushButton</tabstop>
+  <tabstop>samplo_sequence_PushButton</tabstop>
   <tabstop>load_sequence_PushButton</tabstop>
-  <tabstop>sequence_editor_TableWidget</tabstop>
  </tabstops>
  <resources/>
  <connections/>
