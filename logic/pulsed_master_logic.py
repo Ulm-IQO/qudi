@@ -67,6 +67,7 @@ class PulsedMasterLogic(GenericLogic):
     sigAnalysisSettingsChanged = QtCore.Signal(dict)
     sigExtractionSettingsChanged = QtCore.Signal(dict)
     sigTimerIntervalChanged = QtCore.Signal(float)
+    sigAlternativeDataTypeChanged = QtCore.Signal(str)
     sigManuallyPullData = QtCore.Signal()
 
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
@@ -158,6 +159,8 @@ class PulsedMasterLogic(GenericLogic):
             self.pulsedmeasurementlogic().set_extraction_settings, QtCore.Qt.QueuedConnection)
         self.sigTimerIntervalChanged.connect(
             self.pulsedmeasurementlogic().set_timer_interval, QtCore.Qt.QueuedConnection)
+        self.sigAlternativeDataTypeChanged.connect(
+            self.pulsedmeasurementlogic().set_alternative_data_type, QtCore.Qt.QueuedConnection)
         self.sigManuallyPullData.connect(
             self.pulsedmeasurementlogic().manually_pull_data, QtCore.Qt.QueuedConnection)
 
@@ -258,6 +261,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigAnalysisSettingsChanged.disconnect()
         self.sigExtractionSettingsChanged.disconnect()
         self.sigTimerIntervalChanged.disconnect()
+        self.sigAlternativeDataTypeChanged.disconnect()
         self.sigManuallyPullData.disconnect()
         # Disconnect signals coming from PulsedMeasurementLogic
         self.pulsedmeasurementlogic().sigMeasurementDataUpdated.disconnect()
@@ -364,6 +368,14 @@ class PulsedMasterLogic(GenericLogic):
     def laser_data(self):
         return self.pulsedmeasurementlogic().laser_data
 
+    @property
+    def alternative_data_type(self):
+        return self.pulsedmeasurementlogic().alternative_data_type
+
+    @property
+    def fit_container(self):
+        return self.pulsedmeasurementlogic().fc
+
     #######################################################################
     ###             Pulsed measurement methods                          ###
     #######################################################################
@@ -441,6 +453,17 @@ class PulsedMasterLogic(GenericLogic):
         """
         if isinstance(interval, (int, float)):
             self.sigTimerIntervalChanged.emit(interval)
+        return
+
+    @QtCore.Slot(str)
+    def set_alternative_data_type(self, alt_data_type):
+        """
+
+        @param alt_data_type:
+        @return:
+        """
+        if isinstance(alt_data_type, str):
+            self.sigAlternativeDataTypeChanged.emit(alt_data_type)
         return
 
     @QtCore.Slot()
