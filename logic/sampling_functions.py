@@ -60,6 +60,7 @@ class SamplingFunctions():
         # FIXME: This GUI dependancy has to move to other places
 
         # predefine a general range for the frequency, amplitude and phase
+        # as well as time ans a general integer variable
         # <general_parameter> = {}
         freq_def = {'unit': 'Hz', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
                     'view_stepsize': 1.0, 'dec': 15, 'type': float}
@@ -67,6 +68,10 @@ class SamplingFunctions():
                     'view_stepsize': 0.01, 'dec': 15, 'type': float}
         phase_def = {'unit': '°', 'init_val': 0.0, 'min': -360, 'max': 360,
                      'view_stepsize': 0.1, 'dec': 15, 'type': float}
+        uint_def = {'unit': '', 'init_val': 1, 'min': 0, 'max': np.inf,
+                    'view_stepsize': 1, 'dec': 15, 'type': int}
+        time_def = {'unit': 's', 'init_val': 0., 'min': 0., 'max': np.inf,
+                    'view_stepsize': 100.0e-9, 'dec': 15, 'type': float}
 
         # the following keywords are known to the GUI elements, and you should
         # use only those to define you own limitation. Here is an explanation
