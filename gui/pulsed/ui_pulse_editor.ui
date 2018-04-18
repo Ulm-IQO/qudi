@@ -887,7 +887,7 @@ Ensemble</string>
     </widget>
    </item>
    <item row="1" column="2">
-    <widget class="QCheckBox" name="pulser_use_interleave_CheckBox">
+    <widget class="QCheckBox" name="gen_use_interleave_CheckBox">
      <property name="text">
       <string/>
      </property>
@@ -909,12 +909,17 @@ Ensemble</string>
   <zorder>ensemble_GroupBox</zorder>
   <zorder>horizontalSpacer</zorder>
   <zorder>label</zorder>
-  <zorder>pulser_use_interleave_CheckBox</zorder>
+  <zorder>gen_use_interleave_CheckBox</zorder>
  </widget>
  <customwidgets>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienSpinBox</class>
+   <extends>QSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
@@ -926,11 +931,6 @@ Ensemble</string>
    <class>EnsembleEditor</class>
    <extends>QTableView</extends>
    <header>gui.pulsed.pulse_editors_new.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

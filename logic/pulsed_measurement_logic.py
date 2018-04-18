@@ -76,7 +76,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                'controlled_variable': np.arange(1, 51)})
 
     # alternative signal computation settings:
-    _alt_data_type = StatusVar(default='None')
+    _alternative_data_type = StatusVar(default='None')
     zeropad = StatusVar(default=0)
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
@@ -415,7 +415,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         # Check if microwave is running and do nothing if that is the case
-        if self.fastcounter().get_status()[1]:
+        if self.microwave().get_status()[1]:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
         else:
             # Determine complete settings dictionary
@@ -519,6 +519,16 @@ class PulsedMeasurementLogic(GenericLogic):
     def timer_interval(self, value):
         if isinstance(value, (int, float)):
             self.set_timer_interval(value)
+        return
+
+    @property
+    def alternative_data_type(self):
+        return str(self._alternative_data_type)
+
+    @alternative_data_type.setter
+    def alternative_data_type(self, alt_data_type):
+        if isinstance(alt_data_type, str):
+            self.set_alternative_data_type(alt_data_type)
         return
 
     @property
@@ -845,6 +855,19 @@ class PulsedMeasurementLogic(GenericLogic):
 
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
                                       self.__timer_interval)
+        return
+
+    @QtCore.Slot(str)
+    def set_alternative_data_type(self, alt_data_type):
+        """
+
+        @param alt_data_type:
+        @return:
+        """
+        with self._threadlock:
+            self._alternative_data_type = alt_data_type
+            self._compute_alt_data()
+            self.sigMeasurementDataUpdated.emit()
         return
 
     @QtCore.Slot()

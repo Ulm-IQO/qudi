@@ -198,7 +198,7 @@
          </widget>
         </item>
         <item row="6" column="3">
-         <widget class="ScienDSpinBox" name="ana_param_record_length_SpinBox">
+         <widget class="ScienDSpinBox" name="ana_param_record_length_DoubleSpinBox">
           <property name="suffix">
            <string>s</string>
           </property>
@@ -504,7 +504,7 @@
     </widget>
    </item>
    <item row="4" column="7">
-    <widget class="QDoubleSpinBox" name="time_param_ana_periode_DoubleSpinBox">
+    <widget class="ScienDSpinBox" name="time_param_ana_periode_DoubleSpinBox">
      <property name="minimum">
       <double>-1.000000000000000</double>
      </property>
@@ -568,7 +568,7 @@
   <tabstop>ana_param_x_axis_start_ScienDSpinBox</tabstop>
   <tabstop>ana_param_x_axis_inc_ScienDSpinBox</tabstop>
   <tabstop>ana_param_num_laser_pulse_SpinBox</tabstop>
-  <tabstop>ana_param_record_length_SpinBox</tabstop>
+  <tabstop>ana_param_record_length_DoubleSpinBox</tabstop>
   <tabstop>fit_param_PushButton</tabstop>
   <tabstop>fit_param_fit_func_ComboBox</tabstop>
   <tabstop>fit_param_results_TextBrowser</tabstop>
