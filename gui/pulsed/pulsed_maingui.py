@@ -355,7 +355,6 @@ class PulsedMeasurementGui(GUIBase):
         """
         new_config = OrderedDict()
         new_config.update(self._pulsed_master_logic.get_func_config())
-        print('Apply gen set: ', new_config.keys())
         for index, func_name in enumerate(list(self._pulsed_master_logic.get_func_config())):
             name_checkbox = 'checkbox_' + str(index)
             checkbox = getattr(self._gs, name_checkbox)

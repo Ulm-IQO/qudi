@@ -1259,7 +1259,6 @@ class PulsedMasterLogic(GenericLogic):
 
         @return: the func_config dictionary of the sequence generator
         """
-        print('PM: ', self._generator_logic.func_config.keys())
         return self._generator_logic.func_config
 
     #######################################################################
