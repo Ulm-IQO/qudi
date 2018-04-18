@@ -38,7 +38,6 @@ from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from gui.guibase import GUIBase
 from gui.pulsed.pulse_editors import BlockEditor, BlockOrganizer, SequenceEditor
 #from gui.pulsed.pulse_editor import PulseEditor
-from logic.sampling_functions import SamplingFunctions
 from qtpy import QtGui
 from qtpy import QtCore
 from qtpy import QtWidgets
@@ -321,7 +320,7 @@ class PulsedMeasurementGui(GUIBase):
         # like it is done in the Qt-Designer.
         # FIXME: Make a nicer way of displaying the available functions, maybe with a Table!
         objectname = self._gs.objectName()
-        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+        for index, func_name in enumerate(list(self._pulsed_master_logic.get_func_config())):
             name_label = 'func_' + str(index)
             setattr(self._gs, name_label, QtWidgets.QLabel(self._gs.groupBox))
             label = getattr(self._gs, name_label)
@@ -339,7 +338,7 @@ class PulsedMeasurementGui(GUIBase):
         # If no such list is present take the first 3 functions as default
         if len(self._functions_to_show) > 0:
             for func in self._functions_to_show:
-                index = list(SamplingFunctions().func_config).index(func)
+                index = list(self._pulsed_master_logic.get_func_config()).index(func)
                 name_checkbox = 'checkbox_' + str(index)
                 checkbox = getattr(self._gs, name_checkbox)
                 checkbox.setCheckState(QtCore.Qt.Checked)
@@ -354,8 +353,10 @@ class PulsedMeasurementGui(GUIBase):
         """
         Write new generator settings from the gui to the file.
         """
-        new_config = SamplingFunctions().func_config
-        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+        new_config = OrderedDict()
+        new_config.update(self._pulsed_master_logic.get_func_config())
+        print('Apply gen set: ', new_config.keys())
+        for index, func_name in enumerate(list(self._pulsed_master_logic.get_func_config())):
             name_checkbox = 'checkbox_' + str(index)
             checkbox = getattr(self._gs, name_checkbox)
             if not checkbox.isChecked():
@@ -372,7 +373,7 @@ class PulsedMeasurementGui(GUIBase):
         Keep the old generator settings and restores them in the gui.
         """
         old_config = self.block_editor.function_config
-        for index, func_name in enumerate(list(SamplingFunctions().func_config)):
+        for index, func_name in enumerate(list(self._pulsed_master_logic.get_func_config())):
             name_checkbox = 'checkbox_' + str(index)
             checkbox = getattr(self._gs, name_checkbox)
             if func_name in old_config:
