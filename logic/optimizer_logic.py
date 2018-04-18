@@ -58,7 +58,10 @@ class OptimizerLogic(GenericLogic):
     surface_subtr_scan_offset = StatusVar('surface_subtraction_offset', 1e-6)
     opt_channel = StatusVar('optimization_channel', 0)
     fit_type = StatusVar('fit_type', 'normal')
-    template_cursor = StatusVar(default=[0, 0, 0, 0])
+    template_cursor = StatusVar('template_cursor', default=[0, 0, 0, 0])
+    xy_template_image = StatusVar('xy_template_image', np.zeros(1))
+    z_template_data = StatusVar('z_template_data', np.zeros(1))
+    zimage_template_Z_values = StatusVar('zimage_template_Z_values', np.zeros(1))
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -87,8 +90,6 @@ class OptimizerLogic(GenericLogic):
 
         # Keep track of who called the refocus
         self._caller_tag = ''
-        self.xy_template_image = np.zeros(1)
-        self.z_template_data = np.zeros(1)
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -323,7 +324,7 @@ class OptimizerLogic(GenericLogic):
             len(self.get_scanner_count_channels())))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
 
-        if self._caller_tag == 'z_template_data' or np.max(self.z_template_data) == 0:
+        if self._caller_tag == 'z_template_image' or np.max(self.z_template_data) == 0:
             self.zimage_template_Z_values = np.linspace(zmin-z0, zmax-z0, num=self.optimizer_Z_res)
             self.z_template_data = np.zeros((
                 len(self.zimage_template_Z_values),
@@ -424,41 +425,23 @@ class OptimizerLogic(GenericLogic):
             self._sigCompletedXyOptimizerScan.emit()
 
     def xy_template_fit(self, xy_axes, data, template):
-        fit_template = template#-template.min()
-        fit_data = data#-data.min()
-        
-        plot = True
-        if plot:
-            plt.close('all')
-            fig, ax = plt.subplots(2, 2)
-            fig.set_size_inches(7, 6)
-    
-            ax[0, 0].imshow(fit_template, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-            ax[0, 0].set_title('xy_template')
-            ax[0, 1].imshow(fit_data, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-            ax[0, 1].set_title('data')
-    
-            convoluted_image2 = sig.convolve2d(np.flipud(np.fliplr(fit_template)),
-                                               fit_data,
-                                               mode='full',
-                                               fillvalue=np.mean(fit_template)
-                                               )
-    
-            ax[1, 0].imshow(convoluted_image2, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-            ax[1, 0].set_title('convolution')
-        
+
+        # check dimensionality of template against optimizer
+        if np.shape(data) != np.shape(template):
+            self.log.warn('XY template fit: The length of data ({0:d}) and template ({1:d}) are unequal.\n'
+                          'I really hope you know what you are doing here but will calculate the convolution anyways.'
+                          ''.format(len(data), len(template)))
+
+        fit_template = np.flipud(np.fliplr(template))
+        fit_data = data
+
         # It turns out the best results are achieved when the convolutions fills 
         # the edges with 70% of the mean of the whole picture.
-        convoluted_image = sig.convolve2d(np.flipud(np.fliplr(fit_template)),
+        convoluted_image = sig.convolve2d(fit_template,
                                           fit_data,
                                           mode='full',
                                           fillvalue=fit_template.min() + 0.7*(np.mean(fit_template)-fit_template.min())
                                           )
-        if plot:
-            ax[1, 1].imshow(convoluted_image, cmap=plt.cm.jet, origin='bottom', interpolation="nearest")
-            ax[1, 1].set_title('second convolution')
-            plt.savefig('template_fit.png')
-            plt.close('all')
 
         # get the dimensions in order
         (x, y) = xy_axes
@@ -474,8 +457,7 @@ class OptimizerLogic(GenericLogic):
         image_shift = [(image_index_shift[0]) / x0 * (x.max() - x.min()),
                        (image_index_shift[1]) / y0 * (y.max() - y.min())]
 
-        print(image_index_shift, image_shift)
-
+        # TODO: This is a quick and dirty way to emulate the output from a fit
         class _param():
             best_values = dict()
             success = False
@@ -505,8 +487,6 @@ class OptimizerLogic(GenericLogic):
             self._sigDoNextOptimizationStep.emit()
             return
 
-        print('fitting: {0:s}'.format(self.fit_type))
-
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
@@ -521,6 +501,7 @@ class OptimizerLogic(GenericLogic):
         else:
             xy_fit_data = self.xy_refocus_image[:, :, 3 + self.opt_channel]
             xy_template_data = self.xy_template_image[:, :, 3 + self.opt_channel]
+
             result_2D_gaus = self.xy_template_fit(
                 xy_axes=axes,
                 data=xy_fit_data,
@@ -556,29 +537,20 @@ class OptimizerLogic(GenericLogic):
         self._sigDoNextOptimizationStep.emit()
 
     def z_template_fit(self, x_axis, data, template):
-        fit_template = template  # -template.min()
-        fit_data = np.flip(data, 0)  # -data.min()
 
-        plot = True
-        if plot:
-            plt.close('all')
-            fig, ax = plt.subplots(3,1)
-            fig.set_size_inches(9, 6)
+        # check dimensionality of template against optimizer
+        if len(data) != len(template):
+            self.log.warn('Z template fit: The length of data ({0:d}) and template ({1:d}) are unequal.\n'
+                          'I really hope you know what you are doing here but will calculate the convolution anyways.'
+                          ''.format(len(data), len(template)))
 
-            ax[0].plot(fit_template)
-            ax[0].set_title('z_template')
-            ax[1].plot(fit_data)
-            ax[1].set_title('data')
+        fit_template = template
+        fit_data = np.flip(data, 0)
 
         convoluted = sig.convolve(fit_data,
                                   fit_template,
                                   mode='full'
                                   )
-        if plot:
-            ax[2].plot(convoluted)
-            ax[2].set_title('convolution')
-            plt.savefig('z_template_fit.png')
-            plt.close('all')
 
         # shift of picture 2 with respect to picture 1
         max_index = convoluted.argmax()
@@ -586,13 +558,11 @@ class OptimizerLogic(GenericLogic):
         template_size = len(fit_template)
         conv_size = len(convoluted)
 
-        z_index_shift = max_index - (conv_size / 2.)+0.5
-
         # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
+        z_index_shift = max_index - (conv_size / 2.)+0.5
         z_shift = z_index_shift / template_size * (x_axis.max() - x_axis.min())
 
-        print(max_index, z_index_shift, z_shift)
-
+        # TODO: This is a quick and dirty way to emulate the output from a fit
         class _param():
             best_values = dict()
             success = False
@@ -600,8 +570,7 @@ class OptimizerLogic(GenericLogic):
 
         results = _param()
         results.best_values['center'] = self.optim_pos_z - z_shift
-        # sigma is set to represent an uncertainty of one pixel in the template
-        results.best_values['sigma'] = 0#1 / y0 * (y.max() - y.min())
+        results.best_values['sigma'] = 0
         results.success = True
 
         return results
@@ -669,8 +638,11 @@ class OptimizerLogic(GenericLogic):
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     self.optim_sigma_z = result.best_values['sigma']
+
+                    # for the template fit, the plot of the fit is just the template
                     if self.fit_type in ('z_template', 'all_template'):
                         self.z_fit_data = self.z_template_data[:, self.opt_channel]
+                    # for a normal fit, sample the function and plot it
                     else:
                         gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
                         self.z_fit_data = gauss.eval(

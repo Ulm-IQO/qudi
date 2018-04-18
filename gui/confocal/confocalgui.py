@@ -774,12 +774,18 @@ class ConfocalGui(GUIBase):
         self.xy_template_image = pg.ImageItem(
             image=self._optimizer_logic.xy_template_image[:, :, 3 + self.opt_channel],
             axisOrder='row-major')
+
+        template_x_length = self._optimizer_logic.xy_template_image[:, :, 0].max() \
+                            - self._optimizer_logic.xy_template_image[:, :, 0].min()
+        template_y_length = self._optimizer_logic.xy_template_image[:, :, 1].max() \
+                            - self._optimizer_logic.xy_template_image[:, :, 1].min()
+
         self.xy_template_image.setRect(
             QtCore.QRectF(
-                -self._optimizer_logic.refocus_XY_size / 2.,
-                -self._optimizer_logic.refocus_XY_size / 2.,
-                self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size
+                -template_x_length / 2.,
+                -template_y_length / 2.,
+                template_x_length,
+                template_y_length
             )
         )
 
@@ -830,6 +836,7 @@ class ConfocalGui(GUIBase):
 
         self._osd.template_z_plot_widget.setLabel('bottom', 'Z position', units='m')
         self._osd.template_z_plot_widget.setLabel('left', 'Fluorescence', units='c/s')
+        self._osd.template_z_plot_widget.showGrid(x=True, y=True)
 
         self.template_zLine = pg.InfiniteLine(
             pen={'color': palette.green, 'width': 3},
@@ -1105,6 +1112,40 @@ class ConfocalGui(GUIBase):
         xy_template_image = self._optimizer_logic.xy_template_image[:, :, 3 + self._optimizer_logic.opt_channel]
         z_template_data = self._optimizer_logic.z_template_data[:, self._optimizer_logic.opt_channel]
 
+        x_template_resolution = self._optimizer_logic.xy_template_image[:, :, 0].max() \
+                                - self._optimizer_logic.xy_template_image[:, :, 0].min()
+        y_template_resolution = self._optimizer_logic.xy_template_image[:, :, 1].max() \
+                                - self._optimizer_logic.xy_template_image[:, :, 1].min()
+        z_template_resolution = self._optimizer_logic.zimage_template_Z_values.max() \
+                                - self._optimizer_logic.zimage_template_Z_values.min()
+
+        # check dimensionality of template against optimizer
+        if xy_template and (len(xy_template_image) != self._osd.xy_optimizer_resolution_SpinBox.value()
+                            or abs(x_template_resolution - self._osd.xy_optimizer_range_DoubleSpinBox.value()) > 1e-9
+                            or abs(y_template_resolution - self._osd.xy_optimizer_range_DoubleSpinBox.value()) > 1e-9):
+                self.log.error('The size of the XY template does not match the refocus resolution.\n'
+                               'Template: {0:d} - ({1:.3f}, {2:.3f}); Refocus: {3:d} - ({4:.3f}, {5:.3f})'
+                               ''.format(len(xy_template_image),
+                                         x_template_resolution * 1e6,
+                                         y_template_resolution * 1e6,
+                                         self._osd.xy_optimizer_resolution_SpinBox.value(),
+                                         self._osd.xy_optimizer_range_DoubleSpinBox.value() * 1e6,
+                                         self._osd.xy_optimizer_range_DoubleSpinBox.value() * 1e6))
+                self._osd.activate_xy_template_checkBox.setChecked(False)
+                return -1
+
+        if z_template and (len(z_template_data) != self._osd.z_optimizer_resolution_SpinBox.value()
+                           or abs(z_template_resolution - self._osd.z_optimizer_range_DoubleSpinBox.value()) > 1e-9):
+                self.log.error('The size of the Z template does not match the refocus resolution.\n'
+                               'Template: {0:d} - {1:.3f}; Refocus: {2:d} - {3:.3f}'
+                               ''.format(len(z_template_data),
+                                         z_template_resolution * 1e6,
+                                         self._osd.z_optimizer_resolution_SpinBox.value(),
+                                         self._osd.z_optimizer_range_DoubleSpinBox.value() * 1e6))
+                self._osd.activate_z_template_checkBox.setChecked(False)
+                return -2
+
+        # check if template data exists
         if xy_template and not z_template:
             if np.max(xy_template_image) != 0:
                 self._optimizer_logic.fit_type = 'xy_template'
@@ -1112,6 +1153,7 @@ class ConfocalGui(GUIBase):
             else:
                 self.log.error('No XY template image was taken at this time. '
                                'Therefore the fit method cannot be set to template fitting.')
+                self._osd.activate_xy_template_checkBox.setChecked(False)
                 return -1
         elif not xy_template and z_template:
             if np.max(z_template_data) != 0:
@@ -1120,14 +1162,27 @@ class ConfocalGui(GUIBase):
             else:
                 self.log.error('No Z template image was taken at this time. '
                                'Therefore the fit method cannot be set to template fitting.')
+                self._osd.activate_z_template_checkBox.setChecked(False)
                 return -2
         elif xy_template and z_template:
             if np.max(z_template_data) != 0 and np.max(xy_template_image) != 0:
                 self._optimizer_logic.fit_type = 'all_template'
                 return 0
-            else:
-                self.log.error('No Z template or XY template image was taken at this time. '
+            elif np.max(z_template_data) == 0:
+                self.log.error('No Z template image was taken at this time. '
                                'Therefore the fit method cannot be set to template fitting.')
+                self._osd.activate_z_template_checkBox.setChecked(False)
+                return -2
+            elif np.max(xy_template_image) == 0:
+                self.log.error('No XY template image was taken at this time. '
+                               'Therefore the fit method cannot be set to template fitting.')
+                self._osd.activate_xy_template_checkBox.setChecked(False)
+                return -1
+            else:
+                self.log.error('No Z template and XY template image was taken at this time. '
+                               'Therefore the fit method cannot be set to template fitting.')
+                self._osd.activate_xy_template_checkBox.setChecked(False)
+                self._osd.activate_z_template_checkBox.setChecked(False)
                 return -3
         else:
             self._optimizer_logic.fit_type = 'normal'
@@ -1199,17 +1254,23 @@ class ConfocalGui(GUIBase):
         # z fit parameters
         self._optimizer_logic.use_custom_params = self._osd.fit_tab.paramUseSettings
 
+        template_x_length = self._optimizer_logic.xy_template_image[:, :, 0].max() \
+                            - self._optimizer_logic.xy_template_image[:, :, 0].min()
+        template_y_length = self._optimizer_logic.xy_template_image[:, :, 1].max() \
+                            - self._optimizer_logic.xy_template_image[:, :, 1].min()
+
         self.xy_template_image.setRect(
             QtCore.QRectF(
-                -self._optimizer_logic.refocus_XY_size / 2.,
-                -self._optimizer_logic.refocus_XY_size / 2.,
-                self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size
+                -template_x_length / 2.,
+                -template_y_length / 2.,
+                template_x_length,
+                template_y_length
             )
         )
 
         self.update_roi_xy_size()
         self.update_roi_depth_size()
+        self.activate_template_changed()
 
     def keep_former_optimizer_settings(self):
         """ Keep the old settings and restores them in the gui. """
