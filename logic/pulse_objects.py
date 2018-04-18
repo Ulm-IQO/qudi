@@ -127,7 +127,7 @@ class PulseBlock(object):
         # the Pulse_Block parameter
         self.init_length_s = 0.0
         self.increment_s = 0.0
-        self.channel_set = None
+        self.channel_set = set()
         self.use_as_tick = False
 
         # calculate the tick value for the whole block. Basically sum all the
@@ -145,7 +145,7 @@ class PulseBlock(object):
                 self.controlled_vals_start += elem.init_length_s
                 self.controlled_vals_increment += elem.increment_s
 
-            if self.channel_set is None:
+            if not self.channel_set:
                 self.channel_set = elem.channel_set
             elif self.channel_set != elem.channel_set:
                 raise ValueError('Usage of different sets of analog and digital channels in the '
@@ -153,7 +153,6 @@ class PulseBlock(object):
                                  'Used channel sets are:\n{0}\n{1}'.format(self.channel_set,
                                                                            elem.channel_set))
                 break
-
         self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
         self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
