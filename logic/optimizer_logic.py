@@ -28,8 +28,6 @@ from logic.generic_logic import GenericLogic
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 
-import matplotlib.pylab as plt
-
 
 class OptimizerLogic(GenericLogic):
 
