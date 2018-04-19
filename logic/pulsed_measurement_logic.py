@@ -173,7 +173,8 @@ class PulsedMeasurementLogic(GenericLogic):
         # Check and configure external microwave
         if self.__use_ext_microwave:
             self.microwave_off()
-            self.set_microwave_settings(frequency=self.microwave_freq, power=self.microwave_power,
+            self.set_microwave_settings(frequency=self.__microwave_freq,
+                                        power=self.__microwave_power,
                                         use_ext_microwave=True)
 
         # Convert controlled variable list into numpy.ndarray
@@ -440,9 +441,9 @@ class PulsedMeasurementLogic(GenericLogic):
                                                 power=self.__microwave_power)
 
         # emit update signal for master (GUI or other logic module)
-        self.sigExtMicrowaveSettingsUpdated.emit({'power': self.__fast_counter_binwidth,
-                                                  'frequency': self.__fast_counter_record_length,
-                                                  'use_ext_microwave': self.__fast_counter_gates})
+        self.sigExtMicrowaveSettingsUpdated.emit({'power': self.__microwave_power,
+                                                  'frequency': self.__microwave_freq,
+                                                  'use_ext_microwave': self.__use_ext_microwave})
         return self.__microwave_freq, self.__microwave_power, self.__use_ext_microwave
     ############################################################################
 
@@ -949,11 +950,12 @@ class PulsedMeasurementLogic(GenericLogic):
         if len(self._controlled_variable) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
 
-        if self._alternating and (number_of_analyzed_lasers / 2) != len(self._controlled_variable):
+        if self._alternating and (number_of_analyzed_lasers // 2) != len(self._controlled_variable):
             self.log.error('Half of the number of laser pulses to analyze ({0}) does not match the '
                            'number of controlled_variable ticks ({1:d}).'
-                           ''.format(number_of_analyzed_lasers / 2, len(self._controlled_variable)))
-        elif number_of_analyzed_lasers != len(self._controlled_variable):
+                           ''.format(number_of_analyzed_lasers // 2,
+                                     len(self._controlled_variable)))
+        elif not self._alternating and number_of_analyzed_lasers != len(self._controlled_variable):
             self.log.error('Number of laser pulses to analyze ({0:d}) does not match the number of '
                            'controlled_variable ticks ({1:d}).'
                            ''.format(number_of_analyzed_lasers, len(self._controlled_variable)))
@@ -981,11 +983,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # analyze pulses and get data points for signal array. Also check if extraction
                 # worked (non-zero array returned).
-                if np.sum(self.laser_data) < 1:
+                if self.laser_data.any():
+                    tmp_signal, tmp_error = self.pulseanalysislogic().analyze_data(self.laser_data)
+                else:
                     tmp_signal = np.zeros(self.laser_data.shape[0])
                     tmp_error = np.zeros(self.laser_data.shape[0])
-                else:
-                    tmp_signal, tmp_error = self.pulseanalysislogic().analyze_data(self.laser_data)
 
                 # exclude laser pulses to ignore
                 if len(self._laser_ignore_list) > 0:
@@ -999,7 +1001,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     tmp_error = np.delete(tmp_error, self._laser_ignore_list)
 
                 # order data according to alternating flag
-                if self._sequence_information['alternating']:
+                if self._alternating:
                     self.signal_data[1] = tmp_signal[::2]
                     self.signal_data[2] = tmp_signal[1::2]
                     self.measurement_error[1] = tmp_error[::2]
@@ -1030,7 +1032,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
             self.log.info('Found old saved raw data with tag "{0}".'
                           ''.format(self._recalled_raw_data_tag))
-            if np.sum(fc_data) < 1:
+            if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
                 fc_data = self._saved_raw_data[self._recalled_raw_data_tag]
@@ -1040,7 +1042,7 @@ class PulsedMeasurementLogic(GenericLogic):
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'
                                  '\nDid NOT add recalled raw data to current time trace.')
-        elif np.sum(fc_data) < 1:
+        elif not fc_data.any():
             self.log.warning('Only zeros received from fast counter!')
             fc_data = np.zeros(fc_data.shape, dtype='int64')
         return fc_data
@@ -1062,12 +1064,13 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measurement_error[0] = self._controlled_variable
 
         number_of_bins = int(self.__fast_counter_record_length / self.__fast_counter_binwidth)
+        laser_length = number_of_bins if self.__fast_counter_gates > 0 else 500
+        self.laser_data = np.zeros((self._number_of_lasers, laser_length), dtype='int64')
+
         if self.__fast_counter_gates > 0:
-            laser_length = number_of_bins
+            self.raw_data = np.zeros((self._number_of_lasers, number_of_bins), dtype='int64')
         else:
-            laser_length = number_of_bins // self._number_of_lasers
-        self.laser_data = np.zeros((self._number_of_lasers, laser_length), dtype=float)
-        self.laser_data[0] = np.arange(1, laser_length + 1) * self.__fast_counter_binwidth
+            self.raw_data = np.zeros(number_of_bins, dtype='int64')
 
         self.sigMeasurementDataUpdated.emit()
         return
@@ -1102,7 +1105,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
-        laser_trace = self.laser_data.astype(int)
+        laser_trace = self.laser_data.astype('int64')
         data['Signal (counts)\nLaser'.format()] = laser_trace.transpose()
 
         # write the parameters:
@@ -1327,7 +1330,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
 
         data = OrderedDict()
-        raw_trace = self.raw_data.astype(int)
+        raw_trace = self.raw_data.astype('int64')
         data['Signal (counts)'] = raw_trace.transpose()
         # write the parameters:
         parameters = OrderedDict()

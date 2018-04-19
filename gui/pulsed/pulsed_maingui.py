@@ -676,7 +676,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_ignore_last_CheckBox.setEnabled(False)
             self._pa.ana_param_alternating_CheckBox.setEnabled(False)
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
-            self._pa.gen_use_interleave_CheckBox.setEnabled(False)
+            self._pg.gen_use_interleave_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
             self._pg.gen_sample_freq_DSpinBox.setEnabled(False)
             self._pg.gen_activation_config_ComboBox.setEnabled(False)
@@ -695,7 +695,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_ignore_last_CheckBox.setEnabled(True)
             self._pa.ana_param_alternating_CheckBox.setEnabled(True)
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(True)
-            self._pa.gen_use_interleave_CheckBox.setEnabled(True)
+            self._pg.gen_use_interleave_CheckBox.setEnabled(True)
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
@@ -1104,7 +1104,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_use_interleave_CheckBox.blockSignals(True)
         self._pg.gen_activation_config_ComboBox.blockSignals(True)
         self._pg.gen_activation_config_LineEdit.blockSignals(True)
-        self._pa.pulser_activation_config_LineEdit.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
 
         # Set widgets
@@ -1118,7 +1117,6 @@ class PulsedMeasurementGui(GUIBase):
             channel_str = str(sorted(list(settings_dict['activation_config'][1])))
             channel_str = channel_str.strip('[]').replace('\'', '').replace(',', ' |')
             self._pg.gen_activation_config_LineEdit.setText(channel_str)
-            self._pa.pulser_activation_config_LineEdit.setText(channel_str)
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
             self._pg.gen_laserchannel_ComboBox.addItems(sorted(list(settings_dict['activation_config'][1])))
@@ -1133,7 +1131,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_use_interleave_CheckBox.blockSignals(False)
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
         self._pg.gen_activation_config_LineEdit.blockSignals(False)
-        self._pa.pulser_activation_config_LineEdit.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
         return
 
@@ -1796,6 +1793,7 @@ class PulsedMeasurementGui(GUIBase):
         # Fit settings dialog
         self._fsd = FitSettingsDialog(self.pulsedmasterlogic().fit_container)
         self._fsd.applySettings()
+        self._pa.fit_param_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
 
         # set boundaries
         self._pa.ana_param_num_laser_pulse_SpinBox.setMinimum(1)
@@ -2277,14 +2275,28 @@ class PulsedMeasurementGui(GUIBase):
         number_of_lasers = self.pulsedmasterlogic().measurement_settings['number_of_lasers']
         self._pe.laserpulses_display_raw_CheckBox.blockSignals(True)
         self._pe.laserpulses_ComboBox.blockSignals(True)
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+
         self._pe.laserpulses_display_raw_CheckBox.setChecked(self._show_raw_data)
+
         self._pe.laserpulses_ComboBox.clear()
         self._pe.laserpulses_ComboBox.addItem('sum')
         for ii in range(1, number_of_lasers + 1):
             self._pe.laserpulses_ComboBox.addItem(str(ii))
         self._pe.laserpulses_ComboBox.setCurrentIndex(self._show_laser_index)
+
+        self._pe.extract_param_analysis_method_comboBox.clear()
+        self._pe.extract_param_analysis_method_comboBox.addItems(
+            list(self.pulsedmasterlogic().analysis_methods))
+        self._pe.extract_param_extraction_method_comboBox.clear()
+        self._pe.extract_param_extraction_method_comboBox.addItems(
+            list(self.pulsedmasterlogic().extraction_methods))
+
         self._pe.laserpulses_display_raw_CheckBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
+        self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
+        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
 
         # Constraint widgets
         self._pe.extract_param_threshold_SpinBox.setMinimum(1)
@@ -2292,6 +2304,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
 
         # Initialize from logic values
+        self.analysis_settings_updated(self.pulsedmasterlogic().analysis_settings)
         self.extraction_settings_updated(self.pulsedmasterlogic().extraction_settings)
         self.update_laser_data()
         return
@@ -2336,7 +2349,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
         self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
 
-        if 'current_method' in settings_dict:
+        if 'method' in settings_dict:
             index = self._pe.extract_param_extraction_method_comboBox.findText(
                 settings_dict['method'])
             self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
@@ -2370,17 +2383,17 @@ class PulsedMeasurementGui(GUIBase):
 
         # Check if the signal has been emitted by a dragged line in the laser plot
         if self.sender().__class__.__name__ == 'InfiniteLine':
-            settings_dict['signal_start_s'] = self.sig_start_line.value()
-            settings_dict['signal_end_s'] = self.sig_end_line.value()
-            settings_dict['norm_start_s'] = self.ref_start_line.value()
-            settings_dict['norm_end_s'] = self.ref_end_line.value()
+            settings_dict['signal_start'] = self.sig_start_line.value()
+            settings_dict['signal_end'] = self.sig_end_line.value()
+            settings_dict['norm_start'] = self.ref_start_line.value()
+            settings_dict['norm_end'] = self.ref_end_line.value()
         else:
             signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
-            settings_dict['signal_start_s'] = self._pe.extract_param_ana_window_start_DSpinBox.value()
-            settings_dict['signal_end_s'] = settings_dict['signal_start_s'] + signal_width
+            settings_dict['signal_start'] = self._pe.extract_param_ana_window_start_DSpinBox.value()
+            settings_dict['signal_end'] = settings_dict['signal_start'] + signal_width
             norm_width = self._pe.extract_param_ref_window_width_DSpinBox.value()
-            settings_dict['norm_start_s'] = self._pe.extract_param_ref_window_start_DSpinBox.value()
-            settings_dict['norm_end_s'] = settings_dict['norm_start_s'] + norm_width
+            settings_dict['norm_start'] = self._pe.extract_param_ref_window_start_DSpinBox.value()
+            settings_dict['norm_end'] = settings_dict['norm_start'] + norm_width
 
         settings_dict['method'] = self._pe.extract_param_analysis_method_comboBox.currentText()
 
@@ -2406,23 +2419,23 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.blockSignals(True)
         self.ref_end_line.blockSignals(True)
 
-        if 'signal_start_s' in settings_dict:
+        if 'signal_start' in settings_dict:
             self._pe.extract_param_ana_window_start_DSpinBox.setValue(
-                settings_dict['signal_start_s'])
-            self.sig_start_line.setValue(settings_dict['signal_start_s'])
-        if 'norm_start_s' in settings_dict:
-            self._pe.extract_param_ref_window_start_DSpinBox.setValue(settings_dict['norm_start_s'])
-            self.ref_start_line.setValue(settings_dict['norm_start_s'])
-        if 'signal_end_s' in settings_dict:
-            signal_start_s = self._pe.extract_param_ana_window_start_DSpinBox.value()
+                settings_dict['signal_start'])
+            self.sig_start_line.setValue(settings_dict['signal_start'])
+        if 'norm_start' in settings_dict:
+            self._pe.extract_param_ref_window_start_DSpinBox.setValue(settings_dict['norm_start'])
+            self.ref_start_line.setValue(settings_dict['norm_start'])
+        if 'signal_end' in settings_dict:
+            signal_start = self._pe.extract_param_ana_window_start_DSpinBox.value()
             self._pe.extract_param_ana_window_width_DSpinBox.setValue(
-                settings_dict['signal_end_s'] - signal_start_s)
-            self.sig_end_line.setValue(settings_dict['signal_end_s'])
-        if 'norm_end_s' in settings_dict:
-            norm_start_s = self._pe.extract_param_ref_window_start_DSpinBox.value()
+                settings_dict['signal_end'] - signal_start)
+            self.sig_end_line.setValue(settings_dict['signal_end'])
+        if 'norm_end' in settings_dict:
+            norm_start = self._pe.extract_param_ref_window_start_DSpinBox.value()
             self._pe.extract_param_ref_window_width_DSpinBox.setValue(
-                settings_dict['norm_end_s'] - norm_start_s)
-            self.ref_end_line.setValue(settings_dict['norm_end_s'])
+                settings_dict['norm_end'] - norm_start)
+            self.ref_end_line.setValue(settings_dict['norm_end'])
         if 'method' in settings_dict:
             index = self._pe.extract_param_analysis_method_comboBox.findText(settings_dict['method'])
             self._pe.extract_param_analysis_method_comboBox.setCurrentIndex(index)
@@ -2447,26 +2460,29 @@ class PulsedMeasurementGui(GUIBase):
         """
         laser_index = self._pe.laserpulses_ComboBox.currentIndex()
         show_raw = self._pe.laserpulses_display_raw_CheckBox.isChecked()
-        is_gated = self.pulsedmasterlogic().raw_data.shape[0] > 2
+        is_gated = len(self.pulsedmasterlogic().raw_data.shape) > 1
+
+        # Determine the right array to plot as y-data
         if show_raw:
             if is_gated:
                 if laser_index == 0:
-                    self.lasertrace_image.setData(x=self.pulsedmasterlogic().raw_data[0],
-                                                  y=np.sum(self.pulsedmasterlogic().raw_data[1:],
-                                                           0))
+                    y_data = np.sum(self.pulsedmasterlogic().raw_data, axis=0)
                 else:
-                    self.lasertrace_image.setData(x=self.pulsedmasterlogic().raw_data[0],
-                                                  y=self.pulsedmasterlogic().raw_data[laser_index])
+                    y_data = self.pulsedmasterlogic().raw_data[laser_index - 1]
             else:
-                self.lasertrace_image.setData(x=self.pulsedmasterlogic().raw_data[0],
-                                              y=self.pulsedmasterlogic().raw_data[1])
+                y_data = self.pulsedmasterlogic().raw_data
         else:
             if laser_index == 0:
-                self.lasertrace_image.setData(x=self.pulsedmasterlogic().laser_data[0],
-                                              y=np.sum(self.pulsedmasterlogic().laser_data[1:], 0))
+                y_data = np.sum(self.pulsedmasterlogic().laser_data, axis=0)
             else:
-                self.lasertrace_image.setData(x=self.pulsedmasterlogic().laser_data[0],
-                                              y=self.pulsedmasterlogic().laser_data[laser_index])
+                y_data = self.pulsedmasterlogic().laser_data[laser_index - 1]
+
+        # Calculate the x-axis of the laser plot here
+        bin_width = self.pulsedmasterlogic().fast_counter_settings['bin_width_s']
+        x_data = np.arange(y_data.size, dtype=float) * bin_width
+
+        # Plot data
+        self.lasertrace_image.setData(x=x_data, y=y_data)
         return
 
 

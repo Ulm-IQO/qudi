@@ -130,12 +130,20 @@ class PulseAnalysisLogic(GenericLogic):
             if parameter in settings_dict:
                 del settings_dict[parameter]
         # Attach current analysis method name
-        settings_dict['current_analysis_method'] = self.current_analysis_method
+        settings_dict['method'] = self.current_analysis_method
         return settings_dict
 
     @analysis_settings.setter
     def analysis_settings(self, settings_dict):
         for name, value in settings_dict.items():
+            if name == 'method':
+                if value in self.analysis_methods:
+                    self.current_analysis_method = value
+                else:
+                    self.log.error('Analysis method "{0}" could not be found in PulseAnalysisLogic.'
+                                   ''.format(value))
+                continue
+
             if not hasattr(self, name):
                 self.log.warning('No analysis setting "{0}" found in PulseAnalysisLogic.\n'
                                  'Creating it now but this can lead to problems.\nThis parameter '

@@ -141,12 +141,21 @@ class PulseExtractionLogic(GenericLogic):
             if parameter in settings_dict:
                 del settings_dict[parameter]
         # Attach current extraction method name
-        settings_dict['current_extraction_method'] = self.current_extraction_method
+        settings_dict['method'] = self.current_extraction_method
         return settings_dict
 
     @extraction_settings.setter
     def extraction_settings(self, settings_dict):
         for name, value in settings_dict.items():
+            if name == 'method':
+                if (value in self.gated_extraction_methods and self.is_gated) or (
+                        value in self.ungated_extraction_methods and not self.is_gated):
+                    self.current_extraction_method = value
+                else:
+                    self.log.error('Extraction method "{0}" could not be found in '
+                                   'PulseExtractionLogic.'.format(value))
+                continue
+
             if not hasattr(self, name):
                 self.log.warning('No extraction setting "{0}" found in PulseExtractionLogic.\n'
                                  'Creating it now but this can lead to problems.\nThis parameter '
