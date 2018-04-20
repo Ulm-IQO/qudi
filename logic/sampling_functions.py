@@ -88,7 +88,7 @@ class Sin(SamplingBase):
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
 
     def __init__(self, amplitude=None, frequency=None, phase=None):
         if amplitude is None:
@@ -125,10 +125,10 @@ class DoubleSin(SamplingBase):
     params = OrderedDict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
     params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
 
     def __init__(self,
                  amplitude_1=None, frequency_1=None, phase_1=None,
@@ -176,7 +176,7 @@ class DoubleSin(SamplingBase):
         phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_2
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
         return samples_arr
 
 
@@ -188,13 +188,13 @@ class TripleSin(SamplingBase):
     params = OrderedDict()
     params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
     params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
     params['amplitude_3'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency_3'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': -2*np.pi, 'max': 2*np.pi, 'type': float}
+    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
 
     def __init__(self,
                  amplitude_1=None, frequency_1=None, phase_1=None,
@@ -256,13 +256,13 @@ class TripleSin(SamplingBase):
         phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_2
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
 
         # Second sine wave (add on sum of first and second)
         phase_rad = np.pi * self.phase_3 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_3
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
+        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
         return samples_arr
 
 

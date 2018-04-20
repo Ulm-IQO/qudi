@@ -2200,11 +2200,17 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(False)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(False)
             self._pa.ana_param_record_length_DoubleSpinBox.setEnabled(False)
+            self._pa.ana_param_ignore_first_CheckBox.setEnabled(False)
+            self._pa.ana_param_ignore_last_CheckBox.setEnabled(False)
+            self._pa.ana_param_alternating_CheckBox.setEnabled(False)
         else:
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_x_axis_inc_ScienDSpinBox.setEnabled(True)
             self._pa.ana_param_num_laser_pulse_SpinBox.setEnabled(True)
             self._pa.ana_param_record_length_DoubleSpinBox.setEnabled(True)
+            self._pa.ana_param_ignore_first_CheckBox.setEnabled(True)
+            self._pa.ana_param_ignore_last_CheckBox.setEnabled(True)
+            self._pa.ana_param_alternating_CheckBox.setEnabled(True)
         return
 
     @QtCore.Slot(bool)
