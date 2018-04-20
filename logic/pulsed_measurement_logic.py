@@ -994,7 +994,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     # Convert relative negative indices into absolute positive indices
                     while self._laser_ignore_list[0] < 0:
                         neg_index = self._laser_ignore_list[0]
-                        self._laser_ignore_list[0] = len(self._laser_ignore_list) + neg_index
+                        self._laser_ignore_list[0] = len(tmp_signal) + neg_index
                         self._laser_ignore_list.sort()
 
                     tmp_signal = np.delete(tmp_signal, self._laser_ignore_list)
