@@ -404,10 +404,8 @@ class PulserDummy(Base, PulserInterface):
             load_dict = new_dict
 
         # Determine if the device is purely digital and get all active channels
-        analog_channels = [chnl for chnl in self.activation_config if
-                           self.activation_config[chnl] and chnl.startswith('a')]
-        digital_channels = [chnl for chnl in self.activation_config if
-                           self.activation_config[chnl] and chnl.startswith('d')]
+        analog_channels = [chnl for chnl in self.activation_config if chnl.startswith('a')]
+        digital_channels = [chnl for chnl in self.activation_config if chnl.startswith('d')]
         pure_digital = len(analog_channels) == 0
 
         # Check if waveforms are present in virtual dummy device memory and specified channels are

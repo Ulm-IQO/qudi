@@ -29,10 +29,9 @@ import datetime
 from core.module import Connector, StatusVar
 from core.util import units
 from gui.colordefs import QudiPalettePale as palette
-from gui.colordefs import QudiPalette as palettedark
 from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
-from qtpy import QtGui, QtCore, QtWidgets, uic
+from qtpy import QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
@@ -1103,7 +1102,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
         self._pg.gen_use_interleave_CheckBox.blockSignals(True)
         self._pg.gen_activation_config_ComboBox.blockSignals(True)
-        self._pg.gen_activation_config_LineEdit.blockSignals(True)
+        self._pg.gen_analog_channels_lineEdit.blockSignals(True)
+        self._pg.gen_digital_channels_lineEdit.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
 
         # Set widgets
@@ -1114,15 +1114,21 @@ class PulsedMeasurementGui(GUIBase):
             config_name = settings_dict['activation_config'][0]
             index = self._pg.gen_activation_config_ComboBox.findText(config_name)
             self._pg.gen_activation_config_ComboBox.setCurrentIndex(index)
-            channel_str = str(sorted(list(settings_dict['activation_config'][1])))
-            channel_str = channel_str.strip('[]').replace('\'', '').replace(',', ' |')
-            self._pg.gen_activation_config_LineEdit.setText(channel_str)
+            digital_str = str(sorted(
+                [chnl for chnl in settings_dict['activation_config'][1] if chnl.startswith('d')]))
+            analog_str = str(sorted(
+                [chnl for chnl in settings_dict['activation_config'][1] if chnl.startswith('a')]))
+            digital_str = digital_str.strip('[]').replace('\'', '').replace(',', ' |')
+            analog_str = analog_str.strip('[]').replace('\'', '').replace(',', ' |')
+            self._pg.gen_digital_channels_lineEdit.setText(digital_str)
+            self._pg.gen_analog_channels_lineEdit.setText(analog_str)
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
             self._pg.gen_laserchannel_ComboBox.addItems(sorted(list(settings_dict['activation_config'][1])))
             if former_laser_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+            self._pg.block_editor.set_activation_config(settings_dict['activation_config'][1])
         if 'interleave' in settings_dict:
             self._pg.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
 
@@ -1130,7 +1136,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
         self._pg.gen_use_interleave_CheckBox.blockSignals(False)
         self._pg.gen_activation_config_ComboBox.blockSignals(False)
-        self._pg.gen_activation_config_LineEdit.blockSignals(False)
+        self._pg.gen_analog_channels_lineEdit.blockSignals(False)
+        self._pg.gen_digital_channels_lineEdit.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
         return
 
@@ -1363,6 +1370,7 @@ class PulsedMeasurementGui(GUIBase):
         index = self._pg.saved_blocks_ComboBox.findText(text_to_set)
         if index >= 0:
             self._pg.saved_blocks_ComboBox.setCurrentIndex(index)
+        self._pg.block_organizer.set_available_pulse_blocks(block_names)
         self._pg.saved_blocks_ComboBox.blockSignals(False)
         return
 
@@ -1373,7 +1381,7 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
-        ensemble_names = sorted(list(ensemble_dict))
+        ensemble_names = sorted(ensemble_dict)
         # Check if an ensemble has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
@@ -1397,6 +1405,7 @@ class PulsedMeasurementGui(GUIBase):
         if index >= 0:
             self._pg.gen_ensemble_ComboBox.setCurrentIndex(index)
             self._pg.saved_ensembles_ComboBox.setCurrentIndex(index)
+        self._sg.sequence_editor.set_available_block_ensembles(ensemble_names)
         # unblock signals
         self._pg.gen_ensemble_ComboBox.blockSignals(False)
         self._pg.saved_ensembles_ComboBox.blockSignals(False)
