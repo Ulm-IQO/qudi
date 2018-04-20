@@ -246,7 +246,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def loaded_asset(self):
-        asset_names, asset_type = self.pulsegenerator().get_loaded_asset()
+        asset_names, asset_type = self.pulsegenerator().get_loaded_assets()
         name_list = list(asset_names.values())
         if asset_type == 'waveform' and len(name_list) > 0:
             return_type = 'PulseBlockEnsemble'
@@ -371,14 +371,14 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         # If str has been passed, get the ensemble object from saved ensembles
         if isinstance(ensemble, str):
-            ensemble = self.get_saved_ensemble(str)
+            ensemble = self.saved_pulse_block_ensembles[ensemble]
             if ensemble is None:
-                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                 return
         if not isinstance(ensemble, PulseBlockEnsemble):
             self.log.error('Unable to load PulseBlockEnsemble into pulser channels.\nArgument ({0})'
                            ' is no instance of PulseBlockEnsemble.'.format(type(ensemble)))
-            self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             return
 
         # Check if the PulseBlockEnsemble has been sampled already.
@@ -390,14 +390,14 @@ class SequenceGeneratorLogic(GenericLogic):
                     self.log.error('Waveform "{0}" associated with PulseBlockEnsemble "{1}" not '
                                    'found on pulse generator device.\nPlease re-generate the '
                                    'PulseBlockEnsemble.'.format(waveform, ensemble.name))
-                    self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                    self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                     return
             # Actually load the waveforms to the generic channels
             self.pulsegenerator().load_waveform(ensemble.sampling_information['waveforms'])
         else:
             self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
                            'It has not been generated yet.'.format(ensemble.name))
-        self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
         return
 
     @QtCore.Slot(str)
@@ -409,14 +409,14 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         # If str has been passed, get the sequence object from saved sequences
         if isinstance(sequence, str):
-            sequence = self.get_saved_sequence(str)
+            sequence = self.saved_pulse_sequences[sequence]
             if sequence is None:
-                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                 return
         if not isinstance(sequence, PulseSequence):
             self.log.error('Unable to load PulseSequence into pulser channels.\nArgument ({0})'
                            ' is no instance of PulseSequence.'.format(type(sequence)))
-            self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+            self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             return
 
         # Check if the PulseSequence has been sampled already.
@@ -428,14 +428,14 @@ class SequenceGeneratorLogic(GenericLogic):
                     self.log.error('Waveform "{0}" associated with PulseSequence "{1}" not '
                                    'found on pulse generator device.\nPlease re-generate the '
                                    'PulseSequence.'.format(waveform, sequence.name))
-                    self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                    self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                     return
             # Actually load the sequence to the generic channels
             self.pulsegenerator().load_sequence(sequence.name)
         else:
             self.log.error('Loading of PulseSequence "{0}" failed.\n'
                            'It has not been generated yet.'.format(sequence.name))
-        self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+        self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
         return
 
     def _attach_predefined_methods(self):
