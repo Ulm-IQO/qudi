@@ -14,19 +14,6 @@
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
-   <item row="4" column="0" colspan="5">
-    <spacer name="horizontalSpacer">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
-     </property>
-     <property name="sizeHint" stdset="0">
-      <size>
-       <width>40</width>
-       <height>20</height>
-      </size>
-     </property>
-    </spacer>
-   </item>
    <item row="3" column="7">
     <widget class="QGroupBox" name="pbeInfoGroupBox">
      <property name="sizePolicy">
@@ -772,6 +759,19 @@ last</string>
         </item>
        </layout>
       </item>
+      <item row="1" column="1">
+       <spacer name="horizontalSpacer">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
      </layout>
     </widget>
    </item>
@@ -1011,8 +1011,6 @@ last</string>
   <zorder>pbInfoGroupBox</zorder>
   <zorder>pbeInfoGroupBox</zorder>
   <zorder>ensemble_GroupBox</zorder>
-  <zorder>horizontalSpacer</zorder>
-  <zorder>gridLayoutWidget_3</zorder>
  </widget>
  <customwidgets>
   <customwidget>
