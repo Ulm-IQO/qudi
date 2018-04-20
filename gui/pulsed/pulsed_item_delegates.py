@@ -30,7 +30,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
     """
     editingFinished = QtCore.Signal()
 
-    def __init__(self, parent, item_dict, data_access_role=QtCore.Qt.DisplayRole):
+    def __init__(self, parent, item_dict=None, data_access_role=QtCore.Qt.DisplayRole):
         """
         @param QWidget parent: the parent QWidget which hosts this child widget
         @param dict item_dict:  dict with the following keys which give informations about the
@@ -38,6 +38,8 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
                                                  'dec', 'unit_prefix'
         """
         super().__init__(parent)
+        if item_dict is None:
+            item_dict = dict()
         self.item_dict = item_dict
         self._access_role = data_access_role
         return
@@ -64,8 +66,12 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         needed any longer.
         """
         editor = QtGui.QSpinBox(parent=parent)
-        editor.setMinimum(self.item_dict['min'])
-        editor.setMaximum(self.item_dict['max'])
+        if 'min' in self.item_dict:
+            editor.setMinimum(self.item_dict['min'])
+        if 'max' in self.item_dict:
+            editor.setMaximum(self.item_dict['max'])
+        if 'unit' in self.item_dict:
+            editor.setSuffix(self.item_dict['unit'])
         editor.setGeometry(option.rect)
         editor.editingFinished.connect(self.commitAndCloseEditor)
         return editor
@@ -123,8 +129,8 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = QtGui.QSpinBox()
-        widget.setMinimum(self.item_dict['min'])
-        widget.setMaximum(self.item_dict['max'])
+        if 'unit' in self.item_dict:
+            widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
         widget.render(painter)
@@ -171,9 +177,14 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         needed any longer.
         """
         editor = ScienDSpinBox(parent=parent)
-        editor.setMinimum(self.item_dict['min'])
-        editor.setMaximum(self.item_dict['max'])
-        editor.precision = 6
+        if 'min' in self.item_dict:
+            editor.setMinimum(self.item_dict['min'])
+        if 'max' in self.item_dict:
+            editor.setMaximum(self.item_dict['max'])
+        if 'dec' in self.item_dict:
+            editor.setDecimals(self.item_dict['dec'])
+        if 'unit' in self.item_dict:
+            editor.setSuffix(self.item_dict['unit'])
         editor.setGeometry(option.rect)
         editor.editingFinished.connect(self.commitAndCloseEditor)
         return editor
@@ -231,7 +242,10 @@ class ScienDSpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = ScienDSpinBox()
-        widget.precision = 6
+        if 'dec' in self.item_dict:
+            widget.setDecimals(self.item_dict['dec'])
+        if 'unit' in self.item_dict:
+            widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)
         widget.setValue(index.data(self._access_role))
         widget.render(painter)
