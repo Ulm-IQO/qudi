@@ -20,14 +20,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-from logic.pulse_objects import PulseBlockElement
-from logic.pulse_objects import PulseBlock
-from logic.pulse_objects import PulseBlockEnsemble
-from logic.pulse_objects import PulseSequence
-from logic.sampling_functions import *
 import numpy as np
 import inspect
+from collections import OrderedDict
+from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.sampling_functions import *
 
 
 """
@@ -79,6 +76,25 @@ class PulsedObjectGenerator:
         if isinstance(settings_dict, dict):
             self._sampling_settings = settings_dict
         return
+
+    @property
+    def predefined_generate_methods(self):
+        names = sorted([name for name in dir(self) if name.startswith('generate_')])
+        methods = OrderedDict()
+        for name in names:
+            methods[name] = getattr(self, name)
+        return methods
+
+    @property
+    def predefined_generate_params(self):
+        methods = self.predefined_generate_methods
+        for method_name, method in methods.items():
+            param_dict = dict()
+            signature_params = inspect.signature(method).parameters
+            for name, param in signature_params.items():
+                param_dict[name] = {'type': type(param.default), 'default': param.default}
+            methods[method_name] = param_dict
+        return methods
 
     @property
     def channel_set(self):
@@ -138,10 +154,6 @@ class PulsedObjectGenerator:
     @property
     def rabi_period(self):
         return self._sampling_settings.get('rabi_period')
-
-    @property
-    def generate_methods(self):
-        return None
 
     def generate_laser_on(self, name='laser_on', length=3.0e-6):
         """ Generates Laser on.
