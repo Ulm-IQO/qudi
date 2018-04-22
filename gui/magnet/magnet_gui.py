@@ -183,8 +183,8 @@ class MagnetGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._magnet_logic = self.get_connector('magnetlogic1')
-        self._save_logic = self.get_connector('savelogic')
+        self._magnet_logic = self.magnetlogic1()
+        self._save_logic = self.savelogic()
 
         self._mw = MagnetMainWindow()
 

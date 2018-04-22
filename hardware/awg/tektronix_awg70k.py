@@ -336,10 +336,31 @@ class AWG70K(Base, PulserInterface):
                 self.awg.write('MMEM:OPEN:SASS:WAV "{0}"'.format(file_path))
             else:
                 self.awg.write('MMEM:OPEN "{0}"'.format(file_path))
-            self.awg.query('*OPC?')
-        # Wait for the loading to completed
-        while int(self.awg.query('*OPC?')) != 1:
-            time.sleep(0.2)
+            # Wait for the overlapping command to finish. Since the loading of a large waveform
+            # from file can take a very long time, we have to handle timeout errors for this query.
+            opc = 0
+            while opc != 1:
+                try:
+                    opc = int(self.awg.query('*OPC?'))
+                except visa.VisaIOError:
+                    # Timeout occurred
+                    opc = 0
+                time.sleep(0.1)
+            # Sanity (double)check to see if the asset is really in the workspace.
+            if filename.endswith(('.wfm', '.wfmx')):
+                if filename.rsplit('.', 1)[0] not in self._get_waveform_names_memory():
+                    self.log.error(
+                        'Upload of waveform "{0}" failed while loading into AWG workspace.'.format(
+                            filename.rsplit('.', 1)[0]))
+                    return -1
+            elif filename.endswith(('.seq', '.seqx')):
+                if filename.rsplit('.', 1)[0] not in self._get_sequence_names_memory():
+                    self.log.error(
+                        'Upload of sequence "{0}" failed while loading into AWG workspace.'.format(
+                            filename.rsplit('.', 1)[0]))
+                    return -1
+            elif filename.endswith('.mat'):
+                pass  # check not implemented for matlab files
         return 0
 
     def load_asset(self, asset_name, load_dict=None):
@@ -377,11 +398,18 @@ class AWG70K(Base, PulserInterface):
                 trac_num = int(self.awg.query('SLIS:SEQ:TRAC? "{0}"'.format(asset_name)))
                 for chnl in range(1, trac_num + 1):
                     self.awg.write('SOUR{0}:CASS:SEQ "{1}", {2}'.format(chnl, asset_name, chnl))
+                    while self.awg.query('SOUR{0:d}:CASS?'.format(chnl))[
+                          1:-2] != '{0},{1:d}'.format(asset_name, chnl):
+                        time.sleep(0.1)
             # check if the desired asset is in workspace. Load to channels if that is the case.
             elif asset_name + '_ch1' in wfm_list:
                 self.awg.write('SOUR1:CASS:WAV "{0}"'.format(asset_name + '_ch1'))
+                while self.awg.query('SOUR1:CASS?')[1:-2] != asset_name + '_ch1':
+                    time.sleep(0.1)
                 if self._get_max_a_channel_number() > 1 and asset_name + '_ch2' in wfm_list:
                     self.awg.write('SOUR2:CASS:WAV "{0}"'.format(asset_name + '_ch2'))
+                    while self.awg.query('SOUR2:CASS?')[1:-2] != asset_name + '_ch2':
+                        time.sleep(0.1)
             self.current_loaded_asset = asset_name
         else:
             self.log.error('Loading assets into user defined channels is not yet implemented.\n'
@@ -389,6 +417,7 @@ class AWG70K(Base, PulserInterface):
                            'is not handled yet.')
 
         # Wait for the loading to completed
+        # FIXME: Seems to have no effect (maybe no overlapping command?)
         while int(self.awg.query('*OPC?')) != 1:
             time.sleep(0.2)
         return 0
@@ -405,7 +434,7 @@ class AWG70K(Base, PulserInterface):
         # Get rid of "" and \n
         asset_name = asset_name[1:-2]
         # Figure out if a sequence or just a waveform is loaded by splitting after the comma
-        splitted = asset_name.split(',')
+        splitted = asset_name.rsplit(',', 1)
         # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
         asset_name = splitted[0]
         if len(splitted) == 1:
@@ -416,14 +445,23 @@ class AWG70K(Base, PulserInterface):
                     asset_name = tmp[0]
             # check if there is a second channel
             if self._get_max_a_channel_number() > 1:
-                asset_name2 = self.awg.ask('SOUR2:CASS?')
-                asset_name2 = asset_name2[1:-2]
+                asset_name2 = self.awg.ask('SOUR2:CASS?')[1:-2]
                 tmp = asset_name2.rsplit('_', 1)
                 if len(tmp) == 2:
                     if tmp[1].startswith('ch'):
                         asset_name2 = tmp[0]
                 if asset_name != asset_name2:
-                    self.log.warning('Loaded assetnames for both channels are different! '
+                    self.log.warning('Loaded asset names for both channels are different! '
+                                     'Returning asset_name of channel1')
+        elif len(splitted) == 2:
+            # check if there is a second channel
+            if self._get_max_a_channel_number() > 1:
+                asset_name2 = self.awg.ask('SOUR2:CASS?')[1:-2]
+                tmp = asset_name2.rsplit(',', 1)
+                if len(tmp) == 2:
+                    asset_name2 = tmp[0]
+                if asset_name != asset_name2:
+                    self.log.warning('Loaded asset names for both channels are different! '
                                      'Returning asset_name of channel1')
         else:
             self.log.error('Unknown answer. Cannot determine the name of the loaded asset!')
@@ -1346,6 +1384,31 @@ class AWG70K(Base, PulserInterface):
         self.awg.write('SLISt:SEQuence:STEP' + str(last_step) + ':GOTO ' + '"' + sequencename + '",  FIRST \n')
         return last_step
 
+    def _force_jump_sequence(self, final_step, channel=1):
+        """
+        This command forces the sequencer to jump to the specified step per channel. A
+        force jump does not require a trigger event to execute the jump.
+        For two channel instruments, if both channels are playing the same sequence, then
+        both channels jump simultaneously to the same sequence step.
+
+        @param channel: determines the channel number. If omitted, interpreted as 1
+        @param final_step: Step to jump to. Possible options are
+            FIRSt - This enables the sequencer to jump to first step in the sequence.
+            CURRent - This enables the sequencer to jump to the current sequence step,
+            essentially starting the current step over.
+            LAST - This enables the sequencer to jump to the last step in the sequence.
+            END - This enables the sequencer to go to the end and play 0 V until play is
+            stopped.
+            <NR1> - This enables the sequencer to jump to the specified step, where the
+            value is between 1 and 16383.
+
+        """
+        self.awg.write('SOURCE' + str(channel) + ':JUMP:FORCE ' + str(final_step) + '\n')
+
+        return
+
+
+
     def _init_loaded_asset(self):
         """
         Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
@@ -1473,14 +1536,15 @@ class AWG70K(Base, PulserInterface):
         Gets all waveform names currently loaded into the AWG workspace
         @return: list of names
         """
-        # Check if AWG is in function generator mode
-        # self._activate_awg_mode()
-
-        number_of_wfm = int(self.awg.query('WLIS:SIZE?'))
-        waveform_list = [None] * number_of_wfm
-        for i in range(number_of_wfm):
-            wfm_name = self.awg.query('WLIS:NAME? {0}'.format(i + 1))[1:-2]
-            waveform_list[i] = wfm_name
+        try:
+            query_return = self.awg.query('WLIS:LIST?')[1:-2]
+            if query_return:
+                waveform_list = query_return.split(',')
+            else:
+                waveform_list = []
+        except visa.VisaIOError:
+            waveform_list = []
+            raise
         return waveform_list
 
     def _is_output_on(self):

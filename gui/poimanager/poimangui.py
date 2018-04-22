@@ -26,6 +26,7 @@ import pyqtgraph as pg
 import time
 
 from core.module import Connector
+from core.util.units import ScaledFloat
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -236,8 +237,8 @@ class PoiManagerGui(GUIBase):
         """
 
         # Connectors
-        self._poi_manager_logic = self.get_connector('poimanagerlogic1')
-        self._confocal_logic = self.get_connector('confocallogic1')
+        self._poi_manager_logic = self.poimanagerlogic1()
+        self._confocal_logic = self.confocallogic1()
         self.log.debug("POI Manager logic is {0}".format(self._poi_manager_logic))
         self.log.debug("Confocal logic is {0}".format(self._confocal_logic))
 
@@ -261,16 +262,22 @@ class PoiManagerGui(GUIBase):
         """
 
         # converts the absolute mouse position to a position relative to the axis
-        mouse_point=self.roi_map_image.mapFromScene(event.toPoint())
+        mouse_point = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(
+            event.toPoint())
         #self.log.debug("Mouse at x = {0:0.2e}, y = {1:0.2e}".format(mouse_point.x(), mouse_point.y()))
 
         # only calculate distance, if a POI is selected
         if self._poi_manager_logic.active_poi is not None:
-            cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=self._poi_manager_logic.active_poi.get_key())
-            self._mw.poi_distance_label.setText('{0:.2e} ({1:.2e}, {2:.2e})'.format(
-                np.sqrt((mouse_point.x() - cur_poi_pos[0])**2+(mouse_point.y() - cur_poi_pos[1])**2),
-                mouse_point.x() - cur_poi_pos[0],
-                mouse_point.y() - cur_poi_pos[1]))
+            cur_poi_pos = self._poi_manager_logic.get_poi_position(
+                poikey=self._poi_manager_logic.active_poi.get_key())
+            dx = ScaledFloat(mouse_point.x() - cur_poi_pos[0])
+            dy = ScaledFloat(mouse_point.y() - cur_poi_pos[1])
+            d_total = ScaledFloat(np.sqrt(
+                    (mouse_point.x() - cur_poi_pos[0])**2
+                    + (mouse_point.y() - cur_poi_pos[1])**2))
+
+            self._mw.poi_distance_label.setText(
+                '{0:.2r}m ({1:.2r}m, {2:.2r}m)'.format(d_total, dx, dy))
 
     def initMainUI(self):
         """ Definition, configuration and initialisation of the POI Manager GUI.
@@ -380,7 +387,10 @@ class PoiManagerGui(GUIBase):
         # Distance Measurement:
         # Introducing a SignalProxy will limit the rate of signals that get fired.
         # Otherwise we will run into a heap of unhandled function calls.
-        proxy = pg.SignalProxy(self.roi_map_image.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
+        proxy = pg.SignalProxy(
+            self.roi_map_image.scene().sigMouseMoved,
+            rateLimit=60,
+            slot=self.mouseMoved)
         # Connecting a Mouse Signal to trace to mouse movement function.
         self.roi_map_image.scene().sigMouseMoved.connect(self.mouseMoved)
 
@@ -391,7 +401,6 @@ class PoiManagerGui(GUIBase):
         self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
         self._mw.autofind_pois_Action.triggered.connect(self.do_autofind_poi_procedure)
         self._mw.optimize_roi_Action.triggered.connect(self.optimize_roi)
-
 
         self._mw.new_poi_Action.triggered.connect(self.set_new_poi)
         self._mw.goto_poi_Action.triggered.connect(self.goto_poi)
@@ -409,7 +418,6 @@ class PoiManagerGui(GUIBase):
         self._mw.delete_poi_PushButton.clicked.connect(self.delete_poi)
 
         self._mw.goto_poi_after_update_checkBox.toggled.connect(self.toggle_follow)
-
 
         # This needs to be activated so that it only listens to user input, and ignores
         # algorithmic index changes
@@ -893,12 +901,13 @@ class PoiManagerGui(GUIBase):
             active_poi_key = self._poi_manager_logic.active_poi.get_key()
 
             self._markers[active_poi_key].select()
-            cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=key)
+            cur_poi_pos = self._poi_manager_logic.get_poi_position(poikey=active_poi_key)
             self._mw.poi_coords_label.setText(
-                '({0:.2e}, {1:.2e}, {2:.2e})'.format(cur_poi_pos[0],
-                                                     cur_poi_pos[1],
-                                                     cur_poi_pos[2]
-                                                     )
+                '({0:.2r}m, {1:.2r}m, {2:.2r}m)'.format(
+                    ScaledFloat(cur_poi_pos[0]),
+                    ScaledFloat(cur_poi_pos[1]),
+                    ScaledFloat(cur_poi_pos[2])
+                    )
                 )
         self.log.debug('finished redraw at {0}'.format(time.time()))
 

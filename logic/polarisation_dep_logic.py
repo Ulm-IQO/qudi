@@ -44,12 +44,12 @@ class PolarisationDepLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
 
-        self._counter_logic = self.get_connector('counterlogic')
+        self._counter_logic = self.counterlogic()
 #        print("Counting device is", self._counting_device)
 
-        self._save_logic = self.get_connector('savelogic')
+        self._save_logic = self.savelogic()
 
-        self._hwpmotor = self.get_connector('motor')
+        self._hwpmotor = self.motor()
 
         # Initialise measurement parameters
         self.scan_length = 360

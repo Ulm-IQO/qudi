@@ -221,9 +221,9 @@ class ConfocalGui(GUIBase):
         """
 
         # Getting an access to all connectors:
-        self._scanning_logic = self.get_connector('confocallogic1')
-        self._save_logic = self.get_connector('savelogic')
-        self._optimizer_logic = self.get_connector('optimizerlogic1')
+        self._scanning_logic = self.confocallogic1()
+        self._save_logic = self.savelogic()
+        self._optimizer_logic = self.optimizerlogic1()
 
         self._hardware_state = True
 

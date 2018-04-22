@@ -234,7 +234,7 @@ class ModuleMeta(type(QtCore.QObject)):
     Metaclass for Qudi modules
     """
 
-    def __new__(mcs, name, bases, attrs):
+    def __new__(cls, name, bases, attrs):
         """
         Collect declared Connectors, ConfigOptions and StatusVars into dictionaries.
 
@@ -274,7 +274,7 @@ class ModuleMeta(type(QtCore.QObject)):
         attrs.update(status_vars)
 
         # create a new class with the new dictionaries
-        new_class = super().__new__(mcs, name, bases, attrs)
+        new_class = super().__new__(cls, name, bases, attrs)
         new_class._conn = connectors
         new_class._config_options = config_options
         new_class._stat_vars = status_vars
@@ -334,8 +334,8 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
         catch and log exceptios.
         """
         base_event = super()._build_event(event)
-        if (event in ['activate', 'deactivate']):
-            if (event == 'activate'):
+        if event in ['activate', 'deactivate']:
+            if event == 'activate':
                 noun = 'activation'
             else:
                 noun = 'deactivation'
@@ -526,7 +526,7 @@ class BaseMixin(metaclass=ModuleMeta):
 
         @return dict: variable names and contents.
 
-        @deprecated
+        @deprecated declare and use StatusVar class variables directly
         """
         warnings.warn('getStatusVariables is deprecated and will be removed in future versions. Use '
                       'StatusVar instead.', DeprecationWarning)
@@ -538,7 +538,7 @@ class BaseMixin(metaclass=ModuleMeta):
 
           @param OrderedDict dict: variable names and contents.
 
-          @deprecated
+          @deprecated declare and use StatusVar class variables
         """
         warnings.warn('setStatusVariables is deprecated and will be removed in future versions. Use '
                       'StatusVar instead.', DeprecationWarning)
@@ -553,7 +553,7 @@ class BaseMixin(metaclass=ModuleMeta):
         """ Return the configration dictionary for this module.
 
           @return dict: confiuration dictionary
-          @deprecated
+          @deprecated declare and use ConfigOption class variables directly
         """
         warnings.warn('getConfiguration is deprecated and will be removed in future versions. Use '
                       'ConfigOptions instead.', DeprecationWarning)
@@ -564,19 +564,20 @@ class BaseMixin(metaclass=ModuleMeta):
           @param str connector_name: name of the connector
 
           @return obj: module that is connected to the named connector
-          @deprecated
+          @deprecated instead of get_connector(connector_name) just use connector_name(). Enabled by using Connector
+                objects as class variables
         """
         warnings.warn('get_connector is deprecated and will be removed in future versions. Use '
                       'Connector() callable instead.', DeprecationWarning)
         if connector_name in self.connectors:
             connector = self.connectors[connector_name]
-            # new style connector
+            # new style legacy connector
             if isinstance(connector, Connector):
                 return connector()
-            # legacy connector
+            # legacy legacy connector
             elif isinstance(connector, dict):
                 obj = connector['object']
-                if (obj is None):
+                if obj is None:
                     raise TypeError('No module connected')
                 return obj
             else:
