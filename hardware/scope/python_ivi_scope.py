@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the implementation of the pythonIvi interface for scopes
+This file contains the implementation of the pythonIvi interface for scopes.
+
+The main class is ::PythonIviScope::
+
+Example configuration
+
+hardware:
+    dsos204a:
+        module.Class: 'scope.python_ivi_scope.PythonIviScope'
+        driver: 'ivi.agilent.agilentDSOS204A.agilentDSOS204A'
+        uri: 'TCPIP0::192.168.1.1::hislip0::INSTR'
+
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -1455,7 +1466,15 @@ class MinMaxWaveformChannelMeasurementMixin(
 
 
 class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
-    """ Module for accessing oscilloscopes via PythonIVI library. """
+    """
+    Module for accessing oscilloscopes via PythonIVI library.
+
+    Config options:
+    - driver : str module.class name of driver within the python IVI library
+                   e.g. 'ivi.agilent.agilentDSOS204A.agilentDSOS204A'
+    - uri : str unique remote identifier used to connect to instrument.
+                e.g. 'TCPIP0::192.168.1.1::hislip0::INSTR'
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

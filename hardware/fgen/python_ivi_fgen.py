@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the implementation of the pythonIvi interface for scopes
+This file contains the implementation of the pythonIvi interface for function generators.
+
+The main class is ::PythonIVIFGen.::
+
+Example configuration
+
+hardware:
+    awg5002c:
+        module.Class: 'fgen.python_ivi_fgen.PythonIviFGen'
+        driver: 'ivi.tektronix.tektronixAWG5002C.tektronixAWG5002C'
+        uri: 'TCPIP0::192.168.1.1::INSTR'
+
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,7 +32,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import abc
 from interface import fgen_ivi_interface
-from .python_ivi_base import PythonIviBase
+from ..python_ivi_base import PythonIviBase
 
 import inspect
 from qtpy.QtCore import QObject
@@ -2311,7 +2322,15 @@ class ArbSeqDepthMixin(fgen_ivi_interface.ArbSeqDepthInterface):
 
 
 class PythonIviFGen(PythonIviBase, FGenMixin, SoftwareTriggerMixin):
-    """ Module for accessing oscilloscopes via PythonIVI library. """
+    """
+    Module for accessing oscilloscopes via PythonIVI library.
+
+    Config options:
+    - driver : str module.class name of driver within the python IVI library
+                   e.g. 'ivi.tektronix.tektronixAWG5000.tektronixAWG5002c'
+    - uri : str unique remote identifier used to connect to instrument.
+                e.g. 'TCPIP0::192.168.1.1::INSTR'
+    """
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
