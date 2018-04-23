@@ -627,9 +627,11 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
                                  'error': result.params['offset'].stderr,
                                  'unit': units[1]}
 
-    result_str_dict['Contrast'] = {'value': ,
-                                 'error': result.params['offset'].stderr,
-                                 'unit': units[1]}
+    result_str_dict['Contrast'] = {'value': (((result.params['offset']+result.params['amplitude']) -
+                                            (result.params['offset']-result.params['amplitude'])) /
+                                            (result.params['offset']+result.params['amplitude'])*100),
+                                   'error': -1,
+                                   'unit': '\%'}
 
     result.result_str_dict = result_str_dict
     return result
