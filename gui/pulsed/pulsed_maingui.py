@@ -49,6 +49,18 @@ from qtwidgets.scientific_spinbox import ScienDSpinBox
 #FIXME: save the length in sample points (bins)
 #FIXME: adjust the length to the bins
 
+predefined_global_parameter_list = [
+    'mw_channel',
+    'gate_count_channel',
+    'sync_trig_channel',
+    'mw_amp',
+    'mw_freq',
+    'channel_amp',
+    'delay_length',
+    'wait_time',
+    'laser_length',
+    'rabi_period',
+    ]
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):
     def __init__(self):
@@ -174,6 +186,7 @@ class PulsedMeasurementGui(GUIBase):
 
     _predefined_methods_to_show = StatusVar('predefined_methods_to_show', [])
     _functions_to_show = StatusVar('functions_to_show', [])
+    _predefined_global_param_values = StatusVar('predefined_global_parameters', {})
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -277,6 +290,21 @@ class PulsedMeasurementGui(GUIBase):
         self._pm.pm_laser_length_Widget.setValue(3.0e-6)
         self._pm.pm_rabi_period_Widget.setValue(200.0e-9)
 
+        for param_name in predefined_global_parameter_list:
+            if param_name in self._predefined_global_param_values:
+                widget = getattr(self._pm, 'pm_' + param_name + '_Widget')
+
+                if hasattr(widget, 'setChecked'):
+                    widget.setChecked(self._predefined_global_param_values[param_name])
+                elif hasattr(widget, 'setValue'):
+                    widget.setValue(self._predefined_global_param_values[param_name])
+                elif hasattr(widget, 'setText'):
+                    widget.setText(self._predefined_global_param_values[param_name])
+                else:
+                    self.log.error('Not possible to get the value from the widget {0},'
+                                   'since it does not have one of the possible access methods!'
+                                   ''.format(param_name))
+
         # connect the menu to the actions:
         self._mw.action_Settings_Block_Generation.triggered.connect(self.show_generator_settings)
         self._mw.action_Predefined_Methods_Config.triggered.connect(self.show_predefined_methods_config)
@@ -313,6 +341,24 @@ class PulsedMeasurementGui(GUIBase):
         """
         self._gs.exec_()
         return
+
+    @_predefined_global_param_values.representer
+    def repr_global_params(self, val):
+        pdict = {}
+        for param_name in predefined_global_parameter_list:
+            widget = getattr(self._pm, 'pm_' + param_name + '_Widget')
+
+            if hasattr(widget, 'isChecked'):
+                pdict[param_name] = widget.isChecked()
+            elif hasattr(widget, 'value'):
+                pdict[param_name] = widget.value()
+            elif hasattr(widget, 'text'):
+                pdict[param_name] = widget.text()
+            else:
+                self.log.error('Not possible to get the value from the widget {0},'
+                               'since it does not have one of the possible access methods!'
+                               ''.format(param_name))
+        return pdict
 
     def _create_function_config(self):
         # Add in the settings menu within the groupbox widget all the available math_functions,
@@ -448,9 +494,7 @@ class PulsedMeasurementGui(GUIBase):
             inspected = inspect.signature(methods_dict[method_name])
             # run through all parameters of the current method and create the widgets
             for param_index, param_name in enumerate(inspected.parameters):
-                if param_name not in ['mw_channel', 'gate_count_channel', 'sync_trig_channel',
-                                      'mw_amp', 'mw_freq', 'channel_amp', 'delay_length',
-                                      'wait_time', 'laser_length', 'rabi_period']:
+                if param_name not in predefined_global_parameter_list:
                     # get default value of the parameter
                     default_val = inspected.parameters[param_name].default
                     if default_val is inspect._empty:
@@ -1145,9 +1189,7 @@ class PulsedMeasurementGui(GUIBase):
                 return
 
         # get global parameters and add them to the dictionary
-        for param_name in ['mw_channel', 'gate_count_channel', 'sync_trig_channel', 'mw_amp',
-                           'mw_freq', 'channel_amp', 'delay_length', 'wait_time', 'laser_length',
-                           'rabi_period']:
+        for param_name in predefined_global_parameter_list:
             input_obj = getattr(self._pm, 'pm_' + param_name + '_Widget')
 
             if hasattr(input_obj, 'isChecked'):
