@@ -16,6 +16,8 @@ Changes/New features:
 * Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
 * Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
+* Added a way to fit the confocal optimizer with a template and specify offset from that. 
+In the process minor bug-fixes on the optimizer and stability improvements.
 * Various stability improvements and minor bug fixes
 
 Config changes:

@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 import time
+import scipy.signal as sig
 
 from logic.generic_logic import GenericLogic
 from core.module import Connector, ConfigOption, StatusVar
@@ -43,6 +44,8 @@ class OptimizerLogic(GenericLogic):
     # declare status vars
     _clock_frequency = StatusVar('clock_frequency', 50)
     return_slowness = StatusVar(default=20)
+    _template_clock_frequency = StatusVar('clock_frequency', 50)
+    template_return_slowness = StatusVar(default=20)
     refocus_XY_size = StatusVar('xy_size', 0.6e-6)
     optimizer_XY_res = StatusVar('xy_resolution', 10)
     refocus_Z_size = StatusVar('z_size', 2e-6)
@@ -52,6 +55,11 @@ class OptimizerLogic(GenericLogic):
     do_surface_subtraction = StatusVar('surface_subtraction', False)
     surface_subtr_scan_offset = StatusVar('surface_subtraction_offset', 1e-6)
     opt_channel = StatusVar('optimization_channel', 0)
+    fit_type = StatusVar('fit_type', 'normal')
+    template_cursor = StatusVar('template_cursor', default=[0, 0, 0, 0])
+    xy_template_image = StatusVar('xy_template_image', np.zeros(1))
+    z_template_data = StatusVar('z_template_data', np.zeros(1))
+    zimage_template_Z_values = StatusVar('zimage_template_Z_values', np.zeros(1))
 
     # "private" signals to keep track of activities here in the optimizer logic
     _sigScanNextXyLine = QtCore.Signal()
@@ -159,10 +167,11 @@ class OptimizerLogic(GenericLogic):
         """
         return self._scanning_device.get_scanner_count_channels()
 
-    def set_clock_frequency(self, clock_frequency):
+    def set_clock_frequency(self, clock_frequency, template_clock_frequency=-1):
         """Sets the frequency of the clock
 
         @param int clock_frequency: desired frequency of the clock
+        @param int template_clock_frequency: clock frequency for the fitting template image
 
         @return int: error code (0:OK, -1:error)
         """
@@ -171,6 +180,8 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             self._clock_frequency = int(clock_frequency)
+            if template_clock_frequency > 0:
+                self._template_clock_frequency = int(template_clock_frequency)
         self.sigClockFrequencyChanged.emit(self._clock_frequency)
         return 0
 
@@ -210,6 +221,13 @@ class OptimizerLogic(GenericLogic):
         else:
             pass  # TODO: throw error
 
+        # if the template has a cursor shift, it needs to be subtracted before scanning
+        if self.fit_type in ('xy_template', 'all_template'):
+            self._initial_pos_x = self._initial_pos_x - self.template_cursor[0]
+            self._initial_pos_y = self._initial_pos_y - self.template_cursor[1]
+        if self.fit_type in ('z_template', 'all_template'):
+            self._initial_pos_z = self._initial_pos_z - self.template_cursor[2]
+
         # Keep track of where the start_refocus was initiated
         self._caller_tag = caller_tag
 
@@ -240,6 +258,8 @@ class OptimizerLogic(GenericLogic):
         """Stops refocus."""
         with self.threadlock:
             self.stopRequested = True
+            if self.stopRequested:
+                self._sigScanNextXyLine.emit()
 
     def _initialize_xy_refocus_image(self):
         """Initialisation of the xy refocus image."""
@@ -249,8 +269,9 @@ class OptimizerLogic(GenericLogic):
         # optimization steps that have occurred.
         x0 = self.optim_pos_x
         y0 = self.optim_pos_y
+        z0 = self.optim_pos_z
 
-        # defining position intervals for refocushttp://www.spiegel.de/
+        # defining position intervals for refocus
         xmin = np.clip(x0 - 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         xmax = np.clip(x0 + 0.5 * self.refocus_XY_size, self.x_range[0], self.x_range[1])
         ymin = np.clip(y0 - 0.5 * self.refocus_XY_size, self.y_range[0], self.y_range[1])
@@ -258,7 +279,7 @@ class OptimizerLogic(GenericLogic):
 
         self._X_values = np.linspace(xmin, xmax, num=self.optimizer_XY_res)
         self._Y_values = np.linspace(ymin, ymax, num=self.optimizer_XY_res)
-        self._Z_values = self.optim_pos_z * np.ones(self._X_values.shape)
+        self._Z_values = z0 * np.ones(self._X_values.shape)
         self._A_values = np.zeros(self._X_values.shape)
         self._return_X_values = np.linspace(xmax, xmin, num=self.optimizer_XY_res)
         self._return_A_values = np.zeros(self._return_X_values.shape)
@@ -270,7 +291,17 @@ class OptimizerLogic(GenericLogic):
         self.xy_refocus_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
         y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
         self.xy_refocus_image[:, :, 1] = y_value_matrix.transpose()
-        self.xy_refocus_image[:, :, 2] = self.optim_pos_z * np.ones((len(self._Y_values), len(self._X_values)))
+        self.xy_refocus_image[:, :, 2] = z0 * np.ones((len(self._Y_values), len(self._X_values)))
+
+        if self._caller_tag == 'xy_template_image' or np.max(self.xy_template_image) == 0:
+            self.xy_template_image = np.zeros((
+                len(self._Y_values),
+                len(self._X_values),
+                3 + len(self.get_scanner_count_channels())))
+            self.xy_template_image[:, :, 0] = np.full((len(self._Y_values), len(self._X_values)), self._X_values)
+            y_value_matrix = np.full((len(self._X_values), len(self._Y_values)), self._Y_values)
+            self.xy_template_image[:, :, 1] = y_value_matrix.transpose()
+            self.xy_template_image[:, :, 2] = z0 * np.ones((len(self._Y_values), len(self._X_values)))
 
     def _initialize_z_refocus_image(self):
         """Initialisation of the z refocus image."""
@@ -290,6 +321,12 @@ class OptimizerLogic(GenericLogic):
             len(self._zimage_Z_values),
             len(self.get_scanner_count_channels())))
         self.z_fit_data = np.zeros(len(self._fit_zimage_Z_values))
+
+        if self._caller_tag == 'z_template_image' or np.max(self.z_template_data) == 0:
+            self.zimage_template_Z_values = np.linspace(zmin-z0, zmax-z0, num=self.optimizer_Z_res)
+            self.z_template_data = np.zeros((
+                len(self.zimage_template_Z_values),
+                len(self.get_scanner_count_channels())))
 
     def _move_to_start_pos(self, start_pos):
         """Moves the scanner from its current position to the start position of the optimizer scan.
@@ -325,9 +362,6 @@ class OptimizerLogic(GenericLogic):
                 self.stopRequested = False
                 self.finish_refocus()
                 self.sigImageUpdated.emit()
-                self.sigRefocusFinished.emit(
-                    self._caller_tag,
-                    [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0][0:n_ch])
                 return
 
         # move to the start of the first line
@@ -375,6 +409,10 @@ class OptimizerLogic(GenericLogic):
 
         s_ch = len(self.get_scanner_count_channels())
         self.xy_refocus_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
+
+        if self._caller_tag == 'xy_template_image':
+            self.xy_template_image[self._xy_scan_line_count, :, 3:3 + s_ch] = line_counts
+
         self.sigImageUpdated.emit()
 
         self._xy_scan_line_count += 1
@@ -384,18 +422,90 @@ class OptimizerLogic(GenericLogic):
         else:
             self._sigCompletedXyOptimizerScan.emit()
 
+    def xy_template_fit(self, xy_axes, data, template):
+
+        # check dimensionality of template against optimizer
+        if np.shape(data) != np.shape(template):
+            self.log.warn('XY template fit: The length of data ({0:d}) and template ({1:d}) are unequal.\n'
+                          'I really hope you know what you are doing here but will calculate the convolution anyways.'
+                          ''.format(len(data), len(template)))
+
+        fit_template = np.flipud(np.fliplr(template))
+        fit_data = data
+
+        # It turns out the best results are achieved when the convolutions fills 
+        # the edges with 70% of the mean of the whole picture.
+        convoluted_image = sig.convolve2d(fit_template,
+                                          fit_data,
+                                          mode='full',
+                                          fillvalue=fit_template.min() + 0.7*(np.mean(fit_template)-fit_template.min())
+                                          )
+
+        # get the dimensions in order
+        (x, y) = xy_axes
+        x0, y0 = self.optimizer_XY_res, self.optimizer_XY_res
+        xc, yc = convoluted_image.shape[0], convoluted_image.shape[1]
+
+        # shift of picture 2 with respect to picture 1
+        max_index = np.array(np.unravel_index(convoluted_image.argmax(), convoluted_image.shape))
+        image_index_shift = [max_index[1] - (xc / 2.)+0.5,
+                             max_index[0] - (yc / 2.)+0.5]
+
+        # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
+        image_shift = [(image_index_shift[0]) / x0 * (x.max() - x.min()),
+                       (image_index_shift[1]) / y0 * (y.max() - y.min())]
+
+        # TODO: This is a quick and dirty way to emulate the output from a fit
+        class _param():
+            best_values = dict()
+            success = False
+
+        results = _param()
+        results.best_values['center_x'] = self.optim_pos_x + image_shift[0]
+        results.best_values['center_y'] = self.optim_pos_y + image_shift[1]
+        # sigma is set to represent an uncertainty of one pixel in the template
+        results.best_values['sigma_x'] = 1 / x0 * (x.max() - x.min())
+        results.best_values['sigma_y'] = 1 / y0 * (y.max() - y.min())
+        results.success = True
+
+        return results
+
     def _set_optimized_xy_from_fit(self):
         """Fit the completed xy optimizer scan and set the optimized xy position."""
+
+        # for acquiring the template image, no fit needs to be done, so return the initial position
+        if self._caller_tag == 'xy_template_image':
+            self.optim_pos_x = self._initial_pos_x
+            self.optim_pos_y = self._initial_pos_y
+            self.optim_sigma_x = 0.
+            self.optim_sigma_y = 0.
+
+            # emit image updated signal so crosshair can be updated from this fit
+            self.sigImageUpdated.emit()
+            self._sigDoNextOptimizationStep.emit()
+            return
+
         fit_x, fit_y = np.meshgrid(self._X_values, self._Y_values)
         xy_fit_data = self.xy_refocus_image[:, :, 3].ravel()
         axes = np.empty((len(self._X_values) * len(self._Y_values), 2))
         axes = (fit_x.flatten(), fit_y.flatten())
-        result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
-            xy_axes=axes,
-            data=xy_fit_data,
-            estimator=self._fit_logic.estimate_twoDgaussian_MLE
-        )
-        # print(result_2D_gaus.fit_report())
+
+        if self.fit_type not in ('xy_template', 'all_template'):
+            result_2D_gaus = self._fit_logic.make_twoDgaussian_fit(
+                xy_axes=axes,
+                data=xy_fit_data,
+                estimator=self._fit_logic.estimate_twoDgaussian_MLE
+            )
+        else:
+            xy_fit_data = self.xy_refocus_image[:, :, 3 + self.opt_channel]
+            xy_template_data = self.xy_template_image[:, :, 3 + self.opt_channel]
+
+            result_2D_gaus = self.xy_template_fit(
+                xy_axes=axes,
+                data=xy_fit_data,
+                template=xy_template_data
+            )
+            # print(result_2D_gaus.fit_report())
 
         if result_2D_gaus.success is False:
             self.log.error('Error: 2D Gaussian Fit was not successfull!.')
@@ -424,38 +534,93 @@ class OptimizerLogic(GenericLogic):
         self.sigImageUpdated.emit()
         self._sigDoNextOptimizationStep.emit()
 
+    def z_template_fit(self, x_axis, data, template):
+
+        # check dimensionality of template against optimizer
+        if len(data) != len(template):
+            self.log.warn('Z template fit: The length of data ({0:d}) and template ({1:d}) are unequal.\n'
+                          'I really hope you know what you are doing here but will calculate the convolution anyways.'
+                          ''.format(len(data), len(template)))
+
+        fit_template = template
+        fit_data = np.flip(data, 0)
+
+        convoluted = sig.convolve(fit_data,
+                                  fit_template,
+                                  mode='full'
+                                  )
+
+        # shift of picture 2 with respect to picture 1
+        max_index = convoluted.argmax()
+
+        template_size = len(fit_template)
+        conv_size = len(convoluted)
+
+        # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
+        z_index_shift = max_index - (conv_size / 2.)+0.5
+        z_shift = z_index_shift / template_size * (x_axis.max() - x_axis.min())
+
+        # TODO: This is a quick and dirty way to emulate the output from a fit
+        class _param():
+            best_values = dict()
+            success = False
+            params = dict()
+
+        results = _param()
+        results.best_values['center'] = self.optim_pos_z - z_shift
+        results.best_values['sigma'] = 0
+        results.success = True
+
+        return results
+
     def do_z_optimization(self):
         """ Do the z axis optimization."""
         # z scaning
         self._scan_z_line()
 
-        # z-fit
-        # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
-        if self.do_surface_subtraction:
-            adjusted_param = {}
-            adjusted_param['offset'] = {
-                'value': 1e-12,
-                'min': -self.z_refocus_line[:, self.opt_channel].max(),
-                'max': self.z_refocus_line[:, self.opt_channel].max()
-            }
-            result = self._fit_logic.make_gausspeaklinearoffset_fit(
+        # the template does not need a fit
+        if self._caller_tag == 'z_template_image':
+            self.optim_pos_z = self._initial_pos_z
+            self.optim_sigma_z = 0.
+            self.sigImageUpdated.emit()
+            self._sigDoNextOptimizationStep.emit()
+            return
+
+        if self.fit_type in ('z_template', 'all_template'):
+            result = self.z_template_fit(
                 x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line[:, self.opt_channel],
-                add_params=adjusted_param)
+                template=self.z_template_data[:, self.opt_channel]
+            )
         else:
-            if any(self.use_custom_params.values()):
+
+            # z-fit
+            # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
+            if self.do_surface_subtraction:
+                adjusted_param = {}
+                adjusted_param['offset'] = {
+                    'value': 1e-12,
+                    'min': -self.z_refocus_line[:, self.opt_channel].max(),
+                    'max': self.z_refocus_line[:, self.opt_channel].max()
+                }
                 result = self._fit_logic.make_gausspeaklinearoffset_fit(
                     x_axis=self._zimage_Z_values,
                     data=self.z_refocus_line[:, self.opt_channel],
-                    # Todo: It is required that the changed parameters are given as a dictionary or parameter object
-                    add_params=None)
+                    add_params=adjusted_param)
             else:
-                result = self._fit_logic.make_gaussianlinearoffset_fit(
-                    x_axis=self._zimage_Z_values,
-                    data=self.z_refocus_line[:, self.opt_channel],
-                    units='m',
-                    estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
-                    )
+                if any(self.use_custom_params.values()):
+                    result = self._fit_logic.make_gausspeaklinearoffset_fit(
+                        x_axis=self._zimage_Z_values,
+                        data=self.z_refocus_line[:, self.opt_channel],
+                        # Todo: It is required that the changed parameters are given as a dictionary or parameter object
+                        add_params=None)
+                else:
+                    result = self._fit_logic.make_gaussianlinearoffset_fit(
+                        x_axis=self._zimage_Z_values,
+                        data=self.z_refocus_line[:, self.opt_channel],
+                        units='m',
+                        estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
+                        )
         self.z_params = result.params
 
         if result.success is False:
@@ -471,9 +636,15 @@ class OptimizerLogic(GenericLogic):
                 if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     self.optim_sigma_z = result.best_values['sigma']
-                    gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
-                    self.z_fit_data = gauss.eval(
-                        x=self._fit_zimage_Z_values, params=result.params)
+
+                    # for the template fit, the plot of the fit is just the template
+                    if self.fit_type in ('z_template', 'all_template'):
+                        self.z_fit_data = self.z_template_data[:, self.opt_channel]
+                    # for a normal fit, sample the function and plot it
+                    else:
+                        gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
+                        self.z_fit_data = gauss.eval(
+                            x=self._fit_zimage_Z_values, params=result.params)
                 else:  # new pos is too far away
                     # checks if new pos is too high
                     self.optim_sigma_z = 0.
@@ -495,7 +666,20 @@ class OptimizerLogic(GenericLogic):
 
     def finish_refocus(self):
         """ Finishes up and releases hardware after the optimizer scans."""
+
+        n_ch = len(self._scanning_device.get_scanner_axes())
+
         self.kill_scanner()
+
+        if self.fit_type in ('xy_template', 'all_template'):
+            self._initial_pos_x += self.template_cursor[0]
+            self._initial_pos_y += self.template_cursor[1]
+            self.optim_pos_x += self.template_cursor[0]
+            self.optim_pos_y += self.template_cursor[1]
+
+        if self.fit_type in ('z_template', 'all_template'):
+            self._initial_pos_z += self.template_cursor[2]
+            self.optim_pos_z += self.template_cursor[2]
 
         self.log.info(
                 'Optimised from ({0:.3e},{1:.3e},{2:.3e}) to local '
@@ -511,14 +695,17 @@ class OptimizerLogic(GenericLogic):
         # caller_tag
         self.sigRefocusFinished.emit(
             self._caller_tag,
-            [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0])
+            [self.optim_pos_x, self.optim_pos_y, self.optim_pos_z, 0][0:n_ch])
 
     def _scan_z_line(self):
         """Scans the z line for refocus."""
 
+        x0 = self.optim_pos_x
+        y0 = self.optim_pos_y
+
         # Moves to the start value of the z-scan
         status = self._move_to_start_pos(
-            [self.optim_pos_x, self.optim_pos_y, self._zimage_Z_values[0]])
+            [x0, y0, self._zimage_Z_values[0]])
         if status < 0:
             self.log.error('Error during move to starting point.')
             self.stop_refocus()
@@ -528,8 +715,8 @@ class OptimizerLogic(GenericLogic):
 
         # defining trace of positions for z-refocus
         scan_z_line = self._zimage_Z_values
-        scan_x_line = self.optim_pos_x * np.ones(self._zimage_Z_values.shape)
-        scan_y_line = self.optim_pos_y * np.ones(self._zimage_Z_values.shape)
+        scan_x_line = x0 * np.ones(self._zimage_Z_values.shape)
+        scan_y_line = y0 * np.ones(self._zimage_Z_values.shape)
 
         if n_ch <= 3:
             line = np.vstack((scan_x_line, scan_y_line, scan_z_line)[0:n_ch])
@@ -546,12 +733,16 @@ class OptimizerLogic(GenericLogic):
         # Set the data
         self.z_refocus_line = line_counts
 
+        if self._caller_tag == 'z_template_image':
+            self.z_template_data = line_counts
+
+
         # If subtracting surface, perform a displaced depth line scan
         if self.do_surface_subtraction:
             # Move to start of z-scan
             status = self._move_to_start_pos([
-                self.optim_pos_x + self.surface_subtr_scan_offset,
-                self.optim_pos_y,
+                x0 + self.surface_subtr_scan_offset,
+                y0,
                 self._zimage_Z_values[0]])
             if status < 0:
                 self.log.error('Error during move to starting point.')
@@ -578,14 +769,18 @@ class OptimizerLogic(GenericLogic):
             # surface-subtracted line scan data is the difference
             self.z_refocus_line = line_counts - line_bg_counts
 
+            if self._caller_tag == 'z_template_image':
+                self.z_template_data = line_counts - line_bg_counts
+
     def start_scanner(self):
         """Setting up the scanner device.
 
         @return int: error code (0:OK, -1:error)
         """
         self.module_state.lock()
+        clock_frequency = self._template_clock_frequency if self._caller_tag in ('xy_template_image', 'z_template_image') else self._clock_frequency
         clock_status = self._scanning_device.set_up_scanner_clock(
-            clock_frequency=self._clock_frequency)
+            clock_frequency=clock_frequency)
         if clock_status < 0:
             self.module_state.unlock()
             return -1
@@ -619,6 +814,25 @@ class OptimizerLogic(GenericLogic):
     def _do_next_optimization_step(self):
         """Handle the steps through the specified optimization sequence
         """
+        # If XY template image requested, just take a XY scan and save it as template image
+        if self._caller_tag == 'xy_template_image':
+            if self._optimization_step >= 1:
+                self._sigFinishedAllOptimizationSteps.emit()
+            else:
+                self._optimization_step += 1
+                self._initialize_xy_refocus_image()
+                self._sigScanNextXyLine.emit()
+            return
+
+        # If Z template image requested, just take a Z scan and save it as template data
+        if self._caller_tag == 'z_template_image':
+            if self._optimization_step >= 1:
+                self._sigFinishedAllOptimizationSteps.emit()
+            else:
+                self._optimization_step += 1
+                self._initialize_z_refocus_image()
+                self._sigScanZLine.emit()
+            return
 
         # At the end fo the sequence, finish the optimization
         if self._optimization_step == len(self.optimization_sequence):
