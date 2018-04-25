@@ -664,7 +664,7 @@ class PulsedMasterLogic(GenericLogic):
         if self.status_dict['sampload_busy'] and not self.status_dict['sampling_sequence_busy']:
             if ensemble is None:
                 self.status_dict['sampload_busy'] = False
-                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             else:
                 self.load_ensemble(ensemble.name)
         return
@@ -691,7 +691,7 @@ class PulsedMasterLogic(GenericLogic):
         if self.status_dict['sampload_busy']:
             if sequence is None:
                 self.status_dict['sampload_busy'] = False
-                self.sigLoadedAssetUpdated.emit(self.loaded_asset)
+                self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             else:
                 self.load_sequence(sequence.name)
         return

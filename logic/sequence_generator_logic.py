@@ -62,8 +62,19 @@ class SequenceGeneratorLogic(GenericLogic):
     _overhead_bytes = ConfigOption('overhead_bytes', default=0, missing='nothing')
 
     # status vars
-    # Descriptor to indicate the laser channel
-    _laser_channel = StatusVar(default='d_ch1')
+    # Global parameters describing the channel usage and global parameters for predefined methods.
+    _sampling_settings = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
+                                                        ('sync_channel', ''),
+                                                        ('gate_channel', ''),
+                                                        ('microwave_channel', 'a_ch1'),
+                                                        ('microwave_frequency', 2.87e9),
+                                                        ('microwave_amplitude', 0.0),
+                                                        ('rabi_period', 100e-9),
+                                                        ('laser_length', 3e-6),
+                                                        ('laser_delay', 500e-9),
+                                                        ('wait_time', 1e-6),
+                                                        ('analog_trigger_voltage', 0.0)]))
+
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PusleSequence) are saved in
     # these dictionaries. The keys are the names.
     _saved_pulse_blocks = StatusVar(default=OrderedDict())
@@ -105,9 +116,6 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.additional_methods_dir = None
                 self.log.error('Specified path "{0}" for import of additional generate methods '
                                'does not exist.'.format(config['additional_methods_dir']))
-
-        # a dictionary with all predefined generator methods and measurement sequence names
-        self.__generate_methods = None
 
         # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
@@ -321,6 +329,28 @@ class SequenceGeneratorLogic(GenericLogic):
                     self.log.error('Something went wrong while setting new activation config.')
                     self.__activation_config = ('', set_config)
 
+                # search the sampling_settings for channel specifiers and adjust them if they are
+                # no longer valid
+                changed_settings = dict()
+                ana_chnls = sorted(self.analog_channels)
+                digi_chnls = sorted(self.digital_channels)
+                for name in [setting for setting in self.sampling_settings if
+                             setting.endswith('_channel')]:
+                    channel = self.sampling_settings[name]
+                    if isinstance(channel, str) and channel not in self.__activation_config[1]:
+                        if channel.startswith('a'):
+                            new_channel = ana_chnls[0] if ana_chnls else digi_chnls[0]
+                        elif channel.startswith('d'):
+                            new_channel = digi_chnls[0] if digi_chnls else ana_chnls[0]
+                        else:
+                            continue
+
+                        if new_channel is not None:
+                            self.log.warning('Change of activation config caused sampling_setting '
+                                             '"{0}" to be changed to "{1}".'.format(name,
+                                                                                    new_channel))
+                            changed_settings[name] = new_channel
+
             if 'sample_rate' in settings_dict:
                 self.__sample_rate = self.pulsegenerator().set_sample_rate(
                     float(settings_dict['sample_rate']))
@@ -345,6 +375,12 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # emit update signal for master (GUI or other logic module)
         self.sigGeneratorSettingsUpdated.emit(self.pulse_generator_settings)
+        # Apply potential changes to sampling_settings
+        try:
+            if changed_settings:
+                self.sampling_settings = changed_settings
+        except UnboundLocalError:
+            pass
         return self.pulse_generator_settings
 
     @QtCore.Slot()
@@ -448,20 +484,22 @@ class SequenceGeneratorLogic(GenericLogic):
                                                             self.sampling_settings)
 
         # The assumption is that in the directory predefined_methods, there are
-        # *.py files, which contain only methods!
+        # *.py files, which contain only methods (excluding basic_methods.py)!
         path = os.path.join(get_main_dir(), 'logic', 'predefined_methods')
         filename_list = [name[:-3] for name in os.listdir(path) if
-                         os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
+                         os.path.isfile(os.path.join(path, name)) and name.endswith(
+                             '.py') and name != 'basic_methods.py']
 
         # Also attach methods from the non-default additional methods directory if defined in config
         if self._additional_methods_dir:
             # attach to path
             sys.path.append(self._additional_methods_dir)
             path = self._additional_methods_dir
-            filename_list.extend([name[:-3] for name in os.listdir(path) if
-                                 os.path.isfile(os.path.join(path, name)) and name.endswith('.py')])
+            additional_filename_list = [name[:-3] for name in os.listdir(path) if
+                                        os.path.isfile(os.path.join(path, name)) and name.endswith(
+                                            '.py')]
 
-        # Import and attach methods to self
+        # Import and attach methods from default directory to PulsedObjectGenerator class
         for filename in filename_list:
             mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
             # To allow changes in predefined methods during runtime by simply reloading the module.
@@ -471,14 +509,31 @@ class SequenceGeneratorLogic(GenericLogic):
                     # Check for callable function or method:
                     ref = getattr(mod, method)
                     if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
-                        # Bind the method as an attribute to self
-                        setattr(self, method, ref)
-                        # Add method to dictionary if it is a generator method
-                        if method.startswith('generate_'):
-                            self.__generate_methods[method[9:]] = getattr(self, method)
+                        # Bind the method to PulsedObjectGenerator
+                        self._pog.attach_method(ref)
                 except:
-                    self.log.error('It was not possible to import element {0} from {1} into '
-                                   'SequenceGenerationLogic.'.format(method, filename))
+                    self.log.error('It was not possible to bind "{0}" from "{1}" to '
+                                   'PulsedObjectGenerator.'.format(method, filename))
+                    raise
+
+        # Import and attach methods from additional directory to PulsedObjectGenerator class
+        if self._additional_methods_dir:
+            for filename in additional_filename_list:
+                mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
+                # To allow changes in predefined methods during runtime by simply reloading the
+                # module.
+                importlib.reload(mod)
+                for method in dir(mod):
+                    try:
+                        # Check for callable function or method:
+                        ref = getattr(mod, method)
+                        if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
+                            # Bind the method to PulsedObjectGenerator
+                            self._pog.attach_method(ref)
+                    except:
+                        self.log.error('It was not possible to bind "{0}" from "{1}" to '
+                                       'PulsedObjectGenerator.'.format(method, filename))
+                        raise
         return
 
     def _read_settings_from_device(self):
@@ -551,9 +606,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def sampling_settings(self):
-        settings_dict = dict()
-        settings_dict['laser_channel'] = self._laser_channel
-        return settings_dict
+        return self._sampling_settings.copy()
 
     @sampling_settings.setter
     def sampling_settings(self, settings_dict):
@@ -593,16 +646,46 @@ class SequenceGeneratorLogic(GenericLogic):
             else:
                 settings_dict.update(kwargs)
 
-            # Set laser channel if present
+            # Notify if new keys have been added
+            for key in settings_dict:
+                if key not in self._sampling_settings:
+                    self.log.warning('Setting by name "{0}" not present in sampling_settings.\n'
+                                     'Will add it but this could lead to unwanted effects.'
+                                     ''.format(key))
+            # Sanity checks
             if 'laser_channel' in settings_dict:
                 if settings_dict['laser_channel'] not in self.__activation_config[1]:
-                    self.log.error('Unable to set laser channel "{0}".\nLaser channel to set is '
-                                   'not part of the current channel activation config ({1}).'
+                    self.log.error('Unable to set laser channel "{0}".\nChannel to set is not part '
+                                   'of the current channel activation config ({1}).'
                                    ''.format(settings_dict['laser_channel'],
                                              self.__activation_config[1]))
-                else:
-                    self._laser_channel = settings_dict['laser_channel']
+                    del settings_dict['laser_channel']
+            if settings_dict.get('sync_channel'):
+                if settings_dict['sync_channel'] not in self.__activation_config[1]:
+                    self.log.error('Unable to set sync channel "{0}".\nChannel to set is not part '
+                                   'of the current channel activation config ({1}).'
+                                   ''.format(settings_dict['sync_channel'],
+                                             self.__activation_config[1]))
+                    del settings_dict['sync_channel']
+            if settings_dict.get('gate_channel'):
+                if settings_dict['gate_channel'] not in self.__activation_config[1]:
+                    self.log.error('Unable to set gate channel "{0}".\nChannel to set is not part '
+                                   'of the current channel activation config ({1}).'
+                                   ''.format(settings_dict['gate_channel'],
+                                             self.__activation_config[1]))
+                    del settings_dict['gate_channel']
+            if settings_dict.get('microwave_channel'):
+                if settings_dict['microwave_channel'] not in self.__activation_config[1]:
+                    self.log.error('Unable to set microwave channel "{0}".\nChannel to set is not '
+                                   'part of the current channel activation config ({1}).'
+                                   ''.format(settings_dict['microwave_channel'],
+                                             self.__activation_config[1]))
+                    del settings_dict['microwave_channel']
 
+            # update settings dict
+            self._sampling_settings.update(settings_dict)
+            # update PulsedObjectGenerator
+            self._pog.sampling_settings = self._sampling_settings
         else:
             self.log.error('Unable to apply new sampling settings.\n'
                            'SequenceGeneratorLogic is busy generating a waveform/sequence.')
@@ -896,23 +979,27 @@ class SequenceGeneratorLogic(GenericLogic):
         @return:
         """
         gen_method = self.generate_methods[predefined_sequence_name]
+        gen_params = self.generate_method_params[predefined_sequence_name]
         # match parameters to method and throw out unwanted ones
-        method_params = inspect.signature(gen_method).parameters
-        thrown_out_params = list()
-        for param in kwargs_dict:
-            if param not in method_params:
-                thrown_out_params.append(param)
+        thrown_out_params = [param for param in kwargs_dict if param not in gen_params]
         for param in thrown_out_params:
             del kwargs_dict[param]
-        if len(thrown_out_params) > 0:
+        if thrown_out_params:
             self.log.debug('Unused params during predefined sequence generation "{0}":\n'
                            '{1}'.format(predefined_sequence_name, thrown_out_params))
         try:
-            gen_method(**kwargs_dict)
+            blocks, ensembles, sequences = gen_method(**kwargs_dict)
         except:
             self.log.error('Generation of predefined sequence "{0}" failed.'
                            ''.format(predefined_sequence_name))
-            return
+            raise
+        # Save objects
+        for block in blocks:
+            self.save_block(block)
+        for ensemble in ensembles:
+            self.save_ensemble(ensemble)
+        for sequence in sequences:
+            self.save_sequence(sequence)
         self.sigPredefinedSequenceGenerated.emit(predefined_sequence_name)
         return
 
