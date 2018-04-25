@@ -82,7 +82,7 @@ class PulsedObjectGenerator:
         names = sorted([name for name in dir(self) if name.startswith('generate_')])
         methods = OrderedDict()
         for name in names:
-            methods[name] = getattr(self, name)
+            methods[name[9:]] = getattr(self, name)
         return methods
 
     @property
@@ -120,11 +120,13 @@ class PulsedObjectGenerator:
 
     @property
     def sync_channel(self):
-        return self._sampling_settings.get('sync_channel')
+        channel = self._sampling_settings.get('sync_channel')
+        return None if channel == '' else channel
 
     @property
     def gate_channel(self):
-        return self._sampling_settings.get('gate_channel')
+        channel = self._sampling_settings.get('gate_channel')
+        return None if channel == '' else channel
 
     @property
     def analog_trigger_voltage(self):
@@ -136,7 +138,8 @@ class PulsedObjectGenerator:
 
     @property
     def microwave_channel(self):
-        return self._sampling_settings.get('microwave_channel')
+        channel = self._sampling_settings.get('microwave_channel')
+        return None if channel == '' else channel
 
     @property
     def microwave_frequency(self):
