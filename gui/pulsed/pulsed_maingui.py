@@ -867,7 +867,7 @@ class PulsedMeasurementGui(GUIBase):
         editor.
         """
         # create all GUI elements and check all boxes listed in the methods to show
-        for method_name in self.pulsedmasterlogic().generate_methods:
+        for method_name in sorted(self.pulsedmasterlogic().generate_methods):
             # create checkboxes for the config dialogue
             name_checkbox = 'checkbox_' + method_name
             setattr(self._pm_cfg, name_checkbox, QtWidgets.QCheckBox(self._pm_cfg.scrollArea))
@@ -950,7 +950,8 @@ class PulsedMeasurementGui(GUIBase):
         """
         Initializes the GUI elements for the predefined methods
         """
-        for method_name, method in self.pulsedmasterlogic().generate_methods.items():
+        method_params = self.pulsedmasterlogic().generate_method_params
+        for method_name in sorted(self.pulsedmasterlogic().generate_methods):
             # Create the widgets for the predefined methods dialogue
             # Create GroupBox for the method to reside in
             groupBox = QtWidgets.QGroupBox(self._pm)
@@ -969,66 +970,52 @@ class PulsedMeasurementGui(GUIBase):
             samplo_button.clicked.connect(self.samplo_predefined_clicked)
             gridLayout.addWidget(gen_button, 0, 0, 1, 1)
             gridLayout.addWidget(samplo_button, 1, 0, 1, 1)
-            # inspect current method to extract the parameters
-            inspected = inspect.signature(method)
+
             # run through all parameters of the current method and create the widgets
-            for param_index, param_name in enumerate(inspected.parameters):
-                if param_name == 'self':
-                    continue
-                if param_name not in ['mw_channel', 'gate_count_channel', 'sync_trig_channel',
-                                      'mw_amp', 'mw_freq', 'channel_amp', 'delay_length',
-                                      'wait_time', 'laser_length', 'rabi_period']:
-                    # get default value of the parameter
-                    default_val = inspected.parameters[param_name].default
-                    if default_val is inspect._empty:
-                        self.log.error('The method "{0}" in the logic has an argument "{1}" without'
-                                       ' a default value!\nAssign a default value to that, '
-                                       'otherwise a type estimation is not possible!\n'
-                                       'Creation of the viewbox aborted.'
-                                       ''.format('generate_' + method_name, param_name))
-                        return
+            for param_index, (param_name, param) in enumerate(method_params.items()):
                     # create a label for the parameter
                     param_label = QtWidgets.QLabel(groupBox)
                     param_label.setText(param_name)
                     # create proper input widget for the parameter depending on the type of default_val
-                    if type(default_val) is bool:
+                    if param['type'] is bool:
                         input_obj = QtWidgets.QCheckBox(groupBox)
-                        input_obj.setChecked(default_val)
-                    elif type(default_val) is float:
+                        input_obj.setChecked(param['default'])
+                    elif param['type'] is float:
                         input_obj = ScienDSpinBox(groupBox)
                         input_obj.setMaximum(np.inf)
                         input_obj.setMinimum(-np.inf)
-                        if 'amp' in param_name:
+                        if 'amp' in param_name or 'volt' in param_name:
                             input_obj.setSuffix('V')
                         elif 'freq' in param_name:
                             input_obj.setSuffix('Hz')
                         elif 'length' in param_name or 'time' in param_name or 'period' in param_name or 'tau' in param_name:
                             input_obj.setSuffix('s')
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                        input_obj.setValue(default_val)
-                    elif type(default_val) is int:
+                        input_obj.setValue(param['default'])
+                    elif param['type'] is int:
                         input_obj = QtWidgets.QSpinBox(groupBox)
                         input_obj.setMaximum(2**31 - 1)
                         input_obj.setMinimum(-2**31 + 1)
-                        input_obj.setValue(default_val)
-                    elif type(default_val) is str:
+                        input_obj.setValue(param['default'])
+                    elif param['type'] is str:
                         input_obj = QtWidgets.QLineEdit(groupBox)
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                        input_obj.setText(default_val)
+                        input_obj.setText(param['default'])
                     else:
-                        self.log.error('The method "{0}" in the logic has an argument "{1}" with is not'
-                                       ' of the valid types str, float, int or bool!\nChoose one of '
-                                       'those default values! Creation of the viewbox aborted.'
+                        self.log.error('The predefined method "{0}" has an argument "{1}" which is '
+                                       'has no default argument or an invalid type (str, float, '
+                                       'int or bool allowed)!\nCreation of the viewbox aborted.'
                                        ''.format('generate_' + method_name, param_name))
+                        continue
                     # Adjust size policy
                     input_obj.setMinimumWidth(75)
                     input_obj.setMaximumWidth(100)
-                    gridLayout.addWidget(param_label, 0, param_index+1, 1, 1)
-                    gridLayout.addWidget(input_obj, 1, param_index+1, 1, 1)
+                    gridLayout.addWidget(param_label, 0, param_index + 1, 1, 1)
+                    gridLayout.addWidget(input_obj, 1, param_index + 1, 1, 1)
                     setattr(self._pm, method_name + '_param_' + param_name + '_Widget', input_obj)
             h_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding,
                                              QtWidgets.QSizePolicy.Minimum)
-            gridLayout.addItem(h_spacer, 1, param_index+2, 1, 1)
+            gridLayout.addItem(h_spacer, 1, param_index + 2, 1, 1)
 
             # attach the GroupBox widget to the predefined methods widget.
             setattr(self._pm, method_name + '_GroupBox', groupBox)
