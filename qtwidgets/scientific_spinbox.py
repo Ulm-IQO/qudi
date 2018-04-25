@@ -976,8 +976,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__value = 0
-        self.__minimum = 2 ** 63 - 1  # Use a 64bit integer size by default.
-        self.__maximum = -2 ** 63  # Use a 64bit integer size by default.
+        self.__minimum = -2 ** 63  # Use a 64bit integer size by default.
+        self.__maximum = 2 ** 63 - 1  # Use a 64bit integer size by default.
         self.__prefix = ''
         self.__suffix = ''
         self.__singleStep = 1
