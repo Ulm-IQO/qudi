@@ -92,7 +92,10 @@ class PulsedObjectGenerator:
             param_dict = dict()
             signature_params = inspect.signature(method).parameters
             for name, param in signature_params.items():
-                param_dict[name] = {'type': type(param.default), 'default': param.default}
+                if param.default is param.empty:
+                    param_dict[name] = {'type': None, 'default': None}
+                else:
+                    param_dict[name] = {'type': type(param.default), 'default': param.default}
             methods[method_name] = param_dict
         return methods
 
