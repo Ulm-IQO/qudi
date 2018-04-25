@@ -32,7 +32,7 @@ from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
 # FIXME: Display the Pulse
@@ -511,7 +511,14 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     def _disconnect_predefined_methods_tab_signals(self):
-        pass
+        for combobox in self._channel_selection_comboboxes:
+            combobox.currentIndexChanged.disconnect()
+        for widget in self._global_param_widgets:
+            if hasattr(widget, 'isChecked'):
+                widget.stateChanged.disconnect()
+            else:
+                widget.editingFinished.disconnect()
+        return
 
     def _disconnect_logic_signals(self):
         # Disconnect update signals from pulsed_master_logic
@@ -915,24 +922,30 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     def _activate_predefined_methods_ui(self):
         # Set ranges for the global parameters and default values
-        self._pm.pm_mw_amp_Widget.setRange(0, np.inf)
-        self._pm.pm_mw_freq_Widget.setRange(0, np.inf)
-        self._pm.pm_channel_amp_Widget.setRange(0, np.inf)
-        self._pm.pm_delay_length_Widget.setRange(0, np.inf)
-        self._pm.pm_wait_time_Widget.setRange(0, np.inf)
-        self._pm.pm_laser_length_Widget.setRange(0, np.inf)
-        self._pm.pm_rabi_period_Widget.setRange(0, np.inf)
-
-        self._pm.pm_mw_amp_Widget.setValue('0.125')
-        self._pm.pm_mw_freq_Widget.setValue('2.87e6')
-        self._pm.pm_channel_amp_Widget.setValue(0)
-        self._pm.pm_delay_length_Widget.setValue('500.0e-9')
-        self._pm.pm_wait_time_Widget.setValue('1.5e-6')
-        self._pm.pm_laser_length_Widget.setValue('3.0e-6')
-        self._pm.pm_rabi_period_Widget.setValue('200.0e-9')
+        # self._pm.pm_mw_amp_Widget.setRange(0, np.inf)
+        # self._pm.pm_mw_freq_Widget.setRange(0, np.inf)
+        # self._pm.pm_channel_amp_Widget.setRange(0, np.inf)
+        # self._pm.pm_delay_length_Widget.setRange(0, np.inf)
+        # self._pm.pm_wait_time_Widget.setRange(0, np.inf)
+        # self._pm.pm_laser_length_Widget.setRange(0, np.inf)
+        # self._pm.pm_rabi_period_Widget.setRange(0, np.inf)
+        #
+        # self._pm.pm_mw_amp_Widget.setValue('0.125')
+        # self._pm.pm_mw_freq_Widget.setValue('2.87e6')
+        # self._pm.pm_channel_amp_Widget.setValue(0)
+        # self._pm.pm_delay_length_Widget.setValue('500.0e-9')
+        # self._pm.pm_wait_time_Widget.setValue('1.5e-6')
+        # self._pm.pm_laser_length_Widget.setValue('3.0e-6')
+        # self._pm.pm_rabi_period_Widget.setValue('200.0e-9')
 
         # Contraint some widgets by hardware constraints
         self._pm_apply_hardware_constraints()
+
+        # Dynamically create GUI elements for global parameters
+        self._channel_selection_comboboxes = list()  # List of created channel selection ComboBoxes
+        self._global_param_widgets = list()  # List of all other created global parameter widgets
+        self._create_pm_global_params()
+        self.sampling_settings_updated(self.pulsedmasterlogic().sampling_settings)
 
         # Dynamically create GUI elements for predefined methods
         self._create_predefined_methods()
@@ -945,6 +958,96 @@ class PulsedMeasurementGui(GUIBase):
     def _pm_apply_hardware_constraints(self):
         # TODO: Implement
         pass
+
+    def _create_pm_global_params(self):
+        """
+        Create GUI elements for global parameters of sequence generation
+        """
+        col_count = 0
+        row_count = 1
+        combo_count = 0
+        for param, value in self.pulsedmasterlogic().sampling_settings.items():
+            # Do not create widget for laser_channel since this widget is already part of the pulse
+            # editor tab.
+            if param == 'laser_channel':
+                continue
+
+            # Create ComboBoxes for parameters ending on '_channel' to only be able to select
+            # active channels. Also save references to those widgets in a list for easy access in
+            # case of a change of channel activation config.
+            if param.endswith('_channel') and (value is None or type(value) is str):
+                widget = QtWidgets.QComboBox()
+                widget.setObjectName('global_param_' + param)
+                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+                widget.addItem('')
+                widget.addItems(sorted(self.pulsedmasterlogic().digital_channels))
+                widget.addItems(sorted(self.pulsedmasterlogic().analog_channels))
+                index = widget.findText(value)
+                if index >= 0:
+                    widget.setCurrentIndex(index)
+                label = QtWidgets.QLabel(param + ':')
+                label.setAlignment(QtCore.Qt.AlignRight)
+                self._pm.global_param_gridLayout.addWidget(label, 0, combo_count, QtCore.Qt.AlignVCenter)
+                self._pm.global_param_gridLayout.addWidget(widget, 0, combo_count + 1)
+                combo_count += 2
+                self._channel_selection_comboboxes.append(widget)
+                widget.currentIndexChanged.connect(self.sampling_settings_changed)
+                continue
+
+            # Create all other widgets for int, float, bool and str and save them in a list for
+            # later access. Also connect edited signals.
+            if isinstance(value, str) or value is None:
+                if value is None:
+                    value = ''
+                widget = QtWidgets.QLineEdit()
+                widget.setText(value)
+                widget.editingFinished.connect(self.sampling_settings_changed)
+            elif type(value) is int:
+                widget = ScienSpinBox()
+                widget.setValue(value)
+                widget.editingFinished.connect(self.sampling_settings_changed)
+            elif type(value) is float:
+                widget = ScienDSpinBox()
+                widget.setValue(value)
+                if 'amp' in param or 'volt' in param:
+                    widget.setSuffix('V')
+                elif 'freq' in param:
+                    widget.setSuffix('Hz')
+                elif 'tau' in param or 'period' in param or 'time' in param or 'delay' in param or 'laser_length' in param:
+                    widget.setSuffix('s')
+                widget.editingFinished.connect(self.sampling_settings_changed)
+            elif type(value) is bool:
+                widget = QtWidgets.QCheckBox()
+                widget.setChecked(value)
+                widget.stateChanged.connect(self.sampling_settings_changed)
+
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
+
+            # Create label
+            label = QtWidgets.QLabel(param + ':')
+            label.setAlignment(QtCore.Qt.AlignRight)
+
+            # Rename widget to a naming convention
+            widget.setObjectName('global_param_' + param)
+
+            # Save widget in list
+            self._global_param_widgets.append(widget)
+
+            # Add widget to GUI layout
+            if col_count > 4:
+                col_count = 0
+                row_count += 1
+            self._pm.global_param_gridLayout.addWidget(label, row_count, col_count, QtCore.Qt.AlignVCenter)
+            self._pm.global_param_gridLayout.addWidget(widget, row_count, col_count + 1)
+            col_count += 2
+        spacer = QtWidgets.QSpacerItem(20, 0,
+                                       QtWidgets.QSizePolicy.Expanding,
+                                       QtWidgets.QSizePolicy.Minimum)
+        if row_count > 1:
+            self._pm.global_param_gridLayout.addItem(spacer, 1, 6)
+        else:
+            self._pm.global_param_gridLayout.addItem(spacer, 0, max(col_count, combo_count))
+        return
 
     def _create_predefined_methods(self):
         """
@@ -972,30 +1075,26 @@ class PulsedMeasurementGui(GUIBase):
             gridLayout.addWidget(samplo_button, 1, 0, 1, 1)
 
             # run through all parameters of the current method and create the widgets
-            for param_index, (param_name, param) in enumerate(method_params.items()):
+            for param_index, (param_name, param) in enumerate(method_params[method_name].items()):
                     # create a label for the parameter
                     param_label = QtWidgets.QLabel(groupBox)
                     param_label.setText(param_name)
-                    # create proper input widget for the parameter depending on the type of default_val
+                    # create proper input widget for the parameter depending on default value type
                     if param['type'] is bool:
                         input_obj = QtWidgets.QCheckBox(groupBox)
                         input_obj.setChecked(param['default'])
                     elif param['type'] is float:
                         input_obj = ScienDSpinBox(groupBox)
-                        input_obj.setMaximum(np.inf)
-                        input_obj.setMinimum(-np.inf)
                         if 'amp' in param_name or 'volt' in param_name:
                             input_obj.setSuffix('V')
                         elif 'freq' in param_name:
                             input_obj.setSuffix('Hz')
-                        elif 'length' in param_name or 'time' in param_name or 'period' in param_name or 'tau' in param_name:
+                        elif 'time' in param_name or 'period' in param_name or 'tau' in param_name:
                             input_obj.setSuffix('s')
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
                         input_obj.setValue(param['default'])
                     elif param['type'] is int:
-                        input_obj = QtWidgets.QSpinBox(groupBox)
-                        input_obj.setMaximum(2**31 - 1)
-                        input_obj.setMinimum(-2**31 + 1)
+                        input_obj = ScienSpinBox(groupBox)
                         input_obj.setValue(param['default'])
                     elif param['type'] is str:
                         input_obj = QtWidgets.QLineEdit(groupBox)
@@ -1093,6 +1192,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_analog_channels_lineEdit.blockSignals(True)
         self._pg.gen_digital_channels_lineEdit.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
+        if hasattr(self, '_channel_selection_comboboxes'):
+            for widget in self._channel_selection_comboboxes:
+                widget.blockSignals(True)
 
         # Set widgets
         # FIXME: Properly implement amplitude and interleave
@@ -1110,12 +1212,27 @@ class PulsedMeasurementGui(GUIBase):
             analog_str = analog_str.strip('[]').replace('\'', '').replace(',', ' |')
             self._pg.gen_digital_channels_lineEdit.setText(digital_str)
             self._pg.gen_analog_channels_lineEdit.setText(analog_str)
+
+            # Update channel ComboBoxes
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
-            self._pg.gen_laserchannel_ComboBox.addItems(sorted(list(settings_dict['activation_config'][1])))
+            self._pg.gen_laserchannel_ComboBox.addItems(
+                sorted(settings_dict['activation_config'][1]))
             if former_laser_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+
+            if hasattr(self, '_channel_selection_comboboxes'):
+                for widget in self._channel_selection_comboboxes:
+                    former_channel = widget.currentText()
+                    widget.clear()
+                    widget.addItem('')
+                    widget.addItems(sorted(settings_dict['activation_config'][1]))
+                    if former_channel in settings_dict['activation_config'][1]:
+                        index = widget.findText(former_channel)
+                        widget.setCurrentIndex(index)
+
+            # Set activation config in block editor
             self._pg.block_editor.set_activation_config(settings_dict['activation_config'][1])
         if 'interleave' in settings_dict:
             self._pg.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
@@ -1127,6 +1244,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_analog_channels_lineEdit.blockSignals(False)
         self._pg.gen_digital_channels_lineEdit.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
+        if hasattr(self, '_channel_selection_comboboxes'):
+            for widget in self._channel_selection_comboboxes:
+                widget.blockSignals(False)
         return
 
     @QtCore.Slot()
@@ -1137,6 +1257,21 @@ class PulsedMeasurementGui(GUIBase):
         """
         settings_dict = dict()
         settings_dict['laser_channel'] = self._pg.gen_laserchannel_ComboBox.currentText()
+        # Add channel specifiers from predefined methods tab
+        for combobox in self._channel_selection_comboboxes:
+            # cut away 'global_param_' from beginning of the objectName
+            param_name = combobox.objectName()[13:]
+            settings_dict[param_name] = combobox.currentText()
+        # Add remaining global parameter widgets
+        for widget in self._global_param_widgets:
+            # cut away 'global_param_' from beginning of the objectName
+            param_name = widget.objectName()[13:]
+            if hasattr(widget, 'isChecked'):
+                settings_dict[param_name] = widget.isChecked()
+            elif hasattr(widget, 'value'):
+                settings_dict[param_name] = widget.value()
+            elif hasattr(widget, 'text'):
+                settings_dict[param_name] = widget.text()
 
         self.pulsedmasterlogic().set_sampling_settings(settings_dict)
         return
@@ -1154,6 +1289,26 @@ class PulsedMeasurementGui(GUIBase):
         if 'laser_channel' in settings_dict:
             index = self._pg.gen_laserchannel_ComboBox.findText(settings_dict['laser_channel'])
             self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+        if hasattr(self, '_channel_selection_comboboxes'):
+            for combobox in self._channel_selection_comboboxes:
+                param_name = combobox.objectName()[13:]
+                if param_name in settings_dict:
+                    combobox.blockSignals(True)
+                    index = combobox.findText(settings_dict[param_name])
+                    combobox.setCurrentIndex(index)
+                    combobox.blockSignals(False)
+        if hasattr(self, '_global_param_widgets'):
+            for widget in self._global_param_widgets:
+                param_name = widget.objectName()[13:]
+                if param_name in settings_dict:
+                    widget.blockSignals(True)
+                    if hasattr(widget, 'setChecked'):
+                        widget.setChecked(settings_dict[param_name])
+                    elif hasattr(widget, 'setValue'):
+                        widget.setValue(settings_dict[param_name])
+                    elif hasattr(widget, 'setText'):
+                        widget.setText(settings_dict[param_name])
+                    widget.blockSignals(False)
 
         # unblock signals
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
@@ -1477,23 +1632,6 @@ class PulsedMeasurementGui(GUIBase):
         for widget_name in param_widgets:
             input_obj = getattr(self._pm, widget_name)
             param_name = widget_name.replace(param_searchstr, '').replace('_Widget', '')
-
-            if hasattr(input_obj, 'isChecked'):
-                param_dict[param_name] = input_obj.isChecked()
-            elif hasattr(input_obj, 'value'):
-                param_dict[param_name] = input_obj.value()
-            elif hasattr(input_obj, 'text'):
-                param_dict[param_name] = input_obj.text()
-            else:
-                self.log.error('Not possible to get the value from the widgets, since it does not '
-                               'have one of the possible access methods!')
-                return
-
-        # get global parameters and add them to the dictionary
-        for param_name in ['mw_channel', 'gate_count_channel', 'sync_trig_channel', 'mw_amp',
-                           'mw_freq', 'channel_amp', 'delay_length', 'wait_time', 'laser_length',
-                           'rabi_period']:
-            input_obj = getattr(self._pm, 'pm_' + param_name + '_Widget')
 
             if hasattr(input_obj, 'isChecked'):
                 param_dict[param_name] = input_obj.isChecked()
