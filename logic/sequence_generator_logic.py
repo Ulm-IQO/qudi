@@ -126,10 +126,6 @@ class SequenceGeneratorLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # Get method definitions for prefined pulse sequences from seperate modules and attach them
-        # to this module.
-        self._attach_predefined_methods()
-
         # Read back settings from device and update instance variables accordingly
         self._read_settings_from_device()
 
@@ -137,6 +133,10 @@ class SequenceGeneratorLogic(GenericLogic):
         self._update_blocks_from_tmp_file()
         self._update_ensembles_from_tmp_file()
         self._update_sequences_from_tmp_file()
+
+        # Get method definitions for prefined pulse sequences from seperate modules and attach them
+        # to this module.
+        self._attach_predefined_methods()
 
         self.__sequence_generation_in_progress = False
         return
@@ -442,7 +442,10 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         Retrieve in the folder all files for predefined methods and attach their methods
         """
-        self.__generate_methods = OrderedDict()
+        basic_methods_mod = importlib.import_module('logic.predefined_methods.basic_methods')
+        importlib.reload(basic_methods_mod)
+        self._pog = basic_methods_mod.PulsedObjectGenerator(self.pulse_generator_settings,
+                                                            self.sampling_settings)
 
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods!
@@ -540,7 +543,11 @@ class SequenceGeneratorLogic(GenericLogic):
     ############################################################################
     @property
     def generate_methods(self):
-        return self.__generate_methods
+        return self._pog.predefined_generate_methods
+
+    @property
+    def generate_methods_params(self):
+        return self._pog.predefined_generate_params
 
     @property
     def sampling_settings(self):
