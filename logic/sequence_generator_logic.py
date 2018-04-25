@@ -546,7 +546,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return self._pog.predefined_generate_methods
 
     @property
-    def generate_methods_params(self):
+    def generate_method_params(self):
         return self._pog.predefined_generate_params
 
     @property

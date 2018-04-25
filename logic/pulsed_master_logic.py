@@ -624,6 +624,10 @@ class PulsedMasterLogic(GenericLogic):
     def generate_methods(self):
         return self.sequencegeneratorlogic().generate_methods
 
+    @property
+    def generate_method_params(self):
+        return self.sequencegeneratorlogic().generate_method_params
+
     #######################################################################
     ###             Sequence generator methods                          ###
     #######################################################################
