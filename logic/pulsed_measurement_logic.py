@@ -1186,7 +1186,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 inverse_cont_var = '(1/{0})'.format(controlled_val_unit)
 
             if self.second_plot_type == 'Delta':
-                x_axis_ft_label = 'controlled variable (' + controlled_val_unit + ')'
+                x_axis_ft_label = 'controlled variable (' + x_axis_prefix + controlled_val_unit + ')'
                 y_axis_ft_label = 'norm. sig (arb. u.)'
                 ft_label = 'Delta of data traces'
 
