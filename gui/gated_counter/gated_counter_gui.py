@@ -160,6 +160,9 @@ class GatedCounterGui(GUIBase):
         # Push buttons
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
 
+        # Connect analysis result update
+        self._trace_analysis.sigAnalysisResultsUpdated.connect(self.update_analysis_results)
+
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -290,3 +293,11 @@ class GatedCounterGui(GUIBase):
         self._mw.fit_param_TextEdit.setPlainText(fit_result)
 
         return
+
+
+    def update_analysis_results(self):
+        """ Update the spin flip probability and the fidelities. """
+
+        self._mw.spin_flip_prob_DSpinBox.setValue(self._trace_analysis.spin_flip_prob*100)
+        self._mw.fidelity_left_DSpinBox.setValue(self._trace_analysis.fidelity_left*100)
+        self._mw.fidelity_right_DSpinBox.setValue(self._trace_analysis.fidelity_right*100)
