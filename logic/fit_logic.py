@@ -67,7 +67,7 @@ class FitLogic(GenericLogic):
                 if f[-3:] == '.py':
                     filenames.append(f[:-3])
 
-        # A dictionary contianing all fit methods and their estimators.
+        # A dictionary containing all fit methods and their estimators.
         self.fit_list = OrderedDict()
         self.fit_list['1d'] = OrderedDict()
         self.fit_list['2d'] = OrderedDict()
