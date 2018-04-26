@@ -62,18 +62,19 @@ class SequenceGeneratorLogic(GenericLogic):
     _overhead_bytes = ConfigOption('overhead_bytes', default=0, missing='nothing')
 
     # status vars
-    # Global parameters describing the channel usage and global parameters for predefined methods.
-    _sampling_settings = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
-                                                        ('sync_channel', ''),
-                                                        ('gate_channel', ''),
-                                                        ('microwave_channel', 'a_ch1'),
-                                                        ('microwave_frequency', 2.87e9),
-                                                        ('microwave_amplitude', 0.0),
-                                                        ('rabi_period', 100e-9),
-                                                        ('laser_length', 3e-6),
-                                                        ('laser_delay', 500e-9),
-                                                        ('wait_time', 1e-6),
-                                                        ('analog_trigger_voltage', 0.0)]))
+    # Global parameters describing the channel usage and common parameters used during pulsed object
+    # generation for predefined methods.
+    _generation_parameters = StatusVar(default=OrderedDict([('laser_channel', 'd_ch1'),
+                                                            ('sync_channel', ''),
+                                                            ('gate_channel', ''),
+                                                            ('microwave_channel', 'a_ch1'),
+                                                            ('microwave_frequency', 2.87e9),
+                                                            ('microwave_amplitude', 0.0),
+                                                            ('rabi_period', 100e-9),
+                                                            ('laser_length', 3e-6),
+                                                            ('laser_delay', 500e-9),
+                                                            ('wait_time', 1e-6),
+                                                            ('analog_trigger_voltage', 0.0)]))
 
     # The created pulse objects (PulseBlock, PulseBlockEnsemble, PusleSequence) are saved in
     # these dictionaries. The keys are the names.
@@ -329,14 +330,14 @@ class SequenceGeneratorLogic(GenericLogic):
                     self.log.error('Something went wrong while setting new activation config.')
                     self.__activation_config = ('', set_config)
 
-                # search the sampling_settings for channel specifiers and adjust them if they are
-                # no longer valid
+                # search the generation_parameters for channel specifiers and adjust them if they
+                # are no longer valid
                 changed_settings = dict()
                 ana_chnls = sorted(self.analog_channels)
                 digi_chnls = sorted(self.digital_channels)
-                for name in [setting for setting in self.sampling_settings if
+                for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
-                    channel = self.sampling_settings[name]
+                    channel = self.generation_parameters[name]
                     if isinstance(channel, str) and channel not in self.__activation_config[1]:
                         if channel.startswith('a'):
                             new_channel = ana_chnls[0] if ana_chnls else digi_chnls[0]
@@ -375,10 +376,10 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # emit update signal for master (GUI or other logic module)
         self.sigGeneratorSettingsUpdated.emit(self.pulse_generator_settings)
-        # Apply potential changes to sampling_settings
+        # Apply potential changes to generation_parameters
         try:
             if changed_settings:
-                self.sampling_settings = changed_settings
+                self.generation_parameters = changed_settings
         except UnboundLocalError:
             pass
         return self.pulse_generator_settings
@@ -481,7 +482,7 @@ class SequenceGeneratorLogic(GenericLogic):
         basic_methods_mod = importlib.import_module('logic.predefined_methods.basic_methods')
         importlib.reload(basic_methods_mod)
         self._pog = basic_methods_mod.PulsedObjectGenerator(self.pulse_generator_settings,
-                                                            self.sampling_settings)
+                                                            self.generation_parameters)
 
         # The assumption is that in the directory predefined_methods, there are
         # *.py files, which contain only methods (excluding basic_methods.py)!
@@ -605,13 +606,13 @@ class SequenceGeneratorLogic(GenericLogic):
         return self._pog.predefined_generate_params
 
     @property
-    def sampling_settings(self):
-        return self._sampling_settings.copy()
+    def generation_parameters(self):
+        return self._generation_parameters.copy()
 
-    @sampling_settings.setter
-    def sampling_settings(self, settings_dict):
+    @generation_parameters.setter
+    def generation_parameters(self, settings_dict):
         if isinstance(settings_dict, dict):
-            self.set_sampling_settings(settings_dict)
+            self.set_generation_parameters(settings_dict)
         return
 
     @property
@@ -627,7 +628,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return self._saved_pulse_sequences
 
     @QtCore.Slot(dict)
-    def set_sampling_settings(self, settings_dict=None, **kwargs):
+    def set_generation_parameters(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
         If both are present both are being used by updating the settings_dict with kwargs.
@@ -648,8 +649,8 @@ class SequenceGeneratorLogic(GenericLogic):
 
             # Notify if new keys have been added
             for key in settings_dict:
-                if key not in self._sampling_settings:
-                    self.log.warning('Setting by name "{0}" not present in sampling_settings.\n'
+                if key not in self._generation_parameters:
+                    self.log.warning('Setting by name "{0}" not present in generation_parameters.\n'
                                      'Will add it but this could lead to unwanted effects.'
                                      ''.format(key))
             # Sanity checks
@@ -683,15 +684,15 @@ class SequenceGeneratorLogic(GenericLogic):
                     del settings_dict['microwave_channel']
 
             # update settings dict
-            self._sampling_settings.update(settings_dict)
+            self._generation_parameters.update(settings_dict)
             # update PulsedObjectGenerator
-            self._pog.sampling_settings = self._sampling_settings
+            self._pog.generation_parameters = self._generation_parameters
         else:
             self.log.error('Unable to apply new sampling settings.\n'
                            'SequenceGeneratorLogic is busy generating a waveform/sequence.')
 
-        self.sigSamplingSettingsUpdated.emit(self.sampling_settings)
-        return self.sampling_settings
+        self.sigSamplingSettingsUpdated.emit(self.generation_parameters)
+        return self.generation_parameters
 
     def save_block(self, block):
         """ Serialize a PulseBlock object to a *.blk file.

@@ -214,7 +214,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigGeneratorSettingsChanged.connect(
             self.sequencegeneratorlogic().set_pulse_generator_settings, QtCore.Qt.QueuedConnection)
         self.sigSamplingSettingsChanged.connect(
-            self.sequencegeneratorlogic().set_sampling_settings, QtCore.Qt.QueuedConnection)
+            self.sequencegeneratorlogic().set_generation_parameters, QtCore.Qt.QueuedConnection)
         self.sigGeneratePredefinedSequence.connect(
             self.sequencegeneratorlogic().generate_predefined_sequence, QtCore.Qt.QueuedConnection)
 
@@ -585,8 +585,8 @@ class PulsedMasterLogic(GenericLogic):
         return self.sequencegeneratorlogic().pulse_generator_settings
 
     @property
-    def sampling_settings(self):
-        return self.sequencegeneratorlogic().sampling_settings
+    def generation_parameters(self):
+        return self.sequencegeneratorlogic().generation_parameters
 
     @property
     def analog_channels(self):
@@ -810,7 +810,7 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     @QtCore.Slot(dict)
-    def set_sampling_settings(self, settings_dict=None, **kwargs):
+    def set_generation_parameters(self, settings_dict=None, **kwargs):
         """
         Either accept a settings dictionary as positional argument or keyword arguments.
         If both are present both are being used by updating the settings_dict with kwargs.
