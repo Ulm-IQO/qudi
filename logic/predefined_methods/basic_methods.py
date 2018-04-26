@@ -45,9 +45,9 @@ class PulsedObjectGenerator:
     """
 
     """
-    def __init__(self, pulse_generator_settings, sampling_settings):
+    def __init__(self, pulse_generator_settings, generation_parameters):
         self._pulse_generator_settings = pulse_generator_settings
-        self._sampling_settings = sampling_settings
+        self._generation_parameters = generation_parameters
         return
 
     @classmethod
@@ -68,13 +68,13 @@ class PulsedObjectGenerator:
         return
 
     @property
-    def sampling_settings(self):
-        return self._sampling_settings
+    def generation_parameters(self):
+        return self._generation_parameters
 
-    @sampling_settings.setter
-    def sampling_settings(self, settings_dict):
+    @generation_parameters.setter
+    def generation_parameters(self, settings_dict):
         if isinstance(settings_dict, dict):
-            self._sampling_settings = settings_dict
+            self._generation_parameters = settings_dict
         return
 
     @property
@@ -116,50 +116,50 @@ class PulsedObjectGenerator:
 
     @property
     def laser_channel(self):
-        return self._sampling_settings.get('laser_channel')
+        return self._generation_parameters.get('laser_channel')
 
     @property
     def sync_channel(self):
-        channel = self._sampling_settings.get('sync_channel')
+        channel = self._generation_parameters.get('sync_channel')
         return None if channel == '' else channel
 
     @property
     def gate_channel(self):
-        channel = self._sampling_settings.get('gate_channel')
+        channel = self._generation_parameters.get('gate_channel')
         return None if channel == '' else channel
 
     @property
     def analog_trigger_voltage(self):
-        return self._sampling_settings.get('analog_trigger_voltage')
+        return self._generation_parameters.get('analog_trigger_voltage')
 
     @property
     def laser_delay(self):
-        return self._sampling_settings.get('laser_delay')
+        return self._generation_parameters.get('laser_delay')
 
     @property
     def microwave_channel(self):
-        channel = self._sampling_settings.get('microwave_channel')
+        channel = self._generation_parameters.get('microwave_channel')
         return None if channel == '' else channel
 
     @property
     def microwave_frequency(self):
-        return self._sampling_settings.get('microwave_frequency')
+        return self._generation_parameters.get('microwave_frequency')
 
     @property
     def microwave_amplitude(self):
-        return self._sampling_settings.get('microwave_amplitude')
+        return self._generation_parameters.get('microwave_amplitude')
 
     @property
     def laser_length(self):
-        return self._sampling_settings.get('laser_length')
+        return self._generation_parameters.get('laser_length')
 
     @property
     def wait_time(self):
-        return self._sampling_settings.get('wait_time')
+        return self._generation_parameters.get('wait_time')
 
     @property
     def rabi_period(self):
-        return self._sampling_settings.get('rabi_period')
+        return self._generation_parameters.get('rabi_period')
 
     def generate_laser_on(self, name='laser_on', length=3.0e-6):
         """ Generates Laser on.

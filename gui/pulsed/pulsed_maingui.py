@@ -268,7 +268,7 @@ class PulsedMeasurementGui(GUIBase):
 
     def _connect_pulse_generator_tab_signals(self):
         # Connect Block/Ensemble editor tab signals
-        self._pg.gen_laserchannel_ComboBox.currentIndexChanged.connect(self.sampling_settings_changed)
+        self._pg.gen_laserchannel_ComboBox.currentIndexChanged.connect(self.generation_parameters_changed)
 
         self._pg.sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
         self._pg.samplo_ensemble_PushButton.clicked.connect(self.samplo_ensemble_clicked)
@@ -385,7 +385,7 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigSampleSequenceComplete.connect(self.sample_sequence_finished)
         self.pulsedmasterlogic().sigLoadedAssetUpdated.connect(self.loaded_asset_updated)
         self.pulsedmasterlogic().sigGeneratorSettingsUpdated.connect(self.pulse_generator_settings_updated)
-        self.pulsedmasterlogic().sigSamplingSettingsUpdated.connect(self.sampling_settings_updated)
+        self.pulsedmasterlogic().sigSamplingSettingsUpdated.connect(self.generation_parameters_updated)
         # self.pulsedmasterlogic().sigPredefinedSequenceGenerated.connect()
         return
 
@@ -945,7 +945,7 @@ class PulsedMeasurementGui(GUIBase):
         self._channel_selection_comboboxes = list()  # List of created channel selection ComboBoxes
         self._global_param_widgets = list()  # List of all other created global parameter widgets
         self._create_pm_global_params()
-        self.sampling_settings_updated(self.pulsedmasterlogic().sampling_settings)
+        self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
 
         # Dynamically create GUI elements for predefined methods
         self._create_predefined_methods()
@@ -966,7 +966,7 @@ class PulsedMeasurementGui(GUIBase):
         col_count = 0
         row_count = 1
         combo_count = 0
-        for param, value in self.pulsedmasterlogic().sampling_settings.items():
+        for param, value in self.pulsedmasterlogic().generation_parameters.items():
             # Do not create widget for laser_channel since this widget is already part of the pulse
             # editor tab.
             if param == 'laser_channel':
@@ -991,7 +991,7 @@ class PulsedMeasurementGui(GUIBase):
                 self._pm.global_param_gridLayout.addWidget(widget, 0, combo_count + 1)
                 combo_count += 2
                 self._channel_selection_comboboxes.append(widget)
-                widget.currentIndexChanged.connect(self.sampling_settings_changed)
+                widget.currentIndexChanged.connect(self.generation_parameters_changed)
                 continue
 
             # Create all other widgets for int, float, bool and str and save them in a list for
@@ -1001,11 +1001,11 @@ class PulsedMeasurementGui(GUIBase):
                     value = ''
                 widget = QtWidgets.QLineEdit()
                 widget.setText(value)
-                widget.editingFinished.connect(self.sampling_settings_changed)
+                widget.editingFinished.connect(self.generation_parameters_changed)
             elif type(value) is int:
                 widget = ScienSpinBox()
                 widget.setValue(value)
-                widget.editingFinished.connect(self.sampling_settings_changed)
+                widget.editingFinished.connect(self.generation_parameters_changed)
             elif type(value) is float:
                 widget = ScienDSpinBox()
                 widget.setValue(value)
@@ -1013,13 +1013,13 @@ class PulsedMeasurementGui(GUIBase):
                     widget.setSuffix('V')
                 elif 'freq' in param:
                     widget.setSuffix('Hz')
-                elif 'tau' in param or 'period' in param or 'time' in param or 'delay' in param or 'laser_length' in param:
+                elif any(x in param for x in ('tau', 'period', 'time', 'delay', 'laser_length')):
                     widget.setSuffix('s')
-                widget.editingFinished.connect(self.sampling_settings_changed)
+                widget.editingFinished.connect(self.generation_parameters_changed)
             elif type(value) is bool:
                 widget = QtWidgets.QCheckBox()
                 widget.setChecked(value)
-                widget.stateChanged.connect(self.sampling_settings_changed)
+                widget.stateChanged.connect(self.generation_parameters_changed)
 
             widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
 
@@ -1133,7 +1133,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # initialize widgets
         self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
-        self.sampling_settings_updated(self.pulsedmasterlogic().sampling_settings)
+        self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
         self.update_block_dict(self.pulsedmasterlogic().saved_pulse_blocks)
         self.update_ensemble_dict(self.pulsedmasterlogic().saved_pulse_block_ensembles)
         return
@@ -1250,7 +1250,7 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     @QtCore.Slot()
-    def sampling_settings_changed(self):
+    def generation_parameters_changed(self):
         """
 
         @return:
@@ -1273,11 +1273,11 @@ class PulsedMeasurementGui(GUIBase):
             elif hasattr(widget, 'text'):
                 settings_dict[param_name] = widget.text()
 
-        self.pulsedmasterlogic().set_sampling_settings(settings_dict)
+        self.pulsedmasterlogic().set_generation_parameters(settings_dict)
         return
 
     @QtCore.Slot(dict)
-    def sampling_settings_updated(self, settings_dict):
+    def generation_parameters_updated(self, settings_dict):
         """
 
         @param settings_dict:
