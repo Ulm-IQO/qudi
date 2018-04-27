@@ -269,6 +269,8 @@ class PulsedMeasurementGui(GUIBase):
     def _connect_pulse_generator_tab_signals(self):
         # Connect Block/Ensemble editor tab signals
         self._pg.gen_laserchannel_ComboBox.currentIndexChanged.connect(self.generation_parameters_changed)
+        self._pg.gen_syncchannel_ComboBox.currentIndexChanged.connect(self.generation_parameters_changed)
+        self._pg.gen_gatechannel_ComboBox.currentIndexChanged.connect(self.generation_parameters_changed)
 
         self._pg.sample_ensemble_PushButton.clicked.connect(self.sample_ensemble_clicked)
         self._pg.samplo_ensemble_PushButton.clicked.connect(self.samplo_ensemble_clicked)
@@ -421,6 +423,8 @@ class PulsedMeasurementGui(GUIBase):
     def _disconnect_pulse_generator_tab_signals(self):
         # Connect Block/Ensemble editor tab signals
         self._pg.gen_laserchannel_ComboBox.currentIndexChanged.disconnect()
+        self._pg.gen_syncchannel_ComboBox.currentIndexChanged.disconnect()
+        self._pg.gen_gatechannel_ComboBox.currentIndexChanged.disconnect()
 
         self._pg.sample_ensemble_PushButton.clicked.disconnect()
         self._pg.samplo_ensemble_PushButton.clicked.disconnect()
@@ -969,7 +973,7 @@ class PulsedMeasurementGui(GUIBase):
         for param, value in self.pulsedmasterlogic().generation_parameters.items():
             # Do not create widget for laser_channel since this widget is already part of the pulse
             # editor tab.
-            if param == 'laser_channel':
+            if param in ('laser_channel', 'sync_channel', 'gate_channel'):
                 continue
 
             # Create ComboBoxes for parameters ending on '_channel' to only be able to select
@@ -1192,6 +1196,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_analog_channels_lineEdit.blockSignals(True)
         self._pg.gen_digital_channels_lineEdit.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
+        self._pg.gen_syncchannel_ComboBox.blockSignals(True)
+        self._pg.gen_gatechannel_ComboBox.blockSignals(True)
         if hasattr(self, '_channel_selection_comboboxes'):
             for widget in self._channel_selection_comboboxes:
                 widget.blockSignals(True)
@@ -1222,6 +1228,24 @@ class PulsedMeasurementGui(GUIBase):
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
 
+            former_sync_channel = self._pg.gen_syncchannel_ComboBox.currentText()
+            self._pg.gen_syncchannel_ComboBox.clear()
+            self._pg.gen_syncchannel_ComboBox.addItem('')
+            self._pg.gen_syncchannel_ComboBox.addItems(
+                sorted(settings_dict['activation_config'][1]))
+            if former_sync_channel in settings_dict['activation_config'][1]:
+                index = self._pg.gen_syncchannel_ComboBox.findText(former_sync_channel)
+                self._pg.gen_syncchannel_ComboBox.setCurrentIndex(index)
+
+            former_gate_channel = self._pg.gen_gatechannel_ComboBox.currentText()
+            self._pg.gen_gatechannel_ComboBox.clear()
+            self._pg.gen_gatechannel_ComboBox.addItem('')
+            self._pg.gen_gatechannel_ComboBox.addItems(
+                sorted(settings_dict['activation_config'][1]))
+            if former_gate_channel in settings_dict['activation_config'][1]:
+                index = self._pg.gen_gatechannel_ComboBox.findText(former_gate_channel)
+                self._pg.gen_gatechannel_ComboBox.setCurrentIndex(index)
+
             if hasattr(self, '_channel_selection_comboboxes'):
                 for widget in self._channel_selection_comboboxes:
                     former_channel = widget.currentText()
@@ -1244,6 +1268,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.gen_analog_channels_lineEdit.blockSignals(False)
         self._pg.gen_digital_channels_lineEdit.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
+        self._pg.gen_syncchannel_ComboBox.blockSignals(False)
+        self._pg.gen_gatechannel_ComboBox.blockSignals(False)
         if hasattr(self, '_channel_selection_comboboxes'):
             for widget in self._channel_selection_comboboxes:
                 widget.blockSignals(False)
@@ -1257,6 +1283,8 @@ class PulsedMeasurementGui(GUIBase):
         """
         settings_dict = dict()
         settings_dict['laser_channel'] = self._pg.gen_laserchannel_ComboBox.currentText()
+        settings_dict['sync_channel'] = self._pg.gen_syncchannel_ComboBox.currentText()
+        settings_dict['gate_channel'] = self._pg.gen_gatechannel_ComboBox.currentText()
         # Add channel specifiers from predefined methods tab
         for combobox in self._channel_selection_comboboxes:
             # cut away 'global_param_' from beginning of the objectName
@@ -1285,10 +1313,18 @@ class PulsedMeasurementGui(GUIBase):
         """
         # block signals
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
+        self._pg.gen_syncchannel_ComboBox.blockSignals(True)
+        self._pg.gen_gatechannel_ComboBox.blockSignals(True)
 
         if 'laser_channel' in settings_dict:
             index = self._pg.gen_laserchannel_ComboBox.findText(settings_dict['laser_channel'])
             self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+        if 'sync_channel' in settings_dict:
+            index = self._pg.gen_syncchannel_ComboBox.findText(settings_dict['sync_channel'])
+            self._pg.gen_syncchannel_ComboBox.setCurrentIndex(index)
+        if 'gate_channel' in settings_dict:
+            index = self._pg.gen_gatechannel_ComboBox.findText(settings_dict['gate_channel'])
+            self._pg.gen_gatechannel_ComboBox.setCurrentIndex(index)
         if hasattr(self, '_channel_selection_comboboxes'):
             for combobox in self._channel_selection_comboboxes:
                 param_name = combobox.objectName()[13:]
@@ -1312,6 +1348,8 @@ class PulsedMeasurementGui(GUIBase):
 
         # unblock signals
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
+        self._pg.gen_syncchannel_ComboBox.blockSignals(False)
+        self._pg.gen_gatechannel_ComboBox.blockSignals(False)
         return
 
     @QtCore.Slot()
@@ -1450,8 +1488,10 @@ class PulsedMeasurementGui(GUIBase):
             self.log.error('No name has been entered for the PulseBlockEnsemble to be generated.')
             return
         rotating_frame = self._pg.curr_ensemble_rot_frame_CheckBox.isChecked()
+        alternating = self._pg.curr_ensemble_alternating_CheckBox.isChecked()
         self._pg.block_organizer.set_rotating_frame(rotating_frame)
         ensemble_object = self._pg.block_organizer.get_ensemble()
+        ensemble_object.measurement_information['alternating'] = alternating
         ensemble_object.name = name
         self.pulsedmasterlogic().save_block_ensemble(ensemble_object)
         return
@@ -1469,17 +1509,20 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.block_organizer.load_ensemble(ensemble)
         self._pg.curr_ensemble_name_LineEdit.setText(name)
 
-        # FIXME: This is just a rough estimation of the waveform size in MB (only valid for AWG)
-        # size_mb = (ensemble_params['sequence_length_bins'] * 5) / 1024**2
-        self._pg.curr_ensemble_size_DSpinBox.setValue(0.0)
+        self._pg.curr_ensemble_rot_frame_CheckBox.setChecked(ensemble.rotating_frame)
         if ensemble.measurement_information:
             self._pg.curr_ensemble_length_DSpinBox.setValue(
                 ensemble.measurement_information['length_s'])
+            self._pg.curr_ensemble_bins_SpinBox.setValue(
+                ensemble.measurement_information['length_bins'])
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(
                 ensemble.measurement_information['number_of_lasers'])
+            self._pg.curr_ensemble_alternating_CheckBox.setChecked(
+                ensemble.measurement_information['alternating'])
         else:
             self._pg.curr_ensemble_length_DSpinBox.setValue(0.0)
             self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+            self._pg.curr_ensemble_alternating_CheckBox.setChecked(False)
 
         if ensemble.sampling_information:
             self._pg.curr_ensemble_bins_SpinBox.setValue(
@@ -1747,8 +1790,10 @@ class PulsedMeasurementGui(GUIBase):
             self.log.error('No name has been entered for the PulseSequence to be generated.')
             return
         rotating_frame = self._sg.curr_sequence_rot_frame_CheckBox.isChecked()
+        alternating = self._sg.curr_sequence_alternating_CheckBox.isChecked()
         self._sg.sequence_editor.set_rotating_frame(rotating_frame)
         sequence_object = self._sg.sequence_editor.get_sequence()
+        sequence_object.measurement_information['alternating'] = alternating
         sequence_object.name = name
         self.pulsedmasterlogic().save_sequence(sequence_object)
         return
@@ -1766,15 +1811,18 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.sequence_editor.load_sequence(sequence)
         self._pg.curr_sequence_name_LineEdit.setText(name)
 
-        # FIXME: This is just a rough estimation of the sequence size in MB
-        # size_mb = (sequence_params['sequence_length_bins'] * 5) / 1024 ** 2
-        self._sg.curr_sequence_size_DSpinBox.setValue(0)
+        self._pg.curr_sequence_rot_frame_CheckBox.setChecked(sequence.rotating_frame)
         if sequence.measurement_information:
-            self._pg.curr_sequence_length_DSpinBox.setValue(sequence.measurement_information['length_s'])
-            self._pg.curr_sequence_laserpulses_SpinBox.setValue(sequence.measurement_information['number_of_lasers'])
+            self._pg.curr_sequence_length_DSpinBox.setValue(
+                sequence.measurement_information['length_s'])
+            self._pg.curr_sequence_laserpulses_SpinBox.setValue(
+                sequence.measurement_information['number_of_lasers'])
+            self._pg.curr_sequence_alternating_CheckBox.setChecked(
+                sequence.measurement_information['alternating'])
         else:
             self._pg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._pg.curr_sequence_laserpulses_SpinBox.setValue(0)
+            self._pg.curr_sequence_alternating_CheckBox.setChecked(False)
 
         if sequence.sampling_information:
             self._pg.curr_sequence_bins_SpinBox.setValue(

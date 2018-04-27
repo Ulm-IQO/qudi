@@ -116,9 +116,9 @@ class PulseBlock(object):
         self.digital_channels = None
         self.channel_set = None
         self.use_as_tick = None
-        self._refresh_parameters()
+        self.refresh_parameters()
 
-    def _refresh_parameters(self):
+    def refresh_parameters(self):
         """ Initialize the parameters which describe this Pulse_Block object.
 
         The information is gained from all the Pulse_Block_Element objects,
@@ -132,10 +132,10 @@ class PulseBlock(object):
 
         # calculate the tick value for the whole block. Basically sum all the
         # init_length_bins which have the use_as_tick attribute set to True.
-        self.controlled_vals_start = 0.0
+        self.controlled_vals_start = 0
         # make the same thing for the increment, to obtain the total increment
         # number for the block. This facilitates in calculating the measurement tick list.
-        self.controlled_vals_increment = 0.0
+        self.controlled_vals_increment = 0
 
         for elem in self.element_list:
             self.init_length_s += elem.init_length_s
@@ -160,7 +160,7 @@ class PulseBlock(object):
     def replace_element(self, position, element):
         if isinstance(element, PulseBlockElement) and len(self.element_list) > position:
             self.element_list[position] = element
-            self._refresh_parameters()
+            self.refresh_parameters()
             return 0
         else:
             return -1
@@ -168,7 +168,7 @@ class PulseBlock(object):
     def delete_element(self, position):
         if len(self.element_list) > position:
             del(self.element_list[position])
-            self._refresh_parameters()
+            self.refresh_parameters()
             return 0
         else:
             return -1
@@ -179,7 +179,7 @@ class PulseBlock(object):
                 self.element_list.insert(0, element)
             else:
                 self.element_list.append(element)
-            self._refresh_parameters()
+            self.refresh_parameters()
             return 0
         else:
             return -1
@@ -231,7 +231,7 @@ class PulseBlockEnsemble(object):
         # corresponding waveforms from the pulse generator
         self.sampling_information = dict()
         # Dictionary container to store additional information about for measurement settings
-        # (ignore_lasers, controlled_values, alternating etc.).
+        # (ignore_lasers, controlled_variable, alternating etc.).
         # This container needs to be populated by the script creating the PulseBlockEnsemble
         # before saving it.
         self.measurement_information = dict()
