@@ -71,9 +71,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _laser_ignore_list = StatusVar(default=list())
 
     # Container to store information about the currently running sequence
-    _sequence_information = StatusVar(default={'alternating': False,
-                                               'number_of_lasers': 50,
-                                               'controlled_variable': np.arange(1, 51)})
+    _sequence_information = StatusVar(default=dict())
 
     # alternative signal computation settings:
     _alternative_data_type = StatusVar(default='None')
@@ -651,7 +649,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._alternating = bool(settings_dict['alternating'])
 
             # Apply settings according to the invoke settings flag
-            if self._invoke_settings_from_sequence:
+            if self._invoke_settings_from_sequence and self._sequence_information:
                 self._apply_invoked_settings()
 
             self._measurement_settings_sanity_check()
@@ -697,6 +695,16 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.module_state() == 'idle':
                 # Lock module state
                 self.module_state.lock()
+
+                # Check if measurement settings need to be invoked
+                if self._invoke_settings_from_sequence:
+                    self._apply_invoked_settings()
+                    self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
+                    # abort measurement if settings could not be invoked
+                    if not self._invoke_settings_from_sequence:
+                        self.module_state.unlock()
+                        self.sigMeasurementStatusUpdated.emit(False, False)
+                        return
 
                 # Clear previous fits
                 self.fc.clear_result()
@@ -914,32 +922,47 @@ class PulsedMeasurementLogic(GenericLogic):
     def _apply_invoked_settings(self):
         """
         """
-        if not isinstance(self._sequence_information, dict):
+        if not isinstance(self._sequence_information, dict) or not self._sequence_information:
             self.log.error('Can\'t invoke measurement settings from sequence information '
-                           'since no _sequence_information container (dict) is given.')
+                           'since no _sequence_information container is given.')
+            self._invoke_settings_from_sequence = False
             return
 
-        if 'number_of_lasers' in self._sequence_information:
-            self._number_of_lasers = int(self._sequence_information['number_of_lasers'])
+        measurement_info = self._sequence_information['measurement_information']
+        if 'number_of_lasers' in measurement_info:
+            self._number_of_lasers = int(measurement_info['number_of_lasers'])
         else:
             self.log.error('Unable to invoke setting for "number_of_lasers".\n'
                            'Sequence information container does not contain this parameter.')
-        if 'controlled_variable' in self._sequence_information:
-            self._controlled_variable = np.array(self._sequence_information['controlled_variable'],
-                                                 dtype=float)
+            self._invoke_settings_from_sequence = False
+            return
+
+        if 'laser_ignore_list' in measurement_info:
+            self._laser_ignore_list = sorted(measurement_info['laser_ignore_list'])
         else:
-            self.log.error('Unable to invoke setting for "controlled_variable".\n'
-                           'Sequence information container does not contain this parameter.')
-        if 'laser_ignore_list' in self._sequence_information:
-            self._laser_ignore_list = sorted(list(self._sequence_information['laser_ignore_list']))
+            self.log.warning('Unable to invoke setting for "laser_ignore_list".\n'
+                             'Sequence information container does not contain this parameter.')
+
+        if 'alternating' in measurement_info:
+            self._alternating = bool(measurement_info['alternating'])
         else:
-            self.log.error('Unable to invoke setting for "laser_ignore_list".\n'
-                           'Sequence information container does not contain this parameter.')
-        if 'alternating' in self._sequence_information:
-            self._alternating = bool(self._sequence_information['alternating'])
+            self.log.warning('Unable to invoke setting for "alternating".\n'
+                             'Sequence information container does not contain this parameter.')
+
+        if 'controlled_variable' in measurement_info:
+            self._controlled_variable = np.array(
+                measurement_info['controlled_variable'], dtype=float)
         else:
-            self.log.error('Unable to invoke setting for "alternating".\n'
-                           'Sequence information container does not contain this parameter.')
+            self.log.warning('Unable to invoke setting for "controlled_variable".\n'
+                             'Sequence information container does not contain this parameter.')
+            number_of_points = self._number_of_lasers - len(self._laser_ignore_list)
+            if self._alternating:
+                number_of_points //= 2
+            if len(self._controlled_variable) != number_of_points:
+                start = self._controlled_variable[0] if len(self._controlled_variable) > 1 else 0
+                incr = self._controlled_variable[1] - self._controlled_variable[0] if len(
+                    self._controlled_variable) > 1 else 1
+                self._controlled_variable = np.arange(number_of_points, dtype=float) * incr + start
 
         if self.fastcounter().is_gated() and self.__fast_counter_gates != self._number_of_lasers:
             self.set_fast_counter_settings(number_of_gates=self._number_of_lasers)

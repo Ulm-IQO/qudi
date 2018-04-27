@@ -25,7 +25,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 from collections import OrderedDict
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
 from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate
-from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate
+from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble, PulseSequence
 import logic.sampling_functions as sf
 
@@ -78,7 +78,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         @return:
         """
         # The horizontal header data
-        self._h_header_data = ['length\nin s', 'increment\nin s']
+        self._h_header_data = ['length\nin s', 'increment\nin s', 'use as\ntick?']
         if self.digital_channels:
             self._h_header_data.append('digital\nchannels')
         for chnl in self.analog_channels:
@@ -128,10 +128,12 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
 
             if column < 2:
                 width = 90
-            elif column == 2 and has_digital:
+            elif column == 2:
+                width = 50
+            elif column == 3 and has_digital:
                 width = 30 * len(self.digital_channels)
             else:
-                a_ch_offset = 2 + int(has_digital)
+                a_ch_offset = 3 + int(has_digital)
                 if (column - a_ch_offset) % 2 == 0:
                     width = 80
                 else:
@@ -186,7 +188,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         return len(self._pulse_block.element_list)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
-        return 2 + int(len(self.digital_channels) > 0) + 2 * len(self.analog_channels)
+        return 3 + int(len(self.digital_channels) > 0) + 2 * len(self.analog_channels)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
@@ -213,25 +215,25 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         if role == self.analogFunctionRole:
             element = self._pulse_block.element_list[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl]
         if role == self.analogShapeRole:
             element = self._pulse_block.element_list[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl].__class__.__name__
         if role == self.analogParameterRole:
             element = self._pulse_block.element_list[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return vars(element.pulse_function[analog_chnl])
         if role == self.useAsTickRole:
@@ -258,9 +260,9 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             if self.data(index=index, role=self.analogShapeRole) != data:
                 sampling_func = getattr(sf, data)
                 if self.digital_channels:
-                    col_offset = 3
+                    col_offset = 4
                 else:
-                    col_offset = 2
+                    col_offset = 3
                 chnl = self.analog_channels[(index.column() - col_offset) // 2]
                 self._pulse_block.element_list[index.row()].pulse_function[chnl] = sampling_func()
 
@@ -271,9 +273,9 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
 
         elif role == self.analogParameterRole and isinstance(data, dict):
             if self.digital_channels:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             chnl = self.analog_channels[(index.column() - col_offset) // 2]
             self._pulse_block.element_list[index.row()].pulse_function[chnl].__init__(**data)
         elif role == self.useAsTickRole and isinstance(data, bool):
@@ -331,8 +333,6 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
                 row,
                 PulseBlockElement(pulse_function=analog_shape.copy(), digital_high=digital_state))
 
-        self._pulse_block._refresh_parameters()
-
         self.endInsertRows()
         return True
 
@@ -354,7 +354,6 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.beginRemoveRows(parent, row, row + count - 1)
 
         del(self._pulse_block.element_list[row:row+count])
-        self._pulse_block._refresh_parameters()
 
         self._col_widths = self._get_column_widths()
         self._notify_column_width()
@@ -432,14 +431,17 @@ class BlockEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(
             1, ScienDSpinBoxItemDelegate(self, increment_item_dict, self.model().incrementRole))
 
+        # Set item delegate for "use as tick?" checkbox.
+        self.setItemDelegateForColumn(2, CheckBoxItemDelegate(self, self.model().useAsTickRole))
+
         # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
             self.setItemDelegateForColumn(
-                2, DigitalStatesItemDelegate(self, self.model().digitalStateRole))
-            offset_index = 3  # to indicate which column comes next.
+                3, DigitalStatesItemDelegate(self, self.model().digitalStateRole))
+            offset_index = 4  # to indicate which column comes next.
         else:
-            offset_index = 2  # to indicate which column comes next.
+            offset_index = 3  # to indicate which column comes next.
 
         # loop through all analog channels and set two item delegates for each channel.
         # First a ComboBox delegate for the analog shape column and second a custom
@@ -557,6 +559,7 @@ class BlockEditor(QtWidgets.QTableView):
         block_copy = copy.deepcopy(self.model().data(QtCore.QModelIndex(),
                                                      self.model().pulseBlockRole))
         block_copy.name = ''
+        block_copy.refresh_parameters()
         return block_copy
 
     def load_block(self, pulse_block):
@@ -655,6 +658,8 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
         """
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
         if role == self.repetitionsRole and isinstance(data, int):
             block_name = self._block_ensemble.block_list[index.row()][0]
             self._block_ensemble.block_list[index.row()] = (block_name, data)
@@ -696,6 +701,9 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row > self.rowCount() or not self.available_pulse_blocks:
             return False
 
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
+
         if parent is None:
             parent = QtCore.QModelIndex()
 
@@ -719,6 +727,9 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
         # Sanity/range checking
         if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
             return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
 
         if parent is None:
             parent = QtCore.QModelIndex()
@@ -987,6 +998,8 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
         """
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
         if role == self.ensembleNameRole and isinstance(data, str):
             params = self._pulse_sequence.ensemble_list[index.row()][1]
             self._pulse_sequence.ensemble_list[index.row()] = (data, params)
@@ -1030,6 +1043,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row > self.rowCount() or not self.available_block_ensembles:
             return False
 
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
+
         if parent is None:
             parent = QtCore.QModelIndex()
 
@@ -1054,6 +1070,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         # Sanity/range checking
         if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
             return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
 
         if parent is None:
             parent = QtCore.QModelIndex()

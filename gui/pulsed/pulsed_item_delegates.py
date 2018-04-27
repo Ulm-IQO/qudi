@@ -20,9 +20,107 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from qtpy import QtCore, QtGui
+from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_custom_widgets import DigitalChannelsWidget, AnalogParametersWidget
 from qtwidgets.scientific_spinbox import ScienDSpinBox
+
+
+class CheckBoxItemDelegate(QtGui.QStyledItemDelegate):
+    """
+    """
+    editingFinished = QtCore.Signal()
+
+    def __init__(self, parent, data_access_role=QtCore.Qt.DisplayRole):
+        """
+        @param QWidget parent: the parent QWidget which hosts this child widget
+        """
+        super().__init__(parent)
+        self._access_role = data_access_role
+        return
+
+    def createEditor(self, parent, option, index):
+        """
+        Create for the display and interaction with the user an editor.
+
+        @param QtGui.QWidget parent: The parent object (probably QTableView)
+        @param QtGui.QStyleOptionViewItemV4 option: This is a setting option which you can use for
+                                                    style configuration.
+        @param QtCore.QModelIndex index: That index will be passed by the model object of the
+                                         QTableView to the delegated object. This index contains
+                                         information about the selected current cell.
+
+        An editor can be in principle any QWidget, which you want to use to display the current
+        (model-)data. Therefore the editor is like a container, which handles the passed entries
+        from the user interface and should save the data to the model object of the QTableWidget.
+        The setEditorData function reads data from the model.
+
+        Do not save the created editor as a class variable! This consumes a lot of unneeded memory.
+        It is way better to create an editor if it is needed. The inherent function closeEditor()
+        of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
+        needed any longer.
+        """
+        editor = QtWidgets.QCheckBox(parent=parent)
+        editor.setGeometry(option.rect)
+        editor.stateChanged.connect(self.commitAndCloseEditor)
+        return editor
+
+    def commitAndCloseEditor(self):
+        editor = self.sender()
+        self.commitData.emit(editor)
+        # self.closeEditor.emit(editor)
+        self.editingFinished.emit()
+        return
+
+    def sizeHint(self):
+        return QtCore.QSize(15, 50)
+
+    def setEditorData(self, editor, index):
+        """
+        Set the display of the current value of the used editor.
+
+        @param ScienDSpinBox editor: QObject which was created in createEditor function,
+                                     here a ScienDSpinBox.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        This function converts the passed data to an value, which can be
+        understood by the editor.
+        """
+        data = index.data(self._access_role)
+        if not isinstance(data, bool):
+            return
+        editor.blockSignals(True)
+        editor.setChecked(data)
+        editor.blockSignals(False)
+        return
+
+    def setModelData(self, editor, model, index):
+        """
+        Save the data of the editor to the model.
+
+        @param ScienDSpinBox editor: QObject which was created in createEditor function,
+                                                here a ScienDSpinBox.
+        @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
+        @param QtCore.QModelIndex index: explained in createEditor function.
+
+        Before the editor is destroyed the current selection should be saved in the underlying data
+        model. The setModelData() function reads the content of the editor, and writes it to the
+        model. Furthermore here the postprocessing of the data can happen, where the data can be
+        manipulated for the model.
+        """
+        data = editor.isChecked()
+        # write the data to the model:
+        model.setData(index, data, self._access_role)
+        return
+
+    def paint(self, painter, option, index):
+        painter.save()
+        r = option.rect
+        painter.translate(r.topLeft())
+        widget = QtWidgets.QCheckBox()
+        widget.setGeometry(r)
+        widget.setChecked(index.data(self._access_role))
+        widget.render(painter)
+        painter.restore()
 
 
 class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):

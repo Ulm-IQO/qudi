@@ -727,6 +727,28 @@ class PulsedMasterLogic(GenericLogic):
         self.status_dict['sampload_busy'] = False
         self.status_dict['loading_busy'] = False
         self.sigLoadedAssetUpdated.emit(asset_name, asset_type)
+        # Transfer sequence information from PulseBlockEnsemble or PulseSequence to
+        # PulsedMeasurementLogic to be able to invoke measurement settings from them
+        if not asset_type:
+            # If no asset loaded or asset type unknown, clear sequence_information dict
+
+            object_instance = None
+        elif asset_type == 'PulseBlockEnsemble':
+            object_instance = self.saved_pulse_block_ensembles.get(asset_name)
+        elif asset_type == 'PulseSequence':
+            object_instance = self.saved_pulse_sequences.get(asset_name)
+        else:
+            object_instance = None
+
+        if object_instance is None:
+            self.set_measurement_settings(sequence_information=dict())
+        else:
+            sequence_information = dict()
+            sequence_information[
+                'sampling_information'] = object_instance.sampling_information.copy()
+            sequence_information[
+                'measurement_information'] = object_instance.measurement_information.copy()
+            self.set_measurement_settings(sequence_information=sequence_information)
         return
 
     @QtCore.Slot(object)
