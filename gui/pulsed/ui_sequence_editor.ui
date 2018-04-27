@@ -540,7 +540,7 @@ Sequence</string>
   <customwidget>
    <class>SequenceEditor</class>
    <extends>QTableView</extends>
-   <header>gui.pulsed.pulse_editors_new.h</header>
+   <header>gui.pulsed.pulse_editors.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>

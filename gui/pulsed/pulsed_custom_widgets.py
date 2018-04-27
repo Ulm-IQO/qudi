@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from qtpy import QtCore, QtGui
 from collections import OrderedDict
-from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
 class DigitalChannelsWidget(QtGui.QWidget):
@@ -106,18 +106,19 @@ class AnalogParametersWidget(QtGui.QWidget):
                 widget = ScienDSpinBox()
                 widget.setMinimum(self._parameters[param]['min'])
                 widget.setMaximum(self._parameters[param]['max'])
-                widget.setValue(self._parameters[param]['init'])
                 widget.setDecimals(6, False)
-                # widget.setSuffix(self._parameters[param]['unit'])
+                widget.setValue(self._parameters[param]['init'])
+                widget.setSuffix(self._parameters[param]['unit'])
                 # Set size constraints
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
                 widget.editingFinished.connect(self.editingFinished)
             elif self._parameters[param]['type'] == int:
-                widget = QtGui.QSpinBox()
+                widget = ScienSpinBox()
                 widget.setValue(self._parameters[param]['init'])
                 widget.setMinimum(self._parameters[param]['min'])
                 widget.setMaximum(self._parameters[param]['max'])
+                widget.setSuffix(self._parameters[param]['unit'])
                 # Set size constraints
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
