@@ -728,7 +728,7 @@ class SequenceGeneratorLogic(GenericLogic):
             del(self._saved_pulse_blocks[name])
             self._save_blocks_to_tmp_file()
             self.sigBlockDictUpdated.emit(self._saved_pulse_blocks)
-        else:
+        elif name:
             self.log.warning('PulseBlock object with name "{0}" not found in saved '
                              'blocks.\nTherefore nothing is removed.'.format(name))
         return
@@ -823,7 +823,7 @@ class SequenceGeneratorLogic(GenericLogic):
             del(self._saved_pulse_block_ensembles[name])
             self._save_ensembles_to_tmp_file()
             self.sigEnsembleDictUpdated.emit(self._saved_pulse_block_ensembles)
-        else:
+        elif name:
             self.log.warning('PulseBlockEnsemble object with name "{0}" not found in saved '
                              'block ensembles.\nTherefore nothing is removed.'.format(name))
         return
@@ -925,7 +925,7 @@ class SequenceGeneratorLogic(GenericLogic):
             del(self._saved_pulse_sequences[name])
             self._save_sequences_to_tmp_file()
             self.sigSequenceDictUpdated.emit(self.saved_pulse_sequences)
-        else:
+        elif name:
             self.log.warning('PulseSequence object with name "{0}" not found in saved sequences.\n'
                              'Therefore nothing is removed.'.format(name))
         return
@@ -1024,6 +1024,62 @@ class SequenceGeneratorLogic(GenericLogic):
     #---------------------------------------------------------------------------
     #                    BEGIN sequence/block sampling
     #---------------------------------------------------------------------------
+    def get_ensemble_info(self, ensemble):
+        """
+        This helper method will analyze a PulseBlockEnsemble and return information like length in
+        seconds and bins (with currently set sampling rate), number of laser pulses (with currently
+        selected laser/gate channel)
+
+        @param PulseBlockEnsemble ensemble: The PulseBlockEnsemble instance to analyze
+        @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
+        """
+        # variables to keep track of the current timeframe and number of laser/gate pulses
+        current_end_time = 0.0
+        current_start_bin = 0
+        number_of_lasers = 0
+        # memorize the channel state of the previous element.
+        tmp_digital_high = False
+
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
+        # check for active channels in last block and take the laser_channel state of the very last
+        # element as initial state for the tmp_digital_high. Return if the ensemble is empty
+        if len(ensemble.block_list) > 0:
+            block = self.get_block(ensemble.block_list[-1][0])
+            digital_channels = block.digital_channels
+            analog_channels = block.analog_channels
+            channel_set = analog_channels.union(digital_channels)
+            if laser_channel in channel_set:
+                tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
+        else:
+            return current_end_time, current_end_bin, number_of_lasers
+
+        # Loop over all blocks in the ensemble
+        for block_name, reps in ensemble.block_list:
+            block = self.get_block(block_name)
+            # Iterate over all repetitions of the current block
+            for rep_no in range(reps + 1):
+                # Iterate over the Block_Elements inside the current block
+                for block_element in block.element_list:
+                    # save bin position if transition from low to high has occured in laser channel
+                    if laser_channel in channel_set and block_element.digital_high[laser_channel] != tmp_digital_high:
+                        if block_element.digital_high[laser_channel] and not tmp_digital_high:
+                            number_of_lasers += 1
+                        tmp_digital_high = block_element.digital_high[laser_channel]
+
+                    # element length of the current element with current repetition count in sec
+                    element_length_s = block_element.init_length_s + (
+                                rep_no * block_element.increment_s)
+                    # ideal end time for the sequence up until this point in sec
+                    current_end_time += element_length_s
+                    # Nearest possible match including the discretization in bins
+                    current_end_bin = int(np.rint(current_end_time * self.__sample_rate))
+
+        return current_end_time, current_end_bin, number_of_lasers
+
     def _analyze_block_ensemble(self, ensemble):
         """
         This helper method runs through each element of a PulseBlockEnsemble object and extracts
