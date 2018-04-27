@@ -607,7 +607,7 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     period = 1 / result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -626,6 +626,21 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
                                  'error': result.params['offset'].stderr,
                                  'unit': units[1]}
+
+    result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
+                                    'error':  result.params['amplitude'].stderr,
+                                    'unit': units[1]}
+
+    result_str_dict['Contrast'] = {'value': ((2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value+result.params['amplitude'].value)*100),
+                                   'error':  (np.abs((2*result.params['amplitude'].value) /
+                                              (result.params['offset'].value+result.params['amplitude'].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params['amplitude'].value) + (2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value + result.params['amplitude'].value)**2) *
+                                             result.params['amplitude'].stderr))*100,
+                                   'unit': '%'}
 
     result.result_str_dict = result_str_dict
     return result
@@ -702,7 +717,7 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
 
     period = 1/result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -717,6 +732,17 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
     result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
                                     'error': result.params['amplitude'].stderr,
                                     'unit': units[1]}
+
+    result_str_dict['Contrast'] = {'value': ((2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value+result.params['amplitude'].value)*100),
+                                   'error':  (np.abs((2*result.params['amplitude'].value) /
+                                              (result.params['offset'].value+result.params['amplitude'].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params['amplitude'].value) + (2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value + result.params['amplitude'].value)**2) *
+                                             result.params['amplitude'].stderr))*100,
+                                   'unit': '%'}
 
     result_str_dict['Phase'] = {'value': result.params['phase'].value,
                                 'error': result.params['phase'].stderr,
@@ -866,7 +892,7 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
 
     period = 1 / result.params['frequency'].value
     try:
-        period_err = 1 / result.params['frequency'].stderr
+        period_err = result.params['frequency'].stderr / (result.params['frequency'])**2
     except ZeroDivisionError:
         period_err = np.inf
 
@@ -881,6 +907,17 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
     result_str_dict['Amplitude'] = {'value': result.params['amplitude'].value,
                                     'error': result.params['amplitude'].stderr,
                                     'unit': units[1]}
+
+    result_str_dict['Contrast'] = {'value': ((2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value+result.params['amplitude'].value)*100),
+                                   'error':  (np.abs((2*result.params['amplitude'].value) /
+                                              (result.params['offset'].value+result.params['amplitude'].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params['amplitude'].value) + (2*result.params['amplitude'].value) /
+                                             (result.params['offset'].value + result.params['amplitude'].value)**2) *
+                                             result.params['amplitude'].stderr))*100,
+                                   'unit': '%'}
 
     result_str_dict['Phase'] = {'value': result.params['phase'].value,
                                 'error': result.params['phase'].stderr,
@@ -962,24 +999,24 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['s1_frequency'].value
+    period1 = 1 / result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency'])**2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['s2_frequency'].value
+    period2 = 1 / result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency'])**2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['s1_frequency'].value,
@@ -997,6 +1034,30 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
     result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
                                       'error': result.params['s2_amplitude'].stderr,
                                       'unit': units[1]}
+
+    amp_string = 's1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                    'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                   'unit': '%'}
+
+    amp_string = 's2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                             (result.params['offset'].value+result.params[amp_string].value)*100),
+                                   'error':  (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                             (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                             result.params[amp_string].stderr))*100,
+                                   'unit': '%'}
 
     result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
                                   'error': result.params['s1_phase'].stderr,
@@ -1093,24 +1154,24 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['s1_frequency'].value
+    period1 = 1 / result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['s2_frequency'].value
+    period2 = 1 / result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['s1_frequency'].value,
@@ -1128,6 +1189,30 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     result_str_dict['Amplitude 2'] = {'value': result.params['s2_amplitude'].value,
                                       'error': result.params['s2_amplitude'].stderr,
                                       'unit': units[1]}
+
+    amp_string = 's1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
 
     result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
                                   'error': result.params['s1_phase'].stderr,
@@ -1239,24 +1324,24 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['e1_frequency'].value
+    period1 = 1 / result.params['e1_frequency'].value
     try:
-        period1_err = 1 / result.params['e1_frequency'].stderr
+        period1_err = result.params['e1_frequency'].stderr / (result.params['e1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['e2_frequency'].value
+    period2 = 1 / result.params['e2_frequency'].value
     try:
-        period2_err = 1 / result.params['e2_frequency'].stderr
+        period2_err = result.params['e2_frequency'].stderr / (result.params['e2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['e1_frequency'].value,
@@ -1274,6 +1359,30 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
     result_str_dict['Amplitude 2'] = {'value': result.params['e2_amplitude'].value,
                                       'error': result.params['e2_amplitude'].stderr,
                                       'unit': units[1]}
+
+    amp_string = 'e1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 'e2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
 
     result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
                                   'error': result.params['e1_phase'].stderr,
@@ -1388,34 +1497,34 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['s1_frequency'].value
+    period1 = 1 / result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['s2_frequency'].value
+    period2 = 1 / result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    period3 = result.params['s3_frequency'].value
+    period3 = 1 / result.params['s3_frequency'].value
     try:
-        period3_err = 1 / result.params['s3_frequency'].stderr
+        period3_err = result.params['s3_frequency'].stderr / (result.params['s3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 3'] = {'value': 1/period3 if period3 else 0.0,
-                                   'error': 1/period3_err if period3_err else 0.0,
+    result_str_dict['Period 3'] = {'value': period3 if period3 else 0.0,
+                                   'error': period3_err if period3_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['s1_frequency'].value,
@@ -1441,6 +1550,42 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
     result_str_dict['Amplitude 3'] = {'value': result.params['s3_amplitude'].value,
                                       'error': result.params['s3_amplitude'].stderr,
                                       'unit': units[1]}
+
+    amp_string = 's1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's3_amplitude'
+    result_str_dict['Contrast 3'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
 
     result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
                                   'error': result.params['s1_phase'].stderr,
@@ -1547,33 +1692,33 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['s1_frequency'].value
+    period1 = 1 / result.params['s1_frequency'].value
     try:
-        period1_err = 1 / result.params['s1_frequency'].stderr
+        period1_err = result.params['s1_frequency'].stderr / (result.params['s1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['s2_frequency'].value
+    period2 = 1 / result.params['s2_frequency'].value
     try:
-        period2_err = 1 / result.params['s2_frequency'].stderr
+        period2_err = result.params['s2_frequency'].stderr / (result.params['s2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    period3 = result.params['s3_frequency'].value
+    period3 = 1 / result.params['s3_frequency'].value
     try:
-        period3_err = 1 / result.params['s3_frequency'].stderr
+        period3_err = result.params['s3_frequency'].stderr / (result.params['s3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
-    result_str_dict['Period 3'] = {'value': 1/period3 if period3 else 0.0,
-                                   'error': 1/period3_err if period3_err else 0.0,
+    result_str_dict['Period 3'] = {'value': period3 if period3 else 0.0,
+                                   'error': period3_err if period3_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['s1_frequency'].value,
@@ -1599,6 +1744,43 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
     result_str_dict['Amplitude 3'] = {'value': result.params['s3_amplitude'].value,
                                       'error': result.params['s3_amplitude'].stderr,
                                       'unit': units[1]}
+
+
+    amp_string = 's1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 's3_amplitude'
+    result_str_dict['Contrast 3'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
 
     result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
                                   'error': result.params['s1_phase'].stderr,
@@ -1725,33 +1907,33 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
 
     result_str_dict = dict()  # create result string for gui or OrderedDict()
 
-    period1 = result.params['e1_frequency'].value
+    period1 = 1 / result.params['e1_frequency'].value
     try:
-        period1_err = 1 / result.params['e1_frequency'].stderr
+        period1_err = result.params['e1_frequency'].stderr / (result.params['e1_frequency']) ** 2
     except ZeroDivisionError:
         period1_err = np.inf
 
-    period2 = result.params['e2_frequency'].value
+    period2 = 1 / result.params['e2_frequency'].value
     try:
-        period2_err = 1 / result.params['e2_frequency'].stderr
+        period2_err = result.params['e2_frequency'].stderr / (result.params['e2_frequency']) ** 2
     except ZeroDivisionError:
         period2_err = np.inf
 
-    period3 = result.params['e3_frequency'].value
+    period3 = 1 / result.params['e3_frequency'].value
     try:
-        period3_err = 1 / result.params['e3_frequency'].stderr
+        period3_err = result.params['e3_frequency'].stderr / (result.params['e3_frequency']) ** 2
     except ZeroDivisionError:
         period3_err = np.inf
 
-    result_str_dict['Period 1'] = {'value': 1/period1 if period1 else 0.0,
-                                   'error': 1/period1_err if period1_err else 0.0,
+    result_str_dict['Period 1'] = {'value': period1 if period1 else 0.0,
+                                   'error': period1_err if period1_err else 0.0,
                                    'unit': units[0]}
 
-    result_str_dict['Period 2'] = {'value': 1/period2 if period2 else 0.0,
-                                   'error': 1/period2_err if period2_err else 0.0,
+    result_str_dict['Period 2'] = {'value': period2 if period2 else 0.0,
+                                   'error': period2_err if period2_err else 0.0,
                                    'unit': units[0]}
-    result_str_dict['Period 3'] = {'value': 1/period3 if period3 else 0.0,
-                                   'error': 1/period3_err if period3_err else 0.0,
+    result_str_dict['Period 3'] = {'value': period3 if period3 else 0.0,
+                                   'error': period3_err if period3_err else 0.0,
                                    'unit': units[0]}
 
     result_str_dict['Frequency 1'] = {'value': result.params['e1_frequency'].value,
@@ -1777,6 +1959,43 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
     result_str_dict['Amplitude 3'] = {'value': result.params['e3_amplitude'].value,
                                       'error': result.params['e3_amplitude'].stderr,
                                       'unit': units[1]}
+
+    amp_string = 'e1_amplitude'
+    result_str_dict['Contrast 1'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 'e2_amplitude'
+    result_str_dict['Contrast 2'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
+    amp_string = 'e3_amplitude'
+    result_str_dict['Contrast 3'] = {'value': ((2*result.params[amp_string].value) /
+                                               (result.params['offset'].value+result.params[amp_string].value)*100),
+                                     'error': (np.abs((2*result.params[amp_string].value) /
+                                              (result.params['offset'].value+result.params[amp_string].value)**2 *
+                                             result.params['offset'].stderr) +
+                                             np.abs((2/(result.params['offset'].value +
+                                             result.params[amp_string].value) + (2*result.params[amp_string].value) /
+                                              (result.params['offset'].value + result.params[amp_string].value)**2) *
+                                               result.params[amp_string].stderr))*100,
+                                     'unit': '%'}
+
 
     result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
                                   'error': result.params['e1_phase'].stderr,
