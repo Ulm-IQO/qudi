@@ -72,7 +72,7 @@ class PoI:
             # Store the time in the history log as seconds since 1970,
             # rather than as a datetime object.
             creation_time_sec = (self._creation_time - datetime.utcfromtimestamp(0)).total_seconds()
-            self._position_time_trace.append(np.array([creation_time_sec, pos[0], pos[1], pos[2]]))
+            self._position_time_trace.append([creation_time_sec, pos[0], pos[1], pos[2]])
             self._coords_in_sample = pos
 
         if name is None:
@@ -121,7 +121,7 @@ class PoI:
             return -1
         else:
             self._position_time_trace.append(
-                np.array([time.time(), position[0], position[1], position[2]]))
+                [time.time(), position[0], position[1], position[2]])
 
     def get_coords_in_sample(self):
         """ Returns the coordinates of the POI relative to the sample.
