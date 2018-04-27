@@ -1134,6 +1134,12 @@ class PulsedMeasurementGui(GUIBase):
         # Apply hardware constraints to input widgets
         self._pg_apply_hardware_constraints()
 
+        # Configure widgets
+        self._pg.curr_ensemble_length_DSpinBox.setRange(0, np.inf)
+        self._pg.curr_ensemble_length_DSpinBox.setDecimals(6, dynamic_precision=False)
+        self._pg.curr_ensemble_bins_SpinBox.setRange(0, 2**63-1)
+        self._pg.curr_ensemble_laserpulses_SpinBox.setRange(0, 2**31-1)
+
         # initialize widgets
         self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
         self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
@@ -1487,12 +1493,14 @@ class PulsedMeasurementGui(GUIBase):
             self.log.error('No name has been entered for the PulseBlockEnsemble to be generated.')
             return
         rotating_frame = self._pg.curr_ensemble_rot_frame_CheckBox.isChecked()
-        alternating = self._pg.curr_ensemble_alternating_CheckBox.isChecked()
         self._pg.block_organizer.set_rotating_frame(rotating_frame)
         ensemble_object = self._pg.block_organizer.get_ensemble()
-        ensemble_object.measurement_information['alternating'] = alternating
         ensemble_object.name = name
         self.pulsedmasterlogic().save_block_ensemble(ensemble_object)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().sequencegeneratorlogic().get_ensemble_info(ensemble_object)
+        self._pg.curr_ensemble_length_DSpinBox.setValue(length_s)
+        self._pg.curr_ensemble_bins_SpinBox.setValue(length_bins)
+        self._pg.curr_ensemble_laserpulses_SpinBox.setValue(lasers)
         return
 
     @QtCore.Slot()
@@ -1507,27 +1515,28 @@ class PulsedMeasurementGui(GUIBase):
         ensemble = self.pulsedmasterlogic().saved_pulse_block_ensembles[name]
         self._pg.block_organizer.load_ensemble(ensemble)
         self._pg.curr_ensemble_name_LineEdit.setText(name)
-
         self._pg.curr_ensemble_rot_frame_CheckBox.setChecked(ensemble.rotating_frame)
-        if ensemble.measurement_information:
-            self._pg.curr_ensemble_length_DSpinBox.setValue(
-                ensemble.measurement_information['length_s'])
-            self._pg.curr_ensemble_bins_SpinBox.setValue(
-                ensemble.measurement_information['length_bins'])
-            self._pg.curr_ensemble_laserpulses_SpinBox.setValue(
-                ensemble.measurement_information['number_of_lasers'])
-            self._pg.curr_ensemble_alternating_CheckBox.setChecked(
-                ensemble.measurement_information['alternating'])
-        else:
-            self._pg.curr_ensemble_length_DSpinBox.setValue(0.0)
-            self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
-            self._pg.curr_ensemble_alternating_CheckBox.setChecked(False)
 
-        if ensemble.sampling_information:
-            self._pg.curr_ensemble_bins_SpinBox.setValue(
-                ensemble.sampling_information['length_bins'])
-        else:
-            self._pg.curr_ensemble_bins_SpinBox.setValue(0)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().sequencegeneratorlogic().get_ensemble_info(ensemble)
+        self._pg.curr_ensemble_length_DSpinBox.setValue(length_s)
+        self._pg.curr_ensemble_bins_SpinBox.setValue(length_bins)
+        self._pg.curr_ensemble_laserpulses_SpinBox.setValue(lasers)
+
+        # if ensemble.measurement_information:
+        #     self._pg.curr_ensemble_length_DSpinBox.setValue(
+        #         ensemble.measurement_information['length_s'])
+        #     self._pg.curr_ensemble_bins_SpinBox.setValue(
+        #         ensemble.measurement_information['length_bins'])
+        #     self._pg.curr_ensemble_laserpulses_SpinBox.setValue(
+        #         ensemble.measurement_information['number_of_lasers'])
+        # else:
+        #     self._pg.curr_ensemble_length_DSpinBox.setValue(0.0)
+        #     self._pg.curr_ensemble_bins_SpinBox.setValue(0)
+        #     self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
+        #
+        # if ensemble.sampling_information:
+        #     self._pg.curr_ensemble_bins_SpinBox.setValue(
+        #         ensemble.sampling_information['length_bins'])
         return
 
     @QtCore.Slot(dict)
@@ -1814,10 +1823,10 @@ class PulsedMeasurementGui(GUIBase):
         if sequence.measurement_information:
             self._pg.curr_sequence_length_DSpinBox.setValue(
                 sequence.measurement_information['length_s'])
+            self._pg.curr_sequence_bins_SpinBox.setValue(
+                sequence.measurement_information['length_bins'])
             self._pg.curr_sequence_laserpulses_SpinBox.setValue(
                 sequence.measurement_information['number_of_lasers'])
-            self._pg.curr_sequence_alternating_CheckBox.setChecked(
-                sequence.measurement_information['alternating'])
         else:
             self._pg.curr_sequence_length_DSpinBox.setValue(0.0)
             self._pg.curr_sequence_laserpulses_SpinBox.setValue(0)
