@@ -1391,13 +1391,14 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         # the scaled integer string that is still missing the order of magnitude (si-prefix or e)
         integer_str = value_str[:digit_index + missing_zeros]
 
+        space = ' ' if self.__suffix else ''
         # Add si-prefix or, if the exponent is too big, add e-notation
         if 2 < exponent <= 24:
             si_prefix = ' ' + 'kMGTPEZY'[exponent // 3 - 1]
         elif exponent > 24:
-            si_prefix = 'e{0:d}'.format(exponent)
+            si_prefix = 'e{0:d}'.format(exponent) + space
         else:
-            si_prefix = ''
+            si_prefix = space
 
         # Assemble the string and return it
         return sign + integer_str + si_prefix
