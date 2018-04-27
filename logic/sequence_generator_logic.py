@@ -792,28 +792,6 @@ class SequenceGeneratorLogic(GenericLogic):
         # Make sure no sampling information is present upon saving the object instance
         ensemble.sampling_information = dict()
 
-        # Check if measurement information is present (namely number_of_laserpulses and
-        # controlled_variables array) and add this information if it's missing.
-        # Set all other important parameters to their default values.
-        if any(param not in ensemble.measurement_information for param in ('number_of_lasers',
-                                                                           'controlled_variable')):
-            laser_chnl = self.generation_parameters['gate_channel'] if self.generation_parameters[
-                'gate_channel'] else self.generation_parameters['laser_channel']
-            analyzed = self._analyze_block_ensemble(ensemble)
-
-            if 'number_of_lasers' not in ensemble.measurement_information:
-                number_of_lasers = len(analyzed['digital_rising_bins'][laser_chnl])
-                ensemble.measurement_information['number_of_lasers'] = number_of_lasers
-            if 'controlled_variable' not in ensemble.measurement_information:
-                if analyzed['controlled_variables'] is None:
-                    controlled_variable = np.arange(
-                        ensemble.measurement_information['number_of_lasers'], dtype=float)
-                else:
-                    controlled_variable = analyzed['controlled_variables']
-                ensemble.measurement_information['controlled_variable'] = controlled_variable
-        if 'laser_ignore_list' not in ensemble.measurement_information:
-            ensemble.measurement_information['laser_ignore_list'] = list()
-
         self._saved_pulse_block_ensembles[ensemble.name] = ensemble
         self._save_ensembles_to_tmp_file()
         self.sigEnsembleDictUpdated.emit(self._saved_pulse_block_ensembles)
@@ -1084,8 +1062,6 @@ class SequenceGeneratorLogic(GenericLogic):
         digital_falling_bins = dict()
         # memorize the channel state of the previous element
         tmp_digital_high = dict()
-        # determine if measurement ticks can be invoked (by using use_as_tick in PulseBlocks)
-        controlled_variables = None
 
         # check for active channels
         digital_channels = set()
@@ -1107,12 +1083,6 @@ class SequenceGeneratorLogic(GenericLogic):
 
         for block_name, reps in ensemble.block_list:
             block = self.get_block(block_name)
-            # Get measurement ticks if present
-            if block.use_as_tick:
-                start = block.controlled_vals_start
-                incr = block.controlled_vals_increment
-                controlled_variables = np.arange(reps + 1, dtype=float) * incr + start
-
             # Total number of elements in the current block including all repetitions
             unrolled_elements = (reps+1) * len(block.element_list)
             # Add this number to the total number of unrolled elements in the ensemble
@@ -1170,7 +1140,6 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['analog_channels'] = analog_channels
         return_dict['digital_channels'] = digital_channels
         return_dict['channel_set'] = analog_channels.union(digital_channels)
-        return_dict['controlled_variables'] = controlled_variables
         return return_dict
 
     def _analyze_sequence(self, sequence):
