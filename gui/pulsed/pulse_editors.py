@@ -1,271 +1,150 @@
-from qtpy import QtCore
-from qtpy import QtWidgets
+# -*- coding: utf-8 -*-
+
+"""
+Qudi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qudi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+"""
+
 import numpy as np
+import copy
+
+from qtpy import QtCore, QtGui, QtWidgets
 from collections import OrderedDict
-import re
-
-from logic.pulse_objects import PulseBlockElement
-from logic.pulse_objects import PulseBlock
-from logic.pulse_objects import PulseBlockEnsemble
-from logic.pulse_objects import PulseSequence
-from logic.sampling_functions import SamplingFunctions
-
-from .spinbox_delegate import SpinBoxDelegate
-from .scientificspinbox_delegate import ScienDSpinBoxDelegate
-from .combobox_delegate import ComboBoxDelegate
-from .checkbox_delegate import CheckBoxDelegate
-
-import logging
-logger = logging.getLogger(__name__)
+from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
+from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate
+from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
+from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble, PulseSequence
+import logic.sampling_functions as sf
 
 
-class BlockEditor:
+class BlockEditorTableModel(QtCore.QAbstractTableModel):
     """
-    The QTableWidget has already an underlying model, where the data are saved.
-    The view widgets are handeled by the delegates.
-
-    Access to the view object:
-
-    Each element (in the table) of a QTableWidget is called a QTableItemWidget,
-    where the reference to each item can be obtained via
-
-        item = be_widget.item(row, column)
-
-    This is in general the view object, which will be seen on the editor. The
-    kind of object can be changed by modifying the createEditor method of the
-    delegate.
-    To get the reference to the delegated (parent) object use
-        c = be_widget.itemDelegate(index)
-
-    Access to the model object:
-    To access the model object, i.e. the object where the actual data is stored,
-    a reference to the model needs to be obtained:
-
-        model = be_widget.model()
-
-    and the index object to the data, which holds the reference to get the data,
-    will be obtained by selecting the proper row and column number (starting
-    from 0):
-
-        index = model.index(row, column)
 
     """
-    def __init__(self, block_editor_widget):
-        self.be_widget = block_editor_widget
-        self.parameter_dict = OrderedDict()
-        self.parameter_dict['length'] = {'unit': 's', 'init_val': 0.0, 'min': 0.0, 'max': np.inf,
-                                         'view_stepsize': 1e-9, 'dec': 15, 'type': float}
-        self.parameter_dict['increment'] = {'unit': 's', 'init_val': 0.0, 'min': -np.inf,
-                                            'max': np.inf, 'view_stepsize': 1e-9, 'dec': 15,
-                                            'type': float}
-        self.parameter_dict['use as tick?'] = {'unit': '', 'init_val': 0, 'min': 0, 'max': 1,
-                                               'view_stepsize': 1, 'dec': 0, 'type': bool}
-        self.activation_config = None
-        self.function_config = SamplingFunctions().func_config
-        self._cfg_param_pbe = None
+    # signals
+    sigColumnWidthChanged = QtCore.Signal(int, int)
 
-        # this behaviour should be customized for the combobox, since you need
-        # 3 clicks in the default settings to open it.
-        # self.be_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+    # User defined roles for model data access
+    lengthRole = QtCore.Qt.UserRole + 1
+    incrementRole = QtCore.Qt.UserRole + 2
+    digitalStateRole = QtCore.Qt.UserRole + 3
+    analogFunctionRole = QtCore.Qt.UserRole + 4
+    analogShapeRole = QtCore.Qt.UserRole + 5
+    analogParameterRole = QtCore.Qt.UserRole + 6
+    analogChannelSetRole = QtCore.Qt.UserRole + 7
+    digitalChannelSetRole = QtCore.Qt.UserRole + 8
+    channelSetRole = QtCore.Qt.UserRole + 9
+    blockElementRole = QtCore.Qt.UserRole + 10
+    pulseBlockRole = QtCore.Qt.UserRole + 11
 
+    def __init__(self):
+        super().__init__()
+
+        self.digital_channels = list()
+        self.analog_channels = list()
+        self.activation_config = set()
+
+        # The actual model data container.
+        self._pulse_block = PulseBlock('EDITOR CONTAINER')
+
+        # Create header strings
+        self._create_header_data()
+
+        # The current column widths.
+        # The fact that the widths are stored in the model saves a huge amount of computational
+        # time when resizing columns due to item changes.
+        self._col_widths = self._get_column_widths()
+        # Notify the QTableView about a change in column widths
+        self._notify_column_width()
         return
 
-    def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
-        """ Initialize the desired cells in the block editor table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
+    def _create_header_data(self):
         """
-        if stop_row is None:
-            stop_row = start_row + 1
-        if start_col is None:
-            start_col = 0
-        if stop_col is None:
-            stop_col = self.be_widget.columnCount()
-        for col_num in range(start_col, stop_col):
-            for row_num in range(start_row, stop_row):
-                # get the model, here are the data stored:
-                model = self.be_widget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was uses for this column:
-                ini_values = self.be_widget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
+
+        @return:
+        """
+        # The horizontal header data
+        self._h_header_data = ['length\nin s', 'increment\nin s']
+        if self.digital_channels:
+            self._h_header_data.append('digital\nchannels')
+        for chnl in self.analog_channels:
+            self._h_header_data.append('{0}\nshape'.format(chnl))
+            self._h_header_data.append('{0}\nparameters'.format(chnl))
         return
 
-    def _get_list(self):
-        return list(self.function_config)
-
-    def _set_columns(self):
-        self.be_widget.blockSignals(True)
-        # Determine the function with the most parameters. Use also that function as a construction plan to create all
-        # the needed columns for the parameters.
-        num_max_param = 0
-        for func in self.function_config:
-            if num_max_param < len(self.function_config[func]):
-                num_max_param = len(self.function_config[func])
-                biggest_func = func
-
-        # Erase the delegate from the column, pass a None reference:
-        for column in range(self.be_widget.columnCount()):
-            self.be_widget.setItemDelegateForColumn(column, None)
-        # clear the number of columns:
-        self.be_widget.setColumnCount(0)
-        # total number of analog and digital channels:
-        num_of_columns = 0
-        for channel in self.activation_config:
-            if 'd_ch' in channel:
-                num_of_columns += 1
-            elif 'a_ch' in channel:
-                num_of_columns += num_max_param + 1
-        self.be_widget.setColumnCount(num_of_columns)
-
-        column_count = 0
-        for channel in self.activation_config:
-            if 'a_ch' in channel:
-                self.be_widget.setHorizontalHeaderItem(column_count, QtWidgets.QTableWidgetItem())
-                self.be_widget.horizontalHeaderItem(column_count).setText('ACh{0}\nfunction'
-                                                                          ''.format(channel.split('ch')[-1]))
-                self.be_widget.setColumnWidth(column_count, 70)
-
-                item_dict = {'get_list_method': self._get_list}
-                delegate = ComboBoxDelegate(self.be_widget, item_dict)
-                self.be_widget.setItemDelegateForColumn(column_count, delegate)
-
-                column_count += 1
-                # fill here all parameter columns for the current analogue channel
-                for parameter in self.function_config[biggest_func]:
-                    # initial block:
-                    item_dict = self.function_config[biggest_func][parameter]
-                    self.be_widget.setHorizontalHeaderItem(column_count, QtWidgets.QTableWidgetItem())
-                    self.be_widget.horizontalHeaderItem(column_count).setText('ACh{0}\n{1} ({2})'
-                                                                              ''.format(channel.split('ch')[-1],
-                                                                                        parameter, item_dict['unit']))
-                    self.be_widget.setColumnWidth(column_count, 100)
-
-                    # extract the classname from the _param_a_ch list to be able to delegate:
-                    delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
-                    self.be_widget.setItemDelegateForColumn(column_count, delegate)
-                    column_count += 1
-
-            elif 'd_ch' in channel:
-                self.be_widget.setHorizontalHeaderItem(column_count, QtWidgets.QTableWidgetItem())
-                self.be_widget.horizontalHeaderItem(column_count).setText('DCh{0}'.format(channel.split('ch')[-1]))
-                self.be_widget.setColumnWidth(column_count, 40)
-
-                # itemlist for checkbox
-                item_dict = {'init_val': QtCore.Qt.Unchecked}
-                checkDelegate = CheckBoxDelegate(self.be_widget, item_dict)
-                self.be_widget.setItemDelegateForColumn(column_count, checkDelegate)
-
-                column_count += 1
-
-        # Insert the additional parameters (length etc.)
-
-        for column, parameter in enumerate(self.parameter_dict):
-            # add the new properties to the whole column through delegate:
-            item_dict = self.parameter_dict[parameter]
-
-            self.be_widget.insertColumn(num_of_columns + column)
-            self.be_widget.setHorizontalHeaderItem(num_of_columns + column, QtWidgets.QTableWidgetItem())
-            self.be_widget.horizontalHeaderItem(num_of_columns + column).setText('{0} ({1})'.format(parameter,
-                                                                                                    item_dict['unit']))
-            self.be_widget.setColumnWidth(num_of_columns + column, 90)
-
-            # Use only DoubleSpinBox as delegate:
-            if item_dict['type'] is bool:
-                delegate = CheckBoxDelegate(self.be_widget, item_dict)
-            else:
-                delegate = ScienDSpinBoxDelegate(self.be_widget, item_dict)
-            self.be_widget.setItemDelegateForColumn(num_of_columns + column, delegate)
-
-            # initialize the whole row with default values:
-            for row_num in range(self.be_widget.rowCount()):
-                # get the model, here are the data stored:
-                model = self.be_widget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, num_of_columns + column)
-                # get the initial values of the delegate class which was uses for this column:
-                ini_values = delegate.get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-
-        self.initialize_cells(0, self.be_widget.rowCount())
-        self._set_cfg_param()
-        self.be_widget.blockSignals(False)
-        return
-
-    def _set_cfg_param(self):
-        """ Set the parameter configuration of the Pulse_Block according to the
-        current table configuration and updates the dict.
-        """
-        cfg_param_pbe = OrderedDict()
-        for column in range(self.be_widget.columnCount()):
-            text = self.be_widget.horizontalHeaderItem(column).text()
-            split_text = text.split()
-            if 'DCh' in split_text[0]:
-                cfg_param_pbe['digital_' + split_text[0][3]] = column
-            elif 'ACh' in split_text[0]:
-                cfg_param_pbe[split_text[1] + '_' + split_text[0][3]] = column
-            else:
-                cfg_param_pbe[split_text[0]] = column
-        self._cfg_param_pbe = cfg_param_pbe
-        return
-
-    def _get_headernames(self):
-        """ Get the names of the current header.
-
-        @return: dict with keys being the header names and items being the column number
-        """
-        headers = OrderedDict()
-        for column in range(self.be_widget.columnCount()):
-            text = self.be_widget.horizontalHeaderItem(column).text()
-            headers[text] = column
-        return headers
-
-    def set_displayed_analog_amplitude(self, ampl_dict):
-        """ Update the maximal amplitudes of the current pulse block editor.
-
-        @param dict ampl_dict:
-        @return: list, with integers representing the column indices which have
-                 changed
+    def _notify_column_width(self, column=None):
         """
 
-        if ampl_dict == {}:
+        @param column:
+        @return:
+        """
+        if column is None:
+            for column, width in enumerate(self._col_widths):
+                self.sigColumnWidthChanged.emit(column, width)
             return
 
-        headers = self._get_headernames()
-        columns_changes = []
+        if isinstance(column, int):
+            if 0 <= column < len(self._col_widths):
+                self.sigColumnWidthChanged.emit(column, self._col_widths[column])
+        return
 
-        for amplitude in ampl_dict:
-            chan_name = amplitude.replace('_','')
-            found_cols = []
-            for entry in headers:
-                check = re.search('.*'+chan_name+'.*amplitude', entry, re.IGNORECASE | re.DOTALL)
+    def _get_column_widths(self):
+        """
 
-                if check is not None:
-                    found_cols.append(headers[entry])
+        @return:
+        """
+        widths = list()
+        for column in range(self.columnCount()):
+            width = self._get_column_width(column)
+            if width < 0:
+                return -1
+            widths.append(width)
+        return widths
 
-            for col in found_cols:
-                delegate = self.be_widget.itemDelegateForColumn(col)
-                delegate.item_dict['max'] = ampl_dict[amplitude]/2.0
+    def _get_column_width(self, column):
+        """
 
-            columns_changes.extend(found_cols)
+        @return:
+        """
+        if not isinstance(column, int):
+            return -1
 
+        if column < self.columnCount():
+            has_digital = bool(len(self.digital_channels))
 
-        return columns_changes
+            if column < 2:
+                width = 90
+            elif column == 2 and has_digital:
+                width = 30 * len(self.digital_channels)
+            else:
+                a_ch_offset = 2 + int(has_digital)
+                if (column - a_ch_offset) % 2 == 0:
+                    width = 80
+                else:
+                    channel = self.analog_channels[(column - a_ch_offset) // 2]
+                    max_param_number = 0
+                    for element in self._pulse_block.element_list:
+                        tmp_size = len(element.pulse_function[channel].params)
+                        if tmp_size > max_param_number:
+                            max_param_number = tmp_size
+                    width = 90 * max_param_number
 
+            return width
+        else:
+            return -1
 
     def set_activation_config(self, activation_config):
         """
@@ -273,739 +152,1094 @@ class BlockEditor:
         @param activation_config:
         @return:
         """
+        if isinstance(activation_config, list):
+            activation_config = set(activation_config)
+
+        # Do nothing if the activation config has not changed or is wrong data type
+        if not isinstance(activation_config, set) or activation_config == self.activation_config:
+            return
+
+        self.beginResetModel()
+
         self.activation_config = activation_config
-        self._set_columns()
+        self.digital_channels = sorted([chnl for chnl in activation_config if chnl.startswith('d')])
+        self.analog_channels = sorted([chnl for chnl in activation_config if chnl.startswith('a')])
+
+        analog_shape = {chnl: sf.Idle() for chnl in self.analog_channels}
+        digital_state = {chnl: False for chnl in self.digital_channels}
+        elem_list = [PulseBlockElement(pulse_function=analog_shape, digital_high=digital_state)]
+
+        # The actual model data container
+        self._pulse_block = PulseBlock('EDITOR CONTAINER', elem_list)
+
+        # self._col_widths = [0] * self.columnCount()
+        self._col_widths = self._get_column_widths()
+        self._create_header_data()
+
+        self.endResetModel()
+
+        self._notify_column_width()
         return
 
-    def set_function_config(self, function_config):
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        return len(self._pulse_block.element_list)
+
+    def columnCount(self, parent=QtCore.QModelIndex()):
+        return 2 + int(len(self.digital_channels) > 0) + 2 * len(self.analog_channels)
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.DisplayRole:
+            return None
+
+        if role == self.pulseBlockRole:
+            return self._pulse_block
+        if role == self.analogChannelSetRole:
+            return self._pulse_block.analog_channels
+        if role == self.digitalChannelSetRole:
+            return self._pulse_block.digital_channels
+        if role == self.channelSetRole:
+            return self._pulse_block.channel_set
+
+        if not index.isValid():
+            return None
+
+        if role == self.lengthRole:
+            return self._pulse_block.element_list[index.row()].init_length_s
+        if role == self.incrementRole:
+            return self._pulse_block.element_list[index.row()].increment_s
+        if role == self.digitalStateRole:
+            return self._pulse_block.element_list[index.row()].digital_high
+        if role == self.analogFunctionRole:
+            element = self._pulse_block.element_list[index.row()]
+            if len(self.digital_channels) > 0:
+                col_offset = 3
+            else:
+                col_offset = 2
+            analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
+            return element.pulse_function[analog_chnl]
+        if role == self.analogShapeRole:
+            element = self._pulse_block.element_list[index.row()]
+            if len(self.digital_channels) > 0:
+                col_offset = 3
+            else:
+                col_offset = 2
+            analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
+            return element.pulse_function[analog_chnl].__class__.__name__
+        if role == self.analogParameterRole:
+            element = self._pulse_block.element_list[index.row()]
+            if len(self.digital_channels) > 0:
+                col_offset = 3
+            else:
+                col_offset = 2
+            analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
+            return vars(element.pulse_function[analog_chnl])
+        if role == self.blockElementRole:
+            return self._pulse_block.element_list[index.row()]
+
+        return None
+
+    def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
-
-        @param function_config:
-        @return:
         """
-        self.function_config = function_config
-        self._set_columns()
-        return
-
-    def clear_table(self):
-        """ Delete all rows in the block editor table. """
-        self.be_widget.blockSignals(True)
-        self.be_widget.setRowCount(1)
-        self.be_widget.clearContents()
-        self.initialize_cells(start_row=0)
-        self.be_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def delete_row(self, index):
-        """ Delete row number 'index' """
-        if self.be_widget.rowCount() == 1 and index == 0:
+        if isinstance(data, PulseBlockElement):
+            self._pulse_block.element_list[index.row()] = copy.deepcopy(data)
             return
-        self.be_widget.blockSignals(True)
-        self.be_widget.removeRow(index)
-        self.be_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
 
-    def insert_rows(self, index, number_to_add=1):
-        """ Add 'number_to_add' rows after row number 'index' """
-        self.be_widget.blockSignals(True)
-        for i in range(number_to_add):
-            self.be_widget.insertRow(index)
-        self.initialize_cells(start_row=index, stop_row=index + number_to_add)
-        self.be_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def set_element(self, row, column, value):
-        """ Simplified wrapper function to set the data to a specific cell in the table.
-
-        @param int row: row index
-        @param int column: column index
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        A type check will be performed for the passed value argument. If the
-        type does not correspond to the delegate, then the value will not be
-        changed. You have to ensure that
-        """
-        model = self.be_widget.model()
-        access = self.be_widget.itemDelegateForColumn(column).model_data_access
-        data = model.index(row, column).data(access)
-        if isinstance(data, float) and isinstance(value, float):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, int) and isinstance(value, int):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, bool) and isinstance(value, bool):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, str) and isinstance(value, str):
-            model.setData(model.index(row, column), value, access)
-            return value
-        else:
-            return data
-
-    def get_element(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell in the table.
-
-        @param int row: row index
-        @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-        # Get from the corresponding delegate the data access model
-        access = self.be_widget.itemDelegateForColumn(column).model_data_access
-        data = self.be_widget.model().index(row, column).data(access)
-        return data
-
-    def get_column_delegate(self, column):
-        """ Get the delegate object, which is responsible for the specific column
-
-        @param int column: column index
-
-        @return: QDelegate
-        """
-        return self.be_widget.itemDelegate(column)
-
-    def load_pulse_block(self, block):
-        """
-
-        @param block:
-        @return:
-        """
-        if block is None:
-            return
-        # seperate active analog and digital channels in lists
-        active_analog = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-        active_digital = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
-
-        # clear table
-        self.clear_table()
-        # get amout of rows needed for display
-        rows = len(block.element_list)
-        # since one is already present
-        self.insert_rows(1, rows - 1)
-
-        for row_index, elem in enumerate(block.element_list):
-            # set at first all digital channels:
-            for digital_ch in range(elem.digital_channels):
-                column = self._cfg_param_pbe['digital_' + active_digital[digital_ch].split('ch')[-1]]
-                value = elem.digital_high[digital_ch]
-                if value:
-                    value = 2
+        if role == self.lengthRole and isinstance(data, (int, float)):
+            self._pulse_block.element_list[index.row()].init_length_s = max(0, data)
+        elif role == self.incrementRole and isinstance(data, (int, float)):
+            self._pulse_block.element_list[index.row()].increment_s = data
+        elif role == self.digitalStateRole and isinstance(data, dict):
+            self._pulse_block.element_list[index.row()].digital_high = data.copy()
+        elif role == self.analogShapeRole and isinstance(data, str):
+            if self.data(index=index, role=self.analogShapeRole) != data:
+                sampling_func = getattr(sf, data)
+                if self.digital_channels:
+                    col_offset = 3
                 else:
-                    value = 0
-                self.set_element(row_index, column, value)
+                    col_offset = 2
+                chnl = self.analog_channels[(index.column() - col_offset) // 2]
+                self._pulse_block.element_list[index.row()].pulse_function[chnl] = sampling_func()
 
-            # now set all parameters for the analog channels:
-            for analog_ch in range(elem.analog_channels):
-                # the function text:
-                column = self._cfg_param_pbe['function_' + active_analog[analog_ch].split('ch')[-1]]
-                func_text = elem.pulse_function[analog_ch]
-                self.set_element(row_index, column, func_text)
-                # then the parameter dictionary:
-                parameter_dict = elem.parameters[analog_ch]
-                for parameter in parameter_dict:
-                    column = self._cfg_param_pbe[parameter + '_' + active_analog[analog_ch].split('ch')[-1]]
-                    value = np.float(parameter_dict[parameter])
-                    self.set_element(row_index, column, value)
+                new_column_width = self._get_column_width(index.column()+1)
+                if new_column_width >= 0 and new_column_width != self._col_widths[index.column()+1]:
+                    self._col_widths[index.column() + 1] = new_column_width
+                    self._notify_column_width(index.column()+1)
 
-            # now set use as tick parameter:
-            column = self._cfg_param_pbe['use']
-            value = elem.use_as_tick
-            # the ckeckbox has a special input value, it is 0, 1 or 2. (tri-state)
-            if value:
-                value = 2
+        elif role == self.analogParameterRole and isinstance(data, dict):
+            if self.digital_channels:
+                col_offset = 3
             else:
-                value = 0
-            self.set_element(row_index, column, value)
-
-            # and set the init_length:
-            column = self._cfg_param_pbe['length']
-            value = elem.init_length_s
-            self.set_element(row_index, column, value)
-
-            # and set the increment parameter
-            column = self._cfg_param_pbe['increment']
-            value = elem.increment_s
-            self.set_element(row_index, column, value)
+                col_offset = 2
+            chnl = self.analog_channels[(index.column() - col_offset) // 2]
+            self._pulse_block.element_list[index.row()].pulse_function[chnl].__init__(**data)
+        elif role == self.pulseBlockRole and isinstance(data, PulseBlock):
+            self._pulse_block = copy.deepcopy(data)
+            self._pulse_block.name = 'EDITOR CONTAINER'
         return
 
-    def generate_block_object(self, pb_name):
-        """ Generates from an given table block_matrix a block_object.
+    def headerData(self, section, orientation, role):
+        # Horizontal header
+        if orientation == QtCore.Qt.Horizontal:
+            # if role == QtCore.Qt.BackgroundRole:
+            #     return QVariant(QBrush(QColor(Qt::green), Qt::SolidPattern))
+            if role == QtCore.Qt.SizeHintRole:
+                if section < len(self._col_widths):
+                    return QtCore.QSize(self._col_widths[section], 40)
 
-        @param pb_name: string, Name of the created Pulse_Block Object
+            if role == QtCore.Qt.DisplayRole:
+                if section < len(self._h_header_data):
+                    return self._h_header_data[section]
+
+        # Vertical header
+        # if orientation == QtCore.Qt.Vertical:
+        #     if role == QtCore.Qt.BackgroundRole:
+        #         return QtCore.Qt.QVariant(QtGui.Qt.QBrush(QtGui.Qt.QColor(QtCore.Qt.green),
+        #                                                   QtCore.Qt.SolidPattern))
+        return super().headerData(section, orientation, role)
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
+
+    def insertRows(self, row, count, parent=None):
         """
 
-        # list of all the pulse block element objects
-        pbe_obj_list = [None] * self.be_widget.rowCount()
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row > self.rowCount():
+            return False
 
-        # seperate digital and analogue channels
-        analog_chnl_names = [chnl for chnl in self.activation_config if 'a_ch' in chnl]
-        digital_chnl_names = [chnl for chnl in self.activation_config if 'd_ch' in chnl]
+        if parent is None:
+            parent = QtCore.QModelIndex()
 
-        for row_index in range(self.be_widget.rowCount()):
-            # get length:
-            init_length_s = self.get_element(row_index, self._cfg_param_pbe['length'])
-            # get increment:
-            increment_s = self.get_element(row_index, self._cfg_param_pbe['increment'])
+        self.beginInsertRows(parent, row, row + count - 1)
 
-            # get the proper pulse_functions and its parameters:
-            pulse_function = [None] * len(analog_chnl_names)
-            parameter_list = [None] * len(analog_chnl_names)
-            for chnl_index, chnl in enumerate(analog_chnl_names):
-                # get the number of the analogue channel according to the channel activation_config
-                a_chnl_number = chnl.split('ch')[-1]
-                pulse_function[chnl_index] = self.get_element(row_index, self._cfg_param_pbe['function_' + a_chnl_number])
+        analog_shape = {chnl: sf.Idle() for chnl in self.analog_channels}
+        digital_state = {chnl: False for chnl in self.digital_channels}
 
-                # search for this function in the dictionary and get all the parameter with their names in list:
-                param_dict = self.function_config[pulse_function[chnl_index]]
-                parameters = {}
-                for entry in list(param_dict):
-                    # Obtain how the value is displayed in the table:
-                    param_value = self.get_element(row_index,
-                                                   self._cfg_param_pbe[entry + '_' + a_chnl_number])
-                    parameters[entry] = param_value
-                parameter_list[chnl_index] = parameters
+        for i in range(count):
+            self._pulse_block.element_list.insert(
+                row,
+                PulseBlockElement(pulse_function=analog_shape.copy(), digital_high=digital_state))
 
-            digital_high = [None] * len(digital_chnl_names)
-            for chnl_index, chnl in enumerate(digital_chnl_names):
-                # get the number of the digital channel according to the channel activation_config
-                d_chnl_number = chnl.split('ch')[-1]
-                digital_high[chnl_index] = bool(self.get_element(row_index, self._cfg_param_pbe['digital_' + d_chnl_number]))
+        self.endInsertRows()
+        return True
 
-            use_as_tick = bool(self.get_element(row_index, self._cfg_param_pbe['use']))
+    def removeRows(self, row, count, parent=None):
+        """
 
-            # create here actually the object with all the obtained information:
-            pbe_obj_list[row_index] = PulseBlockElement(init_length_s=init_length_s,
-                                                          increment_s=increment_s,
-                                                          pulse_function=pulse_function,
-                                                          digital_high=digital_high,
-                                                          parameters=parameter_list,
-                                                          use_as_tick=use_as_tick)
-        pb_obj = PulseBlock(pb_name, pbe_obj_list)
-        return pb_obj
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
+            return False
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginRemoveRows(parent, row, row + count - 1)
+
+        del(self._pulse_block.element_list[row:row+count])
+
+        self._col_widths = self._get_column_widths()
+        self._notify_column_width()
+
+        self.endRemoveRows()
+        return True
+
+    def set_pulse_block(self, pulse_block):
+        """
+
+        @param pulse_block:
+        @return:
+        """
+        if pulse_block.channel_set != self.activation_config:
+            return False
+        self.beginResetModel()
+        self.setData(QtCore.QModelIndex(), pulse_block, self.pulseBlockRole)
+        self._col_widths = self._get_column_widths()
+        self._notify_column_width()
+        self.endResetModel()
+        return True
 
 
-class BlockOrganizer:
-    def __init__(self, block_organizer_widget):
-        self.bo_widget = block_organizer_widget
-        self.parameter_dict = OrderedDict()
-        self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': 0,
-                                              'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                              'type': int}
-        self._cfg_param_pb = None
-        self.block_dict = None
+class BlockEditor(QtWidgets.QTableView):
+    """
 
-        self.bo_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
+    """
+    def __init__(self, parent):
+        # Initialize inherited QTableView
+        super().__init__(parent)
+
+        # Create custom data model and hand it to the QTableView.
+        # (essentially it's a PulseBlock instance with QAbstractTableModel interface)
+        model = BlockEditorTableModel()
+        self.setModel(model)
+
+        # Connect the custom signal sigColumnWidthChanged from the model to the setColumnWidth
+        # slot of QTableView in order to resize the columns upon resizing.
+        self.model().sigColumnWidthChanged.connect(self.setColumnWidth)
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+
+        # Set item selection and editing behaviour
+        self.setEditTriggers(
+            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+
+        # Set item delegates for all table columns
+        self._set_item_delegates()
         return
 
-    def set_block_dict(self, block_dict):
-        if self.block_dict is None:
-            self.block_dict = block_dict
-            self._set_columns()
+    def _set_item_delegates(self):
+        """
+
+        @return:
+        """
+        # Set item delegates (scientific SpinBoxes) for length and increment column
+        length_item_dict = {'unit': 's',
+                            'init_val': '10.0e-9',
+                            'min': 0,
+                            'max': np.inf,
+                            'dec': 6}
+        self.setItemDelegateForColumn(
+            0, ScienDSpinBoxItemDelegate(self, length_item_dict, self.model().lengthRole))
+        increment_item_dict = {'unit': 's',
+                               'init_val': 0,
+                               'min': -np.inf,
+                               'max': np.inf,
+                               'dec': 6}
+        self.setItemDelegateForColumn(
+            1, ScienDSpinBoxItemDelegate(self, increment_item_dict, self.model().incrementRole))
+
+        # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
+        # for digital channels column.
+        if len(self.model().digital_channels) > 0:
+            self.setItemDelegateForColumn(
+                2, DigitalStatesItemDelegate(self, self.model().digitalStateRole))
+            offset_index = 3  # to indicate which column comes next.
         else:
-            self.block_dict = block_dict
+            offset_index = 2  # to indicate which column comes next.
 
-        for row in range(self.bo_widget.rowCount()):
-            data = self.get_element(row, 0)
-            if data not in list(self.block_dict):
-                self.initialize_cells(start_row=row, stop_row=row+1, start_col=0, stop_col=1)
+        # loop through all analog channels and set two item delegates for each channel.
+        # First a ComboBox delegate for the analog shape column and second a custom
+        # composite widget widget for the analog parameters column.
+        for num, chnl in enumerate(self.model().analog_channels):
+            self.setItemDelegateForColumn(
+                offset_index + 2 * num, ComboBoxItemDelegate(
+                    self, sf.__all__, self.model().analogShapeRole))
+            self.setItemDelegateForColumn(
+                offset_index + 2 * num + 1,
+                AnalogParametersItemDelegate(
+                    self, [self.model().analogFunctionRole, self.model().analogParameterRole]))
         return
 
-    def _get_list(self):
-        return list(self.block_dict)
-
-    def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
-        """ Initialize the desired cells in the block organizer table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
+    def set_activation_config(self, activation_config):
         """
-        if stop_row is None:
-            stop_row = start_row +1
-        if start_col is None:
-            start_col = 0
-        if stop_col is None:
-            stop_col = self.bo_widget.columnCount()
-        for col_num in range(start_col, stop_col):
-            for row_num in range(start_row,stop_row):
-                # get the model, here are the data stored:
-                model = self.bo_widget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was uses for this column:
-                ini_values = self.bo_widget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-        return
 
-    def _set_columns(self):
-        # Erase the delegate from the column, i.e. pass a None reference:
-        for column in range(self.bo_widget.columnCount()):
-            self.bo_widget.setItemDelegateForColumn(column, None)
-        # clear the number of columns and set them to 1:
-        self.bo_widget.setColumnCount(1)
-        self.bo_widget.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem())
-        self.bo_widget.horizontalHeaderItem(0).setText('Pulse Block')
-        self.bo_widget.setColumnWidth(0, 100)
-
-        item_dict = {}
-        item_dict['get_list_method'] = self._get_list
-        comboDelegate = ComboBoxDelegate(self.bo_widget, item_dict)
-        self.bo_widget.setItemDelegateForColumn(0, comboDelegate)
-
-        for column, parameter in enumerate(self.parameter_dict):
-            # add the new properties to the whole column through delegate:
-            item_dict = self.parameter_dict[parameter]
-            unit_text = item_dict['unit']
-            self.bo_widget.insertColumn(1+column)
-            self.bo_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
-            self.bo_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,unit_text))
-            self.bo_widget.setColumnWidth(1+column, 80)
-            # Use only DoubleSpinBox as delegate:
-            if item_dict['type'] is bool:
-                delegate = CheckBoxDelegate(self.bo_widget, item_dict)
-            elif item_dict['type'] is int:
-                delegate = SpinBoxDelegate(self.bo_widget, item_dict)
-            else:
-                delegate = ScienDSpinBoxDelegate(self.bo_widget, item_dict)
-            self.bo_widget.setItemDelegateForColumn(1+column, delegate)
-
-        self.initialize_cells(start_row=0, stop_row=self.bo_widget.rowCount())
-        self._set_cfg_param()
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def _set_cfg_param(self):
-        """ Set the parameter configuration of the Pulse_Block according to the
-        current table configuration and updates the dict.
+        @param activation_config:
+        @return:
         """
-        cfg_param_pb = OrderedDict()
-        for column in range(self.bo_widget.columnCount()):
-            text = self.bo_widget.horizontalHeaderItem(column).text()
-            if 'Pulse Block' in text:
-                cfg_param_pb['pulse_block'] = column
-            elif 'repetitions' in text:
-                cfg_param_pb['repetitions'] = column
-            else:
-                print('text:', text)
-                raise NotImplementedError
-        self._cfg_param_pb = cfg_param_pb
+        # Remove item delegates
+        for column in range(self.model().columnCount()):
+            self.setItemDelegateForColumn(column, None)
+        # Set new activation config in model (perform model reset)
+        self.model().set_activation_config(activation_config)
+        # Set new item delegates
+        self._set_item_delegates()
         return
 
-    def clear_table(self):
-        """ Delete all rows in the block editor table. """
-        self.bo_widget.blockSignals(True)
-        self.bo_widget.setRowCount(1)
-        self.bo_widget.clearContents()
-        self.initialize_cells(start_row=0)
-        self.bo_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def delete_row(self, index):
-        """ Delete row number 'index' """
-        if self.bo_widget.rowCount() == 1 and index == 0:
-            return
-        self.bo_widget.blockSignals(True)
-        self.bo_widget.removeRow(index)
-        self.bo_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def insert_rows(self, index, number_to_add=1):
-        """ Add 'number_to_add' rows after row number 'index' """
-        self.bo_widget.blockSignals(True)
-        for i in range(number_to_add):
-            self.bo_widget.insertRow(index)
-        self.initialize_cells(start_row=index, stop_row=index + number_to_add)
-        self.bo_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def set_element(self, row, column, value):
-        """ Simplified wrapper function to set the data to a specific cell in the table.
-
-        @param int row: row index
-        @param int column: column index
-
-        Note that the order of the arguments in this function (first row index and then column
-        index) was taken from the Qt convention. A type check will be performed for the passed
-        value argument. If the type does not correspond to the delegate, then the value will not be
-        changed. You have to ensure that.
+    def setModel(self, model):
         """
-        model = self.bo_widget.model()
-        access = self.bo_widget.itemDelegateForColumn(column).model_data_access
-        data = self.bo_widget.model().index(row, column).data(access)
-        if isinstance(data, float) and isinstance(value, float):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, int) and isinstance(value, int):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, bool) and isinstance(value, bool):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, str) and isinstance(value, str):
-            model.setData(model.index(row, column), value, access)
-            return value
+
+        @param model:
+        @return:
+        """
+        super().setModel(model)
+        for column in range(model.columnCount()):
+            width = model.headerData(column, QtCore.Qt.Horizontal, QtCore.Qt.SizeHintRole).width()
+            self.setColumnWidth(column, width)
+        return
+
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
         else:
-            return data
+            return 0
 
-    def get_element(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell in the table.
-
-        @param int row: row index
-        @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a
-                 float or an integer. Remember that the checkbox state
-                 unchecked corresponds to 0 and check to 2. That is Qt
-                 convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-        # Get from the corresponding delegate the data access model
-        access = self.bo_widget.itemDelegateForColumn(column).model_data_access
-        data = self.bo_widget.model().index(row, column).data(access)
-        return data
-
-    def load_pulse_block_ensemble(self, ensemble):
-        """
-
-        @param ensemble:
-        """
-        # Sanity checks:
-        if ensemble is None:
-            return
-        # clear the block organizer table
-        self.clear_table()
-        # get amout of rows needed for display
-        rows = len(ensemble.block_list)
-        # add as many rows as there are blocks in the ensemble minus 1 because a single row is
-        # already present after clear
-        self.insert_rows(1, rows - 1)
-        # run through all blocks in the block_elements block_list to fill in the row informations
-        for row_index, (pulse_block, repetitions) in enumerate(ensemble.block_list):
-            column = self._cfg_param_pb['pulse_block']
-            self.set_element(row_index, column, pulse_block.name)
-            print(pulse_block.name)
-            column = self._cfg_param_pb['repetitions']
-            self.set_element(row_index, column, int(repetitions))
-        return
-
-    def generate_ensemble_object(self, ensemble_name, rotating_frame=True):
-        """
-        Generates from an given table ensemble_matrix a ensemble object.
-
-        @param str ensemble_name: Name of the created PulseBlockEnsemble object
-        @param bool rotating_frame: optional, whether the phase preservation is mentained
-                                    throughout the sequence.
-        """
-        # list of all the pulse block element objects
-        pb_obj_list = [None] * self.bo_widget.rowCount()
-
-        for row_index in range(self.bo_widget.rowCount()):
-            pulse_block_name = self.get_element(row_index, self._cfg_param_pb['pulse_block'])
-            pulse_block_reps = self.get_element(row_index, self._cfg_param_pb['repetitions'])
-            # Fetch previously saved block object
-            block = self.block_dict[pulse_block_name]
-            # Append block object along with repetitions to the block list
-            pb_obj_list[row_index] = (block, pulse_block_reps)
-
-        # Create the Pulse_Block_Ensemble object
-        pulse_block_ensemble = PulseBlockEnsemble(name=ensemble_name, block_list=pb_obj_list,
-                                                    rotating_frame=rotating_frame)
-        return pulse_block_ensemble
-
-
-class SequenceEditor:
-    def __init__(self, sequence_editor_widget):
-        self.se_widget = sequence_editor_widget
-        self.parameter_dict = OrderedDict()
-        self.parameter_dict['repetitions'] = {'unit': '#', 'init_val': 0, 'min': -1,
-                                              'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                              'type': int}
-        self.parameter_dict['trigger_wait'] = {'unit': '', 'init_val': False, 'min': 0,
-                                               'max': 1, 'view_stepsize': 1, 'dec': 0,
-                                               'type': bool}
-        self.parameter_dict['go_to'] = {'unit': '', 'init_val': 0, 'min': -1,
-                                        'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                        'type': int}
-        self.parameter_dict['event_jump_to'] = {'unit': '', 'init_val': 0, 'min': -1,
-                                                'max': (2 ** 31 - 1), 'view_stepsize': 1, 'dec': 0,
-                                                'type': int}
-        self._cfg_param_ps = None
-        self.ensemble_dict = None
-        self.se_widget.setEditTriggers(QtWidgets.QAbstractItemView.AllEditTriggers)
-        return
-
-    def set_ensemble_dict(self, ensemble_dict):
-        if self.ensemble_dict is None:
-            self.ensemble_dict = ensemble_dict
-            self._set_columns()
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
         else:
-            self.ensemble_dict = ensemble_dict
+            return 0
 
-        for row in range(self.se_widget.rowCount()):
-            data = self.get_element(row, 0)
-            if data not in list(self.ensemble_dict):
-                self.initialize_cells(start_row=row, stop_row=row+1, start_col=0, stop_col=1)
-        return
-
-    def _get_list(self):
-        return list(self.ensemble_dict)
-
-    def initialize_cells(self, start_row, stop_row=None, start_col=None, stop_col=None):
-        """ Initialize the desired cells in the sequence editor table.
-
-        @param start_row: int, index of the row, where the initialization
-                          should start
-        @param stop_row: int, optional, index of the row, where the
-                         initalization should end.
-        @param start_col: int, optional, index of the column where the
-                          initialization should start
-        @param stop_col: int, optional, index of the column, where the
-                         initalization should end.
-
-        With this function it is possible to reinitialize specific elements or
-        part of a row or even the whole row. If start_row is set to 0 the whole
-        row is going to be initialzed to the default value.
+    def add_elements(self, count=1, at_position=None):
         """
-        if stop_row is None:
-            stop_row = start_row +1
-        if start_col is None:
-            start_col = 0
-        if stop_col is None:
-            stop_col = self.se_widget.columnCount()
-        for col_num in range(start_col, stop_col):
-            for row_num in range(start_row,stop_row):
-                # get the model, here are the data stored:
-                model = self.se_widget.model()
-                # get the corresponding index of the current element:
-                index = model.index(row_num, col_num)
-                # get the initial values of the delegate class which was uses for this column:
-                ini_values = self.se_widget.itemDelegateForColumn(col_num).get_initial_value()
-                # set initial values:
-                model.setData(index, ini_values[0], ini_values[1])
-        return
 
-    def _set_columns(self):
-        # Erase the delegate from the column, i.e. pass a None reference:
-        for column in range(self.se_widget.columnCount()):
-            self.se_widget.setItemDelegateForColumn(column, None)
-        # clear the number of columns and set them to 1:
-        self.se_widget.setColumnCount(1)
-        self.se_widget.setHorizontalHeaderItem(0, QtWidgets.QTableWidgetItem())
-        self.se_widget.horizontalHeaderItem(0).setText('Block Ensemble')
-        self.se_widget.setColumnWidth(0, 100)
-
-        item_dict = {}
-        item_dict['get_list_method'] = self._get_list
-        comboDelegate = ComboBoxDelegate(self.se_widget, item_dict)
-        self.se_widget.setItemDelegateForColumn(0, comboDelegate)
-
-        for column, parameter in enumerate(self.parameter_dict):
-            # add the new properties to the whole column through delegate:
-            item_dict = self.parameter_dict[parameter]
-            unit_text = item_dict['unit']
-            self.se_widget.insertColumn(1+column)
-            self.se_widget.setHorizontalHeaderItem(1+column, QtWidgets.QTableWidgetItem())
-            if item_dict['unit'] == '':
-                self.se_widget.horizontalHeaderItem(1 + column).setText('{0}'.format(parameter))
-            else:
-                self.se_widget.horizontalHeaderItem(1+column).setText('{0} ({1})'.format(parameter,
-                                                                                         unit_text))
-            self.se_widget.setColumnWidth(1+column, 100)
-            # Use only DoubleSpinBox as delegate:
-            if item_dict['type'] is bool:
-                delegate = CheckBoxDelegate(self.se_widget, item_dict)
-            elif item_dict['type'] is int:
-                delegate = SpinBoxDelegate(self.se_widget, item_dict)
-            else:
-                delegate = ScienDSpinBoxDelegate(self.se_widget, item_dict)
-            self.se_widget.setItemDelegateForColumn(1+column, delegate)
-
-        self.initialize_cells(start_row=0, stop_row=self.se_widget.rowCount())
-        self._set_cfg_param()
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def _set_cfg_param(self):
-        """ Set the parameter configuration of the Pulse_Block according to the
-        current table configuration and updates the dict.
+        @param count:
+        @param at_position:
+        @return: bool, operation success
         """
-        cfg_param_ps = OrderedDict()
-        for column in range(self.se_widget.columnCount()):
-            text = self.se_widget.horizontalHeaderItem(column).text()
-            if 'Block Ensemble' in text:
-                cfg_param_ps['block_ensemble'] = column
-            elif 'repetitions' in text:
-                cfg_param_ps['repetitions'] = column
-            elif 'trigger_wait' in text:
-                cfg_param_ps['trigger_wait'] = column
-            elif 'go_to' in text:
-                cfg_param_ps['go_to'] = column
-            elif 'event_jump_to' in text:
-                cfg_param_ps['event_jump_to'] = column
-            else:
-                print('text:', text)
-                raise NotImplementedError
-        self._cfg_param_ps = cfg_param_ps
-        return
+        # Sanity checking
+        if count < 1:
+            return False
 
-    def clear_table(self):
-        """ Delete all rows in the sequence editor table. """
-        self.se_widget.blockSignals(True)
-        self.se_widget.setRowCount(1)
-        self.se_widget.clearContents()
-        self.initialize_cells(start_row=0)
-        self.se_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
+        if at_position is None:
+            at_position = self.model().rowCount()
 
-    def delete_row(self, index):
-        """ Delete row number 'index' """
-        if self.se_widget.rowCount() == 1 and index == 0:
-            return
-        self.se_widget.blockSignals(True)
-        self.se_widget.removeRow(index)
-        self.se_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
+        # Insert new element(s) as row to the table model/view at the specified position.
+        # Append new element(s) to the table model/view if no position was given.
+        return self.model().insertRows(at_position, count)
 
-    def insert_rows(self, index, number_to_add=1):
-        """ Add 'number_to_add' rows after row number 'index' """
-        self.se_widget.blockSignals(True)
-        for i in range(number_to_add):
-            self.se_widget.insertRow(index)
-        self.initialize_cells(start_row=index, stop_row=index + number_to_add)
-        self.se_widget.blockSignals(False)
-        # FIXME: Implement a proper way to update the current block ensemble parameters
-        return
-
-    def set_element(self, row, column, value):
-        """ Simplified wrapper function to set the data to a specific cell in the table.
-
-        @param int row: row index
-        @param int column: column index
-
-        Note that the order of the arguments in this function (first row index and then column
-        index) was taken from the Qt convention. A type check will be performed for the passed
-        value argument. If the type does not correspond to the delegate, then the value will not be
-        changed. You have to ensure that.
+    def remove_elements(self, count=1, at_position=None):
         """
-        model = self.se_widget.model()
-        access = self.se_widget.itemDelegateForColumn(column).model_data_access
-        data = self.se_widget.model().index(row, column).data(access)
-        if isinstance(data, float) and isinstance(value, float):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, int) and isinstance(value, int):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, bool) and isinstance(value, bool):
-            model.setData(model.index(row, column), value, access)
-            return value
-        elif isinstance(data, str) and isinstance(value, str):
-            model.setData(model.index(row, column), value, access)
-            return value
+
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        if at_position is None:
+            at_position = self.model().rowCount() - count
+
+        # Remove rows/elements with index <at_position> to index <at_position + count - 1>
+        # Remove last <count> number of elements if no at_position was given.
+        return self.model().removeRows(at_position, count)
+
+    def clear(self):
+        """
+        Removes all PulseBlockElements from the view/model and inserts a single afterwards.
+
+        @return: bool, operation success
+        """
+        success = self.remove_elements(self.model().rowCount(), 0)
+        if success:
+            self.add_elements(1, 0)
+        return success
+
+    def get_block(self):
+        """
+        Returns a (deep)copy of the PulseBlock instance serving as model for this editor.
+
+        @return: PulseBlock, an instance of PulseBlock
+        """
+        block_copy = copy.deepcopy(self.model().data(QtCore.QModelIndex(),
+                                                     self.model().pulseBlockRole))
+        block_copy.name = ''
+        block_copy.refresh_parameters()
+        return block_copy
+
+    def load_block(self, pulse_block):
+        """
+        Load an instance of PulseBlock into the model in order to view/edit it.
+
+        @param pulse_block: PulseBlock, the PulseBlock instance to load into the model/view
+        @return: bool, operation success
+        """
+        if not isinstance(pulse_block, PulseBlock):
+            return False
+        return self.model().set_pulse_block(pulse_block)
+
+
+class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
+    """
+
+    """
+    # User defined roles for model data access
+    repetitionsRole = QtCore.Qt.UserRole + 1
+    blockNameRole = QtCore.Qt.UserRole + 2
+    blockEnsembleRole = QtCore.Qt.UserRole + 3
+
+    def __init__(self):
+        super().__init__()
+
+        # set containing available block names
+        self.available_pulse_blocks = None
+
+        # The actual model data container.
+        self._block_ensemble = PulseBlockEnsemble('EDITOR CONTAINER')
+        return
+
+    def set_available_pulse_blocks(self, blocks):
+        """
+
+        @param blocks: list|dict|set, list/dict/set containing all available PulseBlock names
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        # Convert to set
+        if isinstance(blocks, (list, dict)):
+            blocks = set(blocks)
+        elif not isinstance(blocks, set):
+            return -1
+
+        # Do nothing if available blocks are unchanged
+        if self.available_pulse_blocks == blocks:
+            return 0
+
+        self.available_pulse_blocks = blocks
+
+        # Remove blocks from list that are not there anymore
+        for row, (block_name, reps) in enumerate(self._block_ensemble.block_list):
+            if block_name not in blocks:
+                self.removeRows(row, 1)
+
+        # Check if the PulseBlockEnsemble model instance is empty and set a single block if True.
+        if self.rowCount() == 0:
+            self.insertRows(0, 1)
+
+        return 0
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
+        @return:
+        """
+        if isinstance(rotating_frame, bool):
+            self._block_ensemble.rotating_frame = rotating_frame
+        return
+
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        return len(self._block_ensemble.block_list)
+
+    def columnCount(self, parent=QtCore.QModelIndex()):
+        return 2
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.DisplayRole:
+            return None
+
+        if role == self.blockEnsembleRole:
+            return self._block_ensemble
+
+        if not index.isValid():
+            return None
+
+        if role == self.repetitionsRole:
+            return self._block_ensemble.block_list[index.row()][1]
+        if role == self.blockNameRole:
+            return self._block_ensemble.block_list[index.row()][0]
+
+        return None
+
+    def setData(self, index, data, role=QtCore.Qt.DisplayRole):
+        """
+        """
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
+        if role == self.repetitionsRole and isinstance(data, int):
+            block_name = self._block_ensemble.block_list[index.row()][0]
+            self._block_ensemble.block_list[index.row()] = (block_name, data)
+        elif role == self.blockNameRole and isinstance(data, str):
+            reps = self._block_ensemble.block_list[index.row()][1]
+            self._block_ensemble.block_list[index.row()] = (data, reps)
+        elif role == self.blockEnsembleRole and isinstance(data, PulseBlockEnsemble):
+            self._block_ensemble = copy.deepcopy(data)
+            self._block_ensemble.name = 'EDITOR CONTAINER'
+        return
+
+    def headerData(self, section, orientation, role):
+        # Horizontal header
+        if orientation == QtCore.Qt.Horizontal:
+            if role == QtCore.Qt.DisplayRole:
+                if section == 0:
+                    return 'PulseBlock'
+                if section == 1:
+                    return 'repetitions'
+            # if role == QtCore.Qt.BackgroundRole:
+            #     return QVariant(QBrush(QColor(Qt::green), Qt::SolidPattern))
+            # if role == QtCore.Qt.SizeHintRole:
+            #     if section < len(self._col_widths):
+            #         return QtCore.QSize(self._col_widths[section], 40)
+        return super().headerData(section, orientation, role)
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
+
+    def insertRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row > self.rowCount() or not self.available_pulse_blocks:
+            return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginInsertRows(parent, row, row + count - 1)
+
+        block_name = sorted(self.available_pulse_blocks)[0]
+        for i in range(count):
+            self._block_ensemble.block_list.insert(row, (block_name, 0))
+
+        self.endInsertRows()
+        return True
+
+    def removeRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
+            return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._block_ensemble.measurement_information = dict()
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginRemoveRows(parent, row, row + count - 1)
+
+        del(self._block_ensemble.block_list[row:row+count])
+
+        self.endRemoveRows()
+        return True
+
+    def set_block_ensemble(self, block_ensemble):
+        """
+
+        @param block_ensemble:
+        @return:
+        """
+        self.beginResetModel()
+        self.setData(QtCore.QModelIndex(), block_ensemble, self.blockEnsembleRole)
+        self.endResetModel()
+        return True
+
+
+class EnsembleEditor(QtWidgets.QTableView):
+    """
+
+    """
+    def __init__(self, parent):
+        # Initialize inherited QTableView
+        super().__init__(parent)
+
+        # Create custom data model and hand it to the QTableView.
+        # (essentially it's a PulseBlockEnsemble instance with QAbstractTableModel interface)
+        model = EnsembleEditorTableModel()
+        self.setModel(model)
+
+        # Set item selection and editing behaviour
+        self.setEditTriggers(
+            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+
+        # Set item delegate (ComboBox) for PulseBlock column
+        self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),
+                                                              self.model().blockNameRole,
+                                                              QtCore.QSize(100, 50)))
+        # Set item delegate (SpinBoxes) for repetition column
+        repetition_item_dict = {'init_val': 0, 'min': 0, 'max': (2**31)-1}
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, repetition_item_dict,
+                                                             self.model().repetitionsRole))
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setDefaultSectionSize(100)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+        for col in range(self.columnCount()):
+            width = self.itemDelegateForColumn(col).sizeHint().width()
+            self.setColumnWidth(col, width)
+        return
+
+    def set_available_pulse_blocks(self, blocks):
+        """
+
+        @param list|set blocks:
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        if isinstance(blocks, (list, dict, set)):
+            blocks = sorted(blocks)
         else:
-            return data
+            return -1
 
-    def get_element(self, row, column):
-        """ Simplified wrapper function to get the data from a specific cell in the table.
+        err_code = self.model().set_available_pulse_blocks(blocks)
+        self.setItemDelegateForColumn(
+            0,
+            ComboBoxItemDelegate(self, blocks, self.model().blockNameRole))
+        return err_code
 
-        @param int row: row index
-        @param int column: column index
-        @return: the value of the corresponding cell, which can be a string, a float or an integer.
-                 Remember that the checkbox state unchecked corresponds to 0 and check to 2.
-                 That is Qt convention.
-
-        Note that the order of the arguments in this function (first row index
-        and then column index) was taken from the Qt convention.
-        """
-        # Get from the corresponding delegate the data access model
-        access = self.se_widget.itemDelegateForColumn(column).model_data_access
-        data = self.se_widget.model().index(row, column).data(access)
-        return data
-
-    def load_pulse_sequence(self, sequence):
+    def set_rotating_frame(self, rotating_frame=True):
         """
 
-        @param sequence:
+        @param rotating_frame:
+        @return:
         """
-        # Sanity checks:
-        if sequence is None:
-            return
-        # clear the block organizer table
-        self.clear_table()
-        # get amout of rows needed for display
-        rows = len(sequence.ensemble_param_list)
-        # add as many rows as there are block ensembles in the sequence minus 1 because a single
-        # row is already present after clear
-        self.insert_rows(1, rows - 1)
-        # run through all ensembles in the pulse_sequence to fill in the row informations
-        for row_index, (block_ensemble, seq_param) in enumerate(sequence.ensemble_param_list):
-            column = self._cfg_param_ps['block_ensemble']
-            self.set_element(row_index, column, block_ensemble.name)
-            column = self._cfg_param_ps['repetitions']
-            self.set_element(row_index, column, int(seq_param['repetitions']))
-            column = self._cfg_param_ps['trigger_wait']
-            self.set_element(row_index, column, bool(seq_param['trigger_wait']))
-            column = self._cfg_param_ps['go_to']
-            self.set_element(row_index, column, int(seq_param['go_to']))
-            column = self._cfg_param_ps['event_jump_to']
-            self.set_element(row_index, column, int(seq_param['event_jump_to']))
+        self.model().set_rotating_frame(rotating_frame)
         return
 
-    def generate_sequence_object(self, sequence_name, rotating_frame=True):
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
+        else:
+            return 0
+
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
+        else:
+            return 0
+
+    def add_blocks(self, count=1, at_position=None):
         """
-        Generates from an given sequence editor table a PulseSequence object.
 
-        @param str sequence_name: Name of the created PulseSequence object
-        @param bool rotating_frame: optional, whether the phase preservation is maintained
-                                    throughout the sequence.
+        @param count:
+        @param at_position:
+        @return: bool, operation success
         """
-        # list of all the pulse block ensemble objects
-        pbe_obj_list = []
+        # Sanity checking
+        if count < 1:
+            return False
 
-        for row_index in range(self.se_widget.rowCount()):
-            # Fetch previously saved ensemble object
-            block_ensemble_name = self.get_element(row_index, self._cfg_param_ps['block_ensemble'])
-            ensemble = self.ensemble_dict[block_ensemble_name]
+        # Insert new block(s) as row to the table model/view at the specified position.
+        # Append new block(s) to the table model/view if no position was given.
+        if at_position is None:
+            at_position = self.model().rowCount()
+        return self.model().insertRows(at_position, count)
 
-            # parameter dictionary for pulse sequences
-            seq_param = dict()
-            seq_param['repetitions'] = self.get_element(row_index,
-                                                        self._cfg_param_ps['repetitions'])
-            seq_param['trigger_wait'] = int(self.get_element(row_index,
-                                                             self._cfg_param_ps['trigger_wait']))
-            seq_param['go_to'] = self.get_element(row_index, self._cfg_param_ps['go_to'])
-            seq_param['event_jump_to'] = self.get_element(row_index,
-                                                          self._cfg_param_ps['event_jump_to'])
-            # Append ensemble object along with repetitions to the ensemble list
-            pbe_obj_list.append((ensemble, seq_param))
+    def remove_blocks(self, count=1, at_position=None):
+        """
 
-        # Create the PulseSequence object
-        pulse_sequence = PulseSequence(name=sequence_name, ensemble_param_list=pbe_obj_list,
-                                       rotating_frame=rotating_frame)
-        return pulse_sequence
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        # Remove rows/blocks with index <at_position> to index <at_position + count - 1>
+        # Remove last <count> number of blocks if no at_position was given.
+        if at_position is None:
+            at_position = self.model().rowCount() - count
+        return self.model().removeRows(at_position, count)
+
+    def clear(self):
+        """
+        Removes all PulseBlocks from the view/model and inserts a single one afterwards.
+
+        @return: bool, operation success
+        """
+        success = self.remove_blocks(self.model().rowCount(), 0)
+        if not success:
+            return False
+        self.add_blocks(1, 0)
+        return True
+
+    def get_ensemble(self):
+        """
+        Returns a (deep)copy of the PulseBlockEnsemble instance serving as model for this editor.
+
+        @return: PulseBlockEnsemble, an instance of PulseBlockEnsemble
+        """
+        data_container = self.model().data(QtCore.QModelIndex(), self.model().blockEnsembleRole)
+        ensemble_copy = copy.deepcopy(data_container)
+        ensemble_copy.name = ''
+        return ensemble_copy
+
+    def load_ensemble(self, block_ensemble):
+        """
+        Load an instance of PulseBlockEnsemble into the model in order to view/edit it.
+
+        @param block_ensemble: PulseBlockEnsemble, the PulseBlockEnsemble instance to load into the
+                               model/view
+        @return: bool, operation success
+        """
+        if not isinstance(block_ensemble, PulseBlockEnsemble):
+            return False
+        return self.model().set_block_ensemble(block_ensemble)
+
+
+class SequenceEditorTableModel(QtCore.QAbstractTableModel):
+    """
+
+    """
+    # User defined roles for model data access
+    repetitionsRole = QtCore.Qt.UserRole + 1
+    ensembleNameRole = QtCore.Qt.UserRole + 2
+    goToRole = QtCore.Qt.UserRole + 4
+    eventJumpRole = QtCore.Qt.UserRole + 5
+    sequenceRole = QtCore.Qt.UserRole + 6
+
+    def __init__(self):
+        super().__init__()
+
+        # list containing available ensemble names
+        self.available_block_ensembles = None
+
+        # The actual model data container.
+        self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
+        return
+
+    def set_available_block_ensembles(self, ensembles):
+        """
+
+        @param ensembles: list|set, list/set containing all available PulseBlockEnsemble names
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        # Convert to set
+        if isinstance(ensembles, (list, dict)):
+            ensembles = set(ensembles)
+        elif not isinstance(ensembles, set):
+            return -1
+
+        # Do nothing if available ensembles have not changed
+        if self.available_block_ensembles == ensembles:
+            return 0
+
+        self.available_block_ensembles = ensembles
+
+        # Remove ensembles from list that are not there anymore
+        for row, (ensemble_name, params) in enumerate(self._pulse_sequence.ensemble_list):
+            if ensemble_name not in ensembles:
+                self.removeRows(row, 1)
+
+        # Check if the PulseSequence model instance is empty and set a single ensemble if True.
+        if not self._pulse_sequence.ensemble_list:
+            self.insertRows(0, 1)
+
+        return 0
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
+        @return:
+        """
+        if isinstance(rotating_frame, bool):
+            self._pulse_sequence.rotating_frame = rotating_frame
+        return
+
+    def rowCount(self, parent=QtCore.QModelIndex()):
+        return len(self._pulse_sequence.ensemble_list)
+
+    def columnCount(self, parent=QtCore.QModelIndex()):
+        return 4
+
+    def data(self, index, role=QtCore.Qt.DisplayRole):
+        if role == QtCore.Qt.DisplayRole:
+            return None
+
+        if role == self.sequenceRole:
+            return self._pulse_sequence
+
+        if not index.isValid():
+            return None
+
+        if role == self.repetitionsRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('repetitions')
+        if role == self.ensembleNameRole:
+            return self._pulse_sequence.ensemble_list[index.row()][0]
+        if role == self.goToRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('go_to')
+        if role == self.eventJumpRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('event_jump_to')
+
+        return None
+
+    def setData(self, index, data, role=QtCore.Qt.DisplayRole):
+        """
+        """
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
+        if role == self.ensembleNameRole and isinstance(data, str):
+            params = self._pulse_sequence.ensemble_list[index.row()][1]
+            self._pulse_sequence.ensemble_list[index.row()] = (data, params)
+        elif role == self.repetitionsRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['repetitions'] = data
+        elif role == self.goToRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['go_to'] = data
+        elif role == self.eventJumpRole and isinstance(data, int):
+            self._pulse_sequence.ensemble_list[index.row()][1]['event_jump_to'] = data
+        elif role == self.sequenceRole and isinstance(data, PulseSequence):
+            self._pulse_sequence = copy.deepcopy(data)
+            self._pulse_sequence.name = 'EDITOR CONTAINER'
+        return
+
+    def headerData(self, section, orientation, role):
+        # Horizontal header
+        if orientation == QtCore.Qt.Horizontal:
+            if role == QtCore.Qt.DisplayRole:
+                if section == 0:
+                    return 'BlockEnsemble'
+                if section == 1:
+                    return 'Repetitions'
+                if section == 2:
+                    return 'Go To (#)'
+                if section == 3:
+                    return 'Event Trigger'
+        return super().headerData(section, orientation, role)
+
+    def flags(self, index):
+        return QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsEnabled
+
+    def insertRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row > self.rowCount() or not self.available_block_ensembles:
+            return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginInsertRows(parent, row, row + count - 1)
+
+        ensemble_name = sorted(self.available_block_ensembles)[0]
+        for i in range(count):
+            seq_params = {'repetitions': 0, 'go_to': -1, 'event_jump_to': -1}
+            self._pulse_sequence.ensemble_list.insert(row, (ensemble_name, seq_params.copy()))
+
+        self.endInsertRows()
+        return True
+
+    def removeRows(self, row, count, parent=None):
+        """
+
+        @param row:
+        @param count:
+        @param parent:
+        @return:
+        """
+        # Sanity/range checking
+        if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
+            return False
+
+        # Delete potentially preexisting measurement_information dict upon edit
+        self._pulse_sequence.measurement_information = dict()
+
+        if parent is None:
+            parent = QtCore.QModelIndex()
+
+        self.beginRemoveRows(parent, row, row + count - 1)
+
+        del(self._pulse_sequence.ensemble_list[row:row+count])
+
+        self.endRemoveRows()
+        return True
+
+    def set_pulse_sequence(self, pulse_sequence):
+        """
+
+        @param pulse_sequence:
+        @return:
+        """
+        self.beginResetModel()
+        self.setData(QtCore.QModelIndex(), pulse_sequence, self.sequenceRole)
+        self.endResetModel()
+        return True
+
+
+class SequenceEditor(QtWidgets.QTableView):
+    """
+
+    """
+    def __init__(self, parent):
+        # Initialize inherited QTableView
+        super().__init__(parent)
+
+        # Create custom data model and hand it to the QTableView.
+        # (essentially it's a PulseSequence instance with QAbstractTableModel interface)
+        model = SequenceEditorTableModel()
+        self.setModel(model)
+
+        # Set item selection and editing behaviour
+        self.setEditTriggers(
+            QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
+        self.setSelectionBehavior(QtGui.QAbstractItemView.SelectItems)
+        self.setSelectionMode(QtGui.QAbstractItemView.SingleSelection)
+
+        # Set item delegate (ComboBox) for PulseBlockEnsemble column
+        self.setItemDelegateForColumn(0, ComboBoxItemDelegate(self, list(),
+                                                              self.model().ensembleNameRole,
+                                                              QtCore.QSize(100, 50)))
+        # Set item delegate (SpinBoxes) for repetition column
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 0, 'min': -1},
+                                                             self.model().repetitionsRole))
+        # Set item delegate (SpinBoxes) for go_to column
+        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+                                                             self.model().goToRole))
+        # Set item delegate (SpinBoxes) for event_jump_to column
+        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+                                                             self.model().eventJumpRole))
+
+        # Set header sizes
+        self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        # self.horizontalHeader().setDefaultSectionSize(100)
+        # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
+        self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+        self.verticalHeader().setDefaultSectionSize(50)
+        for col in range(self.columnCount()):
+            width = self.itemDelegateForColumn(col).sizeHint().width()
+            self.setColumnWidth(col, width)
+        return
+
+    def set_available_block_ensembles(self, ensembles):
+        """
+
+        @param ensembles:
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        if isinstance(ensembles, (list, dict, set)):
+            name_list = sorted(ensembles)
+        else:
+            return -1
+
+        err_code = self.model().set_available_block_ensembles(name_list)
+        self.setItemDelegateForColumn(
+            0,
+            ComboBoxItemDelegate(self, name_list, self.model().ensembleNameRole))
+        return err_code
+
+    def set_rotating_frame(self, rotating_frame=True):
+        """
+
+        @param rotating_frame:
+        @return:
+        """
+        self.model().set_rotating_frame(rotating_frame)
+        return
+
+    def rowCount(self):
+        return self.model().rowCount()
+
+    def columnCount(self):
+        return self.model().columnCount()
+
+    def currentRow(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.row()
+        else:
+            return 0
+
+    def currentColumn(self):
+        index = self.currentIndex()
+        if index.isValid():
+            return index.column()
+        else:
+            return 0
+
+    def add_steps(self, count=1, at_position=None):
+        """
+
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        # Insert new sequence step(s) as row to the table model/view at the specified position.
+        # Append new sequence step(s) to the table model/view if no position was given.
+        if at_position is None:
+            at_position = self.model().rowCount()
+        return self.model().insertRows(at_position, count)
+
+    def remove_steps(self, count=1, at_position=None):
+        """
+
+        @param count:
+        @param at_position:
+        @return: bool, operation success
+        """
+        # Sanity checking
+        if count < 1:
+            return False
+
+        # Remove rows/sequence steps with index <at_position> to index <at_position + count - 1>
+        # Remove last <count> number of sequence steps if no at_position was given.
+        if at_position is None:
+            at_position = self.model().rowCount() - count
+        return self.model().removeRows(at_position, count)
+
+    def clear(self):
+        """
+        Removes all sequence steps from the view/model and inserts a single one afterwards.
+
+        @return: bool, operation success
+        """
+        success = self.remove_steps(self.model().rowCount(), 0)
+        if not success:
+            return False
+        self.add_steps(1, 0)
+        return True
+
+    def get_sequence(self):
+        """
+        Returns a (deep)copy of the PulseSequence instance serving as model for this editor.
+
+        @return: object, an instance of PulseSequence
+        """
+        data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
+        sequence_copy = copy.deepcopy(data_container)
+        sequence_copy.name = ''
+        return sequence_copy
+
+    def load_sequence(self, pulse_sequence):
+        """
+        Load an instance of PulseSequence into the model in order to view/edit it.
+
+        @param pulse_sequence: object, the PulseSequence instance to load into the model/view
+        @return: bool, operation success
+        """
+        if not isinstance(pulse_sequence, PulseSequence):
+            return False
+        return self.model().set_pulse_sequence(pulse_sequence)

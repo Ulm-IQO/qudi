@@ -115,7 +115,6 @@ class PulseBlock(object):
         self.analog_channels = None
         self.digital_channels = None
         self.channel_set = None
-        self.use_as_tick = None
         self.refresh_parameters()
 
     def refresh_parameters(self):
@@ -128,22 +127,10 @@ class PulseBlock(object):
         self.init_length_s = 0.0
         self.increment_s = 0.0
         self.channel_set = set()
-        self.use_as_tick = False
-
-        # calculate the tick value for the whole block. Basically sum all the
-        # init_length_bins which have the use_as_tick attribute set to True.
-        self.controlled_vals_start = 0
-        # make the same thing for the increment, to obtain the total increment
-        # number for the block. This facilitates in calculating the measurement tick list.
-        self.controlled_vals_increment = 0
 
         for elem in self.element_list:
             self.init_length_s += elem.init_length_s
             self.increment_s += elem.increment_s
-            if elem.use_as_tick:
-                self.use_as_tick = True
-                self.controlled_vals_start += elem.init_length_s
-                self.controlled_vals_increment += elem.increment_s
 
             if not self.channel_set:
                 self.channel_set = elem.channel_set
@@ -233,7 +220,7 @@ class PulseBlockEnsemble(object):
         # Dictionary container to store additional information about for measurement settings
         # (ignore_lasers, controlled_variable, alternating etc.).
         # This container needs to be populated by the script creating the PulseBlockEnsemble
-        # before saving it.
+        # before saving it. (e.g. in generate methods in PulsedObjectGenerator class)
         self.measurement_information = dict()
         return
 
