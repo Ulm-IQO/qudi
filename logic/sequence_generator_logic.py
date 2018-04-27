@@ -1034,8 +1034,8 @@ class SequenceGeneratorLogic(GenericLogic):
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
         # variables to keep track of the current timeframe and number of laser/gate pulses
-        current_end_time = 0.0
-        current_start_bin = 0
+        ensemble_length_s = 0.0
+        ensemble_length_bins = 0
         number_of_lasers = 0
         # memorize the channel state of the previous element.
         tmp_digital_high = False
@@ -1055,30 +1055,26 @@ class SequenceGeneratorLogic(GenericLogic):
             if laser_channel in channel_set:
                 tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
         else:
-            return current_end_time, current_end_bin, number_of_lasers
+            return ensemble_length_s, ensemble_length_bins, number_of_lasers
 
         # Loop over all blocks in the ensemble
         for block_name, reps in ensemble.block_list:
             block = self.get_block(block_name)
             # Iterate over all repetitions of the current block
             for rep_no in range(reps + 1):
-                # Iterate over the Block_Elements inside the current block
-                for block_element in block.element_list:
-                    # save bin position if transition from low to high has occured in laser channel
-                    if laser_channel in channel_set and block_element.digital_high[laser_channel] != tmp_digital_high:
+                # ideal end time for the sequence up until this point in sec
+                ensemble_length_s += block.init_length_s + rep_no * block.increment_s
+                if laser_channel in channel_set:
+                    # Iterate over the Block_Elements inside the current block
+                    for block_element in block.element_list:
+                        # save bin position if transition from low to high has occured in laser channel
                         if block_element.digital_high[laser_channel] and not tmp_digital_high:
                             number_of_lasers += 1
                         tmp_digital_high = block_element.digital_high[laser_channel]
 
-                    # element length of the current element with current repetition count in sec
-                    element_length_s = block_element.init_length_s + (
-                                rep_no * block_element.increment_s)
-                    # ideal end time for the sequence up until this point in sec
-                    current_end_time += element_length_s
-                    # Nearest possible match including the discretization in bins
-                    current_end_bin = int(np.rint(current_end_time * self.__sample_rate))
-
-        return current_end_time, current_end_bin, number_of_lasers
+        # Nearest possible match including the discretization in bins
+        ensemble_length_bins = int(np.rint(ensemble_length_s * self.__sample_rate))
+        return ensemble_length_s, ensemble_length_bins, number_of_lasers
 
     def _analyze_block_ensemble(self, ensemble):
         """
