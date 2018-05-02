@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi Interface for Slow counter.
+This file contains the Qudi Interface for a camera.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_resolution(self):
+    def get_size(self):
         """ Retrieve size of the image
 
         @return Integer Tuple : (x,y)
@@ -51,17 +51,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
 
     @abc.abstractmethod
-    def start_acqusition(self):
+    def start_acquisition(self):
         """
         @return int: error code (0:OK, -1:error)
         """
         pass
 
     @abc.abstractmethod
-    def get_aquired_data(self):
+    def get_acquired_data(self):
         """
 
-        @return: aquired data, 2d array of float
+        @return: aquired data, 2d array of float between 0. and 1.
             [[row],[row]...] in IMAGE
         """
         pass
@@ -79,6 +79,23 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """ Get the exposure time in seconds
 
         @return float: exposure time
+        """
+        pass
+
+
+    @abc.abstractmethod
+    def set_gain(self, time):
+        """ Set the gain
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_gain(self):
+        """ Get the gain
+
+        @return float: gain
         """
         pass
 
