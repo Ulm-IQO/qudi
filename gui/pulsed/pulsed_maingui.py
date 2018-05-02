@@ -1497,7 +1497,7 @@ class PulsedMeasurementGui(GUIBase):
         ensemble_object = self._pg.block_organizer.get_ensemble()
         ensemble_object.name = name
         self.pulsedmasterlogic().save_block_ensemble(ensemble_object)
-        length_s, length_bins, lasers = self.pulsedmasterlogic().sequencegeneratorlogic().get_ensemble_info(ensemble_object)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().get_ensemble_info(ensemble_object)
         self._pg.curr_ensemble_length_DSpinBox.setValue(length_s)
         self._pg.curr_ensemble_bins_SpinBox.setValue(length_bins)
         self._pg.curr_ensemble_laserpulses_SpinBox.setValue(lasers)
@@ -1517,26 +1517,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.curr_ensemble_name_LineEdit.setText(name)
         self._pg.curr_ensemble_rot_frame_CheckBox.setChecked(ensemble.rotating_frame)
 
-        length_s, length_bins, lasers = self.pulsedmasterlogic().sequencegeneratorlogic().get_ensemble_info(ensemble)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().get_ensemble_info(ensemble)
         self._pg.curr_ensemble_length_DSpinBox.setValue(length_s)
         self._pg.curr_ensemble_bins_SpinBox.setValue(length_bins)
         self._pg.curr_ensemble_laserpulses_SpinBox.setValue(lasers)
-
-        # if ensemble.measurement_information:
-        #     self._pg.curr_ensemble_length_DSpinBox.setValue(
-        #         ensemble.measurement_information['length_s'])
-        #     self._pg.curr_ensemble_bins_SpinBox.setValue(
-        #         ensemble.measurement_information['length_bins'])
-        #     self._pg.curr_ensemble_laserpulses_SpinBox.setValue(
-        #         ensemble.measurement_information['number_of_lasers'])
-        # else:
-        #     self._pg.curr_ensemble_length_DSpinBox.setValue(0.0)
-        #     self._pg.curr_ensemble_bins_SpinBox.setValue(0)
-        #     self._pg.curr_ensemble_laserpulses_SpinBox.setValue(0)
-        #
-        # if ensemble.sampling_information:
-        #     self._pg.curr_ensemble_bins_SpinBox.setValue(
-        #         ensemble.sampling_information['length_bins'])
         return
 
     @QtCore.Slot(dict)
