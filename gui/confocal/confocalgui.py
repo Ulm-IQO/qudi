@@ -1473,25 +1473,28 @@ class ConfocalGui(GUIBase):
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.set_image_axis_range = [
+        self._scanning_logic.set_image_axis_range(
             'x',
             self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
+            self._mw.x_max_InputWidget.value()
+        )
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.set_image_axis_range = [
+        self._scanning_logic.set_image_axis_range(
             'y',
             self._mw.y_min_InputWidget.value(),
-            self._mw.y_max_InputWidget.value()]
+            self._mw.y_max_InputWidget.value()
+        )
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.set_image_axis_range = [
+        self._scanning_logic.set_image_axis_range(
             'z',
             self._mw.z_min_InputWidget.value(),
-            self._mw.z_max_InputWidget.value()]
+            self._mw.z_max_InputWidget.value()
+        )
 
     def update_tilt_correction(self):
         """ Update all tilt points from the scanner logic. """

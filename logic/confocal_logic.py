@@ -1170,8 +1170,9 @@ class ConfocalLogic(GenericLogic):
         # Checks if axis is known
         if axis not in ['x', 'y', 'z']:
             self.log.error(
-                    'Cannot set image range for axis {}.'.format(axis)
+                    'Cannot set image range for axis {}.'
                     'Only x, y, z axis labels are known for scanner images.'
+                    .format(axis)
                     )
             return -1
 
@@ -1204,8 +1205,9 @@ class ConfocalLogic(GenericLogic):
             return self.image_z_range
         else:
             self.log.error(
-                    'Cannot get image range for axis {}.'.format(axis)
+                    'Cannot get image range for axis {}.'
                     'Only x, y, z axis labels are known for scanner images.'
+                    .format(axis)
                     )
             return -1
 
