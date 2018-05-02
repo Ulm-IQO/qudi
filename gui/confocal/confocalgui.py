@@ -1280,6 +1280,8 @@ class ConfocalGui(GUIBase):
         self._osd.z_optimizer_resolution_SpinBox.setValue(self._optimizer_logic.optimizer_Z_res)
         self._osd.count_freq_SpinBox.setValue(self._optimizer_logic._clock_frequency)
         self._osd.return_slow_SpinBox.setValue(self._optimizer_logic.return_slowness)
+        self._osd.template_count_frequency_spinBox.setValue(self._optimizer_logic._template_clock_frequency)
+        self._osd.template_slowness_spinBox.setValue(self._optimizer_logic.template_return_slowness)
         self._osd.hw_settle_time_SpinBox.setValue(self._optimizer_logic.hw_settle_time * 1000)
         self._osd.do_surface_subtraction_CheckBox.setChecked(self._optimizer_logic.do_surface_subtraction)
 
