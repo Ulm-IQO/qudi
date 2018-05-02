@@ -1782,12 +1782,14 @@ class PulsedMeasurementGui(GUIBase):
             self.log.error('No name has been entered for the PulseSequence to be generated.')
             return
         rotating_frame = self._sg.curr_sequence_rot_frame_CheckBox.isChecked()
-        alternating = self._sg.curr_sequence_alternating_CheckBox.isChecked()
         self._sg.sequence_editor.set_rotating_frame(rotating_frame)
         sequence_object = self._sg.sequence_editor.get_sequence()
-        sequence_object.measurement_information['alternating'] = alternating
         sequence_object.name = name
         self.pulsedmasterlogic().save_sequence(sequence_object)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().get_sequence_info(sequence_object)
+        self._pg.curr_sequence_length_DSpinBox.setValue(length_s)
+        self._pg.curr_sequence_bins_SpinBox.setValue(length_bins)
+        self._pg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
         return
 
     @QtCore.Slot()
@@ -1802,25 +1804,12 @@ class PulsedMeasurementGui(GUIBase):
         sequence = self.pulsedmasterlogic().saved_pulse_sequences[name]
         self._pg.sequence_editor.load_sequence(sequence)
         self._pg.curr_sequence_name_LineEdit.setText(name)
-
         self._pg.curr_sequence_rot_frame_CheckBox.setChecked(sequence.rotating_frame)
-        if sequence.measurement_information:
-            self._pg.curr_sequence_length_DSpinBox.setValue(
-                sequence.measurement_information['length_s'])
-            self._pg.curr_sequence_bins_SpinBox.setValue(
-                sequence.measurement_information['length_bins'])
-            self._pg.curr_sequence_laserpulses_SpinBox.setValue(
-                sequence.measurement_information['number_of_lasers'])
-        else:
-            self._pg.curr_sequence_length_DSpinBox.setValue(0.0)
-            self._pg.curr_sequence_laserpulses_SpinBox.setValue(0)
-            self._pg.curr_sequence_alternating_CheckBox.setChecked(False)
 
-        if sequence.sampling_information:
-            self._pg.curr_sequence_bins_SpinBox.setValue(
-                sequence.sampling_information['length_bins'])
-        else:
-            self._pg.curr_sequence_bins_SpinBox.setValue(0)
+        length_s, length_bins, lasers = self.pulsedmasterlogic().get_sequence_info(sequence)
+        self._pg.curr_sequence_length_DSpinBox.setValue(length_s)
+        self._pg.curr_sequence_bins_SpinBox.setValue(length_bins)
+        self._pg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
         return
 
     @QtCore.Slot(dict)
