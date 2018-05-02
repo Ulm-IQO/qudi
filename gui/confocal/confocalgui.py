@@ -2238,7 +2238,6 @@ class ConfocalGui(GUIBase):
     def logic_updated_scan_range(self):
         """ Update displayed scan range if the logic had it changed somewhere else.
         """
-        print('fired')
         self._mw.x_min_InputWidget.setValue(
             self._scanning_logic.get_image_axis_range('x')[0]
         )
