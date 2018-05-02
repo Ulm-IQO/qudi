@@ -184,10 +184,11 @@ class PulsedObjectGenerator:
         # create ensemble out of the block(s)
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
-        block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['alternating'] = False
+        # block_ensemble.measurement_information['laser_ignore_list'] = list()
+        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        # block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['counting_length'] = None
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -226,10 +227,11 @@ class PulsedObjectGenerator:
         # create ensemble out of the block(s)
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
-        block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['alternating'] = False
+        # block_ensemble.measurement_information['laser_ignore_list'] = list()
+        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        # block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['counting_length'] = None
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -257,10 +259,11 @@ class PulsedObjectGenerator:
         # create ensemble out of the block(s)
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
         # add metadata to invoke settings later on
-        block_ensemble.measurement_information['alternating'] = False
-        block_ensemble.measurement_information['laser_ignore_list'] = list()
-        block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['alternating'] = False
+        # block_ensemble.measurement_information['laser_ignore_list'] = list()
+        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        # block_ensemble.measurement_information['number_of_lasers'] = 0
+        # block_ensemble.measurement_information['counting_length'] = None
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -310,7 +313,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_taus
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -366,7 +373,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -448,7 +459,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -540,7 +555,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -628,7 +647,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = True
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = amp_array
+        block_ensemble.measurement_information['units'] = ('V', '')
         block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -714,7 +737,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = True
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -802,7 +829,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = steps_array
+        block_ensemble.measurement_information['units'] = ('#', '')
         block_ensemble.measurement_information['number_of_lasers'] = 2 * polarization_steps
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -940,7 +971,11 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['units'] = ('s', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -1081,7 +1116,10 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['units'] = ('Hz', '')
         block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
 
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
@@ -1312,3 +1350,20 @@ class PulsedObjectGenerator:
             mw_laser_element.pulse_function[self.laser_channel] = DC(
                 voltage=self.analog_trigger_voltage)
         return mw_laser_element
+
+    def _get_ensemble_length(self, ensemble, created_blocks):
+        """
+
+        @param ensemble:
+        @param created_blocks:
+        @return:
+        """
+        if self.gate_channel:
+            length = self.laser_length + self.laser_delay
+        else:
+            blocks = {block.name: block for block in created_blocks}
+            length = 0.0
+            for block_name, reps in ensemble.block_list:
+                length += blocks[block_name].init_length_s * (reps + 1)
+                length += blocks[block_name].increment_s * ((reps**2 + reps) / 2)
+        return length
