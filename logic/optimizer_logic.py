@@ -23,11 +23,13 @@ from qtpy import QtCore
 import numpy as np
 import time
 import scipy.signal as sig
+import scipy.ndimage as ndi
 
 from logic.generic_logic import GenericLogic
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 
+import matplotlib.pylab as plt
 
 class OptimizerLogic(GenericLogic):
 
@@ -44,7 +46,7 @@ class OptimizerLogic(GenericLogic):
     # declare status vars
     _clock_frequency = StatusVar('clock_frequency', 50)
     return_slowness = StatusVar(default=20)
-    _template_clock_frequency = StatusVar('clock_frequency', 50)
+    _template_clock_frequency = StatusVar('template_clock_frequency', 50)
     template_return_slowness = StatusVar(default=20)
     refocus_XY_size = StatusVar('xy_size', 0.6e-6)
     optimizer_XY_res = StatusVar('xy_resolution', 10)
@@ -167,7 +169,7 @@ class OptimizerLogic(GenericLogic):
         """
         return self._scanning_device.get_scanner_count_channels()
 
-    def set_clock_frequency(self, clock_frequency, template_clock_frequency=-1):
+    def set_clock_frequency(self, clock_frequency, template_clock_frequency=None):
         """Sets the frequency of the clock
 
         @param int clock_frequency: desired frequency of the clock
@@ -180,7 +182,7 @@ class OptimizerLogic(GenericLogic):
             return -1
         else:
             self._clock_frequency = int(clock_frequency)
-            if template_clock_frequency > 0:
+            if template_clock_frequency is not None:
                 self._template_clock_frequency = int(template_clock_frequency)
         self.sigClockFrequencyChanged.emit(self._clock_frequency)
         return 0
@@ -545,20 +547,40 @@ class OptimizerLogic(GenericLogic):
         fit_template = template
         fit_data = np.flip(data, 0)
 
-        convoluted = sig.convolve(fit_data,
-                                  fit_template,
-                                  mode='full'
+        convoluted = ndi.convolve(input=fit_data,
+                                  weights=fit_template,
+                                  mode='nearest'
                                   )
-
-        # shift of picture 2 with respect to picture 1
-        max_index = convoluted.argmax()
+        # fit the convolution with a Gaussian to find the maximum
 
         template_size = len(fit_template)
         conv_size = len(convoluted)
 
-        # recalculate real coordinate shift from index shift (add 0.5 pixel to hit the middle)
-        z_index_shift = max_index - (conv_size / 2.)+0.5
+        result = self._fit_logic.make_gaussianlinearoffset_fit(x_axis=np.arange(conv_size),  # x_axis
+                                                               data=convoluted,
+                                                               units='pixel',
+                                                               estimator=self._fit_logic.estimate_gaussianlinearoffset_peak
+                                                               )
+
+        # shift of picture 2 with respect to picture 1
+        z_index_shift = np.clip(result.best_values['center'], 0, conv_size) - (conv_size / 2.)
         z_shift = z_index_shift / template_size * (x_axis.max() - x_axis.min())
+
+        # debugging stuff
+        print(template_size, conv_size)
+        print(result.best_values['center'], z_index_shift, z_shift)
+
+        plt.close('all')
+        fig, ax = plt.subplots(4)
+        fig.set_size_inches(7, 12)
+        ax[0].plot(fit_template)
+        ax[1].plot(fit_data)
+        ax[2].plot(convoluted)
+
+        gauss, params = self._fit_logic.make_gaussianlinearoffset_model()
+        fit_data = gauss.eval(x=np.arange(conv_size), params=result.params)
+        ax[3].plot(fit_data)
+        plt.savefig('z_fit.png')
 
         # TODO: This is a quick and dirty way to emulate the output from a fit
         class _param():
@@ -571,7 +593,7 @@ class OptimizerLogic(GenericLogic):
         results.best_values['sigma'] = 0
         results.success = True
 
-        return results
+        return results, z_index_shift
 
     def do_z_optimization(self):
         """ Do the z axis optimization."""
@@ -586,8 +608,9 @@ class OptimizerLogic(GenericLogic):
             self._sigDoNextOptimizationStep.emit()
             return
 
+        z_index_shift = 0
         if self.fit_type in ('z_template', 'all_template'):
-            result = self.z_template_fit(
+            result, z_index_shift = self.z_template_fit(
                 x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line[:, self.opt_channel],
                 template=self.z_template_data[:, self.opt_channel]
@@ -633,13 +656,20 @@ class OptimizerLogic(GenericLogic):
             # checks if new pos is too far away
             if abs(self._initial_pos_z - result.best_values['center']) < self._max_offset:
                 # checks if new pos is within the scanner range
-                if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
+                if self.z_range[0] <= result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     self.optim_sigma_z = result.best_values['sigma']
 
                     # for the template fit, the plot of the fit is just the template
                     if self.fit_type in ('z_template', 'all_template'):
-                        self.z_fit_data = self.z_template_data[:, self.opt_channel]
+                        shifted_x = np.arange(z_index_shift,
+                                              len(self._fit_zimage_Z_values)+z_index_shift,
+                                              1
+                                              )[:len(self._fit_zimage_Z_values)]
+                        self.z_fit_data = np.interp(shifted_x,
+                                                    np.arange(len(self._fit_zimage_Z_values)),
+                                                    self.z_template_data[:, self.opt_channel])
+
                     # for a normal fit, sample the function and plot it
                     else:
                         gauss, params = self._fit_logic.make_gaussianlinearoffset_model()

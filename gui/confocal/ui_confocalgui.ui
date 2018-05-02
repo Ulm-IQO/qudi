@@ -28,7 +28,7 @@
      <x>0</x>
      <y>0</y>
      <width>1261</width>
-     <height>21</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -78,7 +78,6 @@
    <addaction name="menuView"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="depth_scan_dockWidget">
    <property name="windowTitle">
     <string>Depth scan</string>

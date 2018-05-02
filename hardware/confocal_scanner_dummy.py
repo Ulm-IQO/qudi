@@ -61,8 +61,8 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         self._points = np.empty([self._num_points, 7])
         # amplitude
         self._points[:, 0] = np.random.normal(
-            4e5,
             1e5,
+            0.5e5,
             self._num_points)
         # x_zero
         self._points[:, 1] = np.random.uniform(
@@ -310,7 +310,7 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         if np.shape(line_path)[1] != self._line_length:
             self._set_up_line(np.shape(line_path)[1])
 
-        count_data = np.random.uniform(0, 2e4, self._line_length)
+        count_data = np.random.uniform(1e5, 1.5e5, self._line_length)
         z_data = line_path[2, :]
 
         #TODO: Change the gaussian function here to the one from fitlogic and delete the local modules to calculate
