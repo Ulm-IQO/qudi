@@ -277,7 +277,7 @@ class ConfocalLogic(GenericLogic):
     signal_tilt_correction_active = QtCore.Signal(bool)
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
-    signal_position_changed = QtCore.Signal()  # TODO stale, remove?
+    image_ranges_changed_Signal = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -439,13 +439,6 @@ class ConfocalLogic(GenericLogic):
         y1, y2 = self.image_y_range[0], self.image_y_range[1]
         # z1: x-start-value, z2: x-end-value
         z1, z2 = self.image_z_range[0], self.image_z_range[1]
-
-        # Checks if the x-start and x-end value are ok
-        if x2 < x1:
-            self.log.error(
-                'x1 must be smaller than x2, but they are '
-                '({0:.3f},{1:.3f}).'.format(x1, x2))
-            return -1
 
         if self._zscan:
             # creates an array of evenly spaced numbers over the interval
@@ -1164,6 +1157,39 @@ class ConfocalLogic(GenericLogic):
                              )
         self.signal_draw_figure_completed.emit()
         return fig
+
+    def set_image_axis_range(self, axis, ax_min, ax_max):
+        """ Set the new x-range of the region to be scanned.
+
+            @param string axis: name of axis. Should be 'x', 'y', or 'z'
+            
+            @param float ax_min: minimum extent of range
+
+            @param float ax_max: maximum extent of range
+        """
+        # Checks if axis is known
+        if axis not in ['x', 'y', 'z']:
+            self.log.error(
+                    'Cannot set image range for axis {}.'.format(axis)
+                    'Only x, y, z axis labels are known for scanner images.'
+                    )
+            return -1
+
+        # Checks if the x-start and x-end value are ok
+        if ax_max < ax_min:
+            self.log.error(
+                '{ax}_min must be smaller than {ax}_max, but they are '
+                '({0:.3f},{1:.3f}).'.format(ax_min, ax_max, ax=axis))
+            return -1
+
+        if axis == 'x':
+            self.image_x_range = [ax_min, ax_max]
+        elif axis == 'y':
+            self.image_y_range = [ax_min, ax_max]
+        elif axis == 'z':
+            self.image_z_range = [ax_min, ax_max]
+        # Tell the GUI or anything else that might need to update display.
+        self.image_ranges_changed_Signal.emit()
 
     ##################################### Tilt correction ########################################
 
