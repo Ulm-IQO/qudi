@@ -894,7 +894,7 @@ class ConfocalGui(GUIBase):
     def disable_scan_actions(self):
         """ Disables the buttons for scanning.
         """
-        # Ensable the stop scanning button
+        # Enable the stop scanning button
         self._mw.action_stop_scanning.setEnabled(True)
 
         # Disable the start scan buttons
@@ -1154,7 +1154,7 @@ class ConfocalGui(GUIBase):
             self.update_input_z(z_pos)
 
     def roi_xy_bounds_check(self, roi):
-        """ Check if the focus cursor is oputside the allowed range after drag
+        """ Check if the focus cursor is outside the allowed range after drag
             and set its position to the limit
         """
         h_pos = roi.pos()[0] + 0.5 * roi.size()[0]

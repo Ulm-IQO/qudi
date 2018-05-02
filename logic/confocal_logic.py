@@ -277,7 +277,7 @@ class ConfocalLogic(GenericLogic):
     signal_tilt_correction_active = QtCore.Signal(bool)
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
-    signal_position_changed = QtCore.Signal()
+    signal_position_changed = QtCore.Signal()  # TODO stale, remove?
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
