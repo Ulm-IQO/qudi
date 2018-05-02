@@ -864,6 +864,11 @@ class PulsedMasterLogic(GenericLogic):
         self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
         return
 
+    def get_ensemble_info(self, ensemble):
+        """
+        """
+        return self.sequencegeneratorlogic().get_ensemble_info(ensemble=ensemble)
+
     #######################################################################
     ###             Helper  methods                                     ###
     #######################################################################

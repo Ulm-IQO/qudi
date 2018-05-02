@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
+import copy
 from collections import OrderedDict
 import logic.sampling_functions as sf
 
@@ -33,8 +33,7 @@ class PulseBlockElement(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None,
-                 use_as_tick=False):
+    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None):
         """
         The constructor for a Pulse_Block_Element needs to have:
 
@@ -52,14 +51,10 @@ class PulseBlockElement(object):
                                   low (False) or high (True).
                                   For 3 digital channel it may look like:
                                   {'d_ch1': True, 'd_ch2': False, 'd_ch5': False}
-        @param bool use_as_tick: Indicates, whether the set length should be used as a tick
-                                 (i.e. the parameter for the x axis) for the later plot in the
-                                 pulse analysis.
         """
         # FIXME: Sanity checks need to be implemented here
         self.init_length_s = init_length_s
         self.increment_s = increment_s
-        self.use_as_tick = use_as_tick
         if pulse_function is None:
             self.pulse_function = OrderedDict()
         else:
@@ -79,7 +74,6 @@ class PulseBlockElement(object):
         dict_repr['init_length_s'] = self.init_length_s
         dict_repr['increment_s'] = self.increment_s
         dict_repr['digital_high'] = self.digital_high
-        dict_repr['use_as_tick'] = self.use_as_tick
         dict_repr['pulse_function'] = dict()
         for chnl, func in self.pulse_function.items():
             dict_repr['pulse_function'][chnl] = func.get_dict_representation()
@@ -106,16 +100,14 @@ class PulseBlock(object):
                                   Pulse_Block, e.g. [Pulse_Block_Element, Pulse_Block_Element, ...]
         """
         self.name = name
-        if element_list is None:
-            self.element_list = list()
-        else:
-            self.element_list = element_list
-        self.init_length_s = None
-        self.increment_s = None
-        self.analog_channels = None
-        self.digital_channels = None
-        self.channel_set = None
+        self.element_list = list() if element_list is None else element_list
+        self.init_length_s = 0.0
+        self.increment_s = 0.0
+        self.analog_channels = set()
+        self.digital_channels = set()
+        self.channel_set = set()
         self.refresh_parameters()
+        return
 
     def refresh_parameters(self):
         """ Initialize the parameters which describe this Pulse_Block object.
@@ -123,7 +115,7 @@ class PulseBlock(object):
         The information is gained from all the Pulse_Block_Element objects,
         which are attached in the element_list.
         """
-        # the Pulse_Block parameter
+        # the Pulse_Block parameters
         self.init_length_s = 0.0
         self.increment_s = 0.0
         self.channel_set = set()
@@ -145,31 +137,65 @@ class PulseBlock(object):
         return
 
     def replace_element(self, position, element):
-        if isinstance(element, PulseBlockElement) and len(self.element_list) > position:
-            self.element_list[position] = element
-            self.refresh_parameters()
-            return 0
-        else:
+        if not isinstance(element, PulseBlockElement) or len(self.element_list) <= position:
             return -1
+
+        if element.channel_set != self.channel_set:
+            raise ValueError('Usage of different sets of analog and digital channels in the '
+                             'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
+                             ''.format(self.channel_set, element.channel_set))
+            return -1
+
+        self.init_length_s -= self.element_list[position].init_length_s
+        self.increment_s -= self.element_list[position].increment_s
+        self.init_length_s += element.init_length_s
+        self.increment_s += element.increment_s
+        self.element_list[position] = copy.deepcopy(element)
+        return 0
 
     def delete_element(self, position):
-        if len(self.element_list) > position:
-            del(self.element_list[position])
-            self.refresh_parameters()
-            return 0
-        else:
+        if len(self.element_list) <= position:
             return -1
 
-    def append_element(self, element, at_beginning=False):
-        if isinstance(element, PulseBlockElement):
-            if at_beginning:
-                self.element_list.insert(0, element)
-            else:
-                self.element_list.append(element)
-            self.refresh_parameters()
-            return 0
-        else:
+        self.init_length_s -= self.element_list[position].init_length_s
+        self.increment_s -= self.element_list[position].increment_s
+        del self.element_list[position]
+        if len(self.element_list) == 0:
+            self.init_length_s = 0.0
+            self.increment_s = 0.0
+        return 0
+
+    def insert_element(self, position, element):
+        """ Insert a PulseBlockElement at the given position. The old elements at this position and
+        all consecutive elements after that will be shifted to higher indices.
+
+        @param int position: position in the element list
+        @param PulseBlockElement element: PulseBlockElement instance
+        """
+        if not isinstance(element, PulseBlockElement) or len(self.element_list) < position:
             return -1
+
+        if not self.channel_set:
+            self.channel_set = element.channel_set
+            self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
+            self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
+        elif element.channel_set != self.channel_set:
+            raise ValueError('Usage of different sets of analog and digital channels in the '
+                             'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
+                             ''.format(self.channel_set, element.channel_set))
+            return -1
+
+        self.init_length_s += element.init_length_s
+        self.increment_s += element.increment_s
+
+        self.element_list.insert(position, copy.deepcopy(element))
+        return 0
+
+    def append_element(self, element, at_beginning=False):
+        """
+        """
+        position = 0 if at_beginning else len(self.element_list)
+        return self.insert_element(position=position, element=element)
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -224,29 +250,52 @@ class PulseBlockEnsemble(object):
         self.measurement_information = dict()
         return
 
-    def replace_block(self, position, block_name, reps=0):
-        if isinstance(block_name, str) and len(self.block_list) > position and reps >= 0:
+    def replace_block(self, position, block_name, reps=None):
+        """
+        """
+        if not isinstance(block_name, str) or len(self.block_list) <= position:
+            return -1
+
+        if reps is None:
+            self.block_list[position][0] = block_name
+        elif reps >= 0:
             self.block_list[position] = (block_name, reps)
-            return 0
         else:
             return -1
+        return 0
 
     def delete_block(self, position):
-        if len(self.block_list) > position:
-            del self.block_list[position]
-            return 0
-        else:
+        """
+        """
+        if len(self.block_list) <= position:
             return -1
 
-    def append_block(self, block_name, reps=0, at_beginning=False):
-        if isinstance(block_name, str) and reps >= 0:
-            if at_beginning:
-                self.block_list.insert(0, (block_name, reps))
-            else:
-                self.block_list.append((block_name, reps))
-            return 0
-        else:
+        del self.block_list[position]
+        return 0
+
+    def insert_block(self, position, block_name, reps=0):
+        """ Insert a PulseBlock at the given position. The old block at this position and all
+        consecutive blocks after that will be shifted to higher indices.
+
+        @param int position: position in the block list
+        @param str block_name: PulseBlock name
+        @param int reps: Block repetitions. Zero means single playback of the block.
+        """
+        if not isinstance(block_name, str) or len(self.block_list) < position or reps < 0:
             return -1
+
+        self.block_list.insert(position, (block_name, reps))
+        return 0
+
+    def append_block(self, block_name, reps=0, at_beginning=False):
+        """ Append either at the front or at the back.
+
+        @param str block_name: PulseBlock name
+        @param int reps: Block repetitions. Zero means single playback of the block.
+        @param bool at_beginning: If False append to end (default), if True insert at beginning.
+        """
+        position = 0 if at_beginning else len(self.block_list)
+        return self.insert_block(position=position, block_name=block_name, reps=reps)
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -338,42 +387,51 @@ class PulseSequence(object):
         @param str ensemble_name: PulseBlockEnsemble name
         @param dict seq_param: Sequence step parameter dictionary. Use present one if None.
         """
-        if isinstance(ensemble_name, str) and len(self.ensemble_list) > position:
-            if seq_param is None:
-                self.ensemble_list[position][0] = ensemble_name
-            else:
-                self.ensemble_list[position] = (ensemble_name, seq_param)
-            return 0
-        else:
+        if not isinstance(ensemble_name, str) or len(self.ensemble_list) <= position:
             return -1
+
+        if seq_param is None:
+            self.ensemble_list[position][0] = ensemble_name
+        else:
+            self.ensemble_list[position] = (ensemble_name, seq_param.copy())
+        return 0
 
     def delete_ensemble(self, position):
         """ Delete an ensemble at a given position
 
         @param int position: position within the list self.ensemble_list.
         """
-        if len(self.ensemble_list) > position:
-            del self.ensemble_list[position]
-            return 0
-        else:
+        if len(self.ensemble_list) <= position:
             return -1
 
+        del self.ensemble_list[position]
+        return 0
+
+    def insert_ensemble(self, position, ensemble_name, seq_param):
+        """ Insert a sequence step at the given position. The old step at this position and all
+        consecutive steps after that will be shifted to higher indices.
+
+        @param int position: position in the ensemble list
+        @param str ensemble_name: PulseBlockEnsemble name
+        @param dict seq_param: Sequence step parameter dictionary.
+        """
+        if not isinstance(ensemble_name, str) or len(self.ensemble_list) < position:
+            return -1
+
+        self.ensemble_list.insert(position, (ensemble_name, seq_param.copy()))
+        return 0
+
     def append_ensemble(self, ensemble_name, seq_param, at_beginning=False):
-        """ Append either at the front or at the back an ensemble_param
+        """ Append either at the front or at the back.
 
         @param str ensemble_name: PulseBlockEnsemble name
         @param dict seq_param: Sequence step parameter dictionary.
-        @param bool at_beginning: If flase append to end (default), if true then
-                                  inset at beginning.
+        @param bool at_beginning: If False append to end (default), if True insert at beginning.
         """
-        if isinstance(ensemble_name, str):
-            if at_beginning:
-                self.ensemble_list.insert((ensemble_name, seq_param))
-            else:
-                self.ensemble_list.append((ensemble_name, seq_param))
-            return 0
-        else:
-            return -1
+        position = 0 if at_beginning else len(self.ensemble_list)
+        return self.insert_ensemble(position=position,
+                                    ensemble_name=ensemble_name,
+                                    seq_param=seq_param)
 
     def get_dict_representation(self):
         dict_repr = dict()
