@@ -7,6 +7,7 @@ dependencies:
   - ca-certificates=2018.03.07=0
   - certifi=2018.4.16=py36_0
   - cycler=0.10.0=py36h93f1223_0
+  - cython=0.28.2=py36h14c3975_0
   - dbus=1.13.2=h714fa37_1
   - decorator=4.3.0=py36_0
   - entrypoints=0.2.3=py36h1aec115_2
@@ -104,22 +105,23 @@ dependencies:
   - zeromq=4.2.5=h439df22_0
   - zlib=1.2.11=ha838bed_2
   - pip:
+    - asteval==0.9.12
     - future==0.16.0
-    - fysom==2.1.4
-    - gitdb2==2.0.0
-    - gitpython==2.1.1
+    - fysom==2.1.5
+    - gitdb2==2.0.3
+    - gitpython==2.1.9
     - hdf5storage==0.1.14
     - iso8601==0.1.12
-    - lmfit==0.9.5
-    - plumbum==1.6.3
-    - pydaqmx==1.3.2
+    - lmfit==0.9.9
+    - plumbum==1.6.6
+    - pydaqmx==1.4.1
     - pyflowgraph-qo==0.0.3.1
     - pyqtgraph==0.10.0
-    - pyvisa==1.8
+    - pyvisa==1.9.0
     - pyvisa-py==0.2
     - pyyaml==3.12
-    - rpyc==3.3.0
-    - ruamel.yaml==0.13.14
-    - serial==0.0.38
+    - rpyc==3.4.4
+    - ruamel.yaml==0.15.37
+    - serial==0.0.64
     - smmap2==2.0.1
 
