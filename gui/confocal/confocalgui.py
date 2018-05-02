@@ -630,6 +630,8 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
         # self._scanning_logic.signal_stop_scanning.connect()
 
+        self._scanning_logic.image_ranges_changed_Signal.connect(self.logic_updated_scan_range)
+
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
         self._optimizer_logic.sigRefocusFinished.connect(self._refocus_finished_wrapper)
@@ -2233,3 +2235,27 @@ class ConfocalGui(GUIBase):
         if tag == 'logic':
             self.disable_scan_actions()
 
+    def logic_updated_scan_range(self):
+        """ Update displayed scan range if the logic had it changed somewhere else.
+        """
+        print('fired')
+        self._mw.x_min_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('x')[0]
+        )
+        self._mw.x_max_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('x')[1]
+        )
+
+        self._mw.y_min_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('y')[0]
+        )
+        self._mw.y_max_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('y')[1]
+        )
+
+        self._mw.z_min_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('z')[0]
+        )
+        self._mw.z_max_InputWidget.setValue(
+            self._scanning_logic.get_image_axis_range('z')[1]
+        )
