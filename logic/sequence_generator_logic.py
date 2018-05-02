@@ -1076,6 +1076,32 @@ class SequenceGeneratorLogic(GenericLogic):
         ensemble_length_bins = int(np.rint(ensemble_length_s * self.__sample_rate))
         return ensemble_length_s, ensemble_length_bins, number_of_lasers
 
+    def get_sequence_info(self, sequence):
+        """
+        This helper method will analyze a PulseSequence and return information like length in
+        seconds and bins (with currently set sampling rate), number of laser pulses (with currently
+        selected laser/gate channel)
+
+        @param PulseSequence sequence: The PulseSequence instance to analyze
+        @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
+        """
+        length_bins = 0
+        length_s = 0 if sequence.is_finite else -1
+        number_of_lasers = 0 if sequence.is_finite else -1
+        for ensemble_name, seq_params in sequence.ensemble_list:
+            ensemble = self.get_ensemble(name=ensemble_name)
+            if ensemble is None:
+                length_bins = -1
+                length_s = -1
+                number_of_lasers = -1
+                break
+            ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
+            length_bins += ens_bins
+            if sequence.is_finite:
+                length_s += ens_length * (seq_params['repetitions'] + 1)
+                number_of_lasers += ens_lasers * (seq_params['repetitions'] + 1)
+        return length_s, length_bins, number_of_lasers
+
     def _analyze_block_ensemble(self, ensemble):
         """
         This helper method runs through each element of a PulseBlockEnsemble object and extracts
@@ -1233,15 +1259,18 @@ class SequenceGeneratorLogic(GenericLogic):
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
 
-        # Check if any sequence step is running infinitely since this would render the
-        # parameters meaningless.
-        non_deterministic = False
-        for ensemble_name, seq_params in sequence.ensemble_list:
-            if seq_params['repetitions'] < 0:
-                non_deterministic = True
-                break
         # If the sequence does not contain infinite loop steps, determine the remaining parameters
         # TODO: Implement this!
+        length_bins = 0
+        length_s = 0 if sequence.is_finite else -1
+        number_of_lasers = 0 if sequence.is_finite else -1
+        for ensemble_name, seq_params in sequence.ensemble_list:
+            ensemble = self.get_ensemble(name=ensemble_name)
+            ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
+            length_bins += ens_bins
+            if sequence.is_finite:
+                length_s += ens_length * (seq_params['repetitions'] + 1)
+                number_of_lasers += ens_lasers * (seq_params['repetitions'] + 1)
 
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
