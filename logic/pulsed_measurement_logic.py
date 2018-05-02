@@ -69,9 +69,12 @@ class PulsedMeasurementLogic(GenericLogic):
     _controlled_variable = StatusVar(default=list(range(50)))
     _alternating = StatusVar(default=False)
     _laser_ignore_list = StatusVar(default=list())
+    _data_units = StatusVar(default=('s', ''))
 
-    # Container to store information about the currently running sequence
-    _sequence_information = StatusVar(default=dict())
+    # Container to store measurement information about the currently loaded sequence
+    _measurement_information = StatusVar(default=dict())
+    # Container to store information about the sampled waveform/sequence currently loaded
+    _sampling_information = StatusVar(default=dict())
 
     # alternative signal computation settings:
     _alternative_data_type = StatusVar(default='None')
@@ -496,18 +499,59 @@ class PulsedMeasurementLogic(GenericLogic):
     @property
     def measurement_settings(self):
         settings_dict = dict()
-        settings_dict['sequence_information'] = self._sequence_information
         settings_dict['invoke_settings'] = bool(self._invoke_settings_from_sequence)
         settings_dict['controlled_variable'] = np.array(self._controlled_variable, dtype=float)
         settings_dict['number_of_lasers'] = int(self._number_of_lasers)
         settings_dict['laser_ignore_list'] = list(self._laser_ignore_list)
         settings_dict['alternating'] = bool(self._alternating)
+        settings_dict['units'] = self._data_units
         return settings_dict
 
     @measurement_settings.setter
     def measurement_settings(self, settings_dict):
         if isinstance(settings_dict, dict):
             self.set_measurement_settings(settings_dict)
+        return
+
+    @property
+    def measurement_information(self):
+        return self._measurement_information
+
+    @measurement_information.setter
+    def measurement_information(self, info_dict):
+        # Check if mandatory params to invoke settings are missing and set empty dict in that case.
+        mand_params = ('number_of_lasers',
+                       'controlled_variable',
+                       'laser_ignore_list',
+                       'alternating',
+                       'counting_length')
+        if not isinstance(info_dict, dict) or not all(param in info_dict for param in mand_params):
+            self._measurement_information = dict()
+            return
+
+        # Set measurement_information dict
+        self._measurement_information = info_dict.copy()
+
+        # invoke settings if needed
+        if self._invoke_settings_from_sequence and self._measurement_information:
+            self._apply_invoked_settings()
+            self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
+        return
+
+    @property
+    def sampling_information(self):
+        return self._sampling_information
+
+    @sampling_information.setter
+    def sampling_information(self, info_dict):
+        if isinstance(info_dict, dict):
+            self._sampling_information = info_dict
+        else:
+            self._sampling_information = dict()
+
+        # pass the information to PulseAnalysisLogic and PulseExtractionLogic
+        self.pulseanalysislogic().sampling_information = self._sampling_information
+        self.pulseextractionlogic().sampling_information = self._sampling_information
         return
 
     @property
@@ -622,54 +666,41 @@ class PulsedMeasurementLogic(GenericLogic):
         @param kwargs:
         @return:
         """
-        if self.module_state == 'locked':
-            self.log.error('Unable to apply new measurement settings. Measurement is running.')
+        # Determine complete settings dictionary
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
         else:
-            # Determine complete settings dictionary
-            if not isinstance(settings_dict, dict):
-                settings_dict = kwargs
-            else:
-                settings_dict.update(kwargs)
+            settings_dict.update(kwargs)
 
-            # Store sequence information if present
-            if 'sequence_information' in settings_dict:
-                self._sequence_information = settings_dict['sequence_information']
+        # Invoke settings if measurement_information is present and flag is set
+        if self._invoke_settings_from_sequence and self._measurement_information:
+            self._apply_invoked_settings()
+        else:
+            # Apply settings that can be changed while a measurement is running
+            with self._threadlock:
+                if 'units' in settings_dict:
+                    self._data_units = settings_dict.get('units')
 
-            # Get all other parameters if present
-            if 'invoke_settings' in settings_dict:
-                self._invoke_settings_from_sequence = bool(settings_dict['invoke_settings'])
-            if 'controlled_variable' in settings_dict:
-                self._controlled_variable = np.array(settings_dict['controlled_variable'],
-                                                     dtype=float)
-            if 'number_of_lasers' in settings_dict:
-                self._number_of_lasers = int(settings_dict['number_of_lasers'])
-            if 'laser_ignore_list' in settings_dict:
-                self._laser_ignore_list = sorted(list(settings_dict['laser_ignore_list']))
-            if 'alternating' in settings_dict:
-                self._alternating = bool(settings_dict['alternating'])
+            if self.module_state == 'idle':
+                # Get all other parameters if present
+                if 'invoke_settings' in settings_dict:
+                    self._invoke_settings_from_sequence = bool(settings_dict.get('invoke_settings'))
+                if 'controlled_variable' in settings_dict:
+                    self._controlled_variable = np.array(settings_dict.get('controlled_variable'),
+                                                         dtype=float)
+                if 'number_of_lasers' in settings_dict:
+                    self._number_of_lasers = int(settings_dict.get('number_of_lasers'))
+                if 'laser_ignore_list' in settings_dict:
+                    self._laser_ignore_list = sorted(settings_dict.get('laser_ignore_list'))
+                if 'alternating' in settings_dict:
+                    self._alternating = bool(settings_dict.get('alternating'))
 
-            # Apply settings according to the invoke settings flag
-            if self._invoke_settings_from_sequence and self._sequence_information:
-                self._apply_invoked_settings()
-
-            self._measurement_settings_sanity_check()
-
-            # Give some measurement parameters to PulseExtractionLogic and PulseAnalysisLogic
-            self.pulseextractionlogic().number_of_lasers = self._number_of_lasers
-            self.pulseextractionlogic().sequence_information = self._sequence_information
-            self.pulseanalysislogic().sequence_information = self._sequence_information
+        # Perform sanity checks on settings
+        self._measurement_settings_sanity_check()
 
         # emit update signal for master (GUI or other logic module)
-        self.sigMeasurementSettingsUpdated.emit(
-            {'sequence_information': self._sequence_information,
-             'invoke_settings': self._invoke_settings_from_sequence,
-             'controlled_variable': self._controlled_variable,
-             'number_of_lasers': self._number_of_lasers,
-             'laser_ignore_list': self._laser_ignore_list,
-             'alternating': self._alternating})
-        return self._sequence_information, self._invoke_settings_from_sequence, \
-               self._controlled_variable, self._number_of_lasers, self._laser_ignore_list, \
-               self._alternating
+        self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
+        return self.measurement_settings
 
     @QtCore.Slot(bool, str)
     def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
