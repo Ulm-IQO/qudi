@@ -360,10 +360,9 @@ class PulseSequence(object):
         """
         self.name = name
         self.rotating_frame = rotating_frame
-        if ensemble_list is None:
-            self.ensemble_list = list()
-        else:
-            self.ensemble_list = ensemble_list
+        self.ensemble_list = list() if ensemble_list is None else ensemble_list
+        self.is_finite = True
+        self.refresh_parameters()
 
         # self.sampled_ensembles = OrderedDict()
         # Dictionary container to store information related to the actually sampled
@@ -380,6 +379,14 @@ class PulseSequence(object):
         self.measurement_information = dict()
         return
 
+    def refresh_parameters(self):
+        self.is_finite = True
+        for ensemble_name, params in self.ensemble_list:
+            if params['repetitions'] < 0:
+                self.is_finite = False
+                break
+        return
+
     def replace_ensemble(self, position, ensemble_name, seq_param=None):
         """ Replace a sequence step at a given position.
 
@@ -394,6 +401,10 @@ class PulseSequence(object):
             self.ensemble_list[position][0] = ensemble_name
         else:
             self.ensemble_list[position] = (ensemble_name, seq_param.copy())
+            if seq_param['repetitions'] < 0 and self.is_finite:
+                self.is_finite = False
+            elif seq_param['repetitions'] >= 0 and not self.is_finite:
+                self.refresh_parameters()
         return 0
 
     def delete_ensemble(self, position):
@@ -404,7 +415,12 @@ class PulseSequence(object):
         if len(self.ensemble_list) <= position:
             return -1
 
+        refresh = True if self.ensemble_list[position][1]['repetitions'] < 0 else False
+
         del self.ensemble_list[position]
+
+        if refresh:
+            self.refresh_parameters()
         return 0
 
     def insert_ensemble(self, position, ensemble_name, seq_param):
@@ -419,6 +435,9 @@ class PulseSequence(object):
             return -1
 
         self.ensemble_list.insert(position, (ensemble_name, seq_param.copy()))
+
+        if seq_param['repetitions'] < 0:
+            self.is_finite = False
         return 0
 
     def append_ensemble(self, ensemble_name, seq_param, at_beginning=False):
