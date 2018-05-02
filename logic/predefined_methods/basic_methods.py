@@ -187,6 +187,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        block_ensemble.measurement_information['number_of_lasers'] = 0
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -228,6 +229,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        block_ensemble.measurement_information['number_of_lasers'] = 0
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -258,6 +260,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
+        block_ensemble.measurement_information['number_of_lasers'] = 0
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -307,6 +310,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_taus
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -362,6 +366,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -439,9 +444,11 @@ class PulsedObjectGenerator:
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
 
         # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -529,9 +536,11 @@ class PulsedObjectGenerator:
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
 
         # add metadata to invoke settings later on
+        number_of_lasers = 2 * num_of_points if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -619,6 +628,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = True
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = amp_array
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -704,6 +714,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = True
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * num_of_points
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -791,6 +802,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = steps_array
+        block_ensemble.measurement_information['number_of_lasers'] = 2 * polarization_steps
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -924,9 +936,11 @@ class PulsedObjectGenerator:
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
 
         # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = tau_array
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
@@ -1063,9 +1077,12 @@ class PulsedObjectGenerator:
         block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
 
         # add metadata to invoke settings later on
+        number_of_lasers = num_of_points * 2 if alternating else num_of_points
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = list()
         block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['number_of_lasers'] = number_of_lasers
+
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
