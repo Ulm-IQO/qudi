@@ -278,6 +278,7 @@ class ConfocalLogic(GenericLogic):
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
     image_ranges_changed_Signal = QtCore.Signal()
+    scan_resolution_changed_Signal = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -1210,6 +1211,51 @@ class ConfocalLogic(GenericLogic):
                     .format(axis)
                     )
             return -1
+
+    def set_xy_resolution(self, new_res):
+        """ Set the xy scan resolution.
+
+        @param int new_res: new resolution
+        """
+        if isinstance(new_res, int):
+            self.xy_resolution = new_res
+            self.scan_resolution_changed_Signal.emit()
+            return 0
+        else:
+            self.log.error(
+                    'Resolution is number of pixels, and must be integer'
+                    'instead of type {}.'
+                    .format(type(new_res))
+                    )
+            return -1
+        
+    # TODO: use dictionary for resolution to remove code duplication.
+    def set_z_resolution(self, new_res):
+        """ Set the depth scan resolution.
+
+        @param int new_res: new resolution
+        """
+        if isinstance(new_res, int):
+            self.z_resolution = new_res
+            self.scan_resolution_changed_Signal.emit()
+            return 0
+        else:
+            self.log.error(
+                    'Resolution is number of pixels, and must be integer'
+                    'instead of type {}.'
+                    .format(type(new_res))
+                    )
+            return -1
+
+    def get_xy_resolution(self):
+        """Get the xy scan resolution.
+        """
+        return self.xy_resolution
+
+    def get_z_resolution(self):
+        """Get the depth scan resolution.
+        """
+        return self.z_resolution
 
     ##################################### Tilt correction ########################################
 

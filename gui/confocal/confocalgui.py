@@ -631,6 +631,7 @@ class ConfocalGui(GUIBase):
         # self._scanning_logic.signal_stop_scanning.connect()
 
         self._scanning_logic.image_ranges_changed_Signal.connect(self.logic_updated_scan_range)
+        self._scanning_logic.scan_resolution_changed_Signal.connect(self.logic_updated_resolution)
 
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
@@ -2257,4 +2258,15 @@ class ConfocalGui(GUIBase):
         )
         self._mw.z_max_InputWidget.setValue(
             self._scanning_logic.get_image_axis_range('z')[1]
+        )
+
+    def logic_updated_resolution(self):
+        """ Update displayed resolution if the logic had it changed somewhere else.
+        """
+        self._mw.xy_res_InputWidget.setValue(
+            self._scanning_logic.get_xy_resolution()
+        )
+
+        self._mw.z_res_InputWidget.setValue(
+            self._scanning_logic.get_z_resolution()
         )
