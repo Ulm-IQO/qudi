@@ -24,18 +24,28 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+from enum import Enum
+
 from core.module import Base, ConfigOption
-from interface.spectrometer_camera_interface import SpectrometerCameraInterface, ReadMode, SpectrometerCameraConstraints
-from time import strftime, localtime
+
+from interface.camera_interface import CameraInterface
+from interface.process_interface import ProcessInterface
+from interface.process_control_interface import ProcessControlInterface
 
 from libraries.pyandor.Andor.camera import Camera
-from libraries.pyandor.Andor.errorcodes import ERROR_CODE
 
-import time
 import numpy as np
 
 
-class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
+class ReadMode(Enum):
+    FVB = 0
+    MULTI_TRACK = 1
+    RANDOM_TRACK = 2
+    SINGLE_TRACK = 3
+    IMAGE = 4
+
+
+class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessControlInterface):
     """
     """
 
@@ -51,21 +61,22 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
     _temperature = _default_temperature
     _cooler_on = _default_cooler_on
     _read_mode = _default_read_mode
+    _gain = 0
     _width = 0
     _height = 0
     cam = None
     _acquiring = False
-    _last_acquisitioon_mode = None # useful if config changes during acq
+    _last_acquisition_mode = None  # useful if config changes during acq
 
     def on_activate(self):
 
         self.cam = Camera()
         self.cam.SetVerbose(False)
         self.set_read_mode(self._read_mode)
-        self.cam.SetAcquisitionMode(1) # single
-        self.cam.SetTriggerMode(0) # internal
-        self.cam.SetShutter(1, 0, 50, 50) # is this even useful ?
-        self.cam.SetCoolerMode(0) # Returns to ambient temperature on ShutDown
+        self.cam.SetAcquisitionMode(1)  # single
+        self.cam.SetTriggerMode(0)  # internal
+        self.cam.SetShutter(1, 0, 50, 50)  # is this even useful ?
+        self.cam.SetCoolerMode(0)  # Returns to ambient temperature on ShutDown
         self.set_cooler_on_state(self._cooler_on)
         self.set_exposure(self._exposure)
         self.set_setpoint_temperature(self._temperature)
@@ -80,14 +91,8 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
     def get_name(self):
         return "Andor " + self.cam.GetCameraSerialNumber()
 
-    def get_constraints(self):
-        cons = SpectrometerCameraConstraints()
-        cons.cooling = True
-        cons.width = self._width
-        cons.height = self._height
-        cons.max_cooling = -100.0
-        cons.read_mode = [ReadMode.FVB, ReadMode.IMAGE]
-        return cons
+    def get_size(self):
+        return self._width, self._height
 
     def set_read_mode(self, mode):
         if mode in self.get_constraints().read_mode:
@@ -106,24 +111,23 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
         else:
             return -1
 
-    def start_acqusition(self):
+    def start_acquisition(self):
         if self.get_ready_state():
             self._acquiring = True
-            self._last_acquisitioon_mode = self.get_read_mode()
+            self._last_acquisition_mode = self.get_read_mode()
             self.cam.StartAcquisition()
             return 0
         else:
             return -1
 
-
-    def get_aquired_data(self):
+    def get_acquired_data(self):
         data = []
         self.cam.GetAcquiredData(data)
         data = np.array(data, dtype=np.double)
         result = []
-        if self._last_acquisitioon_mode == ReadMode.FVB:
+        if self._last_acquisition_mode == ReadMode.FVB:
             result = [data]
-        elif self._last_acquisitioon_mode == ReadMode.IMAGE:
+        elif self._last_acquisition_mode == ReadMode.IMAGE:
             result = np.reshape(data, (self._wdith, self._height))
 
         self._acquiring = False
@@ -136,8 +140,15 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
             return 0
         else:
             return -1
+
     def get_exposure(self):
         return self._exposure
+    
+    def set_gain(self, gain):
+        pass
+
+    def get_gain(self):
+        return self._gain
 
     def set_cooler_on_state(self, on_state):
         self._cooler_on = on_state
@@ -173,7 +184,29 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
     def get_ready_state(self):
         return not self._acquiring
 
-    ### To be compatible with simple spectro interface
+    #
+    # Process interface to control cooling
+
+    def getProcessValue(self):
+        return self.get_measured_temperature()
+
+    def getProcessUnit(self):
+        return '°C', 'Degrees Celsius'
+
+    def setControlValue(self, value):
+        self.set_setpoint_temperature(value)
+
+    def getControlValue(self):
+        return self.get_setpoint_temperature()
+
+    def getControlUnit(self):
+        return self.getProcessUnit()
+
+    def getControlLimits(self):
+        return -100, 0
+
+    #To be compatible with simple spectro interface
+
     def recordSpectrum(self):
         self.set_read_mode(ReadMode.FVB)
         self.start_acqusition()
@@ -185,7 +218,7 @@ class ScectrometerCameraAndor(Base, SpectrometerCameraInterface):
         return res
 
     def setExposure(self, exposureTime):
-        set_exposure(exposureTime)
+        self.set_exposure(exposureTime)
 
     def getExposure(self):
-        return get_exposure()
+        return self.get_exposure()
