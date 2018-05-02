@@ -869,6 +869,11 @@ class PulsedMasterLogic(GenericLogic):
         """
         return self.sequencegeneratorlogic().get_ensemble_info(ensemble=ensemble)
 
+    def get_sequence_info(self, sequence):
+        """
+        """
+        return self.sequencegeneratorlogic().get_sequence_info(sequence=sequence)
+
     #######################################################################
     ###             Helper  methods                                     ###
     #######################################################################
