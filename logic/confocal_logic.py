@@ -1191,6 +1191,24 @@ class ConfocalLogic(GenericLogic):
         # Tell the GUI or anything else that might need to update display.
         self.image_ranges_changed_Signal.emit()
 
+    def get_image_axis_range(self, axis):
+        """ Get range of scanner image in specified axis.
+
+        @param string axis: label for desired axis, can be 'x', 'y', or 'z'
+        """
+        if axis == 'x':
+            return self.image_x_range
+        elif axis == 'y':
+            return self.image_y_range
+        elif axis == 'z':
+            return self.image_z_range
+        else:
+            self.log.error(
+                    'Cannot get image range for axis {}.'.format(axis)
+                    'Only x, y, z axis labels are known for scanner images.'
+                    )
+            return -1
+
     ##################################### Tilt correction ########################################
 
     @QtCore.Slot()

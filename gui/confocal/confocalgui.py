@@ -479,12 +479,12 @@ class ConfocalGui(GUIBase):
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
-        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
-        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
-        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
-        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
-        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
-        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
+        self._mw.x_min_InputWidget.setValue(self._scanning_logic.get_image_axis_range('x')[0])
+        self._mw.x_max_InputWidget.setValue(self._scanning_logic.get_image_axis_range('x')[1])
+        self._mw.y_min_InputWidget.setValue(self._scanning_logic.get_image_axis_range('y')[0])
+        self._mw.y_max_InputWidget.setValue(self._scanning_logic.get_image_axis_range('y')[1])
+        self._mw.z_min_InputWidget.setValue(self._scanning_logic.get_image_axis_range('z')[0])
+        self._mw.z_max_InputWidget.setValue(self._scanning_logic.get_image_axis_range('z')[1])
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
@@ -1473,20 +1473,23 @@ class ConfocalGui(GUIBase):
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_x_range = [
+        self._scanning_logic.set_image_axis_range = [
+            'x',
             self._mw.x_min_InputWidget.value(),
             self._mw.x_max_InputWidget.value()]
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.image_y_range = [
+        self._scanning_logic.set_image_axis_range = [
+            'y',
             self._mw.y_min_InputWidget.value(),
             self._mw.y_max_InputWidget.value()]
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.image_z_range = [
+        self._scanning_logic.set_image_axis_range = [
+            'z',
             self._mw.z_min_InputWidget.value(),
             self._mw.z_max_InputWidget.value()]
 
@@ -1667,10 +1670,8 @@ class ConfocalGui(GUIBase):
         self.refresh_xy_image()
         xy_viewbox = self.xy_image.getViewBox()
 
-        xMin = self._scanning_logic.image_x_range[0]
-        xMax = self._scanning_logic.image_x_range[1]
-        yMin = self._scanning_logic.image_y_range[0]
-        yMax = self._scanning_logic.image_y_range[1]
+        xMin, xMax = self._scanning_logic.get_image_axis_range('x')
+        yMin, yMax = self._scanning_logic.get_image_axis_range('y')
 
         if self.fixed_aspect_ratio_xy:
             # Reset the limit settings so that the method 'setAspectLocked'
@@ -1714,15 +1715,12 @@ class ConfocalGui(GUIBase):
 
         if self._scanning_logic.depth_img_is_xz:
             self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
-            xMin = self._scanning_logic.image_x_range[0]
-            xMax = self._scanning_logic.image_x_range[1]
+            xMin, xMax = self._scanning_logic.get_image_axis_range('x')
         else:
             self._mw.depth_ViewWidget.setLabel('bottom', 'Y position', units='m')
-            xMin = self._scanning_logic.image_y_range[0]
-            xMax = self._scanning_logic.image_y_range[1]
+            xMin, xMax = self._scanning_logic.get_image_axis_range('y')  # Note 'y'
 
-        zMin = self._scanning_logic.image_z_range[0]
-        zMax = self._scanning_logic.image_z_range[1]
+        zMin, zMax = self._scanning_logic.get_image_axis_range('z')
 
         if self.fixed_aspect_ratio_depth:
             # Reset the limit settings so that the method 'setAspectLocked'
@@ -1753,10 +1751,8 @@ class ConfocalGui(GUIBase):
 
     def put_cursor_in_xy_scan(self):
         """Put the xy crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_y_min = self._scanning_logic.image_y_range[0]
-        view_y_max = self._scanning_logic.image_y_range[1]
+        view_x_min, view_x_max = self._scanning_logic.get_image_axis_range('x')
+        view_y_min, view_y_max = self._scanning_logic.get_image_axis_range('y')
 
         x_value = self.roi_xy.pos()[0]
         y_value = self.roi_xy.pos()[1]
@@ -1779,10 +1775,8 @@ class ConfocalGui(GUIBase):
 
     def put_cursor_in_depth_scan(self):
         """Put the depth crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_z_min = self._scanning_logic.image_z_range[0]
-        view_z_max = self._scanning_logic.image_z_range[1]
+        view_x_min, view_x_max = self._scanning_logic.get_image_axis_range('x')
+        view_z_min, view_z_max = self._scanning_logic.get_image_axis_range('z')
 
         x_value = self.roi_depth.pos()[0]
         z_value = self.roi_depth.pos()[1]
