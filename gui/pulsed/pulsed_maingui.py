@@ -2513,7 +2513,6 @@ class PulsedMeasurementGui(GUIBase):
         @param dict settings_dict: dictionary with parameters to update
         @return:
         """
-        print(settings_dict)
         # If no widgets have been generated yet, generate them now.
         if self._extraction_param_widgets is None:
             self._create_extraction_param_widgets(extraction_settings=settings_dict)
@@ -2521,7 +2520,6 @@ class PulsedMeasurementGui(GUIBase):
         # If the method is unchanged, just update the widget values.
         # Otherwise delete all widgets and create new ones for the changed method.
         if settings_dict.get('method') == self._pe.extract_param_method_comboBox.currentText():
-            print('Nope')
             for label, widget in self._extraction_param_widgets:
                 param_name = widget.objectName()[14:]
                 widget.blockSignals(True)
