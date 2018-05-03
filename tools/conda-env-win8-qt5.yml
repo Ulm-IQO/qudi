@@ -10,6 +10,7 @@ dependencies:
   - colorama=0.3.9=py36h029ae33_0
   - comtypes=1.1.4=py36_0
   - cycler=0.10.0=py36h009560c_0
+  - cython=0.28.2=py36hfa6e2cd_0
   - decorator=4.3.0=py36_0
   - entrypoints=0.2.3=py36hfd66bb0_2
   - freetype=2.8=h51f8f2c_1
@@ -112,7 +113,7 @@ dependencies:
     - plumbum==1.6.6
     - pydaqmx==1.4.1
     - pyflowgraph-qo==0.0.3.1
-    - pyqtgraph-qo==0.10.0
+    - pyqtgraph-qo==0.10.0.3
     - pyvisa==1.9.0
     - pyvisa-py==0.2
     - pyyaml==3.12
