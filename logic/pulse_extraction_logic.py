@@ -74,14 +74,12 @@ class PulseExtractionLogic(GenericLogic):
         # extraction_settings property.
         # ==========================================================================================
 
-        # The width of a single time bin in the count data in seconds
-        self.counter_bin_width = 1e-9
-        # Flag indicating if the count data comes from a gated counter (True) or not (False)
-        self.is_gated = False
-        # The number of laser pulses to find in the time trace
-        self.number_of_lasers = 50
         # Dictionary container holding information about the currently running sequence
-        self.sequence_information = None
+        self.sampling_information = dict()
+        # Dictionary container holding the fast counter settings
+        self.fast_counter_settings = dict()
+        # Dictionary container holding the measurement settings
+        self.measurement_settings = dict()
         return
 
     def on_activate(self):
@@ -123,6 +121,10 @@ class PulseExtractionLogic(GenericLogic):
         return
 
     @property
+    def is_gated(self):
+        return self.fast_counter_settings.get('is_gated')
+
+    @property
     def extraction_settings(self):
         """
         This property holds all parameters needed for the currently selected extraction_method.
@@ -137,7 +139,7 @@ class PulseExtractionLogic(GenericLogic):
         # Get keyword arguments for the currently selected method
         settings_dict = self._get_extraction_method_kwargs(method)
         # Remove arguments that have a corresponding attribute defined in __init__
-        for parameter in ('counter_bin_width', 'number_of_lasers', 'sequence_information'):
+        for parameter in ('fast_counter_settings', 'sampling_information', 'measurement_settings'):
             if parameter in settings_dict:
                 del settings_dict[parameter]
         # Attach current extraction method name
@@ -160,7 +162,8 @@ class PulseExtractionLogic(GenericLogic):
                 self.log.warning('No extraction setting "{0}" found in PulseExtractionLogic.\n'
                                  'Creating it now but this can lead to problems.\nThis parameter '
                                  'is probably not part of any extraction method.'.format(name))
-            if name != 'count_data':
+            if name not in ('count_data', 'fast_counter_settings', 'sampling_information',
+                            'measurement_settings'):
                 setattr(self, name, value)
 
         # emit signal with all important parameters for the currently selected analysis method

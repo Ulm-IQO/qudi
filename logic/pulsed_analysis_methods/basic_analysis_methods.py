@@ -1,11 +1,11 @@
 import numpy as np
 
 
-def analyse_mean_norm(laser_data, counter_bin_width, signal_start=0.0, signal_end=200e-9, norm_start=300e-9, norm_end=500e-9):
+def analyse_mean_norm(laser_data, fast_counter_settings, signal_start=0.0, signal_end=200e-9, norm_start=300e-9, norm_end=500e-9):
     """
 
     @param laser_data:
-    @param counter_bin_width:
+    @param fast_counter_settings:
     @param signal_start:
     @param signal_end:
     @param norm_start:
@@ -14,15 +14,17 @@ def analyse_mean_norm(laser_data, counter_bin_width, signal_start=0.0, signal_en
     """
     # Get number of lasers
     num_of_lasers = laser_data.shape[0]
+    # Get counter bin width
+    bin_width = fast_counter_settings.get('bin_width')
 
-    if not isinstance(counter_bin_width, float):
+    if not isinstance(bin_width, float):
         return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
 
     # Convert the times in seconds to bins (i.e. array indices)
-    signal_start_bin = round(signal_start / counter_bin_width)
-    signal_end_bin = round(signal_end / counter_bin_width)
-    norm_start_bin = round(norm_start / counter_bin_width)
-    norm_end_bin = round(norm_end / counter_bin_width)
+    signal_start_bin = round(signal_start / bin_width)
+    signal_end_bin = round(signal_end / bin_width)
+    norm_start_bin = round(norm_start / bin_width)
+    norm_end_bin = round(norm_end / bin_width)
 
     # initialize data arrays for signal and measurement error
     signal_data = np.empty(num_of_lasers, dtype=float)
@@ -56,24 +58,26 @@ def analyse_mean_norm(laser_data, counter_bin_width, signal_start=0.0, signal_en
     return signal_data, error_data
 
 
-def analyse_mean(laser_data, counter_bin_width, signal_start=0.0, signal_end=200e-9):
+def analyse_mean(laser_data, fast_counter_settings, signal_start=0.0, signal_end=200e-9):
     """
 
     @param laser_data:
-    @param counter_bin_width:
+    @param fast_counter_settings:
     @param signal_start:
     @param signal_end:
     @return:
     """
     # Get number of lasers
     num_of_lasers = laser_data.shape[0]
+    # Get counter bin width
+    bin_width = fast_counter_settings.get('bin_width')
 
-    if not isinstance(counter_bin_width, float):
+    if not isinstance(bin_width, float):
         return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
 
     # Convert the times in seconds to bins (i.e. array indices)
-    signal_start_bin = round(signal_start / counter_bin_width)
-    signal_end_bin = round(signal_end / counter_bin_width)
+    signal_start_bin = round(signal_start / bin_width)
+    signal_end_bin = round(signal_end / bin_width)
 
     # initialize data arrays for signal and measurement error
     signal_data = np.empty(num_of_lasers, dtype=float)
