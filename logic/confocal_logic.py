@@ -267,7 +267,8 @@ class ConfocalLogic(GenericLogic):
     # signals
     signal_start_scanning = QtCore.Signal(str)
     signal_continue_scanning = QtCore.Signal(str)
-    signal_stop_scanning = QtCore.Signal()
+    scanning_stop_requested_Signal = QtCore.Signal()
+    scanning_stopped_Signal = QtCore.Signal()
     signal_scan_lines_next = QtCore.Signal()
     signal_xy_image_updated = QtCore.Signal()
     signal_depth_image_updated = QtCore.Signal()
@@ -426,7 +427,7 @@ class ConfocalLogic(GenericLogic):
         with self.threadlock:
             if self.module_state() == 'locked':
                 self.stopRequested = True
-        self.signal_stop_scanning.emit()
+        self.scanning_stop_requested_Signal.emit()
         return 0
 
     def initialize_image(self):

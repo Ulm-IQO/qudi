@@ -520,7 +520,7 @@ class ConfocalGui(GUIBase):
         #################################################################
         # Connect the scan actions to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
-        self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
+        self._mw.action_stop_scanning.triggered.connect(self.stop_scanning_clicked)
 
         self._scan_xy_start_proxy = pg.SignalProxy(
             self._mw.action_scan_xy_start.triggered,
@@ -628,7 +628,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_start_scanning.connect(self.logic_started_scanning)
         self._scanning_logic.signal_continue_scanning.connect(self.logic_continued_scanning)
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
-        # self._scanning_logic.signal_stop_scanning.connect()
+        self._scanning_logic.scanning_stop_requested_Signal.connect(self.scanning_stop_requested)
 
         self._scanning_logic.image_ranges_changed_Signal.connect(self.logic_updated_scan_range)
         self._scanning_logic.scan_resolution_changed_Signal.connect(self.logic_updated_resolution)
@@ -1084,15 +1084,13 @@ class ConfocalGui(GUIBase):
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
-    def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready. """
+    def stop_scanning_clicked(self):
+        """ Stop the scan if the state has switched to ready. """
         if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
         if self._optimizer_logic.module_state() == 'locked':
             self._optimizer_logic.stop_refocus()
-
-        self.enable_scan_actions()
 
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
@@ -2270,3 +2268,8 @@ class ConfocalGui(GUIBase):
         self._mw.z_res_InputWidget.setValue(
             self._scanning_logic.get_z_resolution()
         )
+    
+    def scanning_stop_requested(self):
+        """ Disable the stop scanning button if a scanning stop has been requested elsewhere.
+        """
+        self._mw.action_stop_scanning.setEnabled(False)
