@@ -2549,7 +2549,9 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        for label, widget in self._extraction_param_widgets:
+        for index in reversed(range(len(self._extraction_param_widgets))):
+            label = self._extraction_param_widgets[index][0]
+            widget = self._extraction_param_widgets[index][1]
             # Disconnect signals
             if hasattr(widget, 'setChecked'):
                 widget.stateChanged.disconnect()
@@ -2561,6 +2563,7 @@ class PulsedMeasurementGui(GUIBase):
             # Stage label and widget for deletion
             label.deleteLater()
             widget.deleteLater()
+            del self._extraction_param_widgets[index]
         self._extraction_param_widgets = None
         return
 
