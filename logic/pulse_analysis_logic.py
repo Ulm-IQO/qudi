@@ -75,9 +75,11 @@ class PulseAnalysisLogic(GenericLogic):
         # ==========================================================================================
 
         # Dictionary container holding information about the currently running sequence
-        self.sequence_information = None
-        # The width of a single time bin in the count data in seconds
-        self.counter_bin_width = 1e-9
+        self.sampling_information = dict()
+        # Dictionary container holding the fast counter settings
+        self.fast_counter_settings = dict()
+        # Dictionary container holding the measurement settings
+        self.measurement_settings = dict()
         return
 
     def on_activate(self):
@@ -126,7 +128,7 @@ class PulseAnalysisLogic(GenericLogic):
         # Get keyword arguments for the analysis method
         settings_dict = self._get_analysis_method_kwargs(method)
         # Remove arguments that have a corresponding attribute defined in __init__
-        for parameter in ('counter_bin_width', 'sequence_information'):
+        for parameter in ('fast_counter_settings', 'sampling_information', 'measurement_settings'):
             if parameter in settings_dict:
                 del settings_dict[parameter]
         # Attach current analysis method name
@@ -149,9 +151,8 @@ class PulseAnalysisLogic(GenericLogic):
                                  'Creating it now but this can lead to problems.\nThis parameter '
                                  'is probably not part of any analysis method.'.format(name))
 
-            if name == 'laser_data':
-                pass
-            else:
+            if name not in ('laser_data', 'fast_counter_settings', 'sampling_information',
+                            'measurement_settings'):
                 setattr(self, name, value)
 
         # emit signal with all important parameters for the currently selected analysis method

@@ -50,12 +50,12 @@ def gated_conv_deriv(count_data, conv_std_dev=10.0):
     return return_dict
 
 
-def ungated_conv_deriv(count_data, number_of_lasers, conv_std_dev=10.0):
+def ungated_conv_deriv(count_data, measurement_settings, conv_std_dev=10.0):
     """ Detects the laser pulses in the ungated timetrace data and extracts
         them.
 
     @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast counter
-    @param int number_of_lasers: The number of laser pulses present in the time trace
+    @param dict measurement_settings: The measurement settings of the currently running measurement.
     @param float conv_std_dev: The standard deviation of the gaussian used for smoothing
 
     @return 2D numpy.ndarray:   2D array, the extracted laser pulses of the timetrace.
@@ -96,6 +96,7 @@ def ungated_conv_deriv(count_data, number_of_lasers, conv_std_dev=10.0):
                    'laser_indices_rising': np.empty(0, dtype='int64'),
                    'laser_indices_falling': np.empty(0, dtype='int64')}
 
+    number_of_lasers = measurement_settings.get('number_of_lasers')
     if not isinstance(number_of_lasers, int):
         return return_dict
 
@@ -221,7 +222,7 @@ def ungated_conv_deriv(count_data, number_of_lasers, conv_std_dev=10.0):
     return return_dict
 
 
-def ungated_threshold(count_data, number_of_lasers, counter_bin_width, count_threshold=10,
+def ungated_threshold(count_data, measurement_settings, fast_counter_settings, count_threshold=10,
                       min_laser_length=200e-9, threshold_tolerance=20e-9):
     """
 
@@ -233,8 +234,8 @@ def ungated_threshold(count_data, number_of_lasers, counter_bin_width, count_thr
     Detects the laser pulses in the ungated timetrace data and extracts them.
 
     @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast counter
-    @param number_of_lasers: 
-    @param counter_bin_width: 
+    @param measurement_settings: 
+    @param fast_counter_settings: 
     @param count_threshold: 
     @param min_laser_length: 
     @param threshold_tolerance: 
@@ -253,6 +254,9 @@ def ungated_threshold(count_data, number_of_lasers, counter_bin_width, count_thr
         threshold_tolerance then they are still considered to belong to a laser pulse.
     """
     return_dict = dict()
+
+    number_of_lasers = measurement_settings.get('number_of_lasers')
+    counter_bin_width = fast_counter_settings.get('bin_width')
 
     if not isinstance(number_of_lasers, int):
         return_dict['laser_indices_rising'] = np.zeros(1, dtype='int64')

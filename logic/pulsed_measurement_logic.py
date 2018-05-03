@@ -184,8 +184,14 @@ class PulsedMeasurementLogic(GenericLogic):
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
-        # Tell the PulseExtractionLogic if the fast counter is gated or not
-        self.pulseextractionlogic().is_gated = self.fastcounter().is_gated()
+        # Set properties of PulseExtractionLogic
+        self.pulseextractionlogic().fast_counter_settings = self.fast_counter_settings
+        self.pulseextractionlogic().measurement_settings = self.measurement_settings
+        self.pulseextractionlogic().sampling_information = self.sampling_information
+        # Set properties of PulseAnalysisLogic
+        self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
+        self.pulseanalysislogic().measurement_settings = self.measurement_settings
+        self.pulseanalysislogic().sampling_information = self.sampling_information
 
         # recalled saved raw data dict key
         self._recalled_raw_data_tag = None
@@ -273,9 +279,9 @@ class PulsedMeasurementLogic(GenericLogic):
                                                                      self.__fast_counter_record_length,
                                                                      self.__fast_counter_gates)
 
-            # Make sure the analysis and extraction logic take the correct binning into account
-            self.pulseanalysislogic().counter_bin_width = self.__fast_counter_binwidth
-            self.pulseextractionlogic().counter_bin_width = self.__fast_counter_binwidth
+            # Make sure the analysis and extraction logic take the correct settings into account
+            self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
+            self.pulseextractionlogic().fast_counter_settings = self.fast_counter_settings
         else:
             self.log.warning('Fast counter is not idle (status: {0}).\n'
                              'Unable to apply new settings.'.format(counter_status))
@@ -699,6 +705,10 @@ class PulsedMeasurementLogic(GenericLogic):
         # Perform sanity checks on settings
         self._measurement_settings_sanity_check()
 
+        # Update properties of PulseExtractionLogic and PulseAnalysisLogic
+        self.pulseextractionlogic().measurement_settings = self.measurement_settings
+        self.pulseanalysislogic().measurement_settings = self.measurement_settings
+
         # emit update signal for master (GUI or other logic module)
         self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
         return self.measurement_settings
@@ -958,7 +968,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         if not isinstance(self._measurement_information, dict) or not self._measurement_information:
             self.log.warning('Can\'t invoke measurement settings from sequence information '
-                             'since no _sequence_information container is given.')
+                             'since no measurement_information container is given.')
             return
 
         # First try to set parameters that can be changed during a running measurement
