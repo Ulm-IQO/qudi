@@ -242,7 +242,7 @@
           <item row="0" column="0">
            <widget class="QLabel" name="label_34">
             <property name="text">
-             <string>External MW?</string>
+             <string>External MW:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -489,7 +489,7 @@
           <item row="2" column="0">
            <widget class="QLabel" name="label_2">
             <property name="text">
-             <string>Invoke settings?</string>
+             <string>Invoke settings:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -553,7 +553,7 @@
           <item row="1" column="3">
            <widget class="QLabel" name="label_3">
             <property name="text">
-             <string>Alternating?</string>
+             <string>Alternating:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -566,7 +566,7 @@
              <enum>Qt::LeftToRight</enum>
             </property>
             <property name="text">
-             <string>Ignore first?</string>
+             <string>Ignore first:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -576,7 +576,7 @@
           <item row="6" column="3">
            <widget class="QLabel" name="label_5">
             <property name="text">
-             <string>Ignore last?</string>
+             <string>Ignore last:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -620,7 +620,7 @@
           <item row="6" column="0">
            <widget class="QLabel" name="second_plot_Label">
             <property name="text">
-             <string>Show second plot?</string>
+             <string>Alternative plot:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -630,7 +630,7 @@
           <item row="5" column="0">
            <widget class="QLabel" name="show_errorbars_Label">
             <property name="text">
-             <string>Error bars?</string>
+             <string>Error bars:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -653,7 +653,7 @@
           <item row="4" column="0">
            <widget class="QLabel" name="label">
             <property name="text">
-             <string>Show Delta?</string>
+             <string>Show Delta:</string>
             </property>
             <property name="alignment">
              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

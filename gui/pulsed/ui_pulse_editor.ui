@@ -793,7 +793,7 @@ last</string>
        </property>
       </spacer>
      </item>
-     <item row="0" column="5">
+     <item row="0" column="6">
       <widget class="QLabel" name="laser_chan_label">
        <property name="maximumSize">
         <size>
@@ -809,10 +809,26 @@ last</string>
        </property>
       </widget>
      </item>
+     <item row="1" column="6">
+      <widget class="QLabel" name="label_3">
+       <property name="text">
+        <string>Sync channel:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="7">
+      <widget class="QComboBox" name="gen_gatechannel_ComboBox"/>
+     </item>
      <item row="0" column="4">
-      <widget class="QLineEdit" name="gen_analog_channels_lineEdit">
+      <widget class="QComboBox" name="gen_activation_config_ComboBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -825,49 +841,16 @@ last</string>
        </property>
        <property name="maximumSize">
         <size>
-         <width>300</width>
-         <height>16777215</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="3">
-      <widget class="QLabel" name="digi_chan_label">
-       <property name="text">
-        <string>Digital channels:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Interleave?</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="5">
-      <widget class="QLabel" name="sample_freq_label">
-       <property name="maximumSize">
-        <size>
          <width>16777215</width>
          <height>16777215</height>
         </size>
        </property>
-       <property name="text">
-        <string>Sample Frequency:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       <property name="editable">
+        <bool>false</bool>
        </property>
       </widget>
      </item>
-     <item row="0" column="6">
+     <item row="0" column="7">
       <widget class="QComboBox" name="gen_laserchannel_ComboBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -883,24 +866,7 @@ last</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="2">
-      <widget class="QCheckBox" name="gen_use_interleave_CheckBox">
-       <property name="text">
-        <string/>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QLabel" name="chan_conf_label">
-       <property name="text">
-        <string>channel config:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="4">
+     <item row="2" column="4">
       <widget class="QLineEdit" name="gen_digital_channels_lineEdit">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -916,13 +882,35 @@ last</string>
        </property>
        <property name="maximumSize">
         <size>
-         <width>300</width>
+         <width>16777215</width>
          <height>16777215</height>
         </size>
        </property>
       </widget>
      </item>
-     <item row="0" column="3">
+     <item row="1" column="4">
+      <widget class="QLineEdit" name="gen_analog_channels_lineEdit">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
+        </size>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="3">
       <widget class="QLabel" name="ana_chan_label">
        <property name="text">
         <string>Analog channels:</string>
@@ -932,10 +920,66 @@ last</string>
        </property>
       </widget>
      </item>
-     <item row="1" column="6">
+     <item row="2" column="3">
+      <widget class="QLabel" name="digi_chan_label">
+       <property name="text">
+        <string>Digital channels:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QLabel" name="sample_freq_label">
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>16777215</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>Sample Frequency:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="7">
+      <widget class="QComboBox" name="gen_syncchannel_ComboBox"/>
+     </item>
+     <item row="2" column="6">
+      <widget class="QLabel" name="label_4">
+       <property name="text">
+        <string>Gate channel:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="5" rowspan="3">
+      <widget class="Line" name="line_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="3">
+      <widget class="QLabel" name="chan_conf_label">
+       <property name="text">
+        <string>channel config:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="2">
       <widget class="ScienDSpinBox" name="gen_sample_freq_DSpinBox">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -975,59 +1019,25 @@ last</string>
        </property>
       </widget>
      </item>
-     <item row="0" column="2">
-      <widget class="QComboBox" name="gen_activation_config_ComboBox">
-       <property name="enabled">
-        <bool>true</bool>
+     <item row="1" column="2">
+      <widget class="QCheckBox" name="gen_use_interleave_CheckBox">
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
        </property>
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="minimumSize">
-        <size>
-         <width>0</width>
-         <height>0</height>
-        </size>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>300</width>
-         <height>16777215</height>
-        </size>
-       </property>
-       <property name="editable">
-        <bool>false</bool>
+       <property name="text">
+        <string/>
        </property>
       </widget>
      </item>
-     <item row="1" column="7">
-      <widget class="QLabel" name="label_4">
+     <item row="1" column="1">
+      <widget class="QLabel" name="label">
        <property name="text">
-        <string>Gate channel:</string>
+        <string>Interleave:</string>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
-     </item>
-     <item row="0" column="7">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Sync channel:</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="8">
-      <widget class="QComboBox" name="gen_syncchannel_ComboBox"/>
-     </item>
-     <item row="1" column="8">
-      <widget class="QComboBox" name="gen_gatechannel_ComboBox"/>
      </item>
     </layout>
    </item>

@@ -221,6 +221,7 @@ class PulsedMeasurementLogic(GenericLogic):
         settings_dict['bin_width'] = float(self.__fast_counter_binwidth)
         settings_dict['record_length'] = float(self.__fast_counter_record_length)
         settings_dict['number_of_gates'] = int(self.__fast_counter_gates)
+        settings_dict['is_gated'] = bool(self.fastcounter().is_gated())
         return settings_dict
 
     @fast_counter_settings.setter
@@ -280,11 +281,8 @@ class PulsedMeasurementLogic(GenericLogic):
                              'Unable to apply new settings.'.format(counter_status))
 
         # emit update signal for master (GUI or other logic module)
-        self.sigFastCounterSettingsUpdated.emit(
-            {'bin_width': self.__fast_counter_binwidth,
-             'record_length': self.__fast_counter_record_length,
-             'number_of_gates': self.__fast_counter_gates})
-        return self.__fast_counter_binwidth, self.__fast_counter_record_length, self.__fast_counter_gates
+        self.sigFastCounterSettingsUpdated.emit(self.fast_counter_settings)
+        return self.fast_counter_settings
 
     def fast_counter_on(self):
         """Switching on the fast counter
