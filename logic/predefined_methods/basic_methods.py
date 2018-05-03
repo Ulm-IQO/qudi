@@ -174,22 +174,14 @@ class PulsedObjectGenerator:
         created_sequences = list()
 
         # create the laser element
-        laser_element = self._get_laser_element(length=length, increment=0, use_as_tick=False)
-        # Create the element list
-        element_list = [laser_element]
-        # create the PulseBlock object and append to created blocks
-        created_blocks.append(PulseBlock(name=name, element_list=element_list))
-        # put block names in a list with repetitions
-        block_list = [(name, 0)]
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
-        # add metadata to invoke settings later on
-        # block_ensemble.measurement_information['alternating'] = False
-        # block_ensemble.measurement_information['laser_ignore_list'] = list()
-        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        # block_ensemble.measurement_information['number_of_lasers'] = 0
-        # block_ensemble.measurement_information['counting_length'] = None
-        # append ensemble to created ensembles
+        laser_element = self._get_laser_element(length=length, increment=0)
+        # Create block and append to created_blocks list
+        laser_block = PulseBlock(name=name)
+        laser_block.append_element(laser_element)
+        created_blocks.append(laser_block)
+        # Create block ensemble and append to created_ensembles list
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append_block(block_name=laser_block.name, reps=0)
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -198,12 +190,6 @@ class PulsedObjectGenerator:
 
         @param string name: Name of the PulseBlockEnsemble to be generated
         @param float length: Length of the PulseBlockEnsemble in seconds
-        @param float channel_amp: In case of analog laser channel this value will be the laser on voltage.
-        @param string mw_channel: The pulser channel controlling the MW. If set to 'd_chX' this will be
-                                  interpreted as trigger for an external microwave source. If set to
-                                  'a_chX' the pulser (AWG) will act as microwave source.
-        @param float mw_freq: MW frequency in case of analogue MW channel in Hz
-        @param float mw_amp: MW amplitude in case of analogue MW channel
 
         @return object: the generated PulseBlockEnsemble object.
         """
@@ -214,25 +200,16 @@ class PulsedObjectGenerator:
         # create the laser_mw element
         laser_mw_element = self._get_mw_laser_element(length=length,
                                                       increment=0,
-                                                      use_as_tick=False,
                                                       amp=self.microwave_amplitude,
                                                       freq=self.microwave_frequency,
                                                       phase=0)
-        # Create the element list
-        element_list = [laser_mw_element]
-        # create the PulseBlock object and append to created blocks
-        created_blocks.append(PulseBlock(name=name, element_list=element_list))
-        # put block names in a list with repetitions
-        block_list = [(name, 0)]
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
-        # add metadata to invoke settings later on
-        # block_ensemble.measurement_information['alternating'] = False
-        # block_ensemble.measurement_information['laser_ignore_list'] = list()
-        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        # block_ensemble.measurement_information['number_of_lasers'] = 0
-        # block_ensemble.measurement_information['counting_length'] = None
-        # append ensemble to created ensembles
+        # Create block and append to created_blocks list
+        laser_mw_block = PulseBlock(name=name)
+        laser_mw_block.append_element(laser_mw_element)
+        created_blocks.append(laser_mw_block)
+        # Create block ensemble and append to created_ensembles list
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append_block(block_name=laser_mw_block.name, reps=0)
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -249,22 +226,14 @@ class PulsedObjectGenerator:
         created_sequences = list()
 
         # create the laser_mw element
-        idle_element = self._get_idle_element(length=length, increment=0, use_as_tick=False)
-        # Create the element list
-        element_list = [idle_element]
-        # create the PulseBlock object and append to created blocks
-        created_blocks.append(PulseBlock(name=name, element_list=element_list))
-        # put block names in a list with repetitions
-        block_list = [(name, 0)]
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
-        # add metadata to invoke settings later on
-        # block_ensemble.measurement_information['alternating'] = False
-        # block_ensemble.measurement_information['laser_ignore_list'] = list()
-        # block_ensemble.measurement_information['controlled_variable'] = np.zeros(0)
-        # block_ensemble.measurement_information['number_of_lasers'] = 0
-        # block_ensemble.measurement_information['counting_length'] = None
-        # append ensemble to created ensembles
+        idle_element = self._get_idle_element(length=length, increment=0)
+        # Create block and append to created_blocks list
+        idle_block = PulseBlock(name=name)
+        idle_block.append_element(idle_element)
+        created_blocks.append(idle_block)
+        # Create block ensemble and append to created_ensembles list
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append_block(block_name=idle_block.name, reps=0)
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -282,32 +251,33 @@ class PulsedObjectGenerator:
         # create the laser_mw element
         mw_element = self._get_mw_element(length=tau_start,
                                           increment=tau_step,
-                                          use_as_tick=True,
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
         waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
+                                                 increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+                                                     increment=0)
         delay_element = self._get_delay_gate_element()
 
-        # Create element list for Rabi PulseBlock
-        rabi_element_list = [mw_element, laser_element, delay_element, waiting_element]
-        # Create PulseBlock object
-        rabi_block = PulseBlock(name=name, element_list=rabi_element_list)
+        # Create block and append to created_blocks list
+        rabi_block = PulseBlock(name=name)
+        rabi_block.append_element(mw_element)
+        rabi_block.append_element(laser_element)
+        rabi_block.append_element(delay_element)
+        rabi_block.append_element(waiting_element)
         created_blocks.append(rabi_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, number_of_taus - 1)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append_block(block_name=rabi_block.name, reps=number_of_taus - 1)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -318,7 +288,7 @@ class PulsedObjectGenerator:
         block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
             ensemble=block_ensemble, created_blocks=created_blocks)
 
-        # append ensemble to created ensembles
+        # Append ensemble to created_ensembles list
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -336,38 +306,35 @@ class PulsedObjectGenerator:
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
+                                                 increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+                                                     increment=0)
         delay_element = self._get_delay_gate_element()
 
-        # Create element list for PulsedODMR PulseBlock
-        odmr_element_list = list()
+        # Create block and append to created_blocks list
+        pulsedodmr_block = PulseBlock(name=name)
         for mw_freq in freq_array:
             mw_element = self._get_mw_element(length=self.rabi_period / 2,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=mw_freq,
                                               phase=0)
-            odmr_element_list.append(mw_element)
-            odmr_element_list.append(laser_element)
-            odmr_element_list.append(delay_element)
-            odmr_element_list.append(waiting_element)
-        # Create PulseBlock object
-        pulsedodmr_block = PulseBlock(name=name, element_list=odmr_element_list)
+            pulsedodmr_block.append_element(mw_element)
+            pulsedodmr_block.append_element(laser_element)
+            pulsedodmr_block.append_element(delay_element)
+            pulsedodmr_block.append_element(waiting_element)
         created_blocks.append(pulsedodmr_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, 0)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append_block(block_name=pulsedodmr_block.name, reps=0)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=False)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -396,15 +363,12 @@ class PulsedObjectGenerator:
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
+                                                 increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+                                                     increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -412,47 +376,44 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_start, increment=tau_step, use_as_tick=True)
+        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
 
-        # Create element list for alternating Ramsey PulseBlock
-        element_list = list()
-        element_list.append(pihalf_element)
-        element_list.append(tau_element)
-        element_list.append(pihalf_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+        # Create block and append to created_blocks list
+        ramsey_block = PulseBlock(name=name)
+        ramsey_block.append_element(pihalf_element)
+        ramsey_block.append_element(tau_element)
+        ramsey_block.append_element(pihalf_element)
+        ramsey_block.append_element(laser_element)
+        ramsey_block.append_element(delay_element)
+        ramsey_block.append_element(waiting_element)
         if alternating:
-            element_list.append(pihalf_element)
-            element_list.append(tau_element)
-            element_list.append(pi3half_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
-
-        # Create PulseBlock object
-        ramsey_block = PulseBlock(name=name, element_list=element_list)
+            ramsey_block.append_element(pihalf_element)
+            ramsey_block.append_element(tau_element)
+            ramsey_block.append_element(pi3half_element)
+            ramsey_block.append_element(laser_element)
+            ramsey_block.append_element(delay_element)
+            ramsey_block.append_element(waiting_element)
         created_blocks.append(ramsey_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, num_of_points - 1)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=ramsey_block.name, reps=num_of_points - 1)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -482,21 +443,17 @@ class PulsedObjectGenerator:
 
         # create the elements
         waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
+                                                 increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+                                                     increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
         pi_element = self._get_mw_element(length=self.rabi_period / 2,
                                           increment=0,
-                                          use_as_tick=False,
                                           amp=self.microwave_amplitude,
                                           freq=self.microwave_frequency,
                                           phase=0)
@@ -504,51 +461,48 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
-        tau_element = self._get_idle_element(length=tau_start, increment=tau_step, use_as_tick=True)
+        tau_element = self._get_idle_element(length=tau_start, increment=tau_step)
 
-        # Create element list for alternating Hahn Echo PulseBlock
-        element_list = list()
-        element_list.append(pihalf_element)
-        element_list.append(tau_element)
-        element_list.append(pi_element)
-        element_list.append(tau_element)
-        element_list.append(pihalf_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+        # Create block and append to created_blocks list
+        hahn_block = PulseBlock(name=name)
+        hahn_block.append_element(pihalf_element)
+        hahn_block.append_element(tau_element)
+        hahn_block.append_element(pi_element)
+        hahn_block.append_element(tau_element)
+        hahn_block.append_element(pihalf_element)
+        hahn_block.append_element(laser_element)
+        hahn_block.append_element(delay_element)
+        hahn_block.append_element(waiting_element)
         if alternating:
-            element_list.append(pihalf_element)
-            element_list.append(tau_element)
-            element_list.append(pi_element)
-            element_list.append(tau_element)
-            element_list.append(pi3half_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
-
-        # Create PulseBlock object
-        hahn_block = PulseBlock(name=name, element_list=element_list)
+            hahn_block.append_element(pihalf_element)
+            hahn_block.append_element(tau_element)
+            hahn_block.append_element(pi_element)
+            hahn_block.append_element(tau_element)
+            hahn_block.append_element(pi3half_element)
+            hahn_block.append_element(laser_element)
+            hahn_block.append_element(delay_element)
+            hahn_block.append_element(waiting_element)
         created_blocks.append(hahn_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, num_of_points - 1)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=hahn_block.name, reps=num_of_points - 1)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -577,16 +531,11 @@ class PulsedObjectGenerator:
         amp_array = amp_start + np.arange(num_of_points) * amp_step
 
         # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
-        laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -594,54 +543,49 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
 
-        # Create element list for HHamp PulseBlock
-        element_list = list()
+        # Create block and append to created_blocks list
+        hhamp_block = PulseBlock(name=name)
         for sl_amp in amp_array:
             sl_element = self._get_mw_element(length=spinlock_length,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=sl_amp,
                                               freq=self.microwave_frequency,
                                               phase=90)
-            # actual alternating HH-amp sequence
-            element_list.append(pihalf_element)
-            element_list.append(sl_element)
-            element_list.append(pihalf_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
+            hhamp_block.append_element(pihalf_element)
+            hhamp_block.append_element(sl_element)
+            hhamp_block.append_element(pihalf_element)
+            hhamp_block.append_element(laser_element)
+            hhamp_block.append_element(delay_element)
+            hhamp_block.append_element(waiting_element)
 
-            element_list.append(pi3half_element)
-            element_list.append(sl_element)
-            element_list.append(pihalf_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
-
-        # Create PulseBlock object
-        hhamp_block = PulseBlock(name=name, element_list=element_list)
+            hhamp_block.append_element(pi3half_element)
+            hhamp_block.append_element(sl_element)
+            hhamp_block.append_element(pihalf_element)
+            hhamp_block.append_element(laser_element)
+            hhamp_block.append_element(delay_element)
+            hhamp_block.append_element(waiting_element)
         created_blocks.append(hhamp_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(hhamp_block, 0)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=hhamp_block.name, reps=0)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -669,16 +613,11 @@ class PulsedObjectGenerator:
         tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
-        laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -686,52 +625,48 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
         sl_element = self._get_mw_element(length=tau_start,
                                           increment=tau_step,
-                                          use_as_tick=True,
                                           amp=spinlock_amp,
                                           freq=self.microwave_frequency,
                                           phase=90)
 
-        # Create element list for HHtau PulseBlock
-        element_list = list()
-        element_list.append(pihalf_element)
-        element_list.append(sl_element)
-        element_list.append(pihalf_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+        # Create block and append to created_blocks list
+        hhtau_block = PulseBlock(name=name)
+        hhtau_block.append_element(pihalf_element)
+        hhtau_block.append_element(sl_element)
+        hhtau_block.append_element(pihalf_element)
+        hhtau_block.append_element(laser_element)
+        hhtau_block.append_element(delay_element)
+        hhtau_block.append_element(waiting_element)
 
-        element_list.append(pi3half_element)
-        element_list.append(sl_element)
-        element_list.append(pi3half_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
-
-        # Create PulseBlock object
-        hhtau_block = PulseBlock(name=name, element_list=element_list)
+        hhtau_block.append_element(pi3half_element)
+        hhtau_block.append_element(sl_element)
+        hhtau_block.append_element(pihalf_element)
+        hhtau_block.append_element(laser_element)
+        hhtau_block.append_element(delay_element)
+        hhtau_block.append_element(waiting_element)
         created_blocks.append(hhtau_block)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(hhtau_block, num_of_points - 1)]
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=hhtau_block.name, reps=num_of_points - 1)
+
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -759,16 +694,11 @@ class PulsedObjectGenerator:
         steps_array = np.arange(2 * polarization_steps)
 
         # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
-        laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -776,54 +706,52 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
         sl_element = self._get_mw_element(length=spinlock_length,
                                           increment=0,
-                                          use_as_tick=True,
                                           amp=spinlock_amp,
                                           freq=self.microwave_frequency,
                                           phase=90)
 
-        # create the pulse block for "up"-polarization
-        element_list = list()
-        element_list.append(pihalf_element)
-        element_list.append(sl_element)
-        element_list.append(pihalf_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+        # Create block for "up"-polarization and append to created_blocks list
+        up_block = PulseBlock(name=name + '_up')
+        up_block.append_element(pihalf_element)
+        up_block.append_element(sl_element)
+        up_block.append_element(pihalf_element)
+        up_block.append_element(laser_element)
+        up_block.append_element(delay_element)
+        up_block.append_element(waiting_element)
+        created_blocks.append(up_block)
 
-        created_blocks.append(PulseBlock(name=name + '_up', element_list=element_list))
+        # Create block for "down"-polarization and append to created_blocks list
+        down_block = PulseBlock(name=name + '_down')
+        down_block.append_element(pi3half_element)
+        down_block.append_element(sl_element)
+        down_block.append_element(pi3half_element)
+        down_block.append_element(laser_element)
+        down_block.append_element(delay_element)
+        down_block.append_element(waiting_element)
+        created_blocks.append(down_block)
 
-        # create the pulse block for "down"-polarization
-        element_list.append(pi3half_element)
-        element_list.append(sl_element)
-        element_list.append(pi3half_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=up_block.name, reps=polarization_steps - 1)
+        block_ensemble.append_block(block_name=down_block.name, reps=polarization_steps - 1)
 
-        created_blocks.append(PulseBlock(name=name + '_down', element_list=element_list))
-
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name + '_up', polarization_steps - 1),
-                      (name + '_down', polarization_steps - 1)]
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -853,16 +781,11 @@ class PulsedObjectGenerator:
         real_start_tau = max(0, tau_start - self.rabi_period / 2)
 
         # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
-        laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -870,101 +793,93 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
         pix_element = self._get_mw_element(length=self.rabi_period / 2,
                                            increment=0,
-                                           use_as_tick=False,
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=0)
         piy_element = self._get_mw_element(length=self.rabi_period / 2,
                                            increment=0,
-                                           use_as_tick=False,
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=90)
-        tauhalf_element = self._get_idle_element(length=real_start_tau / 2,
-                                                 increment=tau_step / 2,
-                                                 use_as_tick=False)
-        tau_element = self._get_idle_element(length=real_start_tau,
-                                             increment=tau_step,
-                                             use_as_tick=False)
+        tauhalf_element = self._get_idle_element(length=real_start_tau / 2, increment=tau_step / 2)
+        tau_element = self._get_idle_element(length=real_start_tau, increment=tau_step)
 
-        # create the pulse block for XY8-N
-        element_list = list()
-        element_list.append(pihalf_element)
-        element_list.append(tauhalf_element)
+        # Create block and append to created_blocks list
+        xy8_block = PulseBlock(name=name)
+        xy8_block.append_element(pihalf_element)
+        xy8_block.append_element(tauhalf_element)
         for n in range(xy8_order):
-            element_list.append(pix_element)
-            element_list.append(tau_element)
-            element_list.append(piy_element)
-            element_list.append(tau_element)
-            element_list.append(pix_element)
-            element_list.append(tau_element)
-            element_list.append(piy_element)
-            element_list.append(tau_element)
-            element_list.append(piy_element)
-            element_list.append(tau_element)
-            element_list.append(pix_element)
-            element_list.append(tau_element)
-            element_list.append(piy_element)
-            element_list.append(tau_element)
-            element_list.append(pix_element)
+            xy8_block.append_element(pix_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(piy_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(pix_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(piy_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(piy_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(pix_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(piy_element)
+            xy8_block.append_element(tau_element)
+            xy8_block.append_element(pix_element)
             if n != xy8_order - 1:
-                element_list.append(tau_element)
-        element_list.append(tauhalf_element)
-        element_list.append(pihalf_element)
-        element_list.append(laser_element)
-        element_list.append(delay_element)
-        element_list.append(waiting_element)
+                xy8_block.append_element(tau_element)
+        xy8_block.append_element(tauhalf_element)
+        xy8_block.append_element(pihalf_element)
+        xy8_block.append_element(laser_element)
+        xy8_block.append_element(delay_element)
+        xy8_block.append_element(waiting_element)
         if alternating:
-            element_list.append(pihalf_element)
-            element_list.append(tauhalf_element)
+            xy8_block.append_element(pihalf_element)
+            xy8_block.append_element(tauhalf_element)
             for n in range(xy8_order):
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
                 if n != xy8_order - 1:
-                    element_list.append(tau_element)
-            element_list.append(tauhalf_element)
-            element_list.append(pi3half_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
+                    xy8_block.append_element(tau_element)
+            xy8_block.append_element(tauhalf_element)
+            xy8_block.append_element(pi3half_element)
+            xy8_block.append_element(laser_element)
+            xy8_block.append_element(delay_element)
+            xy8_block.append_element(waiting_element)
+        created_blocks.append(xy8_block)
 
-        # create XY8-N block object
-        created_blocks.append(PulseBlock(name=name, element_list=element_list))
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=xy8_block.name, reps=num_of_points - 1)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, num_of_points - 1)]
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
@@ -1000,16 +915,11 @@ class PulsedObjectGenerator:
         freq_array = 1 / (2 * (real_tau_array + self.rabi_period / 2))
 
         # create the elements
-        waiting_element = self._get_idle_element(length=self.wait_time,
-                                                 increment=0,
-                                                 use_as_tick=False)
-        laser_element = self._get_laser_gate_element(length=self.laser_length,
-                                                     increment=0,
-                                                     use_as_tick=False)
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
         pihalf_element = self._get_mw_element(length=self.rabi_period / 4,
                                               increment=0,
-                                              use_as_tick=False,
                                               amp=self.microwave_amplitude,
                                               freq=self.microwave_frequency,
                                               phase=0)
@@ -1017,99 +927,94 @@ class PulsedObjectGenerator:
         if self.microwave_channel.startswith('a'):
             pi3half_element = self._get_mw_element(length=self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=180)
         else:
             pi3half_element = self._get_mw_element(length=3 * self.rabi_period / 4,
                                                    increment=0,
-                                                   use_as_tick=False,
                                                    amp=self.microwave_amplitude,
                                                    freq=self.microwave_frequency,
                                                    phase=0)
         pix_element = self._get_mw_element(length=self.rabi_period / 2,
                                            increment=0,
-                                           use_as_tick=False,
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=0)
         piy_element = self._get_mw_element(length=self.rabi_period / 2,
                                            increment=0,
-                                           use_as_tick=False,
                                            amp=self.microwave_amplitude,
                                            freq=self.microwave_frequency,
                                            phase=90)
 
-        # create XY8-N block element list
-        element_list = list()
+        # Create block and append to created_blocks list
+        xy8_block = PulseBlock(name=name)
         for ii, tau in enumerate(real_tau_array):
-            tauhalf_element = self._get_idle_element(length=tau / 2, increment=0, use_as_tick=False)
-            tau_element = self._get_idle_element(length=tau, increment=0, use_as_tick=False)
-
-            element_list.append(pihalf_element)
-            element_list.append(tauhalf_element)
+            tauhalf_element = self._get_idle_element(length=tau / 2, increment=0)
+            tau_element = self._get_idle_element(length=tau, increment=0)
+            xy8_block.append_element(pihalf_element)
+            xy8_block.append_element(tauhalf_element)
             for n in range(xy8_order):
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
-                element_list.append(tau_element)
-                element_list.append(piy_element)
-                element_list.append(tau_element)
-                element_list.append(pix_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(piy_element)
+                xy8_block.append_element(tau_element)
+                xy8_block.append_element(pix_element)
                 if n != xy8_order - 1:
-                    element_list.append(tau_element)
-            element_list.append(tauhalf_element)
-            element_list.append(pihalf_element)
-            element_list.append(laser_element)
-            element_list.append(delay_element)
-            element_list.append(waiting_element)
+                    xy8_block.append_element(tau_element)
+            xy8_block.append_element(tauhalf_element)
+            xy8_block.append_element(pihalf_element)
+            xy8_block.append_element(laser_element)
+            xy8_block.append_element(delay_element)
+            xy8_block.append_element(waiting_element)
             if alternating:
-                element_list.append(pihalf_element)
-                element_list.append(tauhalf_element)
+                xy8_block.append_element(pihalf_element)
+                xy8_block.append_element(tauhalf_element)
                 for n in range(xy8_order):
-                    element_list.append(pix_element)
-                    element_list.append(tau_element)
-                    element_list.append(piy_element)
-                    element_list.append(tau_element)
-                    element_list.append(pix_element)
-                    element_list.append(tau_element)
-                    element_list.append(piy_element)
-                    element_list.append(tau_element)
-                    element_list.append(piy_element)
-                    element_list.append(tau_element)
-                    element_list.append(pix_element)
-                    element_list.append(tau_element)
-                    element_list.append(piy_element)
-                    element_list.append(tau_element)
-                    element_list.append(pix_element)
+                    xy8_block.append_element(pix_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(piy_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(pix_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(piy_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(piy_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(pix_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(piy_element)
+                    xy8_block.append_element(tau_element)
+                    xy8_block.append_element(pix_element)
                     if n != xy8_order - 1:
-                        element_list.append(tau_element)
-                element_list.append(tauhalf_element)
-                element_list.append(pi3half_element)
-                element_list.append(laser_element)
-                element_list.append(delay_element)
-                element_list.append(waiting_element)
+                        xy8_block.append_element(tau_element)
+                xy8_block.append_element(tauhalf_element)
+                xy8_block.append_element(pi3half_element)
+                xy8_block.append_element(laser_element)
+                xy8_block.append_element(delay_element)
+                xy8_block.append_element(waiting_element)
+        created_blocks.append(xy8_block)
 
-        # create XY8-N block object
-        created_blocks.append(PulseBlock(name=name, element_list=element_list))
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
+        block_ensemble.append_block(block_name=xy8_block.name, reps=0)
 
-        # Create Block list with repetitions and sequence trigger if needed.
-        block_list = [(name, num_of_points - 1)]
+        # Create and append sync trigger block if needed
         if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger', element_list=[self._get_sync_element()])
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append_element(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_list.append(('sync_trigger', 0))
-        # create ensemble out of the block(s)
-        block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+            block_ensemble.append_block(block_name=sync_block.name, reps=0)
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
@@ -1128,13 +1033,12 @@ class PulsedObjectGenerator:
     ################################################################################################
     #                                   Helper methods                                          ####
     ################################################################################################
-    def _get_idle_element(self, length, increment, use_as_tick):
+    def _get_idle_element(self, length, increment):
         """
         Creates an idle pulse PulseBlockElement
 
         @param float length: idle duration in seconds
         @param float increment: idle duration increment in seconds
-        @param bool use_as_tick: use as tick flag of the PulseBlockElement
 
         @return: PulseBlockElement, the generated idle element
         """
@@ -1142,17 +1046,15 @@ class PulsedObjectGenerator:
         return PulseBlockElement(init_length_s=length,
                                  increment_s=increment,
                                  pulse_function={chnl: Idle() for chnl in self.analog_channels},
-                                 digital_high={chnl: False for chnl in self.digital_channels},
-                                 use_as_tick=use_as_tick)
+                                 digital_high={chnl: False for chnl in self.digital_channels})
 
-    def _get_trigger_element(self, length, increment, channels, use_as_tick=False):
+    def _get_trigger_element(self, length, increment, channels):
         """
         Creates a trigger PulseBlockElement
 
         @param float length: trigger duration in seconds
         @param float increment: trigger duration increment in seconds
         @param str|list channels: The pulser channel(s) to be triggered.
-        @param bool use_as_tick: use as tick flag of the PulseBlockElement
 
         @return: PulseBlockElement, the generated trigger element
         """
@@ -1174,30 +1076,26 @@ class PulsedObjectGenerator:
         return PulseBlockElement(init_length_s=length,
                                  increment_s=increment,
                                  pulse_function=pulse_function,
-                                 digital_high=digital_high,
-                                 use_as_tick=use_as_tick)
+                                 digital_high=digital_high)
 
-    def _get_laser_element(self, length, increment, use_as_tick):
+    def _get_laser_element(self, length, increment):
         """
         Creates laser trigger PulseBlockElement
 
         @param float length: laser pulse duration in seconds
         @param float increment: laser pulse duration increment in seconds
-        @param bool use_as_tick: use as tick flag of the PulseBlockElement
 
         @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
         """
         return self._get_trigger_element(length=length,
                                          increment=increment,
-                                         channels=self.laser_channel,
-                                         use_as_tick=use_as_tick)
+                                         channels=self.laser_channel)
 
-    def _get_laser_gate_element(self, length, increment, use_as_tick):
+    def _get_laser_gate_element(self, length, increment):
         """
         """
         laser_gate_element = self._get_laser_element(length=length,
-                                                     increment=increment,
-                                                     use_as_tick=use_as_tick)
+                                                     increment=increment)
         if self.gate_channel:
             if self.gate_channel.startswith('d'):
                 laser_gate_element.digital_high[self.gate_channel] = True
@@ -1213,8 +1111,7 @@ class PulsedObjectGenerator:
         @return PulseBlockElement: The delay element
         """
         return self._get_idle_element(length=self.laser_delay,
-                                      increment=0,
-                                      use_as_tick=False)
+                                      increment=0)
 
     def _get_delay_gate_element(self):
         """
@@ -1226,8 +1123,7 @@ class PulsedObjectGenerator:
         if self.gate_channel:
             return self._get_trigger_element(length=self.laser_delay,
                                              increment=0,
-                                             channels=self.gate_channel,
-                                             use_as_tick=False)
+                                             channels=self.gate_channel)
         else:
             return self._get_delay_element()
 
@@ -1237,16 +1133,14 @@ class PulsedObjectGenerator:
         """
         return self._get_trigger_element(length=50e-9,
                                          increment=0,
-                                         use_as_tick=False,
                                          channels=self.sync_channel)
 
-    def _get_mw_element(self, length, increment, use_as_tick, amp=None, freq=None, phase=None):
+    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
         """
         Creates a MW pulse PulseBlockElement
 
         @param float length: MW pulse duration in seconds
         @param float increment: MW pulse duration increment in seconds
-        @param bool use_as_tick: use as tick flag of the PulseBlockElement
         @param float freq: MW frequency in case of analogue MW channel in Hz
         @param float amp: MW amplitude in case of analogue MW channel in V
         @param float phase: MW phase in case of analogue MW channel in deg
@@ -1257,26 +1151,22 @@ class PulsedObjectGenerator:
             mw_element = self._get_trigger_element(
                 length=length,
                 increment=increment,
-                channels=self.microwave_channel,
-                use_as_tick=use_as_tick)
+                channels=self.microwave_channel)
         else:
             mw_element = self._get_idle_element(
                 length=length,
-                increment=increment,
-                use_as_tick=use_as_tick)
+                increment=increment)
             mw_element.pulse_function[self.microwave_channel] = Sin(amplitude=amp,
                                                                     frequency=freq,
                                                                     phase=phase)
         return mw_element
 
-    def _get_multiple_mw_element(self, length, increment, use_as_tick, amps=None,
-                                 freqs=None, phases=None):
+    def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
         """
         Creates single, double or triple sine mw element.
 
         @param float length: MW pulse duration in seconds
         @param float increment: MW pulse duration increment in seconds
-        @param bool use_as_tick: use as tick flag of the PulseBlockElement
         @param amps: list containing the amplitudes
         @param freqs: list containing the frequencies
         @param phases: list containing the phases
@@ -1293,13 +1183,11 @@ class PulsedObjectGenerator:
             mw_element = self._get_trigger_element(
                 length=length,
                 increment=increment,
-                channels=self.microwave_channel,
-                use_as_tick=use_as_tick)
+                channels=self.microwave_channel)
         else:
             mw_element = self._get_idle_element(
                 length=length,
-                increment=increment,
-                use_as_tick=use_as_tick)
+                increment=increment)
 
             sine_number = min(len(amps), len(freqs), len(phases))
 
@@ -1326,13 +1214,11 @@ class PulsedObjectGenerator:
                                                                               phase_3=phases[2])
         return mw_element
 
-    def _get_mw_laser_element(self, length, increment, use_as_tick, amp=None, freq=None,
-                              phase=None):
+    def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None):
         """
 
         @param length:
         @param increment:
-        @param use_as_tick:
         @param amp:
         @param freq:
         @param phase:
@@ -1340,7 +1226,6 @@ class PulsedObjectGenerator:
         """
         mw_laser_element = self._get_mw_element(length=length,
                                                 increment=increment,
-                                                use_as_tick=use_as_tick,
                                                 amp=amp,
                                                 freq=freq,
                                                 phase=phase)
@@ -1351,7 +1236,7 @@ class PulsedObjectGenerator:
                 voltage=self.analog_trigger_voltage)
         return mw_laser_element
 
-    def _get_ensemble_length(self, ensemble, created_blocks):
+    def _get_ensemble_count_length(self, ensemble, created_blocks):
         """
 
         @param ensemble:
