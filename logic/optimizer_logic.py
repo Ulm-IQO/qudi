@@ -547,9 +547,11 @@ class OptimizerLogic(GenericLogic):
         fit_template = template
         fit_data = np.flip(data, 0)
 
+        default_edge = (fit_data[0]+fit_data[-1])/2
         convoluted = ndi.convolve(input=fit_data,
                                   weights=fit_template,
-                                  mode='nearest'
+                                  mode='constant',
+                                  cval=default_edge
                                   )
         # fit the convolution with a Gaussian to find the maximum
 
