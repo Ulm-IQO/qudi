@@ -14,8 +14,6 @@ dependencies:
   - decorator=4.3.0=py36_0
   - entrypoints=0.2.3=py36hfd66bb0_2
   - freetype=2.8=h51f8f2c_1
-  - h5py=2.7.1=py36he54a1c3_0
-  - hdf5=1.10.1=h98b8871_1
   - html5lib=1.0.1=py36h047fa9f_0
   - icc_rt=2017.0.4=h97af966_0
   - icu=58.2=ha66f8fd_1
@@ -107,7 +105,6 @@ dependencies:
     - fysom==2.1.5
     - gitdb2==2.0.3
     - gitpython==2.1.9
-    - hdf5storage==0.1.14
     - iso8601==0.1.12
     - lmfit==0.9.9
     - plumbum==1.6.6
