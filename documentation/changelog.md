@@ -17,6 +17,7 @@ Changes/New features:
 * Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
+* Update conda environment to more recent versions of packages
 
 Config changes:
 
