@@ -1141,19 +1141,21 @@ class SequenceGeneratorLogic(GenericLogic):
         # memorize the channel state of the previous element
         tmp_digital_high = dict()
 
-        # check for active channels
+        # check for active channels and initialize tmp_digital_high with the state of the very last
+        # element in the ensemble
         digital_channels = set()
         analog_channels = set()
         if len(ensemble.block_list) > 0:
             block = self.get_block(ensemble.block_list[0][0])
             digital_channels = block.digital_channels
             analog_channels = block.analog_channels
+            block = self.get_block(ensemble.block_list[-1][0])
+            if len(block.element_list) > 0:
+                tmp_digital_high = block.element_list[-1].digital_high.copy()
 
         for chnl in digital_channels:
             digital_rising_bins[chnl] = list()
             digital_falling_bins[chnl] = list()
-            # memorize the channel state of the previous element
-            tmp_digital_high[chnl] = False
 
         # number of elements including repetitions and the length of each element in bins
         total_elements = 0
