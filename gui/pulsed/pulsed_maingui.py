@@ -1143,6 +1143,7 @@ class PulsedMeasurementGui(GUIBase):
         # initialize widgets
         self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
         self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
+        self.fast_counter_settings_updated(self.pulsedmasterlogic().fast_counter_settings)
         self.update_block_dict(self.pulsedmasterlogic().saved_pulse_blocks)
         self.update_ensemble_dict(self.pulsedmasterlogic().saved_pulse_block_ensembles)
         return
@@ -1291,20 +1292,22 @@ class PulsedMeasurementGui(GUIBase):
         settings_dict['sync_channel'] = self._pg.gen_syncchannel_ComboBox.currentText()
         settings_dict['gate_channel'] = self._pg.gen_gatechannel_ComboBox.currentText()
         # Add channel specifiers from predefined methods tab
-        for combobox in self._channel_selection_comboboxes:
-            # cut away 'global_param_' from beginning of the objectName
-            param_name = combobox.objectName()[13:]
-            settings_dict[param_name] = combobox.currentText()
+        if hasattr(self, '_channel_selection_comboboxes'):
+            for combobox in self._channel_selection_comboboxes:
+                # cut away 'global_param_' from beginning of the objectName
+                param_name = combobox.objectName()[13:]
+                settings_dict[param_name] = combobox.currentText()
         # Add remaining global parameter widgets
-        for widget in self._global_param_widgets:
-            # cut away 'global_param_' from beginning of the objectName
-            param_name = widget.objectName()[13:]
-            if hasattr(widget, 'isChecked'):
-                settings_dict[param_name] = widget.isChecked()
-            elif hasattr(widget, 'value'):
-                settings_dict[param_name] = widget.value()
-            elif hasattr(widget, 'text'):
-                settings_dict[param_name] = widget.text()
+        if hasattr(self, '_global_param_widgets'):
+            for widget in self._global_param_widgets:
+                # cut away 'global_param_' from beginning of the objectName
+                param_name = widget.objectName()[13:]
+                if hasattr(widget, 'isChecked'):
+                    settings_dict[param_name] = widget.isChecked()
+                elif hasattr(widget, 'value'):
+                    settings_dict[param_name] = widget.value()
+                elif hasattr(widget, 'text'):
+                    settings_dict[param_name] = widget.text()
 
         self.pulsedmasterlogic().set_generation_parameters(settings_dict)
         return
@@ -2226,6 +2229,13 @@ class PulsedMeasurementGui(GUIBase):
         if 'bin_width' in settings_dict:
             index = self._pa.ana_param_fc_bins_ComboBox.findText(str(settings_dict['bin_width']))
             self._pa.ana_param_fc_bins_ComboBox.setCurrentIndex(index)
+        if 'is_gated' in settings_dict:
+            if settings_dict.get('is_gated'):
+                self._pg.gen_gatechannel_ComboBox.setEnabled(True)
+            else:
+                self._pg.gen_gatechannel_ComboBox.setEnabled(False)
+                self.pulsedmasterlogic().set_generation_parameters(gate_channel='')
+
         # unblock signals
         self._pa.ana_param_record_length_DoubleSpinBox.blockSignals(False)
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(False)
