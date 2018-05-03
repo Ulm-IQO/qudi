@@ -1974,6 +1974,9 @@ class PulsedMeasurementGui(GUIBase):
         self.measurement_settings_updated(self.pulsedmasterlogic().measurement_settings)
         self.fast_counter_settings_updated(self.pulsedmasterlogic().fast_counter_settings)
         self.microwave_settings_updated(self.pulsedmasterlogic().ext_microwave_settings)
+        # Update analysis interval from logic
+        self._pa.time_param_ana_periode_DoubleSpinBox.setValue(
+            self.pulsedmasterlogic().timer_interval)
 
         self.toggle_error_bars(self._ana_param_errorbars)
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
