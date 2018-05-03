@@ -28,7 +28,7 @@ from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
 
-class PIDLogic(GenericLogic):
+class CameraLogic(GenericLogic):
     """
     Control a camera.
     """
@@ -37,13 +37,17 @@ class PIDLogic(GenericLogic):
 
     # declare connectors
     hardware = Connector(interface='CameraInterface')
-    timestep = StatusVar(default=100)
+    _max_fps = ConfigOption('default_exposure', 20)
+    _fps = _max_fps
 
     # signals
     sigUpdateDisplay = QtCore.Signal()
-    timer = QtCore.QTimer()
+    timer = None
+
+    enabled = False
 
     _exposure = 1.
+    _last_image = None
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -57,6 +61,9 @@ class PIDLogic(GenericLogic):
 
         self.enabled = False
 
+        self.get_exposure()
+
+        self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
         self.timer.timeout.connect(self.loop)
 
@@ -66,9 +73,11 @@ class PIDLogic(GenericLogic):
 
     def set_exposure(self, time):
         self._hardware.set_exposure(time)
-        self._exposure = self._hardware.get_exposure()
+        self.get_exposure()
 
     def get_exposure(self):
+        self._exposure = self._hardware.get_exposure()
+        self._fps = min(1 / self._exposure, self._max_fps)
         return self._exposure
 
     def startLoop(self):
@@ -76,23 +85,27 @@ class PIDLogic(GenericLogic):
         """
         self.enabled = True
         self._hardware.start_acquisition()
-        self.timer.start(self._exposure*1000)
+        self.timer.start(1000*1/self._fps)
 
     def stopLoop(self):
         """ Stop the data recording loop.
         """
         self.timer.stop()
         self.enabled = False
+        self._hardware.stop_acquisition()
+
 
     def loop(self):
         """ Execute step in the data recording loop: save one of each control and process values
         """
 
-        self.last_image = self._hardware.get_acquired_data()
+        self._last_image = self._hardware.get_acquired_data()
         self.sigUpdateDisplay.emit()
         if self.enabled:
-            self._hardware.start_acquisition()
-            self.timer.start(self._exposure * 1000)
+            self.timer.start(1000 * 1 / self._fps)
+
+    def get_last_image(self):
+        return self._last_image
 
 
 

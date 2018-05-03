@@ -40,7 +40,7 @@ class CameraWindow(QtWidgets.QMainWindow):
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_spectro_camera.ui')
+        ui_file = os.path.join(this_dir, 'ui_camera.ui')
 
         # Load it
         super().__init__()
@@ -56,9 +56,14 @@ class CameraGUI(GUIBase):
 
     camera_logic = Connector(interface='CameraLogic')
 
+    sigStart = QtCore.Signal()
+    sigStop = QtCore.Signal()
+    _image = []
+
+    _logic = None
+    _mw = None
+
     def __init__(self, config, **kwargs):
-        self.camera_logic = None
-        self.save_logic = None
 
         # load connection
         super().__init__(config=config, **kwargs)
@@ -67,26 +72,27 @@ class CameraGUI(GUIBase):
         """ Initializes all needed UI files and establishes the connectors.
         """
 
-        self._camera_logic = self.camera_logic()
+        self._logic = self.camera_logic()
 
         # Windows
         self._mw = CameraWindow()
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        self._mw.action_start.setEnabled(True)
-        self._mw.action_abort.setEnabled(False)
+        self._mw.start_control_Action.setEnabled(True)
+        self._mw.start_control_Action.setChecked(self._logic.enabled)
+        self._mw.start_control_Action.triggered.connect(self.start_clicked)
 
-        # Cooling dependent GUI
-        self.constraints = self._camera_logic.get_constraints()
+        self._logic.sigUpdateDisplay.connect(self.update_data)
 
-        if self.constraints.cooler is True:
-            self._mw.cooling_on_checkbox.setValue(self._camera_logic.get_cooler_on_state())
-        else:
-            self._mw.temperatureControllerWidget.setEnabled(False)
-            self._mw.temperatureCurvesWidget.setEnabled(False)
+        # starting the physical measurement
+        self.sigStart.connect(self._logic.startLoop)
+        self.sigStop.connect(self._logic.stopLoop)
 
-
+        raw_data_image = self._logic.get_last_image()
+        self._image = pg.ImageItem(image=raw_data_image, axisOrder='row-major')
+        self._mw.image_PlotWidget.addItem(self._image)
+        self._mw.image_PlotWidget.setAspectLocked(True)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -99,4 +105,21 @@ class CameraGUI(GUIBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def start_clicked(self):
+        """ Handling the Start button to stop and restart the counter.
+        """
+        if self._logic.enabled:
+            self._mw.start_control_Action.setText('Start')
+            self.sigStop.emit()
+        else:
+            self._mw.start_control_Action.setText('Stop')
+            self.sigStart.emit()
+
+    def update_data(self):
+        raw_data_image = self._logic.get_last_image()
+        self._image.setImage(image=raw_data_image, levels=(0., 1))
+
+    def updateView(self):
+        pass
 

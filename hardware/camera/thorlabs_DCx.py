@@ -60,7 +60,7 @@ class CameraThorlabs(Base, CameraInterface):
     _modtype = 'camera'
     _modclass = 'hardware'
 
-    _default_exposure = ConfigOption('default_exposure', 1.0)
+    _default_exposure = ConfigOption('default_exposure', 0.1)
     _default_gain = ConfigOption('_default_gain', 1.0)
     _id_camera = ConfigOption('id_camera', 0)  # if more than one camera is present
 
@@ -78,6 +78,7 @@ class CameraThorlabs(Base, CameraInterface):
 
     _image_memory = None
     _image_pid = None
+    IS_SUCCESS = 0
 
     def on_activate(self):
 
@@ -104,16 +105,17 @@ class CameraThorlabs(Base, CameraInterface):
             self.log.error("A Thorlabs camera has been detected but the id specified above the number of camera(s)")
 
         self._camera_handle = ctypes.c_int(0)
-        self._dll.is_InitCamera(ctypes.pointer(self._camera_handle))
-
+        ret = self._dll.is_InitCamera(ctypes.pointer(self._camera_handle))
+        if ret != self.IS_SUCCESS:
+            self.log.error("Could not initialize camera")
         self._sensor_info = SENSORINFO()
         self._dll.is_GetSensorInfo(self._camera_handle, byref(self._sensor_info))
         self._width = self._sensor_info.nMaxWidth
         self._height = self._sensor_info.nMaxHeight
         self.log.debug('Connected to camera : '+str(self._sensor_info.strSensorName))
-        
-        # if self._sensor_info.nColorMode != 8:  # convention is unclear so remove
-        #     self.log.error("The current hardware module is not compatible with mor than 8 bits resolution.")
+
+        SET_CM_Y8 = 6
+        self._dll.is_SetColorMode(self._camera_handle, ctypes.c_int(SET_CM_Y8))
         self._bit_depth = 8
 
         self._image_pid = ctypes.c_int()
@@ -125,6 +127,13 @@ class CameraThorlabs(Base, CameraInterface):
         self._dll.is_SetImageMem(self._camera_handle, self._image_memory, self._image_pid)
 
         self._dll.is_EnableAutoExit(self._camera_handle, 1)  # Enable auto-exit
+
+
+
+        self._dll.is_SetImageSize(self._camera_handle, ctypes.c_int(self._width), ctypes.c_int(self._height))  # Disable sub sampling
+        self._dll.is_SetImagePos(self._camera_handle, ctypes.c_int(0), ctypes.c_int(0))  # Disable sub sampling
+        self._dll.is_SetBinning (self._camera_handle, ctypes.c_int(0))  # Disable binning
+        self._dll.is_SetSubSampling(self._camera_handle, ctypes.c_int(0))  # Disable sub sampling
 
         self.set_exposure(self._exposure)
         self.set_gain(self._gain)
@@ -142,12 +151,23 @@ class CameraThorlabs(Base, CameraInterface):
 
     def start_acquisition(self):
         if self.get_ready_state():
+            wait_time = c_int(0)  # additional time transfer in ms given by the doc
             self._acquiring = True
-            wait_time = c_int(10)  # additional time transfer in ms given by the doc
-            self._dll.is_FreezeVideo(self._camera_handle, wait_time)
+            ret = self._dll.is_CaptureVideo(self._camera_handle, wait_time)
+            if ret != self.IS_SUCCESS:
+                self.log.error("Could not take picture with camera - Error "+str(ret))
+                self._acquiring = False
+                return -1
             return 0
         else:
             return -1
+
+
+    def stop_acquisition(self):
+        wait_time = c_int(0)  # additional time transfer in ms given by the doc
+        ret = self._dll.is_CaptureVideo(self._camera_handle, wait_time)
+        if ret != self.IS_SUCCESS:
+            self.log.error("Could not stop acquisition" + str(ret))
 
     def get_acquired_data(self):
         # Allocate memory for image:
@@ -162,7 +182,7 @@ class CameraThorlabs(Base, CameraInterface):
         img_array = img_array/2**self._bit_depth
         img_array.shape = np.array((self._height, self._width))
 
-        self._acquiring = False
+        # self._acquiring = False
         return img_array
 
     def set_exposure(self, time):
