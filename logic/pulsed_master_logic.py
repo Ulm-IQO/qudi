@@ -842,6 +842,10 @@ class PulsedMasterLogic(GenericLogic):
             settings_dict = kwargs
         else:
             settings_dict.update(kwargs)
+
+        # Force empty gate channel if fast counter is not gated
+        if 'gate_channel' in settings_dict and not self.fast_counter_settings.get('is_gated'):
+            settings_dict['gate_channel'] = ''
         self.sigSamplingSettingsChanged.emit(settings_dict)
         return
 
