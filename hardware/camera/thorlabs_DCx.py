@@ -104,15 +104,16 @@ class CameraThorlabs(Base, CameraInterface):
             self.log.error("A Thorlabs camera has been detected but the id specified above the number of camera(s)")
 
         self._camera_handle = ctypes.c_int(0)
-        self._dll.is_InitCamera(ctypes.pointer(self.filehandle))
+        self._dll.is_InitCamera(ctypes.pointer(self._camera_handle))
 
         self._sensor_info = SENSORINFO()
         self._dll.is_GetSensorInfo(self._camera_handle, byref(self._sensor_info))
         self._width = self._sensor_info.nMaxWidth
-        self._height = self._sensor_infonMaxHeight
+        self._height = self._sensor_info.nMaxHeight
+        self.log.debug('Connected to camera : '+str(self._sensor_info.strSensorName))
         
-        if self._sensor_info.nColorMode != 8:
-            self.log.error("The current hardware module is not compatible with mor than 8 bits resolution.")
+        # if self._sensor_info.nColorMode != 8:  # convention is unclear so remove
+        #     self.log.error("The current hardware module is not compatible with mor than 8 bits resolution.")
         self._bit_depth = 8
 
         self._image_pid = ctypes.c_int()
@@ -123,7 +124,7 @@ class CameraThorlabs(Base, CameraInterface):
             self._bit_depth, byref(self._image_memory), byref(self._image_pid))
         self._dll.is_SetImageMem(self._camera_handle, self._image_memory, self._image_pid)
 
-        self.clib.is_EnableAutoExit(self._camera_handle, 1)  # Enable auto-exit
+        self._dll.is_EnableAutoExit(self._camera_handle, 1)  # Enable auto-exit
 
         self.set_exposure(self._exposure)
         self.set_gain(self._gain)
@@ -142,7 +143,6 @@ class CameraThorlabs(Base, CameraInterface):
     def start_acquisition(self):
         if self.get_ready_state():
             self._acquiring = True
-            self.cam.StartAcquisition()
             wait_time = c_int(10)  # additional time transfer in ms given by the doc
             self._dll.is_FreezeVideo(self._camera_handle, wait_time)
             return 0
@@ -155,7 +155,7 @@ class CameraThorlabs(Base, CameraInterface):
         c_array = ctypes.c_char * img_size
         c_img = c_array()
         # copy camera memory to accessible memory
-        self.clib.is_CopyImageMem(self._camera_handle, self._image_memory, self._image_pid, c_img)
+        self._dll.is_CopyImageMem(self._camera_handle, self._image_memory, self._image_pid, c_img)
         # Convert to numpy 2d array of float from 0 to 1
         img_array = np.frombuffer(c_img, dtype=ctypes.c_ubyte)
         img_array = img_array.astype(float)
@@ -171,7 +171,7 @@ class CameraThorlabs(Base, CameraInterface):
         new_exp = c_double(0)  # in ms
 
         self._dll.is_SetExposureTime(self._camera_handle, exp, byref(new_exp))
-        self._exposure = float(new_exp)/1000
+        self._exposure = float(new_exp.value)/1000
 
     def get_exposure(self):
         return self._exposure
