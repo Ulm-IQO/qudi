@@ -68,9 +68,12 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_a = 0.0
 
         # Sets the size of the image to the maximal scanning range
-        self.image_x_range = self.x_range
-        self.image_y_range = self.y_range
-        self.image_z_range = self.z_range
+        self.image_range = {}
+        self.image_range['x'] = self.x_range
+        self.image_range['y'] = self.y_range
+        self.image_range['z'] = self.z_range
+
+        print(self.image_range)
 
         # Default values for the resolution of the scan
         self.xy_resolution = 100
@@ -109,9 +112,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         confocal._current_y = self.current_y
         confocal._current_z = self.current_z
         confocal._current_a = self.current_a
-        confocal.image_x_range = np.copy(self.image_x_range)
-        confocal.image_y_range = np.copy(self.image_y_range)
-        confocal.image_z_range = np.copy(self.image_z_range)
+        confocal.image_range['x'] = np.copy(self.image_range['x'])
+        confocal.image_range['y'] = np.copy(self.image_range['y'])
+        confocal.image_range['z'] = np.copy(self.image_range['z'])
         confocal.xy_resolution = self.xy_resolution
         confocal.z_resolution = self.z_resolution
         confocal.depth_img_is_xz = self.depth_img_is_xz
@@ -152,9 +155,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         self.current_y = confocal._current_y
         self.current_z = confocal._current_z
         self.current_a = confocal._current_a
-        self.image_x_range = np.copy(confocal.image_x_range)
-        self.image_y_range = np.copy(confocal.image_y_range)
-        self.image_z_range = np.copy(confocal.image_z_range)
+        self.image_range['x'] = np.copy(confocal.image_range['x'])
+        self.image_range['y'] = np.copy(confocal.image_range['y'])
+        self.image_range['z'] = np.copy(confocal.image_range['z'])
         self.xy_resolution = confocal.xy_resolution
         self.z_resolution = confocal.z_resolution
         self.depth_scan_dir_is_xz = confocal.depth_scan_dir_is_xz
@@ -179,9 +182,9 @@ class ConfocalHistoryEntry(QtCore.QObject):
         """ Give out a dictionary that can be saved via the usual means """
         serialized = dict()
         serialized['focus_position'] = [self.current_x, self.current_y, self.current_z, self.current_a]
-        serialized['x_range'] = list(self.image_x_range)
-        serialized['y_range'] = list(self.image_y_range)
-        serialized['z_range'] = list(self.image_z_range)
+        serialized['x_range'] = list(self.image_range['x'])
+        serialized['y_range'] = list(self.image_range['y'])
+        serialized['z_range'] = list(self.image_range['z'])
         serialized['xy_resolution'] = self.xy_resolution
         serialized['z_resolution'] = self.z_resolution
         serialized['depth_img_is_xz'] = self.depth_img_is_xz
@@ -209,11 +212,11 @@ class ConfocalHistoryEntry(QtCore.QObject):
             self.current_z = serialized['focus_position'][2]
             self.current_a = serialized['focus_position'][3]
         if 'x_range' in serialized and len(serialized['x_range']) == 2:
-            self.image_x_range = serialized['x_range']
+            self.image_range['x'] = serialized['x_range']
         if 'y_range' in serialized and len(serialized['y_range']) == 2:
-            self.image_y_range = serialized['y_range']
+            self.image_range['y'] = serialized['y_range']
         if 'z_range' in serialized and len(serialized['z_range']) == 2:
-            self.image_z_range = serialized['z_range']
+            self.image_range['z'] = serialized['z_range']
         if 'xy_resolution' in serialized:
             self.xy_resolution = serialized['xy_resolution']
         if 'z_resolution' in serialized:
@@ -310,6 +313,8 @@ class ConfocalLogic(GenericLogic):
         self.x_range = self._scanning_device.get_position_range()[0]
         self.y_range = self._scanning_device.get_position_range()[1]
         self.z_range = self._scanning_device.get_position_range()[2]
+
+        self.image_range = {}
 
         # restore here ...
         self.history = []
@@ -436,11 +441,11 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # x1: x-start-value, x2: x-end-value
-        x1, x2 = self.image_x_range[0], self.image_x_range[1]
+        x1, x2 = self.image_range['x'][0], self.image_range['x'][1]
         # y1: x-start-value, y2: x-end-value
-        y1, y2 = self.image_y_range[0], self.image_y_range[1]
+        y1, y2 = self.image_range['y'][0], self.image_range['y'][1]
         # z1: x-start-value, z2: x-end-value
-        z1, z2 = self.image_z_range[0], self.image_z_range[1]
+        z1, z2 = self.image_range['z'][0], self.image_range['z'][1]
 
         if self._zscan:
             # creates an array of evenly spaced numbers over the interval
@@ -857,13 +862,13 @@ class ConfocalLogic(GenericLogic):
         # Prepare the metadata parameters (common to both saved files):
         parameters = OrderedDict()
 
-        parameters['X image min (m)'] = self.image_x_range[0]
-        parameters['X image max (m)'] = self.image_x_range[1]
-        parameters['X image range (m)'] = self.image_x_range[1] - self.image_x_range[0]
+        parameters['X image min (m)'] = self.image_range['x'][0]
+        parameters['X image max (m)'] = self.image_range['x'][1]
+        parameters['X image range (m)'] = self.image_range['x'][1] - self.image_range['x'][0]
 
-        parameters['Y image min'] = self.image_y_range[0]
-        parameters['Y image max'] = self.image_y_range[1]
-        parameters['Y image range'] = self.image_y_range[1] - self.image_y_range[0]
+        parameters['Y image min'] = self.image_range['y'][0]
+        parameters['Y image max'] = self.image_range['y'][1]
+        parameters['Y image range'] = self.image_range['y'][1] - self.image_range['y'][0]
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
         parameters['XY Image at z position (m)'] = self._current_z
@@ -873,10 +878,10 @@ class ConfocalLogic(GenericLogic):
 
         # Prepare a figure to be saved
         figure_data = self.xy_image[:, :, 3]
-        image_extent = [self.image_x_range[0],
-                        self.image_x_range[1],
-                        self.image_y_range[0],
-                        self.image_y_range[1]]
+        image_extent = [self.image_range['x'][0],
+                        self.image_range['x'][1],
+                        self.image_range['y'][0],
+                        self.image_range['y'][1]]
         axes = ['X', 'Y']
         crosshair_pos = [self.get_position()[0], self.get_position()[1]]
 
@@ -944,13 +949,13 @@ class ConfocalLogic(GenericLogic):
         parameters = OrderedDict()
 
         # TODO: This needs to check whether the scan was XZ or YZ direction
-        parameters['X image min (m)'] = self.image_x_range[0]
-        parameters['X image max (m)'] = self.image_x_range[1]
-        parameters['X image range (m)'] = self.image_x_range[1] - self.image_x_range[0]
+        parameters['X image min (m)'] = self.image_range['x'][0]
+        parameters['X image max (m)'] = self.image_range['x'][1]
+        parameters['X image range (m)'] = self.image_range['x'][1] - self.image_range['x'][0]
 
-        parameters['Z image min'] = self.image_z_range[0]
-        parameters['Z image max'] = self.image_z_range[1]
-        parameters['Z image range'] = self.image_z_range[1] - self.image_z_range[0]
+        parameters['Z image min'] = self.image_range['z'][0]
+        parameters['Z image max'] = self.image_range['z'][1]
+        parameters['Z image range'] = self.image_range['z'][1] - self.image_range['z'][0]
 
         parameters['XY resolution (samples per range)'] = self.xy_resolution
         parameters['Z resolution (samples per range)'] = self.z_resolution
@@ -960,18 +965,18 @@ class ConfocalLogic(GenericLogic):
         parameters['Return Slowness (Steps during retrace line)'] = self.return_slowness
 
         if self.depth_img_is_xz:
-            horizontal_range = [self.image_x_range[0], self.image_x_range[1]]
+            horizontal_range = [self.image_range['x'][0], self.image_range['x'][1]]
             axes = ['X', 'Z']
             crosshair_pos = [self.get_position()[0], self.get_position()[2]]
         else:
-            horizontal_range = [self.image_y_range[0], self.image_y_range[1]]
+            horizontal_range = [self.image_range['y'][0], self.image_range['y'][1]]
             axes = ['Y', 'Z']
             crosshair_pos = [self.get_position()[1], self.get_position()[2]]
 
         image_extent = [horizontal_range[0],
                         horizontal_range[1],
-                        self.image_z_range[0],
-                        self.image_z_range[1]]
+                        self.image_range['z'][0],
+                        self.image_range['z'][1]]
 
         figs = {ch: self.draw_figure(data=self.depth_image[:, :, 3 + n],
                                      image_extent=image_extent,
@@ -1170,7 +1175,7 @@ class ConfocalLogic(GenericLogic):
             @param float ax_max: maximum extent of range
         """
         # Checks if axis is known
-        if axis not in ['x', 'y', 'z']:
+        if axis not in self.image_range.keys():
             self.log.error(
                     'Cannot set image range for axis {}.'
                     'Only x, y, z axis labels are known for scanner images.'
@@ -1185,12 +1190,8 @@ class ConfocalLogic(GenericLogic):
                 '({0:.3f},{1:.3f}).'.format(ax_min, ax_max, ax=axis))
             return -1
 
-        if axis == 'x':
-            self.image_x_range = [ax_min, ax_max]
-        elif axis == 'y':
-            self.image_y_range = [ax_min, ax_max]
-        elif axis == 'z':
-            self.image_z_range = [ax_min, ax_max]
+        self.image_range[axis] = [ax_min, ax_max]
+        
         # Tell the GUI or anything else that might need to update display.
         self.image_ranges_changed_Signal.emit()
 
@@ -1199,12 +1200,8 @@ class ConfocalLogic(GenericLogic):
 
         @param string axis: label for desired axis, can be 'x', 'y', or 'z'
         """
-        if axis == 'x':
-            return self.image_x_range
-        elif axis == 'y':
-            return self.image_y_range
-        elif axis == 'z':
-            return self.image_z_range
+        if axis in self.image_range.keys():
+            return self.image_range[axis]
         else:
             self.log.error(
                     'Cannot get image range for axis {}.'
