@@ -2648,7 +2648,7 @@ class PulsedMeasurementGui(GUIBase):
                 y_data = self.pulsedmasterlogic().laser_data[laser_index - 1]
 
         # Calculate the x-axis of the laser plot here
-        bin_width = self.pulsedmasterlogic().fast_counter_settings['bin_width_s']
+        bin_width = self.pulsedmasterlogic().fast_counter_settings['bin_width']
         x_data = np.arange(y_data.size, dtype=float) * bin_width
 
         # Plot data
