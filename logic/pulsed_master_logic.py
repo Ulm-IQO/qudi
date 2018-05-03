@@ -741,14 +741,9 @@ class PulsedMasterLogic(GenericLogic):
             object_instance = None
 
         if object_instance is None:
-            self.set_measurement_settings(sequence_information=dict())
+            self.pulsedmeasurementlogic().measurement_information = dict()
         else:
-            sequence_information = dict()
-            sequence_information[
-                'sampling_information'] = object_instance.sampling_information.copy()
-            sequence_information[
-                'measurement_information'] = object_instance.measurement_information.copy()
-            self.set_measurement_settings(sequence_information=sequence_information)
+            self.pulsedmeasurementlogic().measurement_information = object_instance.measurement_information
         return
 
     @QtCore.Slot(object)

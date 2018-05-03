@@ -218,8 +218,8 @@ class PulsedMeasurementLogic(GenericLogic):
     @property
     def fast_counter_settings(self):
         settings_dict = dict()
-        settings_dict['bin_width_s'] = float(self.__fast_counter_binwidth)
-        settings_dict['record_length_s'] = float(self.__fast_counter_record_length)
+        settings_dict['bin_width'] = float(self.__fast_counter_binwidth)
+        settings_dict['record_length'] = float(self.__fast_counter_record_length)
         settings_dict['number_of_gates'] = int(self.__fast_counter_gates)
         return settings_dict
 
@@ -255,10 +255,10 @@ class PulsedMeasurementLogic(GenericLogic):
                 settings_dict.update(kwargs)
 
             # Set parameters if present
-            if 'bin_width_s' in settings_dict:
-                self.__fast_counter_binwidth = float(settings_dict['bin_width_s'])
-            if 'record_length_s' in settings_dict:
-                self.__fast_counter_record_length = float(settings_dict['record_length_s'])
+            if 'bin_width' in settings_dict:
+                self.__fast_counter_binwidth = float(settings_dict['bin_width'])
+            if 'record_length' in settings_dict:
+                self.__fast_counter_record_length = float(settings_dict['record_length'])
             if 'number_of_gates' in settings_dict:
                 if self.fastcounter().is_gated():
                     self.__fast_counter_gates = int(settings_dict['number_of_gates'])
@@ -281,8 +281,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # emit update signal for master (GUI or other logic module)
         self.sigFastCounterSettingsUpdated.emit(
-            {'bin_width_s': self.__fast_counter_binwidth,
-             'record_length_s': self.__fast_counter_record_length,
+            {'bin_width': self.__fast_counter_binwidth,
+             'record_length': self.__fast_counter_record_length,
              'number_of_gates': self.__fast_counter_gates})
         return self.__fast_counter_binwidth, self.__fast_counter_record_length, self.__fast_counter_gates
 
@@ -672,9 +672,14 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             settings_dict.update(kwargs)
 
+        # Check if invoke_settings flag has changed
+        if 'invoke_settings' in settings_dict:
+            self._invoke_settings_from_sequence = bool(settings_dict.get('invoke_settings'))
+
         # Invoke settings if measurement_information is present and flag is set
-        if self._invoke_settings_from_sequence and self._measurement_information:
-            self._apply_invoked_settings()
+        if self._invoke_settings_from_sequence:
+            if self._measurement_information:
+                self._apply_invoked_settings()
         else:
             # Apply settings that can be changed while a measurement is running
             with self._threadlock:
@@ -683,8 +688,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
             if self.module_state == 'idle':
                 # Get all other parameters if present
-                if 'invoke_settings' in settings_dict:
-                    self._invoke_settings_from_sequence = bool(settings_dict.get('invoke_settings'))
                 if 'controlled_variable' in settings_dict:
                     self._controlled_variable = np.array(settings_dict.get('controlled_variable'),
                                                          dtype=float)
@@ -718,24 +721,26 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(str)
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
         """Start the analysis loop."""
-        # FIXME: Describe the idea of how the measurement is intended to be run
-        #       and how the used thread principle was used in this method (or
-        #       will be use in another method).
         self.sigMeasurementStatusUpdated.emit(True, False)
+
+        # Check if measurement settings need to be invoked
+        if self._invoke_settings_from_sequence:
+            if self._measurement_information:
+                self._apply_invoked_settings()
+                self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
+            else:
+                # abort measurement if settings could not be invoked
+                self.log.error('Unable to invoke measurement settings.\nThis feature can only be '
+                               'used when creating the pulse sequence via predefined methods.\n'
+                               'Aborting measurement start.')
+                self.set_measurement_settings(invoke_settings=False)
+                self.sigMeasurementStatusUpdated.emit(False, False)
+                return
+
         with self._threadlock:
             if self.module_state() == 'idle':
                 # Lock module state
                 self.module_state.lock()
-
-                # Check if measurement settings need to be invoked
-                if self._invoke_settings_from_sequence:
-                    self._apply_invoked_settings()
-                    self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
-                    # abort measurement if settings could not be invoked
-                    if not self._invoke_settings_from_sequence:
-                        self.module_state.unlock()
-                        self.sigMeasurementStatusUpdated.emit(False, False)
-                        return
 
                 # Clear previous fits
                 self.fc.clear_result()
@@ -953,50 +958,69 @@ class PulsedMeasurementLogic(GenericLogic):
     def _apply_invoked_settings(self):
         """
         """
-        if not isinstance(self._sequence_information, dict) or not self._sequence_information:
-            self.log.error('Can\'t invoke measurement settings from sequence information '
-                           'since no _sequence_information container is given.')
-            self._invoke_settings_from_sequence = False
+        if not isinstance(self._measurement_information, dict) or not self._measurement_information:
+            self.log.warning('Can\'t invoke measurement settings from sequence information '
+                             'since no _sequence_information container is given.')
             return
 
-        measurement_info = self._sequence_information['measurement_information']
-        if 'number_of_lasers' in measurement_info:
-            self._number_of_lasers = int(measurement_info['number_of_lasers'])
+        # First try to set parameters that can be changed during a running measurement
+        if 'units' in self._measurement_information:
+            with self._threadlock:
+                self._data_units = self._measurement_information.get('units')
+
+        # Check if a measurement is running and apply following settings if this is not the case
+        if self.module_state() == 'locked':
+            return
+
+        if 'number_of_lasers' in self._measurement_information:
+            self._number_of_lasers = int(self._measurement_information.get('number_of_lasers'))
         else:
             self.log.error('Unable to invoke setting for "number_of_lasers".\n'
-                           'Sequence information container does not contain this parameter.')
-            self._invoke_settings_from_sequence = False
+                           'Measurement information container is incomplete/invalid.')
             return
 
-        if 'laser_ignore_list' in measurement_info:
-            self._laser_ignore_list = sorted(measurement_info['laser_ignore_list'])
+        if 'laser_ignore_list' in self._measurement_information:
+            self._laser_ignore_list = sorted(self._measurement_information.get('laser_ignore_list'))
         else:
-            self.log.warning('Unable to invoke setting for "laser_ignore_list".\n'
-                             'Sequence information container does not contain this parameter.')
+            self.log.error('Unable to invoke setting for "laser_ignore_list".\n'
+                           'Measurement information container is incomplete/invalid.')
+            return
 
-        if 'alternating' in measurement_info:
-            self._alternating = bool(measurement_info['alternating'])
+        if 'alternating' in self._measurement_information:
+            self._alternating = bool(self._measurement_information.get('alternating'))
         else:
-            self.log.warning('Unable to invoke setting for "alternating".\n'
-                             'Sequence information container does not contain this parameter.')
+            self.log.error('Unable to invoke setting for "alternating".\n'
+                           'Measurement information container is incomplete/invalid.')
+            return
 
-        if 'controlled_variable' in measurement_info:
+        if 'controlled_variable' in self._measurement_information:
             self._controlled_variable = np.array(
-                measurement_info['controlled_variable'], dtype=float)
+                self._measurement_information.get('controlled_variable'), dtype=float)
         else:
-            self.log.warning('Unable to invoke setting for "controlled_variable".\n'
-                             'Sequence information container does not contain this parameter.')
-            number_of_points = self._number_of_lasers - len(self._laser_ignore_list)
-            if self._alternating:
-                number_of_points //= 2
-            if len(self._controlled_variable) != number_of_points:
-                start = self._controlled_variable[0] if len(self._controlled_variable) > 1 else 0
-                incr = self._controlled_variable[1] - self._controlled_variable[0] if len(
-                    self._controlled_variable) > 1 else 1
-                self._controlled_variable = np.arange(number_of_points, dtype=float) * incr + start
+            self.log.error('Unable to invoke setting for "controlled_variable".\n'
+                           'Measurement information container is incomplete/invalid.')
+            # number_of_points = self._number_of_lasers - len(self._laser_ignore_list)
+            # if self._alternating:
+            #     number_of_points //= 2
+            # if len(self._controlled_variable) != number_of_points:
+            #     start = self._controlled_variable[0] if len(self._controlled_variable) > 1 else 0
+            #     incr = self._controlled_variable[1] - self._controlled_variable[0] if len(
+            #         self._controlled_variable) > 1 else 1
+            #     self._controlled_variable = np.arange(number_of_points, dtype=float) * incr + start
+            return
 
-        if self.fastcounter().is_gated() and self.__fast_counter_gates != self._number_of_lasers:
-            self.set_fast_counter_settings(number_of_gates=self._number_of_lasers)
+        if 'counting_length' in self._measurement_information:
+            fast_counter_record_length = self._measurement_information.get('counting_length')
+        else:
+            self.log.error('Unable to invoke setting for "counting_length".\n'
+                           'Measurement information container is incomplete/invalid.')
+            return
+
+        if self.fastcounter().is_gated():
+            self.set_fast_counter_settings(number_of_gates=self._number_of_lasers,
+                                           record_length=fast_counter_record_length)
+        else:
+            self.set_fast_counter_settings(record_length=fast_counter_record_length)
         return
 
     def _measurement_settings_sanity_check(self):
