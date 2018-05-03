@@ -348,13 +348,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
         self.ref_end_line.sigPositionChangeFinished.connect(self.analysis_settings_changed)
         self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.connect(self.analysis_settings_changed)
-
-        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.connect(self.extraction_settings_changed)
-        self._pe.extract_param_conv_std_dev_slider.valueChanged.connect(self.extraction_settings_changed)
-        self._pe.extract_param_threshold_SpinBox.editingFinished.connect(self.extraction_settings_changed)
-        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.connect(self.extraction_settings_changed)
-        self._pe.extract_param_tolerance_SpinBox.editingFinished.connect(self.extraction_settings_changed)
-        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.connect(self.extraction_settings_changed)
+        self._pe.extract_param_method_comboBox.currentIndexChanged.connect(self.extraction_settings_changed)
 
         self._pe.laserpulses_ComboBox.currentIndexChanged.connect(self.update_laser_data)
         self._pe.laserpulses_display_raw_CheckBox.stateChanged.connect(self.update_laser_data)
@@ -501,13 +495,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ref_start_line.sigPositionChangeFinished.disconnect()
         self.ref_end_line.sigPositionChangeFinished.disconnect()
         self._pe.extract_param_analysis_method_comboBox.currentIndexChanged.disconnect()
-
-        self._pe.extract_param_conv_std_dev_DSpinBox.editingFinished.disconnect()
-        self._pe.extract_param_conv_std_dev_slider.valueChanged.disconnect()
-        self._pe.extract_param_threshold_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_min_laser_length_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_tolerance_SpinBox.editingFinished.disconnect()
-        self._pe.extract_param_extraction_method_comboBox.currentIndexChanged.disconnect()
+        self._pe.extract_param_method_comboBox.currentIndexChanged.disconnect()
 
         self._pe.laserpulses_ComboBox.currentIndexChanged.disconnect()
         self._pe.laserpulses_display_raw_CheckBox.stateChanged.disconnect()
@@ -2456,7 +2444,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_display_raw_CheckBox.blockSignals(True)
         self._pe.laserpulses_ComboBox.blockSignals(True)
         self._pe.extract_param_analysis_method_comboBox.blockSignals(True)
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
+        self._pe.extract_param_method_comboBox.blockSignals(True)
 
         self._pe.laserpulses_display_raw_CheckBox.setChecked(self._show_raw_data)
 
@@ -2469,19 +2457,17 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.extract_param_analysis_method_comboBox.clear()
         self._pe.extract_param_analysis_method_comboBox.addItems(
             list(self.pulsedmasterlogic().analysis_methods))
-        self._pe.extract_param_extraction_method_comboBox.clear()
-        self._pe.extract_param_extraction_method_comboBox.addItems(
+        self._pe.extract_param_method_comboBox.clear()
+        self._pe.extract_param_method_comboBox.addItems(
             list(self.pulsedmasterlogic().extraction_methods))
 
         self._pe.laserpulses_display_raw_CheckBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
         self._pe.extract_param_analysis_method_comboBox.blockSignals(False)
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
+        self._pe.extract_param_method_comboBox.blockSignals(False)
 
-        # Constraint widgets
-        self._pe.extract_param_threshold_SpinBox.setMinimum(1)
-        self._pe.extract_param_conv_std_dev_slider.setRange(1, 200)
-        self._pe.extract_param_conv_std_dev_DSpinBox.setRange(1, 200)
+        # variable holding all dynamically generated widgets for the selected extraction method
+        self._extraction_param_widgets = None
 
         # Initialize from logic values
         self.analysis_settings_updated(self.pulsedmasterlogic().analysis_settings)
@@ -2500,16 +2486,19 @@ class PulsedMeasurementGui(GUIBase):
         Uodate new value of standard deviation of gaussian filter
         """
         settings_dict = dict()
-
-        # determine if one of the conv_std_dev widgets (SpinBox or slider) has emitted the signal
-        if self.sender().objectName() == 'extract_param_conv_std_dev_slider':
-            settings_dict['conv_std_dev'] = self._pe.extract_param_conv_std_dev_slider.value()
+        settings_dict['method'] = self._pe.extract_param_method_comboBox.currentText()
+        # Check if the method has been changed
+        if settings_dict['method'] == self.pulsedmasterlogic().extraction_settings['method']:
+            for label, widget in self._extraction_param_widgets:
+                param_name = widget.objectName()[14:]
+                if hasattr(widget, 'isChecked'):
+                    settings_dict[param_name] = widget.isChecked()
+                elif hasattr(widget, 'value'):
+                    settings_dict[param_name] = widget.value()
+                elif hasattr(widget, 'text'):
+                    settings_dict[param_name] = widget.text()
         else:
-            settings_dict['conv_std_dev'] = self._pe.extract_param_conv_std_dev_DSpinBox.value()
-        settings_dict['method'] = self._pe.extract_param_extraction_method_comboBox.currentText()
-        settings_dict['count_threshold'] = self._pe.extract_param_threshold_SpinBox.value()
-        settings_dict['threshold_tolerance'] = self._pe.extract_param_tolerance_SpinBox.value()
-        settings_dict['min_laser_length'] = self._pe.extract_param_min_laser_length_SpinBox.value()
+            self._delete_extraction_param_widgets()
 
         self.pulsedmasterlogic().set_extraction_settings(settings_dict)
         return
@@ -2521,37 +2510,106 @@ class PulsedMeasurementGui(GUIBase):
         @param dict settings_dict: dictionary with parameters to update
         @return:
         """
-        # Block signals
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(True)
-        self._pe.extract_param_conv_std_dev_slider.blockSignals(True)
-        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(True)
-        self._pe.extract_param_threshold_SpinBox.blockSignals(True)
-        self._pe.extract_param_tolerance_SpinBox.blockSignals(True)
-        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(True)
+        print(settings_dict)
+        # If no widgets have been generated yet, generate them now.
+        if self._extraction_param_widgets is None:
+            self._create_extraction_param_widgets(extraction_settings=settings_dict)
 
-        if 'method' in settings_dict:
-            index = self._pe.extract_param_extraction_method_comboBox.findText(
-                settings_dict['method'])
-            self._pe.extract_param_extraction_method_comboBox.setCurrentIndex(index)
-        if 'conv_std_dev' in settings_dict:
-            self._pe.extract_param_conv_std_dev_DSpinBox.setValue(settings_dict['conv_std_dev'])
-            self._pe.extract_param_conv_std_dev_slider.setValue(settings_dict['conv_std_dev'])
-        if 'count_threshold' in settings_dict:
-            self._pe.extract_param_threshold_SpinBox.setValue(settings_dict['count_threshold'])
-        if 'threshold_tolerance' in settings_dict:
-            self._pe.extract_param_tolerance_SpinBox.setValue(settings_dict['threshold_tolerance'])
-        if 'min_laser_length' in settings_dict:
-            self._pe.extract_param_min_laser_length_SpinBox.setValue(
-                settings_dict['min_laser_length'])
+        # If the method is unchanged, just update the widget values.
+        # Otherwise delete all widgets and create new ones for the changed method.
+        if settings_dict.get('method') == self._pe.extract_param_method_comboBox.currentText():
+            print('Nope')
+            for label, widget in self._extraction_param_widgets:
+                param_name = widget.objectName()[14:]
+                widget.blockSignals(True)
+                if hasattr(widget, 'setValue'):
+                    widget.setValue(settings_dict.get(param_name))
+                elif hasattr(widget, 'setChecked'):
+                    widget.setChecked(settings_dict.get(param_name))
+                elif hasattr(widget, 'setText'):
+                    widget.setText(settings_dict.get(param_name))
+                else:
+                    self.log.error('Unable to update widget value for parameter "{0}".\n'
+                                   'Widget is of unknown type.'.format(param_name))
+                widget.blockSignals(False)
+        else:
+            self._delete_extraction_param_widgets()
+            self._create_extraction_param_widgets(extraction_settings=settings_dict)
 
-        # Unblock signals
-        self._pe.extract_param_extraction_method_comboBox.blockSignals(False)
-        self._pe.extract_param_conv_std_dev_slider.blockSignals(False)
-        self._pe.extract_param_conv_std_dev_DSpinBox.blockSignals(False)
-        self._pe.extract_param_threshold_SpinBox.blockSignals(False)
-        self._pe.extract_param_tolerance_SpinBox.blockSignals(False)
-        self._pe.extract_param_min_laser_length_SpinBox.blockSignals(False)
+        # Update the method combobox
+        self._pe.extract_param_method_comboBox.blockSignals(True)
+        index = self._pe.extract_param_method_comboBox.findText(settings_dict.get('method'))
+        self._pe.extract_param_method_comboBox.setCurrentIndex(index)
+        self._pe.extract_param_method_comboBox.blockSignals(False)
         return
+
+    def _delete_extraction_param_widgets(self):
+        """
+
+        @return:
+        """
+        for label, widget in self._extraction_param_widgets:
+            # Disconnect signals
+            if hasattr(widget, 'setChecked'):
+                widget.stateChanged.disconnect()
+            else:
+                widget.editingFinished.disconnect()
+            # Remove label and widget from layout
+            self._pe.extraction_param_gridLayout.removeWidget(label)
+            self._pe.extraction_param_gridLayout.removeWidget(widget)
+            # Stage label and widget for deletion
+            label.deleteLater()
+            widget.deleteLater()
+        self._extraction_param_widgets = None
+        return
+
+    def _create_extraction_param_widgets(self, extraction_settings):
+        """
+
+        @param extraction_settings:
+        @return:
+        """
+        self._extraction_param_widgets = list()
+        layout_row = 1
+        for param_name, value in extraction_settings.items():
+            if param_name == 'method':
+                continue
+
+            # Create label for the parameter
+            label = QtWidgets.QLabel(param_name + ':')
+            label.setObjectName('extract_param_label_' + param_name)
+
+            # Create widget for parameter and connect update signal
+            if isinstance(value, float):
+                widget = ScienDSpinBox()
+                widget.setValue(value)
+                widget.editingFinished.connect(self.extraction_settings_changed)
+            elif isinstance(value, int):
+                widget = ScienSpinBox()
+                widget.setValue(value)
+                widget.editingFinished.connect(self.extraction_settings_changed)
+            elif isinstance(value, str):
+                widget = QtWidgets.QLineEdit()
+                widget.setText(value)
+                widget.editingFinished.connect(self.extraction_settings_changed)
+            elif isinstance(value, bool):
+                widget = QtWidgets.QCheckBox()
+                widget.setChecked(value)
+                widget.stateChanged.connect(self.extraction_settings_changed)
+            else:
+                self.log.error('Could not create widget for extraction parameter "{0}".\n'
+                               'Default parameter value is of invalid type.'.format(param_name))
+                continue
+            widget.setObjectName('extract_param_' + param_name)
+            widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+
+            # Add label and widget to the main grid layout
+            self._pe.extraction_param_gridLayout.addWidget(label, layout_row, 0)
+            self._pe.extraction_param_gridLayout.addWidget(widget, layout_row, 1)
+
+            # Add label and widget to the list
+            self._extraction_param_widgets.append((label, widget))
+            layout_row += 1
 
     @QtCore.Slot()
     def analysis_settings_changed(self):
