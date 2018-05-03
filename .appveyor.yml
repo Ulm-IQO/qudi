@@ -3,6 +3,8 @@
 #  only:
 #    - master
 
+image: Visual Studio 2017
+
 environment:
   global:
       PYTHON: "C:\\miniconda"
