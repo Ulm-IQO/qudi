@@ -290,4 +290,9 @@ class PIDLogic(GenericLogic):
         else:
             return 0
 
+    def get_extra(self):
+        if self._type == 'PID':
+            return self._controller.get_extra()
+        else:
+            return []
 

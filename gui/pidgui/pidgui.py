@@ -210,7 +210,7 @@ class PIDGui(GUIBase):
                 '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
-            extra = self._pid_logic._controller.get_extra()
+            extra = self._pid_logic.get_extra()
             if 'P' in extra:
                 self._mw.labelkP.setText('{0:,.6f}'.format(extra['P']))
             if 'I' in extra:
