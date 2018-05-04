@@ -33,23 +33,30 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
     _modclass = 'interface'
 
     @abc.abstractmethod
-    def setControlValue(self, value):
+    def set_control_value(self, value):  # TODO: this is not uniform with PID (set_setpoint())
         """ Set the value of the controlled process variable """
         pass
 
     @abc.abstractmethod
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get the value of the controlled process variable """
         pass
 
     @abc.abstractmethod
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
         pass
 
     @abc.abstractmethod
-    def getControlLimits(self):
+    def get_control_limits(self):
         """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
         pass
 
+    @abc.abstractmethod
+    def get_enabled(self):
+        pass
+
+    @abc.abstractmethod
+    def set_enabled(self, enabled):
+        pass
