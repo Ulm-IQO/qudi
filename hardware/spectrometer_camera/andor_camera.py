@@ -139,7 +139,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
         if self._last_acquisition_mode == ReadMode.FVB.value:
             result = [data]
         elif self._last_acquisition_mode == ReadMode.IMAGE.value:
-            result = np.reshape(data, (self._width, self._height))
+            result = np.reshape(data, (self._height, self._width))
 
         self._acquiring = False
         return result
