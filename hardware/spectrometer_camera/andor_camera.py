@@ -29,8 +29,8 @@ from enum import Enum
 from core.module import Base, ConfigOption
 
 from interface.camera_interface import CameraInterface
-from interface.process_interface import ProcessInterface
-from interface.process_control_interface import ProcessControlInterface
+from interface.setpoint_controller_interface import SetpointControllerInterface
+from interface.spectrometer_interface import SpectrometerInterface
 
 from libraries.pyandor.Andor.camera import Camera
 
@@ -45,7 +45,7 @@ class ReadMode(Enum):
     IMAGE = 4
 
 
-class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessControlInterface):
+class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface, SpectrometerInterface):
     """
     """
 
@@ -110,7 +110,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
         return self._read_mode
 
     def get_bit_depth(self):
-        return 8  # clean this
+        return 8  # TODO: clean this
 
     def set_image(self, hbin, vbin, hstart, hend, vstart, vend):
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
@@ -195,26 +195,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
     def get_ready_state(self):
         return not self._acquiring
 
-    #
-    # Process interface to control cooling
-
-    def get_process_value(self):
-        return self.get_measured_temperature()
-
-    def get_process_unit(self):
-        return '°C', 'Degrees Celsius'
-
-    def set_control_value(self, value):
-        self.set_setpoint_temperature(value)
-
-    def get_control_value(self):
-        return self.get_setpoint_temperature()
-
-    def get_control_unit(self):
-        return self.getProcessUnit()
-
-    def get_control_limits(self):
-        return -100, 0
+    # Setpoint controller interface to control cooling
 
     def get_enabled(self):
         return self.get_cooler_on_state()
@@ -222,20 +203,25 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
     def set_enabled(self, enabled):
         self.set_cooler_on_state(enabled)
 
-    # Hack for uniformity with PIDInterface
+    def get_process_value(self):
+        return self.get_measured_temperature()
+
+    def get_process_unit(self):
+        return '°C', 'Degrees Celsius'
+
     def set_setpoint(self, value):
         self.set_setpoint_temperature(value)
 
     def get_setpoint(self):
         return self.get_setpoint_temperature()
 
-    # TODO: GUI IS ACCESSING THIS DIRECTLY : THIS IS VERY DIRTY :(
-    def get_extra(self):
-        pass
+    def get_setpoint_unit(self):
+        return self.get_process_unit()
 
+    def get_setpoint_limits(self):
+        return 0.,75.
 
-
-    #To be compatible with simple spectro interface
+    # To be compatible with simple spectrometer interface
 
     def recordSpectrum(self):
         self.set_read_mode(ReadMode.FVB.value)
