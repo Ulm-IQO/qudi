@@ -33,7 +33,7 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
     _modclass = 'interface'
 
     @abc.abstractmethod
-    def set_control_value(self, value):  # TODO: this is not uniform with PID (set_setpoint())
+    def set_control_value(self, value):
         """ Set the value of the controlled process variable """
         pass
 
@@ -55,8 +55,12 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def get_enabled(self):
+        """ Return the enabled state of the control device
+        """
         pass
 
     @abc.abstractmethod
     def set_enabled(self, enabled):
+        """ Set the enabled state of the control device
+         """
         pass
