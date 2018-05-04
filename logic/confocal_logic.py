@@ -263,6 +263,7 @@ class ConfocalHistoryEntry(QtCore.QObject):
 
 
 class ImageRange:
+    """ Handle the image range in 3 cartesian coordinates"""
 
     def __init__(self, confocal, *, xrange, yrange, zrange):
 
@@ -275,28 +276,58 @@ class ImageRange:
 
     @property
     def x(self):
+        """ Get x position range
+        
+        @return list: x min and x max
+        """
         return self._x
 
     @property
     def y(self):
+        """ Get y position range
+        
+        @return list: y min and y max
+        """
         return self._y
 
     @property
     def z(self):
+        """ Get z position range
+        
+        @return list: z min and z max
+        """
         return self._z
 
     @x.setter
     def x(self, x):
+        """ Set x position range.
+        
+        @param list x: x min and x max
+
+        Confocal needs to emit a signal so that any GUIs etc can update.
+        """
         self._x = x
         self.confocal.image_ranges_changed_Signal.emit()
 
     @y.setter
     def y(self, y):
+        """ Set y position range.
+        
+        @param list y: y min and y max
+
+        Confocal needs to emit a signal so that any GUIs etc can update.
+        """
         self._y = y
         self.confocal.image_ranges_changed_Signal.emit()
 
     @z.setter
     def z(self, z):
+        """ Set z position range.
+        
+        @param list z: z min and z max
+
+        Confocal needs to emit a signal so that any GUIs etc can update.
+        """
         self._z = z
         self.confocal.image_ranges_changed_Signal.emit()
 
