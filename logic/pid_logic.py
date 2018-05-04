@@ -38,6 +38,8 @@ class PIDLogic(GenericLogic):
     ## declare connectors
     controller = Connector(interface='PIDControllerInterface')
     savelogic = Connector(interface='SaveLogic')
+    _type = ConfigOption('type', 'PID')  # 'PID', 'PROCESS_CONTROL' or 'PROCESS'
+
 
     # status vars
     bufferLength = StatusVar('bufferlength', 1000)
@@ -133,70 +135,100 @@ class PIDLogic(GenericLogic):
 
             @return float: proportional constant of PID controller
         """
-        return self._controller.get_kp()
+        if self._type == 'PID':
+            return self._controller.get_kp()
+        else:
+            return 0
 
     def set_kp(self, kp):
         """ Set the proportional constant of the PID controller.
 
             @prarm float kp: proportional constant of PID controller
         """
-        return self._controller.set_kp(kp)
+        if self._type == 'PID':
+            return self._controller.set_kp(kp)
+        else:
+            return 0
 
     def get_ki(self):
         """ Get the integration constant of the PID controller
 
             @return float: integration constant of the PID controller
         """
-        return self._controller.get_ki()
+        if self._type == 'PID':
+            return self._controller.get_ki()
+        else:
+            return 0
 
     def set_ki(self, ki):
         """ Set the integration constant of the PID controller.
 
             @param float ki: integration constant of the PID controller
         """
-        return self._controller.set_ki(ki)
+        if self._type == 'PID':
+            return self._controller.set_ki(ki)
+        else:
+            return 0
 
     def get_kd(self):
         """ Get the derivative constant of the PID controller
 
             @return float: the derivative constant of the PID controller
         """
-        return self._controller.get_kd()
+        if self._type == 'PID':
+            return self._controller.get_kd()
+        else:
+            return 0
 
     def set_kd(self, kd):
         """ Set the derivative constant of the PID controller
 
             @param float kd: the derivative constant of the PID controller
         """
-        return self._controller.set_kd(kd)
+        if self._type == 'PID':
+            return self._controller.set_kd(kd)
+        else:
+            return 0
 
     def get_setpoint(self):
         """ Get the current setpoint of the PID controller.
 
             @return float: current set point of the PID controller
         """
-        return self.history[2, -1]
+        if self._type == 'PID' or self._type == 'PROCESS_CONTROL':
+            return self.history[2, -1]
+        else:
+            return 0
 
     def set_setpoint(self, setpoint):
         """ Set the current setpoint of the PID controller.
 
             @param float setpoint: new set point of the PID controller
         """
-        self._controller.set_setpoint(setpoint)
+        if self._type == 'PID' or self._type == 'PROCESS_CONTROL':
+            self._controller.set_setpoint(setpoint)
 
     def get_manual_value(self):
         """ Return the control value for manual mode.
 
             @return float: control value for manual mode
         """
-        return self._controller.get_manual_value()
+
+        if self._type == 'PID':
+            return self._controller.get_manual_value()
+        else:
+            return 0
 
     def set_manual_value(self, manualvalue):
         """ Set the control value for manual mode.
 
             @param float manualvalue: control value for manual mode of controller
         """
-        return self._controller.set_manual_value(manualvalue)
+        if self._type == 'PID':
+            return self._controller.set_manual_value(manualvalue)
+        else:
+            return 0
+
 
     def get_enabled(self):
         """ See if the PID controller is controlling a process.
@@ -220,7 +252,10 @@ class PIDLogic(GenericLogic):
 
             @return list(float): (minimum, maximum) values of the control actuator
         """
-        return self._controller.get_control_limits()
+        if self._type == 'PID' or self._type == 'PROCESS_CONTROL':
+            return self._controller.get_control_limits()
+        else:
+            return 0
 
     def set_control_limits(self, limits):
         """ Set the minimum and maximum value of the control actuator.
@@ -229,18 +264,30 @@ class PIDLogic(GenericLogic):
 
             This function does nothing, control limits are handled by the control module
         """
-        return self._controller.set_control_limits(limits)
+        if self._type == 'PID':
+            return self._controller.set_control_limits(limits)
+        else:
+            return 0
 
     def get_pv(self):
         """ Get current process input value.
 
             @return float: current process input value
         """
-        return self.history[0, -1]
+        if self._type == 'PID' or self._type == 'PROCESS_CONTROL':
+            return self.history[0, -1]
+        else:
+            return 0
+
 
     def get_cv(self):
         """ Get current control output value.
 
             @return float: control output value
         """
-        return self.history[1, -1]
+        if self._type == 'PID' or self._type == 'PROCESS_CONTROL':
+            return self.history[1, -1]
+        else:
+            return 0
+
+
