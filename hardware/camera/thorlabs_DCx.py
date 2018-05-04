@@ -179,11 +179,13 @@ class CameraThorlabs(Base, CameraInterface):
         # Convert to numpy 2d array of float from 0 to 1
         img_array = np.frombuffer(c_img, dtype=ctypes.c_ubyte)
         img_array = img_array.astype(float)
-        img_array = img_array/2**self._bit_depth
         img_array.shape = np.array((self._height, self._width))
 
         # self._acquiring = False
         return img_array
+
+    def get_bit_depth(self):
+        return self._bit_depth
 
     def set_exposure(self, time):
 

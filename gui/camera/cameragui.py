@@ -118,7 +118,9 @@ class CameraGUI(GUIBase):
 
     def update_data(self):
         raw_data_image = self._logic.get_last_image()
-        self._image.setImage(image=raw_data_image, levels=(0., 1))
+        levels = (0., 1.)
+        self._image.setImage(image=raw_data_image)
+        # self._image.setImage(image=raw_data_image, levels=levels)
 
     def updateView(self):
         pass
