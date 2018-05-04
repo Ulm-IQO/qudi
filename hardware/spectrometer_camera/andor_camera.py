@@ -67,6 +67,8 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
     cam = None
     _acquiring = False
     _last_acquisition_mode = None  # useful if config changes during acq
+    _supported_read_mode = [ReadMode.FVB.value, ReadMode.IMAGE.value]  # TODO: read this from camera
+    _max_cooling = -100
 
     def on_activate(self):
 
@@ -95,14 +97,20 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
         return self._width, self._height
 
     def set_read_mode(self, mode):
-        if mode in self.get_constraints().read_mode:
+        if mode in self._supported_read_mode:
             self._read_mode = mode
-            self.cam.SetReadMode(mode.value)
+            self.cam.SetReadMode(mode)
+            if self._read_mode==4:  #image
+                self.set_image(1,1,1, self._width, 1, self._height)
         else:
+            self.log.info('Read mode is not supported')
             return -1
 
     def get_read_mode(self):
         return self._read_mode
+
+    def get_bit_depth(self):
+        return 8  # clean this
 
     def set_image(self, hbin, vbin, hstart, hend, vstart, vend):
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
@@ -120,15 +128,18 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
         else:
             return -1
 
+    def stop_acquisition(self):
+        pass
+
     def get_acquired_data(self):
         data = []
         self.cam.GetAcquiredData(data)
         data = np.array(data, dtype=np.double)
         result = []
-        if self._last_acquisition_mode == ReadMode.FVB:
+        if self._last_acquisition_mode == ReadMode.FVB.value:
             result = [data]
-        elif self._last_acquisition_mode == ReadMode.IMAGE:
-            result = np.reshape(data, (self._wdith, self._height))
+        elif self._last_acquisition_mode == ReadMode.IMAGE.value:
+            result = np.reshape(data, (self._width, self._height))
 
         self._acquiring = False
         return result
@@ -169,7 +180,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
         return float(self.cam.GetTemperature())
 
     def set_setpoint_temperature(self, temperature):
-        if temperature < self.get_constraints().max_cooling:
+        if temperature < self._max_cooling:
             return -1
         self._temperature = temperature
         error_code = self.cam.SetTemperature(int(temperature))
@@ -187,28 +198,47 @@ class ScectrometerCameraAndor(Base, CameraInterface, ProcessInterface, ProcessCo
     #
     # Process interface to control cooling
 
-    def getProcessValue(self):
+    def get_process_value(self):
         return self.get_measured_temperature()
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         return '°C', 'Degrees Celsius'
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         self.set_setpoint_temperature(value)
 
-    def getControlValue(self):
+    def get_control_value(self):
         return self.get_setpoint_temperature()
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         return self.getProcessUnit()
 
-    def getControlLimits(self):
+    def get_control_limits(self):
         return -100, 0
+
+    def get_enabled(self):
+        return self.get_cooler_on_state()
+
+    def set_enabled(self, enabled):
+        self.set_cooler_on_state(enabled)
+
+    # Hack for uniformity with PIDInterface
+    def set_setpoint(self, value):
+        self.set_setpoint_temperature(value)
+
+    def get_setpoint(self):
+        return self.get_setpoint_temperature()
+
+    # TODO: GUI IS ACCESSING THIS DIRECTLY : THIS IS VERY DIRTY :(
+    def get_extra(self):
+        pass
+
+
 
     #To be compatible with simple spectro interface
 
     def recordSpectrum(self):
-        self.set_read_mode(ReadMode.FVB)
+        self.set_read_mode(ReadMode.FVB.value)
         self.start_acqusition()
         data = self.get_aquired_data()[0]
         length = len(data)
