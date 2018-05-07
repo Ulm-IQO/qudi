@@ -597,21 +597,6 @@
             </item>
             <item>
              <property name="text">
-              <string>Log(x)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Log(y)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
-              <string>Log(x)Log(y)</string>
-             </property>
-            </item>
-            <item>
-             <property name="text">
               <string>Delta</string>
              </property>
             </item>
