@@ -66,7 +66,7 @@ class QdplotterGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
 
-        self._qdplot_logic = self.get_connector('qdplotlogic1')
+        self._qdplot_logic = self.qdplotlogic1()
 
         #####################
         # Configuring the dock widgets

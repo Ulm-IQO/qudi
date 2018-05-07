@@ -39,7 +39,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
     def on_activate(self):
         """ Activate module.
         """
-        self._fitLogic = self.get_connector('fitlogic')
+        self._fitLogic = self.fitlogic()
         self.exposure = 0.1
 
     def on_deactivate(self):

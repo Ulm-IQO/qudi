@@ -56,7 +56,7 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._fit_logic = self.get_connector('fitlogic')
+        self._fit_logic = self.fitlogic()
 
         # put randomly distributed NVs in the scanner, first the x,y scan
         self._points = np.empty([self._num_points, 7])

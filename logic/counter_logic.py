@@ -104,8 +104,8 @@ class CounterLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # Connect to hardware and save logic
-        self._counting_device = self.get_connector('counter1')
-        self._save_logic = self.get_connector('savelogic')
+        self._counting_device = self.counter1()
+        self._save_logic = self.savelogic()
 
         # Recall saved app-parameters
         if 'counting_mode' in self._statusVariables:
