@@ -1962,13 +1962,10 @@ class PulsedMeasurementGui(GUIBase):
 
         # Recall StatusVars into widgets
         self._pa.ana_param_errorbars_CheckBox.blockSignals(True)
-        self._pa.second_plot_ComboBox.blockSignals(True)
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
-        index = self._pa.second_plot_ComboBox.findText(
-            self.pulsedmasterlogic().alternative_data_type)
-        self._pa.second_plot_ComboBox.setCurrentIndex(index)
         self._pa.ana_param_errorbars_CheckBox.blockSignals(False)
-        self._pa.second_plot_ComboBox.blockSignals(False)
+        self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
+        self._pa.ana_param_delta_CheckBox.setEnabled(False)  # FIXME: non-functional CheckBox
 
         # Update measurement, microwave and fast counter settings from logic
         self.measurement_settings_updated(self.pulsedmasterlogic().measurement_settings)
@@ -2023,6 +2020,9 @@ class PulsedMeasurementGui(GUIBase):
         signal_data = self.pulsedmasterlogic().signal_data
         signal_alt_data = self.pulsedmasterlogic().signal_alt_data
         measurement_error = self.pulsedmasterlogic().measurement_error
+
+        # Adjust number of data sets to plot
+        self.set_plot_dimensions()
 
         # Change second plot combobox if it has been changed in the logic
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
@@ -2288,7 +2288,7 @@ class PulsedMeasurementGui(GUIBase):
                 [str(i) for i in range(1, settings_dict['number_of_lasers'] + 1)])
         if 'alternating' in settings_dict:
             self._pa.ana_param_alternating_CheckBox.setChecked(settings_dict['alternating'])
-            self.toggle_alternating_plots(settings_dict['alternating'])
+            # self.toggle_alternating_plots(settings_dict['alternating'])
         if 'laser_ignore_list' in settings_dict:
             self._pa.ana_param_ignore_first_CheckBox.setChecked(
                 0 in settings_dict['laser_ignore_list'])
@@ -2321,30 +2321,36 @@ class PulsedMeasurementGui(GUIBase):
         self._pe.laserpulses_ComboBox.blockSignals(False)
         return
 
-    def toggle_alternating_plots(self, alternating):
+    def set_plot_dimensions(self):
         """
 
         @param alternating:
         @return:
         """
-        if alternating:
-            if self.signal_image2 not in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
-            if self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items() and self.signal_image_error_bars2 not in self._pa.pulse_analysis_PlotWidget.items():
-                self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
-            if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
-                self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
-            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
-                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
-        else:
+        number_of_signals = self.pulsedmasterlogic().signal_data.shape[0] - 1
+        number_of_alt_signals = self.pulsedmasterlogic().signal_alt_data.shape[0] - 1
+
+        if number_of_signals == 1:
             if self.signal_image2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image2)
             if self.signal_image_error_bars2 in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.removeItem(self.signal_image_error_bars2)
             if self.measuring_error_image2 in self._pe.measuring_error_PlotWidget.items():
                 self._pe.measuring_error_PlotWidget.removeItem(self.measuring_error_image2)
+        else:
+            if self.signal_image2 not in self._pa.pulse_analysis_PlotWidget.items():
+                self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image2)
+            if self.signal_image_error_bars in self._pa.pulse_analysis_PlotWidget.items() and self.signal_image_error_bars2 not in self._pa.pulse_analysis_PlotWidget.items():
+                self._pa.pulse_analysis_PlotWidget.addItem(self.signal_image_error_bars2)
+            if self.measuring_error_image2 not in self._pe.measuring_error_PlotWidget.items():
+                self._pe.measuring_error_PlotWidget.addItem(self.measuring_error_image2)
+
+        if number_of_alt_signals == 1:
             if self.second_plot_image2 in self._pa.pulse_analysis_second_PlotWidget.items():
                 self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_plot_image2)
+        else:
+            if self.second_plot_image2 not in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         return
 
     def toggle_measurement_settings_editor(self, hide_editor):
@@ -2392,11 +2398,7 @@ class PulsedMeasurementGui(GUIBase):
     def second_plot_changed(self, second_plot):
         """ This method handles the second plot"""
         self._pa.second_plot_GroupBox.setVisible(second_plot != 'None')
-
-        if second_plot == 'Delta' and not self._pa.ana_param_alternating_CheckBox.isChecked():
-            self.log.error('Delta can only be selected for the second plot if the sequence is '
-                           'alternating. Keeping previous valid plot type instead.')
-            second_plot = self.pulsedmasterlogic().alternative_data_type
+        self._pa.second_plot_GroupBox.setTitle(second_plot)
 
         if second_plot != self._pa.second_plot_ComboBox.currentText():
             self._pa.second_plot_ComboBox.blockSignals(True)
@@ -2406,7 +2408,6 @@ class PulsedMeasurementGui(GUIBase):
 
         if second_plot != self.pulsedmasterlogic().alternative_data_type:
             self.pulsedmasterlogic().set_alternative_data_type(second_plot)
-            self._pa.second_plot_GroupBox.setTitle(second_plot)
         return
 
     ###########################################################################
