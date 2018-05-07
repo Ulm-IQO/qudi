@@ -1206,6 +1206,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                    parameters=parameters,
                                    filepath=filepath,
                                    filelabel=filelabel,
+                                   filetype='text',
                                    fmt='%d',
                                    delimiter='\t')
 
@@ -1403,7 +1404,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, timestamp=timestamp,
                                    parameters=parameters, fmt='%.15e',
-                                   filepath=filepath, filelabel=filelabel,
+                                   filepath=filepath, filelabel=filelabel, filetype='text',
                                    delimiter='\t', plotfig=fig)
 
         #####################################################################
@@ -1431,7 +1432,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         self._save_logic.save_data(data, timestamp=timestamp,
                                    parameters=parameters, fmt='%d',
-                                   filepath=filepath, filelabel=filelabel,
+                                   filepath=filepath, filelabel=filelabel, filetype='text',
                                    delimiter='\t')
         return filepath
 
