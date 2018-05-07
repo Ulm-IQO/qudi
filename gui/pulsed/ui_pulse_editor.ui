@@ -886,6 +886,9 @@ last</string>
          <height>16777215</height>
         </size>
        </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="1" column="4">
@@ -907,6 +910,9 @@ last</string>
          <width>16777215</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
