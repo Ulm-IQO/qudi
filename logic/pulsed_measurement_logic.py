@@ -31,6 +31,7 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
 from logic.generic_logic import GenericLogic
+from logic.pulse_extractor import PulseExtractor
 
 
 class PulsedMeasurementLogic(GenericLogic):
@@ -42,12 +43,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
     ## declare connectors
     pulseanalysislogic = Connector(interface='PulseAnalysisLogic')
-    pulseextractionlogic = Connector(interface='PulseExtractionLogic')
     fitlogic = Connector(interface='FitLogic')
     savelogic = Connector(interface='SaveLogic')
     fastcounter = Connector(interface='FastCounterInterface')
     microwave = Connector(interface='MWInterface')
     pulsegenerator = Connector(interface='PulserInterface')
+
+    # Config options
+    # Optional additional paths to import from
+    _extraction_import_path = ConfigOption(name='extraction_import_path', default=None)
+    _analysis_import_path = ConfigOption(name='analysis_import_path', default=None)
 
     # status variables
     # ext. microwave settings
@@ -70,6 +75,9 @@ class PulsedMeasurementLogic(GenericLogic):
     _alternating = StatusVar(default=False)
     _laser_ignore_list = StatusVar(default=list())
     _data_units = StatusVar(default=('s', ''))
+
+    # PulseExtractor settings
+    _extraction_parameters = StatusVar(default=None)
 
     # Container to store measurement information about the currently loaded sequence
     _measurement_information = StatusVar(default=dict())
@@ -138,10 +146,12 @@ class PulsedMeasurementLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        # Create an instance of PulseExtractor
+        self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self,
+                                              parameter_dict=self._extraction_parameters,
+                                              import_path=self._extraction_import_path)
         self.pulseanalysislogic().sigAnalysisSettingsUpdated.connect(
             self.sigAnalysisSettingsUpdated)
-        self.pulseextractionlogic().sigExtractionSettingsUpdated.connect(
-            self.sigExtractionSettingsUpdated)
 
         # QTimer must be created here instead of __init__ because otherwise the timer will not run
         # in this logic's thread but in the manager instead.
@@ -184,10 +194,6 @@ class PulsedMeasurementLogic(GenericLogic):
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
-        # Set properties of PulseExtractionLogic
-        self.pulseextractionlogic().fast_counter_settings = self.fast_counter_settings
-        self.pulseextractionlogic().measurement_settings = self.measurement_settings
-        self.pulseextractionlogic().sampling_information = self.sampling_information
         # Set properties of PulseAnalysisLogic
         self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
         self.pulseanalysislogic().measurement_settings = self.measurement_settings
@@ -211,11 +217,12 @@ class PulsedMeasurementLogic(GenericLogic):
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
+        self._extraction_parameters = self._pulseextractor.full_settings_dict
+
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
         self.pulseanalysislogic().sigAnalysisSettingsUpdated.disconnect()
-        self.pulseextractionlogic().sigExtractionSettingsUpdated.disconnect()
         return
 
     ############################################################################
@@ -281,7 +288,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # Make sure the analysis and extraction logic take the correct settings into account
             self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
-            self.pulseextractionlogic().fast_counter_settings = self.fast_counter_settings
         else:
             self.log.warning('Fast counter is not idle (status: {0}).\n'
                              'Unable to apply new settings.'.format(counter_status))
@@ -555,7 +561,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # pass the information to PulseAnalysisLogic and PulseExtractionLogic
         self.pulseanalysislogic().sampling_information = self._sampling_information
-        self.pulseextractionlogic().sampling_information = self._sampling_information
         return
 
     @property
@@ -584,10 +589,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def extraction_methods(self):
-        if self.fastcounter().is_gated():
-            return self.pulseextractionlogic().gated_extraction_methods
-        else:
-            return self.pulseextractionlogic().ungated_extraction_methods
+        return self._pulseextractor.extraction_methods
 
     @property
     def analysis_settings(self):
@@ -601,7 +603,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def extraction_settings(self):
-        return self.pulseextractionlogic().extraction_settings
+        return self._pulseextractor.extraction_settings
 
     @extraction_settings.setter
     def extraction_settings(self, settings_dict):
@@ -654,7 +656,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Use threadlock to update settings during a running measurement
         with self._threadlock:
-            self.pulseextractionlogic().extraction_settings = settings_dict
+            self._pulseextractor.extraction_settings = settings_dict
+            self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
         return
 
     @QtCore.Slot(dict)
@@ -706,7 +709,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self._measurement_settings_sanity_check()
 
         # Update properties of PulseExtractionLogic and PulseAnalysisLogic
-        self.pulseextractionlogic().measurement_settings = self.measurement_settings
         self.pulseanalysislogic().measurement_settings = self.measurement_settings
 
         # emit update signal for master (GUI or other logic module)
@@ -1064,7 +1066,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.raw_data = self._get_raw_data()
 
                 # extract laser pulses from raw data
-                return_dict = self.pulseextractionlogic().extract_laser_pulses(self.raw_data)
+                return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
                 self.laser_data = return_dict['laser_counts_arr']
 
                 # analyze pulses and get data points for signal array. Also check if extraction
