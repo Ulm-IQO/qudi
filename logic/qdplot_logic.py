@@ -70,7 +70,7 @@ class QdplotLogic(GenericLogic):
         self.set_hlabel()
         self.set_vlabel()
 
-        self._save_logic = self.get_connector('savelogic')
+        self._save_logic = self.savelogic()
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.

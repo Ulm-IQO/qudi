@@ -194,21 +194,21 @@ class MagnetLogic(GenericLogic):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._magnet_device = self.get_connector('magnetstage')
-        self._save_logic = self.get_connector('savelogic')
+        self._magnet_device = self.magnetstage()
+        self._save_logic = self.savelogic()
 
         #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
-        self._optimizer_logic = self.get_connector('optimizerlogic')
-        self._confocal_logic = self.get_connector('scannerlogic')
-        self._counter_logic = self.get_connector('counterlogic')
-        self._odmr_logic = self.get_connector('odmrlogic')
+        self._optimizer_logic = self.optimizerlogic()
+        self._confocal_logic = self.scannerlogic()
+        self._counter_logic = self.counterlogic()
+        self._odmr_logic = self.odmrlogic()
 
-        self._gc_logic = self.get_connector('gatedcounterlogic')
-        self._ta_logic = self.get_connector('traceanalysis')
-        #self._odmr_logic = self.get_connector('odmrlogic')
+        self._gc_logic = self.gatedcounterlogic()
+        self._ta_logic = self.traceanalysis()
+        #self._odmr_logic = self.odmrlogic()
 
-        self._seq_gen_logic = self.get_connector('sequencegeneratorlogic')
+        self._seq_gen_logic = self.sequencegeneratorlogic()
 
         # EXPERIMENTAL:
         # connect now directly signals to the interface methods, so that
@@ -471,8 +471,8 @@ class MagnetLogic(GenericLogic):
         """
 
         # calculate number of steps (those are NOT the number of points!)
-        axis0_num_of_steps = int(axis0_range//axis0_step)
-        axis1_num_of_steps = int(axis1_range//axis1_step)
+        axis0_num_of_steps = int(axis0_range/axis0_step)
+        axis1_num_of_steps = int(axis1_range/axis1_step)
 
         # make an array of movement steps
         axis0_steparray = [axis0_step] * axis0_num_of_steps
@@ -655,16 +655,20 @@ class MagnetLogic(GenericLogic):
 
         # that is for the matrix image. +1 because number of points and not
         # number of steps are needed:
-        num_points_axis0 = int(axis0_range // axis0_step) + 1
-        num_points_axis1 = int(axis1_range // axis1_step) + 1
+        num_points_axis0 = int(axis0_range / axis0_step) + 1
+        num_points_axis1 = int(axis1_range / axis1_step) + 1
         matrix = np.zeros((num_points_axis0, num_points_axis1))
 
+        # Decrease/increase lower/higher bound of axes by half of the step length
+        # in order to display the rectangles in the 2d plot in the gui such that the
+        # measurement position is in the center of the rectangle.
         # data axis0:
-
-        data_axis0 = np.arange(axis0_start, axis0_start + ((axis0_range//axis0_step)+1)*axis0_step, axis0_step)
+        data_axis0 = np.linspace(axis0_start-axis0_step/2, axis0_start+(num_points_axis0-0.5)*axis0_step,
+                                 num_points_axis0)
 
         # data axis1:
-        data_axis1 = np.arange(axis1_start, axis1_start + ((axis1_range//axis1_step)+1)*axis1_step, axis1_step)
+        data_axis1 = np.linspace(axis1_start-axis1_step/2, axis1_start+(num_points_axis1-0.5)*axis1_step,
+                                 num_points_axis1)
 
         return matrix, data_axis0, data_axis1
 
