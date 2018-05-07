@@ -77,7 +77,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _sampling_information = StatusVar(default=dict())
 
     # alternative signal computation settings:
-    _alternative_data_type = StatusVar(default='None')
+    _alternative_data_type = StatusVar(default=None)
     zeropad = StatusVar(default=0)
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
@@ -574,7 +574,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @alternative_data_type.setter
     def alternative_data_type(self, alt_data_type):
-        if isinstance(alt_data_type, str):
+        if isinstance(alt_data_type, str) or alt_data_type is None:
             self.set_alternative_data_type(alt_data_type)
         return
 
@@ -690,7 +690,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 if 'units' in settings_dict:
                     self._data_units = settings_dict.get('units')
 
-            if self.module_state == 'idle':
+            if self.module_state() == 'idle':
                 # Get all other parameters if present
                 if 'controlled_variable' in settings_dict:
                     self._controlled_variable = np.array(settings_dict.get('controlled_variable'),
@@ -918,7 +918,15 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         with self._threadlock:
-            self._alternative_data_type = alt_data_type
+            if alt_data_type == 'Delta' and not self._alternating:
+                if self._alternative_data_type == 'Delta':
+                    self._alternative_data_type = None
+                self.log.error('Can not set "Delta" as alternative data calculation if measurement is '
+                               'not alternating.\n'
+                               'Setting to previous type "{0}".'.format(self.alternative_data_type))
+            else:
+                self._alternative_data_type = alt_data_type
+
             self._compute_alt_data()
             self.sigMeasurementDataUpdated.emit()
         return
@@ -1007,14 +1015,6 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             self.log.error('Unable to invoke setting for "controlled_variable".\n'
                            'Measurement information container is incomplete/invalid.')
-            # number_of_points = self._number_of_lasers - len(self._laser_ignore_list)
-            # if self._alternating:
-            #     number_of_points //= 2
-            # if len(self._controlled_variable) != number_of_points:
-            #     start = self._controlled_variable[0] if len(self._controlled_variable) > 1 else 0
-            #     incr = self._controlled_variable[1] - self._controlled_variable[0] if len(
-            #         self._controlled_variable) > 1 else 1
-            #     self._controlled_variable = np.arange(number_of_points, dtype=float) * incr + start
             return
 
         if 'counting_length' in self._measurement_information:
@@ -1434,37 +1434,34 @@ class PulsedMeasurementLogic(GenericLogic):
         return filepath
 
     def _compute_alt_data(self):
-        """ Computing the fourier transform of the data. """
-        pass
-        #
-        # if self.second_plot_type == 'Delta':
-        #     self.signal_second_plot_x = self.signal_plot_x
-        #     self.signal_second_plot_y = self.signal_plot_y - self.signal_plot_y2
-        #     self.signal_second_plot_y2 = self.signal_plot_y2 - self.signal_plot_y
-        # else:
-        #     # Do sanity checks:
-        #     if len(self.signal_plot_x) < 2:
-        #         self.log.debug('FFT of measurement could not be calculated. Only '
-        #                        'one data point.')
-        #         self.signal_second_plot_x = np.zeros(1)
-        #         self.signal_second_plot_y = np.zeros(1)
-        #         self.signal_second_plot_y2 = np.zeros(1)
-        #         return
-        #
-        #     if self.alternating:
-        #         x_val_dummy, self.signal_second_plot_y2 = units.compute_ft(
-        #             self.signal_plot_x,
-        #             self.signal_plot_y2,
-        #             zeropad_num=0)
-        #
-        #     self.signal_second_plot_x, self.signal_second_plot_y = units.compute_ft(
-        #         self.signal_plot_x,
-        #         self.signal_plot_y,
-        #         zeropad_num=self.zeropad,
-        #         window=self.window,
-        #         base_corr=self.base_corr,
-        #         psd=self.psd)
-        # return
+        """
+        Performing transformations on the measurement data (e.g. fourier transform).
+        """
+        if self._alternative_data_type == 'Delta' and len(self.signal_data) == 3:
+            self.signal_alt_data = np.empty((2, self.signal_data.shape[1]), dtype=float)
+            self.signal_alt_data[0] = self.signal_data[0]
+            self.signal_alt_data[1] = self.signal_data[1] - self.signal_data[2]
+        elif self._alternative_data_type == 'FFT' and self.signal_data.shape[1] >= 2:
+            fft_x, fft_y = units.compute_ft(x_val=self.signal_data[0],
+                                            y_val=self.signal_data[1],
+                                            zeropad_num=self.zeropad,
+                                            window=self.window,
+                                            base_corr=self.base_corr,
+                                            psd=self.psd)
+            self.signal_alt_data = np.empty((len(self.signal_data), len(fft_x)), dtype=float)
+            self.signal_alt_data[0] = fft_x
+            self.signal_alt_data[1] = fft_y
+            for dim in range(2, len(self.signal_data)):
+                dummy, self.signal_alt_data[dim] = units.compute_ft(x_val=self.signal_data[0],
+                                                                    y_val=self.signal_data[dim],
+                                                                    zeropad_num=self.zeropad,
+                                                                    window=self.window,
+                                                                    base_corr=self.base_corr,
+                                                                    psd=self.psd)
+        else:
+            self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
+            self.signal_alt_data[0] = self.signal_data[0]
+        return
 
 
 
