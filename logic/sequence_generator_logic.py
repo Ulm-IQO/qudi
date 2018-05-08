@@ -33,7 +33,7 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
-from logic.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseObjectGenerator
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -58,7 +58,7 @@ class SequenceGeneratorLogic(GenericLogic):
     pulsegenerator = Connector(interface='PulserInterface')
 
     # configuration options
-    _additional_methods_dir = ConfigOption('additional_methods_dir', default='', missing='nothing')
+    _additional_methods_dir = ConfigOption('additional_methods_dir', default=None, missing='nothing')
     _overhead_bytes = ConfigOption('overhead_bytes', default=0, missing='nothing')
 
     # status vars
@@ -111,10 +111,10 @@ class SequenceGeneratorLogic(GenericLogic):
                              'memory overflow during sampling/writing of Pulse objects you must '
                              'set "overhead_bytes".')
         # directory for additional generate methods to import
-        # (other than qudi/logic/predefined_methods)
+        # (other than logic.predefined_generate_methods)
         if 'additional_methods_dir' in config.keys():
             if not os.path.exists(config['additional_methods_dir']):
-                self.additional_methods_dir = None
+                self._additional_methods_dir = None
                 self.log.error('Specified path "{0}" for import of additional generate methods '
                                'does not exist.'.format(config['additional_methods_dir']))
 
@@ -130,6 +130,9 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
+
+        # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
+        self._pog = None
         return
 
     def on_activate(self):
@@ -143,9 +146,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self._update_ensembles_from_tmp_file()
         self._update_sequences_from_tmp_file()
 
-        # Get method definitions for prefined pulse sequences from seperate modules and attach them
-        # to this module.
-        self._attach_predefined_methods()
+        # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
+        self._pog = PulseObjectGenerator(self, import_path=self._additional_methods_dir)
 
         self.__sequence_generation_in_progress = False
         return
@@ -475,68 +477,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
         return
 
-    def _attach_predefined_methods(self):
-        """
-        Retrieve in the folder all files for predefined methods and attach their methods
-        """
-        basic_methods_mod = importlib.import_module('logic.predefined_methods.basic_methods')
-        importlib.reload(basic_methods_mod)
-        self._pog = basic_methods_mod.PulsedObjectGenerator(self.pulse_generator_settings,
-                                                            self.generation_parameters)
-
-        # The assumption is that in the directory predefined_methods, there are
-        # *.py files, which contain only methods (excluding basic_methods.py)!
-        path = os.path.join(get_main_dir(), 'logic', 'predefined_methods')
-        filename_list = [name[:-3] for name in os.listdir(path) if
-                         os.path.isfile(os.path.join(path, name)) and name.endswith(
-                             '.py') and name != 'basic_methods.py']
-
-        # Also attach methods from the non-default additional methods directory if defined in config
-        if self._additional_methods_dir:
-            # attach to path
-            sys.path.append(self._additional_methods_dir)
-            path = self._additional_methods_dir
-            additional_filename_list = [name[:-3] for name in os.listdir(path) if
-                                        os.path.isfile(os.path.join(path, name)) and name.endswith(
-                                            '.py')]
-
-        # Import and attach methods from default directory to PulsedObjectGenerator class
-        for filename in filename_list:
-            mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
-            # To allow changes in predefined methods during runtime by simply reloading the module.
-            importlib.reload(mod)
-            for method in dir(mod):
-                try:
-                    # Check for callable function or method:
-                    ref = getattr(mod, method)
-                    if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
-                        # Bind the method to PulsedObjectGenerator
-                        self._pog.attach_method(ref)
-                except:
-                    self.log.error('It was not possible to bind "{0}" from "{1}" to '
-                                   'PulsedObjectGenerator.'.format(method, filename))
-                    raise
-
-        # Import and attach methods from additional directory to PulsedObjectGenerator class
-        if self._additional_methods_dir:
-            for filename in additional_filename_list:
-                mod = importlib.import_module('logic.predefined_methods.{0}'.format(filename))
-                # To allow changes in predefined methods during runtime by simply reloading the
-                # module.
-                importlib.reload(mod)
-                for method in dir(mod):
-                    try:
-                        # Check for callable function or method:
-                        ref = getattr(mod, method)
-                        if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
-                            # Bind the method to PulsedObjectGenerator
-                            self._pog.attach_method(ref)
-                    except:
-                        self.log.error('It was not possible to bind "{0}" from "{1}" to '
-                                       'PulsedObjectGenerator.'.format(method, filename))
-                        raise
-        return
-
     def _read_settings_from_device(self):
         """
         """
@@ -603,7 +543,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def generate_method_params(self):
-        return self._pog.predefined_generate_params
+        return self._pog.predefined_method_parameters
 
     @property
     def generation_parameters(self):
@@ -685,8 +625,6 @@ class SequenceGeneratorLogic(GenericLogic):
 
             # update settings dict
             self._generation_parameters.update(settings_dict)
-            # update PulsedObjectGenerator
-            self._pog.generation_parameters = self._generation_parameters
         else:
             self.log.error('Unable to apply new sampling settings.\n'
                            'SequenceGeneratorLogic is busy generating a waveform/sequence.')

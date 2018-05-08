@@ -289,6 +289,8 @@ class PulseExtractor(PulseExtractorBase):
 
         @param list instance_list: List containing instances of extractor classes
         """
+        self._ungated_extraction_methods = dict()
+        self._gated_extraction_methods = dict()
         for instance in instance_list:
             for method_name, method_ref in inspect.getmembers(instance, inspect.ismethod):
                 if method_name.startswith('gated_'):
