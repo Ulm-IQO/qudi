@@ -1071,10 +1071,10 @@ class PulsedMeasurementGui(GUIBase):
                     param_label = QtWidgets.QLabel(groupBox)
                     param_label.setText(param_name)
                     # create proper input widget for the parameter depending on default value type
-                    if param['type'] is bool:
+                    if type(param) is bool:
                         input_obj = QtWidgets.QCheckBox(groupBox)
-                        input_obj.setChecked(param['default'])
-                    elif param['type'] is float:
+                        input_obj.setChecked(param)
+                    elif type(param) is float:
                         input_obj = ScienDSpinBox(groupBox)
                         if 'amp' in param_name or 'volt' in param_name:
                             input_obj.setSuffix('V')
@@ -1083,14 +1083,14 @@ class PulsedMeasurementGui(GUIBase):
                         elif 'time' in param_name or 'period' in param_name or 'tau' in param_name:
                             input_obj.setSuffix('s')
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                        input_obj.setValue(param['default'])
-                    elif param['type'] is int:
+                        input_obj.setValue(param)
+                    elif type(param) is int:
                         input_obj = ScienSpinBox(groupBox)
-                        input_obj.setValue(param['default'])
-                    elif param['type'] is str:
+                        input_obj.setValue(param)
+                    elif type(param) is str:
                         input_obj = QtWidgets.QLineEdit(groupBox)
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
-                        input_obj.setText(param['default'])
+                        input_obj.setText(param)
                     else:
                         self.log.error('The predefined method "{0}" has an argument "{1}" which is '
                                        'has no default argument or an invalid type (str, float, '

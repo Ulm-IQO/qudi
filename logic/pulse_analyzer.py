@@ -104,7 +104,7 @@ class PulseAnalyzer(PulseAnalyzerBase):
         analyzer_instances = [cls(pulsedmeasurementlogic) for cls in analyzer_classes]
 
         # add references to all analysis methods in each instance to a dict
-        self.__populate_method_dicts(instance_list=analyzer_instances)
+        self.__populate_method_dict(instance_list=analyzer_instances)
 
         # populate "_parameters" dictionary from analysis method signatures
         self.__populate_parameter_dict()
@@ -265,13 +265,14 @@ class PulseAnalyzer(PulseAnalyzerBase):
                 class_list.extend(tmp_list)
         return class_list
 
-    def __populate_method_dicts(self, instance_list):
+    def __populate_method_dict(self, instance_list):
         """
         Helper method to populate the dictionaries containing all references to callable analysis
         methods contained in analyzer instances passed to this method.
 
         @param list instance_list: List containing instances of analyzer classes
         """
+        self._analysis_methods = dict()
         for instance in instance_list:
             for method_name, method_ref in inspect.getmembers(instance, inspect.ismethod):
                 if method_name.startswith('analyse_'):
