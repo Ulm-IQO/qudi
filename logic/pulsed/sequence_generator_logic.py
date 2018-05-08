@@ -33,7 +33,8 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir
 from logic.generic_logic import GenericLogic
-from logic.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseObjectGenerator
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseObjectGenerator
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -94,18 +95,17 @@ class SequenceGeneratorLogic(GenericLogic):
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
 
-    sigPredefinedSequenceGenerated = QtCore.Signal(object)  # TODO: Needed???
+    sigPredefinedSequenceGenerated = QtCore.Signal(object)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self.log.debug('The following configuration was found.')
-        # checking for the right configuration
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
 
         # Additional handling of config options
-        # Byte size of the max. memory usage during sampling process
+        # approximate byte size of the max. memory usage during sampling process
         if 'overhead_bytes' not in config.keys():
             self.log.warning('No max. memory overhead specified in config.\nIn order to avoid '
                              'memory overflow during sampling/writing of Pulse objects you must '
@@ -147,7 +147,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self._update_sequences_from_tmp_file()
 
         # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
-        self._pog = PulseObjectGenerator(self, import_path=self._additional_methods_dir)
+        self._pog = PulseObjectGenerator(sequencegeneratorlogic=self,
+                                         import_path=self._additional_methods_dir)
 
         self.__sequence_generation_in_progress = False
         return

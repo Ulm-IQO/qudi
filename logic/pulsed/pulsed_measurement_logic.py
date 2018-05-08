@@ -31,8 +31,8 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
 from logic.generic_logic import GenericLogic
-from logic.pulse_extractor import PulseExtractor
-from logic.pulse_analyzer import PulseAnalyzer
+from logic.pulsed.pulse_extractor import PulseExtractor
+from logic.pulsed.pulse_analyzer import PulseAnalyzer
 
 
 class PulsedMeasurementLogic(GenericLogic):

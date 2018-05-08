@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from scipy import ndimage
 
-from logic.pulse_extractor import PulseExtractorBase
+from logic.pulsed.pulse_extractor import PulseExtractorBase
 
 
 class BasicPulseExtractor(PulseExtractorBase):
