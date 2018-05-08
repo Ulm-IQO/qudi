@@ -93,7 +93,7 @@ class PulseExtractor(PulseExtractorBase):
         self._current_extraction_method = None
 
         # import path for extraction modules from default directory (logic.pulse_extraction_methods)
-        path_list = [os.path.join(get_main_dir(), 'logic', 'pulse_extraction_methods')]
+        path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'pulse_extraction_methods')]
         # import path for extraction modules from non-default directory if a path has been given
         if isinstance(import_path, str):
             path_list.append(import_path)

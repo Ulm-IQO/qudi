@@ -22,12 +22,12 @@ import numpy as np
 import copy
 
 from qtpy import QtCore, QtGui, QtWidgets
-from collections import OrderedDict
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
 from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
-from logic.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble, PulseSequence
-import logic.sampling_functions as sf
+from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
+from logic.pulsed.pulse_objects import PulseSequence
+import logic.pulsed.sampling_functions as sf
 
 
 class BlockEditorTableModel(QtCore.QAbstractTableModel):

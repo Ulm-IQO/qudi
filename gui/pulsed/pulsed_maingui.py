@@ -34,9 +34,7 @@ from qtpy import QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 
 
-# FIXME: Display the Pulse
-# FIXME: save the length in sample points (bins)
-# FIXME: adjust the length to the bins
+# TODO: Display the Pulse graphically (similar to AWG application)
 
 
 class PulsedMeasurementMainWindow(QtWidgets.QMainWindow):

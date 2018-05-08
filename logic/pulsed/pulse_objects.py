@@ -27,7 +27,7 @@ import inspect
 import importlib
 from collections import OrderedDict
 
-import logic.sampling_functions as sf
+import logic.pulsed.sampling_functions as sf
 from core.util.modules import get_main_dir
 
 
@@ -808,7 +808,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         self._generate_method_parameters = dict()
 
         # import path for generator modules from default dir (logic.predefined_generate_methods)
-        path_list = [os.path.join(get_main_dir(), 'logic', 'predefined_generate_methods')]
+        path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'predefined_generate_methods')]
         # import path for generator modules from non-default directory if a path has been given
         if isinstance(import_path, str):
             path_list.append(import_path)
