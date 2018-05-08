@@ -32,6 +32,7 @@ from core.util.network import netobtain
 from core.util import units
 from logic.generic_logic import GenericLogic
 from logic.pulse_extractor import PulseExtractor
+from logic.pulse_analyzer import PulseAnalyzer
 
 
 class PulsedMeasurementLogic(GenericLogic):
@@ -42,7 +43,6 @@ class PulsedMeasurementLogic(GenericLogic):
     _modtype = 'logic'
 
     ## declare connectors
-    pulseanalysislogic = Connector(interface='PulseAnalysisLogic')
     fitlogic = Connector(interface='FitLogic')
     savelogic = Connector(interface='SaveLogic')
     fastcounter = Connector(interface='FastCounterInterface')
@@ -78,6 +78,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # PulseExtractor settings
     _extraction_parameters = StatusVar(default=None)
+    _analysis_parameters = StatusVar(default=None)
 
     # Container to store measurement information about the currently loaded sequence
     _measurement_information = StatusVar(default=dict())
@@ -150,8 +151,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self,
                                               parameter_dict=self._extraction_parameters,
                                               import_path=self._extraction_import_path)
-        self.pulseanalysislogic().sigAnalysisSettingsUpdated.connect(
-            self.sigAnalysisSettingsUpdated)
+        self._pulseanalyzer = PulseAnalyzer(pulsedmeasurementlogic=self,
+                                            parameter_dict=self._analysis_parameters,
+                                            import_path=self._analysis_import_path)
 
         # QTimer must be created here instead of __init__ because otherwise the timer will not run
         # in this logic's thread but in the manager instead.
@@ -194,11 +196,6 @@ class PulsedMeasurementLogic(GenericLogic):
         # initialize arrays for the measurement data
         self._initialize_data_arrays()
 
-        # Set properties of PulseAnalysisLogic
-        self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
-        self.pulseanalysislogic().measurement_settings = self.measurement_settings
-        self.pulseanalysislogic().sampling_information = self.sampling_information
-
         # recalled saved raw data dict key
         self._recalled_raw_data_tag = None
 
@@ -222,7 +219,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
-        self.pulseanalysislogic().sigAnalysisSettingsUpdated.disconnect()
         return
 
     ############################################################################
@@ -285,9 +281,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self.__fast_counter_gates = self.fastcounter().configure(self.__fast_counter_binwidth,
                                                                      self.__fast_counter_record_length,
                                                                      self.__fast_counter_gates)
-
-            # Make sure the analysis and extraction logic take the correct settings into account
-            self.pulseanalysislogic().fast_counter_settings = self.fast_counter_settings
         else:
             self.log.warning('Fast counter is not idle (status: {0}).\n'
                              'Unable to apply new settings.'.format(counter_status))
@@ -558,9 +551,6 @@ class PulsedMeasurementLogic(GenericLogic):
             self._sampling_information = info_dict
         else:
             self._sampling_information = dict()
-
-        # pass the information to PulseAnalysisLogic and PulseExtractionLogic
-        self.pulseanalysislogic().sampling_information = self._sampling_information
         return
 
     @property
@@ -585,7 +575,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def analysis_methods(self):
-        return self.pulseanalysislogic().analysis_methods
+        return self._pulseanalyzer.analysis_methods
 
     @property
     def extraction_methods(self):
@@ -593,7 +583,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def analysis_settings(self):
-        return self.pulseanalysislogic().analysis_settings
+        return self._pulseanalyzer.analysis_settings
 
     @analysis_settings.setter
     def analysis_settings(self, settings_dict):
@@ -632,7 +622,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Use threadlock to update settings during a running measurement
         with self._threadlock:
-            self.pulseanalysislogic().analysis_settings = settings_dict
+            self._pulseanalyzer.analysis_settings = settings_dict
+            self.sigAnalysisSettingsUpdated.emit(self.analysis_settings)
         return
 
     @QtCore.Slot(dict)
@@ -707,9 +698,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Perform sanity checks on settings
         self._measurement_settings_sanity_check()
-
-        # Update properties of PulseExtractionLogic and PulseAnalysisLogic
-        self.pulseanalysislogic().measurement_settings = self.measurement_settings
 
         # emit update signal for master (GUI or other logic module)
         self.sigMeasurementSettingsUpdated.emit(self.measurement_settings)
@@ -1072,7 +1060,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 # analyze pulses and get data points for signal array. Also check if extraction
                 # worked (non-zero array returned).
                 if self.laser_data.any():
-                    tmp_signal, tmp_error = self.pulseanalysislogic().analyze_data(self.laser_data)
+                    tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
+                        self.laser_data)
                 else:
                     tmp_signal = np.zeros(self.laser_data.shape[0])
                     tmp_error = np.zeros(self.laser_data.shape[0])

@@ -1,99 +1,127 @@
+# -*- coding: utf-8 -*-
+"""
+This file contains basic pulse analysis methods for Qudi.
+
+Qudi is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Qudi is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Qudi. If not, see <http://www.gnu.org/licenses/>.
+
+Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
+top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
+"""
+
 import numpy as np
 
+from logic.pulse_analyzer import PulseAnalyzerBase
 
-def analyse_mean_norm(laser_data, fast_counter_settings, signal_start=0.0, signal_end=200e-9, norm_start=300e-9, norm_end=500e-9):
+
+class BasicPulseAnalyzer(PulseAnalyzerBase):
     """
 
-    @param laser_data:
-    @param fast_counter_settings:
-    @param signal_start:
-    @param signal_end:
-    @param norm_start:
-    @param norm_end:
-    @return:
     """
-    # Get number of lasers
-    num_of_lasers = laser_data.shape[0]
-    # Get counter bin width
-    bin_width = fast_counter_settings.get('bin_width')
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-    if not isinstance(bin_width, float):
-        return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
+    def analyse_mean_norm(self, laser_data, signal_start=0.0, signal_end=200e-9, norm_start=300e-9,
+                          norm_end=500e-9):
+        """
 
-    # Convert the times in seconds to bins (i.e. array indices)
-    signal_start_bin = round(signal_start / bin_width)
-    signal_end_bin = round(signal_end / bin_width)
-    norm_start_bin = round(norm_start / bin_width)
-    norm_end_bin = round(norm_end / bin_width)
+        @param laser_data:
+        @param signal_start:
+        @param signal_end:
+        @param norm_start:
+        @param norm_end:
+        @return:
+        """
+        # Get number of lasers
+        num_of_lasers = laser_data.shape[0]
+        # Get counter bin width
+        bin_width = self.fast_counter_settings.get('bin_width')
 
-    # initialize data arrays for signal and measurement error
-    signal_data = np.empty(num_of_lasers, dtype=float)
-    error_data = np.empty(num_of_lasers, dtype=float)
+        if not isinstance(bin_width, float):
+            return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
 
-    # loop over all laser pulses and analyze them
-    for ii, laser_arr in enumerate(laser_data):
-        # calculate the sum and mean of the data in the normalization window
-        tmp_data = laser_arr[norm_start_bin:norm_end_bin]
-        reference_sum = np.sum(tmp_data)
-        reference_mean = (reference_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
+        # Convert the times in seconds to bins (i.e. array indices)
+        signal_start_bin = round(signal_start / bin_width)
+        signal_end_bin = round(signal_end / bin_width)
+        norm_start_bin = round(norm_start / bin_width)
+        norm_end_bin = round(norm_end / bin_width)
 
-        # calculate the sum and mean of the data in the signal window
-        tmp_data = laser_arr[signal_start_bin:signal_end_bin]
-        signal_sum = np.sum(tmp_data)
-        signal_mean = (signal_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
+        # initialize data arrays for signal and measurement error
+        signal_data = np.empty(num_of_lasers, dtype=float)
+        error_data = np.empty(num_of_lasers, dtype=float)
 
-        # Calculate normalized signal while avoiding division by zero
-        if reference_mean > 0 and signal_mean >= 0:
-            signal_data[ii] = signal_mean / reference_mean
-        else:
-            signal_data[ii] = 0.0
+        # loop over all laser pulses and analyze them
+        for ii, laser_arr in enumerate(laser_data):
+            # calculate the sum and mean of the data in the normalization window
+            tmp_data = laser_arr[norm_start_bin:norm_end_bin]
+            reference_sum = np.sum(tmp_data)
+            reference_mean = (reference_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
 
-        # Calculate measurement error while avoiding division by zero
-        if reference_sum > 0 and signal_sum > 0:
-            # calculate with respect to gaussian error 'evolution'
-            error_data[ii] = signal_data[ii] * np.sqrt(1 / signal_sum + 1 / reference_sum)
-        else:
-            error_data[ii] = 0.0
+            # calculate the sum and mean of the data in the signal window
+            tmp_data = laser_arr[signal_start_bin:signal_end_bin]
+            signal_sum = np.sum(tmp_data)
+            signal_mean = (signal_sum / len(tmp_data)) if len(tmp_data) != 0 else 0.0
 
-    return signal_data, error_data
+            # Calculate normalized signal while avoiding division by zero
+            if reference_mean > 0 and signal_mean >= 0:
+                signal_data[ii] = signal_mean / reference_mean
+            else:
+                signal_data[ii] = 0.0
 
+            # Calculate measurement error while avoiding division by zero
+            if reference_sum > 0 and signal_sum > 0:
+                # calculate with respect to gaussian error 'evolution'
+                error_data[ii] = signal_data[ii] * np.sqrt(1 / signal_sum + 1 / reference_sum)
+            else:
+                error_data[ii] = 0.0
 
-def analyse_mean(laser_data, fast_counter_settings, signal_start=0.0, signal_end=200e-9):
-    """
+        return signal_data, error_data
 
-    @param laser_data:
-    @param fast_counter_settings:
-    @param signal_start:
-    @param signal_end:
-    @return:
-    """
-    # Get number of lasers
-    num_of_lasers = laser_data.shape[0]
-    # Get counter bin width
-    bin_width = fast_counter_settings.get('bin_width')
+    def analyse_mean(self, laser_data, signal_start=0.0, signal_end=200e-9):
+        """
 
-    if not isinstance(bin_width, float):
-        return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
+        @param laser_data:
+        @param signal_start:
+        @param signal_end:
+        @return:
+        """
+        # Get number of lasers
+        num_of_lasers = laser_data.shape[0]
+        # Get counter bin width
+        bin_width = self.fast_counter_settings.get('bin_width')
 
-    # Convert the times in seconds to bins (i.e. array indices)
-    signal_start_bin = round(signal_start / bin_width)
-    signal_end_bin = round(signal_end / bin_width)
+        if not isinstance(bin_width, float):
+            return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
 
-    # initialize data arrays for signal and measurement error
-    signal_data = np.empty(num_of_lasers, dtype=float)
-    error_data = np.empty(num_of_lasers, dtype=float)
+        # Convert the times in seconds to bins (i.e. array indices)
+        signal_start_bin = round(signal_start / bin_width)
+        signal_end_bin = round(signal_end / bin_width)
 
-    # loop over all laser pulses and analyze them
-    for ii, laser_arr in enumerate(laser_data):
-        # calculate the sum and mean of the data in the signal window
-        signal_mean = laser_arr[signal_start_bin:signal_end_bin].mean()
+        # initialize data arrays for signal and measurement error
+        signal_data = np.empty(num_of_lasers, dtype=float)
+        error_data = np.empty(num_of_lasers, dtype=float)
 
-        # Avoid numpy C type variables overflow and NaN values
-        if signal_mean < 0 or signal_mean != signal_mean:
-            signal_data[ii] = 0.0
-            error_data[ii] = 0.0
-        else:
-            signal_data[ii] = signal_mean
-            error_data[ii] = np.sqrt(signal_mean)
+        # loop over all laser pulses and analyze them
+        for ii, laser_arr in enumerate(laser_data):
+            # calculate the sum and mean of the data in the signal window
+            signal_mean = laser_arr[signal_start_bin:signal_end_bin].mean()
 
-    return signal_data, error_data
+            # Avoid numpy C type variables overflow and NaN values
+            if signal_mean < 0 or signal_mean != signal_mean:
+                signal_data[ii] = 0.0
+                error_data[ii] = 0.0
+            else:
+                signal_data[ii] = signal_mean
+                error_data[ii] = np.sqrt(signal_mean)
+
+        return signal_data, error_data

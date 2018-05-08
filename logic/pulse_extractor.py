@@ -230,7 +230,7 @@ class PulseExtractor(PulseExtractorBase):
 
         @param method: reference to a callable extraction method
         @return dict: A dictionary containing the argument keywords for <method> and corresponding
-                      values from PulseExtractionLogic attributes.
+                      values from self._parameters.
         """
         kwargs_dict = dict()
         method_signature = inspect.signature(method)
@@ -256,9 +256,6 @@ class PulseExtractor(PulseExtractorBase):
         @param iterable paths: iterable containing paths to import modules from
         @return list: A list of imported valid extractor classes
         """
-        if not isinstance(paths, (list, tuple, set)):
-            return
-
         class_list = list()
         for path in paths:
             if not os.path.exists(path):
@@ -280,7 +277,7 @@ class PulseExtractor(PulseExtractorBase):
                 mod = importlib.import_module('{0}'.format(module_name))
                 importlib.reload(mod)
                 # get all extractor class references defined in the module
-                tmp_list = [m[1] for m in inspect.getmembers(mod, self.__check_extractor_class)]
+                tmp_list = [m[1] for m in inspect.getmembers(mod, self.__is_extractor_class)]
                 # append to class_list
                 class_list.extend(tmp_list)
         return class_list
@@ -311,7 +308,7 @@ class PulseExtractor(PulseExtractorBase):
         return
 
     @staticmethod
-    def __check_extractor_class(obj):
+    def __is_extractor_class(obj):
         """
         Helper method to check if an object is a valid extractor class.
 
