@@ -20,12 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Connector, StatusVar
+from core.module import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 import numpy as np
-from logic.sampling_functions import Sin
-from logic.pulse_objects import PulseBlock, PulseBlockElement
 
 
 class PulsedMasterLogic(GenericLogic):

@@ -92,7 +92,7 @@ class PulseAnalyzer(PulseAnalyzerBase):
         self._current_analysis_method = None
 
         # import path for analysis modules from default directory (logic.pulse_analysis_methods)
-        path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed_analysis_methods')]
+        path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'pulsed_analysis_methods')]
         # import path for analysis modules from non-default directory if a path has been given
         if isinstance(import_path, str):
             path_list.append(import_path)

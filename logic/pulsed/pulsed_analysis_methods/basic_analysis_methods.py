@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 
-from logic.pulse_analyzer import PulseAnalyzerBase
+from logic.pulsed.pulse_analyzer import PulseAnalyzerBase
 
 
 class BasicPulseAnalyzer(PulseAnalyzerBase):
