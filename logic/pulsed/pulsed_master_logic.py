@@ -557,18 +557,15 @@ class PulsedMasterLogic(GenericLogic):
             self.sigDoFit.emit(fit_function)
         return
 
-    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_alt_data):
+    def save_measurement_data(self, tag, with_error):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
-        @param str controlled_val_unit: unit of the x axis of the plot
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
-        @param bool save_alt_data: select whether the second plot (FFT, diff etc.) is saved
         """
-        self.pulsedmeasurementlogic().save_measurement_data(controlled_val_unit, tag, with_error,
-                                                            save_alt_data)
+        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error)
         return
 
     #######################################################################
