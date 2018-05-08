@@ -21,8 +21,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import copy
+import os
+import sys
+import inspect
+import importlib
 from collections import OrderedDict
+
 import logic.sampling_functions as sf
+from core.util.modules import get_main_dir
 
 
 class PulseBlockElement(object):
@@ -469,3 +475,439 @@ class PulseSequence(object):
         new_seq.sampling_information = sequence_dict['sampling_information']
         new_seq.measurement_information = sequence_dict['measurement_information']
         return new_seq
+
+
+class PredefinedGeneratorBase:
+    """
+    Base class for PulseObjectGenerator and predefined generator classes containing the actual
+    "generate_"-methods.
+
+    This class holds a protected reference to the SequenceGeneratorLogic and provides read-only
+    access via properties to various attributes of the logic module.
+    SequenceGeneratorLogic logger is also accessible via this base class and can be used as in any
+    qudi module (e.g. self.log.error(...)).
+    Also provides helper methods to simplify sequence/ensemble generation.
+    """
+    def __init__(self, sequencegeneratorlogic):
+        # Keep protected reference to the SequenceGeneratorLogic
+        self.__sequencegeneratorlogic = sequencegeneratorlogic
+
+    @property
+    def log(self):
+        return self.__sequencegeneratorlogic.log
+
+    @property
+    def pulse_generator_settings(self):
+        return self.__sequencegeneratorlogic.pulse_generator_settings
+
+    @property
+    def generation_parameters(self):
+        return self.__sequencegeneratorlogic.generation_parameters
+
+    @property
+    def channel_set(self):
+        channels = self.pulse_generator_settings.get('activation_config')
+        if channels is None:
+            channels = ('', set())
+        return channels[1]
+
+    @property
+    def analog_channels(self):
+        return {chnl for chnl in self.channel_set if chnl.startswith('a')}
+
+    @property
+    def digital_channels(self):
+        return {chnl for chnl in self.channel_set if chnl.startswith('d')}
+
+    @property
+    def laser_channel(self):
+        return self.generation_parameters.get('laser_channel')
+
+    @property
+    def sync_channel(self):
+        channel = self.generation_parameters.get('sync_channel')
+        return None if channel == '' else channel
+
+    @property
+    def gate_channel(self):
+        channel = self.generation_parameters.get('gate_channel')
+        return None if channel == '' else channel
+
+    @property
+    def analog_trigger_voltage(self):
+        return self.generation_parameters.get('analog_trigger_voltage')
+
+    @property
+    def laser_delay(self):
+        return self.generation_parameters.get('laser_delay')
+
+    @property
+    def microwave_channel(self):
+        channel = self.generation_parameters.get('microwave_channel')
+        return None if channel == '' else channel
+
+    @property
+    def microwave_frequency(self):
+        return self.generation_parameters.get('microwave_frequency')
+
+    @property
+    def microwave_amplitude(self):
+        return self.generation_parameters.get('microwave_amplitude')
+
+    @property
+    def laser_length(self):
+        return self.generation_parameters.get('laser_length')
+
+    @property
+    def wait_time(self):
+        return self.generation_parameters.get('wait_time')
+
+    @property
+    def rabi_period(self):
+        return self.generation_parameters.get('rabi_period')
+
+    ################################################################################################
+    #                                   Helper methods                                          ####
+    ################################################################################################
+    def _get_idle_element(self, length, increment):
+        """
+        Creates an idle pulse PulseBlockElement
+
+        @param float length: idle duration in seconds
+        @param float increment: idle duration increment in seconds
+
+        @return: PulseBlockElement, the generated idle element
+        """
+        # Create idle element
+        return PulseBlockElement(init_length_s=length,
+                                 increment_s=increment,
+                                 pulse_function={chnl: sf.Idle() for chnl in self.analog_channels},
+                                 digital_high={chnl: False for chnl in self.digital_channels})
+
+    def _get_trigger_element(self, length, increment, channels):
+        """
+        Creates a trigger PulseBlockElement
+
+        @param float length: trigger duration in seconds
+        @param float increment: trigger duration increment in seconds
+        @param str|list channels: The pulser channel(s) to be triggered.
+
+        @return: PulseBlockElement, the generated trigger element
+        """
+        if isinstance(channels, str):
+            channels = [channels]
+
+        # input params for element generation
+        pulse_function = {chnl: sf.Idle() for chnl in self.analog_channels}
+        digital_high = {chnl: False for chnl in self.digital_channels}
+
+        # Determine analogue or digital trigger channel and set channels accordingly.
+        for channel in channels:
+            if channel.startswith('d'):
+                digital_high[channel] = True
+            else:
+                pulse_function[channel] = sf.DC(voltage=self.analog_trigger_voltage)
+
+        # return trigger element
+        return PulseBlockElement(init_length_s=length,
+                                 increment_s=increment,
+                                 pulse_function=pulse_function,
+                                 digital_high=digital_high)
+
+    def _get_laser_element(self, length, increment):
+        """
+        Creates laser trigger PulseBlockElement
+
+        @param float length: laser pulse duration in seconds
+        @param float increment: laser pulse duration increment in seconds
+
+        @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
+        """
+        return self._get_trigger_element(length=length,
+                                         increment=increment,
+                                         channels=self.laser_channel)
+
+    def _get_laser_gate_element(self, length, increment):
+        """
+        """
+        laser_gate_element = self._get_laser_element(length=length,
+                                                     increment=increment)
+        if self.gate_channel:
+            if self.gate_channel.startswith('d'):
+                laser_gate_element.digital_high[self.gate_channel] = True
+            else:
+                laser_gate_element.pulse_function[self.gate_channel] = sf.DC(
+                    voltage=self.analog_trigger_voltage)
+        return laser_gate_element
+
+    def _get_delay_element(self):
+        """
+        Creates an idle element of length of the laser delay
+
+        @return PulseBlockElement: The delay element
+        """
+        return self._get_idle_element(length=self.laser_delay,
+                                      increment=0)
+
+    def _get_delay_gate_element(self):
+        """
+        Creates a gate trigger of length of the laser delay.
+        If no gate channel is specified will return a simple idle element.
+
+        @return PulseBlockElement: The delay element
+        """
+        if self.gate_channel:
+            return self._get_trigger_element(length=self.laser_delay,
+                                             increment=0,
+                                             channels=self.gate_channel)
+        else:
+            return self._get_delay_element()
+
+    def _get_sync_element(self):
+        """
+
+        """
+        return self._get_trigger_element(length=50e-9,
+                                         increment=0,
+                                         channels=self.sync_channel)
+
+    def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
+        """
+        Creates a MW pulse PulseBlockElement
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param float freq: MW frequency in case of analogue MW channel in Hz
+        @param float amp: MW amplitude in case of analogue MW channel in V
+        @param float phase: MW phase in case of analogue MW channel in deg
+
+        @return: PulseBlockElement, the generated MW element
+        """
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+            mw_element.pulse_function[self.microwave_channel] = sf.Sin(amplitude=amp,
+                                                                       frequency=freq,
+                                                                       phase=phase)
+        return mw_element
+
+    def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
+        """
+        Creates single, double or triple sine mw element.
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param amps: list containing the amplitudes
+        @param freqs: list containing the frequencies
+        @param phases: list containing the phases
+        @return: PulseBlockElement, the generated MW element
+        """
+        if isinstance(amps, (int, float)):
+            amps = [amps]
+        if isinstance(freqs, (int, float)):
+            freqs = [freqs]
+        if isinstance(phases, (int, float)):
+            phases = [phases]
+
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            sine_number = min(len(amps), len(freqs), len(phases))
+
+            if sine_number < 2:
+                mw_element.pulse_function[self.microwave_channel] = sf.Sin(amplitude=amps[0],
+                                                                           frequency=freqs[0],
+                                                                           phase=phases[0])
+            elif sine_number == 2:
+                mw_element.pulse_function[self.microwave_channel] = sf.DoubleSin(
+                    amplitude_1=amps[0],
+                    amplitude_2=amps[1],
+                    frequency_1=freqs[0],
+                    frequency_2=freqs[1],
+                    phase_1=phases[0],
+                    phase_2=phases[1])
+            else:
+                mw_element.pulse_function[self.microwave_channel] = sf.TripleSin(
+                    amplitude_1=amps[0],
+                    amplitude_2=amps[1],
+                    amplitude_3=amps[2],
+                    frequency_1=freqs[0],
+                    frequency_2=freqs[1],
+                    frequency_3=freqs[2],
+                    phase_1=phases[0],
+                    phase_2=phases[1],
+                    phase_3=phases[2])
+        return mw_element
+
+    def _get_mw_laser_element(self, length, increment, amp=None, freq=None, phase=None):
+        """
+
+        @param length:
+        @param increment:
+        @param amp:
+        @param freq:
+        @param phase:
+        @return:
+        """
+        mw_laser_element = self._get_mw_element(length=length,
+                                                increment=increment,
+                                                amp=amp,
+                                                freq=freq,
+                                                phase=phase)
+        if self.laser_channel.startswith('d'):
+            mw_laser_element.digital_high[self.laser_channel] = True
+        else:
+            mw_laser_element.pulse_function[self.laser_channel] = sf.DC(
+                voltage=self.analog_trigger_voltage)
+        return mw_laser_element
+
+    def _get_ensemble_count_length(self, ensemble, created_blocks):
+        """
+
+        @param ensemble:
+        @param created_blocks:
+        @return:
+        """
+        if self.gate_channel:
+            length = self.laser_length + self.laser_delay
+        else:
+            blocks = {block.name: block for block in created_blocks}
+            length = 0.0
+            for block_name, reps in ensemble.block_list:
+                length += blocks[block_name].init_length_s * (reps + 1)
+                length += blocks[block_name].increment_s * ((reps ** 2 + reps) / 2)
+        return length
+
+
+class PulseObjectGenerator(PredefinedGeneratorBase):
+    """
+
+    """
+    def __init__(self, sequencegeneratorlogic, import_path=None):
+        # Initialize base class
+        super().__init__(sequencegeneratorlogic)
+
+        # dictionary containing references to all generation methods imported from generator class
+        # modules. The keys are the method names excluding the prefix "generate_".
+        self._generate_methods = dict()
+        # nested dictionary with keys being the generation method names and values being a
+        # dictionary containing all keyword arguments as keys with their default value
+        self._generate_method_parameters = dict()
+
+        # import path for generator modules from default dir (logic.predefined_generate_methods)
+        path_list = [os.path.join(get_main_dir(), 'logic', 'predefined_generate_methods')]
+        # import path for generator modules from non-default directory if a path has been given
+        if isinstance(import_path, str):
+            path_list.append(import_path)
+
+        # Import predefined generator modules and get a list of generator classes
+        generator_classes = self.__import_external_generators(paths=path_list)
+
+        # create an instance of each class and put them in a temporary list
+        generator_instances = [cls(sequencegeneratorlogic) for cls in generator_classes]
+
+        # add references to all generate methods in each instance to a dict
+        self.__populate_method_dict(instance_list=generator_instances)
+
+        # populate parameters dictionary from generate method signatures
+        self.__populate_parameter_dict()
+
+    @property
+    def predefined_generate_methods(self):
+        return self._generate_methods
+
+    @property
+    def predefined_method_parameters(self):
+        return self._generate_method_parameters.copy()
+
+    def __import_external_generators(self, paths):
+        """
+        Helper method to import all modules from directories contained in paths.
+        Find all classes in those modules that inherit exclusively from PredefinedGeneratorBase
+        class and return a list of them.
+
+        @param iterable paths: iterable containing paths to import modules from
+        @return list: A list of imported valid generator classes
+        """
+        class_list = list()
+        for path in paths:
+            if not os.path.exists(path):
+                self.log.error('Unable to import generate methods from "{0}".\n'
+                               'Path does not exist.'.format(path))
+                continue
+            # Get all python modules to import from.
+            # The assumption is that in the path, there are *.py files,
+            # which contain only generator classes!
+            module_list = [name[:-3] for name in os.listdir(path) if
+                           os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
+
+            # append import path to sys.path
+            sys.path.append(path)
+
+            # Go through all modules and create instances of each class found.
+            for module_name in module_list:
+                # import module
+                mod = importlib.import_module('{0}'.format(module_name))
+                importlib.reload(mod)
+                # get all generator class references defined in the module
+                tmp_list = [m[1] for m in inspect.getmembers(mod, self.__is_generator_class)]
+                # append to class_list
+                class_list.extend(tmp_list)
+        return class_list
+
+    def __populate_method_dict(self, instance_list):
+        """
+        Helper method to populate the dictionaries containing all references to callable generate
+        methods contained in generator instances passed to this method.
+
+        @param list instance_list: List containing instances of generator classes
+        """
+        self._generate_methods = dict()
+        for instance in instance_list:
+            for method_name, method_ref in inspect.getmembers(instance, inspect.ismethod):
+                if method_name.startswith('generate_'):
+                    self._generate_methods[method_name[9:]] = method_ref
+        return
+
+    def __populate_parameter_dict(self):
+        """
+        Helper method to populate the dictionary containing all possible keyword arguments from all
+        generate methods.
+        """
+        self._generate_method_parameters = dict()
+        for method_name, method in self._generate_methods.items():
+            method_signature = inspect.signature(method)
+            param_dict = dict()
+            for name, param in method_signature.parameters.items():
+                param_dict[name] = None if param.default is param.empty else param.default
+
+            self._generate_method_parameters[method_name] = param_dict
+        return
+
+    @staticmethod
+    def __is_generator_class(obj):
+        """
+        Helper method to check if an object is a valid generator class.
+
+        @param object obj: object to check
+        @return bool: True if obj is a valid generator class, False otherwise
+        """
+        if inspect.isclass(obj):
+            return PredefinedGeneratorBase in obj.__bases__ and len(obj.__bases__) == 1
+        return False
+
+
+
