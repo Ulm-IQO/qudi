@@ -1329,8 +1329,8 @@ class AWG70K(Base, PulserInterface):
                            'Sequencer option not installed.')
             return -1
 
-        self.awg.write('SLISt:SEQuence:DELete ' + '"' + name + '"' + '\n')
-        self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks) + '\n')
+        self.awg.write('SLISt:SEQuence:DELete ' + '"' + name + '"')
+        self.awg.write('SLISt:SEQuence:NEW ' + '"' + name + '", ' + str(steps) + ', ' + str(tracks))
         return 0
 
     def _add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
@@ -1351,8 +1351,8 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':TASSET' + str(
-            track) + ':WAVEFORM ' + '"' + sequence_name + '", "' + waveform_name + '"' + '\n')
-        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat) + '\n')
+            track) + ':WAVEFORM ' + '"' + sequence_name + '", "' + waveform_name + '"')
+        self.awg.write('SLIST:SEQUENCE:STEP' + str(step) + ':RCOUNT ' + '"' + sequence_name + '", ' + str(repeat))
         return 0
 
     def _load_sequence(self, sequencename, track=1):
@@ -1368,7 +1368,7 @@ class AWG70K(Base, PulserInterface):
                            'Sequencer option not installed.')
             return -1
 
-        self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track) + '\n')
+        self.awg.write('SOURCE1:CASSET:SEQUENCE ' + '"' + sequencename + '", ' + str(track))
         return 0
 
     def _make_sequence_continuous(self, sequencename):
@@ -1408,7 +1408,7 @@ class AWG70K(Base, PulserInterface):
             value is between 1 and 16383.
 
         """
-        self.awg.write('SOURCE' + str(channel) + ':JUMP:FORCE ' + str(final_step) + '\n')
+        self.awg.write('SOURCE' + str(channel) + ':JUMP:FORCE ' + str(final_step))
 
         return
 
