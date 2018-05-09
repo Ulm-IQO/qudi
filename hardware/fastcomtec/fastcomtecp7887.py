@@ -297,9 +297,9 @@ class FastComtec(Base, FastCounterInterface):
     def get_current_runtime(self):
         """
         Returns the current runtime.
-        @return int runtime: in s
+        @return float runtime: in s
         """
-        status = ACQSTATUS()
+        status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
         return status.runtime
 
@@ -308,7 +308,7 @@ class FastComtec(Base, FastCounterInterface):
         Returns the current runtime.
         @return int sweeps: in sweeps
         """
-        status = ACQSTATUS()
+        status = AcqStatus()
         self.dll.GetStatusData(ctypes.byref(status), 0)
         return status.sweeps
 
