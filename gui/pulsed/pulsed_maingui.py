@@ -627,7 +627,11 @@ class PulsedMeasurementGui(GUIBase):
             label.setText('  Unknown asset type')
         # enable buttons
         self._pg.load_ensemble_PushButton.setEnabled(True)
+        self._pg.samplo_ensemble_PushButton.setEnabled(True)
+        self._pg.sample_ensemble_PushButton.setEnabled(True)
         self._sg.load_sequence_PushButton.setEnabled(True)
+        self._sg.samplo_sequence_PushButton.setEnabled(True)
+        self._sg.sample_sequence_PushButton.setEnabled(True)
         return
 
     @QtCore.Slot(bool)
@@ -1594,8 +1598,9 @@ class PulsedMeasurementGui(GUIBase):
         This method
         """
         # enable buttons
-        self._pg.sample_ensemble_PushButton.setEnabled(True)
-        self._pg.samplo_ensemble_PushButton.setEnabled(True)
+        if not self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._pg.sample_ensemble_PushButton.setEnabled(True)
+            self._pg.samplo_ensemble_PushButton.setEnabled(True)
         return
 
     @QtCore.Slot()
@@ -1852,8 +1857,9 @@ class PulsedMeasurementGui(GUIBase):
         This method
         """
         # enable buttons
-        self._sg.sample_sequence_PushButton.setEnabled(True)
-        self._sg.samplo_sequence_PushButton.setEnabled(True)
+        if not self.pulsedmasterlogic().status_dict['sampload_busy']:
+            self._sg.sample_sequence_PushButton.setEnabled(True)
+            self._sg.samplo_sequence_PushButton.setEnabled(True)
         return
 
     @QtCore.Slot()
