@@ -64,13 +64,6 @@ class AWG70K(Base, PulserInterface):
         self.awg_model = self._get_model_ID()[1]
         self.log.debug('Found the following awg model: {0}'.format(self.awg_model))
 
-        self._sample_rate = self.get_sample_rate()
-        self._amplitude_list, self._offset_list = self.get_analog_level()
-        self._markers_low, self._markers_high = self.get_digital_level()
-        self._active_channel = self.get_active_channels()
-        self._interleave = self.get_interleave()
-        self._current_loaded_asset = ''
-        self._init_loaded_asset()
         self.current_status = 0
 
     def on_deactivate(self):
@@ -309,8 +302,8 @@ class AWG70K(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_chnl if chnl.startswith('a'))
-        active_digital = sorted(chnl for chnl in active_chnl if chnl.startswith('d'))
+        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_digital = sorted(chnl for chnl in active_channels if chnl.startswith('d'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -547,9 +540,9 @@ class AWG70K(Base, PulserInterface):
             return self.get_loaded_assets()
 
         # Load waveforms into channels
-        for chnl_num, waveform in load_dict:
+        for chnl_num, waveform in load_dict.items():
             self.write('SOUR{0:d}:CASS:WAV "{1}"'.format(chnl_num, waveform))
-            while self.query('SOUR1:CASS?') != waveform:
+            while self.query('SOUR{0:d}:CASS?'.format(chnl_num)) != waveform:
                 time.sleep(0.1)
 
         return self.get_loaded_assets()
@@ -617,14 +610,13 @@ class AWG70K(Base, PulserInterface):
             # Figure out if a sequence or just a waveform is loaded by splitting after the comma
             splitted = asset_name.rsplit(',', 1)
             # If the length is 2 a sequence is loaded and if it is 1 a waveform is loaded
+            asset_name = splitted[0]
             if len(splitted) > 1:
-                asset_name = splitted[0]
                 if current_type is not None and current_type != 'sequence':
                     self.log.error('Unable to determine loaded assets.')
                     return dict(), ''
                 current_type = 'sequence'
             else:
-                asset_name = splitted[0].rsplit('_ch', 1)[0]  # Remove channel suffix
                 if current_type is not None and current_type != 'waveform':
                     self.log.error('Unable to determine loaded assets.')
                     return dict(), ''
@@ -642,10 +634,12 @@ class AWG70K(Base, PulserInterface):
         (PulseBlaster, FPGA).
         """
         self.write('WLIS:WAV:DEL ALL')
-        if self.has_sequence_mode():
-            self.write('SLIS:SEQ:DEL ALL')
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
+        if self.has_sequence_mode():
+            self.write('SLIS:SEQ:DEL ALL')
+            while int(self.query('*OPC?')) != 1:
+                time.sleep(0.25)
         return 0
 
     def get_status(self):
@@ -991,11 +985,12 @@ class AWG70K(Base, PulserInterface):
 
         active_ch = dict()
         for ch_num, a_ch in enumerate(analog_channels):
+            ch_num = ch_num + 1
             # check what analog channels are active
-            active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num + 1))))
+            active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num))))
             # check how many markers are active on each channel, i.e. the DAC resolution
             if active_ch[a_ch]:
-                digital_mrk = max_res - int(self.query('SOUR{0:d}:DAC:RES?'.format(ch_num + 1)))
+                digital_mrk = max_res - int(self.query('SOUR{0:d}:DAC:RES?'.format(ch_num)))
                 if digital_mrk == 2:
                     active_ch['d_ch{0:d}'.format(ch_num * 2)] = True
                     active_ch['d_ch{0:d}'.format(ch_num * 2 - 1)] = True
@@ -1014,7 +1009,7 @@ class AWG70K(Base, PulserInterface):
             chnl_to_delete = [chnl for chnl in active_ch if chnl not in ch]
             for chnl in chnl_to_delete:
                 del active_ch[chnl]
-        return return_ch
+        return active_ch
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
@@ -1256,36 +1251,6 @@ class AWG70K(Base, PulserInterface):
         """
         self.write('SOURCE{0:d}:JUMP:FORCE {1}'.format(channel, final_step))
         return
-
-    def _init_loaded_asset(self):
-        """
-        Gets the name of the currently loaded asset from the AWG and sets the attribute accordingly.
-        """
-        # Check if AWG is in function generator mode
-        # self._activate_awg_mode()
-
-        # first get all the channel assets
-        a_ch_asset = [self.query('SOUR{0}:CASS?'.format(count))
-                      for count in range(1, self._get_max_a_channel_number() + 1)]
-        tmp_list = [a_ch.split('_ch') for a_ch in a_ch_asset]
-        a_ch_asset = [ele[0] for ele in filter(lambda x: len(x) == 2, tmp_list)]
-
-        # the case
-        if len(a_ch_asset) != 0:
-            all_same = True
-            for asset in a_ch_asset:
-                if asset != a_ch_asset[0]:
-                    all_same = False
-                    break
-            if all_same:
-                self.current_loaded_asset = a_ch_asset[0]
-            else:
-                self.log.error("In _init_loaded_asset: The case of differing asset names is not "
-                               "yet handled")
-                self.current_loaded_asset = ''
-        else:
-            self.current_loaded_asset = ''
-        return self.current_loaded_asset
 
     def _get_model_ID(self):
         """
