@@ -628,7 +628,7 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_start_scanning.connect(self.logic_started_scanning)
         self._scanning_logic.signal_continue_scanning.connect(self.logic_continued_scanning)
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
-        # self._scanning_logic.signal_stop_scanning.connect()
+        self._scanning_logic.signal_stop_requested.connect(self.scanning_stop_requested)
 
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
@@ -1081,8 +1081,8 @@ class ConfocalGui(GUIBase):
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
-    def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready. """
+    def stop_scanning_clicked(self):
+        """ Stop the scan if the state has switched to ready. """
         if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
@@ -2236,3 +2236,7 @@ class ConfocalGui(GUIBase):
         if tag == 'logic':
             self.disable_scan_actions()
 
+    def scanning_stop_requested(self):
+        """ Disable the stop scanning button if a scanning stop has been requested elsewhere.
+        """
+        self._mw.action_stop_scanning.setEnabled(False)
