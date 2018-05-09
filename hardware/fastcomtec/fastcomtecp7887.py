@@ -24,13 +24,14 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-from core.module import Base
+from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time
 import os
 import numpy as np
 import ctypes
+
 
 
 """
@@ -143,14 +144,20 @@ class ACQDATA(ctypes.Structure):
                 ('hcm', ctypes.c_int),
                 ('hct', ctypes.c_int), ]
 
+
+
 class FastComtec(Base, FastCounterInterface):
     """
-    unstable: Jochen Scheuer
+    unstable: Jochen Scheuer, Simon Schmitt
 
     Hardware Class for the FastComtec Card.
     """
     _modclass = 'FastComtec'
     _modtype = 'hardware'
+    gated = ConfigOption('gated', False, missing='warn')
+    trigger_safety = ConfigOption('trigger_safety', 200e-9, missing='warn')
+    aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
+    minimal_binwidth = ConfigOption('minimal_binwidth', 0.25e-9, missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -160,19 +167,21 @@ class FastComtec(Base, FastCounterInterface):
         # checking for the right configuration
         for key in config.keys():
             self.log.info('{0}: {1}'.format(key,config[key]))
-
-        self.GATED = False
-        self.MINIMAL_BINWIDTH = 0.25e-9    # in seconds per bin
         #this variable has to be added because there is no difference
         #in the fastcomtec it can be on "stopped" or "halt"
         self.stopped_or_halt = "stopped"
+        self.timetrace_tmp = []
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
-
+        if self.gated:
+            self.change_sweep_mode(gated=True)
+        else:
+            self.change_sweep_mode(gated=False)
         return
+
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -216,13 +225,13 @@ class FastComtec(Base, FastCounterInterface):
         constraints = dict()
 
         # the unit of those entries are seconds per bin. In order to get the
-        # current binwidth in seonds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = list(self.MINIMAL_BINWIDTH * (2 ** np.array(
+        # current binwidth in seconds use the get_binwidth method.
+        constraints['hardware_binwidth_list'] = list(self.minimal_binwidth * (2 ** np.array(
                                                      np.linspace(0,24,25))))
-
+        constraints['max_sweep_len'] = 6.8
         return constraints
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates = 0,sweep_reset=False, preset=None, cycles=None):
+    def configure(self, bin_width_s, record_length_s, number_of_gates=0, filename=None):
         """ Configuration of the fast counter.
 
         @param float bin_width_s: Length of a single time bin in the time trace
@@ -232,30 +241,31 @@ class FastComtec(Base, FastCounterInterface):
         @param int number_of_gates: optional, number of gates in the pulse
                                     sequence. Ignore for not gated counter.
 
-        @return tuple(binwidth_s, gate_length_s, number_of_gates):
+        @return tuple(binwidth_s, record_length_s, number_of_gates):
                     binwidth_s: float the actual set binwidth in seconds
-                    gate_length_s: the actual set gate length in seconds
-                    number_of_gates: the number of gated, which are accepted
+                    gate_length_s: the actual record length in seconds
+                    number_of_gates: the number of gated, which are accepted,
+                    None if not-gated
         """
 
-        binwidth_s = self.set_binwidth(bin_width_s)
-        no_of_bins = record_length_s / binwidth_s
-        if sweep_reset:
-            self.load_setup('')
-            self.set_length(no_of_bins, preset=preset, cycles=cycles)
+        # when not gated, record length = total sequence length, when gated, record length = laser length.
+        # subtract 200 ns to make sure no sequence trigger is missed
+        record_length_FastComTech_s = record_length_s
+        if self.gated:
+            # add time to account for AOM delay
+            no_of_bins = int((record_length_FastComTech_s + self.aom_delay) / self.set_binwidth(bin_width_s))
         else:
-            self.set_length(no_of_bins)
-        return (self.get_binwidth(), record_length_s, number_of_gates)
+            # subtract time to make sure no sequence trigger is missed
+            no_of_bins = int((record_length_FastComTech_s - self.trigger_safety) / self.set_binwidth(bin_width_s))
 
-    def get_binwidth(self):
-        """ Returns the width of a single timebin in the timetrace in seconds.
+        self.set_length(no_of_bins, preset=1, cycles=number_of_gates)
 
-        @return float: current length of a single bin in seconds (seconds/bin)
+        if filename is not None:
+            self._change_filename(filename)
 
-        The red out bitshift will be converted to binwidth. The binwidth is
-        defined as 2**bitshift*minimal_binwidth.
-        """
-        return self.MINIMAL_BINWIDTH*(2**int(self.get_bitshift()))
+        return (self.get_binwidth(), record_length_FastComTech_s, number_of_gates)
+
+
 
     def get_status(self):
         """
@@ -284,6 +294,23 @@ class FastComtec(Base, FastCounterInterface):
                 'There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
             return -1
 
+    def get_current_runtime(self):
+        """
+        Returns the current runtime.
+        @return float runtime: in s
+        """
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status.runtime
+
+    def get_current_sweeps(self):
+        """
+        Returns the current runtime.
+        @return int sweeps: in sweeps
+        """
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status.sweeps
 
     def start_measure(self):
         """Start the measurement. """
@@ -298,6 +325,9 @@ class FastComtec(Base, FastCounterInterface):
         status = self.dll.Halt(0)
         while self.get_status() != 3:
             time.sleep(0.05)
+
+        if self.gated:
+            self.timetrace_tmp = self.get_data_trace()
         return status
 
     def stop_measure(self):
@@ -306,16 +336,41 @@ class FastComtec(Base, FastCounterInterface):
         status = self.dll.Halt(0)
         while self.get_status() != 1:
             time.sleep(0.05)
+
+        if self.gated:
+            self.timetrace_tmp = []
         return status
 
     def continue_measure(self):
         """Continue a paused measurement. """
-        status = self.dll.Continue(0)
-        while self.get_status() != 2:
-            time.sleep(0.05)
+        if self.gated:
+            status = self.start_measure()
+        else:
+            status = self.dll.Continue(0)
+            while self.get_status() != 2:
+                time.sleep(0.05)
         return status
 
-    def get_data_trace(self, sweep_reset=None):
+    def get_binwidth(self):
+        """ Returns the width of a single timebin in the timetrace in seconds.
+
+        @return float: current length of a single bin in seconds (seconds/bin)
+
+        The red out bitshift will be converted to binwidth. The binwidth is
+        defined as 2**bitshift*minimal_binwidth.
+        """
+        return self.minimal_binwidth*(2**int(self.get_bitshift()))
+
+
+    def is_gated(self):
+        """ Check the gated counting possibility.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        return self.gated
+
+    def get_data_trace(self):
         """
         Polls the current timetrace data from the fast counter and returns it as a numpy array (dtype = int64).
         The binning specified by calling configure() must be taken care of in this hardware class.
@@ -325,23 +380,28 @@ class FastComtec(Base, FastCounterInterface):
 
           @return arrray: Time trace.
         """
-
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         N = setting.range
 
-        """ SSR is an optional variable to setup the fastcomtec and allow single-shot readout.
-        If this variable is selected, the data is an array of size 'range'.'cycles'. I.e. each
-        measurement of length 'range' is repeated 'cycles' number of times.
-        """
-        if sweep_reset:
-            H = setting.cycles
-            data = np.empty((H, N / H), dtype=np.uint32)
+        if self.gated:
+            bsetting=AcqSettings()
+            self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+            H = bsetting.cycles
+            data = np.empty((H, int(N / H)), dtype=np.uint32)
+
         else:
             data = np.empty((N,), dtype=np.uint32)
 
-        self.dll.LVGetDat(data.ctypes.data, 0)
-        return np.int64(data)
+        p_type_ulong = ctypes.POINTER(ctypes.c_uint32)
+        ptr = data.ctypes.data_as(p_type_ulong)
+        self.dll.LVGetDat(ptr, 0)
+        time_trace = np.int64(data)
+
+        if self.gated and self.timetrace_tmp != []:
+            time_trace = time_trace + self.timetrace_tmp
+
+        return time_trace
 
 
     def get_data_testfile(self):
@@ -350,13 +410,6 @@ class FastComtec(Base, FastCounterInterface):
         time.sleep(0.5)
         return data
 
-    def is_gated(self):
-        """ Check the gated counting possibility.
-
-        @return bool: Boolean value indicates if the fast counter is a gated
-                      counter (TRUE) or not (FALSE).
-        """
-        return self.GATED
 
     # =========================================================================
     #                           Non Interface methods
@@ -394,46 +447,50 @@ class FastComtec(Base, FastCounterInterface):
         The binwidth is converted into to an appropiate bitshift defined as
         2**bitshift*minimal_binwidth.
         """
-        bitshift = int(np.log2(binwidth/self.MINIMAL_BINWIDTH))
+        bitshift = int(np.log2(binwidth/self.minimal_binwidth))
         new_bitshift=self.set_bitshift(bitshift)
 
-        return self.MINIMAL_BINWIDTH*(2**new_bitshift)
+        return self.minimal_binwidth*(2**new_bitshift)
 
-    def get_settings(self):
-        """ get defined axis nanoseconds or bins
-        @return float: settings class object
-
-        """
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return setting
 
     #TODO: Check such that only possible lengths are set.
-    def set_length(self, N, preset=10000000, cycles=1):
+    def set_length(self, length_bins, preset=None, cycles=None, sequences=None):
         """ Sets the length of the length of the actual measurement.
 
-        @param int N: Length of the measurement
+        @param int length_bins: Length of the measurement in bins
 
         @return float: Red out length of measurement
         """
+        constraints = self.get_constraints()
+        if length_bins * self.get_binwidth() < constraints['max_sweep_len']:
+            cmd = 'RANGE={0}'.format(int(length_bins))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'roimax={0}'.format(int(length_bins))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            if preset != None:
+                cmd = 'swpreset={0}'.format(preset)
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            if cycles != None and cycles != 0:
+                cmd = 'cycles={0}'.format(cycles)
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            if sequences != None and sequences != 0:
+                cmd = 'sequences={0}'.format(sequences)
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            return self.get_length()
+        else:
+            self.log.error(
+                'Length of sequence is too high: %s' % (str(length_bins * self.get_binwidth())))
+            return -1
 
-        cmd = 'RANGE={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-        cmd = 'roimax={0}'.format(int(N))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-
-        """ SSR is an optional variable to setup the fastcomtec and allow single-shot readout.
-        With this variable selected the range is set as usual, but sweep-preset and cycles
-        are also selected in the fastcomtec. A single measurement is repeated 'swpreset' number
-        of times and all photons summed together before a new measurement is started on a new
-        row of fastcomtec data. In total 'cycles' number of rows are measured.
-        """
+    def set_preset(self, preset):
         cmd = 'swpreset={0}'.format(preset)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return preset
+
+    def set_cycles(self, cycles):
         cmd = 'cycles={0}'.format(cycles)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-
-        return self.get_length()
+        return cycles
 
     def get_length(self):
         """ Get the length of the current measurement.
@@ -443,6 +500,67 @@ class FastComtec(Base, FastCounterInterface):
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.range)
+
+    def _change_filename(self,name):
+        """ Changed the name in FCT"""
+        cmd = 'datname=%s'%name
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return name
+
+    def change_sweep_mode(self, gated):
+        if gated:
+            cmd = 'sweepmode={0}'.format(hex(1978500))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'prena={0}'.format(hex(16)) #To select starts preset
+            # cmd = 'prena={0}'.format(hex(4)) #To select sweeps preset
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            self.gated = True
+        else:
+            # fastcomtch standard settings for ungated acquisition (check manual)
+            cmd = 'sweepmode={0}'.format(hex(1978496))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            cmd = 'prena={0}'.format(hex(0))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            self.gated = False
+        return gated
+
+
+    def change_save_mode(self, mode):
+        """ Changes the save mode of p7887
+
+        @param int mode: Specifies the save mode (0: No Save at Halt, 1: Save at Halt,
+                        2: Write list file, No Save at Halt, 3: Write list file, Save at Halt
+
+        @return int mode: specified save mode
+        """
+        cmd = 'savedata={0}'.format(mode)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return mode
+
+    def set_delay_start(self, delay_s):
+        """ Sets the record delay length
+
+        @param int delay_s: Record delay after receiving a start trigger
+
+        @return int mode: specified save mode
+        """
+
+        # A delay can only be adjusted in steps of 6.4ns
+        delay_bins = np.rint(delay_s / 6.4e-9 /2.5)
+        cmd = 'fstchan={0}'.format(int(delay_bins))
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return delay_bins
+
+    def get_delay_start(self):
+        """ Returns the current record delay length
+
+        @return float delay_s: current record delay length in seconds
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        delay_s = bsetting.fstchan * 6.4e-9 *2.5
+        #prena = bsetting.prena
+        return delay_s
 
     # =========================================================================
     #   The following methods have to be carefully reviewed and integrated as
@@ -470,8 +588,8 @@ class FastComtec(Base, FastCounterInterface):
         data = self.get_data()
         fil = open(filename + '.asc', 'w')
         for i in laser_index:
-            for n in data[i:i+int(round(3000/(self.MINIMAL_BINWIDTH*2**self.GetBitshift())))
-                    +int(round(1000/(self.MINIMAL_BINWIDTH*2**self.GetBitshift())))]:
+            for n in data[i:i+int(round(3000/(self.minimal_binwidth*2**self.GetBitshift())))
+                    +int(round(1000/(self.minimal_binwidth*2**self.GetBitshift())))]:
                 fil.write('{0!s}\n'.format(n))
         fil.close()
 
