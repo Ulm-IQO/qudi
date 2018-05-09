@@ -59,8 +59,10 @@ class SequenceGeneratorLogic(GenericLogic):
     pulsegenerator = Connector(interface='PulserInterface')
 
     # configuration options
-    _additional_methods_dir = ConfigOption('additional_methods_dir', default=None, missing='nothing')
-    _overhead_bytes = ConfigOption('overhead_bytes', default=0, missing='nothing')
+    _additional_methods_dir = ConfigOption(name='additional_methods_dir',
+                                           default=None,
+                                           missing='nothing')
+    _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
