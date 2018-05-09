@@ -225,7 +225,7 @@ class FastComtec(Base, FastCounterInterface):
         constraints = dict()
 
         # the unit of those entries are seconds per bin. In order to get the
-        # current binwidth in seonds use the get_binwidth method.
+        # current binwidth in seconds use the get_binwidth method.
         constraints['hardware_binwidth_list'] = list(self.minimal_binwidth * (2 ** np.array(
                                                      np.linspace(0,24,25))))
         constraints['max_sweep_len'] = 6.8
@@ -294,6 +294,23 @@ class FastComtec(Base, FastCounterInterface):
                 'There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
             return -1
 
+    def get_current_runtime(self):
+        """
+        Returns the current runtime.
+        @return int runtime: in s
+        """
+        status = ACQSTATUS()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status.runtime
+
+    def get_current_sweeps(self):
+        """
+        Returns the current runtime.
+        @return int sweeps: in sweeps
+        """
+        status = ACQSTATUS()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        return status.sweeps
 
     def start_measure(self):
         """Start the measurement. """
