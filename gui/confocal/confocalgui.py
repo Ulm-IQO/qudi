@@ -1089,8 +1089,6 @@ class ConfocalGui(GUIBase):
         if self._optimizer_logic.module_state() == 'locked':
             self._optimizer_logic.stop_refocus()
 
-        self.enable_scan_actions()
-
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
         self.disable_scan_actions()
