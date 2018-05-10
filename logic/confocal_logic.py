@@ -277,7 +277,7 @@ class ConfocalLogic(GenericLogic):
     signal_tilt_correction_active = QtCore.Signal(bool)
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
-    signal_position_changed = QtCore.Signal()
+    signal_image_ranges_changed = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -357,6 +357,85 @@ class ConfocalLogic(GenericLogic):
             self._statusVariables['history_{0}'.format(histindex)] = state.serialize()
             histindex += 1
         return 0
+
+    @property
+    def image_x_range(self):
+        """ Get image_x_range """
+        return self._image_x_range
+    
+    @image_x_range.setter
+    def image_x_range(self, range):
+        """ Set the new x-range of the region to be scanned.
+
+        @param list range: 2-element list of floats giving new range
+        """
+        if not self._image_range_ok(range, axis='x'):
+            return -1
+        
+        self._image_x_range = range
+
+        # Tell the GUI or anything else that might need to update display.
+        self.image_ranges_changed_Signal.emit()
+
+    @property
+    def image_y_range(self):
+        """ Get image_y_range """
+        return self._image_y_range
+    
+    @image_y_range.setter
+    def image_y_range(self, range):
+        """ Set the new y-range of the region to be scanned.
+
+        @param list range: 2-element list of floats giving new range
+        """
+        if not self._image_range_ok(range, axis='y'):
+            return -1
+        
+        self._image_y_range = range
+
+        # Tell the GUI or anything else that might need to update display.
+        self.image_ranges_changed_Signal.emit()
+
+    @property
+    def image_z_range(self):
+        """ Get image_z_range """
+        return self._image_z_range
+    
+    @image_z_range.setter
+    def image_z_range(self, range):
+        """ Set the new z-range of the region to be scanned.
+
+        @param list range: 2-element list of floats giving new range
+        """
+        if not self._image_range_ok(range, axis='z'):
+            return -1
+        
+        self._image_z_range = range
+
+        # Tell the GUI or anything else that might need to update display.
+        self.image_ranges_changed_Signal.emit()
+
+    def _image_range_ok(self, range, axis=''):
+        """ Sanity check any image_range before setting it.
+
+        @param list range: the desired image range.
+
+        @param str axis: Axis label to give better error messages.
+        """
+        if len(range) != 2:
+            self.log.error(
+                'image_{ax}_range must be a 2-element list, [min, max].'
+                'It is not possible to set it to {0}'.format(range, ax=axis)
+            )
+            return False
+        if range[1] < range[0]:
+            self.log.error(
+                '{ax}_min must be smaller than {ax}_max, but they are '
+                '({0:.3f},{1:.3f}).'.format(range[0], range[1], ax=axis)
+            )
+            return False
+        
+        return True
 
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.
