@@ -321,6 +321,7 @@ class AWG70K(Base, PulserInterface):
             mrk_ch_1 = 'd_ch{0:d}'.format(a_ch_num * 2 - 1)
             mrk_ch_2 = 'd_ch{0:d}'.format(a_ch_num * 2)
 
+            start = time.time()
             # Encode marker information in an array of bytes (uint8). Avoid intermediate copies!!!
             if mrk_ch_1 in digital_samples and mrk_ch_2 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_2].view('uint8')
@@ -328,11 +329,15 @@ class AWG70K(Base, PulserInterface):
                 np.left_shift(mrk_bytes, 7, out=mrk_bytes)
                 np.left_shift(tmp_bytes, 6, out=tmp_bytes)
                 np.add(mrk_bytes, tmp_bytes, out=mrk_bytes)
+                # Free some memory
+                del tmp_bytes
+                del digital_samples[mrk_ch_1]
             elif mrk_ch_1 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
                 np.left_shift(mrk_bytes, 6, out=mrk_bytes)
             else:
                 mrk_bytes = None
+            print('Prepare digital channel data: {0}'.format(time.time()-start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -343,13 +348,23 @@ class AWG70K(Base, PulserInterface):
 
             # Create waveform in AWG workspace
             self.write('WLIS:WAV:NEW "{0}", {1:d}'.format(wfm_name, number_of_samples))
+            start = time.time()
             # Write analog samples data to waveform
-            self.awg.write_values('WLIS:WAV:DATA "{0}",'.format(wfm_name), analog_samples[a_ch])
+            self.awg.write_binary_values(
+                message='WLIS:WAV:DATA "{0}",0,{1:d},'.format(wfm_name, number_of_samples),
+                values=analog_samples[a_ch],
+                datatype='f')
+            print('Transfer analog channel data: {0}'.format(time.time() - start))
             # Delete analog samples data after writing to free up memory
             del analog_samples[a_ch]
             # Write digital samples data
+            start = time.time()
             if mrk_bytes is not None:
-                self.awg.write_values('WLIS:WAV:MARK:DATA "{0}",'.format(wfm_name), mrk_bytes)
+                self.awg.write_binary_values(
+                    message='WLIS:WAV:MARK:DATA "{0}",0,{1:d},'.format(wfm_name, number_of_samples),
+                    values=mrk_bytes,
+                    datatype='B')
+            print('Transfer digital channel data: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
