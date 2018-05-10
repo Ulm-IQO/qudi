@@ -520,7 +520,7 @@ class ConfocalGui(GUIBase):
         #################################################################
         # Connect the scan actions to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
-        self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
+        self._mw.action_stop_scanning.triggered.connect(self.stop_scanning_clicked)
 
         self._scan_xy_start_proxy = pg.SignalProxy(
             self._mw.action_scan_xy_start.triggered,

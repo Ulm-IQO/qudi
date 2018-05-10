@@ -375,7 +375,7 @@ class ConfocalLogic(GenericLogic):
         self._image_x_range = range
 
         # Tell the GUI or anything else that might need to update display.
-        self.image_ranges_changed_Signal.emit()
+        self.signal_image_ranges_changed.emit()
 
     @property
     def image_y_range(self):
@@ -394,7 +394,7 @@ class ConfocalLogic(GenericLogic):
         self._image_y_range = range
 
         # Tell the GUI or anything else that might need to update display.
-        self.image_ranges_changed_Signal.emit()
+        self.signal_image_ranges_changed.emit()
 
     @property
     def image_z_range(self):
@@ -413,7 +413,7 @@ class ConfocalLogic(GenericLogic):
         self._image_z_range = range
 
         # Tell the GUI or anything else that might need to update display.
-        self.image_ranges_changed_Signal.emit()
+        self.signal_image_ranges_changed.emit()
 
     def _image_range_ok(self, range, axis=''):
         """ Sanity check any image_range before setting it.
