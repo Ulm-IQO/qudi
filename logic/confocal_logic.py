@@ -278,6 +278,7 @@ class ConfocalLogic(GenericLogic):
     signal_tilt_correction_update = QtCore.Signal()
     signal_draw_figure_completed = QtCore.Signal()
     signal_image_ranges_changed = QtCore.Signal()
+    signal_image_resolution_changed = QtCore.Signal()
 
     sigImageXYInitialized = QtCore.Signal()
     sigImageDepthInitialized = QtCore.Signal()
@@ -436,6 +437,64 @@ class ConfocalLogic(GenericLogic):
             return False
         
         return True
+
+    @property
+    def xy_resolution(self):
+        """ Get image xy resolution."""
+        return self._xy_resolution
+
+    @xy_resolution.setter
+    def xy_resolution(self, new_res):
+        """ Set the xy scan resolution.
+ 
+        @param int new_res: new resolution
+        """
+        if not self.image_resolution_ok(new_res, axis='xy'):
+            return -1
+
+        self._xy_resolution = new_res
+
+        # Tell the GUI or anything else that might need to update display.
+        self.signal_image_resolution_changed.emit()
+
+
+    @property
+    def z_resolution(self):
+        """ Get image z resolution."""
+        return self._z_resolution
+
+    @z_resolution.setter
+    def z_resolution(self, new_res):
+        """ Set the z scan resolution.
+ 
+        @param int new_res: new resolution
+        """
+        if not self.image_resolution_ok(new_res, axis='z'):
+            return -1
+
+        self._z_resolution = new_res
+
+        # Tell the GUI or anything else that might need to update display.
+        self.signal_image_resolution_changed.emit()
+
+    def image_resolution_ok(self, resolution, axis=''):
+        """ Check input resolution satisfies requirements.
+
+        @param int resolution: requested resolution.
+
+        @param string axis: name of axis to make error messages more readable.
+
+        @return Boolean True means the resolution is ok.
+        """
+        if isinstance(resolution, int):
+            return True
+        else:
+            self.log.error(
+                    'Resolution is number of pixels, and must be integer'
+                    'instead of type {0} (requested for {1} image).'
+                    .format(type(resolution), axis)
+                    )
+            return False
 
     def switch_hardware(self, to_on=False):
         """ Switches the Hardware off or on.

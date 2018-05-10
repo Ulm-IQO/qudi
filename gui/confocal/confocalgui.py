@@ -630,6 +630,9 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
         self._scanning_logic.signal_stop_requested.connect(self.scanning_stop_requested)
 
+        self._scanning_logic.signal_image_ranges_changed.connect(self.update_displayed_scan_range)
+        self._scanning_logic.signal_image_resolution_changed.connect(self.update_displayed_resolution)
+
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
         self._optimizer_logic.sigRefocusFinished.connect(self._refocus_finished_wrapper)
@@ -894,7 +897,7 @@ class ConfocalGui(GUIBase):
     def disable_scan_actions(self):
         """ Disables the buttons for scanning.
         """
-        # Ensable the stop scanning button
+        # Enable the stop scanning button
         self._mw.action_stop_scanning.setEnabled(True)
 
         # Disable the start scan buttons
@@ -1152,7 +1155,7 @@ class ConfocalGui(GUIBase):
             self.update_input_z(z_pos)
 
     def roi_xy_bounds_check(self, roi):
-        """ Check if the focus cursor is oputside the allowed range after drag
+        """ Check if the focus cursor is outside the allowed range after drag
             and set its position to the limit
         """
         h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
@@ -1165,7 +1168,7 @@ class ConfocalGui(GUIBase):
             self.update_roi_xy(new_h_pos, new_v_pos)
 
     def roi_depth_bounds_check(self, roi):
-        """ Check if the focus cursor is oputside the allowed range after drag
+        """ Check if the focus cursor is outside the allowed range after drag
             and set its position to the limit """
         h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
         v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
@@ -2233,6 +2236,41 @@ class ConfocalGui(GUIBase):
         """
         if tag == 'logic':
             self.disable_scan_actions()
+
+    def update_displayed_scan_range(self):
+        """ Update displayed scan range if the logic had it changed somewhere else.
+        """
+        self._mw.x_min_InputWidget.setValue(
+            self._scanning_logic.image_x_range[0]
+        )
+        self._mw.x_max_InputWidget.setValue(
+            self._scanning_logic.image_x_range[1]
+        )
+ 
+        self._mw.y_min_InputWidget.setValue(
+            self._scanning_logic.image_y_range[0]
+        )
+        self._mw.y_max_InputWidget.setValue(
+            self._scanning_logic.image_y_range[1]
+        )
+ 
+        self._mw.z_min_InputWidget.setValue(
+            self._scanning_logic.image_z_range[0]
+        )
+        self._mw.z_max_InputWidget.setValue(
+            self._scanning_logic.image_z_range[1]
+        )
+ 
+    def update_displayed_resolution(self):
+        """ Update displayed resolution if the logic had it changed somewhere else.
+        """
+        self._mw.xy_res_InputWidget.setValue(
+            self._scanning_logic.xy_resolution
+        )
+ 
+        self._mw.z_res_InputWidget.setValue(
+            self._scanning_logic.z_resolution
+        )
 
     def scanning_stop_requested(self):
         """ Disable the stop scanning button if a scanning stop has been requested elsewhere.
