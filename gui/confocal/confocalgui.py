@@ -479,12 +479,12 @@ class ConfocalGui(GUIBase):
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
-        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
-        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
-        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
-        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
-        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
-        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
+        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_range.x[0])
+        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_range.x[1])
+        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_range.y[0])
+        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_range.y[1])
+        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_range.z[0])
+        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_range.z[1])
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
@@ -520,7 +520,7 @@ class ConfocalGui(GUIBase):
         #################################################################
         # Connect the scan actions to the events if they are clicked. Connect
         # also the adjustment of the displayed windows.
-        self._mw.action_stop_scanning.triggered.connect(self.ready_clicked)
+        self._mw.action_stop_scanning.triggered.connect(self.stop_scanning_clicked)
 
         self._scan_xy_start_proxy = pg.SignalProxy(
             self._mw.action_scan_xy_start.triggered,
@@ -628,7 +628,10 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_start_scanning.connect(self.logic_started_scanning)
         self._scanning_logic.signal_continue_scanning.connect(self.logic_continued_scanning)
         self._optimizer_logic.sigRefocusStarted.connect(self.logic_started_refocus)
-        # self._scanning_logic.signal_stop_scanning.connect()
+        self._scanning_logic.scanning_stop_requested_Signal.connect(self.scanning_stop_requested)
+
+        self._scanning_logic.image_ranges_changed_Signal.connect(self.logic_updated_scan_range)
+        self._scanning_logic.scan_resolution_changed_Signal.connect(self.logic_updated_resolution)
 
         # Connect the tracker
         self.sigStartOptimizer.connect(self._optimizer_logic.start_refocus)
@@ -894,7 +897,7 @@ class ConfocalGui(GUIBase):
     def disable_scan_actions(self):
         """ Disables the buttons for scanning.
         """
-        # Ensable the stop scanning button
+        # Enable the stop scanning button
         self._mw.action_stop_scanning.setEnabled(True)
 
         # Disable the start scan buttons
@@ -1081,15 +1084,13 @@ class ConfocalGui(GUIBase):
         self.update_roi_xy_size()
         self.update_roi_depth_size()
 
-    def ready_clicked(self):
-        """ Stopp the scan if the state has switched to ready. """
+    def stop_scanning_clicked(self):
+        """ Stop the scan if the state has switched to ready. """
         if self._scanning_logic.module_state() == 'locked':
             self._scanning_logic.permanent_scan = False
             self._scanning_logic.stop_scanning()
         if self._optimizer_logic.module_state() == 'locked':
             self._optimizer_logic.stop_refocus()
-
-        self.enable_scan_actions()
 
     def xy_scan_clicked(self):
         """ Manages what happens if the xy scan is started. """
@@ -1154,7 +1155,7 @@ class ConfocalGui(GUIBase):
             self.update_input_z(z_pos)
 
     def roi_xy_bounds_check(self, roi):
-        """ Check if the focus cursor is oputside the allowed range after drag
+        """ Check if the focus cursor is outside the allowed range after drag
             and set its position to the limit
         """
         h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
@@ -1473,22 +1474,25 @@ class ConfocalGui(GUIBase):
 
     def change_x_image_range(self):
         """ Adjust the image range for x in the logic. """
-        self._scanning_logic.image_x_range = [
+        self._scanning_logic.image_range.x = [
             self._mw.x_min_InputWidget.value(),
-            self._mw.x_max_InputWidget.value()]
+            self._mw.x_max_InputWidget.value()
+        ]
 
     def change_y_image_range(self):
         """ Adjust the image range for y in the logic.
         """
-        self._scanning_logic.image_y_range = [
+        self._scanning_logic.image_range.y = [
             self._mw.y_min_InputWidget.value(),
-            self._mw.y_max_InputWidget.value()]
+            self._mw.y_max_InputWidget.value()
+        ]
 
     def change_z_image_range(self):
         """ Adjust the image range for z in the logic. """
-        self._scanning_logic.image_z_range = [
+        self._scanning_logic.image_range.z = [
             self._mw.z_min_InputWidget.value(),
-            self._mw.z_max_InputWidget.value()]
+            self._mw.z_max_InputWidget.value()
+        ]
 
     def update_tilt_correction(self):
         """ Update all tilt points from the scanner logic. """
@@ -1667,10 +1671,8 @@ class ConfocalGui(GUIBase):
         self.refresh_xy_image()
         xy_viewbox = self.xy_image.getViewBox()
 
-        xMin = self._scanning_logic.image_x_range[0]
-        xMax = self._scanning_logic.image_x_range[1]
-        yMin = self._scanning_logic.image_y_range[0]
-        yMax = self._scanning_logic.image_y_range[1]
+        xMin, xMax = self._scanning_logic.image_range.x
+        yMin, yMax = self._scanning_logic.image_range.y
 
         if self.fixed_aspect_ratio_xy:
             # Reset the limit settings so that the method 'setAspectLocked'
@@ -1714,15 +1716,12 @@ class ConfocalGui(GUIBase):
 
         if self._scanning_logic.depth_img_is_xz:
             self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
-            xMin = self._scanning_logic.image_x_range[0]
-            xMax = self._scanning_logic.image_x_range[1]
+            xMin, xMax = self._scanning_logic.image_range.x
         else:
             self._mw.depth_ViewWidget.setLabel('bottom', 'Y position', units='m')
-            xMin = self._scanning_logic.image_y_range[0]
-            xMax = self._scanning_logic.image_y_range[1]
+            xMin, xMax = self._scanning_logic.image_range.y  # Note 'y'
 
-        zMin = self._scanning_logic.image_z_range[0]
-        zMax = self._scanning_logic.image_z_range[1]
+        zMin, zMax = self._scanning_logic.image_range.z
 
         if self.fixed_aspect_ratio_depth:
             # Reset the limit settings so that the method 'setAspectLocked'
@@ -1753,10 +1752,8 @@ class ConfocalGui(GUIBase):
 
     def put_cursor_in_xy_scan(self):
         """Put the xy crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_y_min = self._scanning_logic.image_y_range[0]
-        view_y_max = self._scanning_logic.image_y_range[1]
+        view_x_min, view_x_max = self._scanning_logic.image_range.x
+        view_y_min, view_y_max = self._scanning_logic.image_range.y
 
         x_value = self.roi_xy.pos()[0]
         y_value = self.roi_xy.pos()[1]
@@ -1779,10 +1776,8 @@ class ConfocalGui(GUIBase):
 
     def put_cursor_in_depth_scan(self):
         """Put the depth crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_z_min = self._scanning_logic.image_z_range[0]
-        view_z_max = self._scanning_logic.image_z_range[1]
+        view_x_min, view_x_max = self._scanning_logic.image_range.x
+        view_z_min, view_z_max = self._scanning_logic.image_range.z
 
         x_value = self.roi_depth.pos()[0]
         z_value = self.roi_depth.pos()[1]
@@ -2236,3 +2231,42 @@ class ConfocalGui(GUIBase):
         if tag == 'logic':
             self.disable_scan_actions()
 
+    def logic_updated_scan_range(self):
+        """ Update displayed scan range if the logic had it changed somewhere else.
+        """
+        self._mw.x_min_InputWidget.setValue(
+            self._scanning_logic.image_range.x[0]
+        )
+        self._mw.x_max_InputWidget.setValue(
+            self._scanning_logic.image_range.x[1]
+        )
+
+        self._mw.y_min_InputWidget.setValue(
+            self._scanning_logic.image_range.y[0]
+        )
+        self._mw.y_max_InputWidget.setValue(
+            self._scanning_logic.image_range.y[1]
+        )
+
+        self._mw.z_min_InputWidget.setValue(
+            self._scanning_logic.image_range.z[0]
+        )
+        self._mw.z_max_InputWidget.setValue(
+            self._scanning_logic.image_range.z[1]
+        )
+
+    def logic_updated_resolution(self):
+        """ Update displayed resolution if the logic had it changed somewhere else.
+        """
+        self._mw.xy_res_InputWidget.setValue(
+            self._scanning_logic.get_xy_resolution()
+        )
+
+        self._mw.z_res_InputWidget.setValue(
+            self._scanning_logic.get_z_resolution()
+        )
+    
+    def scanning_stop_requested(self):
+        """ Disable the stop scanning button if a scanning stop has been requested elsewhere.
+        """
+        self._mw.action_stop_scanning.setEnabled(False)
