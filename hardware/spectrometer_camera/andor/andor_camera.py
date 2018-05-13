@@ -116,7 +116,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
         return self._check_success(error_code)
 
-    def start_acquisition(self):
+    def start_single_acquisition(self):
         if self.get_ready_state():
             self._acquiring = True
             self._last_acquisition_mode = self.get_read_mode()
@@ -126,6 +126,9 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
             return -1
 
     def stop_acquisition(self):
+        pass
+
+    def start_live_acquisition(self):
         pass
 
     def _check_success (self, error_code):
