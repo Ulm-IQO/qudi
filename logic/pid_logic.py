@@ -65,6 +65,13 @@ class PIDLogic(GenericLogic):
         self._controller = self.controller()
         self._save_logic = self.savelogic()
 
+        self._has_controller = set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER']).intersection(set(self._features))
+        self._has_setpoint = bool(set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'SETPOINT']).intersection(set(self._features)))
+        self._has_process_value = bool(set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'PROCESS_VARIABLE']).intersection(set(self._features)))
+        self._has_control_value = bool(set(['PID_CONTROLLER', 'PROCESS_VARIABLE']).intersection(set(self._features)))
+        self._has_pid = 'PID_CONTROLLER' in self._features
+
+
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False
 
@@ -109,17 +116,17 @@ class PIDLogic(GenericLogic):
         self.history = np.roll(self.history, -1, axis=1)  # TODO : What is the efficiency of "roll storing" method on large array ?
 
         #TODO: only store activated info, hybrid for now
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'PROCESS_VARIABLE']).intersection(set(self._features)):
+        if self._has_process_value:
             self.history[0, -1] = self._controller.get_process_value()
         else:
             self.history[0, -1] = 0
 
-        if set(['PID_CONTROLLER', 'PROCESS_VARIABLE']).intersection(set(self._features)):
+        if self._has_control_value:
             self.history[1, -1] = self._controller.get_control_value()
         else:
             self.history[1, -1] = 0
 
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'SETPOINT']).intersection(set(self._features)):
+        if self._has_setpoint:
             self.history[2, -1] = self._controller.get_setpoint()
         else:
             self.history[2, -1] = 0
@@ -163,7 +170,7 @@ class PIDLogic(GenericLogic):
 
             @return float: proportional constant of PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.get_kp()
         else:
             return 0
@@ -173,7 +180,7 @@ class PIDLogic(GenericLogic):
 
             @prarm float kp: proportional constant of PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.set_kp(kp)
         else:
             return 0
@@ -183,7 +190,7 @@ class PIDLogic(GenericLogic):
 
             @return float: integration constant of the PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.get_ki()
         else:
             return 0
@@ -193,7 +200,7 @@ class PIDLogic(GenericLogic):
 
             @param float ki: integration constant of the PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.set_ki(ki)
         else:
             return 0
@@ -203,7 +210,7 @@ class PIDLogic(GenericLogic):
 
             @return float: the derivative constant of the PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.get_kd()
         else:
             return 0
@@ -213,7 +220,7 @@ class PIDLogic(GenericLogic):
 
             @param float kd: the derivative constant of the PID controller
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.set_kd(kd)
         else:
             return 0
@@ -223,7 +230,7 @@ class PIDLogic(GenericLogic):
 
             @return float: current set point of the controller
         """
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'SETPOINT']).intersection(set(self._features)):
+        if self._has_setpoint:
             return self.history[2, -1]
         else:
             return 0
@@ -233,7 +240,7 @@ class PIDLogic(GenericLogic):
 
             @param float setpoint: new set point of the controller
         """
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'SETPOINT']).intersection(set(self._features)):
+        if self._has_setpoint:
             return self._controller.set_setpoint(setpoint)
         else:
             return 0
@@ -243,7 +250,7 @@ class PIDLogic(GenericLogic):
 
             @return bool: whether the PID controller is preparing to or conreolling a process
         """
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER']).intersection(set(self._features)):
+        if self._has_controller:
             return self._controller.get_enabled()
         else:
             return 0
@@ -253,7 +260,7 @@ class PIDLogic(GenericLogic):
 
             @param bool enabled: desired state of PID controller
         """
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER']).intersection(set(self._features)):
+        if self._has_controller:
             return self._controller.set_enabled(enabled)
         else:
             return 0
@@ -263,7 +270,7 @@ class PIDLogic(GenericLogic):
 
             @return list(float): (minimum, maximum) values of the control actuator
         """
-        if set(['PID_CONTROLLER', 'PROCESS_CONTROL']).intersection(set(self._features)):
+        if self._has_control_value:
             return self._controller.get_control_limits()
         else:
             return 0
@@ -275,17 +282,17 @@ class PIDLogic(GenericLogic):
 
             This function does nothing, control limits are handled by the control module
         """
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.set_control_limits(limits)
         else:
             return 0
 
-    def get_pv(self):
+    def get_pv(self): # TODO : change name ??? It's confusion with PID variables
         """ Get current process input value.
 
             @return float: current process input value
         """
-        if set(['PID_CONTROLLER', 'SETPOINT_CONTROLLER', 'PROCESS_VARIABLE']).intersection(set(self._features)):
+        if self._has_process_value:
             return self.history[0, -1]
         else:
             return 0
@@ -295,14 +302,14 @@ class PIDLogic(GenericLogic):
 
             @return float: control output value
         """
-        if set(['PID_CONTROLLER', 'PROCESS_CONTROL']).intersection(set(self._features)):
+        if self._has_process_value:
             return self.history[1, -1]
         else:
             return 0
 
     # TODO : What is that exactly ?
     def get_extra(self):
-        if set(['PID_CONTROLLER']).intersection(set(self._features)):
+        if self._has_pid:
             return self._controller.get_extra()
         else:
             return []
@@ -314,7 +321,7 @@ class PIDLogic(GenericLogic):
             @return float: control value for manual mode
         """
 
-        if 'PID_CONTROLLER' in self._features:
+        if self._has_pid:
             return self._controller.get_manual_value()
         else:
             return 0
@@ -324,7 +331,7 @@ class PIDLogic(GenericLogic):
 
             @param float manualvalue: control value for manual mode of controller
         """
-        if self._type == 'PID_CONTROLLER':
+        if self._has_pid:
             return self._controller.set_manual_value(manualvalue)
         else:
             return 0
