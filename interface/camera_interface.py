@@ -51,11 +51,28 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
 
     @abc.abstractmethod
-    def start_acquisition(self):
+    def start_live_acquisition(self):
         """
-        @return int: error code (0:OK, -1:error)
+        @return bool: True : Ok, False : Error
         """
         pass
+
+    @abc.abstractmethod
+    def start_single_acquisition(self):
+        """
+        @return bool: True : Ok, False : Error
+        """
+        pass
+
+    @abc.abstractmethod
+    def stop_acquisition(self):
+        """
+        @return bool: True : Ok, False : Error
+        """
+        pass
+
+
+
 
     @abc.abstractmethod
     def get_acquired_data(self):
@@ -70,7 +87,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_exposure(self, time):
         """ Set the exposure time in seconds
 
-        @return int: error code (0:OK, -1:error)
+        @return float: new exposure time
         """
         pass
 
@@ -87,7 +104,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_gain(self, time):
         """ Set the gain
 
-        @return int: error code (0:OK, -1:error)
+        @return float: new gain
         """
         pass
 

@@ -84,7 +84,7 @@ class CameraLogic(GenericLogic):
         """ Start the data recording loop.
         """
         self.enabled = True
-        self._hardware.start_acquisition()
+        self._hardware.start_live_acquisition()
         self.timer.start(1000*1/self._fps)
 
     def stopLoop(self):
