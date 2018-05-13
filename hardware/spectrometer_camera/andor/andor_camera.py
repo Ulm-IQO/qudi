@@ -2,7 +2,7 @@
 
 """
 This hardware module implement the camera spectrometer interface to use an Andor Camera.
-It use a dll to inteface with instruments via USB (only available physical interface)
+It use a dll to interface with instruments via USB (only available physical interface)
 This module does aim at replacing Solis.
 
 ---
@@ -32,7 +32,7 @@ from interface.camera_interface import CameraInterface
 from interface.setpoint_controller_interface import SetpointControllerInterface
 from interface.spectrometer_interface import SpectrometerInterface
 
-from libraries.pyandor.Andor.camera import Camera
+from .api import Camera
 
 import numpy as np
 
@@ -114,10 +114,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
 
     def set_image(self, hbin, vbin, hstart, hend, vstart, vend):
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
-        if error_code == 'DRV_SUCCESS':
-            return 0
-        else:
-            return -1
+        return self._check_success(error_code)
 
     def start_acquisition(self):
         if self.get_ready_state():
@@ -130,6 +127,12 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
 
     def stop_acquisition(self):
         pass
+
+    def _check_success (self, error_code):
+        if error_code == 'DRV_SUCCESS':
+            return 0
+        else:
+            return -1
 
     def get_acquired_data(self):
         data = []
@@ -147,10 +150,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
     def set_exposure(self, time):
         self._exposure = time
         error_code = self.cam.SetExposureTime(time)
-        if error_code == 'DRV_SUCCESS':
-            return 0
-        else:
-            return -1
+        return self._check_success(error_code)
 
     def get_exposure(self):
         return self._exposure
@@ -167,11 +167,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
             error_code = self.cam.CoolerON()
         else:
             error_code = self.cam.CoolerOFF()
-
-        if error_code == 'DRV_SUCCESS':
-            return 0
-        else:
-            return -1
+        return self._check_success(error_code)
 
     def get_cooler_on_state(self):
         return self._cooler_on
@@ -184,10 +180,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
             return -1
         self._temperature = temperature
         error_code = self.cam.SetTemperature(int(temperature))
-        if error_code == 'DRV_SUCCESS':
-            return 0
-        else:
-            return -1
+        return self._check_success(error_code)
 
     def get_setpoint_temperature(self):
         return self._temperature

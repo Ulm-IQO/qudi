@@ -8,6 +8,7 @@
 #   2010 Martijn Schaafsma
 #
 #   Reworked by Simon Dickreuter 2016
+#   Reworked by Alrik Durand 2018
 #
 #
 #   This program is free software: you can redistribute it and/or modify
@@ -32,7 +33,6 @@ import platform
 import sys
 import time
 from ctypes import *
-from PIL import Image
 from .errorcodes import ERROR_CODE
 
 
@@ -273,47 +273,9 @@ class Camera():
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
-    def SaveAsBmp(self, path):
-        im = Image.new("RGB", (self._width, self._height), "white")
-        pix = im.load()
-
-        for i in range(len(self._imageArray)):
-            (row, col) = divmod(i, self._width)
-            picvalue = int(round(self._imageArray[i] * 255.0 / 65535))
-            pix[col, row] = (picvalue, picvalue, picvalue)
-
-        im.save(path, "BMP")
-
-    def SaveAsTxt(self, path):
-        file = open(path, 'w')
-
-        for line in self._imageArray:
-            file.write("%g\n" % line)
-
-        file.close()
-
     def SetImageRotate(self, iRotate):
         error = self._dll.SetImageRotate(iRotate)
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-
-    def SaveAsBmpNormalised(self, path):
-
-        im = Image.new("RGB", (self._width, self._height), "white")
-        pix = im.load()
-
-        maxIntensity = max(self._imageArray)
-
-        for i in range(len(self._imageArray)):
-            (row, col) = divmod(i, self._width)
-            picvalue = int(round(self._imageArray[i] * 255.0 / maxIntensity))
-            pix[col, row] = (picvalue, picvalue, picvalue)
-
-        im.save(path, "BMP")
-
-    def SaveAsFITS(self, filename, type):
-        error = self._dll.SaveAsFITS(filename, type)
-        self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
-        return ERROR_CODE[error]
 
     def CoolerON(self):
         error = self._dll.CoolerON()
