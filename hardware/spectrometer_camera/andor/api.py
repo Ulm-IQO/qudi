@@ -67,15 +67,13 @@ class Camera():
         else:
             raise RuntimeError("Cannot detect operating system, will now stop")
 
-        self._verbosity = True
-
        # Initiate parameters
 
         self._temperature  = None
         self._set_T        = None
         self._gain         = None
         self._gainRange    = None
-        self._verbosity    = True
+        self._verbosity    = False
         self._preampgain   = None
         self._channel      = None
         self._outamp       = None
@@ -96,12 +94,13 @@ class Camera():
         self._noHSSpeeds   = None
         self._ReadMode     = None
         self._cooling      = False
+        self._on           = False
 
         # Initialize the device
         error = self.Initialize(self._init_path)
         if error == 20002:
             self.GetCameraSerialNumber()
-            print("Camera %s initalized" % (self._serial))
+            #print("Camera %s initalized" % (self._serial))
         else:
             raise RuntimeError("Camera could not be initialized, aborting.")
 
@@ -113,6 +112,7 @@ class Camera():
 
         self._width        = cw.value
         self._height       = ch.value
+        self._on           = True
 
 
     def __del__(self):
@@ -147,6 +147,7 @@ class Camera():
 
     def ShutDown(self):
         error = self._dll.ShutDown()
+        self._on = False
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
@@ -215,12 +216,21 @@ class Camera():
         return ERROR_CODE[error]
 
     def StartAcquisition(self):
+        if not self._on:
+            return None
         error = self._dll.StartAcquisition()
-        self._dll.WaitForAcquisition()
         self.verbose(ERROR_CODE[error], sys._getframe().f_code.co_name)
         return ERROR_CODE[error]
 
+    def WaitForIdle(self):
+        if self.GetStatus()=='DRV_ACQUIRING':
+            return self._dll.WaitForAcquisition()
+        else:
+            return
+
     def GetAcquiredData(self, imageArray):
+        if not self._on:
+            return None
         if (self._ReadMode == 4):
             if (self._AcquisitionMode == 1):
                 dim = self._width * self._height / self._hbin / self._vbin
@@ -297,6 +307,8 @@ class Camera():
         return iCoolerStatus.value
 
     def GetTemperature(self):
+        if not self._on:
+            return None
         ctemperature = c_int()
         error = self._dll.GetTemperature(byref(ctemperature))
         self._temperature = ctemperature.value
@@ -508,7 +520,7 @@ class Camera():
             self.GetEMCCDGain()
             if self._gain > 1:
                 self.SetEMCCDGain(1)
-                print('Charge above 25 pC, setting gain to 1')
+                #print('Charge above 25 pC, setting gain to 1')
 
     def getResolutionWdith(self):
         return self._width
