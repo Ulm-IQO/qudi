@@ -65,10 +65,10 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
     _width = 0
     _height = 0
     cam = None
-    _acquiring = False
     _last_acquisition_mode = None  # useful if config changes during acq
     _supported_read_mode = [ReadMode.FVB.value, ReadMode.IMAGE.value]  # TODO: read this from camera
     _max_cooling = -100
+    _live = False
 
     def on_activate(self):
 
@@ -84,9 +84,10 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         self.set_setpoint_temperature(self._temperature)
         self._width = self.cam.getResolutionWdith()
         self._height = self.cam.getResolutionHeight()
-        self._acquiring = False
+
 
     def on_deactivate(self):
+        self.stop_acquisition()
         self.cam.CoolerOFF()
         self.cam.ShutDown()
 
@@ -116,20 +117,24 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
         return self._check_success(error_code)
 
+    def support_live_acquisition(self):
+        return False
+
     def start_single_acquisition(self):
         if self.get_ready_state():
-            self._acquiring = True
             self._last_acquisition_mode = self.get_read_mode()
             self.cam.StartAcquisition()
+            self.cam.WaitForIdle()
             return 0
         else:
             return -1
 
     def stop_acquisition(self):
-        pass
+        if self.cam.GetStatus()=='DRV_ACQUIRING':
+            self.cam.AbortAcquisition()
 
     def start_live_acquisition(self):
-        pass
+        return False
 
     def _check_success (self, error_code):
         if error_code == 'DRV_SUCCESS':
@@ -140,6 +145,8 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
     def get_acquired_data(self):
         data = []
         self.cam.GetAcquiredData(data)
+        if data == []:
+            self.log.warning('Could get acquired data')
         data = np.array(data, dtype=np.double)
         result = []
         if self._last_acquisition_mode == ReadMode.FVB.value:
@@ -147,7 +154,6 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         elif self._last_acquisition_mode == ReadMode.IMAGE.value:
             result = np.reshape(data, (self._height, self._width))
 
-        self._acquiring = False
         return result
 
     def set_exposure(self, time):
@@ -189,7 +195,7 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         return self._temperature
 
     def get_ready_state(self):
-        return not self._acquiring
+        return self.cam.GetStatus() == 'DRV_IDLE'
 
     # Setpoint controller interface to control cooling
 

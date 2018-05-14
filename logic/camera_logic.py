@@ -84,8 +84,11 @@ class CameraLogic(GenericLogic):
         """ Start the data recording loop.
         """
         self.enabled = True
-        self._hardware.start_live_acquisition()
         self.timer.start(1000*1/self._fps)
+        if self._hardware.support_live_acquisition():
+            self._hardware.start_live_acquisition()
+        else:
+            self._hardware.start_single_acquisition()
 
     def stopLoop(self):
         """ Stop the data recording loop.
@@ -98,11 +101,12 @@ class CameraLogic(GenericLogic):
     def loop(self):
         """ Execute step in the data recording loop: save one of each control and process values
         """
-
         self._last_image = self._hardware.get_acquired_data()
         self.sigUpdateDisplay.emit()
         if self.enabled:
             self.timer.start(1000 * 1 / self._fps)
+            if not self._hardware.support_live_acquisition():
+                self._hardware.start_single_acquisition()  # the hardware has to check it's not busy
 
     def get_last_image(self):
         return self._last_image

@@ -48,12 +48,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-
+    @abc.abstractmethod
+    def support_live_acquisition(self):
+        """
+        @return bool
+        """
+        pass
 
     @abc.abstractmethod
     def start_live_acquisition(self):
         """
-        @return bool: True : Ok, False : Error
+        @return bool: True : Ok, False : Not supported
         """
         pass
 

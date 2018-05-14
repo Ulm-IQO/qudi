@@ -88,7 +88,7 @@ class CameraThorlabs(Base, CameraInterface):
         Check that value is in the range [mini, maxi] and log message as error if not. Return True if OK.
 
         """
-        if value < min or value > max:
+        if value < mini or value > maxi:
                 self.log.error('{} - Value {} must be between {} and {}'.format(message, value, mini, maxi))
                 return False
         else:
@@ -193,6 +193,9 @@ class CameraThorlabs(Base, CameraInterface):
 
     def get_size(self):
         return self._width, self._height
+
+    def support_live_acquisition(self):
+        return True
 
     def start_live_acquisition(self):
         if self.get_ready_state():
