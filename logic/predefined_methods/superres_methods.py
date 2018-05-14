@@ -53,6 +53,7 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
     waiting_element = self._get_idle_element(wait_time, 0.0, False)
     # get laser element
     laser_element, dummy = self._get_laser_element(laser_length, 0.0, False, amp_V=channel_amp)
+    # laser_dummy_element = self._get_idle_element(laser_length, 0.0, False)
     # get dummy element and both mw elements for pi pulses
     pi0_element = self._get_idle_element(pi_length_1, 0.0, False)
     pi1_element = self._get_mw_element(pi_length_1, 0.0, mw_channel, False, mw_amp_1, mw_freq_1,
@@ -99,18 +100,18 @@ def generate_superres_seq(self, name='Superres', pi_length_1=1.0e-7, pi_length_2
     self.save_ensemble(name + '_pi2', pi2_ensemble)
 
     # Create sequence out of the ensembles
-    pixel_dwell_time = 1 / pixel_clock
-    single_run_length = max(pi_length_1, pi_length_2) + laser_length + wait_time
-    reps = int(0.95 * pixel_dwell_time // single_run_length)
+    # pixel_dwell_time = 1 / pixel_clock
+    # single_run_length = max(pi_length_1, pi_length_2) + laser_length + wait_time
+    # reps = int(0.95 * pixel_dwell_time // single_run_length)
 
     seq_param_list = []
     #seq_param_init = {'repetitions': reps, 'trigger_wait': 1, 'go_to': 0, 'event_jump_to': 0}
     seq_param = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 0, 'event_jump_to': 0}
     seq_param_last = {'repetitions': 0, 'trigger_wait': 0, 'go_to': 1, 'event_jump_to': 1}
     #seq_param_list.append((dummy_ensemble, seq_param_init))
+    seq_param_list.append((pi2_ensemble, seq_param))
     seq_param_list.append((dummy_ensemble, seq_param))
-    seq_param_list.append((pi1_ensemble, seq_param))
-    seq_param_list.append((pi2_ensemble, seq_param_last))
+    seq_param_list.append((pi1_ensemble, seq_param_last))
     pulse_sequence = PulseSequence(name, seq_param_list, False)
 
     # add metadata to invoke settings later on

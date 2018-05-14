@@ -253,8 +253,8 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
         if self.superres_scanmode and pixel_clock:
-            self._pulsed_master._measurement_logic._pulse_generator_device._force_jump_sequence(
-                'FIRST')
+            # self._pulsed_master._measurement_logic._pulse_generator_device._force_jump_sequence(
+            #     'FIRST')
             new_path = np.zeros([line_path.shape[0], line_path.shape[1]*3])
             new_path[:][0] = np.linspace(min(line_path[:][0]), max(line_path[:][0]),
                                          new_path.shape[1])
@@ -270,6 +270,10 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         # apply superresolution mode
         if self.superres_scanmode and pixel_clock:
+            self._pulsed_master.toggle_pulse_generator(True)
+            time.sleep(0.2)
+            while not self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
             # always sample 3 times the same position
             #line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, pixel_clock)
@@ -278,12 +282,10 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             linescan_return[:, 1] = tmp_return[1::3, 0]
             linescan_return[:, 2] = tmp_return[2::3, 0]
             # Switch off pulse sequence (to reset the sequence)
-            # self._pulsed_measurement._pulse_generator_device.awg.write('SOURCE1:JUMP:FORCE 1')
-            # self._pulsed_master.toggle_pulse_generator(False)
-
+            self._pulsed_master.toggle_pulse_generator(False)
             time.sleep(0.2)
-            # while self._pulsed_master.status_dict['pulser_running']:
-            #     time.sleep(0.2)
+            while self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
         else:
             linescan_return = self._scanning_device.scan_line(line_path, pixel_clock)
 
