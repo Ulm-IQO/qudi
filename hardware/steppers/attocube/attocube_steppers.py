@@ -40,10 +40,8 @@ class AttoCubeStepper(Base, SteppersInterface):
     _interface_type = ConfigOption('interface_type', missing='error')  # 'usb'|'ethernet'
 
     _host = ConfigOption('host', None)
-    _password = ConfigOption('password', b"123456")
+    _password = ConfigOption('password', "123456")
     _port = ConfigOption('port', 7230)
-
-    _interface = ConfigOption('interface', None)
 
     _default_axis = {
         'voltage_range': [0, 60],
@@ -77,19 +75,19 @@ class AttoCubeStepper(Base, SteppersInterface):
 
         self._check_axis()
         self._check_connection()
-        self._connect()
+        self._connect(attempt=1)
 
         if self.connected:
             self._initalize_axis()
 
     def _check_axis(self):
-        for name, axis in self._axis_config:
-            if 'id' not in axis:
+        for name in self._axis_config:
+            if 'id' not in self._axis_config[name]:
                 self.log.error('id of axis {} is not defined in config file.'.format(name))
             # check _axis_config and set default value if not defined
-            for key, default_value in self._default_axis:
-                if key not in axis:
-                    axis[key] = default_value
+            for key in self._default_axis:
+                if key not in self._axis_config[name]:
+                    self._axis_config[name][key] = self._default_axis[key]
 
     def _check_connection(self):
         if self._interface_type == 'ethernet':
@@ -102,10 +100,10 @@ class AttoCubeStepper(Base, SteppersInterface):
             self.log.error("Wrong interface type, option are 'ethernet' or 'usb'")
 
     def _initalize_axis(self):
-        for name, axis in self._axis_config:
+        for name in self._axis_config:
             self.capacitance(name)  # capacitance leaves axis in step mode
-            self.frequency(name, axis['frequency'])
-            self.voltage(name, axis['voltage'])
+            self.frequency(name, self._axis_config[name]['frequency'])
+            self.voltage(name, self._axis_config[name]['voltage'])
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -120,7 +118,7 @@ class AttoCubeStepper(Base, SteppersInterface):
 
         if self._interface_type == 'ethernet':
 
-            self.tn = telnetlib.Telnet(self._host, self._port)
+            self.tn = telnetlib.Telnet(self._host, self._port, 3)
             self.tn.open(self._host, self._port)
             password = str(self._password).encode('ascii')
             counter = 0
@@ -147,7 +145,7 @@ class AttoCubeStepper(Base, SteppersInterface):
     def _disconnect(self, keep_active=False):
         # Put eve
         if not keep_active:
-            for name, axis_config in self._axis_config:
+            for name in self._axis_config:
                 self._send_cmd("setm {} gnd".format(self._axis_config[name]['id']))
 
         if self._interface_type == 'ethernet':
@@ -223,8 +221,8 @@ class AttoCubeStepper(Base, SteppersInterface):
             if axis in self._axis_config:
                 return axis
         if type(axis) == int:
-            for name, axis_config in self._axis_config:
-                if axis_config['id'] == axis:
+            for name in self._axis_config:
+                if self._axis_config[name]['id'] == axis:
                     return name
         # if still not found, we error
         self.log.error('Axis {} is not defined in config file'.format(axis))
@@ -358,13 +356,14 @@ class AttoCubeStepper(Base, SteppersInterface):
                 self._send_cmd("setm {} cap".format(self._axis_config[ax]['id']))
                 self._send_cmd("capw {}".format(self._axis_config[ax]['id']))
                 commmand = "getc {}".format(self._axis_config[ax]['id'])
-                regex = 'capacitance = (\d+) (mF|µF|nF)'
+                regex = 'capacitance = ([-+]?\d*\.\d+) (mF|µF|nF)'
                 result = self._send_cmd(commmand, True, regex)
                 self._send_cmd("setm {} stp".format(self._axis_config[ax]['id']))
                 self._axis_config[ax]['busy'] = False
-                if len(result) < 2:
+                if len(result) == 0:
                     self.log.error('Capacitance of axis {} could not be read : {}'.format(ax, result))
                 factor = {'mF': 1e-3, 'µF': 1e-6, 'nF': 1e-9}
+                result = result[0]  # before : [('1198.847778', 'nF')]
                 self._axis_config[ax]['capacitance'] = float(result[0])*factor[result[1]]
 
         return self._get_config(axis, 'capacitance')
@@ -376,6 +375,14 @@ class AttoCubeStepper(Base, SteppersInterface):
                 self.warning('Stepping might not work while axis {} in capacitance measurement'.format(ax))
             number_step_axis = int(self._parse_value(axis, ax, number))
             if number_step_axis > 0:
-                self._send_cmd("stpu {} {}".format(self._axis_config[ax]['id'], number_step_axis))
+                self._send_cmd("stepu {} {}".format(self._axis_config[ax]['id'], number_step_axis))
             elif number_step_axis < 0:
-                self._send_cmd("stpd {} {}".format(self._axis_config[ax]['id'], -number_step_axis))
+                self._send_cmd("stepd {} {}".format(self._axis_config[ax]['id'], -number_step_axis))
+
+    def stop(self, axis=None):
+        if axis is None:
+            axis = list(self._axis_config.keys())
+        parsed_axis = self._parse_axis(axis)
+        for ax in parsed_axis:
+            self._send_cmd("stop {}".format(self._axis_config[ax]['id']))
+        self.log.info("All piezo axis stopped")
