@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi Interface for a camera.
-
+Dummy implementation for camera_interface.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -21,67 +20,90 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+import numpy as np
+import time
+from core.module import Base, ConfigOption
+from interface.camera_interface import CameraInterface
 
 
-class CameraInterface(metaclass=InterfaceMetaclass):
-    """ This interface is used to manage and visualize a simple camera
+class CameraDummy(Base, CameraInterface):
+    """ Dummy hardware for camera interface
     """
 
-    _modtype = 'CameraInterface'
-    _modclass = 'interface'
+    _modtype = 'DummyCamera'
+    _modclass = 'hardware'
 
-    @abc.abstractmethod
+    _support_live = ConfigOption('support_live', True)
+    _camera_name = ConfigOption('camera_name', 'Dummy camera')
+    _resolution = ConfigOption('resolution', (1280, 720))  # High-definition !
+
+    _live = False
+    _acquiring = False
+    _exposure = ConfigOption('exposure', .1)
+    _gain = ConfigOption('gain', 1.)
+
+    def on_activate(self):
+        """ Initialisation performed during activation of the module.
+        """
+        pass
+
+    def on_deactivate(self):
+        """ Deinitialisation performed during deactivation of the module.
+        """
+        self.stop_acquisition()
+
     def get_name(self):
         """ Retrieve an identifier of the camera that the GUI can print
 
         @return string: name for the camera
         """
-        pass
+        return self._camera_name
 
-    @abc.abstractmethod
     def get_size(self):
         """ Retrieve size of the image in pixel
 
         @return tuple: Size (width, height)
         """
-        pass
+        return self._resolution
 
-    @abc.abstractmethod
     def support_live_acquisition(self):
         """ Return whether or not the camera can take care of live acquisition
 
         @return bool: True if supported, False if not
         """
-        pass
+        return self._support_live
 
-    @abc.abstractmethod
     def start_live_acquisition(self):
         """ Start a continuous acquisition
 
         @return bool: Success ?
         """
-        pass
+        if self._support_live:
+            self._live = True
+            self._acquiring = False
 
-    @abc.abstractmethod
     def start_single_acquisition(self):
         """ Start a single acquisition
 
         @return bool: Success ?
         """
-        pass
+        if self._live:
+            return False
+        else:
+            self._acquiring = True
+            time.sleep(float(self._exposure+10/1000))
+            self._acquiring = False
+            return True
 
-    @abc.abstractmethod
     def stop_acquisition(self):
         """ Stop/abort live or single acquisition
 
         @return bool: Success ?
         """
-        pass
+        self._live = False
+        self._acquiring = False
 
 
-    @abc.abstractmethod
     def get_acquired_data(self):
         """ Return an array of last acquired image.
 
@@ -89,9 +111,9 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
         Each pixel might be a float, integer or sub pixels
         """
-        pass
+        data = np.random.random(self._resolution)*self._exposure*self._gain
+        return data.transpose()
 
-    @abc.abstractmethod
     def set_exposure(self, exposure):
         """ Set the exposure time in seconds
 
@@ -99,18 +121,17 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
         @return float: setted new exposure time
         """
-        pass
+        self._exposure = exposure
+        return self._exposure
 
-    @abc.abstractmethod
     def get_exposure(self):
         """ Get the exposure time in seconds
 
         @return float exposure time
         """
-        pass
+        return self._exposure
 
 
-    @abc.abstractmethod
     def set_gain(self, gain):
         """ Set the gain
 
@@ -118,23 +139,22 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
         @return float: new exposure gain
         """
-        pass
+        self._gain = gain
+        return self._gain
 
-    @abc.abstractmethod
     def get_gain(self):
         """ Get the gain
 
         @return float: exposure gain
         """
-        pass
+        return self._gain
 
 
-    @abc.abstractmethod
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
 
         @return bool: ready ?
         """
-        pass
+        return not (self._live or self._acquiring)
 
 
