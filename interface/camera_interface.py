@@ -58,7 +58,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def start_live_acquisition(self):
         """
-        @return bool: True : Ok, False : Not supported
+        @return bool: True : Ok, False : Error
         """
         pass
 
@@ -104,7 +104,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
 
     @abc.abstractmethod
-    def set_gain(self, time):
+    def set_gain(self, gain):
         """ Set the gain
 
         @return float: new gain
