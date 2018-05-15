@@ -3,6 +3,7 @@
 """
 This file contains the Qudi Interface for a camera.
 
+
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
@@ -25,8 +26,7 @@ from core.util.interfaces import InterfaceMetaclass
 
 
 class CameraInterface(metaclass=InterfaceMetaclass):
-    """ Define the interface with a camera
-    These camera can be cooled, used in image mode or Full Vertical Binning
+    """ This interface is used to manage and visualize a simple camera
     """
 
     _modtype = 'CameraInterface'
@@ -35,54 +35,59 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def get_name(self):
         """ Retrieve an identifier of the camera that the GUI can print
-        Maker, model, serial number, etc.
+
         @return string: name for the camera
         """
         pass
 
     @abc.abstractmethod
     def get_size(self):
-        """ Retrieve size of the image
+        """ Retrieve size of the image in pixel
 
-        @return Integer Tuple : (x,y)
+        @return tuple: Size (width, height)
         """
         pass
 
     @abc.abstractmethod
     def support_live_acquisition(self):
-        """
-        @return bool
+        """ Return whether or not the camera can take care of live acquisition
+
+        @return bool: True if supported, False if not
         """
         pass
 
     @abc.abstractmethod
     def start_live_acquisition(self):
-        """
-        @return bool: True : Ok, False : Error
+        """ Start a continuous acquisition
+
+        @return bool: Success ?
         """
         pass
 
     @abc.abstractmethod
     def start_single_acquisition(self):
-        """
-        @return bool: True : Ok, False : Error
+        """ Start a single acquisition
+
+        @return bool: Success ?
         """
         pass
 
     @abc.abstractmethod
     def stop_acquisition(self):
-        """
-        @return bool: True : Ok, False : Error
+        """ Stop/abort live or single acquisition
+
+        @return bool: Success ?
         """
         pass
 
 
     @abc.abstractmethod
     def get_acquired_data(self):
-        """
-        @return: aquired data, 2d array
+        """ Return an array of last acquired image.
+
+        @return numpy array: image data in format [[row],[row]...]
+
         Each pixel might be a float, integer or sub pixels
-            [[row],[row]...] in IMAGE
         """
         pass
 
@@ -90,7 +95,9 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_exposure(self, time):
         """ Set the exposure time in seconds
 
-        @return float: new exposure time
+        @param float time: desired new exposure time
+
+        @return float: setted new exposure time
         """
         pass
 
@@ -98,7 +105,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_exposure(self):
         """ Get the exposure time in seconds
 
-        @return float: exposure time
+        @return float exposure time
         """
         pass
 
@@ -107,7 +114,9 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def set_gain(self, gain):
         """ Set the gain
 
-        @return float: new gain
+        @param float gain: desired new gain
+
+        @return float: new exposure gain
         """
         pass
 
@@ -115,7 +124,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_gain(self):
         """ Get the gain
 
-        @return float: gain
+        @return float: exposure gain
         """
         pass
 
@@ -124,7 +133,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
 
-        @return: bool
+        @return bool: ready ?
         """
         pass
 

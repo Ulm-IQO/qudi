@@ -1,4 +1,4 @@
-# Sensor, control and PID
+# Sensor, control and PID {#pid_features}
 
 Qudi provide several features to measure and control a parameter of a setup via setpoint or PID.
 

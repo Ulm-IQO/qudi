@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Interface file to control processes in PID control.
+This interface is used to manage a control value.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,6 +27,9 @@ from core.util.interfaces import InterfaceMetaclass
 class ProcessControlInterface(metaclass=InterfaceMetaclass):
     """ A very simple interface to control a single value.
         Used for PID control.
+
+        This interface can be used to command the power, flow or any value of a device that can be turned on or off.
+
     """
 
     _modtype = 'ProcessControlInterface'

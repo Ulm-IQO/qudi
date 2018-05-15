@@ -23,6 +23,7 @@ Changes/New features:
 * Added a hardware module for Andor Newton spectrometer camera for camera, spectro, and setpoint of temperature
 * Added a general multi axis piezo stepper interface
 * Added a hardware module for attocube piezzo steppers
+* Added logo_qudi.ico for Windows shortcut
 
 Config changes:
 

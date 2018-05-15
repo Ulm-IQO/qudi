@@ -29,6 +29,16 @@ from interface.setpoint_interface import SetpointInterface
 
 
 class SetpointControllerInterface(ProcessInterface, SetpointInterface, metaclass=InterfaceMetaclass):
+    """
+    This interface is used to manage a controller with a setpoint value.
+
+    This interface use two sub-interfaces :
+    - ProcessInterface : An interface to read a process value
+    - SetpointInterface : An interface to control a setpoint value
+
+    To this two sub interfaces, this one add 'enable state' feature.
+
+    """
     _modtype = 'SetpointControllerInterface'
     _modclass = 'interface'
 
@@ -38,7 +48,7 @@ class SetpointControllerInterface(ProcessInterface, SetpointInterface, metaclass
     def get_enabled(self):
         """ Get the current state of the controller
 
-        @return boolean:
+        Return a boolean (true if enabled, false if not)
         """
         pass
 
@@ -46,6 +56,6 @@ class SetpointControllerInterface(ProcessInterface, SetpointInterface, metaclass
     def set_enabled(self, enabled):
         """ Set the current state of the controller
 
-        @return boolean:
+        Return the new value 
         """
         pass

@@ -25,8 +25,7 @@ from core.util.interfaces import InterfaceMetaclass
 
 
 class SetpointInterface(metaclass=InterfaceMetaclass):
-    """ An interface get and set a setpoint for a process variable.
-        Used for PID control.
+    """ This interface is used to manage a setpoint value.
     """
 
     _modtype = 'ProcessControlInterface'
@@ -36,15 +35,16 @@ class SetpointInterface(metaclass=InterfaceMetaclass):
     def get_setpoint(self):
         """ Getter for the setpoint value
 
-        @return float: current setpoint value
+        Return a value in unit
         """
         pass
 
     @abc.abstractmethod
     def set_setpoint(self, setpoint):
-        """ Sett for the setpoint value
+        """ Set the current setpoint
 
-        @return float: the new setpoint value
+        Parameter : new value desired in unit
+        Return the real new value
         """
         pass
 
