@@ -32,6 +32,9 @@ from core.util.interfaces import InterfaceMetaclass
 class SteppersInterface(metaclass=InterfaceMetaclass):
     """
     """
+    @abc.abstractmethod
+    def axis(self):
+        pass
 
     @abc.abstractmethod
     def voltage_range(self, axis):
@@ -57,5 +60,10 @@ class SteppersInterface(metaclass=InterfaceMetaclass):
     def frequency(self, axis, value=None):
         pass
 
+    @abc.abstractmethod
     def steps(self, axis, number):
+        pass
+
+    @abc.abstractmethod
+    def stop(self, axis=None):
         pass

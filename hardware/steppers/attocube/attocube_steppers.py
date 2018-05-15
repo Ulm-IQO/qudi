@@ -275,6 +275,9 @@ class AttoCubeStepper(Base, SteppersInterface):
             self.log.error('{} - Value {} in not in range [{}, {}'.format(error_message, value, mini, maxi))
         return ok
 
+    def axis(self):
+        return tuple(self._axis_config.keys())
+
     def voltage_range(self, axis):
         return self._get_config(axis, 'voltage_range')
 
