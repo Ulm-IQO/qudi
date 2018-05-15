@@ -77,13 +77,11 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-
-
     @abc.abstractmethod
     def get_acquired_data(self):
         """
-
-        @return: aquired data, 2d array of float between 0. and 1.
+        @return: aquired data, 2d array
+        Each pixel might be a float, integer or sub pixels
             [[row],[row]...] in IMAGE
         """
         pass
