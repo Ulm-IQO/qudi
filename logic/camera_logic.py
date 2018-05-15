@@ -72,10 +72,12 @@ class CameraLogic(GenericLogic):
         pass
 
     def set_exposure(self, time):
+        """ Set exposure of hardware """
         self._hardware.set_exposure(time)
         self.get_exposure()
 
     def get_exposure(self):
+        """ Get exposure of hardware """
         self._exposure = self._hardware.get_exposure()
         self._fps = min(1 / self._exposure, self._max_fps)
         return self._exposure
@@ -109,6 +111,7 @@ class CameraLogic(GenericLogic):
                 self._hardware.start_single_acquisition()  # the hardware has to check it's not busy
 
     def get_last_image(self):
+        """ Return last acquired image """
         return self._last_image
 
 

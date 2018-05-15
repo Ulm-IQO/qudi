@@ -78,9 +78,11 @@ class AttoCubeStepper(Base, SteppersInterface):
         self._connect(attempt=1)
 
         if self.connected:
-            self._initalize_axis()
+            self._initialize_axis()
 
     def _check_axis(self):
+        """ Internal function - check that the axis in the config file are ok and complete them with default
+        """
         for name in self._axis_config:
             if 'id' not in self._axis_config[name]:
                 self.log.error('id of axis {} is not defined in config file.'.format(name))
@@ -90,6 +92,8 @@ class AttoCubeStepper(Base, SteppersInterface):
                     self._axis_config[name][key] = self._default_axis[key]
 
     def _check_connection(self):
+        """ Internal function - Check the connection config is ok
+        """
         if self._interface_type == 'ethernet':
             if self._host is None:
                 self.log.error('Ethernet connection required but no host have been specified')
@@ -99,7 +103,9 @@ class AttoCubeStepper(Base, SteppersInterface):
         else:
             self.log.error("Wrong interface type, option are 'ethernet' or 'usb'")
 
-    def _initalize_axis(self):
+    def _initialize_axis(self):
+        """ Internal function - Initialize axis with the values from the config
+        """
         for name in self._axis_config:
             self.capacitance(name)  # capacitance leaves axis in step mode
             self.frequency(name, self._axis_config[name]['frequency'])
@@ -143,6 +149,8 @@ class AttoCubeStepper(Base, SteppersInterface):
             pass  # TODO
 
     def _disconnect(self, keep_active=False):
+        """ Close connection with ANC after setting all axis to ground (except if keep_active is true)
+        """
         # Put eve
         if not keep_active:
             for name in self._axis_config:
@@ -269,6 +277,7 @@ class AttoCubeStepper(Base, SteppersInterface):
                 self.log.error('Could not set value for axis {}, value list length is incorrect')
 
     def _in_range(self, value, value_range, error_message=None):
+        """ Internal function - Check that a value is in range and eventually error of not """
         mini, maxi = value_range
         ok = mini <= value <= maxi
         if not ok and error_message is not None:
@@ -276,19 +285,24 @@ class AttoCubeStepper(Base, SteppersInterface):
         return ok
 
     def axis(self):
+        """ steppers_interface - Return a tuple of all axis identifiers"""
         return tuple(self._axis_config.keys())
 
     def voltage_range(self, axis):
+        """ steppers_interface (overloaded) - Return the voltage range of one (or multiple) axis """
         return self._get_config(axis, 'voltage_range')
 
     def frequency_range(self, axis):
+        """ steppers_interface (overloaded) - Return the frequency range of one (or multiple) axis """
         return self._get_config(axis, 'frequency_range')
 
     def position_range(self, axis):
+        """ steppers_interface (overloaded) - Return the position range of one (or multiple) axis """
         return self._get_config(axis, 'position_range')
 
     def voltage(self, axis, value=None, buffered=False):
         """
+        steppers_interface (overloaded)
         Function that get or set the voltage of one ore multiple axis
         :param axis: axis input : 'x', 2, ['z', 3]...
         :param value: value for axis : 1.0, [1.0], [2.5, 2.8]...
@@ -318,6 +332,7 @@ class AttoCubeStepper(Base, SteppersInterface):
 
     def frequency(self, axis, value=None, buffered=False):
         """
+        steppers_interface (overloaded)
         Function that get or set the frequency of one ore multiple axis
         :param axis: axis input : 'x', 2, ['z', 3]...
         :param value: value for axis : 100, [200], [500, 1000]...
@@ -347,10 +362,11 @@ class AttoCubeStepper(Base, SteppersInterface):
 
     def capacitance(self, axis, buffered=False):
         """
-
-        :param axis:
-        :param buffered:
-        :return:
+        steppers_interface (overloaded)
+        Function that get the capacitance of one ore multiple axis
+        :param axis: axis input : 'x', 2, ['z', 3]...
+        :param buffered: buffered: if set to True, just return the last read capacitance without asking the controller
+        will be None if never read
         """
         parsed_axis = self._parse_axis(axis)
         if not buffered:
@@ -372,6 +388,12 @@ class AttoCubeStepper(Base, SteppersInterface):
         return self._get_config(axis, 'capacitance')
 
     def steps(self, axis, number):
+        """
+        steppers_interface (overloaded)
+        Function to do n (or n, m...) steps one one (or several) axis
+        :param axis input : 'x', 2, ['z', 3]...
+        :param number: 100, [200], [500, 1000]...
+        """
         parsed_axis = self._parse_axis(axis)
         for ax in parsed_axis:
             if self._axis_config[ax]['busy']:
@@ -383,6 +405,7 @@ class AttoCubeStepper(Base, SteppersInterface):
                 self._send_cmd("stepd {} {}".format(self._axis_config[ax]['id'], -number_step_axis))
 
     def stop(self, axis=None):
+        """ steppers_interface (overloaded) - Stop all movement on one, several or all (if None) axis"""
         if axis is None:
             axis = list(self._axis_config.keys())
         parsed_axis = self._parse_axis(axis)

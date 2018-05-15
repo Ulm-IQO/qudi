@@ -117,11 +117,17 @@ class CameraGUI(GUIBase):
             self.sigStart.emit()
 
     def update_data(self):
+        """
+        Get the image data from the logic and print it on the window
+        """
         raw_data_image = self._logic.get_last_image()
         levels = (0., 1.)
         self._image.setImage(image=raw_data_image)
         # self._image.setImage(image=raw_data_image, levels=levels)
 
     def updateView(self):
+        """
+        Update the view when the model change
+        """
         pass
 

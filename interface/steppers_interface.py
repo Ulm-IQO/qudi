@@ -34,36 +34,62 @@ class SteppersInterface(metaclass=InterfaceMetaclass):
     """
     @abc.abstractmethod
     def axis(self):
+        """ Get a tuple of all axis identifier
+        The axis identifier might be an integer or a string
+        """
         pass
 
     @abc.abstractmethod
     def voltage_range(self, axis):
+        """ Get the voltage range of an axis
+        Return the voltage range in Volt as a tuple (min, max)
+        """
         pass
 
     @abc.abstractmethod
     def frequency_range(self, axis):
+        """ Get the frequency range of an axis
+        Return the frequency range in Hertz as a tuple (min, max)
+        """
         pass
 
     @abc.abstractmethod
     def position_range(self, axis):
+        """ Get the position range of an axis
+        Return the range in µm as a tuple (min, max)
+        """
         pass
 
     @abc.abstractmethod
     def capacitance(self, axis, buffered=False):
+        """ Get the capacitance of an axis
+        If buffered is true, return last read value
+        Return the capacitance in Farad
+        """
         pass
 
     @abc.abstractmethod
     def voltage(self, axis, value=None, buffered=False):
+        """ Get the voltage of an axis
+        If buffered is true, return last read value
+        Return the capacitance in Farad
+        """
         pass
 
     @abc.abstractmethod
     def frequency(self, axis, value=None):
+        """ Get the frequency of an axis
+        If buffered is true, return last read value
+        Return the capacitance in Farad
+        """
         pass
 
     @abc.abstractmethod
     def steps(self, axis, number):
+        """ Do X steps on an axis (positive or negative) in current configuration """
         pass
 
     @abc.abstractmethod
     def stop(self, axis=None):
+        """ Stop movement of one or all axis. (All if axis=None) """
         pass

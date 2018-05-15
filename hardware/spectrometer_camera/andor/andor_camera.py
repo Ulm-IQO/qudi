@@ -47,6 +47,7 @@ class ReadMode(Enum):
 
 class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface, SpectrometerInterface):
     """
+    Main class for the camera/spectro
     """
 
     _modtype = 'Spectrometer camera'
@@ -71,6 +72,8 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
     _live = False
 
     def on_activate(self):
+        """ Initialisation performed during activation of the module.
+         """
 
         self.cam = Camera()
         self.cam.SetVerbose(False)
@@ -87,17 +90,26 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
 
 
     def on_deactivate(self):
+        """ Deinitialisation performed during deactivation of the module.
+        """
         self.stop_acquisition()
-        self.cam.CoolerOFF()
-        self.cam.ShutDown()
+        if self.cam:  # the camera might not be initialised in case of error
+            self.cam.CoolerOFF()
+            self.cam.ShutDown()
+        self.cam = None
 
     def get_name(self):
+        """
+        Return a name for the camera
+        """
         return "Andor " + self.cam.GetCameraSerialNumber()
 
     def get_size(self):
+        """ Return the maximum size of the camera """
         return self._width, self._height
 
     def set_read_mode(self, mode):
+        """ Set the read mode of the camera for image or full vertical binning"""
         if mode in self._supported_read_mode:
             self._read_mode = mode
             self.cam.SetReadMode(mode)
@@ -108,19 +120,24 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
             return -1
 
     def get_read_mode(self):
+        """Get the read mode of the camrea """
         return self._read_mode
 
     def get_bit_depth(self):
+        """ Return the bit depth of the camera """
         return 8  # TODO: clean this
 
     def set_image(self, hbin, vbin, hstart, hend, vstart, vend):
+        """ dll mapped function to acquire jsut part of the image """
         error_code = self.cam.SetImage(hbin, vbin, hstart, hend, vstart, vend)
         return self._check_success(error_code)
 
     def support_live_acquisition(self):
+        """ Return True if the camera support live acquisition """
         return False
 
     def start_single_acquisition(self):
+        """ Start a single acquisition and return when it's finish """
         if self.get_ready_state():
             self._last_acquisition_mode = self.get_read_mode()
             self.cam.StartAcquisition()
@@ -130,20 +147,26 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
             return -1
 
     def stop_acquisition(self):
-        if self.cam.GetStatus()=='DRV_ACQUIRING':
+        """ If in acquisition, abort it """
+        if self.cam and self.cam.GetStatus() == 'DRV_ACQUIRING':
             self.cam.AbortAcquisition()
 
     def start_live_acquisition(self):
+        """ Interface function not supported here """
         return False
 
     def _check_success (self, error_code):
+        """ Internal function  to check if dll call is a success"""
         if error_code == 'DRV_SUCCESS':
             return 0
         else:
             return -1
 
     def get_acquired_data(self):
+        """ Get the last acquired data from the dll """
         data = []
+        if not self.cam:
+            return [[0]]
         self.cam.GetAcquiredData(data)
         if data == []:
             self.log.warning('Could get acquired data')
@@ -157,20 +180,27 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         return result
 
     def set_exposure(self, time):
+        """ Set the exposure in seconds """
         self._exposure = time
         error_code = self.cam.SetExposureTime(time)
         return self._check_success(error_code)
 
     def get_exposure(self):
+        """ Get the exposure in seconds """
         return self._exposure
     
     def set_gain(self, gain):
+        """ Set the gain"""
         pass
 
     def get_gain(self):
+        """ Get the gain """
         return self._gain
 
     def set_cooler_on_state(self, on_state):
+        """ The the cooler of the camera on or off """
+        if not self.cam:
+            return False
         self._cooler_on = on_state
         if on_state:
             error_code = self.cam.CoolerON()
@@ -179,12 +209,16 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         return self._check_success(error_code)
 
     def get_cooler_on_state(self):
+        """ Return if the cooler of the camera is on """
         return self._cooler_on
 
     def get_measured_temperature(self):
-        return float(self.cam.GetTemperature())
+        """ Return measured temperature of the camera """
+        if self.cam:
+            return float(self.cam.GetTemperature())
 
     def set_setpoint_temperature(self, temperature):
+        """ setpoint_interface : Set the setpoint temperature of the camera """
         if temperature < self._max_cooling:
             return -1
         self._temperature = temperature
@@ -192,40 +226,51 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         return self._check_success(error_code)
 
     def get_setpoint_temperature(self):
+        """ setpoint_interface : Get the setpoint temperature of the camera """
         return self._temperature
 
     def get_ready_state(self):
-        return self.cam.GetStatus() == 'DRV_IDLE'
+        """ Return True if the camera is ready for an acquisition """
+        return self.cam and self.cam.GetStatus() == 'DRV_IDLE'
 
     # Setpoint controller interface to control cooling
 
     def get_enabled(self):
+        """ setpoint_controller_interface : get if the cooling is on """
         return self.get_cooler_on_state()
 
     def set_enabled(self, enabled):
+        """ setpoint_controller_interface : set if the cooling is on """
         self.set_cooler_on_state(enabled)
 
     def get_process_value(self):
+        """ process_interface : Get measured value of the temperature """
         return self.get_measured_temperature()
 
     def get_process_unit(self):
+        """ process_interface : Return the unit of measured temperature """
         return '°C', 'Degrees Celsius'
 
     def set_setpoint(self, value):
+        """ 'setpoint_interface' : set the setpoint temperature for the camera """
         self.set_setpoint_temperature(value)
 
     def get_setpoint(self):
+        """ 'setpoint_interface' : get the setpoint temperature for the camera """
         return self.get_setpoint_temperature()
 
     def get_setpoint_unit(self):
+        """ setpoint_interface : Return the unit of setpoint temperature """
         return self.get_process_unit()
 
     def get_setpoint_limits(self):
-        return 0.,75.
+        """ setpoint_interface : Return the limits for the setpoint temperature """
+        return -75., 0.
 
     # To be compatible with simple spectrometer interface
 
     def recordSpectrum(self):
+        """ Record a spectrum and return it """
         self.set_read_mode(ReadMode.FVB.value)
         self.start_acqusition()
         data = self.get_aquired_data()[0]
@@ -236,7 +281,9 @@ class ScectrometerCameraAndor(Base, CameraInterface, SetpointControllerInterface
         return res
 
     def setExposure(self, exposureTime):
+        """ SpectrometerInterface : set exposure in seconds """
         self.set_exposure(exposureTime)
 
     def getExposure(self):
+        """ SpectrometerInterface : get exposure in seconds """
         return self.get_exposure()
