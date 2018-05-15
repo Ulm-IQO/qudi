@@ -49,7 +49,7 @@ class PIDMainWindow(QtWidgets.QMainWindow):
 class PIDGui(GUIBase):
     """ FIXME: Please document
     """
-    _modclass = 'pidgui'
+    _modclass = 'pidgui_2'
     _modtype = 'gui'
 
     ## declare connectors
@@ -143,7 +143,7 @@ class PIDGui(GUIBase):
         self.plot1.vb.sigResized.connect(self.updateViews)
 
         # setting the x axis length correctly
-        self._pw.setXRange(0, self._pid_logic.getBufferLength() * self._pid_logic.timestep)
+        self._pw.setXRange(0, self._pid_logic.getBufferLength() * self._pid_logic.get_timestep())
 
         #####################
         # Setting default parameters
@@ -174,9 +174,9 @@ class PIDGui(GUIBase):
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
         #####################
-        # starting the physical measurement
-        self.sigStart.connect(self._pid_logic.startLoop)
-        self.sigStop.connect(self._pid_logic.stopLoop)
+        # TODO: Why should we able to stop or start this ??
+        # self.sigStart.connect(self._pid_logic.startLoop)
+        # self.sigStop.connect(self._pid_logic.stopLoop)
 
         self._pid_logic.sigUpdateDisplay.connect(self.updateData)
 
@@ -210,7 +210,7 @@ class PIDGui(GUIBase):
                 '<font color={0}>{1:,.3f}</font>'.format(
                 palette.c2.name(),
                 self._pid_logic.history[2, -1]))
-            extra = self._pid_logic._controller.get_extra()
+            extra = self._pid_logic.get_extra()
             if 'P' in extra:
                 self._mw.labelkP.setText('{0:,.6f}'.format(extra['P']))
             if 'I' in extra:
@@ -219,18 +219,18 @@ class PIDGui(GUIBase):
                 self._mw.labelkD.setText('{0:,.6f}'.format(extra['D']))
             self._curve1.setData(
                 y=self._pid_logic.history[0],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.get_timestep()
                 )
             self._curve2.setData(
                 y=self._pid_logic.history[1],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.get_timestep()
                 )
             self._curve3.setData(
                 y=self._pid_logic.history[2],
-                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.timestep
+                x=np.arange(0, self._pid_logic.getBufferLength()) * self._pid_logic.get_timestep()
                 )
 
-        if self._pid_logic.getSavingState():
+        if self._pid_logic.get_saving_state():
             self._mw.record_control_Action.setText('Save')
         else:
             self._mw.record_control_Action.setText('Start Saving Data')
@@ -262,7 +262,7 @@ class PIDGui(GUIBase):
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        if self._pid_logic.getSavingState():
+        if self._pid_logic.get_saving_state():
             self._mw.record_counts_Action.setText('Start Saving Data')
             self._pid_logic.saveData()
         else:
