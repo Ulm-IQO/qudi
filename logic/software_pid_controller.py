@@ -71,14 +71,14 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         self._control = self.control()
 
         self.previousdelta = 0
-        self.cv = self._control.getControlValue()
+        self.cv = self._control.get_control_value()
 
         self.timer = QtCore.QTimer()
         self.timer.setSingleShot(True)
         self.timer.setInterval(self.timestep)
 
         self.timer.timeout.connect(self._calcNextStep, QtCore.Qt.QueuedConnection)
-        self.sigNewValue.connect(self._control.setControlValue)
+        self.sigNewValue.connect(self._control.set_control_value)
 
         self.history = np.zeros([3, 5])
         self.savingState = False
@@ -100,7 +100,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
              The D term is NOT low-pass filtered.
              This function should be called once every TS seconds.
         """
-        self.pv = self._process.getProcessValue()
+        self.pv = self._process.get_process_value()
 
         if self.countdown > 0:
             self.countdown -= 1
@@ -123,7 +123,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
             self.previousdelta = delta
 
             ## limit contol output to maximum permissible limits
-            limits = self._control.getControlLimits()
+            limits = self._control.get_control_limits()
             if (self.cv > limits[1]):
                 self.cv = limits[1]
             if (self.cv < limits[0]):
@@ -136,7 +136,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
             self.sigNewValue.emit(self.cv)
         else:
             self.cv = self.manualvalue
-            limits = self._control.getControlLimits()
+            limits = self._control.get_control_limits()
             if (self.cv > limits[1]):
                 self.cv = limits[1]
             if (self.cv < limits[0]):
@@ -244,7 +244,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
             @param float manualvalue: control value for manual mode of controller
         """
         self.manualvalue = manualvalue
-        limits = self._control.getControlLimits()
+        limits = self._control.get_control_limits()
         if (self.manualvalue > limits[1]):
             self.manualvalue = limits[1]
         if (self.manualvalue < limits[0]):
@@ -272,7 +272,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
             @return list(float): (minimum, maximum) values of the control actuator
         """
-        return self._control.getControlLimits()
+        return self._control.get_control_limits()
 
     def set_control_limits(self, limits):
         """ Set the minimum and maximum value of the control actuator.
