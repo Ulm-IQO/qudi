@@ -303,7 +303,6 @@ class AWG70K(Base, PulserInterface):
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
         active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
-        active_digital = sorted(chnl for chnl in active_channels if chnl.startswith('d'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -346,32 +345,28 @@ class AWG70K(Base, PulserInterface):
             if wfm_name in self.get_waveform_names():
                 self.delete_waveform(wfm_name)
 
-            # Create waveform in AWG workspace
-            self.write('WLIS:WAV:NEW "{0}", {1:d}'.format(wfm_name, number_of_samples))
+            # Write WFMX file for waveform
             start = time.time()
-            # Write analog samples data to waveform
-            self.awg.write_binary_values(
-                message='WLIS:WAV:DATA "{0}",0,{1:d},'.format(wfm_name, number_of_samples),
-                values=analog_samples[a_ch],
-                datatype='f')
-            print('Transfer analog channel data: {0}'.format(time.time() - start))
-            # Delete analog samples data after writing to free up memory
-            del analog_samples[a_ch]
-            # Write digital samples data
-            start = time.time()
-            if mrk_bytes is not None:
-                self.awg.write_binary_values(
-                    message='WLIS:WAV:MARK:DATA "{0}",0,{1:d},'.format(wfm_name, number_of_samples),
-                    values=mrk_bytes,
-                    datatype='B')
-            print('Transfer digital channel data: {0}'.format(time.time() - start))
+            self.write_wfmx(filename=wfm_name,
+                            analog_samples=analog_samples[a_ch],
+                            digital_samples=mrk_bytes,
+                            is_first_chunk=is_first_chunk,
+                            is_last_chunk=is_last_chunk)
+            print('Write WFMX file: {0}'.format(time.time() - start))
+
+            # Delete samples data after writing to free up memory
+            del analog_samples[a_ch], mrk_bytes
+            del digital_samples[mrk_ch_2]
+
+            # transfer waveform to AWG and load into workspace
+            self._send_waveform(filename=wfm_name)
+            self.write('MMEM:OPEN "{0}"'.format(os.path.join(self._ftp_path, wfm_name + '.wfmx')))
+            # Wait for everything to complete
+            while int(self.query('*OPC?')) != 1:
+                time.sleep(0.25)
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
-
-        # Wait for everything to complete
-        while int(self.query('*OPC?')) != 1:
-            time.sleep(0.25)
         return number_of_samples, waveforms
 
     def write_sequence(self, name, sequence_parameter_list):
