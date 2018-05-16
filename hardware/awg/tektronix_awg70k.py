@@ -20,18 +20,18 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.util.modules import get_home_dir
+
 import os
 import time
-import re
 import visa
 import numpy as np
-from socket import socket, AF_INET, SOCK_STREAM
-from ftplib import FTP
+
 from collections import OrderedDict
-from fnmatch import fnmatch
+from ftplib import FTP
+from lxml import etree as ET
 
 from core.module import Base, ConfigOption
+from core.util.modules import get_home_dir
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -44,6 +44,8 @@ class AWG70K(Base, PulserInterface):
 
     # config options
     _visa_address = ConfigOption('awg_visa_address', missing='error')
+    _ftp_dir = ConfigOption('awg_ftp_dir', missing='error')
+    _tmp_work_dir = ConfigOption('tmp_work_dir', missing='error')
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -1311,3 +1313,184 @@ class AWG70K(Base, PulserInterface):
         @return: bool, (True: output on, False: output off)
         """
         return bool(int(self.query('AWGC:RST?')))
+
+    def write_wfmx(self, filename, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                   number_of_samples):
+        """
+        Appends a sampled chunk of a whole waveform to a wfmx-file. Create the file
+        if it is the first chunk.
+        If both flags (is_first_chunk, is_last_chunk) are set to TRUE it means
+        that the whole ensemble is written as a whole in one big chunk.
+
+        @param name: string, represents the name of the sampled ensemble
+        @param analog_samples: dict containing float32 numpy ndarrays, contains the
+                                       samples for the analog channels that
+                                       are to be written by this function call.
+        @param digital_samples: dict containing bool numpy ndarrays, contains the samples
+                                      for the digital channels that
+                                      are to be written by this function call.
+        @param total_number_of_samples: int, The total number of samples in the
+                                        entire waveform. Has to be known in advance.
+        @param is_first_chunk: bool, indicates if the current chunk is the
+                               first write to this file.
+        @param is_last_chunk: bool, indicates if the current chunk is the last
+                              write to this file.
+
+        @return list: the list contains the string names of the created files for the passed
+                      presampled arrays
+        """
+        # # The overhead of the write process in bytes.
+        # # Making this value bigger will result in a faster write process
+        # # but consumes more memory
+        # write_overhead_bytes = 1024*1024*256 # 256 MB
+        # # The overhead of the write process in number of samples
+        # write_overhead_samples = write_overhead_bytes//4
+
+        if not filename.endswith('.wfmx'):
+            filename += '.wfmx'
+        wfmx_path = os.path.join(self._tmp_work_dir, filename)
+
+        # if it is the first chunk, create the .WFMX file with header.
+        if is_first_chunk:
+            # create header
+            self._create_xml_header(number_of_samples, bool(digital_samples))
+            # read back the header xml-file and delete it afterwards
+            # temp_file = os.path.join(self.temp_dir, 'header.xml')
+            temp_file = 'header.xml'
+            with open(temp_file, 'r') as header:
+                header_lines = header.readlines()
+            os.remove(temp_file)
+
+            with open(wfmx_path, 'wb') as wfmxfile:
+                # write header
+                for line in header_lines:
+                    wfmxfile.write(bytes(line, 'UTF-8'))
+
+        # append analog samples to the .WFMX file. Write digital samples in temporary file.
+        # append analog samples chunk to .WFMX file
+        with open(wfmx_filepath, 'ab') as wfmxfile:
+            # append analog samples in binary format. One sample is 4
+            # bytes (np.float32). Write in chunks if array is very big to
+            # avoid large temporary copys in memory
+            number_of_full_chunks = int(analog_samples[channel].size//write_overhead_samples)
+            for start_ind in np.arange(0, number_of_full_chunks * write_overhead_samples,
+                                       write_overhead_samples):
+                stop_ind = start_ind+write_overhead_samples
+                wfmxfile.write(analog_samples[channel][start_ind:stop_ind])
+            # write rest
+            rest_start_ind = number_of_full_chunks*write_overhead_samples
+            wfmxfile.write(analog_samples[channel][rest_start_ind:])
+
+        # create the byte values corresponding to the marker states
+        # (\x01 for marker 1, \x02 for marker 2, \x03 for both)
+        # and write them into a temporary file
+        # filepath = os.path.join(self.temp_dir, name + channel[1:] + '_digi' + '.tmp')
+        filepath = name + channel[1:] + '_digi' + '.tmp'
+        with open(filepath, 'ab') as tmpfile:
+            if markers[0] not in digital_samples and markers[1] not in digital_samples:
+                # no digital channels to write for this analog channel
+                pass
+            elif markers[0] in digital_samples and markers[1] not in digital_samples:
+                # Only marker one is active for this channel
+                for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
+                                           write_overhead_bytes):
+                    stop_ind = start_ind + write_overhead_bytes
+                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    tmpfile.write(digital_samples[markers[0]][start_ind:stop_ind])
+                # write rest of digital samples
+                rest_start_ind = number_of_full_chunks * write_overhead_bytes
+                tmpfile.write(digital_samples[markers[0]][rest_start_ind:])
+            elif markers[0] not in digital_samples and markers[1] in digital_samples:
+                # Only marker two is active for this channel
+                for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
+                                           write_overhead_bytes):
+                    stop_ind = start_ind + write_overhead_bytes
+                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    tmpfile.write(np.left_shift(
+                        digital_samples[markers[1]][start_ind:stop_ind].astype('uint8'),
+                        1))
+                # write rest of digital samples
+                rest_start_ind = number_of_full_chunks * write_overhead_bytes
+                tmpfile.write(np.left_shift(
+                    digital_samples[markers[1]][rest_start_ind:].astype('uint8'), 1))
+            else:
+                # Both markers are active for this channel
+                for start_ind in np.arange(0, number_of_full_chunks * write_overhead_bytes,
+                                           write_overhead_bytes):
+                    stop_ind = start_ind + write_overhead_bytes
+                    # append digital samples in binary format. One sample is 1 byte (np.uint8).
+                    tmpfile.write(np.add(np.left_shift(
+                        digital_samples[markers[1]][start_ind:stop_ind].astype('uint8'), 1),
+                        digital_samples[markers[0]][start_ind:stop_ind]))
+                # write rest of digital samples
+                rest_start_ind = number_of_full_chunks * write_overhead_bytes
+                tmpfile.write(np.add(np.left_shift(
+                    digital_samples[markers[1]][rest_start_ind:].astype('uint8'), 1),
+                    digital_samples[markers[0]][rest_start_ind:]))
+
+        # append the digital sample tmp file to the .WFMX file and delete the
+        # .tmp files if it was the last chunk to write.
+        if is_last_chunk:
+            for channel in analog_samples:
+                # tmp_filepath = os.path.join(self.temp_dir, name + channel[1:] + '_digi' + '.tmp')
+                tmp_filepath = name + channel[1:] + '_digi' + '.tmp'
+                # wfmx_filepath = os.path.join(self.waveform_dir, name + channel[1:] + '.wfmx')
+                wfmx_filepath = name + channel[1:] + '.wfmx'
+                with open(wfmx_filepath, 'ab') as wfmxfile:
+                    with open(tmp_filepath, 'rb') as tmpfile:
+                        # read and write files in max. write_overhead_bytes chunks to reduce
+                        # memory usage
+                        while True:
+                            tmp_data = tmpfile.read(write_overhead_bytes)
+                            if not tmp_data:
+                                break
+                            wfmxfile.write(tmp_data)
+                # delete tmp file
+                os.remove(tmp_filepath)
+        return created_files
+
+    @staticmethod
+    def _create_xml_header(number_of_samples, markers_active):
+        """
+        This function creates an xml file containing the header for the wfmx-file format using
+        etree.
+        """
+        hdr = ET.Element('DataFile', offset='XXXXXXXXX', version='0.1')
+        dsc = ET.SubElement(hdr, 'DataSetsCollection', xmlns='http://www.tektronix.com')
+        datasets = ET.SubElement(dsc, 'DataSets', version='1', xmlns='http://www.tektronix.com')
+        datadesc = ET.SubElement(datasets, 'DataDescription')
+        sub_elem = ET.SubElement(datadesc, 'NumberSamples')
+        sub_elem.text = str(int(number_of_samples))
+        sub_elem = ET.SubElement(datadesc, 'SamplesType')
+        sub_elem.text = 'AWGWaveformSample'
+        sub_elem = ET.SubElement(datadesc, 'MarkersIncluded')
+        sub_elem.text = 'true' if markers_active else 'false'
+        sub_elem = ET.SubElement(datadesc, 'NumberFormat')
+        sub_elem.text = 'Single'
+        sub_elem = ET.SubElement(datadesc, 'Endian')
+        sub_elem.text = 'Little'
+        sub_elem = ET.SubElement(datadesc, 'Timestamp')
+        sub_elem.text = '2014-10-28T12:59:52.9004865-07:00'
+        prodspec = ET.SubElement(datasets, 'ProductSpecific', name='')
+        sub_elem = ET.SubElement(prodspec, 'ReccSamplingRate', units='Hz')
+        sub_elem.text = 'NaN'
+        sub_elem = ET.SubElement(prodspec, 'ReccAmplitude', units='Volts')
+        sub_elem.text = '0.5'
+        sub_elem = ET.SubElement(prodspec, 'ReccOffset', units='Volts')
+        sub_elem.text = '0'
+        sub_elem = ET.SubElement(prodspec, 'SerialNumber')
+        sub_elem = ET.SubElement(prodspec, 'SoftwareVersion')
+        sub_elem.text = '4.0.0075'
+        sub_elem = ET.SubElement(prodspec, 'UserNotes')
+        sub_elem = ET.SubElement(prodspec, 'OriginalBitDepth')
+        sub_elem.text = 'Floating'
+        sub_elem = ET.SubElement(prodspec, 'Thumbnail')
+        sub_elem = ET.SubElement(prodspec, 'CreatorProperties', name='Basic Waveform')
+        sub_elem = ET.SubElement(hdr, 'Setup')
+
+        xml_header = ET.tostring(hdr, encoding='unicode')
+        xml_header = xml_header.replace('><', '>\r\n<')
+
+        # Calculates the length of the header and replace placeholder with actual number
+        xml_header = xml_header.replace('XXXXXXXXX', str(len(xml_header)).zfill(9))
+        return xml_header
