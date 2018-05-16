@@ -235,7 +235,8 @@ class PulserDummy(Base, PulserInterface):
             self.log.info('PulserDummy: Switch off the Output.')
         return 0
 
-    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk):
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                       total_number_of_samples):
         """
         Write a new waveform or append samples to an already existing waveform on the device memory.
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
@@ -251,6 +252,8 @@ class PulserDummy(Base, PulserInterface):
                                      If False the samples are appended to the existing waveform.
         @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
                                     Some devices may need to know when to close the appending wfm.
+        @param total_number_of_samples: int, The number of sample points for the entire waveform
+                                        (not only the currently written chunk)
 
         @return: (int, list) number of samples written (-1 indicates failed process) and list of
                              created waveform names
@@ -478,14 +481,16 @@ class PulserDummy(Base, PulserInterface):
         return self.get_loaded_assets()
 
     def get_loaded_assets(self):
-        """ Retrieve the currently loaded asset names for each active channel of the device.
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
         The returned dictionary will have the channel numbers as keys.
         In case of loaded waveforms the dictionary values will be the waveform names.
         In case of a loaded sequence the values will be the sequence name appended by a suffix
         representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        @return (dict, str): Dictionary with keys being the channel number and values being the respective
-        asset loaded into the channel, string describing the asset type ('waveform' or 'sequence')
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
         """
         # Determine if it's a waveform or a sequence
         asset_type = None

@@ -43,30 +43,53 @@ class AWG70K(Base, PulserInterface):
     _modtype = 'hardware'
 
     # config options
-    _visa_address = ConfigOption('awg_visa_address', missing='error')
-    _ftp_dir = ConfigOption('awg_ftp_dir', missing='error')
-    _tmp_work_dir = ConfigOption('tmp_work_dir', missing='error')
+    _tmp_work_dir = ConfigOption(name='tmp_work_dir',
+                                 default=os.path.join(get_home_dir(), 'pulsed_files'),
+                                 missing='warn')
+    _visa_address = ConfigOption(name='awg_visa_address', missing='error')
+    _ip_address = ConfigOption(name='awg_ip_address', missing='error')
+    _ftp_dir = ConfigOption(name='ftp_root_dir', default='C:\\inetpub\\ftproot', missing='warn')
+    _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
+    _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Get an instance of the visa resource manager
+        self._rm = visa.ResourceManager()
+
+        self.awg = None  # This variable will hold a reference to the awg visa resource
+        self.awg_model = ''  # String describing the model
+        return
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        # connect ethernet socket
-        self._rm = visa.ResourceManager()
+        # Create work directory if necessary
+        if not os.path.exists(self._tmp_work_dir):
+            os.makedirs(os.path.abspath(self._tmp_work_dir))
+
+        # connect to awg using PyVISA
         if self._visa_address not in self._rm.list_resources():
+            self.awg = None
             self.log.error('VISA address "{0}" not found by the pyVISA resource manager.\nCheck '
                            'the connection by using for example "Agilent Connection Expert".'
                            ''.format(self._visa_address))
         else:
             self.awg = self._rm.open_resource(self._visa_address)
-            # Set data transfer format (datatype, is_big_endian, container)
-            self.awg.values_format.use_binary('f', False, np.array)
-            # set timeout by default to 15 sec
-            self.awg.timeout = 15000
+            # set timeout by default to 30 sec
+            self.awg.timeout = 30000
 
-        self.awg_model = self._get_model_ID()[1]
-        self.log.debug('Found the following awg model: {0}'.format(self.awg_model))
+        # try connecting to AWG using FTP protocol
+        with FTP(self._ip_address) as ftp:
+            ftp.login(user=self._username, passwd=self._password)
+            ftp.cwd('waves')
 
-        self.current_status = 0
+        if self.awg is not None:
+            self.awg_model = self.query('*IDN?').split(',')[1]
+        else:
+            self.awg_model = ''
+        return
 
     def on_deactivate(self):
         """ Required tasks to be performed during deactivation of the module.
@@ -232,8 +255,7 @@ class AWG70K(Base, PulserInterface):
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.25)
-            self.current_status = 1
-        return self.current_status
+        return self.get_status()
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -248,8 +270,7 @@ class AWG70K(Base, PulserInterface):
             # wait until the AWG has actually stopped
             while self._is_output_on():
                 time.sleep(0.25)
-            self.current_status = 0
-        return self.current_status
+        return self.get_status()
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
@@ -268,6 +289,8 @@ class AWG70K(Base, PulserInterface):
                                      If False the samples are appended to the existing waveform.
         @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
                                     Some devices may need to know when to close the appending wfm.
+        @param total_number_of_samples: int, The number of sample points for the entire waveform
+                                        (not only the currently written chunk)
 
         @return: (int, list) number of samples written (-1 indicates failed process) and list of
                              created waveform names
@@ -341,7 +364,7 @@ class AWG70K(Base, PulserInterface):
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
-            self._send_waveform(filename=wfm_name)
+            self._send_file(filename=wfm_name + '.wfmx')
             print('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
@@ -584,14 +607,16 @@ class AWG70K(Base, PulserInterface):
         return self.get_loaded_assets()
 
     def get_loaded_assets(self):
-        """ Retrieve the currently loaded asset names for each active channel of the device.
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
         The returned dictionary will have the channel numbers as keys.
         In case of loaded waveforms the dictionary values will be the waveform names.
         In case of a loaded sequence the values will be the sequence name appended by a suffix
         representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        @return (dict, str): Dictionary with keys being the channel number and values being the respective
-        asset loaded into the channel, string describing the asset type ('waveform' or 'sequence')
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
         """
         # Get all active channels
         chnl_activation = self.get_active_channels()
@@ -649,13 +674,12 @@ class AWG70K(Base, PulserInterface):
                              description for all the possible status variables
                              of the pulse generator hardware
         """
-        status_dic = {}
-        status_dic[-1] = 'Failed Request or Communication'
-        status_dic[0] = 'Device has stopped, but can receive commands.'
-        status_dic[1] = 'Device is active and running.'
-        # All the other status messages should have higher integer values
-        # then 1.
-        return self.current_status, status_dic
+        status_dic = {-1: 'Failed Request or Communication',
+                       0: 'Device has stopped, but can receive commands',
+                       1: 'Device is active and running'}
+        current_status = -1 if self.awg is None else int(self._is_output_on())
+        # All the other status messages should have higher integer values then 1.
+        return current_status, status_dic
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware
@@ -1088,7 +1112,6 @@ class AWG70K(Base, PulserInterface):
 
         Unused for pulse generator hardware other than an AWG.
         """
-
         return False
 
     def set_interleave(self, state=False):
@@ -1114,7 +1137,7 @@ class AWG70K(Base, PulserInterface):
 
         @return: bool, True for yes, False for no.
         """
-        options = self.query('*OPT?')[1:-2].split(',')
+        options = self.query('*OPT?').split(',')
         return '03' in options
 
     def reset(self):
@@ -1156,7 +1179,7 @@ class AWG70K(Base, PulserInterface):
 
         @param str name: Name of the sequence which should be generated
         @param int steps: Number of steps
-        @param int track: Number of tracks
+        @param int tracks: Number of tracks
 
         @return 0
         """
@@ -1251,13 +1274,6 @@ class AWG70K(Base, PulserInterface):
         self.write('SOURCE{0:d}:JUMP:FORCE {1}'.format(channel, final_step))
         return
 
-    def _get_model_ID(self):
-        """
-        @return: a string which represents the model id of the AWG.
-        """
-        model_id = self.query('*IDN?').split(',')
-        return model_id
-
     def _get_all_channels(self):
         """
         Helper method to return a sorted list of all technically available channel descriptors
@@ -1301,14 +1317,71 @@ class AWG70K(Base, PulserInterface):
         """
         return bool(int(self.query('AWGC:RST?')))
 
+    def _get_filenames_on_device(self):
+        """
+
+        @return list: filenames found in <ftproot>\\waves
+        """
+        filename_list = list()
+        with FTP(self._ip_address) as ftp:
+            ftp.login(user=self._username, passwd=self._password)
+            ftp.cwd('waves')
+            # get only the files from the dir and skip possible directories
+            log = list()
+            ftp.retrlines('LIST', callback=log.append)
+            for line in log:
+                if '<DIR>' not in line:
+                    # that is how a potential line is looking like:
+                    #   '05-10-16  05:22PM                  292 SSR aom adjusted.seq'
+                    # The first part consists of the date information. Remove this information and
+                    # separate the first number, which indicates the size of the file. This is
+                    # necessary if the filename contains whitespaces.
+                    size_filename = line[18:].lstrip()
+                    # split after the first appearing whitespace and take the rest as filename.
+                    # Remove for safety all trailing and leading whitespaces:
+                    filename = size_filename.split(' ', 1)[1].strip()
+                    filename_list.append(filename)
+        return filename_list
+
+    def _delete_file(self, filename):
+        """
+
+        @param str filename:
+        """
+        if filename in self._get_filenames_on_device():
+            with FTP(self._ip_address) as ftp:
+                ftp.login(user=self._username, passwd=self._password)
+                ftp.cwd('waves')
+                ftp.delete(filename)
+        return
+
     def _send_file(self, filename):
         """
 
         @param filename:
         @return:
         """
+        # check input
+        if not filename:
+            self.log.error('No filename provided for file upload to awg!\nCommand will be ignored.')
+            return -1
 
-        return
+        filepath = os.path.join(self._tmp_work_dir, filename)
+        if not os.path.isfile(filepath):
+            self.log.error('No file "{0}" found in "{1}". Unable to upload!'
+                           ''.format(filename, self._tmp_work_dir))
+            return -1
+
+        # Delete old file on AWG by the same filename
+        self._delete_file(filename)
+
+        # Transfer file
+        with FTP(self._ip_address) as ftp:
+            ftp.login(user=self._username, passwd=self._password)
+            ftp.cwd('waves')
+            with open(filepath, 'rb') as file:
+                ftp.storbinary('STOR ' + filename, file)
+        return 0
 
     def _write_wfmx(self, filename, analog_samples, marker_bytes, is_first_chunk, is_last_chunk,
                     total_number_of_samples):
@@ -1337,7 +1410,7 @@ class AWG70K(Base, PulserInterface):
         """
         # The memory overhead of the tmp file write/read process in bytes. Only used if wfmx file is
         # written in chunks in order to avoid excessive memory usage.
-        tmp_bytes_overhead = 134217728  # 128 MB
+        tmp_bytes_overhead = 16777216  # 16 MB
 
         if not filename.endswith('.wfmx'):
             filename += '.wfmx'
