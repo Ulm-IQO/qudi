@@ -412,7 +412,7 @@ class AWG70K(Base, PulserInterface):
 
         # Create new sequence and set jump timing to immediate.
         # Delete old sequence by the same name if present.
-        self._generate_sequence(name=name, steps=num_steps, tracks=num_tracks)
+        self.generate_sequence(name=name, steps=num_steps, tracks=num_tracks)
 
         # Fill in sequence information
         for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list):
@@ -1173,7 +1173,7 @@ class AWG70K(Base, PulserInterface):
         bytes_written, enum_status_code = self.awg.write(command)
         return int(enum_status_code)
 
-    def _generate_sequence(self, name, steps, tracks=1):
+    def generate_sequence(self, name, steps, tracks=1):
         """
         Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
 
@@ -1194,7 +1194,7 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(name))
         return 0
 
-    def _add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
+    def add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
         """
         Add the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name' and
         repeat it 'repeat' times
@@ -1217,23 +1217,7 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIST:SEQUENCE:STEP{0:d}:RCOUNT "{1}", {2}'.format(step, sequence_name, repeat))
         return 0
 
-    def _load_sequence(self, sequencename, track=1):
-        """Load sequence file into RAM.
-
-        @param sequencename:  Name of the sequence to load
-        @param int track: Number of track to load
-
-        return 0
-        """
-        if not self.has_sequence_mode():
-            self.log.error('Direct sequence generation in AWG not possible. '
-                           'Sequencer option not installed.')
-            return -1
-
-        self.write('SOURCE1:CASSET:SEQUENCE "{0}", {1:d}'.format(sequencename, track))
-        return 0
-
-    def _make_sequence_continuous(self, sequencename):
+    def make_sequence_continuous(self, sequencename):
         """
         Usually after a run of a sequence the output stops. Many times it is desired that the full
         sequence is repeated many times. This is achieved here by setting the 'jump to' value of
@@ -1252,7 +1236,7 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}",  FIRST'.format(last_step, sequencename))
         return last_step
 
-    def _force_jump_sequence(self, final_step, channel=1):
+    def force_jump_sequence(self, final_step, channel=1):
         """
         This command forces the sequencer to jump to the specified step per channel. A
         force jump does not require a trigger event to execute the jump.
