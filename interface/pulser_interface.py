@@ -280,15 +280,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
             amplitude = ['a_ch1', 'a_ch4'], offset = None
         to obtain the amplitude of channel 1 and 4 and the offset of all channels
             {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
-
-        The major difference to digital signals is that analog signals are always oscillating or
-        changing signals, otherwise you can use just digital output. In contrast to digital output
-        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
-        an (absolute) voltage).
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -311,15 +302,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Note: After setting the amplitude and/or offset values of the device, use the actual set
               return values for further processing.
-
-        The major difference to digital signals is that analog signals are always oscillating or
-        changing signals, otherwise you can use just digital output. In contrast to digital output
-        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
-        an (absolute) voltage).
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -345,14 +327,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         to obtain the low voltage values of digital channel 1 an 4. A possible answer might be
             {'d_ch1': -0.5, 'd_ch4': 2.0} {'d_ch1': 1.0, 'd_ch2': 1.0, 'd_ch3': 1.0, 'd_ch4': 4.0}
         Since no high request was performed, the high values for ALL channels are returned (here 4).
-
-        The major difference to analog signals is that digital signals are either ON or OFF,
-        whereas analog channels have a varying amplitude range. In contrast to analog output
-        levels, digital output levels are defined by a voltage, which corresponds to the ON status
-        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -375,14 +349,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Note: After setting the high and/or low values of the device, use the actual set return
               values for further processing.
-
-        The major difference to analog signals is that digital signals are either ON or OFF,
-        whereas analog channels have a varying amplitude range. In contrast to analog output
-        levels, digital output levels are defined by a voltage, which corresponds to the ON status
-        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
