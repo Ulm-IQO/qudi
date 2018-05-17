@@ -57,13 +57,13 @@ class OkFpgaPulser(Base, PulserInterface):
         super().__init__(config=config, **kwargs)
 
         self.__current_status = -1
-        self.__current_loaded_asset = ('', None)  # waveform name and type
+        self.__currently_loaded_waveform = ''  # loaded and armed waveform name
         self.__samples_written = 0
         self.fpga = None  # Reference to the OK FrontPanel instance
 
     def on_activate(self):
         self.__samples_written = 0
-        self.__current_loaded_asset = ('', None)
+        self.__currently_loaded_waveform = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
         self.set_sample_rate(self.__sample_rate)
@@ -114,6 +114,16 @@ class OkFpgaPulser(Base, PulserInterface):
         constraints.sample_rate.step = 450e6
         constraints.sample_rate.default = 950e6
 
+        constraints.a_ch_amplitude.min = 0.0
+        constraints.a_ch_amplitude.max = 0.0
+        constraints.a_ch_amplitude.step = 0.0
+        constraints.a_ch_amplitude.default = 0.0
+
+        constraints.a_ch_offset.min = 0.0
+        constraints.a_ch_offset.max = 0.0
+        constraints.a_ch_offset.step = 0.0
+        constraints.a_ch_offset.default = 0.0
+
         constraints.d_ch_low.min = 0.0
         constraints.d_ch_low.max = 0.0
         constraints.d_ch_low.step = 0.0
@@ -133,10 +143,9 @@ class OkFpgaPulser(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7',
-                                    'd_ch8']
+        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
         constraints.activation_config = activation_config
-
         return constraints
 
     def pulser_on(self):
@@ -144,20 +153,14 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # start the pulse sequence
-        self.fpga.SetWireInValue(0x00, 0x01)
-        self.fpga.UpdateWireIns()
-        return 0
+        return self.write(0x01)
 
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        # stop the pulse sequence
-        self.fpga.SetWireInValue(0x00, 0x00)
-        self.fpga.UpdateWireIns()
-        return 0
+        return self.write(0x00)
 
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
@@ -196,10 +199,10 @@ class OkFpgaPulser(Base, PulserInterface):
                            'Only one waveform at a time can be held.'.format(waveform))
             return self.get_loaded_assets()
 
-        # calculate size of the two bytearrays to be transmitted
-        # the biggest part is tranfered in 1024 byte blocks and the rest is transfered in 32 byte blocks
-        big_bytesize = (len(samples) // 1024) * 1024
-        small_bytesize = len(samples) - big_bytesize
+        # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
+        # in 1024 byte blocks and the rest is transfered in 32 byte blocks
+        big_bytesize = (len(self.__current_waveform) // 1024) * 1024
+        small_bytesize = len(self.__current_waveform) - big_bytesize
 
         # try repeatedly to upload the samples to the FPGA RAM
         # stop if the upload was successful
@@ -207,44 +210,40 @@ class OkFpgaPulser(Base, PulserInterface):
         while True:
             loop_count += 1
             # reset FPGA
-            self.fpga.SetWireInValue(0x00, 0x04)
-            self.fpga.UpdateWireIns()
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            self.reset()
             # upload sequence
             if big_bytesize != 0:
                 # enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (255 << 24) + 2)
-                self.fpga.UpdateWireIns()
+                self.write((255 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, samples[0:big_bytesize])
+                self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
             if small_bytesize != 0:
                 # enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (8 << 24) + 2)
-                self.fpga.UpdateWireIns()
+                self.write((8 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32,
-                                             samples[big_bytesize:big_bytesize + small_bytesize])
+                self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
 
             # check if upload was successful
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            self.write(0x00)
             # start the pulse sequence
-            self.fpga.SetWireInValue(0x00, 0x01)
-            self.fpga.UpdateWireIns()
+            self.write(0x01)
             # wait for 600ms
             time.sleep(0.6)
             # get status flags from FPGA
-            self.fpga.UpdateWireOuts()
-            flags = self.fpga.GetWireOutValue(0x20)
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            flags = self.query()
+            self.write(0x00)
             # check if the memory readout works.
             if flags == 0:
-                self.log.info('Loading of the asset "{0}" to FPGA was successful.\n'
-                              'Upload attempts needed: {1}'.format(asset_name, loop_count))
+                self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
+                              'Upload attempts needed: {1}'.format(waveform, loop_count))
+                self.__currently_loaded_waveform = waveform
                 break
-        self.current_loaded_asset = asset_name
+            if loop_count == 10:
+                self.log.error('Unable to upload waveform to FPGA.\n'
+                               'Abort loading after 10 failed attempts.')
+                self.reset()
+                break
+        return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready for playback.
@@ -253,7 +252,7 @@ class OkFpgaPulser(Base, PulserInterface):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
                                       index and values being the name of the already written
                                       waveform to load into the channel.
                                       Examples:   {1: rabi_ch1, 2: rabi_ch2} or
@@ -280,14 +279,18 @@ class OkFpgaPulser(Base, PulserInterface):
                              respective asset loaded into the channel,
                              string describing the asset type ('waveform' or 'sequence')
         """
-        asset_type = 'waveform' if self.__current_loaded_asset else None
-        return self.__current_loaded_asset, asset_type
+        asset_type = 'waveform' if self.__currently_loaded_waveform else None
+        asset_dict = {chnl_num: self.__currently_loaded_waveform for chnl_num in range(1, 9)}
+        return asset_dict, asset_type
 
     def clear_all(self):
         """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
         @return int: error code (0:OK, -1:error)
         """
+        self.__currently_loaded_waveform = ''
+        self.__current_waveform_name = ''
+        self.__current_waveform = bytearray([0])
         return 0
 
     def get_status(self):
@@ -646,26 +649,30 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        if not isinstance(command, int):
+            return -1
+        self.fpga.SetWireInValue(0x00, command)
+        self.fpga.UpdateWireIns()
         return 0
 
-    def query(self, question):
+    def query(self, question=None):
         """ Asks the device a 'question' and receive and return an answer from it.
 
         @param string question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
         """
-        return ''
+        self.fpga.UpdateWireOuts()
+        return self.fpga.GetWireOutValue(0x20)
 
     def reset(self):
         """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
-        self.fpga.SetWireInValue(0x00, 0x04)
-        self.fpga.UpdateWireIns()
-        self.fpga.SetWireInValue(0x00, 0x00)
-        self.fpga.UpdateWireIns()
+        self.write(0x04)
+        self.write(0x00)
+        self.clear_all()
         return 0
 
     def has_sequence_mode(self):
@@ -696,8 +703,7 @@ class OkFpgaPulser(Base, PulserInterface):
         stop FPGA and disconnect
         """
         # set FPGA in reset state
-        self.fpga.SetWireInValue(0x00, 0x04)
-        self.fpga.UpdateWireIns()
+        self.write(0x04)
         self.current_status = -1
         del self.fpga
         return 0
