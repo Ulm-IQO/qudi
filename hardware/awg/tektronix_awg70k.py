@@ -51,6 +51,7 @@ class AWG70K(Base, PulserInterface):
     _ftp_dir = ConfigOption(name='ftp_root_dir', default='C:\\inetpub\\ftproot', missing='warn')
     _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
+    _visa_timeout = ConfigOption(name='timeout', default=30, missing='nothing')
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -60,6 +61,8 @@ class AWG70K(Base, PulserInterface):
 
         self.awg = None  # This variable will hold a reference to the awg visa resource
         self.awg_model = ''  # String describing the model
+
+        self.ftp_working_dir = 'waves'  # subfolder of FTP root dir on AWG disk to work in
         return
 
     def on_activate(self):
@@ -78,12 +81,12 @@ class AWG70K(Base, PulserInterface):
         else:
             self.awg = self._rm.open_resource(self._visa_address)
             # set timeout by default to 30 sec
-            self.awg.timeout = 30000
+            self.awg.timeout = self._visa_timeout * 1000
 
         # try connecting to AWG using FTP protocol
         with FTP(self._ip_address) as ftp:
             ftp.login(user=self._username, passwd=self._password)
-            ftp.cwd('waves')
+            ftp.cwd(self.ftp_working_dir)
 
         if self.awg is not None:
             self.awg_model = self.query('*IDN?').split(',')[1]
@@ -123,8 +126,8 @@ class AWG70K(Base, PulserInterface):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
@@ -246,16 +249,13 @@ class AWG70K(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
-        # Check if AWG is in function generator mode
-        # self._activate_awg_mode()
-
         # do nothing if AWG is already running
         if not self._is_output_on():
             self.write('AWGC:RUN')
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.25)
-        return self.get_status()
+        return self.get_status()[0]
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -270,7 +270,7 @@ class AWG70K(Base, PulserInterface):
             # wait until the AWG has actually stopped
             while self._is_output_on():
                 time.sleep(0.25)
-        return self.get_status()
+        return self.get_status()[0]
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
                        total_number_of_samples):
@@ -695,8 +695,7 @@ class AWG70K(Base, PulserInterface):
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
         time.sleep(1)
-        self.get_sample_rate()
-        return self.sample_rate
+        return self.get_sample_rate()
 
     def get_sample_rate(self):
         """ Set the sample rate of the pulse generator hardware
@@ -704,8 +703,7 @@ class AWG70K(Base, PulserInterface):
         @return float: The current sample rate of the device (in Hz)
         """
         return_rate = float(self.query('CLOCK:SRATE?'))
-        self.sample_rate = return_rate
-        return self.sample_rate
+        return return_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -849,25 +847,20 @@ class AWG70K(Base, PulserInterface):
                                                offset[chnl]))
                     offset[chnl] = constraints.a_ch_offset.max
 
-        amp = dict()
-        off = dict()
-
         if amplitude is not None:
             for a_ch in amplitude:
                 ch_num = int(chnl.rsplit('_ch', 1)[1])
                 self.write('SOUR{0:d}:VOLT:AMPL {1}'.format(ch_num, amplitude[a_ch]))
-                amp[a_ch] = amplitude[a_ch]
-            while int(self.query('*OPC?')) != 1:
-                time.sleep(0.25)
+                while int(self.query('*OPC?')) != 1:
+                    time.sleep(0.25)
 
         if offset is not None:
             for a_ch in offset:
                 ch_num = int(chnl.rsplit('_ch', 1)[1])
                 self.write('SOUR{0:d}:VOLT:OFFSET {1}'.format(ch_num, offset[a_ch]))
-                off[a_ch] = offset[a_ch]
-            while int(self.query('*OPC?')) != 1:
-                time.sleep(0.25)
-        return amp, off
+                while int(self.query('*OPC?')) != 1:
+                    time.sleep(0.25)
+        return self.get_analog_level()
 
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided channels.
@@ -925,7 +918,7 @@ class AWG70K(Base, PulserInterface):
             low_val[chnl] = float(
                 self.query('SOUR{0:d}:MARK{1:d}:VOLT:LOW?'.format(a_ch_number, marker_index)))
         # get high marker levels
-        for chnl in digital_channels:
+        for chnl in high:
             if chnl not in digital_channels:
                 continue
             d_ch_number = int(chnl.rsplit('_ch', 1)[1])
@@ -1000,10 +993,8 @@ class AWG70K(Base, PulserInterface):
         for their setting.
         """
         # If you want to check the input use the constraints:
-        constraints = self.get_constraints()
-        max_res = constraints.dac_resolution['max']
+        # constraints = self.get_constraints()
 
-        digital_channels = self._get_all_digital_channels()
         analog_channels = self._get_all_analog_channels()
 
         active_ch = dict()
@@ -1013,7 +1004,7 @@ class AWG70K(Base, PulserInterface):
             active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num))))
             # check how many markers are active on each channel, i.e. the DAC resolution
             if active_ch[a_ch]:
-                digital_mrk = max_res - int(self.query('SOUR{0:d}:DAC:RES?'.format(ch_num)))
+                digital_mrk = 10 - int(self.query('SOUR{0:d}:DAC:RES?'.format(ch_num)))
                 if digital_mrk == 2:
                     active_ch['d_ch{0:d}'.format(ch_num * 2)] = True
                     active_ch['d_ch{0:d}'.format(ch_num * 2 - 1)] = True
@@ -1309,7 +1300,7 @@ class AWG70K(Base, PulserInterface):
         filename_list = list()
         with FTP(self._ip_address) as ftp:
             ftp.login(user=self._username, passwd=self._password)
-            ftp.cwd('waves')
+            ftp.cwd(self.ftp_working_dir)
             # get only the files from the dir and skip possible directories
             log = list()
             ftp.retrlines('LIST', callback=log.append)
@@ -1335,7 +1326,7 @@ class AWG70K(Base, PulserInterface):
         if filename in self._get_filenames_on_device():
             with FTP(self._ip_address) as ftp:
                 ftp.login(user=self._username, passwd=self._password)
-                ftp.cwd('waves')
+                ftp.cwd(self.ftp_working_dir)
                 ftp.delete(filename)
         return
 
@@ -1362,7 +1353,7 @@ class AWG70K(Base, PulserInterface):
         # Transfer file
         with FTP(self._ip_address) as ftp:
             ftp.login(user=self._username, passwd=self._password)
-            ftp.cwd('waves')
+            ftp.cwd(self.ftp_working_dir)
             with open(filepath, 'rb') as file:
                 ftp.storbinary('STOR ' + filename, file)
         return 0
@@ -1401,12 +1392,10 @@ class AWG70K(Base, PulserInterface):
         wfmx_path = os.path.join(self._tmp_work_dir, filename)
         tmp_path = os.path.join(self._tmp_work_dir, 'digital_tmp.bin')
 
-        markers_active = False if marker_bytes is None else True
-
         # if it is the first chunk, create the .WFMX file with header.
         if is_first_chunk:
             # create header
-            header = self._create_xml_header(total_number_of_samples, markers_active)
+            header = self._create_xml_header(total_number_of_samples, marker_bytes is not None)
             # write header
             with open(wfmx_path, 'wb') as wfmxfile:
                 wfmxfile.write(header)
@@ -1421,7 +1410,7 @@ class AWG70K(Base, PulserInterface):
             wfmxfile.write(analog_samples)
 
         # Write digital samples to tmp file if chunkwise writing is used and it's not the last chunk
-        if not is_last_chunk and markers_active:
+        if not is_last_chunk and marker_bytes is not None:
             with open(tmp_path, 'ab') as tmp_file:
                 tmp_file.write(marker_bytes)
 
@@ -1429,7 +1418,7 @@ class AWG70K(Base, PulserInterface):
         # and also append the currently passed digital samples to wfmx file.
         # Read from tmp file in chunks of tmp_bytes_overhead in order to avoid too much memory
         # overhead.
-        if is_last_chunk and markers_active:
+        if is_last_chunk and marker_bytes is not None:
             with open(wfmx_path, 'ab') as wfmxfile:
                 # Copy over digital samples from tmp file. Delete tmp file afterwards.
                 if os.path.isfile(tmp_path):
@@ -1444,8 +1433,7 @@ class AWG70K(Base, PulserInterface):
                 wfmxfile.write(marker_bytes)
         return
 
-    @staticmethod
-    def _create_xml_header(number_of_samples, markers_active):
+    def _create_xml_header(self, number_of_samples, markers_active):
         """
         This function creates an xml file containing the header for the wfmx-file format using
         etree.
@@ -1468,7 +1456,7 @@ class AWG70K(Base, PulserInterface):
         sub_elem.text = '2014-10-28T12:59:52.9004865-07:00'
         prodspec = ET.SubElement(datasets, 'ProductSpecific', name='')
         sub_elem = ET.SubElement(prodspec, 'ReccSamplingRate', units='Hz')
-        sub_elem.text = 'NaN'
+        sub_elem.text = str(self.get_sample_rate())
         sub_elem = ET.SubElement(prodspec, 'ReccAmplitude', units='Volts')
         sub_elem.text = '0.5'
         sub_elem = ET.SubElement(prodspec, 'ReccOffset', units='Volts')
