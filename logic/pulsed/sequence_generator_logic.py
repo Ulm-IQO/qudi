@@ -31,7 +31,7 @@ import time
 from qtpy import QtCore
 from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
-from core.util.modules import get_main_dir
+from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator
@@ -59,7 +59,9 @@ class SequenceGeneratorLogic(GenericLogic):
     pulsegenerator = Connector(interface='PulserInterface')
 
     # configuration options
-    _assets_storage_dir = ConfigOption(name='assets_storage_dir', missing='error')
+    _assets_storage_dir = ConfigOption(name='assets_storage_dir',
+                                       default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
+                                       missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
     _additional_methods_dir = ConfigOption(name='additional_methods_dir',
                                            default=None,
