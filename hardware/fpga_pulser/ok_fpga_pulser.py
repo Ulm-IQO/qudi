@@ -100,8 +100,8 @@ class OkFpgaPulser(Base, PulserInterface):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
@@ -143,8 +143,8 @@ class OkFpgaPulser(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
-                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8']
+        activation_config['all'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'}
         constraints.activation_config = activation_config
         return constraints
 

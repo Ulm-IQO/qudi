@@ -187,7 +187,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
                                       index and values being the name of the already written
                                       waveform to load into the channel.
                                       Examples:   {1: rabi_ch1, 2: rabi_ch2} or
@@ -510,7 +510,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def query(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.
-a
+
         @param string question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
