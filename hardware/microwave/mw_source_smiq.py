@@ -43,6 +43,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+    _gpib_baud_rate = ConfigOption('gpib_baud_rate', None)
 
     # Indicate how fast frequencies within a list or sweep mode can be changed:
     _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
@@ -53,8 +54,13 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            if not self._gpib_baud_rate:
+                self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                            timeout=self._gpib_timeout)
+            else:
+                self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                            timeout=self._gpib_timeout,
+                                                            baud_rate=self._gpib_baud_rate)
         except:
             self.log.error('This is MWSMIQ: could not connect to GPIB address >>{}<<.'
                            ''.format(self._gpib_address))
