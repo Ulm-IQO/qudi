@@ -62,7 +62,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            if not self._gpib_baud_rate:
+            if self._gpib_baud_rate is None:
                 self._gpib_connection = self.rm.open_resource(self._gpib_address,
                                                             timeout=self._gpib_timeout)
             else:
