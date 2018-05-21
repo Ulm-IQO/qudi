@@ -37,6 +37,14 @@ from interface.microwave_interface import TriggerEdge
 class MicrowaveSmiq(Base, MicrowaveInterface):
     """ This is the Interface class to define the controls for the simple
         microwave hardware.
+
+    Example configuration:
+    ```
+    smiq:
+        module.Class: 'microwave.mw_source_smiq.MicrowaveSmiq'
+        gpib_address: 'GPIB0::28::INSTR'
+        gpib_timeout: 20
+    ```
     """
 
     _modclass = 'MicrowaveSmiq'
