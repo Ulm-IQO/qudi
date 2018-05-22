@@ -44,6 +44,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         module.Class: 'microwave.mw_source_smiq.MicrowaveSmiq'
         gpib_address: 'GPIB0::28::INSTR'
         gpib_timeout: 20
+        gpib_baud_rate: 460800  # optional
     ```
     """
 
