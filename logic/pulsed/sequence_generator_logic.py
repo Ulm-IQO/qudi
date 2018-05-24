@@ -1468,7 +1468,8 @@ class SequenceGeneratorLogic(GenericLogic):
                             analog_samples[chnl][array_write_index:array_write_index+samples_to_add] = pulse_function[chnl].get_samples(time_arr)/self.__analog_levels[0][chnl]
 
                         # Free memory
-                        del time_arr
+                        if pulse_function:
+                            del time_arr
 
                         element_samples_written += samples_to_add
                         array_write_index += samples_to_add
