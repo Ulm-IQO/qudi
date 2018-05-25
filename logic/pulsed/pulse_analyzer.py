@@ -80,7 +80,7 @@ class PulseAnalyzer(PulseAnalyzerBase):
     See BasicPulseAnalyzer class for an example usage.
     """
 
-    def __init__(self, pulsedmeasurementlogic, parameter_dict=None, import_path=None):
+    def __init__(self, pulsedmeasurementlogic):
         # Init base class
         super().__init__(pulsedmeasurementlogic)
 
@@ -94,8 +94,8 @@ class PulseAnalyzer(PulseAnalyzerBase):
         # import path for analysis modules from default directory (logic.pulse_analysis_methods)
         path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'pulsed_analysis_methods')]
         # import path for analysis modules from non-default directory if a path has been given
-        if isinstance(import_path, str):
-            path_list.append(import_path)
+        if isinstance(pulsedmeasurementlogic.analysis_import_path, str):
+            path_list.append(pulsedmeasurementlogic.analysis_import_path)
 
         # Import analysis modules and get a list of analyzer classes
         analyzer_classes = self.__import_external_analyzers(paths=path_list)
@@ -113,12 +113,14 @@ class PulseAnalyzer(PulseAnalyzerBase):
         self._current_analysis_method = sorted(self._analysis_methods)[0]
 
         # Update from parameter_dict if handed over
-        if isinstance(parameter_dict, dict):
+        if isinstance(pulsedmeasurementlogic.analysis_parameters, dict):
             # Delete unused parameters
-            for param in [p for p in parameter_dict if p not in self._parameters and p != 'method']:
-                del parameter_dict[param]
+            params = [p for p in pulsedmeasurementlogic.analysis_parameters if
+                      p not in self._parameters and p != 'method']
+            for param in params:
+                del pulsedmeasurementlogic.analysis_parameters[param]
             # Update parameter dict and current method
-            self.analysis_settings = parameter_dict
+            self.analysis_settings = pulsedmeasurementlogic.analysis_parameters
         return
 
     @property
