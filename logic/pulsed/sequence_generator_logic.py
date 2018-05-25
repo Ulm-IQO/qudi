@@ -63,9 +63,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                        default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
-    _additional_methods_dir = ConfigOption(name='additional_methods_dir',
-                                           default=None,
-                                           missing='nothing')
+    additional_methods_dir = ConfigOption(name='additional_methods_dir',
+                                          default=None,
+                                          missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -113,9 +113,9 @@ class SequenceGeneratorLogic(GenericLogic):
         # (other than logic.predefined_generate_methods)
         if 'additional_methods_dir' in config.keys():
             if not os.path.exists(config['additional_methods_dir']):
-                self._additional_methods_dir = None
                 self.log.error('Specified path "{0}" for import of additional generate methods '
                                'does not exist.'.format(config['additional_methods_dir']))
+                self.additional_methods_dir = None
 
         # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
@@ -158,8 +158,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self._update_sequences_from_file()
 
         # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
-        self._pog = PulseObjectGenerator(sequencegeneratorlogic=self,
-                                         import_path=self._additional_methods_dir)
+        self._pog = PulseObjectGenerator(sequencegeneratorlogic=self)
 
         self.__sequence_generation_in_progress = False
         return
