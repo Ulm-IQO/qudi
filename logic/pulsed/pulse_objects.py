@@ -796,7 +796,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
     """
 
     """
-    def __init__(self, sequencegeneratorlogic, import_path=None):
+    def __init__(self, sequencegeneratorlogic):
         # Initialize base class
         super().__init__(sequencegeneratorlogic)
 
@@ -810,8 +810,8 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         # import path for generator modules from default dir (logic.predefined_generate_methods)
         path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'predefined_generate_methods')]
         # import path for generator modules from non-default directory if a path has been given
-        if isinstance(import_path, str):
-            path_list.append(import_path)
+        if isinstance(sequencegeneratorlogic.additional_methods_dir, str):
+            path_list.append(sequencegeneratorlogic.additional_methods_dir)
 
         # Import predefined generator modules and get a list of generator classes
         generator_classes = self.__import_external_generators(paths=path_list)
@@ -863,7 +863,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
                 mod = importlib.import_module('{0}'.format(module_name))
                 importlib.reload(mod)
                 # get all generator class references defined in the module
-                tmp_list = [m[1] for m in inspect.getmembers(mod, self.__is_generator_class)]
+                tmp_list = [m[1] for m in inspect.getmembers(mod, self.is_generator_class)]
                 # append to class_list
                 class_list.extend(tmp_list)
         return class_list
@@ -898,7 +898,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         return
 
     @staticmethod
-    def __is_generator_class(obj):
+    def is_generator_class(obj):
         """
         Helper method to check if an object is a valid generator class.
 
