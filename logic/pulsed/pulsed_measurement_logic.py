@@ -52,7 +52,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # Config options
     # Optional additional paths to import from
     extraction_import_path = ConfigOption(name='extraction_import_path', default=None)
-    _analysis_import_path = ConfigOption(name='analysis_import_path', default=None)
+    analysis_import_path = ConfigOption(name='analysis_import_path', default=None)
     # Optional file type descriptor for saving raw data to file
     _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
 
@@ -80,7 +80,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # PulseExtractor settings
     extraction_parameters = StatusVar(default=None)
-    _analysis_parameters = StatusVar(default=None)
+    analysis_parameters = StatusVar(default=None)
 
     # Container to store measurement information about the currently loaded sequence
     _measurement_information = StatusVar(default=dict())
@@ -151,9 +151,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         # Create an instance of PulseExtractor
         self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self)
-        self._pulseanalyzer = PulseAnalyzer(pulsedmeasurementlogic=self,
-                                            parameter_dict=self._analysis_parameters,
-                                            import_path=self._analysis_import_path)
+        self._pulseanalyzer = PulseAnalyzer(pulsedmeasurementlogic=self)
 
         # QTimer must be created here instead of __init__ because otherwise the timer will not run
         # in this logic's thread but in the manager instead.
@@ -215,6 +213,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
         self.extraction_parameters = self._pulseextractor.full_settings_dict
+        self.analysis_parameters = self._pulseanalyzer.full_settings_dict
 
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
