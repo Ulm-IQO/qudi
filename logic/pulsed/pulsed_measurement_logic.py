@@ -51,7 +51,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # Config options
     # Optional additional paths to import from
-    _extraction_import_path = ConfigOption(name='extraction_import_path', default=None)
+    extraction_import_path = ConfigOption(name='extraction_import_path', default=None)
     _analysis_import_path = ConfigOption(name='analysis_import_path', default=None)
     # Optional file type descriptor for saving raw data to file
     _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
@@ -79,7 +79,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _data_units = StatusVar(default=('s', ''))
 
     # PulseExtractor settings
-    _extraction_parameters = StatusVar(default=None)
+    extraction_parameters = StatusVar(default=None)
     _analysis_parameters = StatusVar(default=None)
 
     # Container to store measurement information about the currently loaded sequence
@@ -150,9 +150,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         # Create an instance of PulseExtractor
-        self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self,
-                                              parameter_dict=self._extraction_parameters,
-                                              import_path=self._extraction_import_path)
+        self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self)
         self._pulseanalyzer = PulseAnalyzer(pulsedmeasurementlogic=self,
                                             parameter_dict=self._analysis_parameters,
                                             import_path=self._analysis_import_path)
@@ -216,7 +214,7 @@ class PulsedMeasurementLogic(GenericLogic):
         if len(self.fc.fit_list) > 0:
             self._statusVariables['fits'] = self.fc.save_to_dict()
 
-        self._extraction_parameters = self._pulseextractor.full_settings_dict
+        self.extraction_parameters = self._pulseextractor.full_settings_dict
 
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()

@@ -80,7 +80,7 @@ class PulseExtractor(PulseExtractorBase):
     See BasicPulseExtractor class for an example usage.
     """
 
-    def __init__(self, pulsedmeasurementlogic, parameter_dict=None, import_path=None):
+    def __init__(self, pulsedmeasurementlogic):
         # Init base class
         super().__init__(pulsedmeasurementlogic)
 
@@ -95,8 +95,8 @@ class PulseExtractor(PulseExtractorBase):
         # import path for extraction modules from default directory (logic.pulse_extraction_methods)
         path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'pulse_extraction_methods')]
         # import path for extraction modules from non-default directory if a path has been given
-        if isinstance(import_path, str):
-            path_list.append(import_path)
+        if isinstance(pulsedmeasurementlogic.extraction_import_path, str):
+            path_list.append(pulsedmeasurementlogic.extraction_import_path)
 
         # Import extraction modules and get a list of extractor classes
         extractor_classes = self.__import_external_extractors(paths=path_list)
@@ -117,12 +117,14 @@ class PulseExtractor(PulseExtractorBase):
             self._current_extraction_method = sorted(self._ungated_extraction_methods)[0]
 
         # Update from parameter_dict if handed over
-        if isinstance(parameter_dict, dict):
+        if isinstance(pulsedmeasurementlogic.extraction_parameters, dict):
             # Delete unused parameters
-            for param in [p for p in parameter_dict if p not in self._parameters and p != 'method']:
-                del parameter_dict[param]
+            params = [p for p in pulsedmeasurementlogic.extraction_parameters if
+                      p not in self._parameters and p != 'method']
+            for param in params:
+                del pulsedmeasurementlogic.extraction_parameters[param]
             # Update parameter dict and current method
-            self.extraction_settings = parameter_dict
+            self.extraction_settings = pulsedmeasurementlogic.extraction_parameters
         return
 
     @property
@@ -277,7 +279,7 @@ class PulseExtractor(PulseExtractorBase):
                 mod = importlib.import_module('{0}'.format(module_name))
                 importlib.reload(mod)
                 # get all extractor class references defined in the module
-                tmp_list = [m[1] for m in inspect.getmembers(mod, self.__is_extractor_class)]
+                tmp_list = [m[1] for m in inspect.getmembers(mod, self.is_extractor_class)]
                 # append to class_list
                 class_list.extend(tmp_list)
         return class_list
@@ -310,7 +312,7 @@ class PulseExtractor(PulseExtractorBase):
         return
 
     @staticmethod
-    def __is_extractor_class(obj):
+    def is_extractor_class(obj):
         """
         Helper method to check if an object is a valid extractor class.
 
