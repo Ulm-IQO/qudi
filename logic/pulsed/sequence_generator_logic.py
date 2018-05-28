@@ -1096,13 +1096,13 @@ class SequenceGeneratorLogic(GenericLogic):
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
         length_bins = 0
-        length_s = 0 if sequence.is_finite else -1
+        length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
         for ensemble_name, seq_params in sequence.ensemble_list:
             ensemble = self.get_ensemble(name=ensemble_name)
             if ensemble is None:
                 length_bins = -1
-                length_s = -1
+                length_s = np.inf
                 number_of_lasers = -1
                 break
             ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
@@ -1112,7 +1112,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 number_of_lasers += ens_lasers * (seq_params['repetitions'] + 1)
         return length_s, length_bins, number_of_lasers
 
-    def _analyze_block_ensemble(self, ensemble):
+    def analyze_block_ensemble(self, ensemble):
         """
         This helper method runs through each element of a PulseBlockEnsemble object and extracts
         important information about the Waveform that can be created out of this object.
@@ -1229,7 +1229,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return return_dict
 
-    def _analyze_sequence(self, sequence):
+    def analyze_sequence(self, sequence):
         """
         This helper method runs through each step of a PulseSequence object and extracts
         important information about the Sequence that can be created out of this object.
@@ -1350,7 +1350,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         created_waveforms:
                             list, a list of created waveform names
                         ensemble_info:
-                            dict, information about the ensemble returned by _analyze_block_ensemble
+                            dict, information about the ensemble returned by analyze_block_ensemble
 
         This method is creating the actual samples (voltages and logic states) for each time step
         of the analog and digital channels specified in the PulseBlockEnsemble.
@@ -1404,7 +1404,7 @@ class SequenceGeneratorLogic(GenericLogic):
         start_time = time.time()
 
         # get important parameters from the ensemble
-        ensemble_info = self._analyze_block_ensemble(ensemble)
+        ensemble_info = self.analyze_block_ensemble(ensemble)
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
@@ -1668,7 +1668,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                                              len(sequence_param_dict_list)))
 
         # get important parameters from the sequence and save them to the sequence object
-        sequence.sampling_information.update(self._analyze_sequence(sequence))
+        sequence.sampling_information.update(self.analyze_sequence(sequence))
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
         sequence.sampling_information['waveforms'] = sorted(written_waveforms)
