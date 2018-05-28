@@ -227,6 +227,10 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         r = option.rect
         painter.translate(r.topLeft())
         widget = QtGui.QSpinBox()
+        if 'min' in self.item_dict:
+            widget.setMinimum(self.item_dict['min'])
+        if 'max' in self.item_dict:
+            widget.setMaximum(self.item_dict['max'])
         if 'unit' in self.item_dict:
             widget.setSuffix(self.item_dict['unit'])
         widget.setGeometry(r)

@@ -20,20 +20,19 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
+import os
+import importlib
+import sys
+import inspect
+import copy
 from collections import OrderedDict
-# Specify here all classes that are actually sampling functions
-__all__ = ['Idle', 'DC', 'Sin', 'DoubleSin', 'TripleSin']
 
 
-class SamplingBase(object):
+class SamplingBase:
     """
     Base class for all sampling functions
     """
     params = OrderedDict()
-
-    def __init__(self):
-        pass
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -44,240 +43,61 @@ class SamplingBase(object):
         return dict_repr
 
 
-class Idle(SamplingBase):
+class SamplingFunctions:
     """
-    Object representing an idle element (zero voltage)
+
     """
-    def __init__(self):
-        pass
+    parameters = dict()
 
-    @staticmethod
-    def get_samples(time_array):
-        samples_arr = np.zeros(len(time_array))
-        return samples_arr
+    @classmethod
+    def import_sampling_functions(cls, path_list):
+        param_dict = dict()
+        for path in path_list:
+            if not os.path.exists(path):
+                continue
+            # Get all python modules to import from.
+            module_list = [name[:-3] for name in os.listdir(path) if
+                           os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
 
+            # append import path to sys.path
+            if path not in sys.path:
+                sys.path.append(path)
 
-class DC(SamplingBase):
-    """
-    Object representing an DC element (constant voltage)
-    """
-    params = OrderedDict()
-    params['voltage'] = {'unit': 'V', 'init': 0.0, 'min': -np.inf, 'max': +np.inf, 'type': float}
+            # Go through all modules and get all sampling function classes.
+            for module_name in module_list:
+                # import module
+                mod = importlib.import_module('{0}'.format(module_name))
+                # Delete all remaining references to sampling functions.
+                # This is neccessary if you have removed a sampling function class.
+                for attr in cls.parameters:
+                    if hasattr(mod, attr):
+                        delattr(mod, attr)
+                importlib.reload(mod)
+                # get all sampling function class references defined in the module
+                for name, ref in inspect.getmembers(mod, cls.is_sampling_function_class):
+                    setattr(cls, name, cls.__get_sf_method(ref))
+                    param_dict[name] = copy.deepcopy(ref.params)
 
-    def __init__(self, voltage=None):
-        if voltage is None:
-            self.voltage = self.params['voltage']['init']
-        else:
-            self.voltage = voltage
+        # Remove old sampling functions
+        for func in cls.parameters:
+            if func not in param_dict:
+                delattr(cls, func)
+
+        cls.parameters = param_dict
         return
 
     @staticmethod
-    def _get_dc(time_array, voltage):
-        samples_arr = np.zeros(len(time_array)) + voltage
-        return samples_arr
-
-    def get_samples(self, time_array):
-        samples_arr = self._get_dc(time_array, self.voltage)
-        return samples_arr
-
-
-class Sin(SamplingBase):
-    """
-    Object representing a sine wave element
-    """
-    params = OrderedDict()
-    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-
-    def __init__(self, amplitude=None, frequency=None, phase=None):
-        if amplitude is None:
-            self.amplitude = self.params['amplitude']['init']
-        else:
-            self.amplitude = amplitude
-        if frequency is None:
-            self.frequency = self.params['frequency']['init']
-        else:
-            self.frequency = frequency
-        if phase is None:
-            self.phase = self.params['phase']['init']
-        else:
-            self.phase = phase
-        return
+    def __get_sf_method(sf_ref):
+        return lambda *args, **kwargs: sf_ref(*args, **kwargs)
 
     @staticmethod
-    def _get_sine(time_array, amplitude, frequency, phase):
-        samples_arr = amplitude * np.sin(2 * np.pi * frequency * time_array + phase)
-        return samples_arr
+    def is_sampling_function_class(obj):
+        """
+        Helper method to check if an object is a valid sampling function class.
 
-    def get_samples(self, time_array):
-        phase_rad = np.pi * self.phase / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency, phase_rad)
-        return samples_arr
-
-
-class DoubleSin(SamplingBase):
-    """
-    Object representing a double sine wave element (Superposition of two sine waves; NOT normalized)
-    """
-    params = OrderedDict()
-    params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-    params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-
-    def __init__(self,
-                 amplitude_1=None, frequency_1=None, phase_1=None,
-                 amplitude_2=None, frequency_2=None, phase_2=None):
-        if amplitude_1 is None:
-            self.amplitude_1 = self.params['amplitude_1']['init']
-        else:
-            self.amplitude_1 = amplitude_1
-        if frequency_1 is None:
-            self.frequency_1 = self.params['frequency_1']['init']
-        else:
-            self.frequency_1 = frequency_1
-        if phase_1 is None:
-            self.phase_1 = self.params['phase_1']['init']
-        else:
-            self.phase_1 = phase_1
-
-        if amplitude_2 is None:
-            self.amplitude_2 = self.params['amplitude_2']['init']
-        else:
-            self.amplitude_2 = amplitude_2
-        if frequency_2 is None:
-            self.frequency_2 = self.params['frequency_2']['init']
-        else:
-            self.frequency_2 = frequency_2
-        if phase_2 is None:
-            self.phase_2 = self.params['phase_2']['init']
-        else:
-            self.phase_2 = phase_2
-        return
-
-    @staticmethod
-    def _get_sine(time_array, amplitude, frequency, phase):
-        samples_arr = amplitude * np.sin(2 * np.pi * frequency * time_array + phase)
-        return samples_arr
-
-    def get_samples(self, time_array):
-        # First sine wave
-        phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
-
-        # Second sine wave (add on first sine)
-        phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
-        return samples_arr
-
-
-class TripleSin(SamplingBase):
-    """
-    Object representing a triple sine wave element
-    (Superposition of three sine waves; NOT normalized)
-    """
-    params = OrderedDict()
-    params['amplitude_1'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency_1'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_1'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-    params['amplitude_2'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency_2'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_2'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-    params['amplitude_3'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['frequency_3'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase_3'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
-
-    def __init__(self,
-                 amplitude_1=None, frequency_1=None, phase_1=None,
-                 amplitude_2=None, frequency_2=None, phase_2=None,
-                 amplitude_3=None, frequency_3=None, phase_3=None):
-        if amplitude_1 is None:
-            self.amplitude_1 = self.params['amplitude_1']['init']
-        else:
-            self.amplitude_1 = amplitude_1
-        if frequency_1 is None:
-            self.frequency_1 = self.params['frequency_1']['init']
-        else:
-            self.frequency_1 = frequency_1
-        if phase_1 is None:
-            self.phase_1 = self.params['phase_1']['init']
-        else:
-            self.phase_1 = phase_1
-
-        if amplitude_2 is None:
-            self.amplitude_2 = self.params['amplitude_2']['init']
-        else:
-            self.amplitude_2 = amplitude_2
-        if frequency_2 is None:
-            self.frequency_2 = self.params['frequency_2']['init']
-        else:
-            self.frequency_2 = frequency_2
-        if phase_2 is None:
-            self.phase_2 = self.params['phase_2']['init']
-        else:
-            self.phase_2 = phase_2
-
-        if amplitude_3 is None:
-            self.amplitude_3 = self.params['amplitude_3']['init']
-        else:
-            self.amplitude_3 = amplitude_3
-        if frequency_3 is None:
-            self.frequency_3 = self.params['frequency_3']['init']
-        else:
-            self.frequency_3 = frequency_3
-        if phase_3 is None:
-            self.phase_3 = self.params['phase_3']['init']
-        else:
-            self.phase_3 = phase_3
-        return
-
-    @staticmethod
-    def _get_sine(time_array, amplitude, frequency, phase):
-        samples_arr = amplitude * np.sin(2 * np.pi * frequency * time_array + phase)
-        return samples_arr
-
-    def get_samples(self, time_array):
-        # First sine wave
-        phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
-
-        # Second sine wave (add on first sine)
-        phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
-
-        # Second sine wave (add on sum of first and second)
-        phase_rad = np.pi * self.phase_3 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_3
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
-        return samples_arr
-
-
-# FIXME: Not implemented yet!
-# class ImportedSamples(object):
-#     """
-#     Object representing an element of a pre-sampled waveform from file (as for optimal control).
-#     """
-#     params = OrderedDict()
-#     params['import_path'] = {'unit': '', 'init': '', 'min': '', 'max': '', 'type': str}
-#
-#     def __init__(self, importpath):
-#         self.importpath = importpath
-#
-#     def get_samples(self, time_array):
-#         # TODO: Import samples from file
-#         imported_samples = np.zeros(len(time_array))
-#         samples_arr = imported_samples[:len(time_array)]
+        @param object obj: object to check
+        @return bool: True if obj is a valid sampling function class, False otherwise
+        """
+        if inspect.isclass(obj):
+            return SamplingBase in obj.__bases__ and len(obj.__bases__) == 1
+        return False
