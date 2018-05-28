@@ -167,7 +167,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.digital_channels = sorted({chnl for chnl in activation_config if chnl.startswith('d')})
         self.analog_channels = sorted({chnl for chnl in activation_config if chnl.startswith('a')})
 
-        analog_shape = {chnl: sf.Idle() for chnl in self.analog_channels}
+        analog_shape = {chnl: sf.SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_state = {chnl: False for chnl in self.digital_channels}
         self.__default_element = PulseBlockElement(pulse_function=analog_shape,
                                                    digital_high=digital_state)
@@ -276,7 +276,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             if self.data(index=index, role=self.analogShapeRole) != data:
                 old_elem = self._pulse_block.element_list[index.row()]
 
-                sampling_func = getattr(sf, data)
+                sampling_func = getattr(sf.SamplingFunctions, data)
                 col_offset = 3 if self.digital_channels else 2
                 chnl = self.analog_channels[(index.column() - col_offset) // 2]
 
@@ -463,7 +463,7 @@ class BlockEditor(QtWidgets.QTableView):
         for num, chnl in enumerate(self.model().analog_channels):
             self.setItemDelegateForColumn(
                 offset_index + 2 * num, ComboBoxItemDelegate(
-                    self, sf.__all__, self.model().analogShapeRole))
+                    self, sorted(sf.SamplingFunctions.parameters), self.model().analogShapeRole))
             self.setItemDelegateForColumn(
                 offset_index + 2 * num + 1,
                 AnalogParametersItemDelegate(
@@ -573,6 +573,7 @@ class BlockEditor(QtWidgets.QTableView):
         block_copy = copy.deepcopy(
             self.model().data(QtCore.QModelIndex(), self.model().pulseBlockRole))
         block_copy.name = ''
+        block_copy.refresh_parameters()
         return block_copy
 
     def load_block(self, pulse_block):
@@ -1273,6 +1274,7 @@ class SequenceEditor(QtWidgets.QTableView):
         data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
         sequence_copy = copy.deepcopy(data_container)
         sequence_copy.name = ''
+        sequence_copy.refresh_parameters()
         return sequence_copy
 
     def load_sequence(self, pulse_sequence):

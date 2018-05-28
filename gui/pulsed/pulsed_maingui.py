@@ -1713,6 +1713,7 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     def _activate_sequence_generator_ui(self):
         self.update_sequence_dict(self.pulsedmasterlogic().saved_pulse_sequences)
+        self._sg.curr_sequence_length_DSpinBox.setRange(0, np.inf)
         return
 
     def _deactivate_sequence_generator_ui(self):
@@ -1777,9 +1778,9 @@ class PulsedMeasurementGui(GUIBase):
         sequence_object.name = name
         self.pulsedmasterlogic().save_sequence(sequence_object)
         length_s, length_bins, lasers = self.pulsedmasterlogic().get_sequence_info(sequence_object)
-        self._pg.curr_sequence_length_DSpinBox.setValue(length_s)
-        self._pg.curr_sequence_bins_SpinBox.setValue(length_bins)
-        self._pg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
+        self._sg.curr_sequence_length_DSpinBox.setValue(length_s)
+        self._sg.curr_sequence_bins_SpinBox.setValue(length_bins)
+        self._sg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
         return
 
     @QtCore.Slot()
@@ -1792,14 +1793,14 @@ class PulsedMeasurementGui(GUIBase):
     def editor_load_sequence_clicked(self):
         name = self._sg.saved_sequences_ComboBox.currentText()
         sequence = self.pulsedmasterlogic().saved_pulse_sequences[name]
-        self._pg.sequence_editor.load_sequence(sequence)
-        self._pg.curr_sequence_name_LineEdit.setText(name)
-        self._pg.curr_sequence_rot_frame_CheckBox.setChecked(sequence.rotating_frame)
+        self._sg.sequence_editor.load_sequence(sequence)
+        self._sg.curr_sequence_name_LineEdit.setText(name)
+        self._sg.curr_sequence_rot_frame_CheckBox.setChecked(sequence.rotating_frame)
 
         length_s, length_bins, lasers = self.pulsedmasterlogic().get_sequence_info(sequence)
-        self._pg.curr_sequence_length_DSpinBox.setValue(length_s)
-        self._pg.curr_sequence_bins_SpinBox.setValue(length_bins)
-        self._pg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
+        self._sg.curr_sequence_length_DSpinBox.setValue(length_s)
+        self._sg.curr_sequence_bins_SpinBox.setValue(length_bins)
+        self._sg.curr_sequence_laserpulses_SpinBox.setValue(lasers)
         return
 
     @QtCore.Slot(dict)
