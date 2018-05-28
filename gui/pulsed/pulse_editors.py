@@ -573,6 +573,7 @@ class BlockEditor(QtWidgets.QTableView):
         block_copy = copy.deepcopy(
             self.model().data(QtCore.QModelIndex(), self.model().pulseBlockRole))
         block_copy.name = ''
+        block_copy.refresh_parameters()
         return block_copy
 
     def load_block(self, pulse_block):
@@ -1273,6 +1274,7 @@ class SequenceEditor(QtWidgets.QTableView):
         data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
         sequence_copy = copy.deepcopy(data_container)
         sequence_copy.name = ''
+        sequence_copy.refresh_parameters()
         return sequence_copy
 
     def load_sequence(self, pulse_sequence):
