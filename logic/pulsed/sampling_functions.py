@@ -67,6 +67,11 @@ class SamplingFunctions:
             for module_name in module_list:
                 # import module
                 mod = importlib.import_module('{0}'.format(module_name))
+                # Delete all remaining references to sampling functions.
+                # This is neccessary if you have removed a sampling function class.
+                for attr in cls.parameters:
+                    if hasattr(mod, attr):
+                        delattr(mod, attr)
                 importlib.reload(mod)
                 # get all sampling function class references defined in the module
                 for name, ref in inspect.getmembers(mod, cls.is_sampling_function_class):

@@ -136,13 +136,6 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
         self._pog = None
 
-        # Initialize SamplingFunctions class by handing over a list of paths to import
-        # sampling functions from.
-        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_functions')]
-        if isinstance(self._sampling_functions_import_path, str):
-            sf_path_list.append(self._sampling_functions_import_path)
-        SamplingFunctions.import_sampling_functions(sf_path_list)
-
         # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
         # these dictionaries. The keys are the names.
         self._saved_pulse_blocks = OrderedDict()
@@ -155,6 +148,13 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         if not os.path.exists(self._assets_storage_dir):
             os.makedirs(self._assets_storage_dir)
+
+        # Initialize SamplingFunctions class by handing over a list of paths to import
+        # sampling functions from.
+        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_functions')]
+        if isinstance(self._sampling_functions_import_path, str):
+            sf_path_list.append(self._sampling_functions_import_path)
+        SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
         self._read_settings_from_device()
