@@ -1713,6 +1713,7 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     def _activate_sequence_generator_ui(self):
         self.update_sequence_dict(self.pulsedmasterlogic().saved_pulse_sequences)
+        self._sg.curr_sequence_length_DSpinBox.setRange(0, np.inf)
         return
 
     def _deactivate_sequence_generator_ui(self):
