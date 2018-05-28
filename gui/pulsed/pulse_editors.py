@@ -27,8 +27,7 @@ from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogPa
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
-from logic.pulsed.sampling_functions import SamplingFunctions as sf
-
+import logic.pulsed.sampling_functions as sf
 
 
 class BlockEditorTableModel(QtCore.QAbstractTableModel):
@@ -168,7 +167,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.digital_channels = sorted({chnl for chnl in activation_config if chnl.startswith('d')})
         self.analog_channels = sorted({chnl for chnl in activation_config if chnl.startswith('a')})
 
-        analog_shape = {chnl: sf.Idle() for chnl in self.analog_channels}
+        analog_shape = {chnl: sf.SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_state = {chnl: False for chnl in self.digital_channels}
         self.__default_element = PulseBlockElement(pulse_function=analog_shape,
                                                    digital_high=digital_state)
@@ -277,7 +276,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             if self.data(index=index, role=self.analogShapeRole) != data:
                 old_elem = self._pulse_block.element_list[index.row()]
 
-                sampling_func = getattr(sf, data)
+                sampling_func = getattr(sf.SamplingFunctions, data)
                 col_offset = 3 if self.digital_channels else 2
                 chnl = self.analog_channels[(index.column() - col_offset) // 2]
 
@@ -464,7 +463,7 @@ class BlockEditor(QtWidgets.QTableView):
         for num, chnl in enumerate(self.model().analog_channels):
             self.setItemDelegateForColumn(
                 offset_index + 2 * num, ComboBoxItemDelegate(
-                    self, sorted(sf.parameters), self.model().analogShapeRole))
+                    self, sorted(sf.SamplingFunctions.parameters), self.model().analogShapeRole))
             self.setItemDelegateForColumn(
                 offset_index + 2 * num + 1,
                 AnalogParametersItemDelegate(
