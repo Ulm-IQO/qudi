@@ -20,12 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import importlib
-import inspect
 import numpy as np
 import os
 import pickle
-import sys
 import time
 
 from qtpy import QtCore
@@ -35,6 +32,7 @@ from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator
+from logic.pulsed.sampling_functions import SamplingFunctions
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -63,9 +61,14 @@ class SequenceGeneratorLogic(GenericLogic):
                                        default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
+    # Optional additional paths to import from
     additional_methods_dir = ConfigOption(name='additional_methods_dir',
                                           default=None,
                                           missing='nothing')
+
+    _sampling_functions_import_path = ConfigOption(name='sampling_functions_import_path',
+                                                   default=None,
+                                                   missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -145,6 +148,13 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         if not os.path.exists(self._assets_storage_dir):
             os.makedirs(self._assets_storage_dir)
+
+        # Initialize SamplingFunctions class by handing over a list of paths to import
+        # sampling functions from.
+        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_functions')]
+        if isinstance(self._sampling_functions_import_path, str):
+            sf_path_list.append(self._sampling_functions_import_path)
+        SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
         self._read_settings_from_device()
@@ -276,9 +286,9 @@ class SequenceGeneratorLogic(GenericLogic):
                     return '', ''
         elif asset_type == 'sequence' and len(name_list) > 0:
             return_type = 'PulseSequence'
-            return_name = name_list[0]
+            return_name = name_list[0].rsplit('_', 1)[0]
             for name in name_list:
-                if name != return_name:
+                if name.rsplit('_', 1)[0] != return_name:
                     return '', ''
         else:
             return '', ''
@@ -1086,13 +1096,13 @@ class SequenceGeneratorLogic(GenericLogic):
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
         length_bins = 0
-        length_s = 0 if sequence.is_finite else -1
+        length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
         for ensemble_name, seq_params in sequence.ensemble_list:
             ensemble = self.get_ensemble(name=ensemble_name)
             if ensemble is None:
                 length_bins = -1
-                length_s = -1
+                length_s = np.inf
                 number_of_lasers = -1
                 break
             ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
@@ -1102,7 +1112,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 number_of_lasers += ens_lasers * (seq_params['repetitions'] + 1)
         return length_s, length_bins, number_of_lasers
 
-    def _analyze_block_ensemble(self, ensemble):
+    def analyze_block_ensemble(self, ensemble):
         """
         This helper method runs through each element of a PulseBlockEnsemble object and extracts
         important information about the Waveform that can be created out of this object.
@@ -1219,7 +1229,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return return_dict
 
-    def _analyze_sequence(self, sequence):
+    def analyze_sequence(self, sequence):
         """
         This helper method runs through each step of a PulseSequence object and extracts
         important information about the Sequence that can be created out of this object.
@@ -1340,7 +1350,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         created_waveforms:
                             list, a list of created waveform names
                         ensemble_info:
-                            dict, information about the ensemble returned by _analyze_block_ensemble
+                            dict, information about the ensemble returned by analyze_block_ensemble
 
         This method is creating the actual samples (voltages and logic states) for each time step
         of the analog and digital channels specified in the PulseBlockEnsemble.
@@ -1394,7 +1404,7 @@ class SequenceGeneratorLogic(GenericLogic):
         start_time = time.time()
 
         # get important parameters from the ensemble
-        ensemble_info = self._analyze_block_ensemble(ensemble)
+        ensemble_info = self.analyze_block_ensemble(ensemble)
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
@@ -1637,6 +1647,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     return
 
                 # Add to generated ensembles
+                ensemble_info['waveforms'] = waveform_list
                 generated_ensembles[name_tag] = ensemble_info
 
                 # Add created waveform names to the set
@@ -1657,7 +1668,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                                              len(sequence_param_dict_list)))
 
         # get important parameters from the sequence and save them to the sequence object
-        sequence.sampling_information.update(self._analyze_sequence(sequence))
+        sequence.sampling_information.update(self.analyze_sequence(sequence))
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
         sequence.sampling_information['waveforms'] = sorted(written_waveforms)

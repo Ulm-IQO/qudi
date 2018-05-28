@@ -46,10 +46,9 @@ class PulserDummy(Base, PulserInterface):
         self.sample_rate = 25e9
 
         # Deactivate all channels at first:
-        ch = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
-              'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
-              'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
-        self.channel_states = ch
+        self.channel_states = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
+                               'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
+                               'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
 
         # for each analog channel one value
         self.amplitude_dict = {'a_ch1': 1.0, 'a_ch2': 1.0, 'a_ch3': 1.0}
@@ -450,10 +449,8 @@ class PulserDummy(Base, PulserInterface):
             return self.get_loaded_assets()
 
         # Determine if the device is purely digital and get all active channels
-        analog_channels = [chnl for chnl in self.activation_config if
-                           self.activation_config[chnl] and chnl.startswith('a')].sort()
-        digital_channels = [chnl for chnl in self.activation_config if
-                            self.activation_config[chnl] and chnl.startswith('d')].sort()
+        analog_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('a'))
+        digital_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('d'))
         pure_digital = len(analog_channels) == 0
 
         if pure_digital and len(digital_channels) != self.sequence_dict[sequence_name]:
