@@ -263,7 +263,8 @@ class PulseBlockEnsemble(object):
             return -1
 
         if reps is None:
-            self.block_list[position][0] = block_name
+            list_entry = (block_name, self.block_list[position][1])
+            self.block_list[position][0] = list_entry
         elif reps >= 0:
             self.block_list[position] = (block_name, reps)
         else:
@@ -404,7 +405,8 @@ class PulseSequence(object):
             return -1
 
         if seq_param is None:
-            self.ensemble_list[position][0] = ensemble_name
+            list_entry = (ensemble_name, self.ensemble_list[position][1])
+            self.ensemble_list[position] = list_entry
         else:
             self.ensemble_list[position] = (ensemble_name, seq_param.copy())
             if seq_param['repetitions'] < 0 and self.is_finite:
