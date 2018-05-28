@@ -20,12 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import importlib
-import inspect
 import numpy as np
 import os
 import pickle
-import sys
 import time
 
 from qtpy import QtCore
@@ -35,6 +32,7 @@ from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator
+from logic.pulsed.sampling_functions import SamplingFunctions
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -63,9 +61,14 @@ class SequenceGeneratorLogic(GenericLogic):
                                        default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
+    # Optional additional paths to import from
     additional_methods_dir = ConfigOption(name='additional_methods_dir',
                                           default=None,
                                           missing='nothing')
+
+    _sampling_functions_import_path = ConfigOption(name='sampling_functions_import_path',
+                                                   default=None,
+                                                   missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -132,6 +135,13 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Get instance of PulseObjectGenerator which takes care of collecting all predefined methods
         self._pog = None
+
+        # Initialize SamplingFunctions class by handing over a list of paths to import
+        # sampling functions from.
+        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_functions')]
+        if isinstance(self._sampling_functions_import_path, str):
+            sf_path_list.append(self._sampling_functions_import_path)
+        SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # The created pulse objects (PulseBlock, PulseBlockEnsemble, PulseSequence) are saved in
         # these dictionaries. The keys are the names.
