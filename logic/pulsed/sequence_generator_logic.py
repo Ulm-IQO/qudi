@@ -286,9 +286,9 @@ class SequenceGeneratorLogic(GenericLogic):
                     return '', ''
         elif asset_type == 'sequence' and len(name_list) > 0:
             return_type = 'PulseSequence'
-            return_name = name_list[0]
+            return_name = name_list[0].rsplit('_', 1)[0]
             for name in name_list:
-                if name != return_name:
+                if name.rsplit('_', 1)[0] != return_name:
                     return '', ''
         else:
             return '', ''
@@ -1647,6 +1647,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     return
 
                 # Add to generated ensembles
+                ensemble_info['waveforms'] = waveform_list
                 generated_ensembles[name_tag] = ensemble_info
 
                 # Add created waveform names to the set
