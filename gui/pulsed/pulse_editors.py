@@ -27,7 +27,8 @@ from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogPa
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
-import logic.pulsed.sampling_functions as sf
+from logic.pulsed.sampling_functions import SamplingFunctions as sf
+
 
 
 class BlockEditorTableModel(QtCore.QAbstractTableModel):
@@ -463,7 +464,7 @@ class BlockEditor(QtWidgets.QTableView):
         for num, chnl in enumerate(self.model().analog_channels):
             self.setItemDelegateForColumn(
                 offset_index + 2 * num, ComboBoxItemDelegate(
-                    self, sf.__all__, self.model().analogShapeRole))
+                    self, sorted(sf.parameters), self.model().analogShapeRole))
             self.setItemDelegateForColumn(
                 offset_index + 2 * num + 1,
                 AnalogParametersItemDelegate(

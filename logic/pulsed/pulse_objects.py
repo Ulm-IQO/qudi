@@ -27,7 +27,7 @@ import inspect
 import importlib
 from collections import OrderedDict
 
-import logic.pulsed.sampling_functions as sf
+from logic.pulsed.sampling_functions import SamplingFunctions as sf
 from core.util.modules import get_main_dir
 
 
@@ -50,7 +50,7 @@ class PulseBlockElement(object):
         @param dict pulse_function: dictionary with keys being the qudi analog channel string
                                     descriptors ('a_ch1', 'a_ch2' etc.) and the corresponding
                                     objects being instances of the mathematical function objects
-                                    found in "sampling_functions.py".
+                                    provided by SamplingFunctions class.
         @param dict digital_high: dictionary with keys being the qudi digital channel string
                                   descriptors ('d_ch1', 'd_ch2' etc.) and the corresponding objects
                                   being boolean values describing if the channel should be logical
