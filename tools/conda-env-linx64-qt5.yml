@@ -1,105 +1,126 @@
 name: qudi
-channels: !!python/tuple
-- defaults
+channels:
+  - defaults
 dependencies:
-- cycler=0.10.0=py36_0
-- dbus=1.10.10=0
-- decorator=4.0.11=py36_0
-- entrypoints=0.2.2=py36_0
-- expat=2.1.0=0
-- fontconfig=2.12.1=3
-- freetype=2.5.5=2
-- glib=2.50.2=1
-- gst-plugins-base=1.8.0=0
-- gstreamer=1.8.0=0
-- icu=54.1=0
-- ipykernel=4.5.2=py36_0
-- ipython=5.1.0=py36_0
-- ipython_genutils=0.1.0=py36_0
-- ipywidgets=5.2.2=py36_1
-- jbig=2.1=0
-- jedi=0.9.0=py36_1
-- jinja2=2.9.4=py36_0
-- jpeg=9b=0
-- jsonschema=2.5.1=py36_0
-- jupyter=1.0.0=py36_3
-- jupyter_client=4.4.0=py36_0
-- jupyter_console=5.0.0=py36_0
-- jupyter_core=4.2.1=py36_0
-- libffi=3.2.1=1
-- libgcc=5.2.0=0
-- libgfortran=3.0.0=1
-- libiconv=1.14=0
-- libpng=1.6.27=0
-- libsodium=1.0.10=0
-- libtiff=4.0.6=3
-- libxcb=1.12=1
-- libxml2=2.9.4=0
-- libxslt=1.1.29=0
-- lxml=3.7.2=py36_0
-- markupsafe=0.23=py36_2
-- matplotlib=2.0.0=np112py36_0
-- mistune=0.7.3=py36_0
-- mkl=2017.0.1=0
-- nbconvert=4.2.0=py36_0
-- nbformat=4.2.0=py36_0
-- notebook=4.3.1=py36_0
-- numpy=1.12.0=py36_0
-- olefile=0.44=py36_0
-- openssl=1.0.2k=0
-- path.py=10.0=py36_0
-- pcre=8.39=1
-- pexpect=4.2.1=py36_0
-- pickleshare=0.7.4=py36_0
-- pillow=4.0.0=py36_1
-- pip=9.0.1=py36_1
-- prompt_toolkit=1.0.9=py36_0
-- ptyprocess=0.5.1=py36_0
-- pygments=2.1.3=py36_0
-- pyparsing=2.1.4=py36_0
-- pyqt=5.6.0=py36_2
-- python=3.6.0=0
-- python-dateutil=2.6.0=py36_0
-- pytz=2016.10=py36_0
-- pyzmq=16.0.2=py36_0
-- qt=5.6.2=3
-- qtconsole=4.2.1=py36_1
-- qtpy=1.2.1=py36_0
-- readline=6.2=2
-- scipy=0.18.1=np112py36_1
-- setuptools=27.2.0=py36_0
-- simplegeneric=0.8.1=py36_1
-- sip=4.18=py36_0
-- six=1.10.0=py36_0
-- sqlite=3.13.0=0
-- terminado=0.6=py36_0
-- tk=8.5.18=0
-- tornado=4.4.2=py36_0
-- traitlets=4.3.1=py36_0
-- wcwidth=0.1.7=py36_0
-- wheel=0.29.0=py36_0
-- widgetsnbextension=1.2.6=py36_0
-- xz=5.2.2=1
-- zeromq=4.1.5=0
-- zlib=1.2.8=3
-- pip:
-  - fysom==2.1.4
-  - gitdb2==2.0.0
-  - gitpython==2.1.1
-  - hdf5storage==0.1.14
-  - ipython-genutils==0.1.0
-  - jupyter-client==4.4.0
-  - jupyter-console==5.0.0
-  - jupyter-core==4.2.1
-  - lmfit==0.9.5
-  - plumbum==1.6.3
-  - prompt-toolkit==1.0.9
-  - pydaqmx==1.3.2
-  - pyflowgraph-qo==0.0.3.1
-  - pyqtgraph==0.10.0
-  - pyvisa==1.8
-  - pyvisa-py==0.2
-  - rpyc==3.3.0
-  - ruamel.yaml==0.13.14
-  - serial==0.0.38
-  - smmap2==2.0.1
+  - backcall=0.1.0=py36_0
+  - bleach=2.1.3=py36_0
+  - ca-certificates=2018.03.07=0
+  - certifi=2018.4.16=py36_0
+  - cycler=0.10.0=py36h93f1223_0
+  - cython=0.28.2=py36h14c3975_0
+  - dbus=1.13.2=h714fa37_1
+  - decorator=4.3.0=py36_0
+  - entrypoints=0.2.3=py36h1aec115_2
+  - expat=2.2.5=he0dffb1_0
+  - fontconfig=2.12.6=h49f89f6_0
+  - freetype=2.8=hab7d2ae_1
+  - glib=2.56.1=h000015b_0
+  - gmp=6.1.2=h6c8ec71_1
+  - gst-plugins-base=1.14.0=hbbd80ab_1
+  - gstreamer=1.14.0=hb453b48_1
+  - html5lib=1.0.1=py36h2f9c1c0_0
+  - icu=58.2=h9c2bf20_1
+  - intel-openmp=2018.0.0=8
+  - ipykernel=4.8.2=py36_0
+  - ipython=6.3.1=py36_0
+  - ipython_genutils=0.2.0=py36hb52b0d5_0
+  - ipywidgets=7.2.1=py36_0
+  - jbig=2.1=hdba287a_0
+  - jedi=0.12.0=py36_1
+  - jinja2=2.10=py36ha16c418_0
+  - jpeg=9b=h024ee3a_2
+  - jsonschema=2.6.0=py36h006f8b5_0
+  - jupyter=1.0.0=py36_4
+  - jupyter_client=5.2.3=py36_0
+  - jupyter_console=5.2.0=py36he59e554_1
+  - jupyter_core=4.4.0=py36h7c827e3_0
+  - kiwisolver=1.0.1=py36h764f252_0
+  - libedit=3.1=heed3624_0
+  - libffi=3.2.1=hd88cf55_4
+  - libgcc=7.2.0=h69d50b8_2
+  - libgcc-ng=7.2.0=hdf63c60_3
+  - libgfortran=3.0.0=1
+  - libgfortran-ng=7.2.0=hdf63c60_3
+  - libiconv=1.15=h63c8f33_5
+  - libpng=1.6.34=hb9fc6fc_0
+  - libsodium=1.0.16=h1bed415_0
+  - libstdcxx-ng=7.2.0=hdf63c60_3
+  - libtiff=4.0.9=h28f6b97_0
+  - libxcb=1.13=h1bed415_1
+  - libxml2=2.9.8=hf84eae3_0
+  - libxslt=1.1.32=h1312cb7_0
+  - lxml=4.2.1=py36h23eabaa_0
+  - markupsafe=1.0=py36hd9260cd_1
+  - matplotlib=2.2.2=py36h0e671d2_1
+  - mistune=0.8.3=py36h14c3975_1
+  - mkl=2018.0.2=1
+  - mkl_fft=1.0.1=py36h3010b51_0
+  - mkl_random=1.0.1=py36h629b387_0
+  - nbconvert=5.3.1=py36hb41ffb7_0
+  - nbformat=4.4.0=py36h31c9010_0
+  - ncurses=6.0=h9df7e31_2
+  - notebook=5.4.1=py36_0
+  - numpy=1.14.2=py36hdbf6ddf_1
+  - olefile=0.45.1=py36_0
+  - openssl=1.0.2o=h20670df_0
+  - pandoc=1.19.2.1=hea2e7c5_1
+  - pandocfilters=1.4.2=py36ha6701b7_1
+  - parso=0.2.0=py36_0
+  - path.py=11.0.1=py36_0
+  - pcre=8.42=h439df22_0
+  - pexpect=4.5.0=py36_0
+  - pickleshare=0.7.4=py36h63277f8_0
+  - pillow=5.1.0=py36h3deb7b8_0
+  - pip=10.0.1=py36_0
+  - prompt_toolkit=1.0.15=py36h17d85b1_0
+  - ptyprocess=0.5.2=py36h69acd42_0
+  - pygments=2.2.0=py36h0d3125c_0
+  - pyparsing=2.2.0=py36hee85983_1
+  - pyqt=5.9.2=py36h751905a_0
+  - python=3.6.5=hc3d631a_2
+  - python-dateutil=2.7.2=py36_0
+  - pytz=2018.4=py36_0
+  - pyzmq=17.0.0=py36h14c3975_0
+  - qt=5.9.5=h7e424d6_0
+  - qtconsole=4.3.1=py36h8f73b5b_0
+  - qtpy=1.4.1=py36_0
+  - readline=7.0=ha6073c6_4
+  - scipy=1.0.1=py36hfc37229_0
+  - send2trash=1.5.0=py36_0
+  - setuptools=39.1.0=py36_0
+  - simplegeneric=0.8.1=py36_2
+  - sip=4.19.8=py36hf484d3e_0
+  - six=1.11.0=py36h372c433_1
+  - sqlite=3.23.1=he433501_0
+  - terminado=0.8.1=py36_1
+  - testpath=0.3.1=py36h8cadb63_0
+  - tk=8.6.7=hc745277_3
+  - tornado=4.5.3=py36_0
+  - traitlets=4.3.2=py36h674d592_0
+  - wcwidth=0.1.7=py36hdf4376a_0
+  - webencodings=0.5.1=py36h800622e_1
+  - wheel=0.31.0=py36_0
+  - widgetsnbextension=3.2.1=py36_0
+  - xz=5.2.3=h5e939de_4
+  - zeromq=4.2.5=h439df22_0
+  - zlib=1.2.11=ha838bed_2
+  - pip:
+    - asteval==0.9.12
+    - future==0.16.0
+    - fysom==2.1.5
+    - gitdb2==2.0.3
+    - gitpython==2.1.9
+    - iso8601==0.1.12
+    - lmfit==0.9.9
+    - plumbum==1.6.6
+    - pydaqmx==1.4.1
+    - pyflowgraph-qo==0.0.3.1
+    - pyqtgraph-qo==0.10.0.4
+    - pyvisa==1.9.0
+    - pyvisa-py==0.2
+    - pyyaml==3.12
+    - rpyc==3.4.4
+    - ruamel.yaml==0.15.37
+    - serial==0.0.64
+    - smmap2==2.0.1
+
