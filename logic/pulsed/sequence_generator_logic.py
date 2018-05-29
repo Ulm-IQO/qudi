@@ -1013,27 +1013,13 @@ class SequenceGeneratorLogic(GenericLogic):
             self.save_sequence(sequence)
         self.sigPredefinedSequenceGenerated.emit(predefined_sequence_name)
         return
-
-    def _cleanup_tmp_files(self):
-        """
-        Delete all temporary files containing saved PulseBlock/PulseBlockEnsemble/PulseSequence
-        instances.
-        They will still be saved to StatusVar.
-        """
-        dir_content = os.listdir()
-        for file in ('tmp_block_dict', 'tmp_ensemble_dict', 'tmp_sequence_dict'):
-            if file in dir_content:
-                os.remove(file)
-        return
-
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     #                    END sequence/block generation
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
 
-
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     #                    BEGIN sequence/block sampling
-    #---------------------------------------------------------------------------
+    # ---------------------------------------------------------------------------
     def get_ensemble_info(self, ensemble):
         """
         This helper method will analyze a PulseBlockEnsemble and return information like length in
@@ -1718,136 +1704,3 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.pulsegenerator().delete_sequence(seq)
         self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         return
-
-    #---------------------------------------------------------------------------
-    #                    END sequence/block sampling
-    #---------------------------------------------------------------------------
-    # def set_settings(self, settings_dict):
-    #     """
-    #     Sets all settings for the generator logic.
-    #
-    #     @param settings_dict: dict, A dictionary containing the settings to change.
-    #
-    #     @return dict: A dictionary containing the actually set values for all changed settings
-    #     """
-    #     # The returned dictionary. It will contain the actually set parameter values.
-    #     actual_settings = dict()
-    #
-    #     # Try to set new activation config.
-    #     if 'activation_config' in settings_dict:
-    #         avail_configs = self.pulsegenerator().get_constraints().activation_config
-    #         # If activation_config is not within pulser constraints, do not change it.
-    #         if settings_dict['activation_config'] not in avail_configs:
-    #             self.log.error('Unable to set activation_config "{0}" since it can not be found in '
-    #                            'pulser constraints.\nPrevious config "{1}" will stay in effect.'
-    #                            ''.format(settings_dict['activation_config'],
-    #                                      self.activation_config[0]))
-    #
-    #         else:
-    #             channels_to_activate = avail_configs[settings_dict['activation_config']]
-    #             channel_state = self.pulsegenerator().get_active_channels()
-    #             for chnl in channel_state:
-    #                 if chnl in channels_to_activate:
-    #                     channel_state[chnl] = True
-    #                 else:
-    #                     channel_state[chnl] = False
-    #             set_channel_states = self.pulsegenerator().set_active_channels(channel_state)
-    #             set_activation_config = {chnl for chnl in set_channel_states if
-    #                                      set_channel_states[chnl]}
-    #             for name, config in avail_configs.items():
-    #                 if config == set_activation_config:
-    #                     self.activation_config = (name, config)
-    #                     break
-    #             if self.activation_config[1] != set_activation_config:
-    #                 self.activation_config[0] = ''
-    #                 self.log.error('Setting activation_config "{0}" failed.\n'
-    #                                'Reload module to avoid undexpected behaviour.'
-    #                                ''.format(settings_dict['activation_config']))
-    #
-    #             self.analog_channels = len(
-    #                 [chnl for chnl in self.activation_config[1] if 'a_ch' in chnl])
-    #             self.digital_channels = len(
-    #                 [chnl for chnl in self.activation_config[1] if 'd_ch' in chnl])
-    #
-    #             # Check if the laser channel is being set at the same time. If not, check if a
-    #             # change of laser channel is necessary due to the changed activation_config.
-    #             # If the laser_channel needs to be changed add it to settings_dict.
-    #             if 'laser_channel' not in settings_dict and self.laser_channel not in self.activation_config[1]:
-    #                 settings_dict['laser_channel'] = self.laser_channel
-    #         actual_settings['activation_config'] = self.activation_config[0]
-    #
-    #     # Try to set new laser_channel. Check if it's part of the current activation_config and
-    #     # adjust to first valid digital channel if not.
-    #     if 'laser_channel' in settings_dict:
-    #         if settings_dict['laser_channel'] in self.activation_config[1]:
-    #             self.laser_channel = settings_dict['laser_channel']
-    #         elif self.digital_channels > 0:
-    #             for chnl in self.activation_config[1]:
-    #                 if 'd_ch' in chnl:
-    #                     new_laser_channel = chnl
-    #                     break
-    #             self.log.warning('Unable to set laser_channel "{0}" since it is not in current '
-    #                              'activation_config.\nLaser_channel set to "{1}" instead.'
-    #                              ''.format(self.laser_channel, new_laser_channel))
-    #             self.laser_channel = new_laser_channel
-    #         else:
-    #             self.log.error('Unable to set new laser_channel "{0}". '
-    #                            'No digital channel in current activation_config.'
-    #                            ''.format(settings_dict['laser_channel']))
-    #             self.laser_channel = ''
-    #         actual_settings['laser_channel'] = self.laser_channel
-    #
-    #     # Try to set the sample rate
-    #     if 'sample_rate' in settings_dict:
-    #         # If sample rate already set, do nothing
-    #         if settings_dict['sample_rate'] != self.sample_rate:
-    #             sample_rate_constr = self.pulsegenerator().get_constraints().sample_rate
-    #             # Check boundaries with constraints
-    #             if settings_dict['sample_rate'] > sample_rate_constr.max:
-    #                 self.log.warning('Sample rate to set ({0}) larger than allowed maximum ({1}).\n'
-    #                                  'New sample rate will be set to maximum value.'
-    #                                  ''.format(settings_dict['sample_rate'],
-    #                                            sample_rate_constr.max))
-    #                 settings_dict['sample_rate'] = sample_rate_constr.max
-    #             elif settings_dict['sample_rate'] < sample_rate_constr.min:
-    #                 self.log.warning('Sample rate to set ({0}) smaller than allowed minimum ({1}).'
-    #                                  '\nNew sample rate will be set to minimum value.'
-    #                                  ''.format(settings_dict['sample_rate'],
-    #                                            sample_rate_constr.min))
-    #                 settings_dict['sample_rate'] = sample_rate_constr.min
-    #
-    #             self.sample_rate = self.pulsegenerator().set_sample_rate(
-    #                 settings_dict['sample_rate'])
-    #         actual_settings['sample_rate'] = self.sample_rate
-    #
-    #     # Try to set the pp-amplitudes for analog channels
-    #     if 'analog_pp_amplitude' in settings_dict:
-    #         # if no change is needed, do nothing
-    #         if settings_dict['analog_pp_amplitude'] != self.analog_pp_amplitude:
-    #             analog_constr = self.pulsegenerator().get_constraints().a_ch_amplitude
-    #             # Get currently set pp-amplitudes
-    #             current_analog_amp = self.pulsegenerator().get_analog_level(
-    #                 amplitude=list(settings_dict['analog_pp_amplitude']))
-    #             # Check boundaries with constraints
-    #             for chnl, value in settings_dict['analog_pp_amplitude'].items():
-    #                 if value > analog_constr.max:
-    #                     self.log.warning('pp-amplitude to set ({0}) larger than allowed maximum '
-    #                                      '({1}).\nNew pp-amplitude will be set to maximum value.'
-    #                                      ''.format(value, analog_constr.max))
-    #                     settings_dict['analog_pp_amplitude'][chnl] = analog_constr.max
-    #                 elif settings_dict['sample_rate'] < sample_rate_constr.min:
-    #                     self.log.warning('pp-amplitude to set ({0}) smaller than allowed minimum '
-    #                                      '({1}).\nNew pp-amplitude will be set to minimum value.'
-    #                                      ''.format(value, analog_constr.min))
-    #                     settings_dict['analog_pp_amplitude'][chnl] = analog_constr.min
-    #                 if chnl not in current_analog_amp:
-    #                     self.log.error('Trying to set pp-amplitude for non-existent channel "{0}"!'
-    #                                    ''.format(chnl))
-    #
-    #             self.analog_pp_amplitude, dummy = self.pulsegenerator().set_analog_level(
-    #                 amplitude=settings_dict['analog_pp_amplitude'])
-    #
-    #         actual_settings['analog_pp_amplitude'] = self.analog_pp_amplitude
-    #
-    #     self.sigSettingsUpdated.emit(actual_settings)
-    #     return actual_settings
