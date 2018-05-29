@@ -37,12 +37,22 @@ from interface.microwave_interface import TriggerEdge
 class MicrowaveSmiq(Base, MicrowaveInterface):
     """ This is the Interface class to define the controls for the simple
         microwave hardware.
+
+    Example configuration:
+    ```
+    smiq:
+        module.Class: 'microwave.mw_source_smiq.MicrowaveSmiq'
+        gpib_address: 'GPIB0::28::INSTR'
+        gpib_timeout: 20
+        gpib_baud_rate: 460800  # optional
+    ```
     """
 
     _modclass = 'MicrowaveSmiq'
     _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
+    _gpib_baud_rate = ConfigOption('gpib_baud_rate', None)
 
     # Indicate how fast frequencies within a list or sweep mode can be changed:
     _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
@@ -53,8 +63,13 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         # trying to load the visa connection to the module
         self.rm = visa.ResourceManager()
         try:
-            self._gpib_connection = self.rm.open_resource(self._gpib_address,
-                                                          timeout=self._gpib_timeout)
+            if self._gpib_baud_rate is None:
+                self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                            timeout=self._gpib_timeout)
+            else:
+                self._gpib_connection = self.rm.open_resource(self._gpib_address,
+                                                            timeout=self._gpib_timeout,
+                                                            baud_rate=self._gpib_baud_rate)
         except:
             self.log.error('This is MWSMIQ: could not connect to GPIB address >>{}<<.'
                            ''.format(self._gpib_address))
