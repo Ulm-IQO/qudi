@@ -2627,10 +2627,14 @@ class PulsedMeasurementGui(GUIBase):
 
         # Check if the signal has been emitted by a dragged line in the laser plot
         if self.sender().__class__.__name__ == 'InfiniteLine':
-            settings_dict['signal_start'] = self.sig_start_line.value()
-            settings_dict['signal_end'] = self.sig_end_line.value()
-            settings_dict['norm_start'] = self.ref_start_line.value()
-            settings_dict['norm_end'] = self.ref_end_line.value()
+            sig_start = np.self.sig_start_line.value()
+            sig_end = self.sig_end_line.value()
+            ref_start = self.ref_start_line.value()
+            ref_end = self.ref_end_line.value()
+            settings_dict['signal_start'] = sig_start if sig_start <= sig_end else sig_end
+            settings_dict['signal_end'] = sig_end if sig_end >= sig_start else sig_start
+            settings_dict['norm_start'] = ref_start if ref_start <= ref_end else ref_end
+            settings_dict['norm_end'] = ref_end if ref_end >= ref_start else ref_start
         else:
             signal_width = self._pe.extract_param_ana_window_width_DSpinBox.value()
             settings_dict['signal_start'] = self._pe.extract_param_ana_window_start_DSpinBox.value()
