@@ -150,7 +150,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Initialize SamplingFunctions class by handing over a list of paths to import
         # sampling functions from.
-        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_functions')]
+        sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_function_defs')]
         if isinstance(self._sampling_functions_import_path, str):
             sf_path_list.append(self._sampling_functions_import_path)
         SamplingFunctions.import_sampling_functions(sf_path_list)
