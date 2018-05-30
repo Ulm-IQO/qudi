@@ -1,7 +1,7 @@
 # Concept of pulse extraction methods {#pulse_extraction_methods}
 
 ## General description
-The extraction methods takes a 1D (for continuous counting) or 2D (for gated counting) integer array
+The extraction methods take a 1D (for continuous counting) or 2D (for gated counting) integer array
 representing the count trace as input together with method specific parameters. 
 In case of gated counting, the first dimension of the count array is the gate index and the second 
 dimension is the time bin index of the corresponding time trace.
