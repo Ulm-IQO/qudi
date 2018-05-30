@@ -1,7 +1,7 @@
 # Concept of pulse analysis methods {#pulse_analysis_methods}
 
 ## General description
-The analysis methods takes a 2D integer array of extracted laser pulses, i.e. the timetrace of just 
+The analysis methods take a 2D integer array of extracted laser pulses, i.e. the timetrace of just 
 the laser-on-time without leading or trailing count data, as input together with method specific 
 parameters. The first dimension of the laser array is the laser index and the second dimension is 
 the time bin index of the corresponding time trace.
