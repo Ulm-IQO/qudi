@@ -57,16 +57,15 @@ class SequenceGeneratorLogic(GenericLogic):
     pulsegenerator = Connector(interface='PulserInterface')
 
     # configuration options
-    _assets_storage_dir = ConfigOption(name='assets_storage_dir',
+    _assets_storage_dir = ConfigOption(name='assets_storage_path',
                                        default=os.path.join(get_home_dir(), 'saved_pulsed_assets'),
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
     # Optional additional paths to import from
-    additional_methods_dir = ConfigOption(name='additional_methods_dir',
+    additional_methods_dir = ConfigOption(name='additional_predefined_methods_path',
                                           default=None,
                                           missing='nothing')
-
-    _sampling_functions_import_path = ConfigOption(name='sampling_functions_import_path',
+    _sampling_functions_import_path = ConfigOption(name='additional_sampling_functions_path',
                                                    default=None,
                                                    missing='nothing')
 
