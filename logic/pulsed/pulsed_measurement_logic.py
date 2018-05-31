@@ -51,8 +51,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # Config options
     # Optional additional paths to import from
-    extraction_import_path = ConfigOption(name='extraction_import_path', default=None)
-    analysis_import_path = ConfigOption(name='analysis_import_path', default=None)
+    extraction_import_path = ConfigOption(name='additional_extraction_path', default=None)
+    analysis_import_path = ConfigOption(name='additional_analysis_path', default=None)
     # Optional file type descriptor for saving raw data to file
     _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
 
@@ -93,7 +93,6 @@ class PulsedMeasurementLogic(GenericLogic):
     psd = StatusVar(default=False)
     window = StatusVar(default='none')
     base_corr = StatusVar(default=True)
-    save_alt_signal = StatusVar(default=False)
 
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
