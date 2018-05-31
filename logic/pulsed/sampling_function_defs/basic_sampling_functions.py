@@ -247,6 +247,49 @@ class TripleSin(SamplingBase):
         return samples_arr
 
 
+class Chirp(SamplingBase):
+    """
+    Object representing a chirp element
+    """
+    params = OrderedDict()
+    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['start_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                 'type': float}
+    params['stop_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                                'type': float}
+
+    def __init__(self, amplitude=None, phase=None, start_freq=None, stop_freq=None):
+        if amplitude is None:
+            self.amplitude = self.params['amplitude']['init']
+        else:
+            self.amplitude = amplitude
+        if phase is None:
+            self.phase = self.params['phase']['init']
+        else:
+            self.phase = phase
+        if start_freq is None:
+            self.start_freq = self.params['start_freq']['init']
+        else:
+            self.start_freq = start_freq
+        if stop_freq is None:
+            self.stop_freq = self.params['stop_freq']['init']
+        else:
+            self.stop_freq = stop_freq
+        return
+
+    def get_samples(self, time_array):
+        phase_rad = np.deg2rad(self.phase)
+        freq_diff = self.stop_freq - self.start_freq
+        time_diff = time_array[-1] - time_array[0]
+        # conversion for AWG to actually output the specified voltage
+        amp_conv = 2 * self.amplitude
+        samples_arr = amp_conv * np.sin(2 * np.pi * time_array * (
+                    self.start_freq + freq_diff * (
+                        time_array - time_array[0]) / time_diff / 2) + phase_rad)
+        return samples_arr
+
+
 # FIXME: Not implemented yet!
 # class ImportedSamples(object):
 #     """
