@@ -410,11 +410,11 @@ class AWG70K(Base, PulserInterface):
         self.new_sequence(name=name, steps=num_steps)
 
         # Fill in sequence information
-        for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list):
+        for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list, 1):
             # Set waveforms to play
             if num_tracks == len(wfm_tuple):
-                for track, waveform in enumerate(wfm_tuple):
-                    self.sequence_set_waveform(name, waveform, step + 1, track + 1)
+                for track, waveform in enumerate(wfm_tuple, 1):
+                    self.sequence_set_waveform(name, waveform, step, track)
             else:
                 self.log.error('Unable to write sequence.\nLength of waveform tuple "{0}" does not '
                                'match the number of sequence tracks.'.format(waveform_tuple))
@@ -422,19 +422,19 @@ class AWG70K(Base, PulserInterface):
 
             # Set event jump trigger
             self.sequence_set_event_jump(name,
-                                         step + 1,
+                                         step,
                                          seq_params['event_trigger'],
                                          seq_params['event_jump_to'])
             # Set wait trigger
-            self.sequence_set_wait_trigger(name, step + 1, seq_params['wait_for'])
+            self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
             # Set repetitions
-            self.sequence_set_repetitions(name, step + 1, seq_params['repetitions'])
+            self.sequence_set_repetitions(name, step, seq_params['repetitions'])
             # Set go_to parameter
-            self.sequence_set_goto(name, step + 1, seq_params['go_to'])
+            self.sequence_set_goto(name, step, seq_params['go_to'])
             # Set flag states
             trigger = seq_params['flag_trigger'] != 'OFF'
             flag_list = [seq_params['flag_trigger']] if trigger else [seq_params['flag_high']]
-            self.sequence_set_flags(name, step + 1, flag_list, trigger)
+            self.sequence_set_flags(name, step, flag_list, trigger)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -743,8 +743,8 @@ class AWG70K(Base, PulserInterface):
 
         # get pp amplitudes
         if amplitude is None:
-            for ch_num, chnl in enumerate(chnl_list):
-                amp[chnl] = float(self.query('SOUR{0:d}:VOLT:AMPL?'.format(ch_num + 1)))
+            for ch_num, chnl in enumerate(chnl_list, 1):
+                amp[chnl] = float(self.query('SOUR{0:d}:VOLT:AMPL?'.format(ch_num)))
         else:
             for chnl in amplitude:
                 if chnl in chnl_list:
@@ -993,8 +993,7 @@ class AWG70K(Base, PulserInterface):
         analog_channels = self._get_all_analog_channels()
 
         active_ch = dict()
-        for ch_num, a_ch in enumerate(analog_channels):
-            ch_num = ch_num + 1
+        for ch_num, a_ch in enumerate(analog_channels, 1):
             # check what analog channels are active
             active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num))))
             # check how many markers are active on each channel, i.e. the DAC resolution
