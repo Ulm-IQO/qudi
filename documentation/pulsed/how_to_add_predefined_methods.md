@@ -61,42 +61,43 @@ parameter set for the currently selected generation method.
 Each generation method must meet the following requirements:
 * Is bound instance method of a `PredefinedGeneratorBase` child class
 * Method name starts with prefix `generate_`
-* First argument (after `self`) must be named `laser_data`
+* Must contain the optional keyword argument `name` to give the instance to created a name
 * Additional parameters must be defined as optional keyword arguments
 * Default values for additional arguments must be of type `int`, `float`, `str` or `bool`. 
 Depending on the default argument type the GUI will automatically create the proper input widget.
 
 ## Adding new methods procedure
-1. Define a class with `PulseAnalyzerBase` as the **ONLY** parent class.
+1. Define a class with `PredefinedGeneratorBase` as the **ONLY** parent class.
 2. Make sure the base class gets initialized with:
     ```python
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
     ```
-3. Define analysis methods in new class. (see section "Method signature")
+3. Define generate methods in new class. (see section "Method signature")
 4. Place the module containing your class definition in the default directory to import from 
-(`./logic/pulsed/pulsed_analysis_methods/`) or put it in a custom directory and specify the path in 
-your config for the `PulsedMeasurementLogic` as ConfigOption "additional_analysis_path".
+(`./logic/pulsed/predefined_generate_methods/`) or put it in a custom directory and specify the path
+in your config for the `SequenceGeneratorLogic` as ConfigOption 
+"additional_predefined_methods_path".
 
-You can also simply add your analysis method to an already existing `PulseAnalyzerBase` child class. 
-In that case you just need to follow step 3. 
+You can also simply add your analysis method to an already existing `PredefinedGeneratorBase` child 
+class. In that case you just need to follow step 3. 
 
 By default _qudi_ ships with the default methods defined in 
-`./logic/pulsed/pulsed_analysis_methods/basic_analysis_methods.py`. This module should not be 
+`./logic/pulsed/predefined_generate_methods/basic_predefined_methods.py`. This module should not be 
 altered unless you intend to contribute your methods to the _qudi_ repository.
 
-A template for a new `PulseAnalyzer` class could look like:
+A template for a new `PredefinedGenerator` class could look like:
 ```python
-class MyPulseAnalyzer(PulseAnalyzerBase):
+class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
     """ Description goes here """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def analyse_my_method_name1(self, laser_data, my_float_param=42.0, my_int_param=42):
+    def generate_my_method_name1(self, name='my_name', my_float_param=42.0, my_int_param=42):
         # Do something
         pass
         
-    def analyse_my_method_name2(self, laser_data, my_str_param='derp', my_bool_param=True):
+    def generate_my_method_name2(self, name='my_name', my_str_param='derp', my_bool_param=True):
         # Do something
         pass
         
