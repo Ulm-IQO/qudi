@@ -53,6 +53,9 @@ class AWG70K(Base, PulserInterface):
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
     _visa_timeout = ConfigOption(name='timeout', default=30, missing='nothing')
 
+    # translation dict from qudi trigger descriptor to device command
+    __event_triggers = {'OFF': 'OFF', 'A': 'ATR', 'B': 'BTR', 'INT': 'INT'}
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -398,42 +401,40 @@ class AWG70K(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        trig_dict = {-1: 'OFF', 0: 'OFF', 1: 'ATR', 2: 'BTR'}
         active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 
         # Create new sequence and set jump timing to immediate.
         # Delete old sequence by the same name if present.
-        self.generate_sequence(name=name, steps=num_steps, tracks=num_tracks)
+        self.new_sequence(name=name, steps=num_steps)
 
         # Fill in sequence information
         for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list):
             # Set waveforms to play
             if num_tracks == len(wfm_tuple):
                 for track, waveform in enumerate(wfm_tuple):
-                    self.write('SLIS:SEQ:STEP{0:d}:TASS{1:d}:WAV "{2}", "{3}"'.format(
-                        step + 1, track + 1, name, waveform))
+                    self.sequence_set_waveform(name, waveform, step + 1, track + 1)
             else:
                 self.log.error('Unable to write sequence.\nLength of waveform tuple "{0}" does not '
                                'match the number of sequence tracks.'.format(waveform_tuple))
                 return -1
 
-            # Set event trigger
-            jumpto = str(seq_params['event_jump_to']) if seq_params['event_jump_to'] > 0 else 'NEXT'
-            self.write('SLIS:SEQ:STEP{0:d}:EJUM "{1}", {2}'.format(step + 1, name, jumpto))
-            if seq_params['repetitions'] > 0:
-                self.write('SLIS:SEQ:STEP{0:d}:EJIN "{1}", {2}'.format(step + 1, name, 'OFF'))
-            else:
-                self.write('SLIS:SEQ:STEP{0:d}:EJIN "{1}", {2}'.format(step + 1, name, 'ATR'))
-
+            # Set event jump trigger
+            self.sequence_set_event_jump(name,
+                                         step + 1,
+                                         seq_params['event_trigger'],
+                                         seq_params['event_jump_to'])
+            # Set wait trigger
+            self.sequence_set_wait_trigger(name, step + 1, seq_params['wait_for'])
             # Set repetitions
-            repeat = str(seq_params['repetitions']) if seq_params['repetitions'] > 0 else 'INF'
-            self.write('SLIS:SEQ:STEP{0:d}:RCO "{1}", {2}'.format(step + 1, name, repeat))
-
+            self.sequence_set_repetitions(name, step + 1, seq_params['repetitions'])
             # Set go_to parameter
-            goto = str(seq_params['go_to']) if seq_params['go_to'] > 0 else 'NEXT'
-            self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}", {2}'.format(step + 1, name, goto))
+            self.sequence_set_goto(name, step + 1, seq_params['go_to'])
+            # Set flag states
+            trigger = seq_params['flag_trigger'] != 'OFF'
+            flag_list = [seq_params['flag_trigger']] if trigger else [seq_params['flag_high']]
+            self.sequence_set_flags(name, step + 1, flag_list, trigger)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -1141,12 +1142,7 @@ class AWG70K(Base, PulserInterface):
 
         @return string: the answer of the device to the 'question' in a string
         """
-        answer = self.awg.query(question)
-        answer = answer.strip()
-        answer = answer.rstrip('\n')
-        answer = answer.rstrip()
-        answer = answer.strip('"')
-        return answer
+        return self.awg.query(question).strip().rstrip('\n').rstrip().strip('"')
 
     def write(self, command):
         """ Sends a command string to the device.
@@ -1158,48 +1154,167 @@ class AWG70K(Base, PulserInterface):
         bytes_written, enum_status_code = self.awg.write(command)
         return int(enum_status_code)
 
-    def generate_sequence(self, name, steps, tracks=1):
+    def new_sequence(self, name, steps):
         """
-        Generate a new sequence 'name' having 'steps' number of steps and 'tracks' number of tracks
+        Generate a new sequence 'name' having 'steps' number of steps with immediate (async.) jump
+        timing.
 
         @param str name: Name of the sequence which should be generated
         @param int steps: Number of steps
-        @param int tracks: Number of tracks
 
-        @return 0
+        @return int: error code
         """
         if not self.has_sequence_mode():
-            self.log.error('Direct sequence generation in AWG not possible. '
+            self.log.error('Sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
 
         if name in self.get_sequence_names():
             self.delete_sequence(name)
-        self.write('SLIS:SEQ:NEW "{0}", {1:d}, {2:d}'.format(name, steps, tracks))
+        self.write('SLIS:SEQ:NEW "{0}", {1:d}'.format(name, steps))
         self.write('SLIS:SEQ:EVEN:JTIM "{0}", IMM'.format(name))
         return 0
 
-    def add_waveform2sequence(self, sequence_name, waveform_name, step, track, repeat):
+    def sequence_set_waveform(self, sequence_name, waveform_name, step, track):
         """
-        Add the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name' and
-        repeat it 'repeat' times
+        Set the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name'.
 
         @param str sequence_name: Name of the sequence which should be editted
         @param str waveform_name: Name of the waveform which should be added
         @param int step: Position of the added waveform
         @param int track: track which should be editted
-        @param int repeat: number of repetition of added waveform
 
-        @return 0
+        @return int: error code
         """
         if not self.has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
 
-        self.write('SLIS:SEQ:STEP{0:d}:TASS{1:d}:WAV "{2}", "{3}"'.format(
-            step, track, sequence_name, waveform_name))
-        self.write('SLIST:SEQUENCE:STEP{0:d}:RCOUNT "{1}", {2}'.format(step, sequence_name, repeat))
+        self.write('SLIS:SEQ:STEP{0:d}:TASS{1:d}:WAV "{2}", "{3}"'.format(step,
+                                                                          track,
+                                                                          sequence_name,
+                                                                          waveform_name))
+        return 0
+
+    def sequence_set_repetitions(self, sequence_name, step, repeat=1):
+        """
+        Set the repetition counter of sequence "sequence_name" at step "step" to "repeat".
+        A repeat value of -1 denotes infinite repetitions; 0 means the step is played once.
+
+        @param str sequence_name: Name of the sequence to be edited
+        @param int step: Sequence step to be edited
+        @param int repeat: number of repetitions. (-1: infinite, 0: once, 1: twice, ...)
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+        repeat = 'INF' if repeat < 0 else str(int(repeat))
+        self.write('SLIS:SEQ:STEP{0:d}:RCO "{1}", {2}'.format(step, sequence_name, repeat))
+        return 0
+
+    def sequence_set_goto(self, sequence_name, step, goto=-1):
+        """
+
+        @param str sequence_name:
+        @param int step:
+        @param int goto:
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        goto = str(int(goto)) if seq_params['go_to'] > 0 else 'NEXT'
+        self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}", {2}'.format(step, sequence_name, goto))
+        return 0
+
+    def sequence_set_event_jump(self, sequence_name, step, trigger='OFF', jumpto=0):
+        """
+        Set the event trigger input of the specified sequence step and the jump_to destination.
+
+        @param str sequence_name: Name of the sequence to be edited
+        @param int step: Sequence step to be edited
+        @param str trigger: Trigger string specifier. ('OFF', 'A', 'B' or 'INT')
+        @param int jumpto: The sequence step to jump to. 0 or -1 is interpreted as next step
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        trigger = self.__event_triggers.get(trigger)
+        if trigger is None:
+            self.log.error('Invalid trigger specifier "{0}".\n'
+                           'Please choose one of: "OFF", "A", "B", "INT"')
+            return -1
+
+        self.write('SLIS:SEQ:STEP{0:d}:EJIN "{1}", {2}'.format(step, sequence_name, trigger))
+        # Set event_jump_to if event trigger is enabled
+        if trigger != 'OFF':
+            jumpto = 'NEXT' if jumpto <= 0 else str(int(jumpto))
+            self.write('SLIS:SEQ:STEP{0:d}:EJUM "{1}", {2}'.format(step, sequence_name, jumpto))
+        return 0
+
+    def sequence_set_wait_trigger(self, sequence_name, step, trigger='OFF'):
+        """
+        Make a certain sequence step wait for a trigger to start playing.
+
+        @param str sequence_name: Name of the sequence to be edited
+        @param int step: Sequence step to be edited
+        @param str trigger: Trigger string specifier. ('OFF', 'A', 'B' or 'INT')
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        trigger = self.__event_triggers.get(trigger)
+        if trigger is None:
+            self.log.error('Invalid trigger specifier "{0}".\n'
+                           'Please choose one of: "OFF", "A", "B", "INT"')
+            return -1
+
+        self.write('SLIS:SEQ:STEP{0:d}:WINP "{1}", {2}'.format(step, sequence_name, trigger))
+        return 0
+
+    def sequence_set_flags(self, sequence_name, step, flags=None, trigger=False):
+        """
+        Set the flags in "flags" to HIGH (trigger=False) during the sequence step or let the flags
+        send out a fixed duration trigger pulse (trigger=True). All other flags are set to LOW.
+
+        @param str sequence_name: Name of the sequence to be edited
+        @param int step: Sequence step to be edited
+        @param list flags: List of flag specifiers to be active during this sequence step
+        @param bool trigger: Whether the flag should be HIGH during the step (False) or send out a
+                             fixed length trigger pulse when starting to play the step (True).
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        for flag in ('A', 'B', 'C', 'D'):
+            if flag in flags:
+                state = 'PULS' if trigger else 'HIGH'
+            else:
+                state = 'LOW'
+
+            self.write('SLIS:SEQ:STEP{0:d}:TFL1:{2}FL "{3}",{4}'.format(step,
+                                                                        flag,
+                                                                        sequence_name,
+                                                                        state))
         return 0
 
     def make_sequence_continuous(self, sequencename):
@@ -1218,7 +1333,9 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         last_step = int(self.query('SLIS:SEQ:LENG? "{0}"'.format(sequencename)))
-        self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}",  FIRST'.format(last_step, sequencename))
+        err = self.sequence_set_goto(sequencename, last_step, 1)
+        if err < 0:
+            last_step = err
         return last_step
 
     def force_jump_sequence(self, final_step, channel=1):
