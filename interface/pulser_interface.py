@@ -90,10 +90,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         constraints.d_ch_high.step = 0.01
         constraints.d_ch_high.default = 5.0
 
-        constraints.sampled_file_length.min = 80
-        constraints.sampled_file_length.max = 64800000
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 80
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -116,20 +116,13 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = ['A', 'B', 'C', 'D']
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -544,15 +537,17 @@ class PulserConstraints:
         # Low and high voltage level of the digital channels
         self.d_ch_low = ScalarConstraint(unit='V')
         self.d_ch_high = ScalarConstraint(unit='V')
-        # length of the created waveform files in samples
-        self.sampled_file_length = ScalarConstraint(unit='Samples')
+        # length of the created waveform in samples
+        self.waveform_length = ScalarConstraint(unit='Samples')
         # number of waveforms/sequences to put in a single asset (sequence mode)
         self.waveform_num = ScalarConstraint(unit='#')
         self.sequence_num = ScalarConstraint(unit='#')
         self.subsequence_num = ScalarConstraint(unit='#')
-        # Not used yet
+        # Sequence parameters
+        self.sequence_steps = ScalarConstraint(unit='#', min=0)
         self.repetitions = ScalarConstraint(unit='#')
-        self.trigger_in = ScalarConstraint(unit='chnl')
-        self.event_jump_to = ScalarConstraint(unit='step')
-        self.go_to = ScalarConstraint(unit='step')
+        self.event_triggers = list()
+        self.flags = list()
+
+
         self.activation_config = dict()
