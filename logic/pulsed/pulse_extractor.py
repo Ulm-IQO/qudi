@@ -48,7 +48,7 @@ class PulseExtractorBase:
 
     @property
     def sampling_information(self):
-        return self.__pulsedmeasurementlogic.sampling_information.copy()
+        return self.__pulsedmeasurementlogic.sampling_information
 
     @property
     def fast_counter_settings(self):
