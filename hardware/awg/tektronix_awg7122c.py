@@ -179,13 +179,13 @@ class AWG7122C(Base, PulserInterface):
         constraints.d_ch_high.step = 0.01
         constraints.d_ch_high.default = 1.4
 
-        constraints.sampled_file_length.min = 1
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 80
+        constraints.waveform_length.min = 1
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
         if '01' in self.installed_options:
-            constraints.sampled_file_length.max = 64800000
+            constraints.waveform_length.max = 64800000
         else:
-            constraints.sampled_file_length.max = 32000000
+            constraints.waveform_length.max = 32000000
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -209,20 +209,13 @@ class AWG7122C(Base, PulserInterface):
         constraints.repetitions.default = 0
 
         # ToDo: Check how many external triggers this device has
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = list()
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -943,15 +936,15 @@ class AWG7122C(Base, PulserInterface):
             self.log.error('No analog samples passed to write_waveform method in awg7122c.')
             return -1, waveforms
 
-        if total_number_of_samples < constraints.sampled_file_length.min:
+        if total_number_of_samples < constraints.waveform_length.min:
             self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
                            'smaller than the allowed minimum waveform length ({1:d}).'
-                           ''.format(total_number_of_samples, constraints.sampled_file_length.min))
+                           ''.format(total_number_of_samples, constraints.waveform_length.min))
             return -1, waveforms
-        if total_number_of_samples > constraints.sampled_file_length.max:
+        if total_number_of_samples > constraints.waveform_length.max:
             self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
                            'greater than the allowed maximum waveform length ({1:d}).'
-                           ''.format(total_number_of_samples, constraints.sampled_file_length.max))
+                           ''.format(total_number_of_samples, constraints.waveform_length.max))
             return -1, waveforms
 
         # determine active channels

@@ -159,10 +159,10 @@ class DTG5334(Base, PulserInterface):
         constraints.d_ch_high.step = 0.05
         constraints.d_ch_high.default = 2.4
 
-        constraints.sampled_file_length.min = 80
-        constraints.sampled_file_length.max = 64800000
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 80
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -185,20 +185,13 @@ class DTG5334(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = list()
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
