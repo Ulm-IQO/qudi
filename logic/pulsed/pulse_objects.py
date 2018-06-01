@@ -330,6 +330,14 @@ class PulseSequence(object):
     Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
+    __default_seq_params = {'repetitions': 1,
+                            'go_to': -1,
+                            'event_jump_to': -1,
+                            'event_trigger': 'OFF',
+                            'wait_for': 'OFF',
+                            'flag_trigger': 'OFF',
+                            'flag_high': 'OFF'}
+
     def __init__(self, name, ensemble_list=None, rotating_frame=False):
         """
         The constructor for a PulseSequence objects needs to have:
@@ -347,16 +355,26 @@ class PulseSequence(object):
                                                          0 meaning the step is played once.
                                                          Set to -1 for infinite looping.
                                           'go_to':   The sequence step index to jump to after
-                                                     having played all repetitions or receiving a
-                                                     jump trigger. (Default -1)
-                                                     Indices starting at 0 for first step.
-                                                     Set to -1 to follow up with the next step.
-                                          'event_jump_to': The input trigger channel index used to
-                                                          jump to the step defined in 'jump_to'.
-                                                          (Default -1)
-                                                          Indices starting at 0 for first trigger
-                                                          input channel.
-                                                          Set to -1 for not listening to triggers.
+                                                     having played all repetitions. (Default -1)
+                                                     Indices starting at 1 for first step.
+                                                     Set to 0 or -1 to follow up with the next step.
+                                          'event_jump_to': The sequence step to jump to
+                                                           (starting from 1) in case of a trigger
+                                                           event (see event_trigger).
+                                                           Setting it to 0 or -1 means jump to next
+                                                           step. Ignored if event_trigger is 'OFF'.
+                                          'event_trigger': The trigger input to listen to in order
+                                                           to perform sequence jumps. Set to 'OFF'
+                                                           (default) in order to ignore triggering.
+                                          'wait_for': The trigger input to wait for before playing
+                                                      this sequence step. Set to 'OFF' (default)
+                                                      in order to play the current step immediately.
+                                          'flag_trigger': The flag to trigger when this sequence
+                                                          step starts playing. Select 'OFF'
+                                                          (default) for no flag trigger.
+                                          'flag_high': The flag to set to high while this step is
+                                                       playing. Select 'OFF' (default) to set all
+                                                       flags to low.
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
@@ -431,7 +449,7 @@ class PulseSequence(object):
             self.refresh_parameters()
         return 0
 
-    def insert_ensemble(self, position, ensemble_name, seq_param):
+    def insert_ensemble(self, position, ensemble_name, seq_param=None):
         """ Insert a sequence step at the given position. The old step at this position and all
         consecutive steps after that will be shifted to higher indices.
 
@@ -442,13 +460,16 @@ class PulseSequence(object):
         if not isinstance(ensemble_name, str) or len(self.ensemble_list) < position:
             return -1
 
+        if seq_param is None:
+            seq_param = self.__default_seq_params
+
         self.ensemble_list.insert(position, (ensemble_name, seq_param.copy()))
 
         if seq_param['repetitions'] < 0:
             self.is_finite = False
         return 0
 
-    def append_ensemble(self, ensemble_name, seq_param, at_beginning=False):
+    def append_ensemble(self, ensemble_name, seq_param=None, at_beginning=False):
         """ Append either at the front or at the back.
 
         @param str ensemble_name: PulseBlockEnsemble name
