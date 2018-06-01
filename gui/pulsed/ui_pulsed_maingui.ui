@@ -57,8 +57,6 @@
      <string>Se&amp;ttings</string>
     </property>
     <addaction name="action_Settings_Analysis"/>
-    <addaction name="action_Settings_Block_Generation"/>
-    <addaction name="action_Settings_Sequence_Editor"/>
     <addaction name="action_Predefined_Methods_Config"/>
     <addaction name="action_FitSettings"/>
    </widget>
