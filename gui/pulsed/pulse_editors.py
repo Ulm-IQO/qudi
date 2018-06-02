@@ -940,8 +940,12 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
     repetitionsRole = QtCore.Qt.UserRole + 1
     ensembleNameRole = QtCore.Qt.UserRole + 2
     goToRole = QtCore.Qt.UserRole + 4
-    eventJumpRole = QtCore.Qt.UserRole + 5
-    sequenceRole = QtCore.Qt.UserRole + 6
+    eventJumpToRole = QtCore.Qt.UserRole + 5
+    eventTriggerRole = QtCore.Qt.UserRole + 6
+    waitForRole = QtCore.Qt.UserRole + 7
+    flagTriggerRole = QtCore.Qt.UserRole + 8
+    flagHighRole = QtCore.Qt.UserRole + 9
+    sequenceRole = QtCore.Qt.UserRole + 10
 
     def __init__(self):
         super().__init__()
@@ -951,9 +955,17 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         # The actual model data container.
         self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
-        # The default sequence step entry
+        # The default ensemble name for sequence steps
         self.__default_ensemble = ''
-        self.__default_params = {'repetitions': 0, 'go_to': -1, 'event_jump_to': -1}
+        # The headers for each column
+        self.__horizontal_headers = ['BlockEnsemble',
+                                     'Repetitions',
+                                     'Go To',
+                                     'Event Jump To',
+                                     'Event Trigger',
+                                     'Wait For',
+                                     'Flag Trigger',
+                                     'Flag High']
         return
 
     def set_available_block_ensembles(self, ensembles):
@@ -1008,7 +1020,7 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         return len(self._pulse_sequence.ensemble_list)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
-        return 4
+        return len(self.__horizontal_headers)
 
     def data(self, index, role=QtCore.Qt.DisplayRole):
         if role == QtCore.Qt.DisplayRole:
@@ -1022,14 +1034,22 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         if role == self.repetitionsRole:
             return self._pulse_sequence.ensemble_list[index.row()][1].get('repetitions')
-        if role == self.ensembleNameRole:
+        elif role == self.ensembleNameRole:
             return self._pulse_sequence.ensemble_list[index.row()][0]
-        if role == self.goToRole:
+        elif role == self.goToRole:
             return self._pulse_sequence.ensemble_list[index.row()][1].get('go_to')
-        if role == self.eventJumpRole:
+        elif role == self.eventJumpToRole:
             return self._pulse_sequence.ensemble_list[index.row()][1].get('event_jump_to')
-
-        return None
+        elif role == self.eventTriggerRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('event_trigger')
+        elif role == self.waitForRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('wait_for')
+        elif role == self.flagTriggerRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('flag_trigger')
+        elif role == self.flagHighRole:
+            return self._pulse_sequence.ensemble_list[index.row()][1].get('flag_high')
+        else:
+            return None
 
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
@@ -1044,25 +1064,26 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             self._pulse_sequence.ensemble_list[index.row()][1]['repetitions'] = data
         elif role == self.goToRole and isinstance(data, int):
             self._pulse_sequence.ensemble_list[index.row()][1]['go_to'] = data
-        elif role == self.eventJumpRole and isinstance(data, int):
+        elif role == self.eventJumpToRole and isinstance(data, int):
             self._pulse_sequence.ensemble_list[index.row()][1]['event_jump_to'] = data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = copy.deepcopy(data)
             self._pulse_sequence.name = 'EDITOR CONTAINER'
+        elif role == self.eventTriggerRole and isinstance(data, str):
+            self._pulse_sequence.ensemble_list[index.row()][1]['event_trigger'] = data
+        elif role == self.waitForRole and isinstance(data, str):
+            self._pulse_sequence.ensemble_list[index.row()][1]['wait_for'] = data
+        elif role == self.flagTriggerRole and isinstance(data, str):
+            self._pulse_sequence.ensemble_list[index.row()][1]['flag_trigger'] = data
+        elif role == self.flagHighRole and isinstance(data, str):
+            self._pulse_sequence.ensemble_list[index.row()][1]['flag_high'] = data
         return
 
     def headerData(self, section, orientation, role):
         # Horizontal header
         if orientation == QtCore.Qt.Horizontal:
-            if role == QtCore.Qt.DisplayRole:
-                if section == 0:
-                    return 'BlockEnsemble'
-                if section == 1:
-                    return 'Repetitions'
-                if section == 2:
-                    return 'Go To (#)'
-                if section == 3:
-                    return 'Event Trigger'
+            if role == QtCore.Qt.DisplayRole and (0 < section < len(self.__horizontal_headers)):
+                return self.__horizontal_headers[section]
         return super().headerData(section, orientation, role)
 
     def flags(self, index):
@@ -1094,8 +1115,7 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         for i in range(count):
             self._pulse_sequence.insert_ensemble(position=row,
-                                                 ensemble_name=self.__default_ensemble,
-                                                 seq_param=self.__default_params)
+                                                 ensemble_name=self.__default_ensemble)
 
         self.endInsertRows()
         return True
@@ -1164,14 +1184,26 @@ class SequenceEditor(QtWidgets.QTableView):
                                                               self.model().ensembleNameRole,
                                                               QtCore.QSize(100, 50)))
         # Set item delegate (SpinBoxes) for repetition column
-        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 0, 'min': -1},
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 1, 'min': -1},
                                                              self.model().repetitionsRole))
         # Set item delegate (SpinBoxes) for go_to column
         self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
                                                              self.model().goToRole))
         # Set item delegate (SpinBoxes) for event_jump_to column
         self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
-                                                             self.model().eventJumpRole))
+                                                             self.model().eventJumpToRole))
+        # Set item delegate (ComboBox) for event_trigger column
+        self.setItemDelegateForColumn(4, ComboBoxItemDelegate(self, ['OFF'],
+                                                              self.model().eventTriggerRole))
+        # Set item delegate (ComboBox) for wait_for column
+        self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, ['OFF'],
+                                                              self.model().waitForRole))
+        # Set item delegate (ComboBox) for flag_trigger column
+        self.setItemDelegateForColumn(6, ComboBoxItemDelegate(self, ['OFF'],
+                                                              self.model().flagTriggerRole))
+        # Set item delegate (ComboBox) for flag_high column
+        self.setItemDelegateForColumn(7, ComboBoxItemDelegate(self, ['OFF'],
+                                                              self.model().flagHighRole))
 
         # Set header sizes
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
@@ -1204,6 +1236,40 @@ class SequenceEditor(QtWidgets.QTableView):
         @return:
         """
         self.model().set_rotating_frame(rotating_frame)
+        return
+
+    def set_available_triggers(self, trigger_list):
+        """
+
+        @param list trigger_list: List of strings describing the available pulse generator trigger
+                                  input channels.
+        """
+        if not isinstance(trigger_list, list):
+            return
+        trigger_list.insert(0, 'OFF')
+        # Set item delegate (ComboBox) for event_trigger column
+        self.setItemDelegateForColumn(4, ComboBoxItemDelegate(self, trigger_list,
+                                                              self.model().eventTriggerRole))
+        # Set item delegate (ComboBox) for wait_for column
+        self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, trigger_list,
+                                                              self.model().waitForRole))
+        return
+
+    def set_available_flags(self, flag_list):
+        """
+
+        @param list flag_list: List of strings describing the available pulse generator flag output
+                               channels.
+        """
+        if not isinstance(flag_list, list):
+            return
+        flag_list.insert(0, 'OFF')
+        # Set item delegate (ComboBox) for event_trigger column
+        self.setItemDelegateForColumn(6, ComboBoxItemDelegate(self, flag_list,
+                                                              self.model().flagTriggerRole))
+        # Set item delegate (ComboBox) for wait_for column
+        self.setItemDelegateForColumn(7, ComboBoxItemDelegate(self, flag_list,
+                                                              self.model().flagHighRole))
         return
 
     def rowCount(self):

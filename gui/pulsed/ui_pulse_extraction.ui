@@ -272,10 +272,16 @@
   </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>measuring_error_PlotWidget</tabstop>
+  <tabstop>extract_param_analysis_method_comboBox</tabstop>
+  <tabstop>extract_param_ana_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ana_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_start_DSpinBox</tabstop>
+  <tabstop>extract_param_ref_window_width_DSpinBox</tabstop>
+  <tabstop>extract_param_method_comboBox</tabstop>
   <tabstop>laserpulses_display_raw_CheckBox</tabstop>
   <tabstop>laserpulses_ComboBox</tabstop>
   <tabstop>laserpulses_PlotWidget</tabstop>
+  <tabstop>measuring_error_PlotWidget</tabstop>
  </tabstops>
  <resources/>
  <connections/>
