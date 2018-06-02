@@ -134,10 +134,10 @@ class OkFpgaPulser(Base, PulserInterface):
         constraints.d_ch_high.step = 0.0
         constraints.d_ch_high.default = 3.3
 
-        constraints.sampled_file_length.min = 1024
-        constraints.sampled_file_length.max = 134217728
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 1024
+        constraints.waveform_length.min = 1024
+        constraints.waveform_length.max = 134217728
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 1024
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic

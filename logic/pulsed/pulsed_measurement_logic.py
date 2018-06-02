@@ -501,9 +501,10 @@ class PulsedMeasurementLogic(GenericLogic):
     def measurement_settings(self):
         settings_dict = dict()
         settings_dict['invoke_settings'] = bool(self._invoke_settings_from_sequence)
-        settings_dict['controlled_variable'] = np.array(self._controlled_variable, dtype=float)
+        settings_dict['controlled_variable'] = np.array(self._controlled_variable,
+                                                        dtype=float).copy()
         settings_dict['number_of_lasers'] = int(self._number_of_lasers)
-        settings_dict['laser_ignore_list'] = list(self._laser_ignore_list)
+        settings_dict['laser_ignore_list'] = list(self._laser_ignore_list).copy()
         settings_dict['alternating'] = bool(self._alternating)
         settings_dict['units'] = self._data_units
         return settings_dict
