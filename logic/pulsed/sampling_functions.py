@@ -36,11 +36,11 @@ class SamplingBase:
 
     def __repr__(self):
         kwargs = ('='.join((param, str(getattr(self, param)))) for param in self.params)
-        return '{0}({1})'.format(self.__class__.__name__, ', '.join(kwargs))
+        return '{0}({1})'.format(type(self).__name__, ', '.join(kwargs))
 
     def __str__(self):
         kwargs = ('='.join((param, str(getattr(self, param)))) for param in self.params)
-        return_str = 'Sampling Function: "{0}"\nParameters:'.format(self.__class__.__name__)
+        return_str = 'Sampling Function: "{0}"\nParameters:'.format(type(self).__name__)
         if len(self.params) < 1:
             return_str += ' None'
         else:
@@ -49,7 +49,7 @@ class SamplingBase:
 
     def get_dict_representation(self):
         dict_repr = dict()
-        dict_repr['name'] = self.__class__.__name__
+        dict_repr['name'] = type(self).__name__
         dict_repr['params'] = dict()
         for param in self.params:
             dict_repr['params'][param] = getattr(self, param)
