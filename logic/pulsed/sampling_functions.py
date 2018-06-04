@@ -34,6 +34,19 @@ class SamplingBase:
     """
     params = OrderedDict()
 
+    def __repr__(self):
+        kwargs = ('='.join((param, str(getattr(self, param)))) for param in self.params)
+        return '{0}({1})'.format(self.__class__.__name__, ', '.join(kwargs))
+
+    def __str__(self):
+        kwargs = ('='.join((param, str(getattr(self, param)))) for param in self.params)
+        return_str = 'Sampling Function: "{0}"\nParameters:'.format(self.__class__.__name__)
+        if len(self.params) < 1:
+            return_str += ' None'
+        else:
+            return_str += '\n\t' + '\n\t'.join(kwargs)
+        return return_str
+
     def get_dict_representation(self):
         dict_repr = dict()
         dict_repr['name'] = self.__class__.__name__
