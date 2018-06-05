@@ -67,8 +67,8 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._process = self.get_connector('process')
-        self._control = self.get_connector('control')
+        self._process = self.process()
+        self._control = self.control()
 
         self.previousdelta = 0
         self.cv = self._control.getControlValue()

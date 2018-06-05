@@ -146,7 +146,7 @@
               <string>Hz</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
             </widget>
            </item>
@@ -191,7 +191,7 @@
               <string>V</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
             </widget>
            </item>
@@ -277,7 +277,7 @@
               <string>s</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
             </widget>
            </item>
@@ -308,7 +308,7 @@
               <string>s</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
             </widget>
            </item>
@@ -367,10 +367,10 @@
               <string>s</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
              <property name="value">
-              <double>0.000001000000000</double>
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>
@@ -395,7 +395,7 @@
               <string>V</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
             </widget>
            </item>
@@ -440,10 +440,10 @@
               <string>s</string>
              </property>
              <property name="decimals">
-              <number>6</number>
+              <number>3</number>
              </property>
              <property name="value">
-              <double>0.000001000000000</double>
+              <double>0.000000000000000</double>
              </property>
             </widget>
            </item>

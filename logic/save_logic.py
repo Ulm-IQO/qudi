@@ -406,44 +406,6 @@ class SaveLogic(GenericLogic):
                            'data arrays.')
             return -1
 
-        # Reshape data if multiple 1D arrays have been passed to this method.
-        # If a 2D array has been passed, reformat the specifier
-        if len(data) != 1:
-            identifier_str = ''
-            if multiple_dtypes:
-                field_dtypes = list(zip(['f{0:d}'.format(i) for i in range(len(arr_dtype))],
-                                        arr_dtype))
-                new_array = np.empty(max_line_num, dtype=field_dtypes)
-                for i, keyname in enumerate(data):
-                    identifier_str += keyname + delimiter
-                    field = 'f{0:d}'.format(i)
-                    length = data[keyname].size
-                    new_array[field][:length] = data[keyname]
-                    if length < max_line_num:
-                        if isinstance(data[keyname][0], str):
-                            new_array[field][length:] = 'nan'
-                        else:
-                            new_array[field][length:] = np.nan
-            else:
-                new_array = np.empty([max_line_num, max_row_num], arr_dtype[0])
-                for i, keyname in enumerate(data):
-                    identifier_str += keyname + delimiter
-                    length = data[keyname].size
-                    new_array[:length, i] = data[keyname]
-                    if length < max_line_num:
-                        if isinstance(data[keyname][0], str):
-                            new_array[length:, i] = 'nan'
-                        else:
-                            new_array[length:, i] = np.nan
-            # discard old data array and use new one
-            data = {identifier_str: new_array}
-        elif found_2d:
-            keyname = list(data.keys())[0]
-            identifier_str = keyname.replace(', ', delimiter).replace(',', delimiter)
-            data[identifier_str] = data.pop(keyname)
-        else:
-            identifier_str = list(data)[0]
-
         # Create header string for the file
         header = 'Saved Data from the class {0} on {1}.\n' \
                  ''.format(module_name, timestamp.strftime('%d.%m.%Y at %Hh%Mm%Ss'))
@@ -466,16 +428,61 @@ class SaveLogic(GenericLogic):
                                'try to save the parameters nevertheless.')
                 header += 'not specified parameters: {0}\n'.format(parameters)
         header += '\nData:\n=====\n'
-        header += list(data)[0]
 
         # write data to file
         # FIXME: Implement other file formats
+        # write to textfile
         if filetype == 'text':
+            # Reshape data if multiple 1D arrays have been passed to this method.
+            # If a 2D array has been passed, reformat the specifier
+            if len(data) != 1:
+                identifier_str = ''
+                if multiple_dtypes:
+                    field_dtypes = list(zip(['f{0:d}'.format(i) for i in range(len(arr_dtype))],
+                                            arr_dtype))
+                    new_array = np.empty(max_line_num, dtype=field_dtypes)
+                    for i, keyname in enumerate(data):
+                        identifier_str += keyname + delimiter
+                        field = 'f{0:d}'.format(i)
+                        length = data[keyname].size
+                        new_array[field][:length] = data[keyname]
+                        if length < max_line_num:
+                            if isinstance(data[keyname][0], str):
+                                new_array[field][length:] = 'nan'
+                            else:
+                                new_array[field][length:] = np.nan
+                else:
+                    new_array = np.empty([max_line_num, max_row_num], arr_dtype[0])
+                    for i, keyname in enumerate(data):
+                        identifier_str += keyname + delimiter
+                        length = data[keyname].size
+                        new_array[:length, i] = data[keyname]
+                        if length < max_line_num:
+                            if isinstance(data[keyname][0], str):
+                                new_array[length:, i] = 'nan'
+                            else:
+                                new_array[length:, i] = np.nan
+                # discard old data array and use new one
+                data = {identifier_str: new_array}
+            elif found_2d:
+                keyname = list(data.keys())[0]
+                identifier_str = keyname.replace(', ', delimiter).replace(',', delimiter)
+                data[identifier_str] = data.pop(keyname)
+            else:
+                identifier_str = list(data)[0]
+            header += list(data)[0]
             self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
                                     append=False)
+        # write npz file and save parameters in textfile
+        elif filetype == 'npz':
+            header += str(list(data.keys()))[1:-1]
+            np.savez_compressed(filepath + '/' + filename[:-4], **data)
+            self.save_array_as_text(data=[], filename=filename[:-4]+'_params.dat', filepath=filepath,
+                                    fmt=fmt, header=header, delimiter=delimiter, comments='#',
+                                    append=False)
         else:
-            self.log.error('Only saving of data as textfile is implemented. Filetype "{0}" is not '
+            self.log.error('Only saving of data as textfile and npz-file is implemented. Filetype "{0}" is not '
                            'supported yet. Saving as textfile.'.format(filetype))
             self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',

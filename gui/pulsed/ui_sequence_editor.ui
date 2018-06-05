@@ -70,31 +70,6 @@
         </property>
        </spacer>
       </item>
-      <item row="1" column="1">
-       <widget class="ScienSpinBox" name="curr_sequence_bins_SpinBox">
-        <property name="maximumSize">
-         <size>
-          <width>100</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-        <property name="buttonSymbols">
-         <enum>QAbstractSpinBox::NoButtons</enum>
-        </property>
-        <property name="suffix">
-         <string>bins</string>
-        </property>
-        <property name="maximum">
-         <number>1000</number>
-        </property>
-       </widget>
-      </item>
       <item row="1" column="0">
        <widget class="QLabel" name="label_18">
         <property name="text">
@@ -234,6 +209,31 @@
         </property>
         <property name="alignment">
          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="curr_sequence_bins_SpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>100</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::NoButtons</enum>
+        </property>
+        <property name="suffix">
+         <string>bins</string>
+        </property>
+        <property name="maximum">
+         <number>1000</number>
         </property>
        </widget>
       </item>
@@ -446,12 +446,28 @@ Sequence</string>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>sequence_add_last_PushButton</tabstop>
+  <tabstop>sequence_del_last_PushButton</tabstop>
+  <tabstop>sequence_add_sel_PushButton</tabstop>
+  <tabstop>sequence_del_sel_PushButton</tabstop>
+  <tabstop>sequence_clear_PushButton</tabstop>
+  <tabstop>curr_sequence_length_DSpinBox</tabstop>
+  <tabstop>curr_sequence_bins_SpinBox</tabstop>
+  <tabstop>curr_sequence_size_DSpinBox</tabstop>
+  <tabstop>curr_sequence_rot_frame_CheckBox</tabstop>
+  <tabstop>curr_sequence_name_LineEdit</tabstop>
+  <tabstop>curr_sequence_generate_PushButton</tabstop>
+  <tabstop>saved_sequences_ComboBox</tabstop>
+  <tabstop>curr_sequence_del_PushButton</tabstop>
+  <tabstop>curr_sequence_load_PushButton</tabstop>
+  <tabstop>gen_sequence_ComboBox</tabstop>
+  <tabstop>saup_sequence_PushButton</tabstop>
+  <tabstop>sauplo_sequence_PushButton</tabstop>
+  <tabstop>load_sequence_PushButton</tabstop>
+  <tabstop>sequence_editor_TableWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

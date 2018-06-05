@@ -31,6 +31,14 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
     _modtype = 'FiniteCounterInterface'
     _modclass = 'interface'
 
+    @abc.abstractmethod
+    def reset_hardware(self):
+        """ Resets the hardware, so the connection is lost and other programs
+            can access it.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
 
     @abc.abstractmethod
     def get_scanner_count_channels(self):

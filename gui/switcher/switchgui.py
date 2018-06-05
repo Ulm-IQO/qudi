@@ -40,7 +40,7 @@ class SwitchGui(GUIBase):
         """Create all UI objects and show the window.
         """
         self._mw = SwitchMainWindow()
-        lsw =  self.get_connector('switchlogic')
+        lsw = self.switchlogic()
         # For each switch that the logic has, add a widget to the GUI to show its state
         for hw in lsw.switches:
             frame = QtWidgets.QGroupBox(hw, self._mw.scrollAreaWidgetContents)

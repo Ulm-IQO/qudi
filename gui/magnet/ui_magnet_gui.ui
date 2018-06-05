@@ -759,19 +759,6 @@ contrast alignment</string>
                 </property>
                </widget>
               </item>
-              <item row="2" column="1">
-               <widget class="ScienSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
-                <property name="minimum">
-                 <number>-10</number>
-                </property>
-                <property name="maximum">
-                 <number>10</number>
-                </property>
-                <property name="value">
-                 <number>-1</number>
-                </property>
-               </widget>
-              </item>
               <item row="8" column="1">
                <widget class="QDoubleSpinBox" name="align_2d_nuclear_idle_time_DSpinBox">
                 <property name="suffix">
@@ -795,32 +782,6 @@ contrast alignment</string>
                 </property>
                </widget>
               </item>
-              <item row="6" column="1">
-               <widget class="ScienSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
-                <property name="minimum">
-                 <number>-10</number>
-                </property>
-                <property name="maximum">
-                 <number>10</number>
-                </property>
-                <property name="value">
-                 <number>2</number>
-                </property>
-               </widget>
-              </item>
-              <item row="7" column="1">
-               <widget class="ScienSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
-                <property name="minimum">
-                 <number>-10</number>
-                </property>
-                <property name="maximum">
-                 <number>10</number>
-                </property>
-                <property name="value">
-                 <number>1</number>
-                </property>
-               </widget>
-              </item>
               <item row="10" column="0">
                <widget class="QLabel" name="label_33">
                 <property name="toolTip">
@@ -834,16 +795,6 @@ contrast alignment</string>
                 </property>
                </widget>
               </item>
-              <item row="9" column="1">
-               <widget class="ScienSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
-                <property name="maximum">
-                 <number>100000000</number>
-                </property>
-                <property name="value">
-                 <number>1000</number>
-                </property>
-               </widget>
-              </item>
               <item row="9" column="0">
                <widget class="QLabel" name="label_32">
                 <property name="toolTip">
@@ -851,16 +802,6 @@ contrast alignment</string>
                 </property>
                 <property name="text">
                  <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Reps within the&lt;br/&gt;single shot&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="1">
-               <widget class="ScienSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
-                <property name="maximum">
-                 <number>10000000</number>
-                </property>
-                <property name="value">
-                 <number>3000</number>
                 </property>
                </widget>
               </item>
@@ -884,6 +825,65 @@ contrast alignment</string>
                <widget class="QLabel" name="label_34">
                 <property name="text">
                  <string>MW power:</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="1">
+               <widget class="QSpinBox" name="align_2d_nuclear_mw_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>-1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="6" column="1">
+               <widget class="QSpinBox" name="align_2d_nuclear_laser_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>2</number>
+                </property>
+               </widget>
+              </item>
+              <item row="7" column="1">
+               <widget class="QSpinBox" name="align_2d_nuclear_detect_channel_SpinBox">
+                <property name="minimum">
+                 <number>-10</number>
+                </property>
+                <property name="maximum">
+                 <number>10</number>
+                </property>
+                <property name="value">
+                 <number>1</number>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="1">
+               <widget class="QSpinBox" name="align_2d_nuclear_reps_within_ssr_SpinBox">
+                <property name="maximum">
+                 <number>100000000</number>
+                </property>
+                <property name="value">
+                 <number>1000</number>
+                </property>
+               </widget>
+              </item>
+              <item row="10" column="1">
+               <widget class="QSpinBox" name="align_2d_nuclear_num_of_ssr_SpinBox">
+                <property name="maximum">
+                 <number>10000000</number>
+                </property>
+                <property name="value">
+                 <number>3000</number>
                 </property>
                </widget>
               </item>
@@ -1298,11 +1298,6 @@ contrast alignment</string>
   <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>

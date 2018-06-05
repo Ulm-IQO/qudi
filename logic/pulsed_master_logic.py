@@ -133,8 +133,8 @@ class PulsedMasterLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._measurement_logic = self.get_connector('pulsedmeasurementlogic')
-        self._generator_logic = self.get_connector('sequencegeneratorlogic')
+        self._measurement_logic = self.pulsedmeasurementlogic()
+        self._generator_logic = self.sequencegeneratorlogic()
 
         # Signals controlling the pulsed_measurement_logic
         self.sigRequestMeasurementInitValues.connect(self._measurement_logic.request_init_values,
@@ -609,6 +609,10 @@ class PulsedMasterLogic(GenericLogic):
 
         @return:
         """
+        if not isinstance(stash_raw_data_tag, str):
+            self.log.warn('PulsedMaster: stop_measurement was called with stash_raw_data_tag not being a string. '
+                          'Setting it to an empty string to avoid crashes.')
+            stash_raw_data_tag = ''
         self.sigStopMeasurement.emit(stash_raw_data_tag)
         return
 
@@ -671,16 +675,21 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPulserRunningUpdated.emit(is_running)
         return
 
-    def save_measurement_data(self, controlled_val_unit, save_tag, with_error):
-        """
+    def save_measurement_data(self, controlled_val_unit, tag, with_error, save_second_plot):
+        """ Prepare data to be saved and create a proper plot of the data.
+        This is just handed over to the measurement logic.
 
-        @param controlled_val_unit:
-        @param save_tag:
-        @param with_error:
-        @return:
+        @param str controlled_val_unit: unit of the x axis of the plot
+        @param str tag: a filetag which will be included in the filename
+        @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_second_plot: select wether the second plot (FFT, diff etc.) is saved
+
+        @return str: filepath where data were saved
         """
-        self._measurement_logic.save_measurement_data(controlled_val_unit, save_tag, with_error)
-        return
+        return self._measurement_logic.save_measurement_data(controlled_val_unit=controlled_val_unit,
+                                                      tag=tag,
+                                                      with_error=with_error,
+                                                      save_second_plot=save_second_plot)
 
     def clear_pulse_generator(self):
         """

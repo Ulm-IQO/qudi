@@ -356,10 +356,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: Add initialisation from _statusVariable
 
         # Connectors
-        self._stepping_device = self.get_connector('confocalstepper1')
-        self._counting_device = self.get_connector('confocalcounter')
-        self._position_feedback_device = self.get_connector('analoguereader')
-        self._save_logic = self.get_connector('savelogic')
+        self._stepping_device = self.confocalstepper1()
+        self._counting_device = self.confocalcounter()
+        self._position_feedback_device = self.analoguereader()
+        self._save_logic = self.savelogic()
 
         # Initialises hardware values
         self.axis = self.get_stepper_axes_use()

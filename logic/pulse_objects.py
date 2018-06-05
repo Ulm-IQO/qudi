@@ -316,7 +316,7 @@ class PulseSequence:
                     break
                 else:
                     reps = 0
-            self.length_s += (ensemble.length_s * (reps+1))
+            self.length_s += (ensemble.length_s * reps)
 
             if ensemble.analog_channels > self.analog_channels:
                 self.analog_channels = ensemble.analog_channels

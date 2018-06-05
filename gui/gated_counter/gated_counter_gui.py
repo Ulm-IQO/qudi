@@ -82,8 +82,8 @@ class GatedCounterGui(GUIBase):
                          had happened.
         """
 
-        self._counter_logic = self.get_connector('gatedcounterlogic1')
-        self._trace_analysis = self.get_connector('traceanalysislogic1')
+        self._counter_logic = self.gatedcounterlogic1()
+        self._trace_analysis = self.traceanalysislogic1()
 
         self._mw = GatedCounterMainWindow()
         self._mw.centralwidget.hide()
@@ -159,6 +159,9 @@ class GatedCounterGui(GUIBase):
 
         # Push buttons
         self._mw.fit_PushButton.clicked.connect(self.fit_clicked)
+
+        # Connect analysis result update
+        self._trace_analysis.sigAnalysisResultsUpdated.connect(self.update_analysis_results)
 
 
     def on_deactivate(self):
@@ -290,3 +293,11 @@ class GatedCounterGui(GUIBase):
         self._mw.fit_param_TextEdit.setPlainText(fit_result)
 
         return
+
+
+    def update_analysis_results(self):
+        """ Update the spin flip probability and the fidelities. """
+
+        self._mw.spin_flip_prob_DSpinBox.setValue(self._trace_analysis.spin_flip_prob*100)
+        self._mw.fidelity_left_DSpinBox.setValue(self._trace_analysis.fidelity_left*100)
+        self._mw.fidelity_right_DSpinBox.setValue(self._trace_analysis.fidelity_right*100)

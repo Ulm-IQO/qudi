@@ -24,6 +24,7 @@
 <!--- Go over all the following points, and put an 'x' in all the boxes that apply. -->
 <!--- If you're unsure about any of these, ask. -->
 - [ ] My code follows the code style of this project.
+- [ ] I have documented my changes in the changelog (`documentation/changelog.md`)
 - [ ] My change requires a change to the documentation.
 - [ ] I have updated the documentation accordingly.
 - [ ] I have checked that the change does not contain obvious errors (syntax, indentation, mutable default values).

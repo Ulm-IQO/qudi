@@ -294,9 +294,13 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
 
         # set minimal steps for the current value
-        self._mw.x_amplitude.setOpts(minStep=0.1)
-        self._mw.y_amplitude.setOpts(minStep=0.1)
-        self._mw.z_amplitude.setOpts(minStep=0.1)
+        self._mw.x_amplitude.setSingleStep(0.1)
+        self._mw.y_amplitude.setSingleStep(0.1)
+        self._mw.z_amplitude.setSingleStep(0.1)
+        # set unit in spin box
+        self._mw.x_amplitude.setSuffix(" V")
+        self._mw.y_amplitude.setSuffix(" V")
+        self._mw.z_amplitude.setSuffix(" V")
 
         # connect actions
         self._mw.read_hardware_pushButton.clicked.connect(self.measure_stepper_hardware_values)
@@ -344,10 +348,6 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_piezo_InputWidget.setRange(self._scanning_logic.z_range[0],
                                               self._scanning_logic.z_range[1])
 
-        # set minimal steps for the current value
-        self._mw.x_piezo_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_piezo_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_piezo_InputWidget.setOpts(minStep=1e-6)
 
         # Predefine the maximal and minimal image range as the default values
         # for the display of the range:
@@ -373,12 +373,12 @@ class ConfocalStepperGui(GUIBase):
                                                   self._scanning_logic.z_range[1])
 
         # set the minimal step size
-        self._mw.x_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.x_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.y_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.x_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.x_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.y_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.y_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.z_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        #self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
 
         # Handle slider movements by user:
         self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)

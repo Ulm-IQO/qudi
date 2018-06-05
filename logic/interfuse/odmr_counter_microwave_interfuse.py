@@ -49,8 +49,8 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
 
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
-        self._mw_device = self.get_connector('microwave')
-        self._sc_device = self.get_connector('slowcounter') # slow counter device
+        self._mw_device = self.microwave()
+        self._sc_device = self.slowcounter()  # slow counter device
         pass
 
     def on_deactivate(self):

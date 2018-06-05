@@ -68,7 +68,7 @@ class CounterGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
 
-        self._counting_logic = self.get_connector('counterlogic1')
+        self._counting_logic = self.counterlogic1()
 
         #####################
         # Configuring the dock widgets

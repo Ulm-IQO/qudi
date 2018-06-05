@@ -494,6 +494,46 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.GetSettingData(ctypes.byref(setting), 0)
         return int(setting.range)
 
+    def set_preset(self, preset):
+        """ Sets the preset/
+
+        @param int preset: Preset in sweeps of starts
+
+        @return int mode: specified save mode
+        """
+        cmd = 'swpreset={0}'.format(preset)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return preset
+
+    def get_preset(self):
+        """ Gets the preset
+       @return int mode: current preset
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        preset = bsetting.swpreset
+        return int(preset)
+
+    def set_cycles(self, cycles):
+        """ Sets the cycles
+
+        @param int cycles: Total amount of cycles
+
+        @return int mode: current cycles
+        """
+        cmd = 'cycles={0}'.format(cycles)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return cycles
+
+    def get_cycles(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        cycles = bsetting.cycles
+        return cycles
+
     def _change_filename(self,name):
         """ Changed the name in FCT"""
         cmd = 'mpaname=%s'%name

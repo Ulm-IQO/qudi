@@ -150,9 +150,12 @@ class FastCounterDummy(Base, FastCounterInterface):
         time.sleep(1)
         self.statusvar = 2
         try:
-            self._count_data = np.loadtxt(self.trace_path)
+            self._count_data = np.loadtxt(self.trace_path, dtype='int64')
         except:
             return -1
+
+        if self._gated:
+            self._count_data = self._count_data.transpose()
         return 0
 
     def pause_measure(self):
