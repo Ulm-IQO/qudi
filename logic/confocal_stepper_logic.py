@@ -412,9 +412,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        self.switch_hardware(False)# restarts NIDAQ
-        self.switch_hardware(True)
-        #Todo: This method needs to be implemented
+        self.switch_hardware(False)  # restarts NIDAQ
+        #self.switch_hardware(True)
+        # Todo: This method needs to be implemented
 
     ########################### Stepper Counter Control Methods##################################
 
@@ -752,7 +752,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._scan_positions = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 self._scan_positions_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 # initialise position scan
-                if 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                # Todo: This is a little dirty and should not be done this way here. Fixme!
+                if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
+                                                                                self._first_scan_axis):
+                    self.stopRequested = True
+                elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
                         self._steps_scan_first_line, self._first_scan_axis):
                     self.stopRequested = True
                 else:
@@ -1594,7 +1598,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # Adjust data format
             xdata = full_data[:, :, 0]
             ydata = full_data[:, :, 1]
-            zdata = full_data[:, :, 2+ch]
+            zdata = full_data[:, :, 2 + ch]
             # Create figure
             fig2, ax2 = plt.subplots()
 

@@ -2184,7 +2184,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # expected minimum count value
                 0,
                 # Expected maximum count value
-                self._max_counts / 2 / self._clock_frequency,
+                self._max_counts / 2 / self._finite_clock_frequency,
                 # units of width measurement, here photon ticks
                 daq.DAQmx_Val_Ticks,
                 # must be None unless units is set to "DAQmx_Val_FromCustomScale"
@@ -2245,11 +2245,27 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         else:
             self._finite_clock_frequency = clock_frequency
 
+
+
         # Todo: Check if this divided by 2 is sensible
-        return self.set_up_clock(
+        retval =  self.set_up_clock(
             clock_frequency=clock_frequency / 2,  # because it will be multiplied by 2 in the setup
             clock_channel=clock_channel,
             scanner=True)
+        if retval == 0:
+            # Todo: This is a hot fix. It only makes sense to fix this when NIDAQ is rewritten completely
+            channel = "Scanner_clock"
+            # check if no task for channel to be added is configured
+            if channel in self._clock_daq_task_new:
+                self.log.error('The same channel %s already has an existing clock task running, '
+                               'close this one first.', channel)
+                return -1
+            self._clock_daq_task_new[channel] = self._scanner_clock_daq_task
+            self._clock_channel_new[channel] = self._scanner_clock_channel
+            self._clock_frequency_new[channel] = self._scanner_clock_frequency
+            return 0
+        else:
+            return retval
 
     def start_finite_counter(self):
         """Start the preconfigured counter task
@@ -2368,8 +2384,29 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        return self.close_clock(scanner=True)
+        retval = self.close_clock(scanner=True)
+        if retval == 0:
+            # Todo: This is a hot fix. It only makes sense to fix this when NIDAQ is rewritten completely
+            if "Scanner_clock" in self._clock_daq_task_new:
+                my_task = self._clock_daq_task_new.pop("Scanner_clock")
+                my_channel = self._clock_channel_new.pop("Scanner_clock")
+                my_frequency = self._clock_frequency_new.pop("Scanner_clock")
+            else:
+                self.log.error("There was no task specified for the clock Scanner Clock that was tried to be closed.")
+                return -1
 
+            # removes channels from task list that used the same task
+            key_list = []
+            for task_key, value in self._clock_daq_task_new.items():
+                if value == my_task:
+                    key_list.append(task_key)
+            for item in key_list:
+                self._clock_daq_task_new.pop(item)
+                self._clock_channel_new.pop(item)
+                self._clock_frequency_new.pop(item)
+                return 0
+        else:
+            return retval
     # ================ End FiniteCounterInterface Commands =======================
 
     # ================ Start AnalogReaderInterface Commands  =======================
@@ -3538,32 +3575,32 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return -1
         return 0
 
-    def add_clock_task_to_channel(self, task_name, channels):
+    def add_clock_task_to_channel(self, channel_name_orig, channel_names):
         """
         This function adds additional pointer to an already existing clock task.
-        Thereby many pointers can control this task. this is helpful if the same clock is used for different purposes
-        or synchronisation.
+        Thereby many pointers can control this task.
+        this is helpful if the same clock is used for different purposes or synchronisation.
         For this method another method needed to setup the clock task already.
-        Use set_up_clock_new
+        Use set_up_clock_new to make a new clock task
 
-        @param key task_name: the representative name of the analogue channel
+        @param key channel_name_orig: the representative name of the clock
                                     task to which this channel is to be added
-        @param List(keys) channels: The new channels to be added to the task
+        @param List(keys) channel_names: The new channels to be added to the task (eg. analogue output cavity scanner)
 
         @return int: error code (0:OK, -1:error)
         """
-        if not (channels, (frozenset, list, set, tuple, np.ndarray,)):
+        if not (channel_names, (frozenset, list, set, tuple, np.ndarray,)):
             self.log.error('Channels are not given in array type.')
             return -1
-        if task_name not in self._clock_daq_task_new:
+        if channel_name_orig not in self._clock_daq_task_new:
             self.log.error("The given clock task pointer %s to which the channel was to "
-                           "be added did not exist yet. Create this one first.", task_name)
+                           "be added did not exist yet. Create this one first.", channel_name_orig)
             return -1
-        my_task = self._clock_daq_task_new[task_name]
-        my_channel = self._clock_channel_new[task_name]
-        my_frequency = self._clock_frequency_new[task_name]
+        my_task = self._clock_daq_task_new[channel_name_orig]
+        my_channel = self._clock_channel_new[channel_name_orig]
+        my_frequency = self._clock_frequency_new[channel_name_orig]
 
-        for channel in channels:
+        for channel in channel_names:
             # check if no task for channel to be added is configured
             if channel in self._clock_daq_task_new:
                 self.log.error('The same channel %s already has an existing clock task running, '
