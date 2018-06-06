@@ -27,7 +27,7 @@ from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogPa
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
-import logic.pulsed.sampling_functions as sf
+from logic.pulsed.sampling_functions import SamplingFunctions
 
 
 class BlockEditorTableModel(QtCore.QAbstractTableModel):
@@ -138,7 +138,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
                 else:
                     channel = self.analog_channels[(column - a_ch_offset) // 2]
                     max_param_number = 0
-                    for element in self._pulse_block.element_list:
+                    for element in self._pulse_block:
                         tmp_size = len(element.pulse_function[channel].params)
                         if tmp_size > max_param_number:
                             max_param_number = tmp_size
@@ -167,7 +167,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.digital_channels = sorted({chnl for chnl in activation_config if chnl.startswith('d')})
         self.analog_channels = sorted({chnl for chnl in activation_config if chnl.startswith('a')})
 
-        analog_shape = {chnl: sf.SamplingFunctions.Idle() for chnl in self.analog_channels}
+        analog_shape = {chnl: SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_state = {chnl: False for chnl in self.digital_channels}
         self.__default_element = PulseBlockElement(pulse_function=analog_shape,
                                                    digital_high=digital_state)
@@ -185,7 +185,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         return
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self._pulse_block.element_list)
+        return len(self._pulse_block)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
         return 2 + int(len(self.digital_channels) > 0) + 2 * len(self.analog_channels)
@@ -195,6 +195,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             return None
 
         if role == self.pulseBlockRole:
+            self._pulse_block.refresh_parameters()
             return self._pulse_block
         if role == self.analogChannelSetRole:
             return self._pulse_block.analog_channels
@@ -207,13 +208,13 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             return None
 
         if role == self.lengthRole:
-            return self._pulse_block.element_list[index.row()].init_length_s
+            return self._pulse_block[index.row()].init_length_s
         if role == self.incrementRole:
-            return self._pulse_block.element_list[index.row()].increment_s
+            return self._pulse_block[index.row()].increment_s
         if role == self.digitalStateRole:
-            return self._pulse_block.element_list[index.row()].digital_high
+            return self._pulse_block[index.row()].digital_high
         if role == self.analogFunctionRole:
-            element = self._pulse_block.element_list[index.row()]
+            element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
                 col_offset = 3
             else:
@@ -221,7 +222,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl]
         if role == self.analogShapeRole:
-            element = self._pulse_block.element_list[index.row()]
+            element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
                 col_offset = 3
             else:
@@ -229,7 +230,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl].__class__.__name__
         if role == self.analogParameterRole:
-            element = self._pulse_block.element_list[index.row()]
+            element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
                 col_offset = 3
             else:
@@ -237,7 +238,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return vars(element.pulse_function[analog_chnl])
         if role == self.blockElementRole:
-            return self._pulse_block.element_list[index.row()]
+            return self._pulse_block[index.row()]
 
         return None
 
@@ -245,38 +246,38 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         """
         """
         if isinstance(data, PulseBlockElement):
-            self._pulse_block.element_list[index.row()] = copy.deepcopy(data)
+            self._pulse_block[index.row()] = copy.deepcopy(data)
             return
 
         if role == self.lengthRole and isinstance(data, (int, float)):
-            old_elem = self._pulse_block.element_list[index.row()]
+            old_elem = self._pulse_block[index.row()]
             if data != old_elem.init_length_s:
                 new_elem = PulseBlockElement(init_length_s=max(0, data),
                                              increment_s=old_elem.increment_s,
                                              pulse_function=old_elem.pulse_function,
                                              digital_high=old_elem.digital_high)
-                self._pulse_block.replace_element(position=index.row(), element=new_elem)
+                self._pulse_block[index.row()] = new_elem
         elif role == self.incrementRole and isinstance(data, (int, float)):
-            old_elem = self._pulse_block.element_list[index.row()]
+            old_elem = self._pulse_block[index.row()]
             if data != old_elem.increment_s:
                 new_elem = PulseBlockElement(init_length_s=old_elem.init_length_s,
                                              increment_s=data,
                                              pulse_function=old_elem.pulse_function,
                                              digital_high=old_elem.digital_high)
-                self._pulse_block.replace_element(position=index.row(), element=new_elem)
+                self._pulse_block[index.row()] = new_elem
         elif role == self.digitalStateRole and isinstance(data, dict):
-            old_elem = self._pulse_block.element_list[index.row()]
+            old_elem = self._pulse_block[index.row()]
             if data != old_elem.digital_high:
                 new_elem = PulseBlockElement(init_length_s=old_elem.init_length_s,
                                              increment_s=old_elem.increment_s,
                                              pulse_function=old_elem.pulse_function,
                                              digital_high=data.copy())
-                self._pulse_block.replace_element(position=index.row(), element=new_elem)
+                self._pulse_block[index.row()] = new_elem
         elif role == self.analogShapeRole and isinstance(data, str):
             if self.data(index=index, role=self.analogShapeRole) != data:
-                old_elem = self._pulse_block.element_list[index.row()]
+                old_elem = self._pulse_block[index.row()]
 
-                sampling_func = getattr(sf.SamplingFunctions, data)
+                sampling_func = getattr(SamplingFunctions, data)
                 col_offset = 3 if self.digital_channels else 2
                 chnl = self.analog_channels[(index.column() - col_offset) // 2]
 
@@ -287,7 +288,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
                                              increment_s=old_elem.increment_s,
                                              pulse_function=pulse_function,
                                              digital_high=old_elem.digital_high)
-                self._pulse_block.replace_element(position=index.row(), element=new_elem)
+                self._pulse_block[index.row()] = new_elem
 
                 new_column_width = self._get_column_width(index.column()+1)
                 if new_column_width >= 0 and new_column_width != self._col_widths[index.column()+1]:
@@ -297,7 +298,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         elif role == self.analogParameterRole and isinstance(data, dict):
             col_offset = 3 if self.digital_channels else 2
             chnl = self.analog_channels[(index.column() - col_offset) // 2]
-            self._pulse_block.element_list[index.row()].pulse_function[chnl].__init__(**data)
+            self._pulse_block[index.row()].pulse_function[chnl].__init__(**data)
         elif role == self.pulseBlockRole and isinstance(data, PulseBlock):
             self._pulse_block = copy.deepcopy(data)
             self._pulse_block.name = 'EDITOR CONTAINER'
@@ -345,7 +346,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.beginInsertRows(parent, row, row + count - 1)
 
         for i in range(count):
-            self._pulse_block.insert_element(position=row, element=self.__default_element)
+            self._pulse_block.insert(position=row, element=self.__default_element)
 
         self.endInsertRows()
         return True
@@ -367,8 +368,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
 
         self.beginRemoveRows(parent, row, row + count - 1)
 
-        for i in range(count):
-            self._pulse_block.delete_element(position=row)
+        del self._pulse_block[row:row + count]
 
         self._col_widths = self._get_column_widths()
         self._notify_column_width()
@@ -463,7 +463,7 @@ class BlockEditor(QtWidgets.QTableView):
         for num, chnl in enumerate(self.model().analog_channels):
             self.setItemDelegateForColumn(
                 offset_index + 2 * num, ComboBoxItemDelegate(
-                    self, sorted(sf.SamplingFunctions.parameters), self.model().analogShapeRole))
+                    self, sorted(SamplingFunctions.parameters), self.model().analogShapeRole))
             self.setItemDelegateForColumn(
                 offset_index + 2 * num + 1,
                 AnalogParametersItemDelegate(
@@ -594,6 +594,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
     repetitionsRole = QtCore.Qt.UserRole + 1
     blockNameRole = QtCore.Qt.UserRole + 2
     blockEnsembleRole = QtCore.Qt.UserRole + 3
+    blockElementRole = QtCore.Qt.UserRole + 4
 
     def __init__(self):
         super().__init__()
@@ -632,7 +633,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
             self.__default_block = ''
 
         # Remove blocks from list that are not there anymore
-        for row, (block_name, reps) in enumerate(self._block_ensemble.block_list):
+        for row, (block_name, reps) in enumerate(self._block_ensemble):
             if block_name not in blocks:
                 self.removeRows(row, 1)
 
@@ -653,7 +654,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
         return
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self._block_ensemble.block_list)
+        return len(self._block_ensemble)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
         return 2
@@ -669,29 +670,24 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
             return None
 
         if role == self.repetitionsRole:
-            return self._block_ensemble.block_list[index.row()][1]
+            return self._block_ensemble[index.row()][1]
         if role == self.blockNameRole:
-            return self._block_ensemble.block_list[index.row()][0]
-
+            return self._block_ensemble[index.row()][0]
+        if role == self.blockElementRole:
+            return self._block_ensemble[index.row()]
         return None
 
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
         """
         if role == self.repetitionsRole and isinstance(data, int):
-            # Delete potentially preexisting measurement_information dict upon edit
-            self._block_ensemble.measurement_information = dict()
-            block_name = self._block_ensemble.block_list[index.row()][0]
-            self._block_ensemble.replace_block(position=index.row(),
-                                               block_name=block_name,
-                                               reps=data)
+            block_name = self._block_ensemble[index.row()][0]
+            self._block_ensemble[index.row()] = (block_name, data)
         elif role == self.blockNameRole and isinstance(data, str):
-            # Delete potentially preexisting measurement_information dict upon edit
-            self._block_ensemble.measurement_information = dict()
-            reps = self._block_ensemble.block_list[index.row()][1]
-            self._block_ensemble.replace_block(position=index.row(),
-                                               block_name=data,
-                                               reps=reps)
+            reps = self._block_ensemble[index.row()][1]
+            self._block_ensemble[index.row()] = (data, reps)
+        elif role == self.blockElementRole and isinstance(data, tuple):
+            self._block_ensemble[index.row()] = data
         elif role == self.blockEnsembleRole and isinstance(data, PulseBlockEnsemble):
             self._block_ensemble = copy.deepcopy(data)
             self._block_ensemble.name = 'EDITOR CONTAINER'
@@ -731,16 +727,13 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row > self.rowCount() or not self.available_pulse_blocks:
             return False
 
-        # Delete potentially preexisting measurement_information dict upon edit
-        self._block_ensemble.measurement_information = dict()
-
         if parent is None:
             parent = QtCore.QModelIndex()
 
         self.beginInsertRows(parent, row, row + count - 1)
 
         for i in range(count):
-            self._block_ensemble.insert_block(position=row, block_name=self.__default_block, reps=0)
+            self._block_ensemble.insert(position=row, element=(self.__default_block, 0))
 
         self.endInsertRows()
         return True
@@ -757,16 +750,12 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
             return False
 
-        # Delete potentially preexisting measurement_information dict upon edit
-        self._block_ensemble.measurement_information = dict()
-
         if parent is None:
             parent = QtCore.QModelIndex()
 
         self.beginRemoveRows(parent, row, row + count - 1)
 
-        for i in range(count):
-            self._block_ensemble.delete_block(position=row)
+        del self._block_ensemble[row:row + count]
 
         self.endRemoveRows()
         return True
@@ -994,14 +983,14 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         # Remove ensembles from list that are not there anymore
         rows_to_remove = list()
-        for row, (ensemble_name, params) in enumerate(self._pulse_sequence.ensemble_list):
+        for row, (ensemble_name, params) in enumerate(self._pulse_sequence):
             if ensemble_name not in ensembles:
                 rows_to_remove.append(row)
         for row in reversed(rows_to_remove):
             self.removeRows(row, 1)
 
         # Check if the PulseSequence model instance is empty and set a single ensemble if True.
-        if len(self._pulse_sequence.ensemble_list) == 0:
+        if len(self._pulse_sequence) == 0:
             self.insertRows(0, 1)
 
         return 0
@@ -1017,7 +1006,7 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         return
 
     def rowCount(self, parent=QtCore.QModelIndex()):
-        return len(self._pulse_sequence.ensemble_list)
+        return len(self._pulse_sequence)
 
     def columnCount(self, parent=QtCore.QModelIndex()):
         return len(self.__horizontal_headers)
@@ -1033,50 +1022,47 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             return None
 
         if role == self.repetitionsRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('repetitions')
+            return self._pulse_sequence[index.row()][1].get('repetitions')
         elif role == self.ensembleNameRole:
-            return self._pulse_sequence.ensemble_list[index.row()][0]
+            return self._pulse_sequence[index.row()][0]
         elif role == self.goToRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('go_to')
+            return self._pulse_sequence[index.row()][1].get('go_to')
         elif role == self.eventJumpToRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('event_jump_to')
+            return self._pulse_sequence[index.row()][1].get('event_jump_to')
         elif role == self.eventTriggerRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('event_trigger')
+            return self._pulse_sequence[index.row()][1].get('event_trigger')
         elif role == self.waitForRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('wait_for')
+            return self._pulse_sequence[index.row()][1].get('wait_for')
         elif role == self.flagTriggerRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('flag_trigger')
+            return self._pulse_sequence[index.row()][1].get('flag_trigger')
         elif role == self.flagHighRole:
-            return self._pulse_sequence.ensemble_list[index.row()][1].get('flag_high')
+            return self._pulse_sequence[index.row()][1].get('flag_high')
         else:
             return None
 
     def setData(self, index, data, role=QtCore.Qt.DisplayRole):
         """
         """
-        # Delete potentially preexisting measurement_information dict upon edit
-        if role != self.sequenceRole:
-            self._pulse_sequence.measurement_information = dict()
-
         if role == self.ensembleNameRole and isinstance(data, str):
-            self._pulse_sequence.replace_ensemble(position=index.row(), ensemble_name=data)
+            params = self._pulse_sequence[index.row()][1]
+            self._pulse_sequence[index.row()] = (data, params)
         elif role == self.repetitionsRole and isinstance(data, int):
-            self._pulse_sequence.ensemble_list[index.row()][1]['repetitions'] = data
+            self._pulse_sequence[index.row()][1]['repetitions'] = data
         elif role == self.goToRole and isinstance(data, int):
-            self._pulse_sequence.ensemble_list[index.row()][1]['go_to'] = data
+            self._pulse_sequence[index.row()][1]['go_to'] = data
         elif role == self.eventJumpToRole and isinstance(data, int):
-            self._pulse_sequence.ensemble_list[index.row()][1]['event_jump_to'] = data
+            self._pulse_sequence[index.row()][1]['event_jump_to'] = data
+        elif role == self.eventTriggerRole and isinstance(data, str):
+            self._pulse_sequence[index.row()][1]['event_trigger'] = data
+        elif role == self.waitForRole and isinstance(data, str):
+            self._pulse_sequence[index.row()][1]['wait_for'] = data
+        elif role == self.flagTriggerRole and isinstance(data, str):
+            self._pulse_sequence[index.row()][1]['flag_trigger'] = data
+        elif role == self.flagHighRole and isinstance(data, str):
+            self._pulse_sequence[index.row()][1]['flag_high'] = data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = copy.deepcopy(data)
             self._pulse_sequence.name = 'EDITOR CONTAINER'
-        elif role == self.eventTriggerRole and isinstance(data, str):
-            self._pulse_sequence.ensemble_list[index.row()][1]['event_trigger'] = data
-        elif role == self.waitForRole and isinstance(data, str):
-            self._pulse_sequence.ensemble_list[index.row()][1]['wait_for'] = data
-        elif role == self.flagTriggerRole and isinstance(data, str):
-            self._pulse_sequence.ensemble_list[index.row()][1]['flag_trigger'] = data
-        elif role == self.flagHighRole and isinstance(data, str):
-            self._pulse_sequence.ensemble_list[index.row()][1]['flag_high'] = data
         return
 
     def headerData(self, section, orientation, role):
@@ -1105,17 +1091,13 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row > self.rowCount() or not self.available_block_ensembles:
             return False
 
-        # Delete potentially preexisting measurement_information dict upon edit
-        self._pulse_sequence.measurement_information = dict()
-
         if parent is None:
             parent = QtCore.QModelIndex()
 
         self.beginInsertRows(parent, row, row + count - 1)
 
         for i in range(count):
-            self._pulse_sequence.insert_ensemble(position=row,
-                                                 ensemble_name=self.__default_ensemble)
+            self._pulse_sequence.insert(position=row, element=self.__default_ensemble)
 
         self.endInsertRows()
         return True
@@ -1132,16 +1114,12 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         if row < 0 or row >= self.rowCount() or (row + count) > self.rowCount():
             return False
 
-        # Delete potentially preexisting measurement_information dict upon edit
-        self._pulse_sequence.measurement_information = dict()
-
         if parent is None:
             parent = QtCore.QModelIndex()
 
         self.beginRemoveRows(parent, row, row + count - 1)
 
-        for i in range(count):
-            self._pulse_sequence.delete_ensemble(position=row)
+        del self._pulse_sequence[row:row + count]
 
         self.endRemoveRows()
         return True

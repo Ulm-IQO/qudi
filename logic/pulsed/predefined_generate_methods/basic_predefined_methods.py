@@ -61,11 +61,11 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         laser_element = self._get_laser_element(length=length, increment=0)
         # Create block and append to created_blocks list
         laser_block = PulseBlock(name=name)
-        laser_block.append_element(laser_element)
+        laser_block.append(laser_element)
         created_blocks.append(laser_block)
         # Create block ensemble and append to created_ensembles list
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append_block(block_name=laser_block.name, reps=0)
+        block_ensemble.append((laser_block.name, 0))
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -89,11 +89,11 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                       phase=0)
         # Create block and append to created_blocks list
         laser_mw_block = PulseBlock(name=name)
-        laser_mw_block.append_element(laser_mw_element)
+        laser_mw_block.append(laser_mw_element)
         created_blocks.append(laser_mw_block)
         # Create block ensemble and append to created_ensembles list
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append_block(block_name=laser_mw_block.name, reps=0)
+        block_ensemble.append((laser_mw_block.name, 0))
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -113,11 +113,11 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         idle_element = self._get_idle_element(length=length, increment=0)
         # Create block and append to created_blocks list
         idle_block = PulseBlock(name=name)
-        idle_block.append_element(idle_element)
+        idle_block.append(idle_element)
         created_blocks.append(idle_block)
         # Create block ensemble and append to created_ensembles list
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append_block(block_name=idle_block.name, reps=0)
+        block_ensemble.append((idle_block.name, 0))
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
@@ -146,22 +146,22 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         rabi_block = PulseBlock(name=name)
-        rabi_block.append_element(mw_element)
-        rabi_block.append_element(laser_element)
-        rabi_block.append_element(delay_element)
-        rabi_block.append_element(waiting_element)
+        rabi_block.append(mw_element)
+        rabi_block.append(laser_element)
+        rabi_block.append(delay_element)
+        rabi_block.append(waiting_element)
         created_blocks.append(rabi_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append_block(block_name=rabi_block.name, reps=number_of_taus - 1)
+        block_ensemble.append((rabi_block.name, number_of_taus - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -203,22 +203,22 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                               amp=self.microwave_amplitude,
                                               freq=mw_freq,
                                               phase=0)
-            pulsedodmr_block.append_element(mw_element)
-            pulsedodmr_block.append_element(laser_element)
-            pulsedodmr_block.append_element(delay_element)
-            pulsedodmr_block.append_element(waiting_element)
+            pulsedodmr_block.append(mw_element)
+            pulsedodmr_block.append(laser_element)
+            pulsedodmr_block.append(delay_element)
+            pulsedodmr_block.append(waiting_element)
         created_blocks.append(pulsedodmr_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
-        block_ensemble.append_block(block_name=pulsedodmr_block.name, reps=0)
+        block_ensemble.append((pulsedodmr_block.name, 0))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -273,31 +273,31 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         ramsey_block = PulseBlock(name=name)
-        ramsey_block.append_element(pihalf_element)
-        ramsey_block.append_element(tau_element)
-        ramsey_block.append_element(pihalf_element)
-        ramsey_block.append_element(laser_element)
-        ramsey_block.append_element(delay_element)
-        ramsey_block.append_element(waiting_element)
+        ramsey_block.append(pihalf_element)
+        ramsey_block.append(tau_element)
+        ramsey_block.append(pihalf_element)
+        ramsey_block.append(laser_element)
+        ramsey_block.append(delay_element)
+        ramsey_block.append(waiting_element)
         if alternating:
-            ramsey_block.append_element(pihalf_element)
-            ramsey_block.append_element(tau_element)
-            ramsey_block.append_element(pi3half_element)
-            ramsey_block.append_element(laser_element)
-            ramsey_block.append_element(delay_element)
-            ramsey_block.append_element(waiting_element)
+            ramsey_block.append(pihalf_element)
+            ramsey_block.append(tau_element)
+            ramsey_block.append(pi3half_element)
+            ramsey_block.append(laser_element)
+            ramsey_block.append(delay_element)
+            ramsey_block.append(waiting_element)
         created_blocks.append(ramsey_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=ramsey_block.name, reps=num_of_points - 1)
+        block_ensemble.append((ramsey_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -358,35 +358,35 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         hahn_block = PulseBlock(name=name)
-        hahn_block.append_element(pihalf_element)
-        hahn_block.append_element(tau_element)
-        hahn_block.append_element(pi_element)
-        hahn_block.append_element(tau_element)
-        hahn_block.append_element(pihalf_element)
-        hahn_block.append_element(laser_element)
-        hahn_block.append_element(delay_element)
-        hahn_block.append_element(waiting_element)
+        hahn_block.append(pihalf_element)
+        hahn_block.append(tau_element)
+        hahn_block.append(pi_element)
+        hahn_block.append(tau_element)
+        hahn_block.append(pihalf_element)
+        hahn_block.append(laser_element)
+        hahn_block.append(delay_element)
+        hahn_block.append(waiting_element)
         if alternating:
-            hahn_block.append_element(pihalf_element)
-            hahn_block.append_element(tau_element)
-            hahn_block.append_element(pi_element)
-            hahn_block.append_element(tau_element)
-            hahn_block.append_element(pi3half_element)
-            hahn_block.append_element(laser_element)
-            hahn_block.append_element(delay_element)
-            hahn_block.append_element(waiting_element)
+            hahn_block.append(pihalf_element)
+            hahn_block.append(tau_element)
+            hahn_block.append(pi_element)
+            hahn_block.append(tau_element)
+            hahn_block.append(pi3half_element)
+            hahn_block.append(laser_element)
+            hahn_block.append(delay_element)
+            hahn_block.append(waiting_element)
         created_blocks.append(hahn_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=hahn_block.name, reps=num_of_points - 1)
+        block_ensemble.append((hahn_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         number_of_lasers = 2 * num_of_points if alternating else num_of_points
@@ -445,31 +445,31 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                               amp=sl_amp,
                                               freq=self.microwave_frequency,
                                               phase=90)
-            hhamp_block.append_element(pihalf_element)
-            hhamp_block.append_element(sl_element)
-            hhamp_block.append_element(pihalf_element)
-            hhamp_block.append_element(laser_element)
-            hhamp_block.append_element(delay_element)
-            hhamp_block.append_element(waiting_element)
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(sl_element)
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
 
-            hhamp_block.append_element(pi3half_element)
-            hhamp_block.append_element(sl_element)
-            hhamp_block.append_element(pihalf_element)
-            hhamp_block.append_element(laser_element)
-            hhamp_block.append_element(delay_element)
-            hhamp_block.append_element(waiting_element)
+            hhamp_block.append(pi3half_element)
+            hhamp_block.append(sl_element)
+            hhamp_block.append(pihalf_element)
+            hhamp_block.append(laser_element)
+            hhamp_block.append(delay_element)
+            hhamp_block.append(waiting_element)
         created_blocks.append(hhamp_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=hhamp_block.name, reps=0)
+        block_ensemble.append((hhamp_block.name, 0))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -484,7 +484,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_HHtau(self, name='hh_tau', spinlock_amp=0.1, tau_start=0.001, tau_step=0.001,
+    def generate_HHtau(self, name='hh_tau', spinlock_amp=0.1, tau_start=1e-6, tau_step=1e-6,
                        num_of_points=50):
         """
 
@@ -526,31 +526,31 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         hhtau_block = PulseBlock(name=name)
-        hhtau_block.append_element(pihalf_element)
-        hhtau_block.append_element(sl_element)
-        hhtau_block.append_element(pihalf_element)
-        hhtau_block.append_element(laser_element)
-        hhtau_block.append_element(delay_element)
-        hhtau_block.append_element(waiting_element)
+        hhtau_block.append(pihalf_element)
+        hhtau_block.append(sl_element)
+        hhtau_block.append(pihalf_element)
+        hhtau_block.append(laser_element)
+        hhtau_block.append(delay_element)
+        hhtau_block.append(waiting_element)
 
-        hhtau_block.append_element(pi3half_element)
-        hhtau_block.append_element(sl_element)
-        hhtau_block.append_element(pihalf_element)
-        hhtau_block.append_element(laser_element)
-        hhtau_block.append_element(delay_element)
-        hhtau_block.append_element(waiting_element)
+        hhtau_block.append(pi3half_element)
+        hhtau_block.append(sl_element)
+        hhtau_block.append(pihalf_element)
+        hhtau_block.append(laser_element)
+        hhtau_block.append(delay_element)
+        hhtau_block.append(waiting_element)
         created_blocks.append(hhtau_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=hhtau_block.name, reps=num_of_points - 1)
+        block_ensemble.append((hhtau_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = True
@@ -607,35 +607,35 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block for "up"-polarization and append to created_blocks list
         up_block = PulseBlock(name=name + '_up')
-        up_block.append_element(pihalf_element)
-        up_block.append_element(sl_element)
-        up_block.append_element(pihalf_element)
-        up_block.append_element(laser_element)
-        up_block.append_element(delay_element)
-        up_block.append_element(waiting_element)
+        up_block.append(pihalf_element)
+        up_block.append(sl_element)
+        up_block.append(pihalf_element)
+        up_block.append(laser_element)
+        up_block.append(delay_element)
+        up_block.append(waiting_element)
         created_blocks.append(up_block)
 
         # Create block for "down"-polarization and append to created_blocks list
         down_block = PulseBlock(name=name + '_down')
-        down_block.append_element(pi3half_element)
-        down_block.append_element(sl_element)
-        down_block.append_element(pi3half_element)
-        down_block.append_element(laser_element)
-        down_block.append_element(delay_element)
-        down_block.append_element(waiting_element)
+        down_block.append(pi3half_element)
+        down_block.append(sl_element)
+        down_block.append(pi3half_element)
+        down_block.append(laser_element)
+        down_block.append(delay_element)
+        down_block.append(waiting_element)
         created_blocks.append(down_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=up_block.name, reps=polarization_steps - 1)
-        block_ensemble.append_block(block_name=down_block.name, reps=polarization_steps - 1)
+        block_ensemble.append((up_block.name, polarization_steps - 1))
+        block_ensemble.append((down_block.name, polarization_steps - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -701,69 +701,69 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # Create block and append to created_blocks list
         xy8_block = PulseBlock(name=name)
-        xy8_block.append_element(pihalf_element)
-        xy8_block.append_element(tauhalf_element)
+        xy8_block.append(pihalf_element)
+        xy8_block.append(tauhalf_element)
         for n in range(xy8_order):
-            xy8_block.append_element(pix_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(piy_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(pix_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(piy_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(piy_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(pix_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(piy_element)
-            xy8_block.append_element(tau_element)
-            xy8_block.append_element(pix_element)
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(piy_element)
+            xy8_block.append(tau_element)
+            xy8_block.append(pix_element)
             if n != xy8_order - 1:
-                xy8_block.append_element(tau_element)
-        xy8_block.append_element(tauhalf_element)
-        xy8_block.append_element(pihalf_element)
-        xy8_block.append_element(laser_element)
-        xy8_block.append_element(delay_element)
-        xy8_block.append_element(waiting_element)
+                xy8_block.append(tau_element)
+        xy8_block.append(tauhalf_element)
+        xy8_block.append(pihalf_element)
+        xy8_block.append(laser_element)
+        xy8_block.append(delay_element)
+        xy8_block.append(waiting_element)
         if alternating:
-            xy8_block.append_element(pihalf_element)
-            xy8_block.append_element(tauhalf_element)
+            xy8_block.append(pihalf_element)
+            xy8_block.append(tauhalf_element)
             for n in range(xy8_order):
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
                 if n != xy8_order - 1:
-                    xy8_block.append_element(tau_element)
-            xy8_block.append_element(tauhalf_element)
-            xy8_block.append_element(pi3half_element)
-            xy8_block.append_element(laser_element)
-            xy8_block.append_element(delay_element)
-            xy8_block.append_element(waiting_element)
+                    xy8_block.append(tau_element)
+            xy8_block.append(tauhalf_element)
+            xy8_block.append(pi3half_element)
+            xy8_block.append(laser_element)
+            xy8_block.append(delay_element)
+            xy8_block.append(waiting_element)
         created_blocks.append(xy8_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=xy8_block.name, reps=num_of_points - 1)
+        block_ensemble.append((xy8_block.name, num_of_points - 1))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points
@@ -836,69 +836,69 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         for ii, tau in enumerate(real_tau_array):
             tauhalf_element = self._get_idle_element(length=tau / 2, increment=0)
             tau_element = self._get_idle_element(length=tau, increment=0)
-            xy8_block.append_element(pihalf_element)
-            xy8_block.append_element(tauhalf_element)
+            xy8_block.append(pihalf_element)
+            xy8_block.append(tauhalf_element)
             for n in range(xy8_order):
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(piy_element)
-                xy8_block.append_element(tau_element)
-                xy8_block.append_element(pix_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(piy_element)
+                xy8_block.append(tau_element)
+                xy8_block.append(pix_element)
                 if n != xy8_order - 1:
-                    xy8_block.append_element(tau_element)
-            xy8_block.append_element(tauhalf_element)
-            xy8_block.append_element(pihalf_element)
-            xy8_block.append_element(laser_element)
-            xy8_block.append_element(delay_element)
-            xy8_block.append_element(waiting_element)
+                    xy8_block.append(tau_element)
+            xy8_block.append(tauhalf_element)
+            xy8_block.append(pihalf_element)
+            xy8_block.append(laser_element)
+            xy8_block.append(delay_element)
+            xy8_block.append(waiting_element)
             if alternating:
-                xy8_block.append_element(pihalf_element)
-                xy8_block.append_element(tauhalf_element)
+                xy8_block.append(pihalf_element)
+                xy8_block.append(tauhalf_element)
                 for n in range(xy8_order):
-                    xy8_block.append_element(pix_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(piy_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(pix_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(piy_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(piy_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(pix_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(piy_element)
-                    xy8_block.append_element(tau_element)
-                    xy8_block.append_element(pix_element)
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(piy_element)
+                    xy8_block.append(tau_element)
+                    xy8_block.append(pix_element)
                     if n != xy8_order - 1:
-                        xy8_block.append_element(tau_element)
-                xy8_block.append_element(tauhalf_element)
-                xy8_block.append_element(pi3half_element)
-                xy8_block.append_element(laser_element)
-                xy8_block.append_element(delay_element)
-                xy8_block.append_element(waiting_element)
+                        xy8_block.append(tau_element)
+                xy8_block.append(tauhalf_element)
+                xy8_block.append(pi3half_element)
+                xy8_block.append(laser_element)
+                xy8_block.append(delay_element)
+                xy8_block.append(waiting_element)
         created_blocks.append(xy8_block)
 
         # Create block ensemble
         block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
-        block_ensemble.append_block(block_name=xy8_block.name, reps=0)
+        block_ensemble.append((xy8_block.name, 0))
 
         # Create and append sync trigger block if needed
         if self.sync_channel:
             sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append_element(self._get_sync_element())
+            sync_block.append(self._get_sync_element())
             created_blocks.append(sync_block)
-            block_ensemble.append_block(block_name=sync_block.name, reps=0)
+            block_ensemble.append((sync_block.name, 0))
 
         # add metadata to invoke settings later on
         number_of_lasers = num_of_points * 2 if alternating else num_of_points

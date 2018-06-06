@@ -27,7 +27,7 @@ import inspect
 import importlib
 from collections import OrderedDict
 
-from logic.pulsed.sampling_functions import SamplingFunctions as sf
+from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
 
 
@@ -75,6 +75,27 @@ class PulseBlockElement(object):
         self.digital_channels = set(self.digital_high)
         self.channel_set = self.analog_channels.union(self.digital_channels)
 
+    def __repr__(self):
+        repr_str = 'PulseBlockElement(init_length_s={0}, increment_s={1}, pulse_function='.format(
+            self.init_length_s, self.increment_s)
+        repr_str += '{'
+        for ind, (channel, sampling_func) in enumerate(self.pulse_function.items()):
+            repr_str += '{0}: {1}'.format(channel, repr(sampling_func))
+            if ind < len(self.pulse_function) - 1:
+                repr_str += ', '
+        repr_str += '}, '
+        repr_str += 'digital_high={0})'.format(dict(self.digital_high))
+        return repr_str
+
+    def __str__(self):
+        pulse_func_dict = {chnl: type(func).__name__ for chnl, func in self.pulse_function.items()}
+        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\t' \
+                     'analog channels: {2}\n\tdigital channels: {3}'.format(self.init_length_s,
+                                                                            self.increment_s,
+                                                                            pulse_func_dict,
+                                                                            dict(self.digital_high))
+        return return_str
+
     def get_dict_representation(self):
         dict_repr = dict()
         dict_repr['init_length_s'] = self.init_length_s
@@ -88,7 +109,7 @@ class PulseBlockElement(object):
     @staticmethod
     def element_from_dict(element_dict):
         for chnl, sample_dict in element_dict['pulse_function'].items():
-            sf_class = getattr(sf, sample_dict['name'])
+            sf_class = getattr(SamplingFunctions, sample_dict['name'])
             element_dict['pulse_function'][chnl] = sf_class(**sample_dict['params'])
         return PulseBlockElement(**element_dict)
 
@@ -113,6 +134,97 @@ class PulseBlock(object):
         self.digital_channels = set()
         self.channel_set = set()
         self.refresh_parameters()
+        return
+
+    def __repr__(self):
+        elem_repr_list = [repr(elem) for elem in self.element_list]
+        repr_str = 'PulseBlock(name={0}, element_list={1})'.format(self.name, elem_repr_list)
+        return repr_str.replace('"', '')
+
+    def __str__(self):
+        return_str = 'PulseBlock "{0}"\n\tnumber of elements: {1}\n\t'.format(
+            self.name, len(self.element_list))
+        return_str += 'initial length: {0}s\n\tlength increment: {1}s\n\t'.format(
+            self.init_length_s, self.increment_s)
+        return_str += 'active analog channels: {0}\n\tactive digital channels: {1}'.format(
+            sorted(self.analog_channels), sorted(self.digital_channels))
+        return return_str
+
+    def __len__(self):
+        return len(self.element_list)
+
+    def __getitem__(self, key):
+        if not isinstance(key, (slice, int)):
+            raise TypeError('PulseBlock indices must be int or slice, not {0}'.format(type(key)))
+        return self.element_list[key]
+
+    def __setitem__(self, key, value):
+        if isinstance(key, int):
+            if not isinstance(value, PulseBlockElement):
+                raise TypeError('PulseBlock element list entries must be of type PulseBlockElement,'
+                                ' not {0}'.format(type(value)))
+            if not self.channel_set:
+                self.channel_set = value.channel_set.copy()
+                self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
+                self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
+            elif value.channel_set != self.channel_set:
+                raise ValueError('Usage of different sets of analog and digital channels in the '
+                                 'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
+                                 ''.format(self.channel_set, value.channel_set))
+
+            self.init_length_s -= self.element_list[key].init_length_s
+            self.increment_s -= self.element_list[key].increment_s
+            self.init_length_s += value.init_length_s
+            self.increment_s += value.increment_s
+        elif isinstance(key, slice):
+            add_length = 0
+            add_increment = 0
+            for element in value:
+                if not isinstance(element, PulseBlockElement):
+                    raise TypeError('PulseBlock element list entries must be of type '
+                                    'PulseBlockElement, not {0}'.format(type(value)))
+                if not self.channel_set:
+                    self.channel_set = element.channel_set.copy()
+                    self.analog_channels = {chnl for chnl in self.channel_set if
+                                            chnl.startswith('a')}
+                    self.digital_channels = {chnl for chnl in self.channel_set if
+                                             chnl.startswith('d')}
+                elif element.channel_set != self.channel_set:
+                    raise ValueError(
+                        'Usage of different sets of analog and digital channels in the '
+                        'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
+                        ''.format(self.channel_set, element.channel_set))
+
+                add_length += element.init_length_s
+                add_increment += element.increment_s
+
+            for element in self.element_list[key]:
+                self.init_length_s -= element.init_length_s
+                self.increment_s -= element.increment_s
+
+            self.init_length_s += add_length
+            self.increment_s += add_increment
+        else:
+            raise TypeError('PulseBlock indices must be int or slice, not {0}'.format(type(key)))
+        self.element_list[key] = copy.deepcopy(value)
+        return
+
+    def __delitem__(self, key):
+        if not isinstance(key, (slice, int)):
+            raise TypeError('PulseBlock indices must be int or slice, not {0}'.format(type(key)))
+
+        if isinstance(key, int):
+            items_to_delete = [self.element_list[key]]
+        else:
+            items_to_delete = self.element_list[key]
+
+        for element in items_to_delete:
+            self.init_length_s -= element.init_length_s
+            self.increment_s -= element.increment_s
+        del self.element_list[key]
+        if len(self.element_list) == 0:
+            self.init_length_s = 0.0
+            self.increment_s = 0.0
         return
 
     def refresh_parameters(self):
@@ -142,66 +254,84 @@ class PulseBlock(object):
         self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
 
-    def replace_element(self, position, element):
-        if not isinstance(element, PulseBlockElement) or len(self.element_list) <= position:
-            return -1
-
-        if element.channel_set != self.channel_set:
-            raise ValueError('Usage of different sets of analog and digital channels in the '
-                             'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
-                             ''.format(self.channel_set, element.channel_set))
-            return -1
-
-        self.init_length_s -= self.element_list[position].init_length_s
-        self.increment_s -= self.element_list[position].increment_s
-        self.init_length_s += element.init_length_s
-        self.increment_s += element.increment_s
-        self.element_list[position] = copy.deepcopy(element)
-        return 0
-
-    def delete_element(self, position):
-        if len(self.element_list) <= position:
-            return -1
-
-        self.init_length_s -= self.element_list[position].init_length_s
-        self.increment_s -= self.element_list[position].increment_s
-        del self.element_list[position]
+    def pop(self, position=None):
         if len(self.element_list) == 0:
-            self.init_length_s = 0.0
-            self.increment_s = 0.0
-        return 0
+            raise IndexError('pop from empty PulseBlock')
 
-    def insert_element(self, position, element):
-        """ Insert a PulseBlockElement at the given position. The old elements at this position and
+        if position is None:
+            self.init_length_s -= self.element_list[-1].init_length_s
+            self.increment_s -= self.element_list[-1].increment_s
+            return self.element_list.pop()
+
+        if not isinstance(position, int):
+            raise TypeError('PulseBlock.pop position argument expects integer, not {0}'
+                            ''.format(type(position)))
+
+        if position < 0:
+            position = len(self.element_list) + position
+
+        if len(self.element_list) <= position or position < 0:
+            raise IndexError('PulseBlock element list index out of range')
+
+        self.init_length_s -= self.element_list[position].init_length_s
+        self.increment_s -= self.element_list[position].increment_s
+        return self.element_list.pop(position)
+
+    def insert(self, position, element):
+        """ Insert a PulseBlockElement at the given position. The old element at this position and
         all consecutive elements after that will be shifted to higher indices.
 
         @param int position: position in the element list
         @param PulseBlockElement element: PulseBlockElement instance
         """
-        if not isinstance(element, PulseBlockElement) or len(self.element_list) < position:
-            return -1
+        if not isinstance(element, PulseBlockElement):
+            raise ValueError('PulseBlock elements must be of type PulseBlockElement, not {0}'
+                             ''.format(type(element)))
+
+        if position < 0:
+            position = len(self.element_list) + position
+
+        if len(self.element_list) < position or position < 0:
+            raise IndexError('PulseBlock element list index out of range')
 
         if not self.channel_set:
-            self.channel_set = element.channel_set
+            self.channel_set = element.channel_set.copy()
             self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
             self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         elif element.channel_set != self.channel_set:
             raise ValueError('Usage of different sets of analog and digital channels in the '
                              'same PulseBlock is prohibited. Used channel sets are:\n{0}\n{1}'
                              ''.format(self.channel_set, element.channel_set))
-            return -1
 
         self.init_length_s += element.init_length_s
         self.increment_s += element.increment_s
 
         self.element_list.insert(position, copy.deepcopy(element))
-        return 0
+        return
 
-    def append_element(self, element, at_beginning=False):
+    def append(self, element):
         """
         """
-        position = 0 if at_beginning else len(self.element_list)
-        return self.insert_element(position=position, element=element)
+        self.insert(position=len(self.element_list), element=element)
+        return
+
+    def extend(self, iterable):
+        for element in iterable:
+            self.append(element=element)
+        return
+
+    def clear(self):
+        del self.element_list[:]
+        self.init_length_s = 0.0
+        self.increment_s = 0.0
+        self.analog_channels = set()
+        self.digital_channels = set()
+        self.channel_set = set()
+        return
+
+    def reverse(self):
+        self.element_list.reverse()
+        return
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -256,53 +386,137 @@ class PulseBlockEnsemble(object):
         self.measurement_information = dict()
         return
 
-    def replace_block(self, position, block_name, reps=None):
-        """
-        """
-        if not isinstance(block_name, str) or len(self.block_list) <= position:
-            return -1
+    def __repr__(self):
+        repr_str = 'PulseBlockEnsemble(name={0}, block_list={1}, rotating_frame={2})'.format(
+            self.name, self.block_list, self.rotating_frame)
+        return repr_str
 
-        if reps is None:
-            list_entry = (block_name, self.block_list[position][1])
-            self.block_list[position][0] = list_entry
-        elif reps >= 0:
-            self.block_list[position] = (block_name, reps)
+    def __str__(self):
+        return_str = 'PulseBlockEnsemble "{0}"\n\trotating frame: {1}\n\t' \
+                     'has been sampled: {2}\n\t<block name>\t<repetitions>\n\t'.format(
+                         self.name, self.rotating_frame, bool(self.sampling_information))
+        return_str += '\n\t'.join(('{0}\t{1}'.format(name, reps) for name, reps in self.block_list))
+        return return_str
+
+    def __len__(self):
+        return len(self.block_list)
+
+    def __getitem__(self, key):
+        if not isinstance(key, (slice, int)):
+            raise TypeError('PulseBlockEnsemble indices must be int or slice, not {0}'
+                            ''.format(type(key)))
+        return self.block_list[key]
+
+    def __setitem__(self, key, value):
+        if isinstance(key, int):
+            if not isinstance(value, (tuple, list)) or len(value) != 2:
+                raise TypeError('PulseBlockEnsemble block list entries must be a tuple or list of '
+                                'length 2')
+            elif not isinstance(value[0], str):
+                raise ValueError('PulseBlockEnsemble element tuple index 0 must contain str, '
+                                 'not {0}'.format(type(value[0])))
+            elif not isinstance(value[1], int) or value[1] < 0:
+                raise ValueError('PulseBlockEnsemble element tuple index 1 must contain int >= 0')
+        elif isinstance(key, slice):
+            for element in value:
+                if not isinstance(element, (tuple, list)) or len(value) != 2:
+                    raise TypeError('PulseBlockEnsemble block list entries must be a tuple or list '
+                                    'of length 2')
+                elif not isinstance(element[0], str):
+                    raise ValueError('PulseBlockEnsemble element tuple index 0 must contain str, '
+                                     'not {0}'.format(type(element[0])))
+                elif not isinstance(element[1], int) or element[1] < 0:
+                    raise ValueError('PulseBlockEnsemble element tuple index 1 must contain int >= '
+                                     '0')
         else:
-            return -1
-        return 0
+            raise TypeError('PulseBlockEnsemble indices must be int or slice, not {0}'
+                            ''.format(type(key)))
+        self.block_list[key] = tuple(value)
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
 
-    def delete_block(self, position):
+    def __delitem__(self, key):
+        if not isinstance(key, (slice, int)):
+            raise TypeError('PulseBlockEnsemble indices must be int or slice, not {0}'
+                            ''.format(type(key)))
+
+        del self.block_list[key]
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
+
+    def pop(self, position=None):
+        if len(self.block_list) == 0:
+            raise IndexError('pop from empty PulseBlockEnsemble')
+
+        if position is None:
+            self.sampling_information = dict()
+            self.measurement_information = dict()
+            return self.block_list.pop()
+
+        if not isinstance(position, int):
+            raise TypeError('PulseBlockEnsemble.pop position argument expects integer, not {0}'
+                            ''.format(type(position)))
+
+        if position < 0:
+            position = len(self.block_list) + position
+
+        if len(self.block_list) <= position or position < 0:
+            raise IndexError('PulseBlockEnsemble block list index out of range')
+
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return self.block_list.pop(position)
+
+    def insert(self, position, element):
+        """ Insert a (PulseBlock.name, repetitions) tuple at the given position. The old element
+        at this position and all consecutive elements after that will be shifted to higher indices.
+
+        @param int position: position in the element list
+        @param tuple element: (PulseBlock name (str), repetitions (int))
+        """
+        if not isinstance(element, (tuple, list)) or len(element) != 2:
+            raise TypeError('PulseBlockEnsemble block list entries must be a tuple or list of '
+                            'length 2')
+        elif not isinstance(element[0], str):
+            raise ValueError('PulseBlockEnsemble element tuple index 0 must contain str, '
+                             'not {0}'.format(type(element[0])))
+        elif not isinstance(element[1], int) or element[1] < 0:
+            raise ValueError('PulseBlockEnsemble element tuple index 1 must contain int >= 0')
+
+        if position < 0:
+            position = len(self.block_list) + position
+        if len(self.block_list) < position or position < 0:
+            raise IndexError('PulseBlockEnsemble block list index out of range')
+
+        self.block_list.insert(position, tuple(element))
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
+
+    def append(self, element):
         """
         """
-        if len(self.block_list) <= position:
-            return -1
+        self.insert(position=len(self), element=element)
+        return
 
-        del self.block_list[position]
-        return 0
+    def extend(self, iterable):
+        for element in iterable:
+            self.append(element=element)
+        return
 
-    def insert_block(self, position, block_name, reps=0):
-        """ Insert a PulseBlock at the given position. The old block at this position and all
-        consecutive blocks after that will be shifted to higher indices.
+    def clear(self):
+        del self.block_list[:]
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
 
-        @param int position: position in the block list
-        @param str block_name: PulseBlock name
-        @param int reps: Block repetitions. Zero means single playback of the block.
-        """
-        if not isinstance(block_name, str) or len(self.block_list) < position or reps < 0:
-            return -1
-
-        self.block_list.insert(position, (block_name, reps))
-        return 0
-
-    def append_block(self, block_name, reps=0, at_beginning=False):
-        """ Append either at the front or at the back.
-
-        @param str block_name: PulseBlock name
-        @param int reps: Block repetitions. Zero means single playback of the block.
-        @param bool at_beginning: If False append to end (default), if True insert at beginning.
-        """
-        position = 0 if at_beginning else len(self.block_list)
-        return self.insert_block(position=position, block_name=block_name, reps=reps)
+    def reverse(self):
+        self.block_list.reverse()
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -412,74 +626,175 @@ class PulseSequence(object):
                 break
         return
 
-    def replace_ensemble(self, position, ensemble_name, seq_param=None):
-        """ Replace a sequence step at a given position.
+    def __repr__(self):
+        repr_str = 'PulseSequence(name={0}, ensemble_list={1}, rotating_frame={2})'.format(
+            self.name, self.ensemble_list, self.rotating_frame)
+        return repr_str
 
-        @param int position: position in the ensemble list
-        @param str ensemble_name: PulseBlockEnsemble name
-        @param dict seq_param: Sequence step parameter dictionary. Use present one if None.
-        """
-        if not isinstance(ensemble_name, str) or len(self.ensemble_list) <= position:
-            return -1
+    def __str__(self):
+        return_str = 'PulseSequence "{0}"\n\trotating frame: {1}\n\t' \
+                     'has finite length: {2}\n\thas been sampled: {3}\n\t<ensemble name>\t' \
+                     '<sequence parameters>\n\t'.format(self.name,
+                                                        self.rotating_frame,
+                                                        self.is_finite,
+                                                        bool(self.sampling_information))
+        return_str += '\n\t'.join(('{0}\t{1}'.format(name, param) for name, param in self))
+        return return_str
 
-        if seq_param is None:
-            list_entry = (ensemble_name, self.ensemble_list[position][1])
-            self.ensemble_list[position] = list_entry
-        else:
-            self.ensemble_list[position] = (ensemble_name, seq_param.copy())
-            if seq_param['repetitions'] < 0 and self.is_finite:
+    def __len__(self):
+        return len(self.ensemble_list)
+
+    def __getitem__(self, key):
+        if not isinstance(key, (slice, int)):
+            raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
+        return self.ensemble_list[key]
+
+    def __setitem__(self, key, value):
+        stage_refresh = False
+        if isinstance(key, int):
+            if isinstance(value, str):
+                value = (value, self.__default_seq_params.copy())
+            if not isinstance(value, (tuple, list)) or len(value) != 2:
+                raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
+                                'length 2')
+            elif not isinstance(value[0], str):
+                raise ValueError('PulseSequence element tuple index 0 must contain str, not {0}'
+                                 ''.format(type(value[0])))
+            elif not isinstance(value[1], dict):
+                raise ValueError('PulseSequence element tuple index 1 must contain dict, not {0}'
+                                 ''.format(type(value[1])))
+
+            if value[1]['repetitions'] < 0:
                 self.is_finite = False
-            elif seq_param['repetitions'] >= 0 and not self.is_finite:
-                self.refresh_parameters()
-        return 0
+            elif not self.is_finite and self[key][1]['repetitions'] < 0:
+                stage_refresh = True
+        elif isinstance(key, slice):
+            if isinstance(value[0], str):
+                tmp_value = list()
+                for element in value:
+                    tmp_value.append((element, self.__default_seq_params.copy()))
+                value = tmp_value
+            for element in value:
+                if not isinstance(element, (tuple, list)) or len(value) != 2:
+                    raise TypeError('PulseSequence block list entries must be a tuple or list '
+                                    'of length 2')
+                elif not isinstance(element[0], str):
+                    raise ValueError('PulseSequence element tuple index 0 must contain str, not {0}'
+                                     ''.format(type(element[0])))
+                elif not isinstance(element[1], dict):
+                    raise ValueError('PulseSequence element tuple index 1 must contain dict, not '
+                                     '{0}'.format(type(element[1])))
 
-    def delete_ensemble(self, position):
-        """ Delete an ensemble at a given position
-
-        @param int position: position within the list self.ensemble_list.
-        """
-        if len(self.ensemble_list) <= position:
-            return -1
-
-        refresh = True if self.ensemble_list[position][1]['repetitions'] < 0 else False
-
-        del self.ensemble_list[position]
-
-        if refresh:
+                if element[1]['repetitions'] < 0:
+                    self.is_finite = False
+                elif not self.is_finite:
+                    stage_refresh = True
+        else:
+            raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
+        self.ensemble_list[key] = tuple(value)
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        if stage_refresh:
             self.refresh_parameters()
-        return 0
+        return
 
-    def insert_ensemble(self, position, ensemble_name, seq_param=None):
-        """ Insert a sequence step at the given position. The old step at this position and all
-        consecutive steps after that will be shifted to higher indices.
+    def __delitem__(self, key):
+        if isinstance(key, slice):
+            stage_refresh = False
+            for element in self.ensemble_list[key]:
+                if element[1]['repetitions'] < 0:
+                    stage_refresh = True
+                    break
+        elif isinstance(key, int):
+            stage_refresh = self.ensemble_list[key][1]['repetitions'] < 0
+        else:
+            raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
+        del self.ensemble_list[key]
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        if stage_refresh:
+            self.refresh_parameters()
+        return
+
+    def pop(self, position=None):
+        if len(self.ensemble_list) == 0:
+            raise IndexError('pop from empty PulseSequence')
+
+        if position is None:
+            position = len(self.ensemble_list) - 1
+
+        if not isinstance(position, int):
+            raise TypeError('PulseSequence.pop position argument expects integer, not {0}'
+                            ''.format(type(position)))
+
+        if position < 0:
+            position = len(self.ensemble_list) + position
+
+        if len(self.ensemble_list) <= position or position < 0:
+            raise IndexError('PulseSequence ensemble list index out of range')
+
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        if self.ensemble_list[-1][1]['repetitions'] < 0:
+            popped_element = self.ensemble_list.pop(position)
+            self.refresh_parameters()
+            return popped_element
+        return self.ensemble_list.pop(position)
+
+    def insert(self, position, element):
+        """ Insert a (PulseSequence.name, parameters) tuple at the given position. The old element
+        at this position and all consecutive elements after that will be shifted to higher indices.
 
         @param int position: position in the ensemble list
-        @param str ensemble_name: PulseBlockEnsemble name
-        @param dict seq_param: Sequence step parameter dictionary.
+        @param tuple|str element: PulseBlock name (str)[, seq_parameters (dict)]
         """
-        if not isinstance(ensemble_name, str) or len(self.ensemble_list) < position:
-            return -1
+        if isinstance(element, str):
+            element = (element, self.__default_seq_params.copy())
 
-        if seq_param is None:
-            seq_param = self.__default_seq_params
+        if not isinstance(element, (tuple, list)) or len(element) != 2:
+            raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
+                            'length 2')
+        elif not isinstance(element[0], str):
+            raise ValueError('PulseSequence element tuple index 0 must contain str, '
+                             'not {0}'.format(type(element[0])))
+        elif not isinstance(element[1], dict):
+            raise ValueError('PulseSequence element tuple index 1 must contain dict')
 
-        self.ensemble_list.insert(position, (ensemble_name, seq_param.copy()))
+        if position < 0:
+            position = len(self.ensemble_list) + position
+        if len(self.ensemble_list) < position or position < 0:
+            raise IndexError('PulseSequence ensemble list index out of range')
 
-        if seq_param['repetitions'] < 0:
+        self.ensemble_list.insert(position, tuple(element))
+        if element[1]['repetitions'] < 0:
             self.is_finite = False
-        return 0
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
 
-    def append_ensemble(self, ensemble_name, seq_param=None, at_beginning=False):
-        """ Append either at the front or at the back.
-
-        @param str ensemble_name: PulseBlockEnsemble name
-        @param dict seq_param: Sequence step parameter dictionary.
-        @param bool at_beginning: If False append to end (default), if True insert at beginning.
+    def append(self, element):
         """
-        position = 0 if at_beginning else len(self.ensemble_list)
-        return self.insert_ensemble(position=position,
-                                    ensemble_name=ensemble_name,
-                                    seq_param=seq_param)
+        """
+        self.insert(position=len(self), element=element)
+        return
+
+    def extend(self, iterable):
+        for element in iterable:
+            self.append(element=element)
+        return
+
+    def clear(self):
+        del self.ensemble_list[:]
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        self.is_finite = True
+        return
+
+    def reverse(self):
+        self.ensemble_list.reverse()
+        self.sampling_information = dict()
+        self.measurement_information = dict()
+        return
 
     def get_dict_representation(self):
         dict_repr = dict()
@@ -602,10 +917,11 @@ class PredefinedGeneratorBase:
         @return: PulseBlockElement, the generated idle element
         """
         # Create idle element
-        return PulseBlockElement(init_length_s=length,
-                                 increment_s=increment,
-                                 pulse_function={chnl: sf.Idle() for chnl in self.analog_channels},
-                                 digital_high={chnl: False for chnl in self.digital_channels})
+        return PulseBlockElement(
+            init_length_s=length,
+            increment_s=increment,
+            pulse_function={chnl: SamplingFunctions.Idle() for chnl in self.analog_channels},
+            digital_high={chnl: False for chnl in self.digital_channels})
 
     def _get_trigger_element(self, length, increment, channels):
         """
@@ -621,7 +937,7 @@ class PredefinedGeneratorBase:
             channels = [channels]
 
         # input params for element generation
-        pulse_function = {chnl: sf.Idle() for chnl in self.analog_channels}
+        pulse_function = {chnl: SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_high = {chnl: False for chnl in self.digital_channels}
 
         # Determine analogue or digital trigger channel and set channels accordingly.
@@ -629,7 +945,7 @@ class PredefinedGeneratorBase:
             if channel.startswith('d'):
                 digital_high[channel] = True
             else:
-                pulse_function[channel] = sf.DC(voltage=self.analog_trigger_voltage)
+                pulse_function[channel] = SamplingFunctions.DC(voltage=self.analog_trigger_voltage)
 
         # return trigger element
         return PulseBlockElement(init_length_s=length,
@@ -659,7 +975,7 @@ class PredefinedGeneratorBase:
             if self.gate_channel.startswith('d'):
                 laser_gate_element.digital_high[self.gate_channel] = True
             else:
-                laser_gate_element.pulse_function[self.gate_channel] = sf.DC(
+                laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
                     voltage=self.analog_trigger_voltage)
         return laser_gate_element
 
@@ -715,9 +1031,10 @@ class PredefinedGeneratorBase:
             mw_element = self._get_idle_element(
                 length=length,
                 increment=increment)
-            mw_element.pulse_function[self.microwave_channel] = sf.Sin(amplitude=amp,
-                                                                       frequency=freq,
-                                                                       phase=phase)
+            mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
+                amplitude=amp,
+                frequency=freq,
+                phase=phase)
         return mw_element
 
     def _get_multiple_mw_element(self, length, increment, amps=None, freqs=None, phases=None):
@@ -751,11 +1068,12 @@ class PredefinedGeneratorBase:
             sine_number = min(len(amps), len(freqs), len(phases))
 
             if sine_number < 2:
-                mw_element.pulse_function[self.microwave_channel] = sf.Sin(amplitude=amps[0],
-                                                                           frequency=freqs[0],
-                                                                           phase=phases[0])
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.Sin(
+                    amplitude=amps[0],
+                    frequency=freqs[0],
+                    phase=phases[0])
             elif sine_number == 2:
-                mw_element.pulse_function[self.microwave_channel] = sf.DoubleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSin(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     frequency_1=freqs[0],
@@ -763,7 +1081,7 @@ class PredefinedGeneratorBase:
                     phase_1=phases[0],
                     phase_2=phases[1])
             else:
-                mw_element.pulse_function[self.microwave_channel] = sf.TripleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSin(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     amplitude_3=amps[2],
@@ -793,7 +1111,7 @@ class PredefinedGeneratorBase:
         if self.laser_channel.startswith('d'):
             mw_laser_element.digital_high[self.laser_channel] = True
         else:
-            mw_laser_element.pulse_function[self.laser_channel] = sf.DC(
+            mw_laser_element.pulse_function[self.laser_channel] = SamplingFunctions.DC(
                 voltage=self.analog_trigger_voltage)
         return mw_laser_element
 
