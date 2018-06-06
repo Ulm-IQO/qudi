@@ -652,6 +652,8 @@ class PulseSequence(object):
     def __setitem__(self, key, value):
         stage_refresh = False
         if isinstance(key, int):
+            if isinstance(value, str):
+                value = (value, self.__default_seq_params.copy())
             if not isinstance(value, (tuple, list)) or len(value) != 2:
                 raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
                                 'length 2')
@@ -667,6 +669,11 @@ class PulseSequence(object):
             elif not self.is_finite and self[key][1]['repetitions'] < 0:
                 stage_refresh = True
         elif isinstance(key, slice):
+            if isinstance(value[0], str):
+                tmp_value = list()
+                for element in value:
+                    tmp_value.append((element, self.__default_seq_params.copy()))
+                value = tmp_value
             for element in value:
                 if not isinstance(element, (tuple, list)) or len(value) != 2:
                     raise TypeError('PulseSequence block list entries must be a tuple or list '
@@ -692,9 +699,16 @@ class PulseSequence(object):
         return
 
     def __delitem__(self, key):
-        if not isinstance(key, (slice, int)):
+        if isinstance(key, slice):
+            stage_refresh = False
+            for element in self.ensemble_list[key]:
+                if element[1]['repetitions'] < 0:
+                    stage_refresh = True
+                    break
+        elif isinstance(key, int):
+            stage_refresh = self.ensemble_list[key][1]['repetitions'] < 0
+        else:
             raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
-        stage_refresh = self.ensemble_list[key][1]['repetitions'] < 0
         del self.ensemble_list[key]
         self.sampling_information = dict()
         self.measurement_information = dict()
@@ -732,8 +746,11 @@ class PulseSequence(object):
         at this position and all consecutive elements after that will be shifted to higher indices.
 
         @param int position: position in the ensemble list
-        @param tuple element: (PulseBlock name (str), seq_parameters (dict))
+        @param tuple|str element: PulseBlock name (str)[, seq_parameters (dict)]
         """
+        if isinstance(element, str):
+            element = (element, self.__default_seq_params.copy())
+
         if not isinstance(element, (tuple, list)) or len(element) != 2:
             raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
                             'length 2')
