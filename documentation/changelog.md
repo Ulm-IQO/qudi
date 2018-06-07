@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Improved scientific SpinBox validators to allow for more intuitive keyboard input
 * All modules use new connector style where feasible.
 * Bug fix for waveform generation larger than ~2 GSamples
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
