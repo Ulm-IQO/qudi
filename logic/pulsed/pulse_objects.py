@@ -137,9 +137,9 @@ class PulseBlock(object):
         return
 
     def __repr__(self):
-        elem_repr_list = [repr(elem) for elem in self.element_list]
-        repr_str = 'PulseBlock(name={0}, element_list={1})'.format(self.name, elem_repr_list)
-        return repr_str.replace('"', '')
+        repr_str = 'PulseBlock(name="{0}", element_list=['.format(self.name)
+        repr_str += ', '.join((repr(elem) for elem in self.element_list)) + '])'
+        return repr_str
 
     def __str__(self):
         return_str = 'PulseBlock "{0}"\n\tnumber of elements: {1}\n\t'.format(
