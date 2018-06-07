@@ -544,7 +544,7 @@ class PulseSequence(object):
     Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
-    __default_seq_params = {'repetitions': 1,
+    __default_seq_params = {'repetitions': 0,
                             'go_to': -1,
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
