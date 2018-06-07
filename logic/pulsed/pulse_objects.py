@@ -80,11 +80,11 @@ class PulseBlockElement(object):
             self.init_length_s, self.increment_s)
         repr_str += '{'
         for ind, (channel, sampling_func) in enumerate(self.pulse_function.items()):
-            repr_str += '{0}: {1}'.format(channel, repr(sampling_func))
+            repr_str += '"{0}": {1}'.format(channel, 'SamplingFunctions.' + repr(sampling_func))
             if ind < len(self.pulse_function) - 1:
                 repr_str += ', '
         repr_str += '}, '
-        repr_str += 'digital_high={0})'.format(dict(self.digital_high))
+        repr_str += 'digital_high={0})'.format(repr(dict(self.digital_high)))
         return repr_str
 
     def __str__(self):
