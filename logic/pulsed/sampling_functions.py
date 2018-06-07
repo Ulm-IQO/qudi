@@ -38,7 +38,7 @@ class SamplingBase:
         kwargs = []
         for param, def_dict in self.params.items():
             if def_dict['type'] is str:
-                kwargs.append('{0}="{1}"'.format(param, getattr(self, param)))
+                kwargs.append('{0}=\'{1}\''.format(param, getattr(self, param)))
             else:
                 kwargs.append('{0}={1}'.format(param, getattr(self, param)))
         return '{0}({1})'.format(type(self).__name__, ', '.join(kwargs))
