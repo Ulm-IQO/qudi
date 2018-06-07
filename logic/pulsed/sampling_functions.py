@@ -52,6 +52,19 @@ class SamplingBase:
             return_str += '\n\t' + '\n\t'.join(kwargs)
         return return_str
 
+    def __eq__(self, other):
+        if not isinstance(other, SamplingBase):
+            return False
+        hash_list = [type(self).__name__]
+        for param in self.params:
+            hash_list.append(getattr(self, param))
+        hash_self = hash(tuple(hash_list))
+        hash_list = [type(other).__name__]
+        for param in other.params:
+            hash_list.append(getattr(other, param))
+        hash_other = hash(tuple(hash_list))
+        return hash_self == hash_other
+
     def get_dict_representation(self):
         dict_repr = dict()
         dict_repr['name'] = type(self).__name__
