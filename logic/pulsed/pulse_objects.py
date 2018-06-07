@@ -80,7 +80,7 @@ class PulseBlockElement(object):
             self.init_length_s, self.increment_s)
         repr_str += '{'
         for ind, (channel, sampling_func) in enumerate(self.pulse_function.items()):
-            repr_str += '"{0}": {1}'.format(channel, 'SamplingFunctions.' + repr(sampling_func))
+            repr_str += '\'{0}\': {1}'.format(channel, 'SamplingFunctions.' + repr(sampling_func))
             if ind < len(self.pulse_function) - 1:
                 repr_str += ', '
         repr_str += '}, '
@@ -137,7 +137,7 @@ class PulseBlock(object):
         return
 
     def __repr__(self):
-        repr_str = 'PulseBlock(name="{0}", element_list=['.format(self.name)
+        repr_str = 'PulseBlock(name=\'{0}\', element_list=['.format(self.name)
         repr_str += ', '.join((repr(elem) for elem in self.element_list)) + '])'
         return repr_str
 
@@ -387,8 +387,8 @@ class PulseBlockEnsemble(object):
         return
 
     def __repr__(self):
-        repr_str = 'PulseBlockEnsemble(name={0}, block_list={1}, rotating_frame={2})'.format(
-            self.name, self.block_list, self.rotating_frame)
+        repr_str = 'PulseBlockEnsemble(name=\'{0}\', block_list={1}, rotating_frame={2})'.format(
+            self.name, repr(self.block_list), self.rotating_frame)
         return repr_str
 
     def __str__(self):
@@ -627,7 +627,7 @@ class PulseSequence(object):
         return
 
     def __repr__(self):
-        repr_str = 'PulseSequence(name={0}, ensemble_list={1}, rotating_frame={2})'.format(
+        repr_str = 'PulseSequence(name=\'{0}\', ensemble_list={1}, rotating_frame={2})'.format(
             self.name, self.ensemble_list, self.rotating_frame)
         return repr_str
 
