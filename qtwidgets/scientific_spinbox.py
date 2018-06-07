@@ -34,14 +34,12 @@ class FloatValidator(QtGui.QValidator):
     Also supports SI unit prefix like 'M', 'n' etc.
     """
 
-    float_re = re.compile(r'((([+-]?\d+)\.?(\d*))?([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
+    float_re = re.compile(r'(\s*([+-]?)(\d+\.\d+|\.\d+|\d+\.?)([eE][+-]?\d+)?\s?([YZEPTGMkmµunpfazy]?)\s*)')
     group_map = {'match': 0,
-                 'mantissa': 1,
-                 'integer': 2,
-                 'fractional': 3,
-                 'exponent': 4,
-                 'si': 5
-                 }
+                 'sign': 1,
+                 'mantissa': 2,
+                 'exponent': 3,
+                 'si': 4}
 
     def validate(self, string, position):
         """
@@ -59,7 +57,7 @@ class FloatValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or when incomplete "[+-]inf"
-        if not string.strip() or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
+        if string.strip() in '+.-.' or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
             return self.Intermediate, string, position
 
         # Accept input of [+-]inf. Not case sensitive.
@@ -70,16 +68,16 @@ class FloatValidator(QtGui.QValidator):
         if group_dict:
             if group_dict['match'] == string:
                 return self.Acceptable, string, position
-
+            if string.count('.') > 1:
+                return self.Invalid, group_dict['match'], position
             if position > len(string):
                 position = len(string)
-            if string[position-1] in 'eE.-+' and 'i' not in string.lower():
-                if string.count('.') > 1:
-                    return self.Invalid, group_dict['match'], position
+            if string[position-1] in 'eE-+' and 'i' not in string.lower():
                 return self.Intermediate, string, position
-
             return self.Invalid, group_dict['match'], position
         else:
+            if string[position-1] in 'eE-+.' and 'i' not in string.lower():
+                return self.Intermediate, string, position
             return self.Invalid, '', position
 
     def get_group_dict(self, string):
@@ -116,7 +114,7 @@ class IntegerValidator(QtGui.QValidator):
     Also supports non-fractional SI unit prefix like 'M', 'k' etc.
     """
 
-    int_re = re.compile(r'(([+-]?\d*)?([eE]+?\d+)?\s?([YZEPTGMk]?)\s*)')
+    int_re = re.compile(r'(([+-]?\d+)([eE]\+?\d+)?\s?([YZEPTGMk])?\s*)')
     group_map = {'match': 0,
                  'mantissa': 1,
                  'exponent': 2,
@@ -765,7 +763,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
             si_prefix = ''
         si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
-        unscaled_value_str = group_dict['mantissa']
+        if group_dict['sign'] is not None:
+            unscaled_value_str = group_dict['sign'] + group_dict['mantissa']
+        else:
+            unscaled_value_str = group_dict['mantissa']
         if group_dict['exponent'] is not None:
             unscaled_value_str += group_dict['exponent']
 
@@ -773,8 +774,11 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
 
         # Try to extract the precision the user intends to use
         if self.dynamic_precision:
-            if group_dict['fractional'] is not None:
-                self.setDecimals(len(group_dict['fractional']))
+            split_mantissa = group_dict['mantissa'].split('.')
+            if len(split_mantissa) == 2:
+                self.setDecimals(max(len(split_mantissa[1]), 1))
+            else:
+                self.setDecimals(1)  # Minimum number of digits is 1
 
         return value
 
@@ -933,6 +937,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.cleanText()
         if text.endswith(' '):
             selection_length = len(text) + 1
+        elif len(text) > 0 and text[-1] in self._unit_prefix_dict:
+            selection_length = len(text) - 1
         else:
             selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
@@ -1450,6 +1456,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.cleanText()
         if text.endswith(' '):
             selection_length = len(text) + 1
+        elif len(text) > 0 and text[-1] in self._unit_prefix_dict:
+            selection_length = len(text) - 1
         else:
             selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
