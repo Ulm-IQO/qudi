@@ -35,7 +35,12 @@ class SamplingBase:
     params = OrderedDict()
 
     def __repr__(self):
-        kwargs = ('='.join((param, str(getattr(self, param)))) for param in self.params)
+        kwargs = []
+        for param, def_dict in self.params.items():
+            if def_dict['type'] is str:
+                kwargs.append('{0}=\'{1}\''.format(param, getattr(self, param)))
+            else:
+                kwargs.append('{0}={1}'.format(param, getattr(self, param)))
         return '{0}({1})'.format(type(self).__name__, ', '.join(kwargs))
 
     def __str__(self):
@@ -46,6 +51,19 @@ class SamplingBase:
         else:
             return_str += '\n\t' + '\n\t'.join(kwargs)
         return return_str
+
+    def __eq__(self, other):
+        if not isinstance(other, SamplingBase):
+            return False
+        hash_list = [type(self).__name__]
+        for param in self.params:
+            hash_list.append(getattr(self, param))
+        hash_self = hash(tuple(hash_list))
+        hash_list = [type(other).__name__]
+        for param in other.params:
+            hash_list.append(getattr(other, param))
+        hash_other = hash(tuple(hash_list))
+        return hash_self == hash_other
 
     def get_dict_representation(self):
         dict_repr = dict()
