@@ -96,6 +96,22 @@ class PulseBlockElement(object):
                                                                             dict(self.digital_high))
         return return_str
 
+    def __eq__(self, other):
+        if not isinstance(other, PulseBlockElement):
+            return False
+        if self is other:
+            return True
+        if self.channel_set != other.channel_set:
+            return False
+        if (self.init_length_s, self.increment_s) != (other.init_length_s, other.increment_s):
+            return False
+        if set(self.digital_high.items()) != set(other.digital_high.items()):
+            return False
+        for chnl, func in self.pulse_function:
+            if func != other.pulse_function[chnl]:
+                return False
+        return True
+
     def get_dict_representation(self):
         dict_repr = dict()
         dict_repr['init_length_s'] = self.init_length_s
@@ -226,6 +242,22 @@ class PulseBlock(object):
             self.init_length_s = 0.0
             self.increment_s = 0.0
         return
+
+    def __eq__(self, other):
+        if not isinstance(other, PulseBlock):
+            return False
+        if self is other:
+            return True
+        if self.channel_set != other.channel_set:
+            return False
+        if (self.init_length_s, self.increment_s) != (other.init_length_s, other.increment_s):
+            return False
+        if len(self) != len(other):
+            return False
+        for i, element in enumerate(self.element_list):
+            if element != other[i]:
+                return False
+        return True
 
     def refresh_parameters(self):
         """ Initialize the parameters which describe this Pulse_Block object.
@@ -397,6 +429,19 @@ class PulseBlockEnsemble(object):
                          self.name, self.rotating_frame, bool(self.sampling_information))
         return_str += '\n\t'.join(('{0}\t{1}'.format(name, reps) for name, reps in self.block_list))
         return return_str
+
+    def __eq__(self, other):
+        if not isinstance(other, PulseBlockEnsemble):
+            return False
+        if self is other:
+            return True
+        if (self.name, self.rotating_frame) != (other.name, other.rotating_frame):
+            return False
+        if self.block_list != other.block_list:
+            return False
+        if self.measurement_information != other.measurement_information:
+            return False
+        return True
 
     def __len__(self):
         return len(self.block_list)
@@ -640,6 +685,19 @@ class PulseSequence(object):
                                                         bool(self.sampling_information))
         return_str += '\n\t'.join(('{0}\t{1}'.format(name, param) for name, param in self))
         return return_str
+
+    def __eq__(self, other):
+        if not isinstance(other, PulseSequence):
+            return False
+        if self is other:
+            return True
+        if (self.name, self.rotating_frame, self.is_finite) != (other.name, other.rotating_frame, other.is_finite):
+            return False
+        if self.ensemble_list != other.ensemble_list:
+            return False
+        if self.measurement_information != other.measurement_information:
+            return False
+        return True
 
     def __len__(self):
         return len(self.ensemble_list)
