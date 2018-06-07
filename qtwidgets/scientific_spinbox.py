@@ -937,6 +937,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.cleanText()
         if text.endswith(' '):
             selection_length = len(text) + 1
+        elif len(text) > 0 and text[-1] in self._unit_prefix_dict:
+            selection_length = len(text) - 1
         else:
             selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
@@ -1454,6 +1456,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         text = self.cleanText()
         if text.endswith(' '):
             selection_length = len(text) + 1
+        elif len(text) > 0 and text[-1] in self._unit_prefix_dict:
+            selection_length = len(text) - 1
         else:
             selection_length = len(text)
         self.lineEdit().setSelection(begin, selection_length)
