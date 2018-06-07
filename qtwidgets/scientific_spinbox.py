@@ -76,7 +76,7 @@ class FloatValidator(QtGui.QValidator):
                 return self.Intermediate, string, position
             return self.Invalid, group_dict['match'], position
         else:
-            if string[position-1] in 'eE-+' and 'i' not in string.lower():
+            if string[position-1] in 'eE-+.' and 'i' not in string.lower():
                 return self.Intermediate, string, position
             return self.Invalid, '', position
 
