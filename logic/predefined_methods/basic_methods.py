@@ -402,8 +402,8 @@ def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0
     pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
                                           0.0)
     # get 3pihalf element
-    pi3half_element = self._get_mw_element(3 * rabi_period / 4, 0.0, mw_channel, False, mw_amp,
-                                           mw_freq, 0.0)
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp,
+                                           mw_freq, 180.0)
     # get pi element
     pi_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq, 0.0)
     # get tau element
@@ -447,6 +447,126 @@ def generate_hahnecho(self, name='hahn_echo', rabi_period=1.0e-6, mw_freq=2870.0
     # Create Block list with repetitions and sequence trigger if needed.
     # remember number_of_taus=0 also counts as first round.
     block_list = [(hahn_block, num_of_points - 1)]
+    if sync_trig_channel is not None:
+        block_list.append((seq_block, 0))
+
+    # create ensemble out of the block(s)
+    block_ensemble = PulseBlockEnsemble(name=name, block_list=block_list, rotating_frame=True)
+    # add metadata to invoke settings later on
+    block_ensemble.sample_rate = self.sample_rate
+    block_ensemble.activation_config = self.activation_config
+    block_ensemble.amplitude_dict = self.amplitude_dict
+    block_ensemble.laser_channel = self.laser_channel
+    block_ensemble.alternating = alternating
+    block_ensemble.laser_ignore_list = []
+    block_ensemble.controlled_vals_array = tau_array
+    # save ensemble
+    self.save_ensemble(name, block_ensemble)
+    return block_ensemble
+
+
+def generate_deer(self, name='deer', rabi_period=1.0e-6, rabi_period2=1.0e-6, mw_freq=2870.0e6,
+                  mw_amp=0.1, mw2_freq=2870.0e6, mw2_amp=0.1, tau_hahn=10e-6, tau_start=1.0e-6,
+                  tau_incr=1.0e-6, num_of_points=50, mw_channel='a_ch1', laser_length=3.0e-6,
+                  channel_amp=1.0, delay_length=0.7e-6, wait_time=1.0e-6, sync_trig_channel='',
+                  gate_count_channel='', alternating=True):
+    """
+
+    """
+    # Sanity checks
+    if gate_count_channel == '':
+        gate_count_channel = None
+    if sync_trig_channel == '':
+        sync_trig_channel = None
+    err_code = self._do_channel_sanity_checks(mw_channel=mw_channel,
+                                              gate_count_channel=gate_count_channel,
+                                              sync_trig_channel=sync_trig_channel)
+    if err_code != 0:
+        return
+
+    # Make the pi/pihalf pulses non-overlapping
+    max_tau = tau_hahn - rabi_period * 3 / 8 - rabi_period2 / 4
+    min_tau = rabi_period / 8 + rabi_period2 / 4
+    if tau_start < min_tau:
+        tau_start = min_tau
+    tau_end = tau_start + (num_of_points - 1) * tau_incr
+    if tau_end > max_tau:
+        tau_incr = (tau_end - tau_start) / (num_of_points - 1)
+
+    # get tau array for measurement ticks
+    tau_array = tau_start + np.arange(num_of_points) * tau_incr
+    # Calculate the "real" tau times for the sequence (not including finite pulse length)
+    real_tau = np.clip(tau_array - min_tau, 0, None)
+    real_tau_hahn = np.clip(tau_hahn - rabi_period * 3 / 8, 0, None)
+
+    # get waiting element
+    waiting_element = self._get_idle_element(wait_time, 0.0, False)
+    # get laser and delay element
+    laser_element, delay_element = self._get_laser_element(laser_length, 0.0, False,
+                                                           delay_length,
+                                                           channel_amp, gate_count_channel)
+    # get pihalf element
+    pihalf_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                          0.0)
+    # get 3pihalf element
+    pi3half_element = self._get_mw_element(rabi_period / 4, 0.0, mw_channel, False, mw_amp, mw_freq,
+                                           180.0)
+    # get pi element
+    pi_element = self._get_mw_element(rabi_period / 2, 0.0, mw_channel, False, mw_amp, mw_freq, 0.0)
+    # get pi element for second spin
+    pi2_element = self._get_mw_element(rabi_period2 / 2, 0.0, mw_channel, False, mw2_amp, mw2_freq,
+                                       0.0)
+    # get first hahn tau element
+    tau1_element = self._get_idle_element(real_tau_hahn, 0, False)
+
+    if sync_trig_channel is not None:
+        # get sequence trigger element
+        seqtrig_element = self._get_trigger_element(20.0e-9, 0.0, sync_trig_channel,
+                                                    amp=channel_amp)
+        # Create its own block out of the element
+        seq_block = PulseBlock('seq_trigger', [seqtrig_element])
+        # save block
+        self.save_block('seq_trigger', seq_block)
+
+    # Create element list for alternating Deer PulseBlock
+    element_list = []
+    for i in range(num_of_points):
+        # Get remaining tau elements
+        first_tau = real_tau_hahn - rabi_period2 / 2 - real_tau[i]
+        second_tau = real_tau_hahn - rabi_period2 / 2 - first_tau
+        tau2_element = self._get_idle_element(first_tau, 0, False)
+        tau3_element = self._get_idle_element(second_tau, 0, False)
+
+        element_list.append(pihalf_element)
+        element_list.append(tau1_element)
+        element_list.append(pi_element)
+        element_list.append(tau2_element)
+        element_list.append(pi2_element)
+        element_list.append(tau3_element)
+        element_list.append(pihalf_element)
+        element_list.append(laser_element)
+        element_list.append(delay_element)
+        element_list.append(waiting_element)
+        if alternating:
+            element_list.append(pihalf_element)
+            element_list.append(tau1_element)
+            element_list.append(pi_element)
+            element_list.append(tau2_element)
+            element_list.append(pi2_element)
+            element_list.append(tau3_element)
+            element_list.append(pi3half_element)
+            element_list.append(laser_element)
+            element_list.append(delay_element)
+            element_list.append(waiting_element)
+
+    # Create PulseBlock object
+    deer_block = PulseBlock(name, element_list)
+    # save block
+    self.save_block(name, deer_block)
+
+    # Create Block list with repetitions and sequence trigger if needed.
+    # remember number_of_taus=0 also counts as first round.
+    block_list = [(deer_block, 0)]
     if sync_trig_channel is not None:
         block_list.append((seq_block, 0))
 
