@@ -690,6 +690,8 @@ class PulsedMeasurementLogic(GenericLogic):
                                                          dtype=float)
                 if 'number_of_lasers' in settings_dict:
                     self._number_of_lasers = int(settings_dict.get('number_of_lasers'))
+                    if self.fastcounter().is_gated():
+                        self.set_fast_counter_settings(number_of_gates=self._number_of_lasers)
                 if 'laser_ignore_list' in settings_dict:
                     self._laser_ignore_list = sorted(settings_dict.get('laser_ignore_list'))
                 if 'alternating' in settings_dict:
