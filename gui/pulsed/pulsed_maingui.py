@@ -541,6 +541,7 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     def _activate_main_window_ui(self):
         self._setup_toolbar()
+        self.loaded_asset_updated(*self.pulsedmasterlogic().loaded_asset)
         return
 
     def _deactivate_main_window_ui(self):
@@ -2630,7 +2631,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Check if the signal has been emitted by a dragged line in the laser plot
         if self.sender().__class__.__name__ == 'InfiniteLine':
-            sig_start = np.self.sig_start_line.value()
+            sig_start = self.sig_start_line.value()
             sig_end = self.sig_end_line.value()
             ref_start = self.ref_start_line.value()
             ref_end = self.ref_end_line.value()
