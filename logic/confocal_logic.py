@@ -448,9 +448,13 @@ class ConfocalLogic(GenericLogic):
             return -1
 
         if self._zscan:
-            # creates an array of evenly spaced numbers over the interval
-            # x1, x2 and the spacing is equal to xy_resolution
-            self._X = np.linspace(x1, x2, self.xy_resolution)
+            if self.depth_img_is_xz:
+                # creates an array of evenly spaced numbers over the interval
+                # x1, x2 and the spacing is equal to xy_resolution
+                self._X = np.linspace(x1, x2, self.xy_resolution)
+            else:
+                self._Y = np.linspace(y1, y2, self.xy_resolution)
+
             # Checks if the z-start and z-end value are ok
             if z2 < z1:
                 self.log.error(
