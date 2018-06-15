@@ -331,12 +331,10 @@ class AWG70K(Base, PulserInterface):
             if mrk_ch_1 in digital_samples and mrk_ch_2 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_2].view('uint8')
                 tmp_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 7, out=mrk_bytes)
-                np.left_shift(tmp_bytes, 6, out=tmp_bytes)
+                np.left_shift(mrk_bytes, 1, out=mrk_bytes)
                 np.add(mrk_bytes, tmp_bytes, out=mrk_bytes)
             elif mrk_ch_1 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 6, out=mrk_bytes)
             else:
                 mrk_bytes = None
             print('Prepare digital channel data: {0}'.format(time.time()-start))
@@ -352,7 +350,7 @@ class AWG70K(Base, PulserInterface):
             start = time.time()
             self._write_wfmx(filename=wfm_name,
                              analog_samples=analog_samples[a_ch],
-                             digital_samples=mrk_bytes,
+                             marker_bytes=mrk_bytes,
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
@@ -364,7 +362,8 @@ class AWG70K(Base, PulserInterface):
             print('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
-            self.write('MMEM:OPEN "{0}"'.format(os.path.join(self._ftp_path, wfm_name + '.wfmx')))
+            self.write('MMEM:OPEN "{0}"'.format(os.path.join(
+                self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
             # Wait for everything to complete
             while int(self.query('*OPC?')) != 1:
                 time.sleep(0.25)
@@ -1508,7 +1507,7 @@ class AWG70K(Base, PulserInterface):
             header = self._create_xml_header(total_number_of_samples, marker_bytes is not None)
             # write header
             with open(wfmx_path, 'wb') as wfmxfile:
-                wfmxfile.write(header)
+                wfmxfile.write(header.encode('utf8'))
             # Check if a tmp digital samples file is present and delete it if necessary.
             if os.path.isfile(tmp_path):
                 os.remove(tmp_path)
