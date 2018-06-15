@@ -156,6 +156,7 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
         """
         # Set up pulse sequence
         if self.superres_scanmode:
+            self.is_first_scan = True
             # generate pulse sequence
             # self._pulsed_master.delete_sequence('Superres')
             # time.sleep(1)
@@ -196,6 +197,9 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             while not self._pulsed_master.status_dict['pulser_running']:
                 time.sleep(0.2)
             time.sleep(1)
+            return self._scanning_device.set_up_scanner(
+                counter_channel, photon_source, self._scanning_device._external_clock_channel,
+                scanner_ao_channels)
         return self._scanning_device.set_up_scanner(counter_channel, photon_source, clock_channel,
                                                     scanner_ao_channels)
 
@@ -252,6 +256,11 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return float[]: the photon counts per second
         """
+        if self.superres_scanmode and self.is_first_scan:
+            self._scanning_device.digital_channel_switch(channel_name=self._scanning_device._odmr_trigger_channel, mode=True)
+            self._scanning_device.digital_channel_switch(channel_name=self._scanning_device._odmr_trigger_channel, mode=False)
+            self.is_first_scan = False
+
         if self.superres_scanmode and pixel_clock:
             # self._pulsed_master._measurement_logic._pulse_generator_device._force_jump_sequence(
             #     'FIRST')
@@ -270,10 +279,10 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         # apply superresolution mode
         if self.superres_scanmode and pixel_clock:
-            self._pulsed_master.toggle_pulse_generator(True)
-            time.sleep(0.2)
-            while not self._pulsed_master.status_dict['pulser_running']:
-                time.sleep(0.2)
+            # self._pulsed_master.toggle_pulse_generator(True)
+            # time.sleep(0.2)
+            # while not self._pulsed_master.status_dict['pulser_running']:
+            #     time.sleep(0.2)
             # always sample 3 times the same position
             #line_path = np.repeat(line_path, 3, axis=1)
             tmp_return = self._scanning_device.scan_line(line_path, pixel_clock)
@@ -282,10 +291,10 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
             linescan_return[:, 1] = tmp_return[1::3, 0]
             linescan_return[:, 2] = tmp_return[2::3, 0]
             # Switch off pulse sequence (to reset the sequence)
-            self._pulsed_master.toggle_pulse_generator(False)
-            time.sleep(0.2)
-            while self._pulsed_master.status_dict['pulser_running']:
-                time.sleep(0.2)
+            # self._pulsed_master.toggle_pulse_generator(False)
+            # time.sleep(0.2)
+            # while self._pulsed_master.status_dict['pulser_running']:
+            #     time.sleep(0.2)
         else:
             linescan_return = self._scanning_device.scan_line(line_path, pixel_clock)
 
@@ -296,11 +305,11 @@ class ScannerMwsuperresInterfuse(GenericLogic, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # if self.superres_scanmode:
-        #     # Switch off pulse sequence
-        #     self._pulsed_master.toggle_pulse_generator(False)
-        #     while self._pulsed_master.status_dict['pulser_running']:
-        #         time.sleep(0.2)
+        if self.superres_scanmode:
+            # Switch off pulse sequence
+            self._pulsed_master.toggle_pulse_generator(False)
+            while self._pulsed_master.status_dict['pulser_running']:
+                time.sleep(0.2)
         return self._scanning_device.close_scanner()
 
     def close_scanner_clock(self, power=0):

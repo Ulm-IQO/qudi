@@ -24,6 +24,7 @@ import numpy as np
 import re
 
 import PyDAQmx as daq
+import time
 
 from core.module import Base, ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
@@ -65,6 +66,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _scanner_counter_channels = ConfigOption('scanner_counter_channels', [], missing='warn')
     _scanner_voltage_ranges = ConfigOption('scanner_voltage_ranges', missing='error')
     _scanner_position_ranges = ConfigOption('scanner_position_ranges', missing='error')
+    _external_clock_channel = ConfigOption('ext_clock_channel', missing='error')
 
     # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
@@ -248,6 +250,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             if scanner:
                 self._scanner_clock_daq_task = my_clock_daq_task
+                # daq.DAQmxCfgDigEdgeStartTrig(self._scanner_clock_daq_task,
+                #                              self._odmr_trigger_channel,
+                #                              daq.DAQmx_Val_Rising)
             else:
                 # actually start the preconfigured clock task
                 daq.DAQmxStartTask(my_clock_daq_task)
@@ -872,7 +877,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if clock_channel is not None:
             self._my_scanner_clock_channel = clock_channel
         else:
-            self._my_scanner_clock_channel = self._scanner_clock_channel
+            self._my_scanner_clock_channel = self._scanner_clock_channel + 'InternalOutput'
 
         if scanner_ao_channels is not None:
             self._scanner_ao_channels = scanner_ao_channels
@@ -929,7 +934,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     # use this counter channel
                     ch,
                     # assign a Terminal Name
-                    self._my_scanner_clock_channel + 'InternalOutput')
+                    # self._external_clock_channel)
+                    self._my_scanner_clock_channel)
 
                 # Set a CounterInput Control Timebase Source.
                 # Specify the terminal of the timebase which is used for the counter:
@@ -1124,11 +1130,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # being scanned (i.e. that you go through each voltage, which
                 # corresponds to a position. How fast the voltages are being
                 # changed is combined with obtaining the counts per voltage peak).
+                # clk_chnl = self._external_clock_channel if pixel_clock else self._my_scanner_clock_channel + 'InternalOutput'
                 daq.DAQmxCfgSampClkTiming(
                     # add to this task
                     self._scanner_ao_task,
                     # use this channel as clock
-                    self._my_scanner_clock_channel + 'InternalOutput',
+                    self._my_scanner_clock_channel,
                     # Maximum expected clock frequency
                     self._scanner_clock_frequency,
                     # Generate sample on falling edge
@@ -1217,6 +1224,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         n is the number of scanner axes, which can vary. Typical values are 2 for galvo scanners,
         3 for xyz scanners and 4 for xyz scanners with a special function on the a axis.
         """
+        awg = self._manager.tree['loaded']['hardware']['awg']
+
         if len(self._scanner_counter_channels) > 0 and len(self._scanner_counter_daq_tasks) < 1:
             self.log.error('Configured counter is not running, cannot scan a line.')
             return np.array([[-1.]])
@@ -1249,11 +1258,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
 
-            if pixel_clock and self._pixel_clock_channel is not None:
-                daq.DAQmxConnectTerms(
-                    self._scanner_clock_channel + 'InternalOutput',
-                    self._pixel_clock_channel,
-                    daq.DAQmx_Val_DoNotInvertPolarity)
+            # if pixel_clock and self._pixel_clock_channel is not None:
+            #     daq.DAQmxConnectTerms(
+            #         self._external_clock_channel,
+            #         self._pixel_clock_channel,
+            #         daq.DAQmx_Val_DoNotInvertPolarity)
 
             # start the scanner counting task that acquires counts synchroneously
             for i, task in enumerate(self._scanner_counter_daq_tasks):
@@ -1263,6 +1272,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 daq.DAQmxStartTask(self._scanner_analog_daq_task)
 
             daq.DAQmxStartTask(self._scanner_clock_daq_task)
+
+            if pixel_clock:
+                self.digital_channel_switch(channel_name=self._odmr_trigger_channel, mode=True)
+                self.digital_channel_switch(channel_name=self._odmr_trigger_channel, mode=False)
+                # while int(awg.ask('SOUR1:SCST?').strip('"')) == 1:
+                #     awg.awg.write('*TRG')
 
             for i, task in enumerate(self._scanner_counter_daq_tasks):
                 # wait for the scanner counter to finish
@@ -1335,10 +1350,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             # stop the analog output task
             self._stop_analog_output()
 
-            if pixel_clock and self._pixel_clock_channel is not None:
-                daq.DAQmxDisconnectTerms(
-                    self._scanner_clock_channel + 'InternalOutput',
-                    self._pixel_clock_channel)
+            # if pixel_clock and self._pixel_clock_channel is not None:
+            #     daq.DAQmxDisconnectTerms(
+            #         self._scanner_clock_channel + 'InternalOutput',
+            #         self._pixel_clock_channel)
 
             # create a new array for the final data (this time of the length
             # number of samples):
@@ -1361,6 +1376,13 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             # update the scanner position instance variable
             self._current_position = np.array(line_path[:, -1])
+
+            if not pixel_clock:
+                self.digital_channel_switch(channel_name=self._odmr_trigger_channel, mode=True)
+                self.digital_channel_switch(channel_name=self._odmr_trigger_channel, mode=False)
+                # awg._force_jump_sequence('FIRST')
+                # while int(awg.ask('SOUR1:SCST?').strip('"')) != 1:
+                #     pass
         except:
             self.log.exception('Error while scanning line.')
             return np.array([[-1.]])
