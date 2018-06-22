@@ -53,6 +53,16 @@ if '%errorlevel%' NEQ '0' (
     pushd "%CD%"
     CD /D "%~dp0"
 :--------------------------------------
-conda env remove --yes --name qudi
-conda env create -f "%~dp0\conda-env-win8-qt5.yml"
+
+: Run locally a powershell script to be able to catch the interrupt from the 
+: exception if an environment is not present.
+powershell.exe "Try {conda env remove --yes --name qudi} Catch {return "No conda environment with name 'qudi' is present"}" 
+
+echo Initiating installation of conda environment with name 'qudi'...
+
+:conda env create -f "%~dp0\conda-env-win8-qt5.yml"
+powershell.exe "conda env create -f "%~dp0\conda-env-win8-qt5.yml; "
+
+
+echo Installation procedure for conda environment 'qudi' finished.
 pause
