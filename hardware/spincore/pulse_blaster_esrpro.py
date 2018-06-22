@@ -26,12 +26,14 @@ import os
 import numpy as np
 
 from interface.pulser_interface import PulserInterface
-from core.module import Base
+from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
-class PulseBlasterESRPRO(Base, PulserInterface):
+class PulseBlasterESRPRO(Base):
+
+#class PulseBlasterESRPRO(Base, PulserInterface):
     """ UNSTABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
@@ -57,9 +59,25 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             unsigned long int       32 bit unsigned integer
             float                   32 bit floating point number
             double                  64 bit floating point number
+
+    Example config:
+
+        pulseblaster:
+            module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
+            library_file: 'spinapi64.dll' # name of the library file or even whole path to the file
+
+    Dummy config for the pulser interface:
+
+        dummypulser:
+            module.Class: 'pulser_dummy.PulserDummy'
     """
     _modclass = 'PulseBlasterESRPRO'
     _modtype = 'hardware'
+
+    _library_path = ConfigOption('library_path', default='', missing='info')
+
+    # the library pointer is saved here
+    _dll = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -71,36 +89,44 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         self.FREQ_MAX = int(1/self.GRAN_MIN *1000) # Maximal output frequency.
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
 
-        # Check the platform architecture:
-        arch = platform.architecture()
-        if arch == ('32bit', 'WindowsPE'):
-            libname = 'spinapi.dll'
-        elif arch == ('64bit', 'WindowsPE'):
-            libname = 'spinapi64.dll'
-        elif arch == ('32bit', 'ELF'):
-            folderpath = os.path.join(get_main_dir(), 'hardware',
-                                      'SpinCore')
-            libname = os.path.join(folderpath, 'libspinapi.so')
-        elif arch == ('64bit', 'ELF'):
-            folderpath = os.path.join(get_main_dir(), 'hardware',
-                                      'SpinCore')
-            libname = os.path.join(folderpath, 'libspinapi64.so')
 
-        # In Windows load the spinapi library file spinapi.dll from the folder
-        # <Windows>/System32/. For Unix systems, the shared object (= *.so)
-        # file muss be within the same directory, where the file is situated.
-        self._dll = ctypes.cdll.LoadLibrary(libname)
+        # check at first the config option, whether a correct library was found
+        lib_path = ctypes.util.find_library(self._library_path)
 
-        #FIXME: Check before if library exists and if it is loadable.
+        if lib_path is None:
+            # Check the platform architecture:
+            arch = platform.architecture()
+            if arch == ('32bit', 'WindowsPE'):
+                libname = 'spinapi.dll'
+            elif arch == ('64bit', 'WindowsPE'):
+                libname = 'spinapi64.dll'
+            elif arch == ('32bit', 'ELF'):
+                libname = 'libspinapi.so'
+            elif arch == ('64bit', 'ELF'):
+                libname ='libspinapi64.so'
 
+            # In Windows load the spinapi library file spinapi.dll from the
+            # folder <Windows>/System32/. For Unix systems, the shared object
+            # (= *.so) file muss be within the same directory, where the file
+            # is situated.
+
+            lib_path = ctypes.util.find_library(libname)
+
+        if lib_path is None:
+            self.log.error('No library could be loaded for the PulseBlaster '
+                           'card. Please specify the correct path to it in the '
+                           'config variable "library_file". If might also be '
+                           'that you need to install the PulseBlaster library '
+                           'from SpinCore.')
+            return -1
+
+        self._dll = ctypes.cdll.LoadLibrary(lib_path)
         self.open_connection()
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
+        """ Deinitialisation performed during deactivation of the module. """
         self.close_connection()
 
     # =========================================================================
@@ -128,6 +154,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             self.log.error('Error in PulseBlaster with errorcode {0}:\n'
                            '{1}'.format(func_val, err_str))
         return func_val
+
 
     def get_error_string(self):
         """ Return the most recent error string.
@@ -369,6 +396,7 @@ class PulseBlasterESRPRO(Base, PulserInterface):
         length = ctypes.c_double(length)
 
         self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
+        return
 
 
     def get_status(self):
@@ -421,9 +449,11 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                    a numpy list, which contains the channel
                                    number, which should be switched on. The
                                    channel numbers start with 0.
-        @param float clock_freq: the clock frequency in MHz, which should be
-                                 set to output the signals in that rate.
-        @param bool loop: Will the sequence be looped or not.
+        @param float clock_freq: optional, the clock frequency in MHz, which
+                                 should be set to output the signals in that
+                                 rate.
+        @param bool loop: optional, set if sequence should be looped (so that it
+                          runs continuously) or not, default it True.
 
         This method should called with the general sequence_list to program
         the PulseBlaster.
@@ -442,8 +472,10 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         self.set_core_clock(clock_freq)
         self.start_programming()
-        start_pulse = self._convert_inst_to_pulse(sequence_list[0]['active_channels'],
-                                                  sequence_list[0]['length'] )
+        start_pulse = self._convert_inst_to_pulse(
+                            sequence_list[0]['active_channels'],
+                            sequence_list[0]['length']
+                            )
 
 
         # go through each pulse in the sequence and write it to the
@@ -459,10 +491,14 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
         if loop == False:
             bitmask = self._convert_to_bitmask(active_channels)
-            num = self._write_pulse(bitmask, inst=1, inst_data=None,
+            num = self._write_pulse(bitmask,
+                                    inst=1,
+                                    inst_data=None,
                                     length=12)
         else:
-            num = self._write_pulse(bitmask=0, inst=6, inst_data=start_pulse,
+            num = self._write_pulse(bitmask=0,
+                                    inst=6,
+                                    inst_data=start_pulse,
                                     length=12)
         if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
@@ -474,8 +510,9 @@ class PulseBlasterESRPRO(Base, PulserInterface):
     def _convert_inst_to_pulse(self, active_channels, length):
         """ Convert the instruction of one row to the PulseBlaster.
 
-        @param numpy.array active_channels: the list of active channels like
-                            e.g. [0,4,7]. Note that the channels start from 0.
+        @param np.array active_channels: the list of active channels like
+                                         e.g. [0,4,7]. Note that the channels
+                                         start from 0.
         @param float length: length of the current row in ns.
 
         @return int: The address number num of the created instruction.
@@ -495,16 +532,19 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                              'granularity of {0}ns. The length is rounded to a '
                              'number, devidable by the granuality! {1}ns were '
                              'dropped.'.format(self.GRAN_MIN, residual))
+
         length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
 
         if length <= 256: # pulses are written in 8 bit words. Save memory if
-                          # the length of the pulse
-            num = self._write_pulse(channel_bitmask, inst=0, inst_data=None,
+                          # the length of the pulse is smaller than 256
+            num = self._write_pulse(channel_bitmask,
+                                    inst=0,
+                                    inst_data=None,
                                     length=length*self.GRAN_MIN)
 
         elif length > 256:
             # reducing the length of the pulses by repeating them.
-            # Try to factorizd successively, in order to reducing the total
+            # Try to factorize successively, in order to reducing the total
             # length of the pulse form. Put the subtracted amount into an
             # additional short command if necessary.
 
@@ -515,7 +555,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
 
                 if value > 4:
                     if factor == 1:
-                        num = self._write_pulse(channel_bitmask, inst=0,
+                        num = self._write_pulse(channel_bitmask,
+                                                inst=0,
                                                 inst_data=None,
                                                 length=value*self.GRAN_MIN)
 
@@ -523,7 +564,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                         # check if you do not exceed the memory limit. Then
                         # you can use the factorized approach to loop your
                         # pulse forms. Therefore apply a LONG_DELAY instruction
-                        num = self._write_pulse(channel_bitmask, inst=7,
+                        num = self._write_pulse(channel_bitmask,
+                                                inst=7,
                                                 inst_data=factor,
                                                 length=value*self.GRAN_MIN)
                     else:
@@ -535,7 +577,8 @@ class PulseBlasterESRPRO(Base, PulserInterface):
                                        'parameters!'.format(factor))
 
                     if i > 4:
-                        self._write_pulse(channel_bitmask, inst=0,
+                        self._write_pulse(channel_bitmask,
+                                          inst=0,
                                           inst_data=None,
                                           length=i*self.GRAN_MIN)
 
@@ -576,13 +619,13 @@ class PulseBlasterESRPRO(Base, PulserInterface):
             # that a bitwise shift to the left (<< operator) is performed and
             # the current channel configuration is compared with a bitwise OR
             # to check whether the bit was already set. E.g.:
-            #   0b1001 | 0b0110: compare elementwise:
+            #   0b1001 | 0b0110: compare element-wise:
             #           1 | 0 => 1
             #           0 | 1 => 1
             #           0 | 1 => 1
             #           1 | 1 => 1
             #                   => 0b1111
-            bits = bits | (1<< channel)
+            bits = bits | (1 << channel)
         return bits
 
     def _factor(self, number):
