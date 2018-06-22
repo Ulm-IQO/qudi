@@ -79,6 +79,17 @@ class PulseBlasterESRPRO(Base):
     # the library pointer is saved here
     _dll = None
 
+    PULSE_PROGRAM = 0
+    CONTINUE = 0
+    STOP = 1
+    LOOP = 2
+    END_LOOP = 3
+    BRANCH = 6
+    LONG_DELAY = 7
+    # ON = 6<<21 # not working, even though it is according to docu, strange
+    ON = 0xE00000
+
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
@@ -292,7 +303,7 @@ class PulseBlasterESRPRO(Base):
         """
         return self.check(self._dll.pb_close())
 
-    def start_programming(self, program=0):
+    def start_programming(self):
         """ Tell the board to start programming one of the onboard devices.
 
         @ return int: A negative number is returned on failure, and spinerr is
@@ -310,7 +321,8 @@ class PulseBlasterESRPRO(Base):
         or RadioProcessor output, the programming will be set by default to
         the PULSE_PROGRAM = 0.
         """
-        return self.check(self._dll.pb_start_programming(program))
+
+        return self.check(self._dll.pb_start_programming(self.PULSE_PROGRAM))
 
     def stop_programming(self):
         """ Finishes the programming for a specific onboard devices.
@@ -344,9 +356,11 @@ class PulseBlasterESRPRO(Base):
         self._dll.pb_core_clock(ctypes.c_double(clock_freq))
 
     def _write_pulse(self, flags, inst, inst_data, length):
+        #FIXME: this docstring is based on the function decripton of
+        #       'pb_inst_tworf' which might be not correct.
         """Instruction programming function for boards without a DDS.
 
-        @param umsigned int flags: Set every bit to one for each flag you want
+        @param unsigned int flags: Set every bit to one for each flag you want
                                    to set high. If 8 channels are addressable
                                    then their bit representation would be
                                        0b00000000   (in python).
@@ -391,6 +405,10 @@ class PulseBlasterESRPRO(Base):
 
         (DDS = Direct Digital Synthesis). The old version of this command was
         'pb_set_clock', which is still valid, but should not be used.
+
+        This function is used to write essentially 'one line' to the pulse
+        generator. This 'one line' tells the device what to output for each
+        channel during a given time (here called 'length').
         """
 
         length = ctypes.c_double(length)
@@ -591,8 +609,9 @@ class PulseBlasterESRPRO(Base):
     def _convert_to_bitmask(self, active_channels):
         """ Convert a list of channels into a bitmask.
 
-        @param numpy.array active_channels: the list of active channels like
-                            e.g. [0,4,7]. Note that the channels start from 0.
+        @param np.array active_channels: the list of active channels like  e.g.
+                                            [0,4,7].
+                                         Note that the channels start from 0.
 
         @return int: The channel-list is converted into a bitmask (an sequence
                      of 1 and 0). The returned integer corresponds to such a
@@ -654,6 +673,33 @@ class PulseBlasterESRPRO(Base):
                 return div, number/div
             div -= 1
         return 1, number
+
+    # =========================================================================
+    # A bit higher methods for using the card as switch
+    # =========================================================================
+
+    def set_channel_high(self, ch_list):
+        """ Set specific channels to high, all others to low.
+
+        @param list ch_list: the list of active channels like  e.g. [0,4,7].
+                             Note that the channels start from 0.
+
+        This is a low level command for testing, and mostly to reuse this
+        functionality not for pulsing but just rather for switching something
+        on or off.
+        """
+
+        clock_freq = 500    # in MHz, for just switching the channels on or off,
+                            # the clock will not play a role, therefore it is
+                            # not a config option in this method.
+
+        self.set_core_clock(clock_freq)
+        self.start_programming()
+        flags = self.ON | self._convert_to_bitmask(ch_list)
+        length = 100 # in ns, just an arbitrary but fixed number for a length
+        self._write_pulse(flags=flags, inst=self.STOP, inst_data=0, length=length)
+        self.stop_programming()
+        self.start()
 
     # =========================================================================
     # Below the pulser interface implementation.
