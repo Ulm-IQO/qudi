@@ -1,4 +1,4 @@
-name: qudi-test
+name: qudi
 channels:
 - defaults
 dependencies:
@@ -119,5 +119,4 @@ dependencies:
   - smmap2==2.0.3
   - typing==3.6.4
   - uncertainties==3.0.2
-prefix: C:\Anaconda3_64bit\envs\qudi-test
 
