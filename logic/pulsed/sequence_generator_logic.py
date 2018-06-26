@@ -1546,7 +1546,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigSampleEnsembleComplete.emit(ensemble)
-        return offset_bin, list(written_waveforms), ensemble_info
+        return offset_bin, sorted(written_waveforms), ensemble_info
 
     @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
