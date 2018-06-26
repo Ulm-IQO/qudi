@@ -21,7 +21,7 @@ Changes/New features:
 * Update conda environment to more recent versions of packages
 * Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
 Config changes:
-* Add separate conda environments for windows 7 32bit, and windows 10 64bit. 
+* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
 * Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
 
 
