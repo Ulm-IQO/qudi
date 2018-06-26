@@ -1048,7 +1048,11 @@ class SequenceGeneratorLogic(GenericLogic):
             analog_channels = block.analog_channels
             channel_set = analog_channels.union(digital_channels)
             if laser_channel in channel_set:
-                tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
+                if laser_channel.startswith('a'):
+                    tmp_digital_high = type(
+                        block.element_list[-1].pulse_function[laser_channel]).__name__ != 'Idle'
+                else:
+                    tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
         else:
             return ensemble_length_s, ensemble_length_bins, number_of_lasers
 
@@ -1062,10 +1066,17 @@ class SequenceGeneratorLogic(GenericLogic):
                 if laser_channel in channel_set:
                     # Iterate over the Block_Elements inside the current block
                     for block_element in block.element_list:
-                        # save bin position if transition from low to high has occured in laser channel
-                        if block_element.digital_high[laser_channel] and not tmp_digital_high:
+                        # save bin position if transition from low to high has occured in
+                        # laser channel
+                        if laser_channel.startswith('a'):
+                            is_high = type(
+                                block_element.pulse_function[laser_channel]).__name__ != 'Idle'
+                        else:
+                            is_high = block_element.digital_high[laser_channel]
+
+                        if is_high and not tmp_digital_high:
                             number_of_lasers += 1
-                        tmp_digital_high = block_element.digital_high[laser_channel]
+                        tmp_digital_high = is_high
 
         # Nearest possible match including the discretization in bins
         ensemble_length_bins = int(np.rint(ensemble_length_s * self.__sample_rate))
