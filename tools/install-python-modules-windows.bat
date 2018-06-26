@@ -67,13 +67,14 @@ REM Get the windows version
 for /f "tokens=4-5 delims=. " %%i in ('ver') do set VERSION=%%i.%%j
 
 REM Get which environment to install for a specific windows version.
+
 if "%version%" == "6.1" (
     if %OS% == 32BIT ( 
         echo Detected: Windows 7. 32bit 
         powershell.exe "conda env create -f '%~dp0\conda-env-win7-32bit-qt5.yml' "
     ) else ( 
         echo Detected: Windows 7. 64bit 
-        powershell.exe "conda env create -f '%~dp0\conda-env-win8-qt5.yml' "
+        powershell.exe "conda env create -f '%~dp0\conda-env-win7-64bit-qt5.yml' "
     ) 
 )
         
