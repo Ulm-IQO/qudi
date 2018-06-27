@@ -64,7 +64,7 @@ class PulseBlasterESRPRO(Base):
 
         pulseblaster:
             module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
-            library_file: 'spinapi64.dll' # name of the library file or even whole path to the file
+            #library_file: 'spinapi64.dll' # optional, name of the library file or even whole path to the file
 
     Dummy config for the pulser interface:
 
@@ -80,15 +80,32 @@ class PulseBlasterESRPRO(Base):
     _dll = None
 
     PULSE_PROGRAM = 0
+
+    # Defines for different pb_inst instruction types (in _write_pulse called
+    # inst_data):
     CONTINUE = 0
     STOP = 1
     LOOP = 2
     END_LOOP = 3
+    JSR = 4
+    RTS = 5
     BRANCH = 6
     LONG_DELAY = 7
+    WAIT = 8
+    RTI = 9
+
     # ON = 6<<21 # not working, even though it is according to docu, strange
     ON = 0xE00000
+    ALL_FLAGS_ON = 0x1FFFFF
+    ONE_PERIOD = 0x200000
+    TWO_PERIOD = 0x400000
+    THREE_PERIOD = 0x600000
+    FOUR_PERIOD = 0x800000
+    FIVE_PERIOD = 0xA00000
+    SIX_PERIOD = 0xC00000
 
+    GRAN_MIN = 2   # minimal possible granularity in time, in ns.
+    FREQ_MAX = int(1/GRAN_MIN * 1000) # Maximal output frequency in MHz.
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -96,11 +113,8 @@ class PulseBlasterESRPRO(Base):
         #locking for thread safety
         self.threadlock = Mutex()
 
-        self.GRAN_MIN = 2   # minimal possible granuality in time, in ns.
-        self.FREQ_MAX = int(1/self.GRAN_MIN *1000) # Maximal output frequency.
-
     def on_activate(self):
-        """ Initialisation performed during activation of the module. """
+        """ Initialization performed during activation of the module. """
 
 
         # check at first the config option, whether a correct library was found
@@ -134,10 +148,13 @@ class PulseBlasterESRPRO(Base):
             return -1
 
         self._dll = ctypes.cdll.LoadLibrary(lib_path)
+        self.log.debug('SpinCore library loaded from: {0}'.format(lib_path))
         self.open_connection()
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module. """
+        """ Deinitialization performed during deactivation of the module. """
+
+        self.stop()
         self.close_connection()
 
     # =========================================================================
@@ -155,10 +172,10 @@ class PulseBlasterESRPRO(Base):
 
         Each called function in the dll has an 32-bit return integer, which
         indicates, whether the function was called and finished successfully
-        (then func_val = 0) or if any error has occured (func_val < 0).
+        (then func_val = 0) or if any error has occurred (func_val < 0).
         """
 
-        if not func_val == 0:
+        if func_val < 0:
 
             err_str = self.get_error_string()
 
@@ -287,6 +304,7 @@ class PulseBlasterESRPRO(Base):
         your system, pb_select_board() may be called first to select which
         board to initialize.
         """
+        self.log.debug('Open connection to SpinCore library.')
         return self.check(self._dll.pb_init())
 
     def close_connection(self):
@@ -301,6 +319,7 @@ class PulseBlasterESRPRO(Base):
         that is loaded and running at the time of calling this function will
         continue to run indefinitely.
         """
+        self.log.debug('Close connection to SpinCore library.')
         return self.check(self._dll.pb_close())
 
     def start_programming(self):
@@ -356,8 +375,6 @@ class PulseBlasterESRPRO(Base):
         self._dll.pb_core_clock(ctypes.c_double(clock_freq))
 
     def _write_pulse(self, flags, inst, inst_data, length):
-        #FIXME: this docstring is based on the function decripton of
-        #       'pb_inst_tworf' which might be not correct.
         """Instruction programming function for boards without a DDS.
 
         @param unsigned int flags: Set every bit to one for each flag you want
@@ -372,19 +389,19 @@ class PulseBlasterESRPRO(Base):
         @param int inst: Specify the instruction you want. Valid instructions
                          are:
                          Opcode#	Instruction	  Meaning of inst_data field
-                             0      CONTINUE          Not Used
-                             1      STOP              Not Used
+                             0      CONTINUE          Continue
+                             1      STOP              Stop
                              2      LOOP              Number of desired loops
                              3      END_LOOP          Address of instruction
                                                       originating loop
                              4      JSR               Address of first
                                                       instruction in subroutine
-                             5      RTS               Not Used
+                             5      RTS               ?
                              6      BRANCH            Address of instruction to
                                                       branch to
                              7      LONG_DELAY        Number of desired
                                                       repetitions
-                             8      WAIT              Not Used
+                             8      WAIT              wait until something
 
                         That means if you choose an operation code, which has
                         a meaning in the inst_data (like e.g. 2 = LOOP) you can
@@ -396,11 +413,13 @@ class PulseBlasterESRPRO(Base):
                               can be passed is 2^20-1 (the largest value
                               possible for a 20 bit number). See above table
                               to find out what this means for each instruction.
+                              Pass None if the inst_data should be ignored.
         @param double length: Length of this instruction in nanoseconds.
 
-        @return int: The address of the created instruction is returned. This
-                     can be used as the branch address for any branch
-                     instructions. A negative number is returned on failure,
+        @return int: a positive number represents the address of the created
+                     instruction. This can be used as the branch address for any
+                     branch instructions. Other instructions should yield 0 as
+                     output. A negative number is returned on failure,
                      and spinerr is set to a description of the error.
 
         (DDS = Direct Digital Synthesis). The old version of this command was
@@ -413,8 +432,7 @@ class PulseBlasterESRPRO(Base):
 
         length = ctypes.c_double(length)
 
-        self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
-        return
+        return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
 
 
     def get_status(self):
@@ -462,11 +480,16 @@ class PulseBlasterESRPRO(Base):
         """ The higher level function, which creates the actual sequences.
 
         @param list sequence_list: a list with dictionaries. The dictionaries
-                                   have the elements 'is_laser', 'length' and
-                                   'active_channels'. The 'active_channels' is
+                                   have the elements 'active_channels' and
+                                   'length. The 'active_channels' is
                                    a numpy list, which contains the channel
                                    number, which should be switched on. The
-                                   channel numbers start with 0.
+                                   channel numbers start with 0. E.g.
+
+                                   [{'active_channels':[0], 'length': 10000},
+                                    {'active_channels':[], 'length': 20000}]
+                                    which will switch on
+
         @param float clock_freq: optional, the clock frequency in MHz, which
                                  should be set to output the signals in that
                                  rate.
@@ -490,7 +513,7 @@ class PulseBlasterESRPRO(Base):
 
         self.set_core_clock(clock_freq)
         self.start_programming()
-        start_pulse = self._convert_inst_to_pulse(
+        start_pulse = self._convert_pulse_to_inst(
                             sequence_list[0]['active_channels'],
                             sequence_list[0]['length']
                             )
@@ -499,7 +522,7 @@ class PulseBlasterESRPRO(Base):
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
         for pulse in sequence_list[1:]:
-            num  = self._convert_inst_to_pulse(pulse['active_channels'],
+            num  = self._convert_pulse_to_inst(pulse['active_channels'],
                                                pulse['length'])
             if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
@@ -507,17 +530,18 @@ class PulseBlasterESRPRO(Base):
 
         active_channels = sequence_list[-1]['active_channels']
 
+        # Take the last pulse and extend it with the branch or the stop command
         if loop == False:
             bitmask = self._convert_to_bitmask(active_channels)
-            num = self._write_pulse(bitmask,
-                                    inst=1,
+            num = self._write_pulse(self.ON|bitmask,
+                                    inst=self.STOP,
                                     inst_data=None,
-                                    length=12)
+                                    length=20)
         else:
-            num = self._write_pulse(bitmask=0,
-                                    inst=6,
+            num = self._write_pulse(flags=self.ON|0,
+                                    inst=self.BRANCH,
                                     inst_data=start_pulse,
-                                    length=12)
+                                    length=20)
         if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
@@ -525,8 +549,8 @@ class PulseBlasterESRPRO(Base):
         self.stop_programming()
 
 
-    def _convert_inst_to_pulse(self, active_channels, length):
-        """ Convert the instruction of one row to the PulseBlaster.
+    def _convert_pulse_to_inst(self, active_channels, length):
+        """ Convert a pulse of one row to a instructions for the PulseBlaster.
 
         @param np.array active_channels: the list of active channels like
                                          e.g. [0,4,7]. Note that the channels
@@ -541,24 +565,25 @@ class PulseBlasterESRPRO(Base):
         # return bitrepresentation of active channels:
         channel_bitmask = self._convert_to_bitmask(active_channels)
 
-        # Chech, whether the length fulfills the minimal granuality (= every
-        # pulse has to be devidable by 2ns, which corresponds to a 500MHz
+        # Check, whether the length fulfills the minimal granularity (= every
+        # pulse has to be dividable by 2ns, which corresponds to a 500MHz
         # output sampling.)
         residual = length % self.GRAN_MIN
         if residual != 0:
             self.log.warning('The length of the pulse does not fulfil the '
                              'granularity of {0}ns. The length is rounded to a '
-                             'number, devidable by the granuality! {1}ns were '
+                             'number, dividable by the granularity! {1}ns were '
                              'dropped.'.format(self.GRAN_MIN, residual))
 
         length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
 
-        if length <= 256: # pulses are written in 8 bit words. Save memory if
+        if length <= 256:
+                          # pulses are written in 8 bit words. Save memory if
                           # the length of the pulse is smaller than 256
             num = self._write_pulse(channel_bitmask,
-                                    inst=0,
+                                    inst=self.CONTINUE,
                                     inst_data=None,
-                                    length=length*self.GRAN_MIN)
+                                    length=length)
 
         elif length > 256:
             # reducing the length of the pulses by repeating them.
@@ -574,18 +599,18 @@ class PulseBlasterESRPRO(Base):
                 if value > 4:
                     if factor == 1:
                         num = self._write_pulse(channel_bitmask,
-                                                inst=0,
+                                                inst=self.CONTINUE,
                                                 inst_data=None,
-                                                length=value*self.GRAN_MIN)
+                                                length=value)
 
                     elif factor < 1048576: # = (2**20 + 1)
                         # check if you do not exceed the memory limit. Then
                         # you can use the factorized approach to loop your
                         # pulse forms. Therefore apply a LONG_DELAY instruction
                         num = self._write_pulse(channel_bitmask,
-                                                inst=7,
-                                                inst_data=factor,
-                                                length=value*self.GRAN_MIN)
+                                                inst=self.LONG_DELAY,
+                                                inst_data=int(factor),
+                                                length=value)
                     else:
                         self.log.error('Error in PulseCreation: Loop counts '
                                        'are {0} in LONG_DELAY instruction and '
@@ -596,9 +621,9 @@ class PulseBlasterESRPRO(Base):
 
                     if i > 4:
                         self._write_pulse(channel_bitmask,
-                                          inst=0,
+                                          inst=self.CONTINUE,
                                           inst_data=None,
-                                          length=i*self.GRAN_MIN)
+                                          length=i)
 
                     break
                 i = i+1
@@ -657,7 +682,7 @@ class PulseBlasterESRPRO(Base):
                           have to multiply the first number to get the input
                           value.
 
-        Starting from 256 you try to find a number which will devide the input
+        Starting from 256 you try to find a number which will divide the input
         value such that no residue remains. If there is no number, then you
         have found a prime number that is bigger than the number 256. If you
         are below 256, there is no need in factorization and the number is
@@ -682,7 +707,8 @@ class PulseBlasterESRPRO(Base):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
-                             Note that the channels start from 0.
+                             Note that the channels start from 0. Note, an empty
+                             list will set all channels to low.
 
         This is a low level command for testing, and mostly to reuse this
         functionality not for pulsing but just rather for switching something
@@ -697,9 +723,11 @@ class PulseBlasterESRPRO(Base):
         self.start_programming()
         flags = self.ON | self._convert_to_bitmask(ch_list)
         length = 100 # in ns, just an arbitrary but fixed number for a length
-        self._write_pulse(flags=flags, inst=self.STOP, inst_data=0, length=length)
+        retval = self._write_pulse(flags=flags, inst=self.STOP, inst_data=0, length=length)
         self.stop_programming()
         self.start()
+
+        return retval
 
     # =========================================================================
     # Below the pulser interface implementation.
