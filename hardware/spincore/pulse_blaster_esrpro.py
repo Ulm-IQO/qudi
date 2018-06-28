@@ -27,6 +27,8 @@ import numpy as np
 
 from interface.switch_interface import SwitchInterface
 from interface.pulser_interface import PulserInterface
+from interface.pulser_interface import PulserConstraints
+
 from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
@@ -526,28 +528,32 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         if len(sequence_list) == 1:
             return self.activate_channels(ch_list=sequence_list[0]['active_channels'],
                                           length=sequence_list[0]['length'],
-                                          clock_freq=clock_freq,
                                           immediate_start=False)
 
         self.set_core_clock(clock_freq)
         self.start_programming()
         start_pulse = self._convert_pulse_to_inst(
                             sequence_list[0]['active_channels'],
-                            sequence_list[0]['length']
-                            )
+                            sequence_list[0]['length'],
+                            clock_freq)
 
 
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
         for pulse in sequence_list[1:-1]:
             num  = self._convert_pulse_to_inst(pulse['active_channels'],
-                                               pulse['length'])
+                                               pulse['length'],
+                                               clock_freq)
             if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
 
+
         active_channels = sequence_list[-1]['active_channels']
-        length = sequence_list[-1]['length']
+        corr_factor = self.FREQ_MAX/clock_freq
+        # see in the method _convert_pulse_to_inst for an explanation of the
+        # corr_factor.
+        length = sequence_list[-1]['length'] * corr_factor
 
         # Take the last pulse and extend it by either tell the device to stop
         # after this round and do no infinite looping or branching from out to
@@ -574,13 +580,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         return num
 
 
-    def _convert_pulse_to_inst(self, active_channels, length):
+    def _convert_pulse_to_inst(self, active_channels, length, clock_freq=500):
         """ Convert a pulse of one row to a instructions for the PulseBlaster.
 
         @param np.array active_channels: the list of active channels like
                                          e.g. [0,4,7]. Note that the channels
                                          start from 0.
         @param float length: length of the current row in ns.
+        @param float clock_freq: optional, clock frequency in MHz, the length of
+                                 the channel has to adapted according to the
+                                 clock frequency. Default is 500.
 
         @return int: The address number num of the created instruction.
 
@@ -600,9 +609,23 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                              'number, dividable by the granularity! {1}ns were '
                              'dropped.'.format(self.GRAN_MIN, residual))
 
-        length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
+        # The sequence has to be increased, if the clock is lower than 500MHz
+        corr_factor = self.FREQ_MAX/clock_freq
 
-        if length <= 256:
+        length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN * corr_factor
+
+
+        # if the clock is 500MHz, then the time resolution is 2ns, i.e. every
+        # 2ns a change can occur in the pulse blaster. A step of 2ns will be
+        # represented by one bit, i.e. by using 256bit a time of
+        # 2ns * 256 = 512ns can be sampled in one data word. Internally, this
+        # will be the time frame of the data processing. This procedure
+        # enables to run the data processing 256 times slower, and only the fast
+        # multiplexer, which combines and outputs the 8bit word, needs to run at
+        # the fast clock speed of 500MHz. This prevents errors and is more
+        # stable for the data processing.
+
+        if length <= int(256 * corr_factor):
                           # pulses are written in 8 bit words. Save memory if
                           # the length of the pulse is smaller than 256
             num = self._write_pulse(self.ON|channel_bitmask,
@@ -610,7 +633,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                                     inst_data=None,
                                     length=length)
 
-        elif length > 256:
+        elif length > int(256 * corr_factor):
             # reducing the length of the pulses by repeating them.
             # Try to factorize successively, in order to reducing the total
             # length of the pulse form. Put the subtracted amount into an
@@ -728,8 +751,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def activate_channels(self, ch_list, length=100, clock_freq=500.0,
-                          immediate_start=True):
+    def activate_channels(self, ch_list, length=100, immediate_start=True):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
@@ -740,8 +762,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                            within this mode, the length of the pulsing time can
                            be chosen arbitrary. Here 100ns is the default value.
                            A larger number does not make a lot of sense.
-        @param float clock_freq: optional, clock frequency for the board in MHz.
-                                 default value is 500.0
+
         @param bool immediate_start: optional, indicate whether output should
                                      directly be switch on, default is True.
 
@@ -756,6 +777,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         clock_freq = 500    # in MHz, for just switching the channels on or off,
                             # the clock will not play a role, therefore it is
                             # not a config option in this method.
+        corr_factor = self.FREQ_MAX/clock_freq
 
         self.set_core_clock(clock_freq)
         self.start_programming()
@@ -834,8 +856,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
 
-        self.activate_channels(ch_list=ch_list, length=100, clock_freq=500.0,
-                               immediate_start=True)
+        self.activate_channels(ch_list=ch_list, length=100,immediate_start=True)
 
         return self.switch_states['d_ch{0}'.format(switchNumber+1)]
 
@@ -852,8 +873,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
 
-        self.activate_channels(ch_list=ch_list, length=100, clock_freq=500.0,
-                               immediate_start=True)
+        self.activate_channels(ch_list=ch_list, length=100,immediate_start=True)
 
         return self.switch_states['d_ch{0}'.format(switchNumber+1)]
 
@@ -875,3 +895,110 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     # =========================================================================
     # Below the pulser interface implementation.
     # =========================================================================
+
+    def get_constraints(self):
+        """
+        Retrieve the hardware constrains from the Pulsing device.
+
+        @return constraints object: object with pulser constraints as attributes.
+
+        Provides all the constraints (e.g. sample_rate, amplitude, total_length_bins,
+        channel_config, ...) related to the pulse generator hardware to the caller.
+
+            SEE PulserConstraints CLASS IN pulser_interface.py FOR AVAILABLE CONSTRAINTS!!!
+
+        If you are not sure about the meaning, look in other hardware files to get an impression.
+        If still additional constraints are needed, then they have to be added to the
+        PulserConstraints class.
+
+        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Essentially it contains min/max values as well as min step size, default value and unit of
+        the parameter.
+
+        PulserConstraints.activation_config differs, since it contain the channel
+        configuration/activation information of the form:
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
+             ...}
+
+        If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
+        sequence mode) just leave it out so that the default is used (only zeros).
+
+        # Example for configuration with default values:
+        constraints = PulserConstraints()
+
+        constraints.sample_rate.min = 10.0e6
+        constraints.sample_rate.max = 12.0e9
+        constraints.sample_rate.step = 10.0e6
+        constraints.sample_rate.default = 12.0e9
+
+        constraints.a_ch_amplitude.min = 0.02
+        constraints.a_ch_amplitude.max = 2.0
+        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.default = 2.0
+
+        constraints.a_ch_offset.min = -1.0
+        constraints.a_ch_offset.max = 1.0
+        constraints.a_ch_offset.step = 0.001
+        constraints.a_ch_offset.default = 0.0
+
+        constraints.d_ch_low.min = -1.0
+        constraints.d_ch_low.max = 4.0
+        constraints.d_ch_low.step = 0.01
+        constraints.d_ch_low.default = 0.0
+
+        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.max = 5.0
+        constraints.d_ch_high.step = 0.01
+        constraints.d_ch_high.default = 5.0
+
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
+
+        constraints.waveform_num.min = 1
+        constraints.waveform_num.max = 32000
+        constraints.waveform_num.step = 1
+        constraints.waveform_num.default = 1
+
+        constraints.sequence_num.min = 1
+        constraints.sequence_num.max = 8000
+        constraints.sequence_num.step = 1
+        constraints.sequence_num.default = 1
+
+        constraints.subsequence_num.min = 1
+        constraints.subsequence_num.max = 4000
+        constraints.subsequence_num.step = 1
+        constraints.subsequence_num.default = 1
+
+        # If sequencer mode is available then these should be specified
+        constraints.repetitions.min = 0
+        constraints.repetitions.max = 65539
+        constraints.repetitions.step = 1
+        constraints.repetitions.default = 0
+
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = ['A', 'B', 'C', 'D']
+
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
+
+        # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
+        # channels. Here all possible channel configurations are stated, where only the generic
+        # names should be used. The names for the different configurations can be customary chosen.
+        activation_conf = OrderedDict()
+        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        constraints.activation_config = activation_conf
+        """
+        constraints = PulserConstraints()
+        constraints.sample_rate.min = 122.5e6
+        constraints.sample_rate.max = 500e6
+        constraints.step = 0.1e6
+
+
+        return constraints
