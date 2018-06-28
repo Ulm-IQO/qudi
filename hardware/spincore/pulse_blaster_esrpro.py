@@ -890,8 +890,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         return 0.001
 
 
-
-
     # =========================================================================
     # Below the pulser interface implementation.
     # =========================================================================
@@ -911,7 +909,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Each scalar parameter is an ScalarConstraints object defined in core.util.interfaces.
         Essentially it contains min/max values as well as min step size, default value and unit of
         the parameter.
 
@@ -999,6 +997,34 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         constraints.sample_rate.min = 122.5e6
         constraints.sample_rate.max = 500e6
         constraints.step = 0.1e6
+        constraints.unit = 'Hz'
 
+        constraints.d_ch_low.min = 0.0
+        constraints.d_ch_low.max = 0.0
+        constraints.d_ch_low.step = 0.0
+        constraints.d_ch_low.default = 0.0
+        constraints.d_ch_low.unit = 'V'
+
+        constraints.d_ch_high.min = 5.0
+        constraints.d_ch_high.max = 5.0
+        constraints.d_ch_high.step = 5.0
+        constraints.d_ch_high.default = 5.0
+        constraints.d_ch_high.unit = 'V'
+
+        constraints.waveform_length.min = 2
+        constraints.waveform_length.max = 2**20-1
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 128
+
+        activation_config = OrderedDict()
+        activation_config['4_ch'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['all'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8',
+                                    'd_ch9', 'd_ch10', 'd_ch11', 'd_ch12',
+                                    'd_ch13', 'd_ch14', 'd_ch15', 'd_ch16',
+                                    'd_ch17', 'd_ch18', 'd_ch19', 'd_ch20',
+                                    'd_ch21'}
+
+        constraints.activation_config = activation_config
 
         return constraints
