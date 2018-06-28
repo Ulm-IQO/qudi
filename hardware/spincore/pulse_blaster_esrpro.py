@@ -107,9 +107,15 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     FIVE_PERIOD = 0xA00000
     SIX_PERIOD = 0xC00000
 
+    #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
     GRAN_MIN = 2   # minimal possible granularity in time, in ns.
-    FREQ_MAX = int(1/GRAN_MIN * 1000) # Maximal output frequency in MHz.
+    SAMPLE_RATE = int(1/GRAN_MIN * 1000) # sample frequency in MHz.
 
+    STATUS_DICT = {'1': 'Stopped',
+                   '2': 'Reset',
+                   '4': 'Running',
+                   '8': 'Waiting',
+                   '16': 'Scanning'}
 
     # For switch interface:
     switch_states = {'d_ch1': False, 'd_ch2': False, 'd_ch3': False,
@@ -319,7 +325,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         board to initialize.
         """
         self.log.debug('Open connection to SpinCore library.')
-        return self.check(self._dll.pb_init())
+        ret_val = self.check(self._dll.pb_init())
+        self._set_core_clock(self.SAMPLE_RATE)
+        return ret_val
 
     def close_connection(self):
         """End communication with the board.
@@ -366,15 +374,18 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         """
         return self.check(self._dll.pb_stop_programming())
 
-    def set_core_clock(self, clock_freq):
-        """Tell the library what clock frequency the board uses.
+    def _set_core_clock(self, clock_freq):
+        """ Tell the library what clock frequency the board uses.
 
         @param int clock_freq: Frequency of the clock in MHz.
 
         This should be called at the beginning of each program, right after you
-        initialize the board with pb_init(). Note that this does not actually
-        set the clock frequency, it simply tells the driver what frequency the
-        board is using, since this cannot (currently) be autodetected.
+        initialize the board with pb_init().
+
+        NOTE: This does not actually set the clock frequency!
+              It simply tells the driver what frequency the board is using,
+              since this cannot (currently) be autodetected.
+
         Also note that this frequency refers to the speed at which the
         PulseBlaster core itself runs. On many boards, this is different than
         the value printed on the oscillator. On RadioProcessor devices, the A/D
@@ -382,11 +393,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         frequency.
         """
 
-        # it seems that the spin api has no return value for that funtion, i.e.
+        # it seems that the spin api has no return value for that function, i.e.
         # it cannot be detected whether the value was properly set. There is
         # also no get_core_clock method available. Strange.
         self._dll.pb_core_clock.restype = ctypes.c_void_p
-        self._dll.pb_core_clock(ctypes.c_double(clock_freq))
+        return self._dll.pb_core_clock(ctypes.c_double(clock_freq))
 
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
@@ -449,7 +460,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
 
 
-    def get_status(self):
+    def get_status_bit(self):
         """Read status from the board.
 
         @return int: Word that indicates the state of the current board like
@@ -481,7 +492,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         """
 
         self._dll.pb_read_status.restype = ctypes.c_uint32
-        #FIXME the usage of a state maschine would be a good idea
 
         return self._dll.pb_read_status()
 
@@ -490,7 +500,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     # wrapped routines as a basis to perform the desired task.
     # =========================================================================
 
-    def write_pulse_form(self, sequence_list, clock_freq=500.0, loop=True):
+    def write_pulse_form(self, sequence_list, loop=True):
         """ The higher level function, which creates the actual sequences.
 
         @param list sequence_list: a list with dictionaries. The dictionaries
@@ -504,9 +514,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                                     {'active_channels':[], 'length': 20000}]
                                     which will switch on
 
-        @param float clock_freq: optional, the clock frequency in MHz, which
-                                 should be set to output the signals in that
-                                 rate.
         @param bool loop: optional, set if sequence should be looped (so that it
                           runs continuously) or not, default it True.
 
@@ -516,21 +523,12 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         the PulseBlaster.
         """
 
-        if clock_freq > self.FREQ_MAX:
-            self.log.warning('The maximal value for the clock frequency for '
-                             'the PulseBlaster card is {0}MHz, but a value of '
-                             '{1} was passed. The clock is set to maximal '
-                             'sampling '
-                             'frequency.'.format(self.FREQ_MAX, clock_freq))
-            clock_freq = 500
-
         # Catch the case where only one entry in the sequence is present:
         if len(sequence_list) == 1:
             return self.activate_channels(ch_list=sequence_list[0]['active_channels'],
                                           length=sequence_list[0]['length'],
                                           immediate_start=False)
 
-        self.set_core_clock(clock_freq)
         self.start_programming()
         start_pulse = self._convert_pulse_to_inst(
                             sequence_list[0]['active_channels'],
@@ -550,13 +548,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
 
         active_channels = sequence_list[-1]['active_channels']
-        corr_factor = self.FREQ_MAX/clock_freq
-        # see in the method _convert_pulse_to_inst for an explanation of the
-        # corr_factor.
-        length = sequence_list[-1]['length'] * corr_factor
+        length = sequence_list[-1]['length']
 
-        # Take the last pulse and extend it by either tell the device to stop
-        # after this round and do no infinite looping or branching from out to
+        # Take the last pulse and tell either the device to stop after this
+        # round and do no infinite looping or branching from out to
         # connect the end with the beginning of the pulse.
 
         # with the branch or the stop command
@@ -572,24 +567,21 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                                     inst_data=start_pulse,
                                     length=length)
         if num > 4094: # =(2**12 -2)
-                self.log.error('Error in PulseCreation: Command {0} exceeds '
-                               'the maximal number of commands'.format(num))
+            self.log.error('Error in PulseCreation: Command {0} exceeds '
+                           'the maximal number of commands'.format(num))
 
         self.stop_programming()
 
         return num
 
 
-    def _convert_pulse_to_inst(self, active_channels, length, clock_freq=500):
+    def _convert_pulse_to_inst(self, active_channels, length):
         """ Convert a pulse of one row to a instructions for the PulseBlaster.
 
         @param np.array active_channels: the list of active channels like
                                          e.g. [0,4,7]. Note that the channels
                                          start from 0.
         @param float length: length of the current row in ns.
-        @param float clock_freq: optional, clock frequency in MHz, the length of
-                                 the channel has to adapted according to the
-                                 clock frequency. Default is 500.
 
         @return int: The address number num of the created instruction.
 
@@ -609,23 +601,21 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                              'number, dividable by the granularity! {1}ns were '
                              'dropped.'.format(self.GRAN_MIN, residual))
 
-        # The sequence has to be increased, if the clock is lower than 500MHz
-        corr_factor = self.FREQ_MAX/clock_freq
 
-        length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN * corr_factor
+        length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
 
 
-        # if the clock is 500MHz, then the time resolution is 2ns, i.e. every
+        # If the clock is 500MHz, then the time resolution is 2ns, i.e. every
         # 2ns a change can occur in the pulse blaster. A step of 2ns will be
-        # represented by one bit, i.e. by using 256bit a time of
-        # 2ns * 256 = 512ns can be sampled in one data word. Internally, this
+        # represented by one bit, i.e. by using 8bit a time of
+        # 2ns * 2^8 = 512ns can be sampled in one data word. Internally, this
         # will be the time frame of the data processing. This procedure
-        # enables to run the data processing 256 times slower, and only the fast
+        # enables to run the data processing 8 times slower, and only the fast
         # multiplexer, which combines and outputs the 8bit word, needs to run at
         # the fast clock speed of 500MHz. This prevents errors and is more
         # stable for the data processing.
 
-        if length <= int(256 * corr_factor):
+        if length <= 256*self.GRAN_MIN:
                           # pulses are written in 8 bit words. Save memory if
                           # the length of the pulse is smaller than 256
             num = self._write_pulse(self.ON|channel_bitmask,
@@ -633,7 +623,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                                     inst_data=None,
                                     length=length)
 
-        elif length > int(256 * corr_factor):
+        elif length > 256*self.GRAN_MIN:
             # reducing the length of the pulses by repeating them.
             # Try to factorize successively, in order to reducing the total
             # length of the pulse form. Put the subtracted amount into an
@@ -774,15 +764,12 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         """
 
-        clock_freq = 500    # in MHz, for just switching the channels on or off,
-                            # the clock will not play a role, therefore it is
-                            # not a config option in this method.
-        corr_factor = self.FREQ_MAX/clock_freq
-
-        self.set_core_clock(clock_freq)
         self.start_programming()
         flags = self.ON | self._convert_to_bitmask(ch_list)
-        retval = self._write_pulse(flags=flags, inst=self.STOP, inst_data=0, length=length)
+        retval = self._write_pulse(flags=flags,
+                                  inst=self.STOP,
+                                  inst_data=0,
+                                  length=length)
         self.stop_programming()
 
         if immediate_start:
@@ -994,9 +981,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         constraints.activation_config = activation_conf
         """
         constraints = PulserConstraints()
-        constraints.sample_rate.min = 122.5e6
+        constraints.sample_rate.min = 500e6
         constraints.sample_rate.max = 500e6
-        constraints.step = 0.1e6
+        constraints.step = 0.0
         constraints.unit = 'Hz'
 
         constraints.d_ch_low.min = 0.0
@@ -1028,3 +1015,98 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         constraints.activation_config = activation_config
 
         return constraints
+
+
+    def pulser_on(self):
+        """ Switches the pulsing device on.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return self.start()
+
+    def pulser_off(self):
+        """ Switches the pulsing device off.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        return self.stop()
+
+
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
+
+        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
+
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
+        """
+        pass
+
+
+    def get_loaded_assets(self):
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
+
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
+        """
+        pass
+
+    def clear_all(self):
+        """ Clears all loaded waveforms from the pulse generators RAM/workspace.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
+
+
+    def get_status(self):
+        """ Retrieves the status of the pulsing hardware
+
+        @return (int, dict): tuple with an integer value of the current status and a corresponding
+                             dictionary containing status description for all the possible status
+                             variables of the pulse generator hardware.
+        """
+        return self.get_status_bit(), self.STATUS_DICT
+
+
+    def get_sample_rate(self):
+        """ Get the sample rate of the pulse generator hardware
+
+        @return float: The current sample rate of the device (in Hz)
+
+        Do not return a saved sample rate from an attribute, but instead retrieve the current
+        sample rate directly from the device.
+        """
+        return self.SAMPLE_RATE
+
+    def set_sample_rate(self, sample_rate):
+        """ Set the sample rate of the pulse generator hardware.
+
+        @param float sample_rate: The sampling rate to be set (in Hz)
+
+        @return float: the sample rate returned from the device (in Hz).
+
+        Note: After setting the sampling rate of the device, use the actually set return value for
+              further processing.
+        """
+
+        self.log.warning('Sample rate cannot be changed in the PulseBlaster.'
+                         'Ignore the command.')
+
+        return self.SAMPLE_RATE
