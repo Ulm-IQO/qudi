@@ -52,7 +52,7 @@ class OkFpgaPulser(Base, PulserInterface):
     __current_waveform = StatusVar(name='current_waveform', default=np.zeros(1, dtype='uint8'))
     __current_waveform_name = StatusVar(name='current_waveform_name', default='')
     __sample_rate = StatusVar(name='sample_rate', default=950e6)
- 
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -572,8 +572,8 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         Write a new sequence on the device memory.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
+        @param str name: the name of the waveform to be created/append to
+        @param dict sequence_parameters: dictionary containing the parameters for a sequence
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
@@ -645,7 +645,7 @@ class OkFpgaPulser(Base, PulserInterface):
     def write(self, command):
         """ Sends a command string to the device.
 
-        @param string command: string containing the command
+        @param str command: string containing the command
 
         @return int: error code (0:OK, -1:error)
         """
@@ -658,7 +658,7 @@ class OkFpgaPulser(Base, PulserInterface):
     def query(self, question=None):
         """ Asks the device a 'question' and receive and return an answer from it.
 
-        @param string question: string containing the command
+        @param str question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
         """

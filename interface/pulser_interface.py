@@ -49,7 +49,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Each scalar parameter is an ScalarConstraints object defined in core.util.interfaces.
         Essentially it contains min/max values as well as min step size, default value and unit of
         the parameter.
 
@@ -220,7 +220,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): tuple with an interger value of the current status and a corresponding
+        @return (int, dict): tuple with an integer value of the current status and a corresponding
                              dictionary containing status description for all the possible status
                              variables of the pulse generator hardware.
         """
@@ -396,20 +396,20 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param analog_samples: numpy.ndarray of type float32 containing the voltage samples
-        @param digital_samples: numpy.ndarray of type bool containing the marker states
+        @param str name: the name of the waveform to be created/append to
+        @param numpy.ndarray analog_samples: array of type float32 containing the voltage samples
+        @param numpy.ndarray digital_samples: array of type bool containing the marker states
                                 (if analog channels are active, this must be the same length as
                                 analog_samples)
-        @param is_first_chunk: bool, flag indicating if it is the first chunk to write.
-                                     If True this method will create a new empty wavveform.
-                                     If False the samples are appended to the existing waveform.
-        @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
-                                    Some devices may need to know when to close the appending wfm.
-        @param total_number_of_samples: int, The number of sample points for the entire waveform
+        @param bool is_first_chunk: flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty waveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk: flag indicating if it is the last chunk to write.
+                                   Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
                                         (not only the currently written chunk)
 
-        @return: (int, list) number of samples written (-1 indicates failed process) and list of
+        @return (int, list): number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
         pass
@@ -419,8 +419,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         Write a new sequence on the device memory.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
+        @param str name: the name of the waveform to be created/append to
+        @param dict sequence_parameters: dictionary containing the parameters for a sequence
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
@@ -494,7 +494,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def write(self, command):
         """ Sends a command string to the device.
 
-        @param string command: string containing the command
+        @param str command: string containing the command
 
         @return int: error code (0:OK, -1:error)
         """
@@ -506,7 +506,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         @param string question: string containing the command
 
-        @return string: the answer of the device to the 'question' in a string
+        @return str: the answer of the device to the 'question' in a string
         """
         pass
 
