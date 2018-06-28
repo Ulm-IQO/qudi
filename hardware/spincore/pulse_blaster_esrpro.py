@@ -25,13 +25,14 @@ import platform
 import os
 import numpy as np
 
+from interface.switch_interface import SwitchInterface
 from interface.pulser_interface import PulserInterface
 from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
-class PulseBlasterESRPRO(Base):
+class PulseBlasterESRPRO(Base, SwitchInterface):
 
 #class PulseBlasterESRPRO(Base, PulserInterface):
     """ UNSTABLE: ALEX
@@ -106,6 +107,17 @@ class PulseBlasterESRPRO(Base):
 
     GRAN_MIN = 2   # minimal possible granularity in time, in ns.
     FREQ_MAX = int(1/GRAN_MIN * 1000) # Maximal output frequency in MHz.
+
+
+    # For switch interface:
+    switch_states = {'d_ch1': False, 'd_ch2': False, 'd_ch3': False,
+                     'd_ch4': False, 'd_ch5': False, 'd_ch6': False,
+                     'd_ch7': False, 'd_ch8': False, 'd_ch9': False,
+                     'd_ch10': False, 'd_ch11': False, 'd_ch12': False,
+                     'd_ch13': False, 'd_ch14': False, 'd_ch15': False,
+                     'd_ch16': False, 'd_ch17': False, 'd_ch18': False,
+                     'd_ch19': False, 'd_ch20': False, 'd_ch21': False}
+
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -514,7 +526,8 @@ class PulseBlasterESRPRO(Base):
         if len(sequence_list) == 1:
             return self.activate_channels(ch_list=sequence_list[0]['active_channels'],
                                           length=sequence_list[0]['length'],
-                                          clock_freq=clock_freq)
+                                          clock_freq=clock_freq,
+                                          immediate_start=False)
 
         self.set_core_clock(clock_freq)
         self.start_programming()
@@ -592,7 +605,7 @@ class PulseBlasterESRPRO(Base):
         if length <= 256:
                           # pulses are written in 8 bit words. Save memory if
                           # the length of the pulse is smaller than 256
-            num = self._write_pulse(channel_bitmask,
+            num = self._write_pulse(self.ON|channel_bitmask,
                                     inst=self.CONTINUE,
                                     inst_data=None,
                                     length=length)
@@ -610,7 +623,7 @@ class PulseBlasterESRPRO(Base):
 
                 if value > 4:
                     if factor == 1:
-                        num = self._write_pulse(channel_bitmask,
+                        num = self._write_pulse(self.ON|channel_bitmask,
                                                 inst=self.CONTINUE,
                                                 inst_data=None,
                                                 length=value)
@@ -619,7 +632,7 @@ class PulseBlasterESRPRO(Base):
                         # check if you do not exceed the memory limit. Then
                         # you can use the factorized approach to loop your
                         # pulse forms. Therefore apply a LONG_DELAY instruction
-                        num = self._write_pulse(channel_bitmask,
+                        num = self._write_pulse(self.ON|channel_bitmask,
                                                 inst=self.LONG_DELAY,
                                                 inst_data=int(factor),
                                                 length=value)
@@ -632,7 +645,7 @@ class PulseBlasterESRPRO(Base):
                                        'parameters!'.format(factor))
 
                     if i > 4:
-                        self._write_pulse(channel_bitmask,
+                        self._write_pulse(self.ON|channel_bitmask,
                                           inst=self.CONTINUE,
                                           inst_data=None,
                                           length=i)
@@ -715,7 +728,7 @@ class PulseBlasterESRPRO(Base):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def activate_channels(self, ch_list, length=100, clock_freq=500,
+    def activate_channels(self, ch_list, length=100, clock_freq=500.0,
                           immediate_start=True):
         """ Set specific channels to high, all others to low.
 
@@ -754,6 +767,110 @@ class PulseBlasterESRPRO(Base):
             self.start()
 
         return retval
+
+
+    # =========================================================================
+    # Below the Switch interface implementation.
+    # =========================================================================
+
+    def getNumberOfSwitches(self):
+        """ Gives the number of switches connected to this hardware.
+
+        @return int: number of swiches on this hardware
+        """
+        return len(self.switch_states)
+
+    def getSwitchState(self, switchNumber):
+        """ Gives state of switch.
+
+        @param int switchNumber: number of switch, numbering starts with 0
+
+        @return bool: True if on, False if off, None on error
+        """
+
+        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+
+    def getCalibration(self, switchNumber, state):
+        """ Get calibration parameter for switch.
+
+        @param int switchNumber: number of switch for which to get calibration
+                                 parameter
+        @param str switchState: state ['On', 'Off'] for which to get
+                                calibration parameter
+
+        @return str: calibration parameter for switch and state.
+        """
+
+        # There is no possibility to calibrate the voltage values for the
+        # Pulse Blaster, either it is on at 5.0V or off at 0.0V.
+        possible_states = {'On': 5.0, 'Off': 0.0}
+        return possible_states[state]
+
+    def setCalibration(self, switchNumber, state, value):
+        """ Set calibration parameter for switch.
+
+          @param int switchNumber: number of switch for which to get calibration
+                                   parameter
+          @param str switchState: state ['On', 'Off'] for which to get
+                                  calibration parameter
+          @param int value: calibration parameter to be set.
+
+          @return bool: True if succeeds, False otherwise
+        """
+        self.log.warning('Not possible to set a Switch Voltage for '
+                         'PulseBlaster Devices. Command ignored.')
+        return True
+
+    def switchOn(self, switchNumber):
+        """ Switch on.
+
+        @param int switchNumber: number of switch to be switched, number starts
+                                 from zero.
+
+        @return bool: True if succeeds, False otherwise
+        """
+
+        self.switch_states['d_ch{0}'.format(switchNumber+1)] = True
+
+        ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
+
+        self.activate_channels(ch_list=ch_list, length=100, clock_freq=500.0,
+                               immediate_start=True)
+
+        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+
+
+    def switchOff(self, switchNumber):
+        """ Switch off.
+
+        @param int switchNumber: number of switch to be switched
+
+        @return bool: True if suceeds, False otherwise
+        """
+
+        self.switch_states['d_ch{0}'.format(switchNumber+1)] = False
+
+        ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
+
+        self.activate_channels(ch_list=ch_list, length=100, clock_freq=500.0,
+                               immediate_start=True)
+
+        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+
+    def getSwitchTime(self, switchNumber):
+        """ Give switching time for switch.
+
+        @param int switchNumber: number of switch
+
+        @return float: time needed for switch state change
+        """
+
+        # switch time is limited to communication speed to the device,
+        # therefore set the average communication time of 1ms as the limitation.
+        return 0.001
+
+
+
 
     # =========================================================================
     # Below the pulser interface implementation.
