@@ -189,7 +189,7 @@ class PulseBlasterESRPRO(Base):
 
         @return str: A string describing the last error is returned. A string
                      containing "No Error" is returned if the last function call
-                     was successfull.
+                     was successful.
 
         Anytime a function (such as pb_init(), pb_start_programming(), etc.)
         encounters an error, this function will return a description of what
@@ -248,7 +248,7 @@ class PulseBlasterESRPRO(Base):
     def get_firmware_id(self):
         """Gets the current version of the SpinPTS API being used.
 
-        @return : Return a pointer to a C string containing the version string.
+        @return int: Returns the firmware id containing the version string.
         """
         self._dll.pb_get_firmware_id.restype = ctypes.c_uint
 
@@ -496,12 +496,11 @@ class PulseBlasterESRPRO(Base):
         @param bool loop: optional, set if sequence should be looped (so that it
                           runs continuously) or not, default it True.
 
+        @return int: The number of created pulses with the given sequence.
+
         This method should called with the general sequence_list to program
         the PulseBlaster.
         """
-
-        #locking this method and let it run in a separate task
-        #self.lock()
 
         if clock_freq > self.FREQ_MAX:
             self.log.warning('The maximal value for the clock frequency for '
@@ -510,6 +509,12 @@ class PulseBlasterESRPRO(Base):
                              'sampling '
                              'frequency.'.format(self.FREQ_MAX, clock_freq))
             clock_freq = 500
+
+        # Catch the case where only one entry in the sequence is present:
+        if len(sequence_list) == 1:
+            return self.activate_channels(ch_list=sequence_list[0]['active_channels'],
+                                          length=sequence_list[0]['length'],
+                                          clock_freq=clock_freq)
 
         self.set_core_clock(clock_freq)
         self.start_programming()
@@ -521,7 +526,7 @@ class PulseBlasterESRPRO(Base):
 
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
-        for pulse in sequence_list[1:]:
+        for pulse in sequence_list[1:-1]:
             num  = self._convert_pulse_to_inst(pulse['active_channels'],
                                                pulse['length'])
             if num > 4094: # =(2**12 -2)
@@ -529,24 +534,31 @@ class PulseBlasterESRPRO(Base):
                                'the maximal number of commands'.format(num))
 
         active_channels = sequence_list[-1]['active_channels']
+        length = sequence_list[-1]['length']
 
-        # Take the last pulse and extend it with the branch or the stop command
+        # Take the last pulse and extend it by either tell the device to stop
+        # after this round and do no infinite looping or branching from out to
+        # connect the end with the beginning of the pulse.
+
+        # with the branch or the stop command
         if loop == False:
             bitmask = self._convert_to_bitmask(active_channels)
             num = self._write_pulse(self.ON|bitmask,
                                     inst=self.STOP,
                                     inst_data=None,
-                                    length=20)
+                                    length=length)
         else:
             num = self._write_pulse(flags=self.ON|0,
                                     inst=self.BRANCH,
                                     inst_data=start_pulse,
-                                    length=20)
+                                    length=length)
         if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
 
         self.stop_programming()
+
+        return num
 
 
     def _convert_pulse_to_inst(self, active_channels, length):
@@ -570,7 +582,7 @@ class PulseBlasterESRPRO(Base):
         # output sampling.)
         residual = length % self.GRAN_MIN
         if residual != 0:
-            self.log.warning('The length of the pulse does not fulfil the '
+            self.log.warning('The length of the pulse does not fulfill the '
                              'granularity of {0}ns. The length is rounded to a '
                              'number, dividable by the granularity! {1}ns were '
                              'dropped.'.format(self.GRAN_MIN, residual))
@@ -703,16 +715,29 @@ class PulseBlasterESRPRO(Base):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def set_channel_high(self, ch_list):
+    def activate_channels(self, ch_list, length=100, clock_freq=500,
+                          immediate_start=True):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
                              Note that the channels start from 0. Note, an empty
                              list will set all channels to low.
+        @param int length: optional, length of the activated channel output in
+                           ns. Since there will be no switching of channels
+                           within this mode, the length of the pulsing time can
+                           be chosen arbitrary. Here 100ns is the default value.
+                           A larger number does not make a lot of sense.
+        @param float clock_freq: optional, clock frequency for the board in MHz.
+                                 default value is 500.0
+        @param bool immediate_start: optional, indicate whether output should
+                                     directly be switch on, default is True.
 
-        This is a low level command for testing, and mostly to reuse this
-        functionality not for pulsing but just rather for switching something
-        on or off.
+        @return int: the number of created pulse instructions, normally it
+                     should output just the number 1.
+
+        This is a high level command mostly used not for pulsing but just rather
+        for switching something on or off.
+
         """
 
         clock_freq = 500    # in MHz, for just switching the channels on or off,
@@ -722,10 +747,11 @@ class PulseBlasterESRPRO(Base):
         self.set_core_clock(clock_freq)
         self.start_programming()
         flags = self.ON | self._convert_to_bitmask(ch_list)
-        length = 100 # in ns, just an arbitrary but fixed number for a length
         retval = self._write_pulse(flags=flags, inst=self.STOP, inst_data=0, length=length)
         self.stop_programming()
-        self.start()
+
+        if immediate_start:
+            self.start()
 
         return retval
 
