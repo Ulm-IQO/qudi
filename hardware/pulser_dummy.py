@@ -807,8 +807,17 @@ class PulserDummy(Base, PulserInterface):
         """
         if ch is None:
             ch = {}
+        old_activation = self.channel_states.copy()
         for channel in ch:
             self.channel_states[channel] = ch[channel]
+
+        active_channel_set = {chnl for chnl, is_active in self.channel_states.items() if is_active}
+        if active_channel_set not in self.get_constraints().activation_config.values():
+            self.log.error('Channel activation to be set not found in constraints.\n'
+                           'Channel activation unchanged.')
+            self.channel_states = old_activation
+        else:
+            self.activation_config = active_channel_set
 
         return self.get_active_channels(ch=list(ch))
 
