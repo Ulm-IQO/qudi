@@ -19,6 +19,7 @@ Changes/New features:
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
 * Update conda environment to more recent versions of packages
+* Added a joystick interface and hardware module for xinput api
 
 Config changes:
 
