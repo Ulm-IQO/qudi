@@ -169,14 +169,14 @@ class OkFpgaPulser(Base, PulserInterface):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                    index and values being the name of the already written
+                                    waveform to load into the channel.
+                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given, the channel
+                                    association will be invoked from the channel
+                                    suffix '_ch1', '_ch2' etc.
 
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
@@ -252,20 +252,20 @@ class OkFpgaPulser(Base, PulserInterface):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list sequence_name: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
 
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
         self.log.warning('FPGA digital pulse generator has no sequencing capabilities.\n'
                          'load_sequence call ignored.')
-        return
+        return {}
 
     def get_loaded_assets(self):
         """
@@ -586,7 +586,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return
+        return list()
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
@@ -603,7 +603,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return list: a list of deleted waveform names.
         """
-        return
+        return list()
 
     def delete_sequence(self, sequence_name):
         """ Delete the sequence with name "sequence_name" from the device memory.
