@@ -24,6 +24,7 @@ import ctypes
 import platform
 import os
 import numpy as np
+from collections import OrderedDict
 
 from interface.switch_interface import SwitchInterface
 from interface.pulser_interface import PulserInterface
@@ -111,11 +112,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     GRAN_MIN = 2   # minimal possible granularity in time, in ns.
     SAMPLE_RATE = int(1/GRAN_MIN * 1000) # sample frequency in MHz.
 
-    STATUS_DICT = {'1': 'Stopped',
-                   '2': 'Reset',
-                   '4': 'Running',
-                   '8': 'Waiting',
-                   '16': 'Scanning'}
+    STATUS_DICT = {1: 'Stopped',
+                   2: 'Reset',
+                   4: 'Running',
+                   8: 'Waiting',
+                   16: 'Scanning'}
 
     # For switch interface:
     switch_states = {'d_ch1': False, 'd_ch2': False, 'd_ch3': False,
@@ -127,11 +128,24 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                      'd_ch19': False, 'd_ch20': False, 'd_ch21': False}
 
     # For pulser interface:
+    _current_pb_waveform_name = ''
+    _current_pb_waveform = {'active_channels':[], 'length':GRAN_MIN}
 
-    __current_waveform = StatusVar(name='current_waveform',
-                                   default=np.zeros(1, dtype='uint8'))
-    __current_waveform_name = StatusVar(name='current_waveform_name',
-                                        default='')
+    # _current_pb_waveform_name = StatusVar(name='current_pb_waveform_name',
+    #                                       default='')
+    # _current_pb_waveform = StatusVar(name='current_pb_waveform',
+    #                                  default={'active_channels':[],
+    #                                           'length':self.GRAN_MIN})
+
+    # @_current_pb_waveform.representer
+    # def _convert_current_waveform(self, waveform_bytearray):
+    #     """ Specify how to handle waveform, so that it can be saved. """
+    #     return np.frombuffer(waveform_bytearray, dtype='uint8')
+
+    # @_current_pb_waveform.constructor
+    # def _recover_current_waveform(self, waveform_nparray):
+    #     """ Specify how to construct the waveform from saved file. """
+    #     return bytearray(waveform_nparray.tobytes())
 
 
     def __init__(self, **kwargs):
@@ -179,14 +193,18 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         self.open_connection()
 
         # For waveform creation:
-        self.__currently_loaded_waveform = ''  # loaded and armed waveform name
-        self.__samples_written = 0
+        self._currently_loaded_waveform = ''  # loaded and armed waveform name
+
+        self._current_activation_config = list(self.get_constraints().activation_config['4_ch'])
+        self._current_activation_config.sort()
 
     def on_deactivate(self):
         """ Deinitialization performed during deactivation of the module. """
 
         self.stop()
         self.close_connection()
+
+
 
     # =========================================================================
     # Below all the low level routines which are wrapped with ctypes which
@@ -1087,6 +1105,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         written with self.write_waveform ready to play.
         """
 
+        self._load_dict = load_dict
+
         # Since only one waveform can be present at a time check if only a
         # single name is given
         if isinstance(load_dict, list):
@@ -1098,19 +1118,23 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                            'names or a dict.')
             return self.get_loaded_assets()
 
-        if len(waveforms) != 1:
-            self.log.error('FPGA pulser expects exactly one waveform name for '
-                           'load_waveform.')
-            return self.get_loaded_assets()
+        # if len(waveforms) != 1:
+        #     self.log.error('PulseBlaster expects exactly one waveform name for '
+        #                    'load_waveform.')
+        #     return self.get_loaded_assets()
 
         waveform = waveforms[0]
-        if waveform != self.__current_waveform_name:
-            self.log.error('No waveform by the name "{0}" generated for FPGA '
-                           'pulser.\n'
+        if waveform != self._current_pb_waveform_name:
+            self.log.error('No waveform by the name "{0}" generated for '
+                           'PulseBlaster.\n'
                            'Only one waveform at a time can be '
                            'held.'.format(waveform))
             return self.get_loaded_assets()
 
+
+        self.write_pulse_form(self._current_pb_waveform)
+        self._currently_loaded_waveform = waveform
+        return self.get_loaded_assets()[0]
 
 
     def load_sequence(self, sequence_name):
@@ -1161,8 +1185,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         (i.e. '<sequence_name>_1').
         """
 
-        asset_type = 'waveform' if self.__currently_loaded_waveform else None
-        asset_dict = {chnl_num: self.__currently_loaded_waveform for chnl_num in range(1, 22)}
+        asset_type = 'waveform' if self._currently_loaded_waveform else None
+
+        asset_dict = {}
+        for index, entry in enumerate(self._current_activation_config):
+            asset_dict[index+1] = '{0}_'.format(self._current_pb_waveform_name, entry.replace('d_',''))
         return asset_dict, asset_type
 
     def clear_all(self):
@@ -1170,9 +1197,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.__currently_loaded_waveform = ''
-        self.__current_waveform_name = ''
-        self.__current_waveform = bytearray([0])
+        self._currently_loaded_waveform = ''
+        self._current_pb_waveform_name = ''
+        self._current_pb_waveform = {'active_channels':[],
+                                     'length':self.GRAN_MIN}
         return 0
 
 
@@ -1184,7 +1212,17 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                              description for all the possible status variables
                              of the pulse generator hardware.
         """
-        return self.get_status_bit(), self.STATUS_DICT
+        num = self.get_status_bit()
+        if num in [1,2]:
+            state = 0
+        else:
+            state = 1
+
+        status_dict = {0: 'Idle', 1:'Running'}
+
+        return state, status_dict
+
+        #return self.get_status_bit(), self.STATUS_DICT
 
 
     def get_sample_rate(self):
@@ -1368,7 +1406,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         if ch:
             d_ch_dict = {chnl: True for chnl in ch}
         else:
-            d_ch_dict = {'d_ch{0:d}'.format(chnl + 1): True for chnl in range(21)}
+            d_ch_dict = {str(chnl): True for chnl in self._current_activation_config}
 
         return d_ch_dict
 
@@ -1399,8 +1437,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         The hardware itself has to handle, whether separate channel activation
         is possible.
         """
-        self.log.warning('In PulserBlaster cannot activate channels. They are '
-                         'always on. Ignore command.')
+
         return self.get_active_channels()
 
 
@@ -1449,14 +1486,48 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                 return -1, list()
 
             else:
-                self.__current_waveform = bytearray([0])
-                self.__current_waveform_name = ''
+                self._current_pb_waveform ={'active_channels':[],
+                                            'length':self.GRAN_MIN}
+                self._current_pb_waveform_name = ''
                 return 0, list()
 
+        # Determine the length of one of the waveform arrays, all should be the
+        # same length.
+        chan = list(digital_samples)
+        chan.sort()
+        chunk_length = len(digital_samples[chan[0]])
+
+        # assume that the number of channels are specified correct from the
+        # instance, which called this method.
+        self._current_activation_config = chan
+
+        if is_first_chunk:
+            self._current_pb_waveform = self._convert_sample_to_pb_sequence(digital_samples)
+
+            self._current_pb_waveform_name = name
+
+        else:
+
+            pb_waveform_temp = self._convert_sample_to_pb_sequence(digital_samples)
+
+            # check if last of existing waveform is the same as the first one of
+            # the coming one, then combine them,
+            if self._current_pb_waveform[-1]['active_channels'] == pb_waveform_temp[0]['active_channels']:
+                self._current_pb_waveform[-1]['length'] += pb_waveform_temp[0]['length']
+                pb_waveform_temp.pop(0)
+
+            self._current_pb_waveform.extend(pb_waveform_temp)
 
         # convert at first the separate waveforms for each channel to a matrix
 
-        self._convert_sample_to_pb_sequence(digital_samples)
+        if self.is_last_chunk:
+            self.write_pulse_form(self._current_pb_waveform)
+            seklf.log.debug('Waveform written in PulseBlaster with name "{0}" '
+                            'and a total length of {1} sequence '
+                            'entries.'.format(self._current_pb_waveform_name,
+                                              len(self._current_pb_waveform) ))
+
+        return chunk_length, [self._current_pb_waveform_name]
 
     def _convert_sample_to_pb_sequence(self, digital_samples):
         """ Helper method to create a pulse blaster sequence.
@@ -1526,10 +1597,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         return pb_sequence_list
 
 
-
-
-
-
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
@@ -1582,7 +1649,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         @return list: a list of deleted sequence names.
         """
-        retunr list()
+        return list()
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
