@@ -28,6 +28,15 @@ from interface.camera_interface import CameraInterface
 
 class CameraDummy(Base, CameraInterface):
     """ Dummy hardware for camera interface
+
+    Example configuration :
+
+        cameradummy:
+        module.Class: 'camera.camera_dummy.CameraDummy'
+        support_live: True
+        camera_name: Dummy camera
+        resolution: (1280, 720)
+
     """
 
     _modtype = 'DummyCamera'
@@ -131,7 +140,6 @@ class CameraDummy(Base, CameraInterface):
         """
         return self._exposure
 
-
     def set_gain(self, gain):
         """ Set the gain
 
@@ -149,12 +157,9 @@ class CameraDummy(Base, CameraInterface):
         """
         return self._gain
 
-
     def get_ready_state(self):
         """ Is the camera ready for an acquisition ?
 
         @return bool: ready ?
         """
         return not (self._live or self._acquiring)
-
-
