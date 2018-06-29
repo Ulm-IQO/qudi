@@ -159,14 +159,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                    index and values being the name of the already written
+                                    waveform to load into the channel.
+                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given, the channel
+                                    association will be invoked from the channel
+                                    suffix '_ch1', '_ch2' etc.
 
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
@@ -180,14 +180,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list sequence_name: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
 
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
@@ -405,7 +405,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
                                     If True this method will create a new empty waveform.
                                     If False the samples are appended to the existing waveform.
         @param bool is_last_chunk: flag indicating if it is the last chunk to write.
-                                   Some devices may need to know when to close the appending wfm.
+                                   Some devices may need to know when to close the appending
+                                   waveform file.
         @param int total_number_of_samples: The number of sample points for the entire waveform
                                         (not only the currently written chunk)
 
