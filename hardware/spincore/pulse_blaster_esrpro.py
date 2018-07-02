@@ -35,7 +35,7 @@ from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
-class PulseBlasterESRPRO(Base, SwitchInterface):
+class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 #class PulseBlasterESRPRO(Base, PulserInterface):
     """ UNSTABLE: ALEX
@@ -130,6 +130,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
     # For pulser interface:
     _current_pb_waveform_name = ''
     _current_pb_waveform = {'active_channels':[], 'length':GRAN_MIN}
+
+    # Make a channel state dict, which indicates the current channel activation
+    channel_states = switch_states.copy()
+
 
     # _current_pb_waveform_name = StatusVar(name='current_pb_waveform_name',
     #                                       default='')
@@ -574,16 +578,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         self.start_programming()
         start_pulse = self._convert_pulse_to_inst(
                             sequence_list[0]['active_channels'],
-                            sequence_list[0]['length'],
-                            clock_freq)
+                            sequence_list[0]['length'])
 
 
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
         for pulse in sequence_list[1:-1]:
             num  = self._convert_pulse_to_inst(pulse['active_channels'],
-                                               pulse['length'],
-                                               clock_freq)
+                                               pulse['length'])
             if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
@@ -1105,8 +1107,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         written with self.write_waveform ready to play.
         """
 
-        self._load_dict = load_dict
-
         # Since only one waveform can be present at a time check if only a
         # single name is given
         if isinstance(load_dict, list):
@@ -1118,10 +1118,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
                            'names or a dict.')
             return self.get_loaded_assets()
 
-        # if len(waveforms) != 1:
-        #     self.log.error('PulseBlaster expects exactly one waveform name for '
-        #                    'load_waveform.')
-        #     return self.get_loaded_assets()
+        if len(waveforms) != 1:
+            self.log.error('PulseBlaster expects exactly one waveform name for '
+                           'load_waveform.')
+            return self.get_loaded_assets()
 
         waveform = waveforms[0]
         if waveform != self._current_pb_waveform_name:
@@ -1189,7 +1189,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         asset_dict = {}
         for index, entry in enumerate(self._current_activation_config):
-            asset_dict[index+1] = '{0}_'.format(self._current_pb_waveform_name, entry.replace('d_',''))
+            # asset_dict[index+1] = '{0}_'.format(self._current_pb_waveform_name, entry.replace('d_',''))
+            asset_dict[index+1] = self._current_pb_waveform_name
         return asset_dict, asset_type
 
     def clear_all(self):
@@ -1233,7 +1234,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         Do not return a saved sample rate from an attribute, but instead
         retrieve the current sample rate directly from the device.
         """
-        return self.SAMPLE_RATE
+        return self.SAMPLE_RATE*1e6
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
@@ -1249,7 +1250,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         self.log.warning('Sample rate cannot be changed in the PulseBlaster.'
                          'Ignore the command.')
 
-        return self.SAMPLE_RATE
+        return self.get_sample_rate()
 
 
     def get_analog_level(self, amplitude=None, offset=None):
@@ -1403,12 +1404,19 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         will be returned.
         """
 
-        if ch:
-            d_ch_dict = {chnl: True for chnl in ch}
-        else:
-            d_ch_dict = {str(chnl): True for chnl in self._current_activation_config}
+        if ch is None:
+            ch = []
 
-        return d_ch_dict
+        active_ch = {}
+
+        if ch == []:
+            active_ch = self.channel_states
+
+        else:
+            for channel in ch:
+                active_ch[channel] = self.channel_states[channel]
+
+        return active_ch
 
     def set_active_channels(self, ch=None):
         """ Set the active channels for the pulse generator hardware.
@@ -1438,7 +1446,25 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         is possible.
         """
 
-        return self.get_active_channels()
+        if ch is None:
+            ch = {}
+
+        # save activation in case it cannot be set correctly
+        old_activation = self.channel_states.copy()
+
+        for channel in ch:
+            self.channel_states[channel] = ch[channel]
+
+        active_channel_set = {chnl for chnl, is_active in self.channel_states.items() if is_active}
+
+        if active_channel_set not in self.get_constraints().activation_config.values():
+            self.log.error('Channel activation to be set not found in constraints.\n'
+                           'Channel activation unchanged.')
+            self.channel_states = old_activation
+        else:
+            self._current_activation_config = active_channel_set
+
+        return self.get_active_channels(ch=list(ch))
 
 
     def write_waveform(self, name, analog_samples, digital_samples,
@@ -1472,6 +1498,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
         waveform should be terminated.
 
         """
+
+        #FIXME: Remove those, after debug process is finished.
+        self._name = name
+        self._analog_samples = analog_samples
+        self._digital_samples = digital_samples
+        self._total_number_of_samples = total_number_of_samples
+        self._is_first_chunk = is_first_chunk
+        self._is_last_chunk = is_last_chunk
 
         if analog_samples:
             self.log.error('PulseBlaster is purely digital and does not '
@@ -1520,9 +1554,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         # convert at first the separate waveforms for each channel to a matrix
 
-        if self.is_last_chunk:
+        if is_last_chunk:
             self.write_pulse_form(self._current_pb_waveform)
-            seklf.log.debug('Waveform written in PulseBlaster with name "{0}" '
+            self.log.debug('Waveform written in PulseBlaster with name "{0}" '
                             'and a total length of {1} sequence '
                             'entries.'.format(self._current_pb_waveform_name,
                                               len(self._current_pb_waveform) ))
@@ -1618,7 +1652,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return list()
+
+        #FIXME: That seems not to be right. Docstring does not match with output.
+        return [self._current_pb_waveform_name]
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
