@@ -230,6 +230,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
+        self._fixed_unit_prefix = None # To use only one unit prefix for the view and assume it at input
         self._is_valid = True  # A flag property to check if the current value is valid.
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
@@ -276,6 +277,25 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         use_dynamic_precision = bool(use_dynamic_precision)
         self._dynamic_precision = use_dynamic_precision
+
+    @property
+    def fixed_unit_prefix(self):
+        """
+        This property can fix a default unit prefix that is used for GUI and assumed at text input.
+
+        @return: None or prefix string
+        """
+        return self._fixed_unit_prefix
+
+    @fixed_unit_prefix.setter
+    def fixed_unit_prefix(self, unit_prefix):
+        """
+        This property can fix a default unit prefix that is used for GUI and assumed at text input.
+
+        @param unit_prefix: None or unit prefix in the dictionary
+        """
+        if unit_prefix is None or unit_prefix in self._unit_prefix_dict:
+            self._fixed_unit_prefix = unit_prefix
 
     @property
     def is_valid(self):
@@ -761,6 +781,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         si_prefix = group_dict['si']
         if si_prefix is None:
             si_prefix = ''
+        if si_prefix == '' and self.fixed_unit_prefix is not None:
+            si_prefix = self.fixed_unit_prefix
         si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
         if group_dict['sign'] is not None:
