@@ -491,26 +491,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def write(self, command):
-        """ Sends a command string to the device.
-
-        @param string command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def query(self, question):
-        """ Asks the device a 'question' and receive and return an answer from it.
-
-        @param string question: string containing the command
-
-        @return string: the answer of the device to the 'question' in a string
-        """
-        pass
-
-    @abc.abstractmethod
     def reset(self):
         """ Reset the device.
 
