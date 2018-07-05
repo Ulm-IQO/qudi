@@ -353,8 +353,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 # search the generation_parameters for channel specifiers and adjust them if they
                 # are no longer valid
                 changed_settings = dict()
-                ana_chnls = sorted(self.analog_channels)
-                digi_chnls = sorted(self.digital_channels)
+                ana_chnls = sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1]))
+                digi_chnls = sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1]))
                 for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
                     channel = self.generation_parameters[name]
