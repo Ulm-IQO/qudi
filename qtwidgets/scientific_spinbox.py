@@ -296,6 +296,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         if unit_prefix is None or unit_prefix in self._unit_prefix_dict:
             self._fixed_unit_prefix = unit_prefix
+        if unit_prefix == 'u':  # in case of encoding problems
+            self._fixed_unit_prefix = 'µ'
 
     @property
     def is_valid(self):
