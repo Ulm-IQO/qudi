@@ -564,8 +564,13 @@ class PulserDummy(Base, PulserInterface):
               for obtaining the actual set value and use that information for
               further processing.
         """
-
-        self.sample_rate = sample_rate
+        constraint = self.get_constraints().sample_rate
+        if sample_rate > constraint.max:
+            self.sample_rate = constraint.max
+        elif sample_rate < constraint.min:
+            self.sample_rate = constraint.min
+        else:
+            self.sample_rate = sample_rate
         return self.sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
