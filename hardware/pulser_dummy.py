@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base, StatusVar, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -36,6 +36,8 @@ class PulserDummy(Base, PulserInterface):
     """
     _modclass = 'PulserDummy'
     _modtype = 'hardware'
+
+    activation_config = StatusVar(default=None)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -70,14 +72,22 @@ class PulserDummy(Base, PulserInterface):
 
         self.current_status = 0    # that means off, not running.
 
-        self.activation_config = self.get_constraints().activation_config['config0']
-        for chnl in self.activation_config:
-            self.channel_states[chnl] = True
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self.connected = True
+
+        self.channel_states = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
+                               'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
+                               'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
+
+        if self.activation_config is None:
+            self.activation_config = self.get_constraints().activation_config['config0']
+        elif self.activation_config not in self.get_constraints().activation_config.values():
+            self.activation_config = self.get_constraints().activation_config['config0']
+
+        for chnl in self.activation_config:
+            self.channel_states[chnl] = True
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -772,7 +782,7 @@ class PulserDummy(Base, PulserInterface):
 
         active_ch = {}
 
-        if ch == []:
+        if not ch:
             active_ch = self.channel_states
 
         else:
