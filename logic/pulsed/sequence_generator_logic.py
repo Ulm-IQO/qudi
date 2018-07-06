@@ -1542,6 +1542,9 @@ class SequenceGeneratorLogic(GenericLogic):
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble to device: {0} sec'
                       ''.format(int(np.rint(time.time() - start_time))))
+        if ensemble_info['number_of_samples'] == 0:
+            self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
+                             ''.format(ensemble.name))
         if not self.__sequence_generation_in_progress:
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
