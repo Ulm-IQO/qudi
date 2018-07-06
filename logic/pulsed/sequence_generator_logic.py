@@ -1503,8 +1503,11 @@ class SequenceGeneratorLogic(GenericLogic):
                             # check if write process was successful
                             if written_samples != array_length:
                                 self.log.error('Sampling of block "{0}" in ensemble "{1}" failed. '
-                                               'Write to device was unsuccessful.'
-                                               ''.format(block_name, ensemble.name))
+                                               'Write to device was unsuccessful.\nThe number of '
+                                               'actually written samples ({2:d}) does not match '
+                                               'the number of samples staged to write ({3:d}).'
+                                               ''.format(block_name, ensemble.name, written_samples,
+                                                         array_length))
                                 if not self.__sequence_generation_in_progress:
                                     self.module_state.unlock()
                                 self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
