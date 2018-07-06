@@ -396,20 +396,24 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param analog_samples: numpy.ndarray of type float32 containing the voltage samples
-        @param digital_samples: numpy.ndarray of type bool containing the marker states
-                                (if analog channels are active, this must be the same length as
-                                analog_samples)
-        @param is_first_chunk: bool, flag indicating if it is the first chunk to write.
-                                     If True this method will create a new empty wavveform.
-                                     If False the samples are appended to the existing waveform.
-        @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
-                                    Some devices may need to know when to close the appending wfm.
-        @param total_number_of_samples: int, The number of sample points for the entire waveform
-                                        (not only the currently written chunk)
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-        @return: (int, list) number of samples written (-1 indicates failed process) and list of
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
+
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
         pass
