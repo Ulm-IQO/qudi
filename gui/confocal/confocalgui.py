@@ -485,16 +485,16 @@ class ConfocalGui(GUIBase):
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
 
         if self.default_meter_prefix:
-            self._mw.x_current_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.y_current_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.z_current_InputWidget.fixed_unit_prefix = self.default_meter_prefix
+            self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
-            self._mw.x_min_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.x_max_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.y_min_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.y_max_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.z_min_InputWidget.fixed_unit_prefix = self.default_meter_prefix
-            self._mw.z_max_InputWidget.fixed_unit_prefix = self.default_meter_prefix
+            self._mw.x_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)
