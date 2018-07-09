@@ -58,11 +58,10 @@
      <addaction name="actionScan_Toolbar"/>
      <addaction name="actionUtil_Toolbar"/>
     </widget>
-    <addaction name="actionXY_scan_view"/>
-    <addaction name="actionDepth_scan_view"/>
-    <addaction name="actionScan_control_view"/>
-    <addaction name="actionOptimizer_view"/>
-    <addaction name="actionScan_line_view"/>
+    <addaction name="actionStep_scan_view"/>
+    <addaction name="actionStep_parameters_view"/>
+    <addaction name="actionHardware_View"/>
+    <addaction name="actionPosition_Feedback_View"/>
     <addaction name="actionTilt_correction_view"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
@@ -76,7 +75,7 @@
    <addaction name="menu_Options"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="scan_control_dockWidget">
+  <widget class="QDockWidget" name="step_parameters_control_dockWidget">
    <property name="maximumSize">
     <size>
      <width>524287</width>
@@ -962,7 +961,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="step_dockWidget">
+  <widget class="QDockWidget" name="step_scan_dockWidget">
    <property name="minimumSize">
     <size>
      <width>201</width>
@@ -1177,7 +1176,7 @@
     </layout>
    </widget>
   </widget>
-  <widget class="QToolBar" name="scan_ToolBar">
+  <widget class="QToolBar" name="step_scan_ToolBar">
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -1981,6 +1980,11 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string extracomment="Reads the hardware values saved in the computer">Get Hardware Values</string>
        </property>
@@ -2079,6 +2083,11 @@
          <width>100</width>
          <height>16777215</height>
         </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>9</pointsize>
+        </font>
        </property>
        <property name="text">
         <string extracomment="Reads tehe hardware values directly from the stepper harware"> Update Hardware</string>
@@ -2199,12 +2208,247 @@
     <zorder>line_5</zorder>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="dockWidget_3">
+  <widget class="QDockWidget" name="position_feedback_dockWidget">
+   <property name="windowTitle">
+    <string>Position Feedback</string>
+   </property>
    <attribute name="dockWidgetArea">
-    <number>4</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_10">
-    <layout class="QVBoxLayout" name="verticalLayout_6"/>
+    <layout class="QGridLayout" name="gridLayout_4">
+     <item row="10" column="1">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLCDNumber" name="lcdNumber_4"/>
+     </item>
+     <item row="11" column="0">
+      <widget class="QLabel" name="label_2">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Y-Axis:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="0">
+      <widget class="QLabel" name="label_3">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Z-Axis:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="2">
+      <widget class="QPushButton" name="pushButton_2">
+       <property name="text">
+        <string>Update</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="2">
+      <widget class="QLCDNumber" name="lcdNumber"/>
+     </item>
+     <item row="9" column="2">
+      <widget class="QPushButton" name="pushButton_3">
+       <property name="text">
+        <string>Get Position</string>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
+      <widget class="QLCDNumber" name="lcdNumber_3"/>
+     </item>
+     <item row="10" column="2">
+      <widget class="QPushButton" name="pushButton">
+       <property name="text">
+        <string>Update</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="1">
+      <widget class="QLabel" name="label_8">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Y Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="2">
+      <widget class="QPushButton" name="pushButton_5">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Update All Axis</string>
+       </property>
+      </widget>
+     </item>
+     <item row="11" column="1">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox_3"/>
+     </item>
+     <item row="12" column="1">
+      <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
+     </item>
+     <item row="15" column="0" colspan="2">
+      <widget class="QLabel" name="label_5">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Collect Position Feedback  during scan?</string>
+       </property>
+      </widget>
+     </item>
+     <item row="16" column="0" colspan="2">
+      <widget class="QLabel" name="label_10">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Save Position Feedback of scan?</string>
+       </property>
+      </widget>
+     </item>
+     <item row="14" column="0" colspan="2">
+      <widget class="QLabel" name="label_6">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Move to starting position at end?</string>
+       </property>
+      </widget>
+     </item>
+     <item row="16" column="2">
+      <widget class="QCheckBox" name="checkBox_3">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="15" column="2">
+      <widget class="QCheckBox" name="checkBox_2">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="14" column="2">
+      <widget class="QCheckBox" name="checkBox">
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+     </item>
+     <item row="11" column="2">
+      <widget class="QPushButton" name="pushButton_4">
+       <property name="text">
+        <string>Update</string>
+       </property>
+      </widget>
+     </item>
+     <item row="10" column="0">
+      <widget class="QLabel" name="label">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>X-Axis:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLCDNumber" name="lcdNumber_2"/>
+     </item>
+     <item row="5" column="2">
+      <widget class="QLabel" name="label_9">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Z Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="5" column="0">
+      <widget class="QLabel" name="label_7">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>X Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_4">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Positining Accuracy</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="QLCDNumber" name="lcdNumber_5"/>
+     </item>
+     <item row="1" column="2">
+      <widget class="QLCDNumber" name="lcdNumber_6"/>
+     </item>
+    </layout>
    </widget>
   </widget>
   <action name="actionSave_Step_Scan">
@@ -2289,7 +2533,7 @@
     <string>Z</string>
    </property>
   </action>
-  <action name="actionXY_scan_view">
+  <action name="actionStep_scan_view">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -2297,13 +2541,19 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;XY scan</string>
+    <string>&amp;Step Scan View</string>
+   </property>
+   <property name="iconText">
+    <string>step_scan</string>
+   </property>
+   <property name="toolTip">
+    <string>step_scan</string>
    </property>
    <property name="shortcut">
     <string>Alt+X</string>
    </property>
   </action>
-  <action name="actionDepth_scan_view">
+  <action name="actionStep_parameters_view">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -2311,35 +2561,10 @@
     <bool>true</bool>
    </property>
    <property name="text">
-    <string>&amp;Depth scan</string>
+    <string>&amp;Step parameters</string>
    </property>
-   <property name="shortcut">
-    <string>Alt+D</string>
-   </property>
-  </action>
-  <action name="actionScan_control_view">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Scan parameters</string>
-   </property>
-  </action>
-  <action name="actionOptimizer_view">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>&amp;Optimizer</string>
-   </property>
-   <property name="shortcut">
-    <string>Alt+O</string>
+   <property name="toolTip">
+    <string>Step parameters</string>
    </property>
   </action>
   <action name="action_step_start">
@@ -2530,17 +2755,6 @@
     <string>Ctrl+Z</string>
    </property>
   </action>
-  <action name="actionScan_line_view">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Scan line</string>
-   </property>
-   <property name="toolTip">
-    <string>Show or hide scan line display</string>
-   </property>
-  </action>
   <action name="action_full_range_xy">
    <property name="enabled">
     <bool>false</bool>
@@ -2571,8 +2785,29 @@
     <string>Set Z direction to full scan range</string>
    </property>
   </action>
+  <action name="actionHardware_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Hardware View</string>
+   </property>
+  </action>
+  <action name="actionPosition_Feedback_View">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Position Feedback View</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
@@ -2583,56 +2818,65 @@
    <extends>QGraphicsView</extends>
    <header>qtwidgets.plotwidget_modified.h</header>
   </customwidget>
-  <customwidget>
-   <class>ScienDSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
  </customwidgets>
  <tabstops>
-  <tabstop>x_amplitude</tabstop>
-  <tabstop>x_frequency_spinBox</tabstop>
-  <tabstop>y_amplitude</tabstop>
-  <tabstop>y_frequency_spinBox</tabstop>
-  <tabstop>z_amplitude</tabstop>
-  <tabstop>z_frequency_spinBox</tabstop>
-  <tabstop>x_dcin_checkBox</tabstop>
-  <tabstop>clean_x_axis_pushButton</tabstop>
-  <tabstop>show_image_x_checkBox</tabstop>
-  <tabstop>y_dcin_checkBox</tabstop>
-  <tabstop>clean_y_axis_pushButton</tabstop>
-  <tabstop>show_image_y_checkBox</tabstop>
-  <tabstop>z_dcin_checkBox</tabstop>
-  <tabstop>clean_z_axis_pushButton</tabstop>
-  <tabstop>show_image_z_checkBox</tabstop>
+  <tabstop>x_steps_InputWidget</tabstop>
+  <tabstop>y_steps_InputWidget</tabstop>
   <tabstop>z_steps_InputWidget</tabstop>
+  <tabstop>step_direction_comboBox</tabstop>
   <tabstop>x_piezo_min_InputWidget</tabstop>
-  <tabstop>x_piezo_max_InputWidget</tabstop>
   <tabstop>y_piezo_min_InputWidget</tabstop>
-  <tabstop>y_piezo_max_InputWidget</tabstop>
   <tabstop>z_piezo_min_InputWidget</tabstop>
+  <tabstop>x_piezo_max_InputWidget</tabstop>
+  <tabstop>y_piezo_max_InputWidget</tabstop>
   <tabstop>z_piezo_max_InputWidget</tabstop>
   <tabstop>x_piezo_InputWidget</tabstop>
   <tabstop>y_piezo_InputWidget</tabstop>
   <tabstop>z_piezo_InputWidget</tabstop>
-  <tabstop>step_direction_comboBox</tabstop>
-  <tabstop>inverted_direction_checkBox</tabstop>
+  <tabstop>x_amplitude</tabstop>
+  <tabstop>y_amplitude</tabstop>
+  <tabstop>z_amplitude</tabstop>
+  <tabstop>x_frequency_spinBox</tabstop>
+  <tabstop>y_frequency_spinBox</tabstop>
+  <tabstop>z_frequency_spinBox</tabstop>
+  <tabstop>x_dcin_checkBox</tabstop>
+  <tabstop>y_dcin_checkBox</tabstop>
+  <tabstop>z_dcin_checkBox</tabstop>
+  <tabstop>read_hardware_pushButton</tabstop>
+  <tabstop>update_hardware_pushButton</tabstop>
+  <tabstop>clean_x_axis_pushButton</tabstop>
+  <tabstop>clean_y_axis_pushButton</tabstop>
+  <tabstop>clean_z_axis_pushButton</tabstop>
+  <tabstop>show_image_x_checkBox</tabstop>
+  <tabstop>show_image_y_checkBox</tabstop>
+  <tabstop>show_image_z_checkBox</tabstop>
+  <tabstop>count_channel_ComboBox</tabstop>
+  <tabstop>count_direction_ComboBox</tabstop>
+  <tabstop>cb_max_DoubleSpinBox</tabstop>
+  <tabstop>cb_high_percentile_DoubleSpinBox</tabstop>
+  <tabstop>cb_ViewWidget</tabstop>
+  <tabstop>cb_low_percentile_DoubleSpinBox</tabstop>
+  <tabstop>cb_min_DoubleSpinBox</tabstop>
+  <tabstop>cb_centiles_RadioButton</tabstop>
+  <tabstop>cb_manual_RadioButton</tabstop>
+  <tabstop>ViewWidget</tabstop>
   <tabstop>tilt_set_01_pushButton</tabstop>
-  <tabstop>tilt_set_02_pushButton</tabstop>
-  <tabstop>tilt_set_03_pushButton</tabstop>
-  <tabstop>calc_tilt_pushButton</tabstop>
   <tabstop>tilt_01_x_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_01_y_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_01_z_pos_doubleSpinBox</tabstop>
+  <tabstop>tilt_set_02_pushButton</tabstop>
   <tabstop>tilt_02_x_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_02_y_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_02_z_pos_doubleSpinBox</tabstop>
+  <tabstop>tilt_set_03_pushButton</tabstop>
   <tabstop>tilt_03_x_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_03_y_pos_doubleSpinBox</tabstop>
   <tabstop>tilt_03_z_pos_doubleSpinBox</tabstop>
+  <tabstop>calc_tilt_pushButton</tabstop>
   <tabstop>x_piezo_SliderWidget</tabstop>
-  <tabstop>z_piezo_SliderWidget</tabstop>
   <tabstop>y_piezo_SliderWidget</tabstop>
+  <tabstop>z_piezo_SliderWidget</tabstop>
+  <tabstop>inverted_direction_checkBox</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -2653,9 +2897,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionXY_scan_view</sender>
+   <sender>actionStep_scan_view</sender>
    <signal>triggered(bool)</signal>
-   <receiver>step_dockWidget</receiver>
+   <receiver>step_scan_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2669,9 +2913,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>step_dockWidget</sender>
+   <sender>step_scan_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionXY_scan_view</receiver>
+   <receiver>actionStep_scan_view</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2685,9 +2929,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>actionScan_control_view</sender>
+   <sender>actionStep_parameters_view</sender>
    <signal>triggered(bool)</signal>
-   <receiver>scan_control_dockWidget</receiver>
+   <receiver>step_parameters_control_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2701,9 +2945,9 @@
    </hints>
   </connection>
   <connection>
-   <sender>scan_control_dockWidget</sender>
+   <sender>step_parameters_control_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
-   <receiver>actionScan_control_view</receiver>
+   <receiver>actionStep_parameters_view</receiver>
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2719,7 +2963,7 @@
   <connection>
    <sender>actionScan_Toolbar</sender>
    <signal>triggered(bool)</signal>
-   <receiver>scan_ToolBar</receiver>
+   <receiver>step_scan_ToolBar</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2765,7 +3009,7 @@
    </hints>
   </connection>
   <connection>
-   <sender>scan_ToolBar</sender>
+   <sender>step_scan_ToolBar</sender>
    <signal>visibilityChanged(bool)</signal>
    <receiver>actionScan_Toolbar</receiver>
    <slot>setChecked(bool)</slot>
@@ -2805,6 +3049,70 @@
     <hint type="sourcelabel">
      <x>1197</x>
      <y>881</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionHardware_View</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>hardware_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>311</x>
+     <y>651</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>311</x>
+     <y>651</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>actionPosition_Feedback_View</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>position_feedback_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>799</x>
+     <y>404</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>hardware_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionHardware_View</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>311</x>
+     <y>651</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>position_feedback_dockWidget</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>actionPosition_Feedback_View</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>799</x>
+     <y>404</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
