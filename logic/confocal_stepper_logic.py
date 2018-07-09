@@ -652,13 +652,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self._inverted_scan:
                 self._first_scan_axis = b
                 self._second_scan_axis = a
-                self._steps_scan_first_line = self.axis_class[a].steps_direction
-                self._steps_scan_second_line = self.axis_class[b].steps_direction
+                self._steps_scan_first_line = self.axis_class[b].steps_direction
+                self._steps_scan_second_line = self.axis_class[a].steps_direction
             else:
                 self._first_scan_axis = a
                 self._second_scan_axis = b
-                self._steps_scan_first_line = self.axis_class[b].steps_direction
-                self._steps_scan_second_line = self.axis_class[a].steps_direction
+                self._steps_scan_first_line = self.axis_class[a].steps_direction
+                self._steps_scan_second_line = self.axis_class[b].steps_direction
         else:
             self.log.error(
                 "One of the chosen axes {} are not defined for the stepper hardware.".format(
@@ -1042,7 +1042,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.axis_class[self._first_scan_axis].closed_loop:
             if self.map_scan_position:
                 # Todo: how is the position data saved for the backward direction?
-                new_position = [self._scan_positions_back[self._step_counter, -1, 0]]
+                new_position = [self.convert_voltage_to_position(self._first_scan_axis,
+                                                                 self._scan_positions_back[self._step_counter, 0, 0])]
+                self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
             else:
                 new_position = self.get_position([self._first_scan_axis])
             if abs(self._start_position[0] - new_position[0]) > self.axis_class[
@@ -1283,7 +1285,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.image_back[:, :, 2] = self.stepping_raw_data
         if self.map_scan_position:
             self.image[:, :, 2] = self._scan_positions
-            self.image_back[:, :, :2] = self._scan_positions_back
+            self.image_back[:, :, 2] = self._scan_positions_back
 
     def update_image_data_line(self, line_counter):
         """
