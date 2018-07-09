@@ -36,6 +36,95 @@ from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from core.util import units
 
+class CrossROI(pg.ROI):
+    """ Create a Region of interest, which is a zoomable rectangular.
+
+    @param float pos: optional parameter to set the position
+    @param float size: optional parameter to set the size of the roi
+
+    Have a look at:
+    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
+    """
+    sigUserRegionUpdate = QtCore.Signal(object)
+    sigMachineRegionUpdate = QtCore.Signal(object)
+
+    def __init__(self, pos, size, **args):
+        """Create a ROI with a central handle."""
+        self.userDrag = False
+        pg.ROI.__init__(self, pos, size, **args)
+        # That is a relative position of the small box inside the region of
+        # interest, where 0 is the lowest value and 1 is the higherst:
+        center = [0.5, 0.5]
+        # Translate the center to the intersection point of the crosshair.
+        self.addTranslateHandle(center)
+
+        self.sigRegionChangeStarted.connect(self.startUserDrag)
+        self.sigRegionChangeFinished.connect(self.stopUserDrag)
+        self.sigRegionChanged.connect(self.regionUpdateInfo)
+
+    def setPos(self, pos, update=True, finish=False):
+        """Sets the position of the ROI.
+
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+
+        Changed finish from parent class implementation to not disrupt user dragging detection.
+        """
+        super().setPos(pos, update=update, finish=finish)
+
+    def setSize(self, size, update=True, finish=True):
+        """
+        Sets the size of the ROI
+        @param bool update: whether to update the display for this call of setPos
+        @param bool finish: whether to emit sigRegionChangeFinished
+        """
+        super().setSize(size, update=update, finish=finish)
+
+    def handleMoveStarted(self):
+        """ Handles should always be moved by user."""
+        super().handleMoveStarted()
+        self.userDrag = True
+
+    def startUserDrag(self, roi):
+        """ROI has started being dragged by user."""
+        self.userDrag = True
+
+    def stopUserDrag(self, roi):
+        """ROI has stopped being dragged by user"""
+        self.userDrag = False
+
+    def regionUpdateInfo(self, roi):
+        """When the region is being dragged by the user, emit the corresponding signal."""
+        #Todo: Check
+        if self.userDrag:
+            self.sigUserRegionUpdate.emit(roi)
+        else:
+            self.sigMachineRegionUpdate.emit(roi)
+
+class CrossLine(pg.InfiniteLine):
+    """ Construct one line for the Crosshair in the plot.
+
+    @param float pos: optional parameter to set the position
+    @param float angle: optional parameter to set the angle of the line
+    @param dict pen: Configure the pen.
+
+    For additional options consider the documentation of pyqtgraph.InfiniteLine
+    """
+
+    def __init__(self, **args):
+        pg.InfiniteLine.__init__(self, **args)
+#        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
+
+    def adjust(self, extroi):
+        """
+        Run this function to adjust the position of the Crosshair-Line
+
+        @param object extroi: external roi object from pyqtgraph
+        """
+        if self.angle == 0:
+            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5)
+        if self.angle == 90:
+            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
 class ConfocalStepperMainWindow(QtWidgets.QMainWindow):
     """ The main window for the ODMR measurement GUI.
@@ -242,6 +331,40 @@ class ConfocalStepperGui(GUIBase):
         # Todo: Think about axes labels
         self._mw.ViewWidget.setLabel('bottom', units='Steps')
         self._mw.ViewWidget.setLabel('left', units='Steps')
+
+        # Create Region of Interest for xy image and add to xy Image Widget:
+        # Get the image for the display from the logic
+        step_image_data = self._stepper_logic.image[:, :, 2]
+        ini_pos_x_crosshair = len(step_image_data) / 2
+        ini_pos_y_crosshair = len(step_image_data) / 2
+        self.roi = CrossROI(
+            [
+                ini_pos_x_crosshair-ini_pos_x_crosshair*0.1,
+                ini_pos_y_crosshair - ini_pos_y_crosshair * 0.1,
+            ],
+            [ini_pos_y_crosshair*0.05
+                ,ini_pos_y_crosshair*0.05],
+            pen={'color': "F0F", 'width': 1},
+            removable=True
+        )
+
+        self._mw.ViewWidget.addItem(self.roi)
+
+        # create horizontal and vertical line as a crosshair in xy image:
+        self.hline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
+                                  angle=0, pen={'color': palette.green, 'width': 1})
+        self.vline = CrossLine(pos=self.roi.pos() + self.roi.size() * 0.5,
+                                  angle=90, pen={'color': palette.green, 'width': 1})
+
+        # connect the change of a region with the adjustment of the crosshair:
+        self.roi.sigRegionChanged.connect(self.hline.adjust)
+        self.roi.sigRegionChanged.connect(self.vline.adjust)
+        #self.roi.sigUserRegionUpdate.connect(self.update_from_roi)
+        #self.roi.sigRegionChangeFinished.connect(self.roi_bounds_check)
+
+        # add the configured crosshair to the Widget
+        self._mw.ViewWidget.addItem(self.hline)
+        self._mw.ViewWidget.addItem(self.vline)
 
         # Set up and connect xy channel combobox
         scan_channels = self._stepper_logic.get_counter_count_channels()
@@ -662,6 +785,7 @@ class ConfocalStepperGui(GUIBase):
 
     # Todo: anpassen
     ################## Step Scan ##################
+
     def update_count_channel(self, index):
         """ The displayed channel for the image was changed, refresh the displayed image.
 
@@ -720,7 +844,7 @@ class ConfocalStepperGui(GUIBase):
             self.enable_step_actions()
 
     ################## Step Parameters ##################
-    # Todo:
+
     def update_step_direction(self):
         """ The user changed the step scan direction, adjust all
             other GUI elements."""
@@ -998,3 +1122,18 @@ class ConfocalStepperGui(GUIBase):
         """
         if tag == 'logic':
             self.disable_step_actions()
+
+    ################## ROI ######################
+    def update_from_roi_xy(self, roi):
+        """The user manually moved the ROI (region of interest), adjust all other GUI elements accordingly
+
+        @params object roi: PyQtGraph ROI object
+        """
+        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
+        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+
+        h_pos = np.clip(h_pos, *self._stepper_logic._steps_scan_first_line)
+        v_pos = np.clip(v_pos, *self._stepper_logic._steps_scan_second_line)
+
+
+
