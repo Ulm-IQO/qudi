@@ -611,6 +611,21 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         result = truncate(result, 4)
         return result
 
+    def convert_voltage_to_position_for_image(self):
+        # convert voltage to position for all position of a measured image
+        if self.map_scan_position:
+            self.full_image = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+            self.full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+            for i in range(self._steps_scan_first_line):
+                for j in range(self._steps_scan_second_line):
+                    self.full_image[j, i, 0] = self.convert_voltage_to_position("x", self.image_raw[j, i, 0])
+                    self.full_image[j, i, 1] = self.convert_voltage_to_position("y", self.image_raw[j, i, 1])
+                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position("y", self.image_raw_back[j, i, 0])
+                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position("y", self.image_raw_back[j, i, 1])
+            for n, ch in enumerate(self.get_counter_count_channels()):
+                self.full_image[:, :, 2 + n] = self.image_raw[:, :, 2 + n]
+                self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
+
     ################################# Stepper Scan Methods #######################################
 
     def set_scan_axes(self, scan_axes):
@@ -749,8 +764,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
                 # initialise arrays
-                self._scan_positions = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
-                self._scan_positions_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+                self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+                self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 # initialise position scan
                 # Todo: This is a little dirty and should not be done this way here. Fixme!
                 if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
@@ -984,6 +999,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.stopRequested:
             with self.threadlock:
                 self.kill_counter()
+                if self.map_scan_position:
+                    self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+                    self.convert_voltage_to_position_for_image()
+
                 # it is not necessary to stop the analogue input reader. It is closed after each line scan
                 self.stopRequested = False
                 self.module_state.unlock()
@@ -1030,11 +1049,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.stepping_raw_data[self._step_counter] = new_counts[0]
         self.stepping_raw_data_back[self._step_counter] = np.flipud(new_counts[1])
         if self.map_scan_position:
-            self._scan_positions[self._step_counter, :, 0] = new_counts[2][:self._steps_scan_first_line]
-            self._scan_positions[self._step_counter, :, 1] = new_counts[2][self._steps_scan_first_line:]
-            self._scan_positions_back[self._step_counter, :, 0] = np.flipud(
+            self._scan_pos_voltages[self._step_counter, :, 0] = new_counts[2][:self._steps_scan_first_line]
+            self._scan_pos_voltages[self._step_counter, :, 1] = new_counts[2][self._steps_scan_first_line:]
+            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(
                 new_counts[3][:self._steps_scan_first_line])
-            self._scan_positions_back[self._step_counter, :, 1] = np.flipud(new_counts[3][self._steps_scan_first_line:])
+            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(new_counts[3][self._steps_scan_first_line:])
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
 
@@ -1043,7 +1062,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self.map_scan_position:
                 # Todo: how is the position data saved for the backward direction?
                 new_position = [self.convert_voltage_to_position(self._first_scan_axis,
-                                                                 self._scan_positions_back[self._step_counter, 0, 0])]
+                                                                 self._scan_pos_voltages_back[self._step_counter, 0, 0])]
                 self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
             else:
                 new_position = self.get_position([self._first_scan_axis])
@@ -1068,9 +1087,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                             self._steps_scan_first_line, self._first_scan_axis)
                         self._position_feedback_device.add_analogue_reader_channel_to_measurement(
                             self._first_scan_axis, [self._second_scan_axis])
-                elif self._step_counter == self._steps_scan_second_line - 1 and self.map_scan_position:
-                    self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
-
         self._step_counter += 1
         if self._step_counter > self._steps_scan_second_line - 1:
             self.stopRequested = True
@@ -1275,28 +1291,30 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             image_raw_back[:, :, 1] = second_position_array
             image_raw_back[:, :, 0] = first_position_array
 
-        self.image = image_raw
-        self.image_back = image_raw_back
+        self.image_raw = image_raw
+        self.image_raw_back = image_raw_back
+        self.full_image = image_raw
+        self.full_image_back = image_raw_back
 
     def update_image_data(self):
         """Updates the images data
         """
-        self.image[:, :, 2] = self.stepping_raw_data
-        self.image_back[:, :, 2] = self.stepping_raw_data
+        self.image_raw[:, :, 2] = self.stepping_raw_data
+        self.image_raw_back[:, :, 2] = self.stepping_raw_data
         if self.map_scan_position:
-            self.image[:, :, 2] = self._scan_positions
-            self.image_back[:, :, 2] = self._scan_positions_back
+            self.image_raw[:, :, 2] = self._scan_pos_voltages
+            self.image_raw_back[:, :, 2] = self._scan_pos_voltages_back
 
     def update_image_data_line(self, line_counter):
         """
 
         :param line_counter:
         """
-        self.image[line_counter, :, 2] = self.stepping_raw_data[line_counter]
-        self.image_back[line_counter, :, 2] = self.stepping_raw_data_back[line_counter]
+        self.image_raw[line_counter, :, 2] = self.stepping_raw_data[line_counter]
+        self.image_raw_back[line_counter, :, 2] = self.stepping_raw_data_back[line_counter]
         if self.map_scan_position:
-            self.image[line_counter, :, :2] = self._scan_positions[line_counter]
-            self.image_back[line_counter, :, :2] = self._scan_positions_back[line_counter]
+            self.image_raw[line_counter, :, :2] = self._scan_pos_voltages[line_counter]
+            self.image_raw_back[line_counter, :, :2] = self._scan_pos_voltages_back[line_counter]
 
     def save_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.
@@ -1336,23 +1354,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
 
-        # convert voltage to position for saving the data
-        if self.map_scan_position:
-            full_image = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
-            full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
-            for i in range(self._steps_scan_first_line):
-                for j in range(self._steps_scan_second_line):
-                    full_image[j, i, 0] = self.convert_voltage_to_position("x", self.image[j, i, 0])
-                    full_image[j, i, 1] = self.convert_voltage_to_position("y", self.image[j, i, 1])
-                    full_image_back[j, i, 0] = self.convert_voltage_to_position("y", self.image_back[j, i, 0])
-                    full_image_back[j, i, 1] = self.convert_voltage_to_position("y", self.image_back[j, i, 1])
-            for n, ch in enumerate(self.get_counter_count_channels()):
-                full_image[:, :, 2 + n] = self.image[:, :, 2 + n]
-                full_image_back[:, :, 2 + n] = self.image_back[:, :, 2 + n]
-        else:
-            full_image = None
-            full_image_back = None
-
         axis_list = []
         for axis_name in self.axis_class.keys():
             if self.axis_class[axis_name].closed_loop:
@@ -1371,7 +1372,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 parameters['Start position second axis'] = self._start_position[counter]
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data,
-                                     full_data=full_image,
+                                     full_data=self.full_image,
                                      cbar_range=colorscale_range,
                                      percentile_range=percentile_range,
                                      ch=n)
@@ -1407,7 +1408,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            plotfig=figs[ch][1])
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data_back,
-                                     full_data=full_image_back,
+                                     full_data=self.full_image_back,
                                      cbar_range=colorscale_range,
                                      percentile_range=percentile_range,
                                      ch=n)
@@ -1446,19 +1447,19 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         data = OrderedDict()
         data_back = OrderedDict()
         if self.map_scan_position:
-            data['x position (mm)'] = full_image[:, :, 0].flatten()
-            data['y position (mm)'] = full_image[:, :, 1].flatten()
-            data_back['x position (mm)'] = full_image_back[:, :, 0].flatten()
-            data_back['y position (mm)'] = full_image_back[:, :, 1].flatten()
+            data['x position (mm)'] = self.full_image[:, :, 0].flatten()
+            data['y position (mm)'] = self.full_image[:, :, 1].flatten()
+            data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
+            data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
         else:
-            data['x step'] = self.image[:, :, 0].flatten()
-            data['y step'] = self.image[:, :, 1].flatten()
-            data_back['x step'] = self.image_back[:, :, 0].flatten()
-            data_back['y step'] = self.image_back[:, :, 1].flatten()
+            data['x step'] = self.image_raw[:, :, 0].flatten()
+            data['y step'] = self.image_raw[:, :, 1].flatten()
+            data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
+            data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
 
         for n, ch in enumerate(self.get_counter_count_channels()):
-            data['count rate {0} (Hz)'.format(ch)] = self.image[:, :, 2 + n].flatten()
-            data_back['count rate {0} (Hz)'.format(ch)] = self.image_back[:, :, 2 + n].flatten()
+            data['count rate {0} (Hz)'.format(ch)] = self.image_raw[:, :, 2 + n].flatten()
+            data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_stepper_data'

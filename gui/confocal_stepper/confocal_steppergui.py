@@ -316,14 +316,15 @@ class ConfocalStepperGui(GUIBase):
         self.keep_former_settings()
 
     def init_plot_step_UI(self):
+        self._currently_stepping = False
         # Get the image for the display from the logic.
-        self.step_image = pg.ImageItem(image=self._stepper_logic.image[:, :, 2], axisOrder='row-major')
+        self.step_image = pg.ImageItem(image=self._stepper_logic.image_raw[:, :, 2], axisOrder='row-major')
         # Todo: Add option to see data from other counter later
 
         # set up scan line plot
         sc = self._stepper_logic._step_counter
         sc = sc - 1 if sc >= 1 else sc
-        data = self._stepper_logic.image[sc, :, 0:3:2]
+        data = self._stepper_logic.image_raw[sc, :, 0:3:2]
 
         self.step_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
         # self._mw.scanLineGraphicsView.addItem(self.step_line_plot)
@@ -337,7 +338,7 @@ class ConfocalStepperGui(GUIBase):
 
         # Create Region of Interest for xy image and add to xy Image Widget:
         # Get the image for the display from the logic
-        step_image_data = self._stepper_logic.image[:, :, 2]
+        step_image_data = self._stepper_logic.image_raw[:, :, 2]
         ini_pos_x_crosshair = len(step_image_data) / 2
         ini_pos_y_crosshair = len(step_image_data) / 2
         self.roi = CrossROI(
@@ -362,7 +363,7 @@ class ConfocalStepperGui(GUIBase):
         # connect the change of a region with the adjustment of the crosshair:
         self.roi.sigRegionChanged.connect(self.hline.adjust)
         self.roi.sigRegionChanged.connect(self.vline.adjust)
-        # self.roi.sigUserRegionUpdate.connect(self.update_from_roi)
+        self.roi.sigUserRegionUpdate.connect(self.update_from_roi)
         # self.roi.sigRegionChangeFinished.connect(self.roi_bounds_check)
 
         # add the configured crosshair to the Widget
@@ -418,10 +419,10 @@ class ConfocalStepperGui(GUIBase):
         # X Axis
         if self._x_closed_loop:
             self._mw.x_accuracy_doubleSpinBox.setValue(
-                self._stepper_logic.axis_class["x"].feedback_precision_position*1e-3)
-            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position*1e-3)
+                self._stepper_logic.axis_class["x"].feedback_precision_position * 1e-3)
+            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position * 1e-3)
             pos_range = self._stepper_logic.axis_class["x"].get_position_range_stepper()
-            self._mw.x_new_position_doubleSpinBox.setRange(pos_range[0]*1e-3,pos_range[1]*1e-3)
+            self._mw.x_new_position_doubleSpinBox.setRange(pos_range[0] * 1e-3, pos_range[1] * 1e-3)
             self._feedback_axis["x"] = self._mw.x_new_position_doubleSpinBox
         else:
             self._mw.x_accuracy_doubleSpinBox.setValue(-1)
@@ -429,14 +430,13 @@ class ConfocalStepperGui(GUIBase):
             self._mw.set_x_position_pushButton.setEnabled(False)
             self._mw.x_new_position_doubleSpinBox.setEnabled(False)
 
-
         # Y Axis
         if self._y_closed_loop:
             self._mw.y_accuracy_doubleSpinBox.setValue(
-                self._stepper_logic.axis_class["y"].feedback_precision_position*1e-3)
-            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position*1e-3)
+                self._stepper_logic.axis_class["y"].feedback_precision_position * 1e-3)
+            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position * 1e-3)
             pos_range = self._stepper_logic.axis_class["y"].get_position_range_stepper()
-            self._mw.y_new_position_doubleSpinBox.setRange(pos_range[0]*1e-3,pos_range[1]*1e-3)
+            self._mw.y_new_position_doubleSpinBox.setRange(pos_range[0] * 1e-3, pos_range[1] * 1e-3)
             self._feedback_axis["y"] = self._mw.y_new_position_doubleSpinBox
         else:
             self._mw.y_accuarcy_lcdNumber.setValue(-1)
@@ -447,17 +447,16 @@ class ConfocalStepperGui(GUIBase):
         # Z Axis
         if self._z_closed_loop:
             self._mw.z_accuracy_doubleSpinBox.setValue(
-                self._stepper_logic.axis_class["z"].feedback_precision_position*1e-3)
-            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position*1e-3)
+                self._stepper_logic.axis_class["z"].feedback_precision_position * 1e-3)
+            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position * 1e-3)
             pos_range = self._stepper_logic.axis_class["z"].get_position_range_stepper()
-            self._mw.z_new_position_doubleSpinBox.setRange(pos_range[0]*1e-3,pos_range[1]*1e-3)
+            self._mw.z_new_position_doubleSpinBox.setRange(pos_range[0] * 1e-3, pos_range[1] * 1e-3)
             self._feedback_axis["z"] = self._mw.z_new_position_doubleSpinBox
         else:
             self._mw.z_accuarcy_lcdNumber.display(-1)
             self._mw.z_position_doubleSpinBox.setValue(-1)
             self._mw.set_z_position_pushButton.setEnabled(False)
             self._mw.z_new_position_doubleSpinBox.setEnabled(False)
-
 
         self._mw.move_all_axis_pushButton.setEnabled(self._x_closed_loop + self._y_closed_loop + self._z_closed_loop)
 
@@ -585,7 +584,6 @@ class ConfocalStepperGui(GUIBase):
         self._inverted_axes = {"xy": "yx", "xz": "zx", "yz": "zy"}
         self._mw.step_direction_comboBox.activated.connect(self.update_step_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_step_direction)
-
 
         self._stepper_logic.signal_step_scan_stopped.connect(self.enable_step_actions)
 
@@ -720,22 +718,22 @@ class ConfocalStepperGui(GUIBase):
 
     def get_position_steppers(self):
         """Measures the current positions of the stepper for the axis with position feedback"""
-        result = self._stepper_logic.get_position([*self._feedback_axis])#get position for keys of feedback axes
+        result = self._stepper_logic.get_position([*self._feedback_axis])  # get position for keys of feedback axes
         if self._x_closed_loop:
-            self._mw.x_position_doubleSpinBox.setValue(result[0]*1e-3)
+            self._mw.x_position_doubleSpinBox.setValue(result[0] * 1e-3)
         if self._y_closed_loop:
-            self._mw.y_position_doubleSpinBox.setValue(result[self._x_closed_loop]*1e-3)
+            self._mw.y_position_doubleSpinBox.setValue(result[self._x_closed_loop] * 1e-3)
         if self._z_closed_loop:
-            self._mw.z_position_doubleSpinBox.setValue(result[self._x_closed_loop + self._y_closed_loop]*1e-3)
+            self._mw.z_position_doubleSpinBox.setValue(result[self._x_closed_loop + self._y_closed_loop] * 1e-3)
 
     def step_to_x_position(self):
         if self._x_closed_loop:
             # Get positions to move to
-            pos = {"x": self._mw.x_new_position_doubleSpinBox.value()*1e3}
+            pos = {"x": self._mw.x_new_position_doubleSpinBox.value() * 1e3}
             # Move steppers to desired position
             self._stepper_logic.move_to_position(pos)
             # Update positions displayed in GUI
-            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position*1e-3)
+            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position * 1e-3)
         else:
             # If axis can not be moved disable button
             self._mw.set_x_position_pushButton.setEnabled(False)
@@ -744,37 +742,35 @@ class ConfocalStepperGui(GUIBase):
     def step_to_y_position(self):
         if self._y_closed_loop:
             # Get positions to move to
-            pos = {"y": self._mw.y_new_position_doubleSpinBox.value()*1e3}
+            pos = {"y": self._mw.y_new_position_doubleSpinBox.value() * 1e3}
             # Move steppers to desired position
             self._stepper_logic.move_to_position(pos)
             # Update positions displayed in GUI
-            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position*1e-3)
+            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position * 1e-3)
         else:
             # If axis can not be moved disable button
             self._mw.set_y_position_pushButton.setEnabled(False)
             self._mw.y_new_position_doubleSpinBox.setEnabled(False)
             self._mw.y_new_position_doubleSpinBox.setEnabled(False)
 
-
     def step_to_z_position(self):
         if self._z_closed_loop:
             # Get positions to move to
-            pos = {"z": self._mw.z_new_position_doubleSpinBox.value()*1e3}
+            pos = {"z": self._mw.z_new_position_doubleSpinBox.value() * 1e3}
             # Move steppers to desired position
             self._stepper_logic.move_to_position(pos)
             # Update positions displayed in GUI
-            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position*1e-3)
+            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position * 1e-3)
         else:
             # If axis can not be moved disable button
             self._mw.set_z_position_pushButton.setEnabled(False)
             self._mw.z_new_position_doubleSpinBox.setEnabled(False)
 
-
     def move_all_axis_to_position(self):
         # Get positions to move to and corresponding axes
         pos = {}
         for key, item in self._feedback_axis.items():
-            pos[key] = item.value()*1e3
+            pos[key] = item.value() * 1e3
 
         # Move steppers to desired position
         if len(self._feedback_axis) > 0:
@@ -785,11 +781,11 @@ class ConfocalStepperGui(GUIBase):
 
         # Update positions displayed in GUI
         if self._x_closed_loop:
-            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position*1e-3)
+            self._mw.x_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].absolute_position * 1e-3)
         if self._y_closed_loop:
-            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position*1e-3)
+            self._mw.y_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].absolute_position * 1e-3)
         if self._z_closed_loop:
-            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position*1e-3)
+            self._mw.z_position_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].absolute_position * 1e-3)
 
     def update_move_to_start(self):
         pass
@@ -823,12 +819,11 @@ class ConfocalStepperGui(GUIBase):
         self._mw.inverted_direction_checkBox.setEnabled(False)
         self._mw.step_direction_comboBox.setEnabled(False)
 
-
         # Set the zoom button if it was pressed to unpressed and disable it
-        #self._mw.action_zoom.setChecked(False)
-        #self._mw.action_zoom.setEnabled(False)
+        # self._mw.action_zoom.setChecked(False)
+        # self._mw.action_zoom.setEnabled(False)
 
-        #self.set_history_actions(False)
+        # self.set_history_actions(False)
 
         # Disable Position feedback buttons which can't be used during step scan
         self._mw.get_all_positions_pushButton.setEnabled(False)
@@ -837,6 +832,8 @@ class ConfocalStepperGui(GUIBase):
         self._mw.set_z_position_pushButton.setEnabled(False)
         self._mw.move_all_axis_pushButton.setEnabled(False)
         self._mw.measure_pos_feedback_checkBox.setEnabled(False)
+
+        self._currently_stepping = True
 
     def enable_step_actions(self):
         """ Reset the scan action buttons to the default active
@@ -891,6 +888,8 @@ class ConfocalStepperGui(GUIBase):
         self._mw.move_all_axis_pushButton.setEnabled(True)
         self._mw.measure_pos_feedback_checkBox.setEnabled(True)
 
+        self._currently_stepping = False
+
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
         if enable and self._stepper_logic.history_index < len(
@@ -915,11 +914,11 @@ class ConfocalStepperGui(GUIBase):
     def step_start_clicked(self):
         """ Manages what happens if the step scan is started. """
         self._stepper_logic.map_scan_position = self._mw.measure_pos_feedback_checkBox.isChecked()
-        #update axes (both for position feedback and plot display)
+        # update axes (both for position feedback and plot display)
         self._h_axis = self._stepper_logic._scan_axes[0]
         self._v_axis = self._stepper_logic._scan_axes[1]
-        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis+'Steps')
-        self._mw.ViewWidget.setLabel('left', units=self._v_axis+'Steps')
+        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
 
         self.disable_step_actions()
         self.update_stepper_hardware_values()
@@ -1022,10 +1021,10 @@ class ConfocalStepperGui(GUIBase):
         #  be chosen
         # if self.count_direction:
         # Todo: add count_direction variable
-        step_image_data = self._stepper_logic.image[:, :, 2]
+        step_image_data = self._stepper_logic.image_raw[:, :, 2]
 
         # else:
-        #    step_image_data = self._stepper_logic.image_back[:, :, 2]
+        #    step_image_data = self._stepper_logic.image_raw_back[:, :, 2]
         cb_range = self.get_cb_range()
 
         # Now update image with new color scale, and update colorbar
@@ -1304,14 +1303,45 @@ class ConfocalStepperGui(GUIBase):
             self.disable_step_actions()
 
     ################## ROI ######################
-    def update_from_roi_xy(self, roi):
+    def update_from_roi(self, roi):
         """The user manually moved the ROI (region of interest), adjust all other GUI elements accordingly
 
         @params object roi: PyQtGraph ROI object
         """
-        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+        # Todo: Add option if backward picture is shown
+        if self._stepper_logic.map_scan_position and not self._currently_stepping:
+            # This is a safety precaution
+            self._feedback_axis["x"].setValue(self._mw.x_position_doubleSpinBox.value())
+            self._feedback_axis["y"].setValue(self._mw.y_position_doubleSpinBox.value())
+            self._feedback_axis["z"].setValue(self._mw.z_position_doubleSpinBox.value())
 
-        h_pos = np.clip(h_pos, *self._stepper_logic._steps_scan_first_line)
-        v_pos = np.clip(v_pos, *self._stepper_logic._steps_scan_second_line)
+            # Find position of ROI
+            h_step_pos = int(roi.pos()[0])
+            v_step_pos = int(roi.pos()[1])
+            if h_step_pos < 0:
+                h_pos = 0.0
+                h_step_pos = 0
+                check_pos = False
+            elif h_step_pos > self._stepper_logic._steps_scan_first_line - 1:
+                h_pos = 0.0
+                h_step_pos = self._stepper_logic._steps_scan_first_line - 1
+                check_pos = False
+            else:
+                check_pos = True
 
+            if v_step_pos < 0:
+                v_pos = 0.0
+                if check_pos:
+                    v_step_pos = 0
+                    h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
+            elif v_step_pos > self._stepper_logic._steps_scan_second_line - 1:
+                v_pos = 0.0
+                if check_pos:
+                    v_step_pos = self._stepper_logic._steps_scan_first_line - 1
+                    h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
+            else:
+                h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
+                v_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 1]
+
+            self._feedback_axis[self._stepper_logic._first_scan_axis].setValue(h_pos * 1e-3)
+            self._feedback_axis[self._stepper_logic._second_scan_axis].setValue(v_pos * 1e-3)

@@ -2544,6 +2544,9 @@
        <property name="text">
         <string extracomment="This of course only works if the axes have position feedback">Save Position Feedback of scan?</string>
        </property>
+       <property name="checked">
+        <bool>true</bool>
+       </property>
       </widget>
      </item>
      <item row="14" column="2">
@@ -2614,6 +2617,9 @@
        </property>
        <property name="text">
         <string extracomment="This of course only works if the axes have position feedback">Collect Position Feedback  during scan?</string>
+       </property>
+       <property name="checked">
+        <bool>true</bool>
        </property>
       </widget>
      </item>
