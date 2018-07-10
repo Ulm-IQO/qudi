@@ -196,9 +196,9 @@ class ConfocalStepperGui(GUIBase):
         *.ui file and configures the event handling between the modules.
         """
 
-        self._stepper_logic = self.get_connector('stepperlogic1')
-        self._scanning_logic = self.get_connector('confocallogic1')
-        self._save_logic = self.get_connector('savelogic')
+        self._stepper_logic = self.stepperlogic1()
+        self._scanning_logic = self.confocallogic1()
+        self._save_logic = self.savelogic()
 
         self.initMainUI()
 
@@ -403,11 +403,11 @@ class ConfocalStepperGui(GUIBase):
     def init_hardware_UI(self):
         # Set the range for the spin boxes of the voltage and frequency values:
         amplitude_range = self._stepper_logic.axis_class["x"].get_amplitude_range()
-        self._mw.x_amplitude.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.x_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
         amplitude_range = self._stepper_logic.axis_class["y"].get_amplitude_range()
-        self._mw.y_amplitude.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.y_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
         amplitude_range = self._stepper_logic.axis_class["z"].get_amplitude_range()
-        self._mw.z_amplitude.setRange(amplitude_range[0], amplitude_range[1])
+        self._mw.z_amplitude_doubleSpinBox.setRange(amplitude_range[0], amplitude_range[1])
 
         frequency_range = self._stepper_logic.axis_class["x"].get_freq_range()
         self._mw.x_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
@@ -417,13 +417,13 @@ class ConfocalStepperGui(GUIBase):
         self._mw.z_frequency_spinBox.setRange(frequency_range[0], frequency_range[1])
 
         # set minimal steps for the current value
-        self._mw.x_amplitude.setSingleStep(0.1)
-        self._mw.y_amplitude.setSingleStep(0.1)
-        self._mw.z_amplitude.setSingleStep(0.1)
+        self._mw.x_amplitude_doubleSpinBox.setSingleStep(0.1)
+        self._mw.y_amplitude_doubleSpinBox.setSingleStep(0.1)
+        self._mw.z_amplitude_doubleSpinBox.setSingleStep(0.1)
         # set unit in spin box
-        self._mw.x_amplitude.setSuffix(" V")
-        self._mw.y_amplitude.setSuffix(" V")
-        self._mw.z_amplitude.setSuffix(" V")
+        self._mw.x_amplitude_doubleSpinBox.setSuffix(" V")
+        self._mw.y_amplitude_doubleSpinBox.setSuffix(" V")
+        self._mw.z_amplitude_doubleSpinBox.setSuffix(" V")
 
         # connect actions
         self._mw.read_hardware_pushButton.clicked.connect(self.measure_stepper_hardware_values)
@@ -496,12 +496,12 @@ class ConfocalStepperGui(GUIBase):
                                                   self._scanning_logic.z_range[1])
 
         # set the minimal step size
-        #self._mw.x_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        #self._mw.x_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        #self._mw.y_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        #self._mw.y_piezo_max_InputWidget.setOpts(minStep=1e-6)
-        #self._mw.z_piezo_min_InputWidget.setOpts(minStep=1e-6)
-        #self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.x_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.x_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.y_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.y_piezo_max_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.z_piezo_min_InputWidget.setOpts(minStep=1e-6)
+        # self._mw.z_piezo_max_InputWidget.setOpts(minStep=1e-6)
 
         # Handle slider movements by user:
         self._mw.x_piezo_SliderWidget.sliderMoved.connect(self.update_from_piezo_slider_x)
@@ -609,11 +609,11 @@ class ConfocalStepperGui(GUIBase):
         cb_range = self.get_cb_range()
         self.cb.refresh_colorbar(cb_range[0], cb_range[1])
 
-    ################## Hardware Scan ##################
+    ################## Hardware Parameters ##################
     def measure_stepper_hardware_values(self):
-        self._mw.x_amplitude.setValue(self._stepper_logic.axis_class["x"].get_stepper_amplitude())
-        self._mw.y_amplitude.setValue(self._stepper_logic.axis_class["y"].get_stepper_amplitude())
-        self._mw.z_amplitude.setValue(self._stepper_logic.axis_class["z"].get_stepper_amplitude())
+        self._mw.x_amplitude_doubleSpinBox.setValue(self._stepper_logic.axis_class["x"].get_stepper_amplitude())
+        self._mw.y_amplitude_doubleSpinBox.setValue(self._stepper_logic.axis_class["y"].get_stepper_amplitude())
+        self._mw.z_amplitude_doubleSpinBox.setValue(self._stepper_logic.axis_class["z"].get_stepper_amplitude())
         self._mw.x_frequency_spinBox.setValue(self._stepper_logic.axis_class["x"].get_stepper_frequency())
         self._mw.y_frequency_spinBox.setValue(self._stepper_logic.axis_class["y"].get_stepper_frequency())
         self._mw.z_frequency_spinBox.setValue(self._stepper_logic.axis_class["z"].get_stepper_frequency())
@@ -656,9 +656,12 @@ class ConfocalStepperGui(GUIBase):
         self._mw.y_steps_InputWidget.setEnabled(False)
         self._mw.z_steps_InputWidget.setEnabled(False)
 
+
+
         # Set the zoom button if it was pressed to unpressed and disable it
-        self._mw.action_zoom.setChecked(False)
-        self._mw.action_zoom.setEnabled(False)
+        #self._mw.action_zoom.setChecked(False)
+        #self._mw.action_zoom.setEnabled(False)
+
 
         self.set_history_actions(False)
 
@@ -1062,19 +1065,6 @@ class ConfocalStepperGui(GUIBase):
             '%Y%m%d-%H%M-%S_confocal_step_scan_raw_pixel_image')
         if self._sd.save_purePNG_checkBox.isChecked():
             self.step_image.save(filename + '_raw.png')
-
-    ################## Hardware Changes Line ##################
-    def update_stepper_hardware_values(self):
-        self._stepper_logic.axis_class["x"].set_stepper_amplitude(self._mw.x_amplitude.value())
-        self._stepper_logic.axis_class["y"].set_stepper_amplitude(self._mw.y_amplitude.value())
-        self._stepper_logic.axis_class["z"].set_stepper_amplitude(self._mw.z_amplitude.value())
-        self._stepper_logic.axis_class["x"].set_stepper_frequency(self._mw.x_frequency_spinBox.value())
-        self._stepper_logic.axis_class["y"].set_stepper_frequency(self._mw.y_frequency_spinBox.value())
-        self._stepper_logic.axis_class["z"].set_stepper_frequency(self._mw.z_frequency_spinBox.value())
-
-        self._stepper_logic.axis_class["x"].set_dc_mode(self._mw.x_dcin_checkBox.checkState())
-        self._stepper_logic.axis_class["y"].set_dc_mode(self._mw.y_dcin_checkBox.checkState())
-        self._stepper_logic.axis_class["z"].set_dc_mode(self._mw.z_dcin_checkBox.checkState())
 
     ################## Settings ##################
     def switch_hardware(self):
