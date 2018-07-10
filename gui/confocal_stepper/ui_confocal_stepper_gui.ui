@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>950</width>
+    <width>989</width>
     <height>932</height>
    </rect>
   </property>
@@ -27,7 +27,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>950</width>
+     <width>989</width>
      <height>21</height>
     </rect>
    </property>
@@ -1647,7 +1647,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>623</width>
+     <width>632</width>
      <height>170</height>
     </size>
    </property>
@@ -1686,7 +1686,7 @@
         </size>
        </property>
        <property name="layoutDirection">
-        <enum>Qt::RightToLeft</enum>
+        <enum>Qt::LeftToRight</enum>
        </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
@@ -1889,6 +1889,12 @@
      </item>
      <item row="2" column="6">
       <widget class="QPushButton" name="clean_x_axis_pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="maximumSize">
         <size>
          <width>150</width>
@@ -2004,6 +2010,9 @@
          <height>16777215</height>
         </size>
        </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
        <property name="alignment">
         <set>Qt::AlignCenter</set>
        </property>
@@ -2078,6 +2087,12 @@
          <verstretch>0</verstretch>
         </sizepolicy>
        </property>
+       <property name="minimumSize">
+        <size>
+         <width>110</width>
+         <height>0</height>
+        </size>
+       </property>
        <property name="maximumSize">
         <size>
          <width>100</width>
@@ -2108,7 +2123,7 @@
       </widget>
      </item>
      <item row="5" column="2">
-      <widget class="ScienDSpinBox" name="z_amplitude">
+      <widget class="ScienDSpinBox" name="z_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -2127,10 +2142,13 @@
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
       </widget>
      </item>
      <item row="3" column="2">
-      <widget class="ScienDSpinBox" name="y_amplitude">
+      <widget class="ScienDSpinBox" name="y_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -2155,10 +2173,13 @@
        <property name="keyboardTracking">
         <bool>true</bool>
        </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
       </widget>
      </item>
      <item row="2" column="2">
-      <widget class="ScienDSpinBox" name="x_amplitude">
+      <widget class="ScienDSpinBox" name="x_amplitude_doubleSpinBox">
        <property name="sizePolicy">
         <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
          <horstretch>0</horstretch>
@@ -2177,6 +2198,9 @@
        <property name="buttonSymbols">
         <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
       </widget>
      </item>
     </layout>
@@ -2184,9 +2208,9 @@
     <zorder>y_axis_hardware_label</zorder>
     <zorder>update_hardware_pushButton</zorder>
     <zorder>z_axis_hardware_label</zorder>
-    <zorder>z_amplitude</zorder>
-    <zorder>y_amplitude</zorder>
-    <zorder>x_amplitude</zorder>
+    <zorder>z_amplitude_doubleSpinBox</zorder>
+    <zorder>y_amplitude_doubleSpinBox</zorder>
+    <zorder>x_amplitude_doubleSpinBox</zorder>
     <zorder>x_frequency_spinBox</zorder>
     <zorder>y_frequency_spinBox</zorder>
     <zorder>z_frequency_spinBox</zorder>
@@ -2217,31 +2241,93 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_10">
     <layout class="QGridLayout" name="gridLayout_4">
-     <item row="10" column="1">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_2"/>
+     <item row="11" column="0" colspan="3">
+      <widget class="Line" name="line_7">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
      </item>
-     <item row="1" column="0">
-      <widget class="QLCDNumber" name="lcdNumber_4"/>
+     <item row="17" column="0" colspan="3">
+      <widget class="Line" name="line_8">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+      </widget>
      </item>
-     <item row="11" column="0">
-      <widget class="QLabel" name="label_2">
+     <item row="0" column="0" colspan="3">
+      <widget class="QLabel" name="label">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="font">
         <font>
-         <pointsize>10</pointsize>
+         <pointsize>15</pointsize>
          <weight>75</weight>
          <bold>true</bold>
         </font>
        </property>
        <property name="text">
-        <string>Y-Axis:</string>
+        <string>Current Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="12" column="0" colspan="2">
+      <widget class="QLabel" name="label_2">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>11</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Desired Position:</string>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="1">
+      <widget class="ScienDSpinBox" name="x_new_position_doubleSpinBox">
+       <property name="enabled">
+        <bool>true</bool>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
        <property name="alignment">
         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
+       <property name="readOnly">
+        <bool>false</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
+       </property>
       </widget>
      </item>
-     <item row="12" column="0">
-      <widget class="QLabel" name="label_3">
+     <item row="15" column="0">
+      <widget class="QLabel" name="z_position_label">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
@@ -2257,133 +2343,255 @@
        </property>
       </widget>
      </item>
-     <item row="12" column="2">
-      <widget class="QPushButton" name="pushButton_2">
+     <item row="14" column="0">
+      <widget class="QLabel" name="y_position_label">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Update</string>
+        <string>Y-Axis:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
       </widget>
      </item>
-     <item row="6" column="2">
-      <widget class="QLCDNumber" name="lcdNumber"/>
+     <item row="14" column="1">
+      <widget class="ScienDSpinBox" name="y_new_position_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
+       </property>
+      </widget>
      </item>
-     <item row="9" column="2">
-      <widget class="QPushButton" name="pushButton_3">
+     <item row="10" column="0" colspan="3">
+      <widget class="QPushButton" name="get_all_positions_pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
        <property name="text">
         <string>Get Position</string>
        </property>
       </widget>
      </item>
-     <item row="6" column="0">
-      <widget class="QLCDNumber" name="lcdNumber_3"/>
-     </item>
-     <item row="10" column="2">
-      <widget class="QPushButton" name="pushButton">
-       <property name="text">
-        <string>Update</string>
+     <item row="2" column="0">
+      <widget class="ScienDSpinBox" name="x_accuracy_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="layoutDirection">
+        <enum>Qt::LeftToRight</enum>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="5" column="1">
-      <widget class="QLabel" name="label_8">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+     <item row="2" column="2">
+      <widget class="ScienDSpinBox" name="z_accuracy_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-       <property name="text">
-        <string>Y Position:</string>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
        </property>
-      </widget>
-     </item>
-     <item row="13" column="2">
-      <widget class="QPushButton" name="pushButton_5">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-         <weight>75</weight>
-         <bold>true</bold>
-        </font>
+       <property name="readOnly">
+        <bool>true</bool>
        </property>
-       <property name="text">
-        <string>Update All Axis</string>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
        </property>
-      </widget>
-     </item>
-     <item row="11" column="1">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox_3"/>
-     </item>
-     <item row="12" column="1">
-      <widget class="QDoubleSpinBox" name="doubleSpinBox"/>
-     </item>
-     <item row="15" column="0" colspan="2">
-      <widget class="QLabel" name="label_5">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+       <property name="suffix">
+        <string>m</string>
        </property>
-       <property name="text">
-        <string>Collect Position Feedback  during scan?</string>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="16" column="0" colspan="2">
-      <widget class="QLabel" name="label_10">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+     <item row="7" column="1">
+      <widget class="ScienDSpinBox" name="y_position_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-       <property name="text">
-        <string>Save Position Feedback of scan?</string>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="14" column="0" colspan="2">
-      <widget class="QLabel" name="label_6">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
+     <item row="7" column="0">
+      <widget class="ScienDSpinBox" name="x_position_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-       <property name="text">
-        <string>Move to starting position at end?</string>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
        </property>
       </widget>
      </item>
-     <item row="16" column="2">
-      <widget class="QCheckBox" name="checkBox_3">
-       <property name="text">
-        <string/>
+     <item row="20" column="0" colspan="3">
+      <widget class="QCheckBox" name="save_pos_feedback_checkBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
        </property>
-      </widget>
-     </item>
-     <item row="15" column="2">
-      <widget class="QCheckBox" name="checkBox_2">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
        <property name="text">
-        <string/>
+        <string extracomment="This of course only works if the axes have position feedback">Save Position Feedback of scan?</string>
        </property>
       </widget>
      </item>
      <item row="14" column="2">
-      <widget class="QCheckBox" name="checkBox">
+      <widget class="QPushButton" name="set_y_position_pushButton">
        <property name="text">
-        <string/>
+        <string>Move Y</string>
        </property>
       </widget>
      </item>
-     <item row="11" column="2">
-      <widget class="QPushButton" name="pushButton_4">
+     <item row="6" column="2">
+      <widget class="QLabel" name="label_9">
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
        <property name="text">
-        <string>Update</string>
+        <string>Z Position:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
        </property>
       </widget>
      </item>
-     <item row="10" column="0">
-      <widget class="QLabel" name="label">
+     <item row="16" column="1" colspan="2" alignment="Qt::AlignRight">
+      <widget class="QPushButton" name="move_all_axis_pushButton">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Maximum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+         <weight>75</weight>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>Move All Axis</string>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="0">
+      <widget class="QLabel" name="x_position_label">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
@@ -2399,11 +2607,59 @@
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QLCDNumber" name="lcdNumber_2"/>
+     <item row="19" column="0" colspan="3">
+      <widget class="QCheckBox" name="measure_pos_feedback_checkBox">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string extracomment="This of course only works if the axes have position feedback">Collect Position Feedback  during scan?</string>
+       </property>
+      </widget>
      </item>
-     <item row="5" column="2">
-      <widget class="QLabel" name="label_9">
+     <item row="18" column="0" colspan="3">
+      <widget class="QCheckBox" name="start_position_bool_checkBox">
+       <property name="layoutDirection">
+        <enum>Qt::RightToLeft</enum>
+       </property>
+       <property name="text">
+        <string extracomment="This of course only works if the axes have position feedback">Move to starting position at end?</string>
+       </property>
+      </widget>
+     </item>
+     <item row="7" column="2">
+      <widget class="ScienDSpinBox" name="z_position_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QLabel" name="label_8">
        <property name="font">
         <font>
          <pointsize>10</pointsize>
@@ -2412,12 +2668,112 @@
         </font>
        </property>
        <property name="text">
-        <string>Z Position:</string>
+        <string>Y Position:</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignHCenter</set>
        </property>
       </widget>
      </item>
-     <item row="5" column="0">
+     <item row="2" column="1">
+      <widget class="ScienDSpinBox" name="y_accuracy_doubleSpinBox">
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>3</number>
+       </property>
+       <property name="minimum">
+        <double>-1.000000000000000</double>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="15" column="1">
+      <widget class="ScienDSpinBox" name="z_new_position_doubleSpinBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+       </property>
+       <property name="buttonSymbols">
+        <enum>QAbstractSpinBox::NoButtons</enum>
+       </property>
+       <property name="suffix">
+        <string>m</string>
+       </property>
+       <property name="decimals">
+        <number>4</number>
+       </property>
+       <property name="maximum">
+        <double>2000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="13" column="2">
+      <widget class="QPushButton" name="set_x_position_pushButton">
+       <property name="text">
+        <string>Move X</string>
+       </property>
+      </widget>
+     </item>
+     <item row="15" column="2">
+      <widget class="QPushButton" name="set_z_position_pushButton">
+       <property name="text">
+        <string>Move Z</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0" colspan="2">
+      <widget class="QLabel" name="label_4">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>100</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>10</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Positining Accuracy (nm)</string>
+       </property>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignLeading|Qt::AlignLeft</set>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="0">
       <widget class="QLabel" name="label_7">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
        <property name="font">
         <font>
          <pointsize>10</pointsize>
@@ -2428,25 +2784,23 @@
        <property name="text">
         <string>X Position:</string>
        </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Positining Accuracy</string>
+       <property name="alignment">
+        <set>Qt::AlignBottom|Qt::AlignRight|Qt::AlignTrailing</set>
        </property>
       </widget>
      </item>
-     <item row="1" column="1">
-      <widget class="QLCDNumber" name="lcdNumber_5"/>
-     </item>
-     <item row="1" column="2">
-      <widget class="QLCDNumber" name="lcdNumber_6"/>
+     <item row="21" column="0" colspan="3">
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
      </item>
     </layout>
    </widget>
@@ -2833,9 +3187,9 @@
   <tabstop>x_piezo_InputWidget</tabstop>
   <tabstop>y_piezo_InputWidget</tabstop>
   <tabstop>z_piezo_InputWidget</tabstop>
-  <tabstop>x_amplitude</tabstop>
-  <tabstop>y_amplitude</tabstop>
-  <tabstop>z_amplitude</tabstop>
+  <tabstop>x_amplitude_doubleSpinBox</tabstop>
+  <tabstop>y_amplitude_doubleSpinBox</tabstop>
+  <tabstop>z_amplitude_doubleSpinBox</tabstop>
   <tabstop>x_frequency_spinBox</tabstop>
   <tabstop>y_frequency_spinBox</tabstop>
   <tabstop>z_frequency_spinBox</tabstop>
@@ -3063,8 +3417,8 @@
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>311</x>
-     <y>651</y>
+     <x>-1</x>
+     <y>-1</y>
     </hint>
     <hint type="destinationlabel">
      <x>311</x>
