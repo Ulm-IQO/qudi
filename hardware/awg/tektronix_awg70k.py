@@ -275,20 +275,24 @@ class AWG70K(Base, PulserInterface):
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param analog_samples: numpy.ndarray of type float32 containing the voltage samples
-        @param digital_samples: numpy.ndarray of type bool containing the marker states
-                                (if analog channels are active, this must be the same length as
-                                analog_samples)
-        @param is_first_chunk: bool, flag indicating if it is the first chunk to write.
-                                     If True this method will create a new empty wavveform.
-                                     If False the samples are appended to the existing waveform.
-        @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
-                                    Some devices may need to know when to close the appending wfm.
-        @param total_number_of_samples: int, The number of sample points for the entire waveform
-                                        (not only the currently written chunk)
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-        @return: (int, list) number of samples written (-1 indicates failed process) and list of
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
+
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
         waveforms = list()
@@ -331,12 +335,10 @@ class AWG70K(Base, PulserInterface):
             if mrk_ch_1 in digital_samples and mrk_ch_2 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_2].view('uint8')
                 tmp_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 7, out=mrk_bytes)
-                np.left_shift(tmp_bytes, 6, out=tmp_bytes)
+                np.left_shift(mrk_bytes, 1, out=mrk_bytes)
                 np.add(mrk_bytes, tmp_bytes, out=mrk_bytes)
             elif mrk_ch_1 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 6, out=mrk_bytes)
             else:
                 mrk_bytes = None
             print('Prepare digital channel data: {0}'.format(time.time()-start))
@@ -352,7 +354,7 @@ class AWG70K(Base, PulserInterface):
             start = time.time()
             self._write_wfmx(filename=wfm_name,
                              analog_samples=analog_samples[a_ch],
-                             digital_samples=mrk_bytes,
+                             marker_bytes=mrk_bytes,
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
@@ -364,7 +366,8 @@ class AWG70K(Base, PulserInterface):
             print('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
-            self.write('MMEM:OPEN "{0}"'.format(os.path.join(self._ftp_path, wfm_name + '.wfmx')))
+            self.write('MMEM:OPEN "{0}"'.format(os.path.join(
+                self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
             # Wait for everything to complete
             while int(self.query('*OPC?')) != 1:
                 time.sleep(0.25)
@@ -1020,28 +1023,32 @@ class AWG70K(Base, PulserInterface):
         return active_ch
 
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
-        @param dict ch: dictionary with keys being the analog or digital
-                          string generic names for the channels with items being
-                          a boolean value.current_loaded_asset
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return dict: with the actual set values for active channels for analog
-                      and digital values.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        If nothing is passed then the command will return an empty dict.
+        If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
+        digital channel 1. All other available channels will remain unchanged.
         """
         current_channel_state = self.get_active_channels()
 
@@ -1508,7 +1515,7 @@ class AWG70K(Base, PulserInterface):
             header = self._create_xml_header(total_number_of_samples, marker_bytes is not None)
             # write header
             with open(wfmx_path, 'wb') as wfmxfile:
-                wfmxfile.write(header)
+                wfmxfile.write(header.encode('utf8'))
             # Check if a tmp digital samples file is present and delete it if necessary.
             if os.path.isfile(tmp_path):
                 os.remove(tmp_path)

@@ -163,7 +163,8 @@ class PulseBlock(object):
         return_str += 'initial length: {0}s\n\tlength increment: {1}s\n\t'.format(
             self.init_length_s, self.increment_s)
         return_str += 'active analog channels: {0}\n\tactive digital channels: {1}'.format(
-            sorted(self.analog_channels), sorted(self.digital_channels))
+            sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1])),
+            sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1])))
         return return_str
 
     def __len__(self):
