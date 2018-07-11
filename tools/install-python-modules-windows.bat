@@ -56,6 +56,7 @@ REM --------------------------------------
 
 REM Run locally a powershell script to be able to catch the interrupt from the 
 REM exception if an environment is not present.
+
 powershell.exe "Try {conda env remove --yes --name qudi} Catch {return 'No conda environment with name <qudi> is present'}" 
 
 echo Initiating installation of conda environment with name 'qudi'...
@@ -70,10 +71,10 @@ REM Get which environment to install for a specific windows version.
 
 if "%version%" == "6.1" (
     if %OS% == 32BIT ( 
-        echo Detected: Windows 7. 32bit 
+        echo Detected: Windows 7, 32bit 
         powershell.exe "conda env create -f '%~dp0\conda-env-win7-32bit-qt5.yml' "
     ) else ( 
-        echo Detected: Windows 7. 64bit 
+        echo Detected: Windows 7, 64bit 
         powershell.exe "conda env create -f '%~dp0\conda-env-win7-64bit-qt5.yml' "
     ) 
 )
