@@ -23,6 +23,7 @@ Changes/New features:
 Config changes:
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
 * Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
+* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
 
 
 
