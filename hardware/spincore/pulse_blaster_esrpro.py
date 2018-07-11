@@ -1096,7 +1096,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
                                     If just a list of waveform names if given,
                                     the channel association will be invoked from
-                                    the channel suffix '_ch1', '_ch2' etc.
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
 
         @return dict: Dictionary containing the actually loaded waveforms per
                       channel.
@@ -1650,7 +1653,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
 
-        @return list: List of all uploaded waveform name strings in the device workspace.
+        @return list: List of all uploaded waveform name strings in the device
+                      workspace.
         """
 
         #FIXME: That seems not to be right. Docstring does not match with output.
@@ -1659,7 +1663,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
 
-        @return list: List of all uploaded sequence name strings in the device workspace.
+        @return list: List of all uploaded sequence name strings in the device
+                      workspace.
         """
         return list()
 
