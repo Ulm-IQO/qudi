@@ -353,8 +353,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 # search the generation_parameters for channel specifiers and adjust them if they
                 # are no longer valid
                 changed_settings = dict()
-                ana_chnls = sorted(self.analog_channels)
-                digi_chnls = sorted(self.digital_channels)
+                ana_chnls = sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1]))
+                digi_chnls = sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1]))
                 for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
                     channel = self.generation_parameters[name]
@@ -1048,7 +1048,11 @@ class SequenceGeneratorLogic(GenericLogic):
             analog_channels = block.analog_channels
             channel_set = analog_channels.union(digital_channels)
             if laser_channel in channel_set:
-                tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
+                if laser_channel.startswith('a'):
+                    tmp_digital_high = type(
+                        block.element_list[-1].pulse_function[laser_channel]).__name__ != 'Idle'
+                else:
+                    tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
         else:
             return ensemble_length_s, ensemble_length_bins, number_of_lasers
 
@@ -1062,10 +1066,17 @@ class SequenceGeneratorLogic(GenericLogic):
                 if laser_channel in channel_set:
                     # Iterate over the Block_Elements inside the current block
                     for block_element in block.element_list:
-                        # save bin position if transition from low to high has occured in laser channel
-                        if block_element.digital_high[laser_channel] and not tmp_digital_high:
+                        # save bin position if transition from low to high has occured in
+                        # laser channel
+                        if laser_channel.startswith('a'):
+                            is_high = type(
+                                block_element.pulse_function[laser_channel]).__name__ != 'Idle'
+                        else:
+                            is_high = block_element.digital_high[laser_channel]
+
+                        if is_high and not tmp_digital_high:
                             number_of_lasers += 1
-                        tmp_digital_high = block_element.digital_high[laser_channel]
+                        tmp_digital_high = is_high
 
         # Nearest possible match including the discretization in bins
         ensemble_length_bins = int(np.rint(ensemble_length_s * self.__sample_rate))
@@ -1492,8 +1503,11 @@ class SequenceGeneratorLogic(GenericLogic):
                             # check if write process was successful
                             if written_samples != array_length:
                                 self.log.error('Sampling of block "{0}" in ensemble "{1}" failed. '
-                                               'Write to device was unsuccessful.'
-                                               ''.format(block_name, ensemble.name))
+                                               'Write to device was unsuccessful.\nThe number of '
+                                               'actually written samples ({2:d}) does not match '
+                                               'the number of samples staged to write ({3:d}).'
+                                               ''.format(block_name, ensemble.name, written_samples,
+                                                         array_length))
                                 if not self.__sequence_generation_in_progress:
                                     self.module_state.unlock()
                                 self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
@@ -1531,11 +1545,14 @@ class SequenceGeneratorLogic(GenericLogic):
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble to device: {0} sec'
                       ''.format(int(np.rint(time.time() - start_time))))
+        if ensemble_info['number_of_samples'] == 0:
+            self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
+                             ''.format(ensemble.name))
         if not self.__sequence_generation_in_progress:
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigSampleEnsembleComplete.emit(ensemble)
-        return offset_bin, list(written_waveforms), ensemble_info
+        return offset_bin, sorted(written_waveforms), ensemble_info
 
     @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):

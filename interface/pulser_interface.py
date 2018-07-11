@@ -154,21 +154,35 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
-        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
-        workspace into the channel.
-        For a device without mass memory this will make the waveform/pattern that has been
-        previously written with self.write_waveform ready to play.
 
-        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list load_dict: a dictionary with keys being one of the
+                                    available channel index and values being the
+                                    name of the already written waveform to load
+                                    into the channel. Examples:
 
-        @return dict: Dictionary containing the actually loaded waveforms per channel.
+                                        {1: rabi_ch1, 2: rabi_ch2}
+                                    or
+                                        {1: rabi_ch2, 2: rabi_ch1}
+
+                                    If just a list of waveform names if given,
+                                    the channel association will be invoked from
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+
+        @return dict: Dictionary containing the actually loaded waveforms per
+                      channel.
+
+        For devices that have a workspace (i.e. AWG) this will load the waveform
+        from the device workspace into the channel. For a device without mass
+        memory, this will make the waveform/pattern that has been previously
+        written with self.write_waveform ready to play.
+
+        Please note that the channel index used here is not to be confused with the number suffix
+        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+        highly hardware specific and corresponds to a collection of digital and analog channels
+        being associated to a SINGLE wavfeorm asset.
         """
         pass
 
@@ -366,7 +380,16 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
         @param dict ch: dictionary with keys being the analog or digital string generic names for
                         the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
@@ -376,15 +399,13 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device,
-              use the returned dict for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation is possible.
+        digital channel 1. All other available channels will remain unchanged.
         """
         pass
 
@@ -396,20 +417,24 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
         be created or if the write process to a waveform should be terminated.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param analog_samples: numpy.ndarray of type float32 containing the voltage samples
-        @param digital_samples: numpy.ndarray of type bool containing the marker states
-                                (if analog channels are active, this must be the same length as
-                                analog_samples)
-        @param is_first_chunk: bool, flag indicating if it is the first chunk to write.
-                                     If True this method will create a new empty wavveform.
-                                     If False the samples are appended to the existing waveform.
-        @param is_last_chunk: bool, flag indicating if it is the last chunk to write.
-                                    Some devices may need to know when to close the appending wfm.
-        @param total_number_of_samples: int, The number of sample points for the entire waveform
-                                        (not only the currently written chunk)
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-        @return: (int, list) number of samples written (-1 indicates failed process) and list of
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
+
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
         pass
@@ -487,26 +512,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
               interleave again and use that information for further processing.
 
         Unused for pulse generator hardware other than an AWG.
-        """
-        pass
-
-    @abc.abstractmethod
-    def write(self, command):
-        """ Sends a command string to the device.
-
-        @param string command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def query(self, question):
-        """ Asks the device a 'question' and receive and return an answer from it.
-
-        @param string question: string containing the command
-
-        @return string: the answer of the device to the 'question' in a string
         """
         pass
 

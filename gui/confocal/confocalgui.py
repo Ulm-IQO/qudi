@@ -36,8 +36,8 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
 
-class CrossROI(pg.ROI):
 
+class CrossROI(pg.ROI):
     """ Create a Region of interest, which is a zoomable rectangular.
 
     @param float pos: optional parameter to set the position
@@ -73,13 +73,13 @@ class CrossROI(pg.ROI):
         """
         super().setPos(pos, update=update, finish=finish)
 
-    def setSize(self,size, update=True,finish=True):
+    def setSize(self, size, update=True, finish=True):
         """
         Sets the size of the ROI
         @param bool update: whether to update the display for this call of setPos
         @param bool finish: whether to emit sigRegionChangeFinished
         """
-        super().setSize(size,update=update,finish=finish)
+        super().setSize(size, update=update, finish=finish)
 
     def handleMoveStarted(self):
         """ Handles should always be moved by user."""
@@ -103,7 +103,6 @@ class CrossROI(pg.ROI):
 
 
 class CrossLine(pg.InfiniteLine):
-
     """ Construct one line for the Crosshair in the plot.
 
     @param float pos: optional parameter to set the position
@@ -130,7 +129,6 @@ class CrossLine(pg.InfiniteLine):
 
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
-
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
     sigPressKeyBoard = QtCore.Signal(QtCore.QEvent)
@@ -157,7 +155,6 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
 
 
 class ConfocalSettingDialog(QtWidgets.QDialog):
-
     """ Create the SettingsDialog window, based on the corresponding *.ui file."""
 
     def __init__(self):
@@ -184,7 +181,6 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
 
 
 class ConfocalGui(GUIBase):
-
     """ Main Confocal Class for xy and depth scans.
     """
     _modclass = 'ConfocalGui'
@@ -556,8 +552,10 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.signal_history_event.connect(self.update_depth_cb_range)
         self._scanning_logic.signal_history_event.connect(self._mw.xy_ViewWidget.autoRange)
         self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
-        self._scanning_logic.signal_history_event.connect(self.reset_xy_imagerange)
-        self._scanning_logic.signal_history_event.connect(self.reset_depth_imagerange)
+        self._scanning_logic.signal_history_event.connect(self.update_scan_range_inputs)
+        self._scanning_logic.signal_history_event.connect(self.change_x_image_range)
+        self._scanning_logic.signal_history_event.connect(self.change_y_image_range)
+        self._scanning_logic.signal_history_event.connect(self.change_z_image_range)
 
         # Get initial tilt correction values
         self._mw.action_TiltCorrection.setChecked(
@@ -654,8 +652,6 @@ class ConfocalGui(GUIBase):
         self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
         self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
         self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
-
-
 
         ###################################################################
         #               Icons for the scan actions                        #
@@ -1048,7 +1044,6 @@ class ConfocalGui(GUIBase):
         self._optimizer_logic.do_surface_subtraction = self._osd.do_surface_subtraction_CheckBox.isChecked()
         index = self._osd.opt_channel_ComboBox.currentIndex()
         self._optimizer_logic.opt_channel = int(self._osd.opt_channel_ComboBox.itemData(index, QtCore.Qt.UserRole))
-
 
         self._optimizer_logic.optimization_sequence = str(
             self._osd.optimization_sequence_lineEdit.text()
@@ -1776,7 +1771,6 @@ class ConfocalGui(GUIBase):
 
         self.roi_xy.setPos([x_value, y_value], update=True)
 
-
     def put_cursor_in_depth_scan(self):
         """Put the depth crosshair back if it is outside of the visible range. """
         view_x_min = self._scanning_logic.image_x_range[0]
@@ -1995,10 +1989,7 @@ class ConfocalGui(GUIBase):
         # system of the ViewBox, which also includes the 2D graph:
         pos = viewbox.mapSceneToView(event.localPos())
         endpos = [pos.x(), pos.y()]
-
         initpos = self._current_xy_zoom_start
-
-
 
         # get the right corners from the zoom window:
         if initpos[0] > endpos[0]:
@@ -2053,6 +2044,7 @@ class ConfocalGui(GUIBase):
         self.change_y_image_range()
 
     def set_full_scan_range_xy(self):
+        """ Set xy image scan range to scanner limits """
         xMin = self._scanning_logic.x_range[0]
         xMax = self._scanning_logic.x_range[1]
         self._mw.x_min_InputWidget.setValue(xMin)
@@ -2070,6 +2062,7 @@ class ConfocalGui(GUIBase):
                 update=True)
 
     def activate_zoom_double_click(self):
+        """ Enable zoom tool when double clicking image """
         if self._mw.action_zoom.isChecked():
             self._mw.action_zoom.setChecked(False)
         else:
@@ -2154,7 +2147,6 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_zoom.setChecked(False)
 
-
     def reset_depth_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
 
@@ -2176,7 +2168,7 @@ class ConfocalGui(GUIBase):
         self.change_z_image_range()
 
     def set_full_scan_range_z(self):
-
+        """ Set depth image scan range to scanner limits """
         if self._scanning_logic.depth_img_is_xz:
             hMin = self._scanning_logic.x_range[0]
             hMax = self._scanning_logic.x_range[1]
@@ -2197,9 +2189,21 @@ class ConfocalGui(GUIBase):
         self.change_z_image_range()
 
         for i in range(2):
-            self.depth_image.getViewBox().setRange(xRange=(hMin, hMax), yRange=(vMin, vMax), update=True)
+            self.depth_image.getViewBox().setRange(
+                xRange=(hMin, hMax),
+                yRange=(vMin, vMax),
+                update=True)
 
         self.update_roi_depth()
+
+    def update_scan_range_inputs(self):
+        """ Update scan range spinboxes from confocal logic """
+        self._mw.x_min_InputWidget.setValue(self._scanning_logic.image_x_range[0])
+        self._mw.x_max_InputWidget.setValue(self._scanning_logic.image_x_range[1])
+        self._mw.y_min_InputWidget.setValue(self._scanning_logic.image_y_range[0])
+        self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
+        self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
+        self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
 
     def _set_scan_icons(self):
         """ Set the scan icons depending on whether loop-scan is active or not

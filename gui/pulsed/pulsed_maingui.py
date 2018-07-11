@@ -541,6 +541,7 @@ class PulsedMeasurementGui(GUIBase):
     ###########################################################################
     def _activate_main_window_ui(self):
         self._setup_toolbar()
+        self.loaded_asset_updated(*self.pulsedmasterlogic().loaded_asset)
         return
 
     def _deactivate_main_window_ui(self):
@@ -969,8 +970,10 @@ class PulsedMeasurementGui(GUIBase):
                 widget.setObjectName('global_param_' + param)
                 widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
                 widget.addItem('')
-                widget.addItems(sorted(self.pulsedmasterlogic().digital_channels))
-                widget.addItems(sorted(self.pulsedmasterlogic().analog_channels))
+                widget.addItems(sorted(self.pulsedmasterlogic().digital_channels,
+                                       key=lambda chnl: int(chnl.split('ch')[-1])))
+                widget.addItems(sorted(self.pulsedmasterlogic().analog_channels,
+                                       key=lambda chnl: int(chnl.split('ch')[-1])))
                 index = widget.findText(value)
                 if index >= 0:
                     widget.setCurrentIndex(index)
@@ -1200,22 +1203,24 @@ class PulsedMeasurementGui(GUIBase):
             self._pg.gen_sample_freq_DSpinBox.setValue(settings_dict['sample_rate'])
         if 'activation_config' in settings_dict:
             config_name = settings_dict['activation_config'][0]
+            digital_channels = sorted(
+                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('d')),
+                key=lambda chnl: int(chnl.split('ch')[-1]))
+            analog_channels = sorted(
+                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')),
+                key=lambda chnl: int(chnl.split('ch')[-1]))
             index = self._pg.gen_activation_config_ComboBox.findText(config_name)
             self._pg.gen_activation_config_ComboBox.setCurrentIndex(index)
-            digital_str = str(sorted(
-                [chnl for chnl in settings_dict['activation_config'][1] if chnl.startswith('d')]))
-            analog_str = str(sorted(
-                [chnl for chnl in settings_dict['activation_config'][1] if chnl.startswith('a')]))
-            digital_str = digital_str.strip('[]').replace('\'', '').replace(',', ' |')
-            analog_str = analog_str.strip('[]').replace('\'', '').replace(',', ' |')
+            digital_str = str(digital_channels).strip('[]').replace('\'', '').replace(',', ' |')
+            analog_str = str(analog_channels).strip('[]').replace('\'', '').replace(',', ' |')
             self._pg.gen_digital_channels_lineEdit.setText(digital_str)
             self._pg.gen_analog_channels_lineEdit.setText(analog_str)
 
             # Update channel ComboBoxes
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
-            self._pg.gen_laserchannel_ComboBox.addItems(
-                sorted(settings_dict['activation_config'][1]))
+            self._pg.gen_laserchannel_ComboBox.addItems(digital_channels)
+            self._pg.gen_laserchannel_ComboBox.addItems(analog_channels)
             if former_laser_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
@@ -1223,8 +1228,8 @@ class PulsedMeasurementGui(GUIBase):
             former_sync_channel = self._pg.gen_syncchannel_ComboBox.currentText()
             self._pg.gen_syncchannel_ComboBox.clear()
             self._pg.gen_syncchannel_ComboBox.addItem('')
-            self._pg.gen_syncchannel_ComboBox.addItems(
-                sorted(settings_dict['activation_config'][1]))
+            self._pg.gen_syncchannel_ComboBox.addItems(digital_channels)
+            self._pg.gen_syncchannel_ComboBox.addItems(analog_channels)
             if former_sync_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_syncchannel_ComboBox.findText(former_sync_channel)
                 self._pg.gen_syncchannel_ComboBox.setCurrentIndex(index)
@@ -1232,8 +1237,8 @@ class PulsedMeasurementGui(GUIBase):
             former_gate_channel = self._pg.gen_gatechannel_ComboBox.currentText()
             self._pg.gen_gatechannel_ComboBox.clear()
             self._pg.gen_gatechannel_ComboBox.addItem('')
-            self._pg.gen_gatechannel_ComboBox.addItems(
-                sorted(settings_dict['activation_config'][1]))
+            self._pg.gen_gatechannel_ComboBox.addItems(digital_channels)
+            self._pg.gen_gatechannel_ComboBox.addItems(analog_channels)
             if former_gate_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_gatechannel_ComboBox.findText(former_gate_channel)
                 self._pg.gen_gatechannel_ComboBox.setCurrentIndex(index)
@@ -1243,7 +1248,8 @@ class PulsedMeasurementGui(GUIBase):
                     former_channel = widget.currentText()
                     widget.clear()
                     widget.addItem('')
-                    widget.addItems(sorted(settings_dict['activation_config'][1]))
+                    widget.addItems(analog_channels)
+                    widget.addItems(digital_channels)
                     if former_channel in settings_dict['activation_config'][1]:
                         index = widget.findText(former_channel)
                         widget.setCurrentIndex(index)
@@ -1519,7 +1525,7 @@ class PulsedMeasurementGui(GUIBase):
         @param block_dict:
         @return:
         """
-        block_names = sorted(list(block_dict))
+        block_names = sorted(block_dict)
         # Check if a block has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
@@ -1813,7 +1819,7 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_dict:
         @return:
         """
-        sequence_names = sorted(list(sequence_dict))
+        sequence_names = sorted(sequence_dict)
         # Check if a sequence has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
@@ -2630,7 +2636,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Check if the signal has been emitted by a dragged line in the laser plot
         if self.sender().__class__.__name__ == 'InfiniteLine':
-            sig_start = np.self.sig_start_line.value()
+            sig_start = self.sig_start_line.value()
             sig_end = self.sig_end_line.value()
             ref_start = self.ref_start_line.value()
             ref_end = self.ref_end_line.value()
