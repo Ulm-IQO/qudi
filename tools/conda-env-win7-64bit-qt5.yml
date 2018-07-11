@@ -1,4 +1,4 @@
-name: qudi-test
+name: qudi
 channels:
 - defaults
 dependencies:
