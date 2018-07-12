@@ -394,12 +394,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             (self._steps_scan_first_line, self._steps_scan_first_line))
         self._start_position = []
         self.map_scan_position = True
-        self._scan_positions = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
-        self._scan_positions_back = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
-        self.initialize_image()
+        self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+        self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
 
+        self.initialize_image()
         # Step values definitions
 
         # Sets connections between signals and functions
@@ -618,10 +616,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
             for i in range(self._steps_scan_first_line):
                 for j in range(self._steps_scan_second_line):
-                    self.full_image[j, i, 0] = self.convert_voltage_to_position("x", self.image_raw[j, i, 0])
-                    self.full_image[j, i, 1] = self.convert_voltage_to_position("y", self.image_raw[j, i, 1])
-                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position("y", self.image_raw_back[j, i, 0])
-                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position("y", self.image_raw_back[j, i, 1])
+                    self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis, self.image_raw[j, i, 0])
+                    self.full_image[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis, self.image_raw[j, i, 1])
+                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis, self.image_raw_back[j, i, 0])
+                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis, self.image_raw_back[j, i, 1])
             for n, ch in enumerate(self.get_counter_count_channels()):
                 self.full_image[:, :, 2 + n] = self.image_raw[:, :, 2 + n]
                 self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
@@ -691,11 +689,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo: Do we need a lock for the stepper as well?
         self._step_counter = 0
         self.module_state.lock()
-
-        # Todo: to be done when GUI is done
-        # if self.initialize_image() < 0:
-        #    self.module_state.unlock()
-        #    return -1
 
         if self._get_scan_axes() < 0:
             return -1
@@ -1024,6 +1017,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # move and count
         new_counts = self._step_and_count(self._first_scan_axis, self._second_scan_axis, direction,
                                           steps=self._steps_scan_first_line)
+
+        # check if stepping worked
         if new_counts[0][0] == -1:
             self.stopRequested = True
             self.signal_step_lines_next.emit(direction)
@@ -1033,8 +1028,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.signal_step_lines_next.emit(direction)
             return
 
-            # if not direction:  # flip the count direction
-            # new_counts = np.flipud(new_counts)
         if self.map_scan_position:
             if new_counts[2][0] == -1:
                 self.stopRequested = True
