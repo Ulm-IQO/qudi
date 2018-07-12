@@ -42,7 +42,6 @@ fork the original repository to its GitHub account. From this fork you can creat
 Then when the branch is working well, you can create a pull request on the original repository to merge master with your 
 branch. If the pull request is approved, you can pull from it to you master.
 
-[TODO: I'm explaining what I've just learn, can some experienced user confirm this ?]
 
 
 
