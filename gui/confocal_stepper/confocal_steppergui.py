@@ -1318,30 +1318,19 @@ class ConfocalStepperGui(GUIBase):
             # Find position of ROI
             h_step_pos = int(roi.pos()[0])
             v_step_pos = int(roi.pos()[1])
+
             if h_step_pos < 0:
-                h_pos = 0.0
                 h_step_pos = 0
-                check_pos = False
             elif h_step_pos > self._stepper_logic._steps_scan_first_line - 1:
-                h_pos = 0.0
                 h_step_pos = self._stepper_logic._steps_scan_first_line - 1
-                check_pos = False
-            else:
-                check_pos = True
+
 
             if v_step_pos < 0:
-                v_pos = 0.0
-                if check_pos:
-                    v_step_pos = 0
-                    h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
+                v_step_pos = 0
             elif v_step_pos > self._stepper_logic._steps_scan_second_line - 1:
-                v_pos = 0.0
-                if check_pos:
-                    v_step_pos = self._stepper_logic._steps_scan_first_line - 1
-                    h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
-            else:
-                h_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 0]
-                v_pos = self._stepper_logic.full_image[h_step_pos, v_step_pos, 1]
+                v_step_pos = self._stepper_logic._steps_scan_first_line - 1
+            h_pos = self._stepper_logic.full_image[v_step_pos, h_step_pos, 0]
+            v_pos = self._stepper_logic.full_image[v_step_pos, h_step_pos, 1]
 
             self._feedback_axis[self._stepper_logic._first_scan_axis].setValue(h_pos * 1e-3)
             self._feedback_axis[self._stepper_logic._second_scan_axis].setValue(v_pos * 1e-3)
