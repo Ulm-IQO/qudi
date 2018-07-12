@@ -2245,10 +2245,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         else:
             self._finite_clock_frequency = clock_frequency
 
-
-
         # Todo: Check if this divided by 2 is sensible
-        retval =  self.set_up_clock(
+        retval = self.set_up_clock(
             clock_frequency=clock_frequency / 2,  # because it will be multiplied by 2 in the setup
             clock_channel=clock_channel,
             scanner=True)
@@ -2404,9 +2402,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self._clock_daq_task_new.pop(item)
                 self._clock_channel_new.pop(item)
                 self._clock_frequency_new.pop(item)
-                return 0
+            return 0
         else:
             return retval
+
     # ================ End FiniteCounterInterface Commands =======================
 
     # ================ Start AnalogReaderInterface Commands  =======================
@@ -2502,11 +2501,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if analogue_channel not in self._clock_frequency_new:
             self.log.error("The clock frequency for this task %s is not defined.", analogue_channel)
             return -1
-        # Todo: Fins usage of analaogue clock frequency.
+        # Todo: Fins usage of analogue clock frequency.
         clock_frequency = self._clock_frequency_new[analogue_channel]
 
         # value defined for readout and wait until done
-        self._analogue_input_samples[analogue_channel] = samples
         try:
             # This task will read an analogue voltage with binning defined by a clock
             # Initialize a Task
@@ -2548,6 +2546,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # the specified number of samples to read
                 samples)
             self._analogue_input_daq_tasks[analogue_channel] = task
+            self._analogue_input_samples[analogue_channel] = samples
         except:
             self.log.exception('Error while setting up analogue voltage reader for channel'
                                '{}.'.format(analogue_channel))
