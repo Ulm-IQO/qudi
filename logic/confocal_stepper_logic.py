@@ -1039,14 +1039,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return
 
         direction = not direction  # invert direction
-        self.stepping_raw_data[self._step_counter] = new_counts[0]
-        self.stepping_raw_data_back[self._step_counter] = np.flipud(new_counts[1])
-        if self.map_scan_position:
-            self._scan_pos_voltages[self._step_counter, :, 0] = new_counts[2][:self._steps_scan_first_line]
-            self._scan_pos_voltages[self._step_counter, :, 1] = new_counts[2][self._steps_scan_first_line:]
-            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(
-                new_counts[3][:self._steps_scan_first_line])
-            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(new_counts[3][self._steps_scan_first_line:])
+        self.sort_counted_data(new_counts)
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
 
@@ -1231,6 +1224,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("main axis %s is not an axis %s of the stepper", main_axis, self.axis)
             return [-1], []
 
+    def sort_counted_data(self, counts):
+        self.stepping_raw_data[self._step_counter] = counts[0]
+        self.stepping_raw_data_back[self._step_counter] = np.flipud(counts[1])
+        if self.map_scan_position:
+            self._scan_pos_voltages[self._step_counter, :, 0] = counts[2][:self._steps_scan_first_line]
+            self._scan_pos_voltages[self._step_counter, :, 1] = counts[2][self._steps_scan_first_line:]
+            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(
+                counts[3][:self._steps_scan_first_line])
+            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(
+                counts[3][self._steps_scan_first_line:])
     ##################################### Acquire Data ###########################################
     def kill_counter(self):
         """Closing the counting device.
