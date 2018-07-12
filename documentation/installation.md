@@ -21,7 +21,7 @@ This tool also ease the installation as you can create an environment for Qudi w
 them from the ``.yml`` file in the ``tool`` folder.
 
 It is highly recommended you use this option. If however you want to go mannual, you can find more information 
-[here](@ref required_python_packages)
+[here](@ref manual-package-installation)
 
 #### Git vs Download
 
