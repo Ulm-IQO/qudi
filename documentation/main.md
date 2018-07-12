@@ -13,6 +13,7 @@
     * [Build the documentation](@ref build-docs)
 
 * Qudi programming and design concepts
+   * [How to participate](@ref participate)
    * [Programming style](@ref programming-style)
    * [Interfuses](@ref how_to_interfuses)
    * [Extensions](@ref extensions)
