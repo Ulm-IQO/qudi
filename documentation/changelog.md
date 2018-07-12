@@ -19,6 +19,9 @@ Changes/New features:
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
 * Update conda environment to more recent versions of packages
+* Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
+* Added a how-to-participate guide to the documentation
+* Added installation options guide to the documentation
 
 Config changes:
 
