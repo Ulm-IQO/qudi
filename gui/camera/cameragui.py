@@ -31,10 +31,13 @@ from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
 
+from core.module import Connector, ConfigOption, StatusVar
+from gui.colordefs import QudiPalettePale as palette
+import numpy as np
+
 
 class CameraWindow(QtWidgets.QMainWindow):
     """ Class defined for the main window (not the module)
-
     """
 
     def __init__(self):
@@ -56,12 +59,21 @@ class CameraGUI(GUIBase):
 
     camera_logic = Connector(interface='CameraLogic')
 
+    _pixel_size_x = ConfigOption('pixel_size_x', 1)
+    _pixel_size_y = ConfigOption('pixel_size_y', 1)
+
     sigStart = QtCore.Signal()
     sigStop = QtCore.Signal()
     _image = []
-
     _logic = None
     _mw = None
+
+    _exposure = None
+    _gain = None
+    _mask = None
+
+    _raw_data_image = None
+    _image_size = None
 
     def __init__(self, config, **kwargs):
 
@@ -82,17 +94,47 @@ class CameraGUI(GUIBase):
         self._mw.start_control_Action.setEnabled(True)
         self._mw.start_control_Action.setChecked(self._logic.enabled)
         self._mw.start_control_Action.triggered.connect(self.start_clicked)
+        self._mw.image_meter_control_dockwidget.hide()  # The meter control is initially turned off
 
         self._logic.sigUpdateDisplay.connect(self.update_data)
 
-        # starting the physical measurement
         self.sigStart.connect(self._logic.startLoop)
         self.sigStop.connect(self._logic.stopLoop)
 
-        raw_data_image = self._logic.get_last_image()
-        self._image = pg.ImageItem(image=raw_data_image, axisOrder='row-major')
+        self._mw.expos_current_InputWidget.editingFinished.connect(self.update_from_input_exposure)
+        self._mw.gain_current_InputWidget.editingFinished.connect(self.update_from_input_gain)
+
+        # Show the image measured
+        self._image = pg.ImageItem(image=self._raw_data_image, axisOrder='row-major')
         self._mw.image_PlotWidget.addItem(self._image)
         self._mw.image_PlotWidget.setAspectLocked(True)
+
+        self.update_view()
+        self.update_units()
+
+    def update_input_exposure(self, exposure):
+        """ Updates the displayed exposure.
+
+        @param float exposure: the current value of the exposure
+        """
+        self._mw.expos_current_InputWidget.setValue(exposure)
+
+    def update_from_input_exposure(self):
+        """ If the user changes the exposition time in the box, adjusts the corresponding hardware parameter
+        """
+        self._logic.set_exposure(self._mw.expos_current_InputWidget.value())
+
+    def update_input_gain(self, gain):
+        """ Updates the displayed gain.
+
+         @param float gain: the current value of the gain
+         """
+        self._mw.gain_current_InputWidget.setValue(gain)
+
+    def update_from_input_gain(self):
+        """ If the user changes the gain in the box, adjusts the corresponding hardware parameter
+        """
+        self._logic.set_gain(self._mw.gain_current_InputWidget.value())
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -109,6 +151,7 @@ class CameraGUI(GUIBase):
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
+
         if self._logic.enabled:
             self._mw.start_control_Action.setText('Start')
             self.sigStop.emit()
@@ -117,17 +160,38 @@ class CameraGUI(GUIBase):
             self.sigStart.emit()
 
     def update_data(self):
+        """ Get the image data from the logic and print it on the window
         """
-        Get the image data from the logic and print it on the window
-        """
-        raw_data_image = self._logic.get_last_image()
-        levels = (0., 1.)
-        self._image.setImage(image=raw_data_image)
-        # self._image.setImage(image=raw_data_image, levels=levels)
 
-    def updateView(self):
-        """
-        Update the view when the model change
-        """
-        pass
+        self._raw_data_image = self._logic.get_last_image()
+        self._image.setImage(image=self._raw_data_image)
+        #self._image.setImage(image=self._raw_data_image, levels=levels)
 
+    def update_view(self):
+        """ Update the view when the model change
+        """
+        self._mw.expos_current_InputWidget.setValue(self._logic.get_exposure())
+        self._mw.gain_current_InputWidget.setValue(self._logic.get_gain())
+
+    def update_units(self):
+        """ Update the units on the graph
+
+         Update the units on the graph and the view of the meter control windows, depending of the activation
+         of the meter mode.
+        """
+        if self._mw.actionPhysical_position.isChecked():
+            x_text, x_unit, x_size = ('X position', "Meter", self._pixel_size_x)
+            y_text, y_unit, y_size = ('Y position', "Meter", self._pixel_size_y)
+            self._mw.image_meter_control_dockwidget.show()
+        else:
+            x_text, x_unit, x_size = ('X position', "Pixel", 1)
+            y_text, y_unit, y_size = ('Y position', "Pixel", 1)
+            self._mw.image_meter_control_dockwidget.hide()
+
+        x_axis = self._mw.image_PlotWidget.getAxis('bottom')
+        x_axis.setLabel(x_text, units=x_unit)
+        x_axis.setScale(x_size)
+
+        y_axis = self._mw.image_PlotWidget.getAxis('left')
+        y_axis.setLabel(y_text, units=y_unit)
+        y_axis.setScale(y_size)
