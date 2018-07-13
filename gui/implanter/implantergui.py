@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import os
+import datetime
 
 from core.module import Connector
 from gui.guibase import GUIBase
@@ -45,7 +46,7 @@ class SimpleMainWindow(QtWidgets.QMainWindow):
         self.show()
 
 
-class ImplanterControllerLogic(GUIBase):
+class ImplanterGUI(GUIBase):
     """ FIXME: Please document
     """
     _modclass = 'implantergui'
@@ -63,55 +64,31 @@ class ImplanterControllerLogic(GUIBase):
 
         # checking for the right configuration
         for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
+            self.log.debug('{0}: {1}'.format(key, config[key]))
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-        self._implanter_logic = self.get_connector('implanter_controller_logic')
-
-        #####################
-        # Configuring the dock widgets
-        # Use the inherited class 'CounterMainWindow' to create the GUI window
+        self._implanter_logic = self.implanter_controller_logic()
         self._mw = SimpleMainWindow()
 
-        # Setup dock widgets
-        self._mw.centralwidget.hide()
-        self._mw.setDockNestingEnabled(True)
-
-        # Plot labels.
-        self._pw = self._mw.trace_PlotWidget
-
-        self.plot1 = self._pw.plotItem
-        self.plot1.setLabel('left', 'Some Value', units='some unit', color='#00ff00')
-        self.plot1.setLabel('bottom', 'Number of values', units='some unit')
-        self.plot2 = self._pw.plotItem
-        self.plot2.setLabel('right', 'Smooth Value', units='some unit', color='#ff0000')
-
-        self.curvearr = []
-        self.smootharr = []
-        colorlist = (palette.c1, palette.c2, palette.c3, palette.c4, palette.c5, palette.c6)
-
-        ## Create an empty plot curve to be filled later, set its pen
-        self.curve=self.plot1.plot()
-        self.curve.setPen(colorlist[0])
-        self.smooth=self.plot2.plot()
-        self.smooth.setPen(colorlist[1], width=2)
-
-        # make correct button state
-        self._mw.startAction.setChecked(False)
+        self._mw.ontimedoubleSpinBox.setValue(self._implanter_logic.low_time)
+        self._mw.offtimedoubleSpinBox.setValue(self._implanter_logic.high_time)
+        #self._mw.offtimedoubleSpinBox.set
 
         #####################
         # Connecting user interactions
         self._mw.startAction.triggered.connect(self.start_clicked)
-        self._mw.recordAction.triggered.connect(self.save_clicked)
+        self._mw.ontimedoubleSpinBox.editingFinished.connect(self.update_ontime)
+        self._mw.offtimedoubleSpinBox.editingFinished.connect(self.update_offtime)
 
         #####################
         # starting the physical measurement
         self.sigStart.connect(self._implanter_logic.startMeasure)
         self.sigStop.connect(self._implanter_logic.stopMeasure)
 
-        self._implanter_logic.sigRepeat.connect(self.updateData)
+        self._implanter_logic.sigLoop.connect(self.update_countdown)
+        self._implanter_logic.sigFinished.connect(self.cd_finished)
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -126,37 +103,34 @@ class ImplanterControllerLogic(GUIBase):
         # FIXME: !
         self._mw.close()
 
-    def updateData(self):
-        """ The function that grabs the data and sends it to the plot.
-        """
-
-        self._mw.current_value_Label.setText('{0:,.6f}'.format(self._implanter_logic.current_data))
-
-        self.curve.setData(
-            y=self._implanter_logic.data_buffer,
-            x=self._implanter_logic.time_buffer
-            )
-        self.smooth.setData(
-            y=self._implanter_logic.data_smooth,
-            x=self._implanter_logic.time_buffer
-            )
-
-        if self._implanter_logic.module_state() == 'locked':
-            self._mw.startAction.setText('Stop')
-        else:
-            self._mw.startAction.setText('Start')
-
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        if self._implanter_logic.module_state() == 'locked':
-            self._mw.startAction.setText('Start')
-            self.sigStop.emit()
-        else:
+        if self._mw.startAction.isChecked():
             self._mw.startAction.setText('Stop')
+            self._mw.ontimedoubleSpinBox.setEnabled(False)
+            self._mw.offtimedoubleSpinBox.setEnabled(False)
+            self._mw.repeatcheckBox.setEnabled(False)
             self.sigStart.emit()
+        else:
+            self.sigStop.emit()
 
-    def save_clicked(self):
-        """ Handling the save button to save the data into a file.
-        """
-        return
+    def update_countdown(self):
+        self._mw.statusBar().showMessage(
+            'Countdown: {0}'.format(
+                self._implanter_logic.starttime - datetime.datetime.now()
+            )
+        )
+
+    def cd_finished(self):
+        self._mw.startAction.setText('Start')
+        self._mw.startAction.setChecked(False)
+        self._mw.ontimedoubleSpinBox.setEnabled(True)
+        self._mw.offtimedoubleSpinBox.setEnabled(True)
+        self._mw.repeatcheckBox.setEnabled(True)
+
+    def update_ontime(self):
+        self._implanter_logic.high_time = self._mw.ontimedoubleSpinBox.value()
+
+    def update_offtime(self):
+        self._implanter_logic.low_time = self._mw.offtimedoubleSpinBox.value()

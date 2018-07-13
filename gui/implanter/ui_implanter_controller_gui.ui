@@ -6,64 +6,63 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>796</width>
-    <height>492</height>
+    <width>268</width>
+    <height>305</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>qudi: Implanter Controller</string>
   </property>
-  <widget class="QWidget" name="centralwidget"/>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QGridLayout" name="gridLayout_2">
+    <item row="0" column="0">
+     <widget class="QLabel" name="labelon">
+      <property name="text">
+       <string>On time</string>
+      </property>
+     </widget>
+    </item>
+    <item row="0" column="1">
+     <widget class="ScienDSpinBox" name="ontimedoubleSpinBox"/>
+    </item>
+    <item row="1" column="0">
+     <widget class="QLabel" name="labeloff">
+      <property name="text">
+       <string>Off time</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="1">
+     <widget class="ScienDSpinBox" name="offtimedoubleSpinBox"/>
+    </item>
+    <item row="2" column="0">
+     <widget class="QCheckBox" name="repeatcheckBox">
+      <property name="text">
+       <string>Repeat</string>
+      </property>
+     </widget>
+    </item>
+   </layout>
+  </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>796</width>
-     <height>26</height>
+     <width>268</width>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="viewAction"/>
     <addaction name="separator"/>
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <widget class="QDockWidget" name="traceDockWidget">
-   <property name="windowTitle">
-    <string>Display</string>
-   </property>
-   <attribute name="dockWidgetArea">
-    <number>4</number>
-   </attribute>
-   <widget class="QWidget" name="dockWidgetContents">
-    <layout class="QGridLayout" name="gridLayout">
-     <item row="0" column="0">
-      <widget class="QLabel" name="current_value_Label">
-       <property name="font">
-        <font>
-         <pointsize>60</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>0</string>
-       </property>
-       <property name="alignment">
-        <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="PlotWidget" name="trace_PlotWidget"/>
-     </item>
-    </layout>
-   </widget>
-  </widget>
   <widget class="QToolBar" name="controlToolBar">
    <property name="enabled">
     <bool>true</bool>
@@ -81,7 +80,6 @@
     <bool>false</bool>
    </attribute>
    <addaction name="startAction"/>
-   <addaction name="recordAction"/>
   </widget>
   <action name="startAction">
    <property name="checkable">
@@ -139,45 +137,13 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
  <connections>
-  <connection>
-   <sender>viewAction</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>traceDockWidget</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>399</x>
-     <y>136</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>traceDockWidget</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>viewAction</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>399</x>
-     <y>136</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>actionClose</sender>
    <signal>triggered()</signal>

@@ -19,11 +19,12 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Connector
+from core.module import Connector, StatusVar
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
 import numpy as np
+import datetime
 import time
 
 
@@ -34,19 +35,27 @@ class ImplanterControllerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    amperemeter = Connector(interface='AmperemeterInterface')
+    implanter_timer = Connector(interface='ExposureControllerInterface')
 
-    sigRepeat = QtCore.Signal()
+    # status var
+    _countdown = StatusVar('countdown', default=3)
+    low_time = StatusVar('lowtime', default=100e-6)
+    high_time = StatusVar('hightime', default=100e-6)
+    idle_level = StatusVar('idle_level', default=True)
+
+    sigLoop = QtCore.Signal()
+    sigFinished = QtCore.Signal()
 
     def on_activate(self):
         """ Prepare logic module for work.
         """
-        self._amperemeter_hardware = self.get_connector('amperemeter')
+        self._hardware = self.implanter_timer()
         self.stopRequest = False
-        self._bufferLength = 300
-        self._window_len = 50
-        self._current_data = 0.0
-        self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)
+        self.waitRequest = False
+        self.starttime = datetime.datetime.now()
+        self.current_countdown = self._countdown
+
+        self.sigLoop.connect(self.timerLoop, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         """ Deactivate modeule.
@@ -55,64 +64,49 @@ class ImplanterControllerLogic(GenericLogic):
 
     def startMeasure(self):
         """ Start measurement: zero the buffer and call loop function."""
-        self._data_buffer = np.zeros(self._bufferLength)
-        self._time_buffer = np.zeros(self._bufferLength)
-        self._start_time = time.time()
-        self._data_smooth = np.zeros(self._bufferLength)
         self.module_state.lock()
-        self.sigRepeat.emit()
+        self.current_countdown = self.countdown
+        self.starttime = datetime.datetime.now()
+        self._hardware.configure_exposure(self.low_time, self.high_time, self.idle_level)
+        self._hardware.prepare_exposure()
+        self.sigLoop.emit()
 
     def stopMeasure(self):
         """ Ask the measurement loop to stop. """
         self.stopRequest = True
 
-    def measureLoop(self):
+    def timerLoop(self):
         """ Measure one value, add them to buffer and remove the oldest value.
         """
         if self.stopRequest:
             self.stopRequest = False
+            self.waitRequest = False
+            self._hardware.stop_exposure()
             self.module_state.unlock()
+            self.sigFinished.emit()
             return
 
-        self._current_data = float(self._amperemeter_hardware.get_value())
+        delta = datetime.datetime.now() - self.starttime
+        if not self.waitRequest and delta.seconds > self.current_countdown:
+            self._hardware.start_exposure()
+            self.waitRequest = True
 
-        self._data_buffer[0] = self._current_data
-        self._time_buffer[0] = time.time() - self._start_time
-        self._data_buffer = np.roll(self._data_buffer, -1, axis=0)
-        self._time_buffer = np.roll(self._time_buffer, -1, axis=0)
+        if self.waitRequest:
+            if self._hardware.get_status() > 0:
+                self.stopRequest = False
+                self.waitRequest = False
+                self._hardware.stop_exposure()
+                self.module_state.unlock()
+                self.sigFinished.emit()
+                return
 
-        # calculate the median and save it
-        self._data_smooth = np.roll(self._data_smooth, -1, axis=0)
-        window = -int(self._window_len / 2) - 1
-        self._data_smooth[window:] = np.median(self._data_buffer[-self._window_len:])
-        self.sigRepeat.emit()
-
-    @property
-    def window_length(self):
-        return self._window_len
-
-    @window_length.setter
-    def window_length(self, value):
-        if self.module_state() == 'locked':
-            self.log.error('Window length cannot be set while in locked state.')
-        elif value > self._bufferLength:
-            self.log.error('Window length ({0:d}) cannot be set to be bigger than the data buffer ({1:d}).'
-                           .format(value, self._bufferLength))
-        else:
-            self._window_len = value
+        time.sleep(0.1)
+        self.sigLoop.emit()
 
     @property
-    def current_data(self):
-        return self._current_data
+    def countdown(self):
+        return self._countdown
 
-    @property
-    def data_buffer(self):
-        return self._data_buffer
-
-    @property
-    def time_buffer(self):
-        return self._time_buffer
-
-    @property
-    def data_smooth(self):
-        return self._data_smooth
+    @countdown.setter
+    def countdown(self, countdown):
+        self._countdown = int(countdown)

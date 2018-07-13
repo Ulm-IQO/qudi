@@ -23,6 +23,7 @@ from core.module import Base, ConfigOption
 from interface.amperemeter_interface import AmperemeterInterface
 import visa
 
+
 class Amperemeter(Base, AmperemeterInterface):
     """
     This module implements communication with Picoamperemeter.
