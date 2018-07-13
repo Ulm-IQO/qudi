@@ -74,7 +74,10 @@ class ImplanterGUI(GUIBase):
 
         self._mw.ontimedoubleSpinBox.setValue(self._implanter_logic.low_time)
         self._mw.offtimedoubleSpinBox.setValue(self._implanter_logic.high_time)
-        #self._mw.offtimedoubleSpinBox.set
+        self._mw.ontimedoubleSpinBox.setMinimum(2 * 10e-9)
+        self._mw.ontimedoubleSpinBox.setMaximum(10)
+        self._mw.offtimedoubleSpinBox.setMinimum(2 * 10e-9)
+        self._mw.offtimedoubleSpinBox.setMaximum(10)
 
         #####################
         # Connecting user interactions

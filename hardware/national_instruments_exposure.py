@@ -41,7 +41,7 @@ class NIExposureTimer(Base): #, ExposureControllerInterface):
     def on_activate(self):
         """ Activate module
         """
-        self.idle_level = cnx.Level.HIGH
+        self.idle_level = cnx.Level.LOW
         self.timebase = '80MHzTimebase'
         self._timebase_hz = 80e6
         self.counter_task = None
@@ -56,7 +56,11 @@ class NIExposureTimer(Base): #, ExposureControllerInterface):
 
     def prepare_exposure(self):
         if self.counter_task is not None:
-            return -1
+            try:
+                self.counter_task.close()
+                self.counter_task = None
+            except:
+                return -1
 
         self.counter_task = nidaqmx.Task('ExposureCounterTask')
         self.counter_task.co_channels.add_co_pulse_chan_ticks(
