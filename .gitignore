@@ -23,6 +23,7 @@
 /config/qo-config
 /documentation/generated
 /documentation/images
+/Data
 
 # log files
 *.log

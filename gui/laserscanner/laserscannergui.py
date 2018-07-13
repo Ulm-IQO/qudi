@@ -78,8 +78,8 @@ class VoltScanGui(GUIBase):
         """ 
 
         """
-        self._voltscan_logic = self.get_connector('voltagescannerlogic1')
-        self._savelogic = self.get_connector('savelogic')
+        self._voltscan_logic = self.voltagescannerlogic1()
+        self._savelogic = self.savelogic()
 
         # Use the inherited class 'Ui_VoltagescannerGuiUI' to create now the
         # GUI element:

@@ -1,5 +1,125 @@
 # Changelog {#changelog}
 
+## Pre-release
+
+Changes/New features:
+
+* Improved scientific SpinBox validators to allow for more intuitive keyboard input
+* All modules use new connector style where feasible.
+* Bug fix for waveform generation larger than ~2 GSamples
+* Bug fix for POI manager was losing active POI when moving crosshair in confocal
+* Default waveform format can now be set via optional config option for `SequenceGeneratorLogic`
+* Added a how-to-get-started guide to the documentation
+* Added chirp function to available analog shapes in pulsed measurements
+* Bug fix for pulsed measurements with large photon count numbers (`numpy.int32` vs. `numpy.int64`)
+* Bug fixes and improvements for the scientific SpinBox introduced in v0.9
+* Tab order in pulsed measurement GUI is now more useful
+* Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
+* Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
+* POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
+* Various stability improvements and minor bug fixes
+* Update conda environment to more recent versions of packages
+* Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
+* Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
+* Added a how-to-participate guide to the documentation
+* Added installation options guide to the documentation
+
+Config changes:
+* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
+* Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
+* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
+
+
+
+## Release 0.9
+Released on 6 Mar 2018
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.9
+
+Changes/New features:
+
+* Huge amount of small and medium sized bug fixes and usability/stability improvements
+* Replaced scientific SpinBoxes with a new implementation that is more powerful and does not use pyqtgraph
+* Fixed Python crash upon closing qudi which was related to saving images with matplotlib (Windows)
+* Added hardware module to control _Coherent OBIS_ lasers
+* Manager GUI now properly reflects the state of each module
+* Full multichannel support for slow counting / confocal / ODMR
+* Moved to fysom v2.1.4
+* Module base classes now nest fysom state machine in `module_state` instead of subclassing it. The current state is accessible via `module_state.current` or `module_state()`
+* Changed the sampling algorithm for waveforms. Formerly each `PulseBlockElement` was sampled to match the specified length as closely as possible. Now the ideal time on which a transition between elements should occur is matched to a global quantized timeline. The sampled waveform length will now not deviate more than one timebin from the ideal length. However ideally identical elements can slightly vary (1 bin) in length throughout the entire waveform. This should lead in general to better results since the overall definition of the waveform is more closely matched to a quantized timeline
+* Commonly used parameters in pulsed measurements are now shared for all predefined methods (less input widgets / clean UI). Each `generate_*` method still needs all parameters but input widgets are reused by name. Available names are:
+  ```
+  ['mw_channel', 
+   'gate_count_channel', 
+   'sync_trig_channel', 
+   'mw_amp', 
+   'mw_freq', 
+   'channel_amp', 
+   'delay_length', 
+   'wait_time', 
+   'laser_length', 
+   'rabi_period']
+  ```
+* Generalized APT motor stages class (multi-axis support via config)
+* Simple digital channel based switch on/off capability added to `hardware/ni_card.py`
+* _National Instruments X series_ card hardware module renamed from `ni_card.py` to `national_instruments_x_series.py`
+* `qudikernel.py` moved to core
+* Listening address and port of qudi can now be changed in config (default: localhost)
+* Analog signal input (for PDMR measurements) now supported for slow counter/confocal/ODMR (see config changes)
+* Use of rpyc became optional (does not need to be installed if no remote module capability is needed)
+* Mayor cleanup/overhaul of the `microwave_interface.py` and adaption of all affected modules (hardware/logic)
+
+
+Config changes:
+ * New remote server declaration (old one working but deprecated):
+  ```
+  [global]
+  module_server:
+      address: ''
+      port: 12345
+      certfile: 'filename.cert'
+      keyfile: 'filename.key'
+  ```
+
+ * New full example config for `national_instruments_x_series.py`:
+ ```
+ mynicard:
+     module.Class: 'national_instruments_x_series.NationalInstrumentsXSeries'
+     clock_channel: '/Dev1/Ctr0'
+     scanner_clock_channel: '/Dev1/Ctr2'
+     photon_sources:
+         - '/Dev1/PFI8'
+         - '/Dev1/PFI9'
+     counter_channels:
+         - '/Dev1/Ctr1'
+     counter_ai_channels:  # optional
+         - '/Dev1/AI1'
+     scanner_counter_channels:
+         - '/Dev1/Ctr3'
+     scanner_ai_channels:  # optional
+         - '/Dev1/AI0'
+     scanner_ao_channels:
+         - '/Dev1/AO0'
+         - '/Dev1/AO1'
+         - '/Dev1/AO2'
+         - '/Dev1/AO3'
+     scanner_position_ranges:
+         - [0e-6, 200e-6]
+         - [0e-6, 200e-6]
+         - [-100e-6, 100e-6]
+         - [-10, 10]
+     scanner_voltage_ranges:
+         - [-10, 10]
+         - [-10, 10]
+         - [-10, 10]
+         - [-10, 10]
+     default_samples_number: 10
+     default_clock_frequency: 100
+     default_scanner_clock_frequency: 100
+     gate_in_channel: '/Dev1/PFI9'
+     counting_edge_rising: True
+     odmr_trigger_channel: '/Dev1/PFI15'
+ ```
+
 ## Release 0.8
 
 Released on 2 Mar 2017.

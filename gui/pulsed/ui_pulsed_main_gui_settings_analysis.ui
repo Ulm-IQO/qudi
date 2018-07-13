@@ -169,6 +169,17 @@ generator settings:</string>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>ana_param_couple_settings_checkBox</tabstop>
+  <tabstop>ana_param_x_axis_name_LineEdit</tabstop>
+  <tabstop>ana_param_x_axis_unit_LineEdit</tabstop>
+  <tabstop>ana_param_y_axis_name_LineEdit</tabstop>
+  <tabstop>ana_param_y_axis_unit_LineEdit</tabstop>
+  <tabstop>ana_param_second_plot_x_axis_name_LineEdit</tabstop>
+  <tabstop>ana_param_second_plot_x_axis_unit_LineEdit</tabstop>
+  <tabstop>ana_param_second_plot_y_axis_name_LineEdit</tabstop>
+  <tabstop>ana_param_second_plot_y_axis_unit_LineEdit</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

@@ -3,15 +3,17 @@
 
 * [License](@ref license)
 * [Changelog](@ref changelog)
+* [Getting Started](@ref get-started)
 
 * Setup
     * [Installation](@ref installation)
-    * [Required packages](@ref required-python-packages)
+    * [Manual installation of Qudi Development Environment](@ref manual-package-installation)
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
     * [Build the documentation](@ref build-docs)
 
 * Qudi programming and design concepts
+   * [How to participate](@ref participate)
    * [Programming style](@ref programming-style)
    * [Interfuses](@ref how_to_interfuses)
    * [Extensions](@ref extensions)
@@ -21,7 +23,7 @@
 
 * Configuration
     * [Using a Config file](@ref config-explanation)
-    * [Remote access to modules)(@red remote_modules)
+    * [Remote access to modules](@ref remote_modules)
 
 * GUI documentation
     * [Keyboard shortcuts](@ref shortcuts)

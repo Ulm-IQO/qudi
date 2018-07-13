@@ -39,7 +39,7 @@ class SimpleDataLogic(GenericLogic):
     def on_activate(self):
         """ Prepare logic module for work.
         """
-        self._data_logic = self.get_connector('simpledata')
+        self._data_logic = self.simpledata()
         self.stopRequest = False
         self.bufferLength = 10000
         self.sigRepeat.connect(self.measureLoop, QtCore.Qt.QueuedConnection)

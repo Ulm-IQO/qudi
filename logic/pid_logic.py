@@ -57,8 +57,8 @@ class PIDLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._controller = self.get_connector('controller')
-        self._save_logic = self.get_connector('savelogic')
+        self._controller = self.controller()
+        self._save_logic = self.savelogic()
 
         self.history = np.zeros([3, self.bufferLength])
         self.savingState = False

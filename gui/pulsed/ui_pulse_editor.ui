@@ -461,34 +461,6 @@ last</string>
         </property>
        </widget>
       </item>
-      <item row="1" column="1" colspan="2">
-       <widget class="ScienSpinBox" name="curr_ensemble_bins_SpinBox">
-        <property name="maximumSize">
-         <size>
-          <width>80</width>
-          <height>16777215</height>
-         </size>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-        </property>
-        <property name="readOnly">
-         <bool>true</bool>
-        </property>
-        <property name="buttonSymbols">
-         <enum>QAbstractSpinBox::NoButtons</enum>
-        </property>
-        <property name="suffix">
-         <string>bins</string>
-        </property>
-        <property name="prefix">
-         <string/>
-        </property>
-        <property name="maximum">
-         <number>1000000000</number>
-        </property>
-       </widget>
-      </item>
       <item row="2" column="1" colspan="2">
        <widget class="QDoubleSpinBox" name="curr_ensemble_size_DSpinBox">
         <property name="enabled">
@@ -655,6 +627,34 @@ last</string>
        <widget class="QLabel" name="pbe_size_label">
         <property name="text">
          <string>File size:</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1" colspan="2">
+       <widget class="QSpinBox" name="curr_ensemble_bins_SpinBox">
+        <property name="maximumSize">
+         <size>
+          <width>80</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="alignment">
+         <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+        </property>
+        <property name="readOnly">
+         <bool>true</bool>
+        </property>
+        <property name="buttonSymbols">
+         <enum>QAbstractSpinBox::NoButtons</enum>
+        </property>
+        <property name="suffix">
+         <string>bins</string>
+        </property>
+        <property name="prefix">
+         <string/>
+        </property>
+        <property name="maximum">
+         <number>1000000000</number>
         </property>
        </widget>
       </item>
@@ -866,12 +866,46 @@ Ensemble</string>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>gen_activation_config_ComboBox</tabstop>
+  <tabstop>gen_activation_config_LineEdit</tabstop>
+  <tabstop>gen_laserchannel_ComboBox</tabstop>
+  <tabstop>gen_analog_channels_SpinBox</tabstop>
+  <tabstop>gen_digital_channels_SpinBox</tabstop>
+  <tabstop>gen_sample_freq_DSpinBox</tabstop>
+  <tabstop>block_add_last_PushButton</tabstop>
+  <tabstop>block_del_last_PushButton</tabstop>
+  <tabstop>block_add_sel_PushButton</tabstop>
+  <tabstop>block_del_sel_PushButton</tabstop>
+  <tabstop>block_clear_PushButton</tabstop>
+  <tabstop>curr_block_name_LineEdit</tabstop>
+  <tabstop>curr_block_generate_PushButton</tabstop>
+  <tabstop>saved_blocks_ComboBox</tabstop>
+  <tabstop>curr_block_del_PushButton</tabstop>
+  <tabstop>curr_block_load_PushButton</tabstop>
+  <tabstop>organizer_add_last_PushButton</tabstop>
+  <tabstop>organizer_del_last_PushButton</tabstop>
+  <tabstop>organizer_add_sel_PushButton</tabstop>
+  <tabstop>organizer_del_sel_PushButton</tabstop>
+  <tabstop>organizer_clear_PushButton</tabstop>
+  <tabstop>curr_ensemble_length_DSpinBox</tabstop>
+  <tabstop>curr_ensemble_bins_SpinBox</tabstop>
+  <tabstop>curr_ensemble_size_DSpinBox</tabstop>
+  <tabstop>curr_ensemble_laserpulses_SpinBox</tabstop>
+  <tabstop>curr_ensemble_rot_frame_CheckBox</tabstop>
+  <tabstop>curr_ensemble_name_LineEdit</tabstop>
+  <tabstop>curr_ensemble_generate_PushButton</tabstop>
+  <tabstop>saved_ensembles_ComboBox</tabstop>
+  <tabstop>curr_ensemble_del_PushButton</tabstop>
+  <tabstop>curr_ensemble_load_PushButton</tabstop>
+  <tabstop>gen_ensemble_ComboBox</tabstop>
+  <tabstop>saup_ensemble_PushButton</tabstop>
+  <tabstop>sauplo_ensemble_PushButton</tabstop>
+  <tabstop>load_ensemble_PushButton</tabstop>
+  <tabstop>block_editor_TableWidget</tabstop>
+  <tabstop>block_organizer_TableWidget</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

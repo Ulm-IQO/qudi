@@ -24,7 +24,7 @@ import TimeTagger as tt
 import time
 import numpy as np
 
-from core.module import Base
+from core.module import Base, ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode

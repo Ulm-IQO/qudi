@@ -301,8 +301,8 @@ class ConfocalLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._scanning_device = self.get_connector('confocalscanner1')
-        self._save_logic = self.get_connector('savelogic')
+        self._scanning_device = self.confocalscanner1()
+        self._save_logic = self.savelogic()
 
         # Reads in the maximal scanning range. The unit of that scan range is micrometer!
         self.x_range = self._scanning_device.get_position_range()[0]
@@ -448,9 +448,13 @@ class ConfocalLogic(GenericLogic):
             return -1
 
         if self._zscan:
-            # creates an array of evenly spaced numbers over the interval
-            # x1, x2 and the spacing is equal to xy_resolution
-            self._X = np.linspace(x1, x2, self.xy_resolution)
+            if self.depth_img_is_xz:
+                # creates an array of evenly spaced numbers over the interval
+                # x1, x2 and the spacing is equal to xy_resolution
+                self._X = np.linspace(x1, x2, self.xy_resolution)
+            else:
+                self._Y = np.linspace(y1, y2, self.xy_resolution)
+
             # Checks if the z-start and z-end value are ok
             if z2 < z1:
                 self.log.error(

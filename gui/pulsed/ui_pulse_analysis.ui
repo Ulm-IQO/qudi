@@ -215,6 +215,11 @@
             <string>Log(x)Log(y)</string>
            </property>
           </item>
+          <item>
+           <property name="text">
+            <string>Delta</string>
+           </property>
+          </item>
          </widget>
         </item>
         <item row="5" column="2">
@@ -543,19 +548,6 @@
      </property>
     </widget>
    </item>
-   <item row="4" column="5">
-    <widget class="ScienSpinBox" name="time_param_elapsed_sweep_ScienSpinBox">
-     <property name="readOnly">
-      <bool>true</bool>
-     </property>
-     <property name="buttonSymbols">
-      <enum>QAbstractSpinBox::NoButtons</enum>
-     </property>
-     <property name="maximum">
-      <number>999999999</number>
-     </property>
-    </widget>
-   </item>
    <item row="4" column="6">
     <widget class="QLabel" name="time_param_ana_periode_Label">
      <property name="text">
@@ -573,6 +565,19 @@
      </property>
      <property name="value">
       <double>3.000000000000000</double>
+     </property>
+    </widget>
+   </item>
+   <item row="4" column="5">
+    <widget class="QSpinBox" name="time_param_elapsed_sweep_SpinBox">
+     <property name="readOnly">
+      <bool>true</bool>
+     </property>
+     <property name="buttonSymbols">
+      <enum>QAbstractSpinBox::NoButtons</enum>
+     </property>
+     <property name="maximum">
+      <number>999999999</number>
      </property>
     </widget>
    </item>
@@ -594,12 +599,36 @@
    <extends>QComboBox</extends>
    <header>gui/fitsettings</header>
   </customwidget>
-  <customwidget>
-   <class>ScienSpinBox</class>
-   <extends>QSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>ext_control_use_mw_CheckBox</tabstop>
+  <tabstop>ext_control_mw_freq_DoubleSpinBox</tabstop>
+  <tabstop>ext_control_mw_power_DoubleSpinBox</tabstop>
+  <tabstop>pulser_sample_freq_DSpinBox</tabstop>
+  <tabstop>pulser_activation_config_ComboBox</tabstop>
+  <tabstop>pulser_use_interleave_CheckBox</tabstop>
+  <tabstop>pulser_activation_config_LineEdit</tabstop>
+  <tabstop>ana_param_ignore_first_CheckBox</tabstop>
+  <tabstop>ana_param_ignore_last_CheckBox</tabstop>
+  <tabstop>ana_param_alternating_CheckBox</tabstop>
+  <tabstop>ana_param_errorbars_CheckBox</tabstop>
+  <tabstop>second_plot_ComboBox</tabstop>
+  <tabstop>ana_param_fc_bins_ComboBox</tabstop>
+  <tabstop>ana_param_invoke_settings_CheckBox</tabstop>
+  <tabstop>ana_param_x_axis_start_ScienDSpinBox</tabstop>
+  <tabstop>ana_param_x_axis_inc_ScienDSpinBox</tabstop>
+  <tabstop>ana_param_num_laser_pulse_SpinBox</tabstop>
+  <tabstop>ana_param_record_length_SpinBox</tabstop>
+  <tabstop>fit_param_PushButton</tabstop>
+  <tabstop>fit_param_fit_func_ComboBox</tabstop>
+  <tabstop>fit_param_results_TextBrowser</tabstop>
+  <tabstop>pulse_analysis_PlotWidget</tabstop>
+  <tabstop>pulse_analysis_second_PlotWidget</tabstop>
+  <tabstop>time_param_expected_dur_DoubleSpinBox</tabstop>
+  <tabstop>time_param_elapsed_time_LineEdit</tabstop>
+  <tabstop>time_param_elapsed_sweep_SpinBox</tabstop>
+  <tabstop>time_param_ana_periode_DoubleSpinBox</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

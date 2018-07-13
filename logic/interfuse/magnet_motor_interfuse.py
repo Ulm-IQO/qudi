@@ -48,7 +48,7 @@ class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
         """ Initialisation performed during activation of the module.
         """
 
-        self._motor_device = self.get_connector('motorstage')
+        self._motor_device = self.motorstage()
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.

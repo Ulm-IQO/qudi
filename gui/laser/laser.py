@@ -83,7 +83,7 @@ class LaserGUI(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI plus staring the measurement.
         """
-        self._laser_logic = self.get_connector('laserlogic')
+        self._laser_logic = self.laserlogic()
 
         #####################
         # Configuring the dock widgets
