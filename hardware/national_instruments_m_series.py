@@ -33,11 +33,53 @@ from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.analog_control_interface import AnalogControlInterface
 
 
-class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
+class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
+                 ODMRCounterInterface):
     """ unstable: Alexander Stark
 
     Tested for the Hardware card NI 6229
     A hardware based counting procedure.
+
+    An example configuration for the hardware module might look like:
+
+    nicard6229:
+        module.Class: 'ni_6229_card.NI6229Card'
+        clock_channel: '/Dev2/Ctr1'
+        counter_channel: '/Dev2/Ctr0'
+        clock_frequency: 100 # in Hz; independent of clock_frequency
+        scanner_clock_channel: '/Dev2/Ctr1'
+        scanner_counter_channel: '/Dev2/Ctr0'
+        scanner_clock_frequency: 100 # in Hz; independent of clock_frequency
+        photon_source: '/Dev2/PFI8' # which should be '/Dev2/Ctr0'
+        trigger_channel: '/Dev2/Ctr1' # this will be '/Dev2/PFI13'
+        odmr_clock_channel: '/Dev2/Ctr1'
+        odmr_counter_channel: '/Dev2/Ctr0'
+        odmr_clock_frequency: 50    # in Hz
+        scanner_x_ao: '/Dev2/AO0'
+        scanner_y_ao: '/Dev2/AO1'
+        scanner_z_ao: '/Dev2/AO2'
+        samples_number: 50
+        read_write_timeout: 10  #in s
+        counting_edge_rising: True
+        x_range:
+           - -25e-6
+           - 25e-6   # in Micrometers
+        y_range:
+            - -25e-6
+            - 25e-6 # in Micrometers
+        z_range:
+            - -14e-6
+            - 14e-6 # in Micrometers
+        voltage_x_range:
+            - 0
+            - 8
+        voltage_y_range:
+            - 0
+            - 8
+        voltage_z_range:
+            - 0
+            - 8
+
     """
 
     _modtype = 'NI6229Card'
@@ -945,8 +987,9 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
                 daq.DAQmx_Val_Rising,
                 # generate finite number of samples
                 daq.DAQmx_Val_FiniteSamps,
-                # number of samples to generate
-                self._line_length)
+                # number of samples to generate +1 (first one is used to
+                # start/trigger the tasks related to the clock)
+                self._line_length + 1)
 
             # Set up the necessary parts for the Analog Out Task
             daq.DAQmxCfgSampClkTiming(
@@ -961,7 +1004,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
                 # generate finite number of samples
                 daq.DAQmx_Val_FiniteSamps,
                 # number of samples to generate
-                self._line_length)
+                self._line_length + 1)
 
         except:
             self.log.exception('Error while setting up scanner to scan a line.')
@@ -1047,7 +1090,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
 
             # count data will be stored here, allocated place.
             self._scan_data = np.empty(
-                (len(self.get_scanner_count_channels()), self._line_length),
+                (len(self.get_scanner_count_channels()), self._line_length + 2),
                 dtype=np.uint32)
 
             # available_samples = daq.uInt32()
@@ -1062,13 +1105,13 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
                 # read from this task
                 self._scanner_counter_daq_task,
                 # read number of double the # number of samples
-                self._line_length,
+                self._line_length + 2,
                 # maximal timeout for the read# process
                 self._RWTimeout,
                 # write into this array
                 self._scan_data[0],
                 # length of array to write into
-                self._line_length,
+                self._line_length + 2,
                 # number of samples which were actually read
                 daq.byref(n_read_samples),
                 # Reserved for future use. Pass NULL(here None) to this parameter.
@@ -1097,8 +1140,8 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             # the counts are counted up and the current value is saved to the
             # current array index. To get the actual size of an entry the
             # previous value has to be subtracted.
-            previous = 0
-            for index, entry in enumerate(self._scan_data[0]):
+            previous = self._scan_data[0][0]
+            for index, entry in enumerate(self._scan_data[0][1:-1]):
                 self._real_data[0][index] = entry - previous
                 previous = entry
 
@@ -1312,7 +1355,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
 
             daq.DAQmxCfgImplicitTiming(
                 # Define task
-                self._scanner_clock_daq_task,
+                self._odmr_clock_daq_task,
                 # Sample Mode: set the task to generate a continuous amount of running samples
                 daq.DAQmx_Val_ContSamps,
                 # buffer length which stores temporarily the number of generated samples
@@ -1353,13 +1396,13 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
 
         # in order to make it interface compatible, a list can be passed, but
         # for the M-series card only the first channel will be taken!
-        if counter_channels is not None:
-            curr_counter_ch = counter_channels[0]
+        if counter_channel is not None:
+            curr_counter_ch = counter_channel
         else:
             curr_counter_ch = self._odmr_counter_channel
 
-        if sources is not None:
-            curr_photon_source = sources[0]
+        if photon_source is not None:
+            curr_photon_source = photon_source
         else:
             curr_photon_source = self._photon_source
 
@@ -1378,7 +1421,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             daq.DAQmxCreateCICountEdgesChan(
                 self._odmr_counter_daq_task,
                 # assign a counter channel
-                self._odmr_counter_channel,
+                curr_counter_ch,
                 # nameToAssignToChannel
                 'ODMR Counter In',
                 # specify the edge
@@ -1461,13 +1504,13 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             # wait for the scanner clock to finish
             daq.DAQmxWaitUntilTaskDone(
                 # define task
-                self._odmr_clock_daq_task,
+                self._odmr_counter_daq_task,
                 # maximal timeout for the counter times the positions
-                self._RWTimeout * 2 * self._odmr_length)
+                self._RWTimeout * self._odmr_length)
 
             # count data will be written here
             self._odmr_data = np.full(
-                (2 * self._odmr_length + 1,),
+                (self._odmr_length + 1,),
                 222,
                 dtype=np.uint32)
 
@@ -1477,15 +1520,15 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             # actually read the counted photons
             daq.DAQmxReadCounterU32(
                 # read from this task
-                self._odmr_counter_daq_tasks[0],
+                self._odmr_counter_daq_task,
                 # Read number of double the# number of samples
-                2 * self._odmr_length + 1,
+                self._odmr_length + 1,
                 # Maximal timeout for the read # process
                 self._RWTimeout,
                 # write into this array
                 self._odmr_data,
                 # length of array to write into
-                2 * self._odmr_length + 1,
+                self._odmr_length + 1,
                 # number of samples which were actually read
                 daq.byref(n_read_samples),
                 # Reserved for future use. Pass NULL (here None) to this parameter.
@@ -1499,10 +1542,18 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             # number of samples)
             self._real_data = np.zeros((self._odmr_length,), dtype=np.uint32)
 
+            # the counts are counted up and the current value is saved to the
+            # current array index. To get the actual size of an entry the
+            # previous value has to be subtracted.
+            previous = self._odmr_data[0]
+            for index, entry in enumerate(self._odmr_data[1:]):
+                self._real_data[index] = entry - previous
+                previous = entry
+
             # add upp adjoint pixels to also get the counts from the low time of
             # the clock:
-            self._real_data = self._odmr_data[:-1:2]
-            self._real_data += self._odmr_data[1:-1:2]
+            # self._real_data = self._odmr_data[:-1:2]
+            # self._real_data += self._odmr_data[1:-1:2]
 
             return self._real_data * self._odmr_clock_frequency
 
@@ -1558,6 +1609,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
 
     # ======================== Digital channel control ==========================
 
+    # NOT FINISHED AND NOT TESTED (alexander start):
     def digital_channel_switch(self, channel_name, mode=True):
         """
         Control the digital channels of the NI card.
@@ -1612,15 +1664,28 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCount
             return 0
 
 
-class NI6229CardAnalogControl(Base, AnalogControlInterface):
-    """ unstable: Alexander Stark
+import PyDAQmx as daq
+from core.module import Base, StatusVar, ConfigOption
 
-    Tested for the Hardware card NI 6229
+
+class NI6229CardAnalogControl(Base, AnalogControlInterface):
+    """ Hardware control for Analog output of a voltage.
+
+    unstable: Alexander Stark
+
+    Tested for the Hardware card NI 6229.
     A analog control for voltages. Simplify the analog control just for one
-    channels.
+    channels. If more are necessary, extend the code to multiple channels.
 
     config example:
 
+        ni_6229_analog_cont:
+            module.Class: 'ni_6229_card.NI6229CardAnalogControl'
+            channel_ao: '/Dev2/AO3'
+            voltage_range:
+                - -10
+                - 10
+            RWTimeout: 10   # in seconds
 
     """
 
@@ -1659,6 +1724,7 @@ class NI6229CardAnalogControl(Base, AnalogControlInterface):
         """ Starts or restarts the analog output.
 
         @return int: error code (0:OK, -1:error)
+
         """
         try:
             # If an analog task is already running, kill that one first
@@ -1821,6 +1887,8 @@ class NI6229CardAnalogControl(Base, AnalogControlInterface):
                     daq.byref(self._AONwritten),
                     # Reserved for future use. Pass NULL(here None) to this parameter
                     None)
+
+                self._current_voltage = voltage
 
             else:
                 self.log.eror('No analog channel with the name "{0}" is '
