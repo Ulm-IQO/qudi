@@ -987,9 +987,10 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                 daq.DAQmx_Val_Rising,
                 # generate finite number of samples
                 daq.DAQmx_Val_FiniteSamps,
-                # number of samples to generate +1 (first one is used to
-                # start/trigger the tasks related to the clock)
-                self._line_length + 1)
+                # number of samples to generate +2 (first one is used to
+                # start/trigger the tasks related to the clock and make one
+                # more for safety)
+                self._line_length + 2)
 
             # Set up the necessary parts for the Analog Out Task
             daq.DAQmxCfgSampClkTiming(
@@ -1003,8 +1004,9 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                 daq.DAQmx_Val_Rising,  # daq.DAQmx_Val_Falling
                 # generate finite number of samples
                 daq.DAQmx_Val_FiniteSamps,
-                # number of samples to generate
-                self._line_length + 1)
+                # number of samples to generate, here the exact number of
+                # voltages need to be specified, otherwise the scanner will jump
+                self._line_length)
 
         except:
             self.log.exception('Error while setting up scanner to scan a line.')
@@ -1088,8 +1090,13 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                 # maximal timeout for the counter times the positions
                 self._RWTimeout * 2 * self._line_length)
 
-            # count data will be stored here, allocated place.
-            self._scan_data = np.empty(
+            # count data will be stored here, allocated place. Count two more,
+            # since first count will not have information in it but just start
+            # the counting process and it is necessary to count +1 longer,
+            # since the last point in the array is zero and the count value is
+            # not written to the last array element, because task ended before
+            # that.
+            self._scan_data = np.zeros(
                 (len(self.get_scanner_count_channels()), self._line_length + 2),
                 dtype=np.uint32)
 
