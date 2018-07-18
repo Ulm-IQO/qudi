@@ -92,7 +92,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')  # in Hz
 
     _scanner_clock_channel = ConfigOption('scanner_clock_channel', missing='error')
-    _scanner_counter_channel = ConfigOption('scanner_counter_channel', missing='error')
+    _scanner_counter_channels = ConfigOption('scanner_counter_channels', [], missing='error')
     _scanner_clock_frequency = ConfigOption('scanner_clock_frequency', 100, missing='warn')  # in Hz
 
     _photon_source = ConfigOption('photon_source', missing='error')
@@ -544,11 +544,12 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         chanlist = [self._trigger_channel,
                     self._clock_channel,
                     self._scanner_clock_channel,
-                    self._scanner_counter_channel,
                     self._photon_source,
                     self._scanner_x_ao,
                     self._scanner_y_ao,
                     self._scanner_z_ao]
+
+        chanlist.extend(self._scanner_ao_channels)
 
         devicelist = []
         for channel in chanlist:
@@ -587,7 +588,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     def get_scanner_count_channels(self):
         """ Return list of counter channels """
-        return [self._scanner_counter_channel]
+        return self._scanner_counter_channels
 
     def get_position_range(self):
         """ Returns the physical range of the scanner.
@@ -856,7 +857,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         if counter_channels is not None:
             curr_counter_ch = counter_channels[0]
         else:
-            curr_counter_ch = self._scanner_counter_channel
+            curr_counter_ch = self._scanner_counter_channels[0]
 
         if sources is not None:
             curr_photon_source = sources[0]
@@ -910,7 +911,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         @return int: error code (0:OK, -1:error)
         """
 
-        if self.getState() == 'locked':
+        if self.module_state() == 'locked':
             self.log.error('Another scan_line is already running, close this one first.')
             return -1
 
@@ -1562,11 +1563,24 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             # self._real_data = self._odmr_data[:-1:2]
             # self._real_data += self._odmr_data[1:-1:2]
 
-            return self._real_data * self._odmr_clock_frequency
+            # return self._real_data * self._odmr_clock_frequency
+
+            all_data = np.full((len(self.get_odmr_channels()), self._odmr_length),
+                               222,
+                               dtype=np.float64)
+            all_data[0] = np.array(self._real_data * self._odmr_clock_frequency, np.float64)
+
+            # if len(self._scanner_ai_channels) > 0:
+            #     all_data[1:] = self._odmr_analog_data[:, :-1]
+
+            return all_data
 
         except:
+            # self.log.exception('Error while counting for ODMR.')
+            # return np.array([-1.])
+
             self.log.exception('Error while counting for ODMR.')
-            return np.array([-1.])
+            return np.full((len(self.get_odmr_channels()), 1), [-1.])
 
     def close_odmr(self):
         """ Closes the odmr and cleans up afterwards.
@@ -1609,6 +1623,14 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             return -1
 
         return 0
+
+    def get_odmr_channels(self):
+        """ Return a list of channel names.
+
+            @return list(str): channels recorded during ODMR measurement
+        """
+        ch = [self._scanner_counter_channels[0]]
+        return ch
 
     # ================== End ODMRCounterInterface Commands ====================
 
