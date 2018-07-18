@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import PyDAQmx as daq
 import re
+from qtpy import QtCore
 
 from core.module import Base, StatusVar, ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
@@ -32,6 +33,9 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.analog_control_interface import AnalogControlInterface
 
+
+from random import randint
+import time
 
 class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                  ODMRCounterInterface):
@@ -61,6 +65,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         samples_number: 50
         read_write_timeout: 10  #in s
         counting_edge_rising: True
+        gate_in_channel: '/Dev1/PFI7'
         x_range:
            - -25e-6
            - 25e-6   # in Micrometers
@@ -127,7 +132,10 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
     _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn') # set how the clock is reacting
     _gate_in_channel = ConfigOption('gate_in_channel', True, missing='warn') # where to receive the gated signal
 
+    sigCollectData = QtCore.Signal()
+    sigDistributeData = QtCore.Signal(object)
 
+    run_collection_flag = False
 
     def on_activate(self):
         """ Starts up the NI Card at activation. """
@@ -157,6 +165,8 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # Gated counting:
         self._gated_counter_daq_task = None
+        self.sigCollectData.connect(self._collect_data, QtCore.Qt.QueuedConnection)
+        self.sigDistributeData.connect(self._distribute_data, QtCore.Qt.QueuedConnection)
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
@@ -1913,12 +1923,39 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         return retval
 
 
+    def start_counting(self):
+
+        self._data_array = np.zeros(2000)
+        self.run_collection_flag = True
+        #self.start_gated_counter()
+        self.sigCollectData.emit()
+
+    def _collect_data(self):
+
+        # counts, num_counts = self.get_gated_counts(1000)
+
+        counts = randint(0, 1999)
+
+        self.sigDistributeData.emit(counts)
+        time.sleep(0.05)
+
+        if not self.run_collection_flag:
+            return
+
+        self.sigCollectData.emit()
+
+    def _distribute_data(self, data):
+
+        self._data_array[data] += 1
+
+        # logic to sort the incomming data correctly.
+
 
     # Non Interface commands:
 
     # ======================== Digital channel control ==========================
 
-    # NOT FINISHED AND NOT TESTED (alexander start):
+    # NOT FINISHED AND NOT TESTED (Alexander Stark):
     def digital_channel_switch(self, channel_name, mode=True):
         """
         Control the digital channels of the NI card.
