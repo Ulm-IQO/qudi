@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Interface file to use processes.
+Interface file to define a setpoint for a process variable.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,19 +24,37 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-class ProcessInterface(metaclass=InterfaceMetaclass):
-    """ This interface is used to manage a process value or in another words a measure value of a simple sensor
+class SetpointInterface(metaclass=InterfaceMetaclass):
+    """ This interface is used to manage a setpoint value.
     """
 
-    _modtype = 'ProcessInterface'
+    _modtype = 'ProcessControlInterface'
     _modclass = 'interface'
 
     @abc.abstractmethod
-    def get_process_value(self):
-        """ Return a measured value """
+    def get_setpoint(self):
+        """ Getter for the setpoint value
+
+        Return a value in unit
+        """
         pass
 
     @abc.abstractmethod
-    def get_process_unit(self):
-        """ Return the unit that the value is measured in as a tuple of ('abbreviation', 'full unit name') """
+    def set_setpoint(self, setpoint):
+        """ Set the current setpoint
+
+        Parameter : new value desired in unit
+        Return the real new value
+        """
+        pass
+
+    @abc.abstractmethod
+    def get_setpoint_unit(self):
+        """ Return the unit that the setpoint value is set in as a tuple of ('abbreviation', 'full unit name') """
+        pass
+
+    @abc.abstractmethod
+    def get_setpoint_limits(self):
+        """ Return limits within which the setpoint value can be set as a tuple of (low limit, high limit)
+        """
         pass
