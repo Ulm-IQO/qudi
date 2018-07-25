@@ -383,6 +383,7 @@ class ConfocalStepperGui(GUIBase):
         #################################################################
         #           Connect the colorbar and their actions              #
         #################################################################
+
         # Get the colorscale and set the LUTs
         self.my_colors = ColorScaleInferno()
 
@@ -403,6 +404,15 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic.signal_image_updated.connect(self.refresh_image)
         self._stepper_logic.signal_image_updated.connect(self.refresh_scan_line)
         # self._stepper_logic.sigImageInitialized.connect(self.adjust_window)
+
+        # Connect the buttons and inputs for the xy colorbar
+        self._mw.cb_manual_RadioButton.clicked.connect(self.update_cb_range)
+        self._mw.cb_centiles_RadioButton.clicked.connect(self.update_cb_range)
+
+        self._mw.cb_min_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_manual)
+        self._mw.cb_max_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_manual)
+        self._mw.cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
+        self._mw.cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_cb_centiles)
 
     def init_position_feedback_UI(self):
         """

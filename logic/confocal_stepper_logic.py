@@ -411,7 +411,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         self.switch_hardware(False)  # restarts NIDAQ
-        #self.switch_hardware(True)
+        # self.switch_hardware(True)
         # Todo: This method needs to be implemented
 
     ########################### Stepper Counter Control Methods##################################
@@ -616,10 +616,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
             for i in range(self._steps_scan_first_line):
                 for j in range(self._steps_scan_second_line):
-                    self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis, self.image_raw[j, i, 0])
-                    self.full_image[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis, self.image_raw[j, i, 1])
-                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis, self.image_raw_back[j, i, 0])
-                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis, self.image_raw_back[j, i, 1])
+                    self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
+                                                                                self.image_raw[j, i, 0])
+                    self.full_image[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
+                                                                                self.image_raw[j, i, 1])
+                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
+                                                                                     self.image_raw_back[j, i, 0])
+                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
+                                                                                     self.image_raw_back[j, i, 1])
             for n, ch in enumerate(self.get_counter_count_channels()):
                 self.full_image[:, :, 2 + n] = self.image_raw[:, :, 2 + n]
                 self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
@@ -1048,7 +1052,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if self.map_scan_position:
                 # Todo: how is the position data saved for the backward direction?
                 new_position = [self.convert_voltage_to_position(self._first_scan_axis,
-                                                                 self._scan_pos_voltages_back[self._step_counter, 0, 0])]
+                                                                 self._scan_pos_voltages_back[
+                                                                     self._step_counter, 0, 0])]
                 self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
             else:
                 new_position = self.get_position([self._first_scan_axis])
@@ -1234,6 +1239,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 counts[3][:self._steps_scan_first_line])
             self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(
                 counts[3][self._steps_scan_first_line:])
+
     ##################################### Acquire Data ###########################################
     def kill_counter(self):
         """Closing the counting device.
@@ -1350,6 +1356,48 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
 
+        # prepare the full raw data in an OrderedDict:
+        data = OrderedDict()
+        data_back = OrderedDict()
+        if self.map_scan_position:
+            data['x position (mm)'] = self.full_image[:, :, 0].flatten()
+            data['y position (mm)'] = self.full_image[:, :, 1].flatten()
+            data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
+            data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
+            full_data = self.full_image # else it will be none to reduce domputiation time = drawing time
+            full_data_back = self.full_image_back
+        else:
+            data['x step'] = self.image_raw[:, :, 0].flatten()
+            data['y step'] = self.image_raw[:, :, 1].flatten()
+            data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
+            data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
+            full_data = None
+            full_data_back = None
+
+        for n, ch in enumerate(self.get_counter_count_channels()):
+            data['count rate {0} (Hz)'.format(ch)] = self.image_raw[:, :, 2 + n].flatten()
+            data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
+
+        # Save the raw data to file
+        filelabel = 'confocal_stepper_data'
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
+
+        filelabel = 'confocal_stepper_data_back'
+        self._save_logic.save_data(data_back,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
+
+        # plot images and save raw data
         axis_list = []
         for axis_name in self.axis_class.keys():
             if self.axis_class[axis_name].closed_loop:
@@ -1368,7 +1416,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 parameters['Start position second axis'] = self._start_position[counter]
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data,
-                                     full_data=self.full_image,
+                                     full_data=full_data,
                                      cbar_range=colorscale_range,
                                      percentile_range=percentile_range,
                                      ch=n)
@@ -1404,7 +1452,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            plotfig=figs[ch][1])
 
         figs = {ch: self.draw_figure(data=self.stepping_raw_data_back,
-                                     full_data=self.full_image_back,
+                                     full_data=full_data_back,
                                      cbar_range=colorscale_range,
                                      percentile_range=percentile_range,
                                      ch=n)
@@ -1439,42 +1487,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            delimiter='\t',
                                            plotfig=figs[ch][1])
 
-            # prepare the full raw data in an OrderedDict:
-        data = OrderedDict()
-        data_back = OrderedDict()
-        if self.map_scan_position:
-            data['x position (mm)'] = self.full_image[:, :, 0].flatten()
-            data['y position (mm)'] = self.full_image[:, :, 1].flatten()
-            data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
-            data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
-        else:
-            data['x step'] = self.image_raw[:, :, 0].flatten()
-            data['y step'] = self.image_raw[:, :, 1].flatten()
-            data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
-            data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
 
-        for n, ch in enumerate(self.get_counter_count_channels()):
-            data['count rate {0} (Hz)'.format(ch)] = self.image_raw[:, :, 2 + n].flatten()
-            data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
-
-        # Save the raw data to file
-        filelabel = 'confocal_stepper_data'
-        self._save_logic.save_data(data,
-                                   filepath=filepath,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t')
-
-        filelabel = 'confocal_stepper_data_back'
-        self._save_logic.save_data(data_back,
-                                   filepath=filepath,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t')
 
         self.log.debug('Confocal Stepper Image saved.')
         self.signal_data_saved.emit()
@@ -1607,8 +1620,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                   )
 
             ax2.set_aspect(1)
-            ax2.set_xlabel(self._first_scan_axis + ' steps ')
-            ax2.set_ylabel(self._second_scan_axis + ' steps ')
+            ax2.set_xlabel(self._first_scan_axis + ' mm ')
+            ax2.set_ylabel(self._second_scan_axis + ' mm ')
             ax2.spines['bottom'].set_position(('outward', 10))
             ax2.spines['left'].set_position(('outward', 10))
             ax2.spines['top'].set_visible(False)
@@ -1630,26 +1643,27 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # If we have percentile information, draw that to the figure
             if percentile_range is not None:
                 cbar2.ax.annotate(str(percentile_range[0]),
-                                 xy=(-0.3, 0.0),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90
-                                 )
+                                  xy=(-0.3, 0.0),
+                                  xycoords='axes fraction',
+                                  horizontalalignment='right',
+                                  verticalalignment='center',
+                                  rotation=90
+                                  )
                 cbar2.ax.annotate(str(percentile_range[1]),
-                                 xy=(-0.3, 1.0),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90
-                                 )
+                                  xy=(-0.3, 1.0),
+                                  xycoords='axes fraction',
+                                  horizontalalignment='right',
+                                  verticalalignment='center',
+                                  rotation=90
+                                  )
                 cbar2.ax.annotate('(percentile)',
-                                 xy=(-0.3, 0.5),
-                                 xycoords='axes fraction',
-                                 horizontalalignment='right',
-                                 verticalalignment='center',
-                                 rotation=90
-                                 )
+                                  xy=(-0.3, 0.5),
+                                  xycoords='axes fraction',
+                                  horizontalalignment='right',
+                                  verticalalignment='center',
+                                  rotation=90
+                                  )
+            self.signal_draw_figure_completed.emit()
             return fig, fig2
 
         self.signal_draw_figure_completed.emit()
