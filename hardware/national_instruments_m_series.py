@@ -25,6 +25,7 @@ import PyDAQmx as daq
 import re
 from qtpy import QtCore
 
+
 from core.module import Base, StatusVar, ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
@@ -33,7 +34,7 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.analog_control_interface import AnalogControlInterface
 
-
+import multiprocessing as mp
 from random import randint
 import time
 
@@ -168,6 +169,8 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         self.sigCollectData.connect(self._collect_data, QtCore.Qt.QueuedConnection)
         self.sigDistributeData.connect(self._distribute_data, QtCore.Qt.QueuedConnection)
 
+        self._data_array_len = 2000
+
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
         if self._start_analog_output() < 0:
@@ -175,8 +178,14 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             raise Exception('Failed to start NI Card module due to analog output failure.')
 
     def on_deactivate(self):
-        """ Shut down the NI card.
-        """
+        """ Shut down the NI card. """
+
+        if self._scanner_ao_task is not None:
+            self._stop_analog_output()
+            self._clear_analog_output()
+
+        if self._gated_counter_daq_task is not None:
+            self.close_gated_counter()
         self.reset_hardware()
 
     # =================== SlowCounterInterface Commands ========================
@@ -753,6 +762,9 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             self.log.exception('Error changing analog output mode.')
             retval = -1
         return retval
+
+    def _clear_analog_output(self):
+        daq.ClearTask(self._scanner_ao_task)
 
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None,
                              idle=False):
@@ -1789,6 +1801,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             daq.DAQmxSetReadOverWrite(
                 self._gated_counter_daq_task,
                 daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+
         except:
             self.log.exception('Error while setting up gated counting.')
             return -1
@@ -1925,19 +1938,36 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     def start_counting(self):
 
-        self._data_array = np.zeros(2000)
+        #self.set_up_gated_counter(buffer_length=10000)
+
+
+        self._count_array = np.zeros(100, dtype=np.uint32)
+        self._count_array_len = len(self._count_array)
         self.run_collection_flag = True
-        #self.start_gated_counter()
+        self.runs = 0
+
+        self.spend_time = time.time()
+        self._rows = self._data_array_len//self._count_array_len
+
+        self.start_gated_counter()
+        self.log.info('Start gated counting task.')
         self.sigCollectData.emit()
 
     def _collect_data(self):
+        """ Collection signal loop
 
-        # counts, num_counts = self.get_gated_counts(1000)
+        :return:
+        """
 
-        counts = randint(0, 1999)
+        counts, num_counts = self.get_gated_counts(self._data_array_len)
 
-        self.sigDistributeData.emit(counts)
-        time.sleep(0.05)
+        #counts = np.zeros(2000)
+        #self.sigDistributeData.emit(counts)
+        if len(counts[0]) > 1:
+            data = counts[0].reshape((self._count_array_len, self._rows)).sum(axis=1, dtype=np.uint32)
+            # self.sigDistributeData.emit(counts[0])
+            self.sigDistributeData.emit(data)
+        # time.sleep(1)
 
         if not self.run_collection_flag:
             return
@@ -1946,10 +1976,18 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     def _distribute_data(self, data):
 
-        self._data_array[data] += 1
-
+        # self._count_array += data.reshape((self._count_array_len, self._rows)).sum(axis=1, dtype=np.uint32)
+        self._count_array += data
+        self.runs += 1
         # logic to sort the incomming data correctly.
 
+    def stop_counting(self):
+
+        self.stop_gated_counter()
+
+        self.spend_time = time.time() - self.spend_time
+
+        self.run_collection_flag = False
 
     # Non Interface commands:
 
@@ -2009,6 +2047,272 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
             return 0
 
+    def run_calc(self, length=10):
+    
+        self.val = mp.Value('f', 0.0)
+        self.arr = mp.Array('i', np.zeros(20, dtype=np.int))
+        proc = mp.Process(target=calculate_loop, 
+                          args=(length, self.arr, self.val), 
+                          name='Calculate')
+        self.proc = proc
+        proc.start()
+
+
+
+
+# https://www.geeksforgeeks.org/multiprocessing-python-set-2/
+
+import time
+import random
+
+def calculate_loop(length, arr, val):
+    gated_counter_daq_task = daq.TaskHandle()
+    daq.DAQmxCreateTask('GatedCounter', daq.byref(gated_counter_daq_task))
+
+
+    #daq.DAQmxStartTask(gated_counter_daq_task)
+
+    val.value = 12
+    # num = 0
+    # for i in range(100_000_000):
+        # num += 1
+        
+    # elapsed = time.time() - elapsed
+    
+    # val.value = elapsed
+    
+    for i in range(length):
+        num = random.randint(0,19)
+        arr[num] += 1
+        time.sleep(1)
+        
+    daq.DAQmxClearTask(gated_counter_daq_task)
+    
+    return 0
+
+
+def set_up_gated_counter(buffer_length,
+                         counter_channel,
+                         gate_in_channel,
+                         photon_source,
+                         max_counts,
+                         read_available_samples=False,
+                         counting_edge_rising=True
+                         ):
+    """ Initializes and starts task for external gated photon counting.
+
+    @param int buffer_length: Defines how long the buffer to be filled with
+                              samples should be. If buffer is full, program
+                              crashes, so use upper bound. Some reference
+                              calculated with sample_rate (in Samples/second)
+                              divided by Buffer_size:
+                              sample_rate/Buffer_size =
+                                  no rate     /  10kS,
+                                  (0-100S/s)  /  10kS
+                                  (101-10kS/s)/   1kS,
+                                  (10k-1MS/s) / 100kS,
+                                  (>1MS/s)    / 1Ms
+    @param bool read_available_samples: if False, NiDaq waits for the
+                                        sample you asked for to be in the
+                                        buffer before, if True it returns
+                                        what is in buffer until 'samples'
+                                        is full
+    """
+    try:
+        # This task will count photons with binning defined by pulse task
+        # Initialize a Task
+        gated_counter_daq_task = daq.TaskHandle()
+        daq.DAQmxCreateTask('GatedCounter',
+                            daq.byref(gated_counter_daq_task))
+
+        if counting_edge_rising:
+            counting_edge = daq.DAQmx_Val_Rising
+        else:
+            counting_edge = daq.DAQmx_Val_Falling
+
+        # Set up pulse width measurement in photon ticks, i.e. the width of
+        # each pulse generated by pulse_out_task is measured in photon ticks:
+        daq.DAQmxCreateCIPulseWidthChan(
+            # add to this task
+            gated_counter_daq_task,
+            # use this counter
+            counter_channel,
+            # name you assign to it
+            'Gated Counting Task',
+            # expected minimum value
+            0,
+            # expected maximum value
+            max_counts,
+            # units of width measurement,  here photon ticks.
+            daq.DAQmx_Val_Ticks,
+            # start pulse width measurement on rising edge
+            counting_edge,
+            '')
+
+        # Set the pulses to counter self._counter_channel
+        daq.DAQmxSetCIPulseWidthTerm(
+            gated_counter_daq_task,
+            counter_channel,
+            gate_in_channel)
+
+        # Set the timebase for width measurement as self._photon_source, i.e.
+        # define the source of ticks for the counter as self._photon_source.
+        daq.DAQmxSetCICtrTimebaseSrc(
+            gated_counter_daq_task,
+            counter_channel,
+            photon_source)
+
+        # set timing to continuous
+        daq.DAQmxCfgImplicitTiming(
+            # define to which task to connect this function.
+            gated_counter_daq_task,
+            # Sample Mode: set the task to generate a continuous amount of running samples
+            daq.DAQmx_Val_ContSamps,
+            # buffer length which stores temporarily the number of generated samples
+            buffer_length)
+
+        # Read samples from beginning of acquisition, do not overwrite
+        daq.DAQmxSetReadRelativeTo(gated_counter_daq_task, daq.DAQmx_Val_CurrReadPos)
+
+        # If this is set to True, then the NiDaq will not wait for the sample
+        # you asked for to be in the buffer before read out but immediately
+        # hand back all samples until samples is reached.
+        if read_available_samples:
+            daq.DAQmxSetReadReadAllAvailSamp(gated_counter_daq_task, True)
+
+        # Do not read first sample:
+        daq.DAQmxSetReadOffset(gated_counter_daq_task, 0)
+
+        # Unread data in buffer is not overwritten
+        daq.DAQmxSetReadOverWrite(
+            gated_counter_daq_task,
+            daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
+
+    except:
+
+        gated_counter_daq_task = None
+
+        return -1, gated_counter_daq_task
+
+    return 0, gated_counter_daq_task
+
+def start_gated_counter(gated_counter_daq_task):
+    """Actually start the preconfigured counter task
+
+    @return int: error code (0:OK, -1:error)
+    """
+    if gated_counter_daq_task is None:
+        return -1
+
+    try:
+        daq.DAQmxStartTask(gated_counter_daq_task)
+    except:
+        return -1
+    return 0
+
+
+def get_gated_counts(gated_counter_daq_task,
+                     samples,
+                     timeout=10,
+                     read_available_samples=False):
+    """ Returns latest count samples acquired by gated photon counting.
+
+    @param int samples: if defined, number of samples to read in one go.
+                        How many samples are read per readout cycle. The
+                        readout frequency was defined in the counter setup.
+                        That sets also the length of the readout array.
+    @param int timeout: Maximal timeout for the read process in s. Since nidaq
+                        waits for all samples to be acquired, make sure
+                        this is long enough.
+    @param bool read_available_samples : if False, NiDaq waits for the
+                                         sample you asked for to be in the
+                                         buffer before, True it returns
+                                         what is in buffer until 'samples'
+                                         is full.
+
+    @return list: [counts, number_of_counts] with the meaning
+        np.array[channel_num][counts] counts: usually channel_num is just 0
+        int number_of_counts: number of read out counts
+
+    """
+
+    # just for safety
+    samples = int(samples)
+
+    # Count data will be written here
+    _gated_count_data = np.zeros([2, samples], dtype=np.uint32)
+
+    # Number of samples which were read will be stored here
+    n_read_samples = daq.int32()
+
+    if read_available_samples:
+        # If the task acquires a finite number of samples
+        # and you set this parameter to -1, the function
+        # waits for the task to acquire all requested
+        # samples, then reads those samples.
+        num_samples = -1
+    else:
+        num_samples = int(samples)
+    try:
+        daq.DAQmxReadCounterU32(
+            # read from this task
+            gated_counter_daq_task,
+            # read number samples
+            num_samples,
+            # maximal timeout for the read process
+            timeout,
+            _gated_count_data[0],
+            # write into this array
+            # length of array to write into
+            samples,
+            # number of samples which were actually read.
+            daq.byref(n_read_samples),
+            # Reserved for future use. Pass NULL (here None) to this parameter
+            None)
+
+        # Chops the array or read sample to the length that it exactly returns
+        # acquired data and not more
+        if read_available_samples:
+            return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
+        else:
+            return _gated_count_data,  n_read_samples.value
+
+    except:
+        return np.array([-1]), 0
+
+
+
+def stop_gated_counter(gated_counter_daq_task):
+    """Actually start the preconfigured counter task
+
+    @return int: error code (0:OK, -1:error)
+    """
+    if gated_counter_daq_task is None:
+        return -1
+    try:
+        daq.DAQmxStopTask(gated_counter_daq_task)
+    except:
+        return -1
+    return 0
+
+def close_gated_counter(gated_counter_daq_task):
+    """ Clear tasks, so that counters are not in use any more.
+
+    @return int: error code (0:OK, -1:error)
+    """
+    retval = 0
+    try:
+        # stop the task
+        daq.DAQmxStopTask(gated_counter_daq_task)
+    except:
+        retval = -1
+    try:
+        # clear the task
+        daq.DAQmxClearTask(gated_counter_daq_task)
+        gated_counter_daq_task = None
+    except:
+        retval = -1
+    return retval, gated_counter_daq_task
 
 
 class NI6229CardAnalogControl(Base, AnalogControlInterface):
