@@ -42,8 +42,6 @@ class CameraLogic(GenericLogic):
 
     # signals
     sigUpdateDisplay = QtCore.Signal()
-    sigAcquisitionFinished = QtCore.Signal()
-    sigVideoFinished = QtCore.Signal()
     timer = None
 
     enabled = False
@@ -84,33 +82,22 @@ class CameraLogic(GenericLogic):
         self._fps = min(1 / self._exposure, self._max_fps)
         return self._exposure
 
-    def start_single_acquistion(self):
-        """
-
-        """
-        self._hardware.start_single_acquisition()
-        self._last_image = self._hardware.get_acquired_data()
-        self.sigUpdateDisplay.emit()
-        self.sigAcquisitionFinished.emit()
-
-    def start_loop(self):
+    def startLoop(self):
         """ Start the data recording loop.
         """
         self.enabled = True
         self.timer.start(1000*1/self._fps)
-
         if self._hardware.support_live_acquisition():
             self._hardware.start_live_acquisition()
         else:
             self._hardware.start_single_acquisition()
 
-    def stop_loop(self):
+    def stopLoop(self):
         """ Stop the data recording loop.
         """
         self.timer.stop()
         self.enabled = False
         self._hardware.stop_acquisition()
-        self.sigVideoFinished.emit()
 
 
     def loop(self):

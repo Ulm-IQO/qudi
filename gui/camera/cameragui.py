@@ -57,11 +57,8 @@ class CameraGUI(GUIBase):
 
     camera_logic = Connector(interface='CameraLogic')
 
-    sigVideoStart = QtCore.Signal()
-    sigVideoStop = QtCore.Signal()
-    sigImageStart = QtCore.Signal()
-    sigImageStop = QtCore.Signal()
-
+    sigStart = QtCore.Signal()
+    sigStop = QtCore.Signal()
     _image = []
 
     _logic = None
@@ -83,30 +80,20 @@ class CameraGUI(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        self._mw.start_video_Action.setEnabled(True)
-        self._mw.start_video_Action.setChecked(self._logic.enabled)
-        self._mw.start_video_Action.triggered.connect(self.start_video_clicked)
-
-        self._mw.start_image_Action.setEnabled(True)
-        self._mw.start_image_Action.setChecked(self._logic.enabled)
-        self._mw.start_image_Action.triggered.connect(self.start_image_clicked)
+        self._mw.start_control_Action.setEnabled(True)
+        self._mw.start_control_Action.setChecked(self._logic.enabled)
+        self._mw.start_control_Action.triggered.connect(self.start_clicked)
 
         self._logic.sigUpdateDisplay.connect(self.update_data)
-        self._logic.sigAcquisitionFinished.connect(self.acquisition_finished)
-        self._logic.sigVideoFinished.connect(self.enable_start_image_action)
 
         # starting the physical measurement
-        self.sigVideoStart.connect(self._logic.start_loop)
-        self.sigVideoStop.connect(self._logic.stop_loop)
-        self.sigImageStart.connect(self._logic.start_single_acquistion)
+        self.sigStart.connect(self._logic.startLoop)
+        self.sigStop.connect(self._logic.stopLoop)
 
         raw_data_image = self._logic.get_last_image()
         self._image = pg.ImageItem(image=raw_data_image, axisOrder='row-major')
         self._mw.image_PlotWidget.addItem(self._image)
         self._mw.image_PlotWidget.setAspectLocked(True)
-        # self.xy_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
-        # self.depth_cb = ColorBar(self.my_colors.cmap_normed, width=100, cb_min=0, cb_max=100)
-        # self._mw.xy_cb_ViewWidget.addItem(self.xy_cb)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -120,29 +107,15 @@ class CameraGUI(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def start_image_clicked(self):
-        self.sigImageStart.emit()
-        self._mw.start_image_Action.setDisabled(True)
-        self._mw.start_video_Action.setDisabled(True)
-
-    def acquisition_finished(self):
-        self._mw.start_image_Action.setChecked(False)
-        self._mw.start_image_Action.setDisabled(False)
-        self._mw.start_video_Action.setDisabled(False)
-
-    def start_video_clicked(self):
+    def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        self._mw.start_image_Action.setDisabled(True)
         if self._logic.enabled:
-            self._mw.start_video_Action.setText('Start Video')
-            self.sigVideoStop.emit()
+            self._mw.start_control_Action.setText('Start')
+            self.sigStop.emit()
         else:
-            self._mw.start_video_Action.setText('Stop Video')
-            self.sigVideoStart.emit()
-
-    def enable_start_image_action(self):
-        self._mw.start_image_Action.setEnabled(True)
+            self._mw.start_control_Action.setText('Stop')
+            self.sigStart.emit()
 
     def update_data(self):
         """

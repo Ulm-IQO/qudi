@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>833</width>
-    <height>599</height>
+    <height>512</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -129,23 +129,21 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="start_video_Action"/>
-   <addaction name="start_image_Action"/>
+   <addaction name="start_control_Action"/>
   </widget>
-  <action name="start_video_Action">
+  <action name="start_control_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
-    <string>Start Video</string>
+    <string>Start counter</string>
    </property>
    <property name="toolTip">
-    <string>Start the acquisition</string>
+    <string>Start the counter</string>
    </property>
   </action>
   <action name="image_plot_view_Action">
@@ -166,22 +164,6 @@
    </property>
    <property name="text">
     <string>&amp;Close</string>
-   </property>
-  </action>
-  <action name="start_image_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
-     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
-   </property>
-   <property name="text">
-    <string>Take Image</string>
-   </property>
-   <property name="toolTip">
-    <string>Take an image</string>
    </property>
   </action>
  </widget>

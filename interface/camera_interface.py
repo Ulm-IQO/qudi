@@ -25,8 +25,6 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-
-
 class CameraInterface(metaclass=InterfaceMetaclass):
     """ This interface is used to manage and visualize a simple camera
     """
@@ -99,7 +97,7 @@ class CameraInterface(metaclass=InterfaceMetaclass):
 
         @param float time: desired new exposure time
 
-        @return bool: Success ?
+        @return float: setted new exposure time
         """
         pass
 
@@ -138,6 +136,5 @@ class CameraInterface(metaclass=InterfaceMetaclass):
         @return bool: ready ?
         """
         pass
-
 
 

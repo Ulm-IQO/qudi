@@ -126,7 +126,7 @@ class PiPWM(Base, ProcessControlInterface):
             GPIO.output(self.inbpin, True)
         self.p.ChangeDutyCycle(abs(duty))
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set control value for this controller.
 
             @param float value: control value, in this case duty cycle in percent
@@ -134,21 +134,21 @@ class PiPWM(Base, ProcessControlInterface):
         with self.threadlock:
             self.changeDutyCycle(value)
 
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get control value for this controller.
 
             @return float: control value, in this case duty cycle in percent
         """
         return self.dutycycle
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Get unit for control value.
 
             @return tuple(str, str): short and text form of unit
         """
         return ('%', 'percent')
 
-    def getControlLimits(self):
+    def get_control_limits(self):
         """ Get minimum and maxuimum value for control value.
 
             @return tuple(float, float): min and max control value
@@ -165,7 +165,7 @@ class PiPWMHalf(PiPWM):
         #locking for thread safety
         self.threadlock = Mutex()
 
-    def getControlLimits(self):
+    def get_control_limits(self):
         """ Get minimum and maxuimum value for control value.
 
             @return tuple(float, float): min and max control value
