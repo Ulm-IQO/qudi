@@ -36,7 +36,8 @@ from .uc480_h import *
 
 
 class CameraThorlabs(Base, CameraInterface):
-    """ Main class of the module to interface a Thorlabs camera DCx
+    """
+    Main class of the module
     """
 
     _modtype = 'camera'
@@ -66,7 +67,7 @@ class CameraThorlabs(Base, CameraInterface):
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
-        """
+         """
 
         # Load the dll if present
         self._load_dll()
@@ -74,7 +75,8 @@ class CameraThorlabs(Base, CameraInterface):
         self._init_camera()
 
     def _check_error(self, code, message):
-        """ Check that the code means OK and log message as error if not. Return True if OK, False otherwise.
+        """
+        Check that the code means OK and log message as error if not. Return True if OK, False otherwise.
 
         """
         if code != IS_SUCCESS:
@@ -84,7 +86,8 @@ class CameraThorlabs(Base, CameraInterface):
             return True
 
     def _check_int_range(self, value, mini, maxi ,message):
-        """ Check that value is in the range [mini, maxi] and log message as error if not. Return True if OK.
+        """
+        Check that value is in the range [mini, maxi] and log message as error if not. Return True if OK.
 
         """
         if value < mini or value > maxi:
@@ -94,7 +97,8 @@ class CameraThorlabs(Base, CameraInterface):
             return True
 
     def _load_dll(self):
-        """ Load the dll for the camera
+        """
+        Load the dll for the camera
         """
         try:
             if platform.system() == "Windows":
@@ -111,7 +115,8 @@ class CameraThorlabs(Base, CameraInterface):
             self.log.error("Can not log Thorlabs DLL.")
 
     def _connect_camera(self):
-        """ Connect to the camera and get basic info on it
+        """
+        Connect to the camera and get basic info on it
         """
         number_of_cameras = ctypes.c_int(0)
         self._dll.is_GetNumberOfCameras(byref(number_of_cameras))
@@ -128,7 +133,8 @@ class CameraThorlabs(Base, CameraInterface):
             self.log.debug('Connected to camera : {}'.format(str(self._sensor_info.strSensorName)))
 
     def _init_camera(self):
-        """ Set the parameters of the camera for our usage
+        """
+        Set the parameters of the camera for our usage
         """
         # Color mode
         code = self._dll.is_SetColorMode(self._camera_handle, ctypes.c_int(IS_SET_CM_Y8))
@@ -162,7 +168,8 @@ class CameraThorlabs(Base, CameraInterface):
         self.set_gain(self._gain)
 
     def set_image_size(self, width=None, height=None):
-        """ Set the size of the image, here the camera will acquire only part of the image from a given position
+        """
+        Set the size of the image, here the camera will acquire only part of the image from a given position
         """
         if width is not None:
             width = int(width)
@@ -177,7 +184,8 @@ class CameraThorlabs(Base, CameraInterface):
         return self._check_error(code, "Could not set image size")
 
     def set_image_position(self, pos_x, pos_y):
-        """ Set image position reference coordinate
+        """
+        Set image position reference coordinate
         """
         if pos_x is not None:
             pos_x = int(pos_x)
@@ -193,29 +201,34 @@ class CameraThorlabs(Base, CameraInterface):
 
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """
+        Deinitialisation performed during deactivation of the module.
         """
         self._dll.is_ExitCamera(self._camera_handle)
         self._acquiring = False
         self._live = False
 
     def get_name(self):
-        """ Return a name for the camera
+        """
+        Return a name for the camera
         """
         return self._sensor_info.strSensorName
 
     def get_size(self):
-        """ Return the max size of the camera
+        """
+        Return the max size of the camera
         """
         return self._width, self._height
 
     def support_live_acquisition(self):
-        """ Return whether or not this camera support live acquisition
+        """
+        Return whether or not this camera support live acquisition
         """
         return True
 
     def start_live_acquisition(self):
-        """ Set the camera in live mode
+        """
+        Set the camera in live mode
         """
         if self.get_ready_state():
             self._acquiring = True
@@ -231,7 +244,8 @@ class CameraThorlabs(Base, CameraInterface):
             return False
 
     def start_single_acquisition(self):
-        """ Start the acquisition of a single image
+        """
+        Start the acquisition of a single image
         """
         if self.get_ready_state():
             self._acquiring = True
@@ -242,7 +256,8 @@ class CameraThorlabs(Base, CameraInterface):
             return False
 
     def stop_acquisition(self):
-        """ Stop live acquisition
+        """
+        Stop live acquisition
         """
         no_error = True
         if self._acquiring:
@@ -253,7 +268,8 @@ class CameraThorlabs(Base, CameraInterface):
         return no_error
 
     def get_acquired_data(self):
-        """ Return last acquired data from the dll
+        """
+        Return last acquired data from the dll
         """
         # Allocate memory for image:
         img_size = self._width * self._height
@@ -270,13 +286,14 @@ class CameraThorlabs(Base, CameraInterface):
         return img_array
 
     def get_bit_depth(self):
-        """ Return the bit depth of the image
+        """
+        Return the bit depth of the image
         """
         return self._bit_depth
 
     def set_exposure(self, time):
-        """ Set the exposure in second
-
+        """
+        Set the exposure in second
         Return the new exposure
         """
         exp = c_double(time * 1e3)  # in ms
@@ -287,24 +304,28 @@ class CameraThorlabs(Base, CameraInterface):
         return self._exposure
 
     def get_exposure(self):
-        """ Return current exposure
+        """
+        Return current exposure
         """
         return self._exposure
 
     def get_ready_state(self):
-        """ Return whether or not the camera is ready for an acquisition
+        """
+        Return whether or not the camera is ready for an acquisition
         """
         if self.module_state()!='idle':
             return False
         return not self._acquiring
 
     def set_gain(self, gain):
-        """ Set the gain
+        """
+        Set the gain
         """
         pass
 
     def get_gain(self):
-        """ Get the gain
+        """
+        Get the gain
         """
         return self._gain
 

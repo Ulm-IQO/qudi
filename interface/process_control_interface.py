@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Interface file to control processes in PID control.
+This interface is used to manage a control value.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -27,29 +27,43 @@ from core.util.interfaces import InterfaceMetaclass
 class ProcessControlInterface(metaclass=InterfaceMetaclass):
     """ A very simple interface to control a single value.
         Used for PID control.
+
+        This interface can be used to command the power, flow or any value of a device that can be turned on or off.
+
     """
 
     _modtype = 'ProcessControlInterface'
     _modclass = 'interface'
 
     @abc.abstractmethod
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set the value of the controlled process variable """
         pass
 
     @abc.abstractmethod
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get the value of the controlled process variable """
         pass
 
     @abc.abstractmethod
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
         pass
 
     @abc.abstractmethod
-    def getControlLimits(self):
+    def get_control_limits(self):
         """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
         pass
 
+    @abc.abstractmethod
+    def get_enabled(self):
+        """ Return the enabled state of the control device
+        """
+        pass
+
+    @abc.abstractmethod
+    def set_enabled(self, enabled):
+        """ Set the enabled state of the control device
+         """
+        pass

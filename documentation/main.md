@@ -37,4 +37,5 @@
 
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
+    * [PID Features](@pid_features)
 

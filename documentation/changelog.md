@@ -4,7 +4,6 @@
 
 Changes/New features:
 
-* Improved scientific SpinBox validators to allow for more intuitive keyboard input
 * All modules use new connector style where feasible.
 * Bug fix for waveform generation larger than ~2 GSamples
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
@@ -18,9 +17,13 @@ Changes/New features:
 * Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
-* Update conda environment to more recent versions of packages
+* Refined pid interfaces in sub interfaces with inheritance
 * Added a camera interface with logic and basic GUI
 * Added a hardware module for Thorlabs camera
+* Added a hardware module for Andor Newton spectrometer camera for camera, spectro, and setpoint of temperature
+* Added a general multi axis piezo stepper interface
+* Added a hardware module for attocube piezzo steppers
+* Added logo_qudi.ico for Windows shortcut
 
 Config changes:
 
