@@ -285,7 +285,9 @@ class IxonUltra(Base, CameraInterface):
         self._get_acquisition_timings()
         return self._exposure
 
-    #TODO
+    # not sure if the distinguishing between gain setting and gain value will be problematic for
+    # this camera model. Just keeping it in mind for now.
+    #TODO: Not really funcitonal right now.
     def set_gain(self, gain):
         """ Set the gain
 
@@ -293,15 +295,24 @@ class IxonUltra(Base, CameraInterface):
 
         @return float: new exposure gain
         """
-        self._gain = gain
+        n_pre_amps = self._get_number_preamp_gains()
+        msg = ''
+        if (gain >= 0) & (gain < n_pre_amps):
+            msg = self._set_preamp_gain(gain)
+        else:
+            self.log.warning('Choose gain value between 0 and {0}'.format(n_pre_amps-1))
+        if msg == 'DRV_SUCCESS':
+            self._gain = gain
+        else:
+            self.log.warning('The gain wasn\'t set. {0}'.format(msg))
         return self._gain
 
-    #TODO
     def get_gain(self):
         """ Get the gain
 
         @return float: exposure gain
         """
+        _, self._gain = self._get_preamp_gain()
         return self._gain
 
     def get_ready_state(self):
@@ -402,14 +413,30 @@ class IxonUltra(Base, CameraInterface):
                                                  c_int(hstart), c_int(hend), c_int(vstart), c_int(vend)
 
         error = self.dll.SetImage(hbin, vbin, hstart, hend, vstart, vend)
-        self.log.debug('{0}'.format(ERROR_CODE[error]))
-        if ERROR_CODE[error] == 'DRV_SUCCESS':
+        msg = ERROR_CODE[error]
+        if msg == 'DRV_SUCCESS':
             self._hbin = hbin.value
             self._vbin = vbin.value
             self._hstart = hstart.value
             self._hend = hend.value
             self._vstart = vstart.value
             self._vend = vend.value
+
+        return ERROR_CODE[error]
+
+    def _set_output_amplifier(self, typ):
+        """
+        @param c_int typ: 0: EMCCD gain, 1: Conventional CCD register
+        @return string: error code
+        """
+        error = self.dll.SetOutputAmplifier(typ)
+        return ERROR_CODE[error]
+
+    def _set_preamp_gain(self, index):
+        """
+        @param c_int index: 0 - (Number of Preamp gains - 1)
+        """
+        error = self.dll.SetPreAmpGain(index)
         return ERROR_CODE[error]
 
 # getter functions
@@ -441,4 +468,69 @@ class IxonUltra(Base, CameraInterface):
         self._kinetic = kinetic.value
         return ERROR_CODE[error]
 
+    def _get_oldest_image(self):
+        """ Return an array of last acquired image.
+
+        @return numpy array: image data in format [[row],[row]...]
+
+        Each pixel might be a float, integer or sub pixels
+        """
+
+        width = self._width
+        height = self._height
+
+        if self._read_mode == 'IMAGE':
+            if self._acquisition_mode == 'SINGLE_SCAN':
+                dim = width * height / self._hbin / self._vbin
+            elif self._acquisition_mode == 'KINETICS':
+                dim = width * height / self._hbin / self._vbin * self._scans
+        elif self._read_mode == 'SINGLE_TRACK' or self._read_mode == 'FVB':
+            if self._acquisition_mode == 'SINGLE_SCAN':
+                dim = width
+            elif self._acquisition_mode == 'KINETICS':
+                dim = width * self._scans
+
+        dim = int(dim)
+        image_array = np.zeros(dim)
+        cimage_array = c_int * dim
+        cimage = cimage_array()
+        error = self.dll.GetOldestImage(pointer(cimage), dim)
+        if ERROR_CODE[error] != 'DRV_SUCCESS':
+            self.log.warning('Couldn\'t retrieve an image')
+        else:
+            self.log.debug('image length {0}'.format(len(cimage)))
+            for i in range(len(cimage)):
+                # could be problematic for 'FVB' or 'SINGLE_TRACK' readmode
+                image_array[i] = cimage[i]
+
+        image_array = np.reshape(image_array, (int(self._width/self._hbin), int(self._height/self._vbin)))
+        return image_array
+
+    def _get_number_amp(self):
+        """
+        @return int: Number of amplifiers available
+        """
+        n_amps = c_int()
+        self.dll.GetNumberAmp(byref(n_amps))
+        return n_amps.value
+
+    def _get_number_preamp_gains(self):
+        """
+        Number of gain settings available for the pre amplifier
+
+        @return int: Number of gains available
+        """
+        n_gains = c_int()
+        self.dll.GetNumberPreAmpGains(byref(n_gains))
+        return n_gains.value
+
+    def _get_preamp_gain(self):
+        """
+        Function returning
+        @return tuple (int1, int2): First int describing the gain setting, second value the actual gain
+        """
+        index = c_int()
+        gain = c_float()
+        self.dll.GetPreAmpGain(index, byref(gain))
+        return index.value, gain.value
 # non interface functions regarding setpoint interface
