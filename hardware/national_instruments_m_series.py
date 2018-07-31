@@ -133,10 +133,20 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
     _counting_edge_rising = ConfigOption('counting_edge_rising', True, missing='warn') # set how the clock is reacting
     _gate_in_channel = ConfigOption('gate_in_channel', True, missing='warn') # where to receive the gated signal
 
+    # FastCounter Parameters
     sigCollectData = QtCore.Signal()
     sigDistributeData = QtCore.Signal(object)
 
+    sigStartMeas = QtCore.Signal()
+
     run_collection_flag = False
+
+    _FC_STATE_ERROR = -1
+    _FC_STATE_UNCONFIGURED = 0
+    _FC_STATE_IDLE = 1
+    _FC_STATE_RUNNING = 2
+    _FC_STATE_PAUSED = 3
+
 
     def on_activate(self):
         """ Starts up the NI Card at activation. """
@@ -166,8 +176,25 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # Gated counting:
         self._gated_counter_daq_task = None
+        # self.sigCollectData.connect(self._collect_data_completion, QtCore.Qt.QueuedConnection)
+
         self.sigCollectData.connect(self._collect_data, QtCore.Qt.QueuedConnection)
         self.sigDistributeData.connect(self._distribute_data, QtCore.Qt.QueuedConnection)
+
+        self.sigStartMeas.connect(self._perform_meas, QtCore.Qt.QueuedConnection)
+
+        # FastCounting default poarameters
+        self.status_var = 0
+        # Length of a single time bin in the time trace histogram in seconds
+        self._bin_width_s = 12.5e-9
+        # Total length of the timetrace/each single gate in seconds.
+        self._record_length_s = 0
+        self._number_of_gates = 0   # number of gates in the pulse sequence.
+
+        # set a rather arbitrary maximal number for the buffer size, prevent
+        # that the buffer size estimation calculates a too large number.
+        self._MAX_BUFFER_LENGTH = 10000
+
 
         self._data_array_len = 2000
 
@@ -1668,6 +1695,60 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     # ================= Begin FastCounterInterface Commands ===================
 
+    def configure(self, bin_width_s, record_length_s, number_of_gates=0):
+        """ Configuration of the fast counter.
+
+        @param float bin_width_s: Length of a single time bin in the time
+                                  trace histogram in seconds.
+        @param float record_length_s: for ungated fast couner: total length of
+                                      the timetrace. For gated fast counter:
+                                      length of a single gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse
+                                    sequence. Ignore for ungated counter.
+
+        @return tuple(binwidth_s, record_length_s, number_of_gates):
+            float binwidth_s: the actual set binwidth in seconds
+            float gate_length_s: the actual record length in seconds
+            int number_of_gates: the number of gated, which are accepted, None
+                                 if not-gated
+        """
+
+        # prepare the data array based on the length of the sequence and the
+        # number of gate required in order to minimize the communication with the
+        # PC.
+
+
+        # the number of gates is always assumed to be an even number, since one
+        # part is used to read in the signal, and one part is used for the
+        # normalization.
+
+
+        # the NI card is only used in gated fashion, therefore the gates
+        # parameters will be assumed. The buffer length should be a multiple of
+        # the number of gates.
+
+        # self._MAX_BUFFER_SIZE is roughly the desired size for the buffer.
+
+        self._buffer_length = (self._MAX_BUFFER_LENGTH//number_of_gates)*number_of_gates
+
+
+
+        # n*(n+1)/2
+        if self._gated_counter_daq_task is not None:
+            self.close_gated_counter()
+
+        self.set_up_gated_counter(buffer_length=self._buffer_length,
+                                  read_available_samples=False,
+                                  continuous_meas=False)
+
+        self._bin_width_s = bin_width_s
+        self._record_length_s = record_length_s
+        self._number_of_gates = number_of_gates
+
+        self._data_array = np.zeros(self._number_of_gates, dtype=np.uint)
+
+        return self._bin_width_s, self._record_length_s, self._number_of_gates
+
 
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
@@ -1679,6 +1760,32 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         3 = paused
         -1 = error state
         """
+
+        # if self._gated_counter_daq_task is None:
+        #     return 0
+        # else:
+        #     # return value represents a uint32 value, i.e.
+        #     #   task_done = 0  => False, i.e. device is runnin
+        #     #   task_done !=0  => True, i.e. device has stopped
+        #     task_done = daq.bool32()
+        #
+        #     ret_v = daq.DAQmxIsTaskDone(
+        #         # task reference
+        #         self._gated_counter_daq_task,
+        #         # reference to bool value.
+        #         daq.byref(task_done))
+        #
+        #     if ret_v != 0:
+        #         return ret_v
+        #
+        #     if task_done.value == 0:
+        #         return 1
+        #     else:
+        #         return 2
+
+        return self.status_var
+
+    def get_task_status(self):
         if self._gated_counter_daq_task is None:
             return 0
         else:
@@ -1696,10 +1803,89 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             if ret_v != 0:
                 return ret_v
 
-            if task_done.value() == 0:
+            if task_done.value == 0:
                 return 1
             else:
                 return 2
+
+    @QtCore.Slot()
+    def start_measure(self):
+        """ Start the fast counter. """
+        self.start_gated_counter()
+
+        # decouple the start_measure and the collect method with a signal
+        self.sigCollectData.emit()
+
+    @QtCore.Slot()
+    def _collect_data(self):
+
+        self.log.info('start data collection')
+        self._data_array += self.get_gated_counts(samples=self._buffer_length)[0][0].reshape(self._number_of_gates, self._buffer_length//self._number_of_gates).sum(axis=1)
+        self.log.info('data collection finished.')
+        self.stop_gated_counter()
+
+    def _perform_meas(self):
+        self._stop_sign = False
+        for i in range(1):
+            self.start_measure()
+
+            while True:
+                if self.get_status() < 2:
+                    break
+                time.sleep(1)
+                if self._stop_sign:
+                    break
+
+
+    def stop_measure(self):
+        """ Stop the fast counter. """
+        self.stop_gated_counter()
+
+    def pause_measure(self):
+        """ Pauses the current measurement.
+
+        Fast counter must be initially in the run state to make it pause.
+        """
+        self.stop_gated_counter()
+
+    def continue_measure(self):
+        """ Continues the current measurement.
+
+        If fast counter is in pause state, then fast counter will be continued.
+        """
+        pass
+
+    def is_gated(self):
+        """ Check the gated counting possibility.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        return True
+
+    def get_binwidth(self):
+        """ Returns the width of a single timebin in the timetrace in seconds.
+
+        @return float: current length of a single bin in seconds (seconds/bin)
+        """
+        return 12.5e-9 # in s, 80MHz clock
+
+    def get_data_trace(self):
+        """ Polls the current timetrace data from the fast counter.
+
+        Return value is a numpy array (dtype = int64).
+        The binning, specified by calling configure() in forehand, must be
+        taken care of in this hardware class. A possible overflow of the
+        histogram bins must be caught here and taken care of.
+        If the counter is NOT GATED it will return a 1D-numpy-array with
+            returnarray[timebin_index]
+        If the counter is GATED it will return a 2D-numpy-array with
+            returnarray[gate_index, timebin_index]
+        """
+
+
+
+        return self._data_array
 
 
     # =================== End FastCounterInterface Commands ====================
@@ -1707,7 +1893,8 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
     # Gated counting commands:
 
-    def set_up_gated_counter(self, buffer_length, read_available_samples=False):
+    def set_up_gated_counter(self, buffer_length, read_available_samples=False,
+                             continuous_meas=False):
         """ Initializes and starts task for external gated photon counting.
 
         @param int buffer_length: Defines how long the buffer to be filled with
@@ -1726,10 +1913,23 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                                             buffer before, if True it returns
                                             what is in buffer until 'samples'
                                             is full
+        @param bool continuous_meas: optional, define whether measurements will
+                                     run continuously or finite. If continuously
+                                     is chosen it cannot be guaranteed that the
+                                     NI card is counting every gate, it might
+                                     be that the NI card misses one gate. If
+                                     this happens, your date will be corrupt and
+                                     the histogram of the counts will be simply
+                                     wrong. Moreover you have to manage it
+                                     yourself that the buffer of the NI card is
+                                     read out faster than it is filled with new
+                                     samples. In finite mode only one run of the
+                                     trace will be performed.
         """
         if self._gated_counter_daq_task is not None:
             self.log.error('Another gated counter is already running, close '
                            'this one first.')
+            self.status_var = self._FC_STATE_ERROR
             return -1
 
         try:
@@ -1776,12 +1976,17 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                 self._counter_channel,
                 self._photon_source)
 
+            if continuous_meas:
+                # Sample Mode: set the task to generate a continuous amount of running samples
+                readmode = daq.DAQmx_Val_ContSamps
+            else:
+                readmode = daq.DAQmx_Val_FiniteSamps
+
             # set timing to continuous
             daq.DAQmxCfgImplicitTiming(
                 # define to which task to connect this function.
                 self._gated_counter_daq_task,
-                # Sample Mode: set the task to generate a continuous amount of running samples
-                daq.DAQmx_Val_ContSamps,
+                readmode,
                 # buffer length which stores temporarily the number of generated samples
                 buffer_length)
 
@@ -1802,8 +2007,11 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
                 self._gated_counter_daq_task,
                 daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
 
+            self.status_var = self._FC_STATE_IDLE
+
         except:
             self.log.exception('Error while setting up gated counting.')
+            self.status_var = self._FC_STATE_ERROR
             return -1
         return 0
 
@@ -1820,8 +2028,10 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         try:
             daq.DAQmxStartTask(self._gated_counter_daq_task)
+            self.status_var = self._FC_STATE_RUNNING
         except:
             self.log.exception('Error while starting up gated counting.')
+            self.status_var = self._FC_STATE_ERROR
             return -1
         return 0
 
@@ -1906,11 +2116,14 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             self.log.error(
                 'Cannot stop Gated Counter Task since it is not running!\n'
                 'Start the Gated Counter Task before you can actually stop it!')
+            self.status_var = self._FC_STATE_ERROR
             return -1
         try:
             daq.DAQmxStopTask(self._gated_counter_daq_task)
+            self.status_var = self._FC_STATE_IDLE
         except:
             self.log.exception('Error while stopping gated counting.')
+            self.status_var = self._FC_STATE_ERROR
             return -1
         return 0
 
@@ -1923,15 +2136,19 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         try:
             # stop the task
             daq.DAQmxStopTask(self._gated_counter_daq_task)
+            self.status_var = self._FC_STATE_IDLE
         except:
             self.log.exception('Error while closing gated counter.')
+            self.status_var = self._FC_STATE_ERROR
             retval = -1
         try:
             # clear the task
             daq.DAQmxClearTask(self._gated_counter_daq_task)
+            self.status_var = self._FC_STATE_UNCONFIGURED
             self._gated_counter_daq_task = None
         except:
             self.log.exception('Error while clearing gated counter.')
+            self.status_var = self._FC_STATE_ERROR
             retval = -1
         return retval
 
@@ -1953,7 +2170,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         self.log.info('Start gated counting task.')
         self.sigCollectData.emit()
 
-    def _collect_data(self):
+    def _collect_data_old(self):
         """ Collection signal loop
 
         :return:
