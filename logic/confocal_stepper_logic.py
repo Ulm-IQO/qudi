@@ -734,7 +734,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             axis_status2 = self.axis_class[self._second_scan_axis].set_mode_stepping()
         else:
             axis_status2 = self.axis_class[self._second_scan_axis]._check_mode()
-        if axis_status1 < 0 or axis_status2 < 0:
+        # Todo: This is a dirty fix!!!
+        if self.axis_class["z"].mode != "stepping":
+            axis_status3 = self.axis_class["z"].set_mode_stepping()
+        else:
+            axis_status3 = self.axis_class["z"]._check_mode()
+        if axis_status1 < 0 or axis_status2 < 0 or axis_status3 < 0:
             # Todo: is this really sensible here?
             self.axis_class[self._first_scan_axis].set_mode_ground()
             self.axis_class[self._second_scan_axis].set_mode_ground()
@@ -746,15 +751,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             (self._steps_scan_second_line, self._steps_scan_first_line))
         self.stepping_raw_data_back = np.zeros(
             (self._steps_scan_second_line, self._steps_scan_first_line))
-        self.time = np.zeros((self._steps_scan_second_line, 2))
-        self.time_back = np.zeros((self._steps_scan_second_line, 2))
 
         # save starting positions
-        self._start_position = []
+        self._feedback_axis = []
         if self.axis_class[self._first_scan_axis].closed_loop:
             self._start_position.append(self.get_position([self._first_scan_axis])[0])
+            self._feedback_axis.append(self._first_scan_axis)
         if self.axis_class[self._second_scan_axis].closed_loop:
             self._start_position.append(self.get_position([self._second_scan_axis])[0])
+            self._feedback_axis.append(self._second_scan_axis)
+        axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
 
         # check if scan positions should be saved and if it is possible
         if self.map_scan_position:
@@ -1016,6 +1022,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.signal_step_scan_stopped.emit()
                 self.log.info("Stepping stopped successfully")
                 self.log.info("The stepper stepped %s lines", self._step_counter)
+
                 return
 
         # move and count
@@ -1044,41 +1051,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         direction = not direction  # invert direction
         self.sort_counted_data(new_counts)
+
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
 
-        # check starting position of fast scan direction
         if self.axis_class[self._first_scan_axis].closed_loop:
-            if self.map_scan_position:
-                # Todo: how is the position data saved for the backward direction?
-                new_position = [self.convert_voltage_to_position(self._first_scan_axis,
-                                                                 self._scan_pos_voltages_back[
-                                                                     self._step_counter, 0, 0])]
-                self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
-            else:
-                new_position = self.get_position([self._first_scan_axis])
-            if abs(self._start_position[0] - new_position[0]) > self.axis_class[
-                self._first_scan_axis].feedback_precision_position:
-                steps_res = int(
-                    self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
-                # steps would be over correcting
-                # stop readout for scanning so positions can be optimised
-                # Todo: Let user choose offset
-                if steps_res > 0:
-                    if self.map_scan_position:
-                        self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
-                    if self.optimize_position(self._first_scan_axis, self._start_position[0], steps_res) < 0:
-                        self.stopRequested = True
-                        self.log.warning('Optimisation of position failed. Step Scan stopped.')
-                        # restart position readout for scanning
-                        # the second if ensures that the analogue scanner is  s not started when
-                        # the stepping scan is already finished
-                    if self.map_scan_position and self._step_counter < self._steps_scan_second_line - 1:
-                        self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
-                            self._steps_scan_first_line, self._first_scan_axis)
-                        self._position_feedback_device.add_analogue_reader_channel_to_measurement(
-                            self._first_scan_axis, [self._second_scan_axis])
+            self.go_to_start_position()
+
+        # do z position correction
+        # Todo: This is still very crude
+        if self._step_counter % self._lines_correct_z == 0:
+            self._stepping_device.move_attocube("z", True, self._z_direction_correction, steps=1)
         self._step_counter += 1
+
+        # check if at end of scan
         if self._step_counter > self._steps_scan_second_line - 1:
             self.stopRequested = True
             self.log.info("Stepping scan at end position")
@@ -1099,7 +1085,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # check axis
         if main_axis in self.axis_class.keys():
             if second_axis in self.axis_class.keys():
-                time1 = time.time()
                 if self.map_scan_position:
                     if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
                         self.log.error("Starting the counter failed")
@@ -1108,12 +1093,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     if self._counting_device.start_finite_counter() < 0:
                         self.log.error("Starting the counter failed")
                         return [-1], []
-                time2 = time.time()
                 if self._stepping_device.move_attocube(main_axis, True, True, steps=steps - 1) < 0:
                     self.log.error("moving of attocube failed")
                     # Todo: repair return values
                     return [-1], []
-                time3 = time.time()
 
                 # move on line up
                 # if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
@@ -1123,7 +1106,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # Todo: Check if there is a better way than this to adjust for the fact that a stepping
                 # direction change is necessary for the last count. Maybe different method arrangement
                 # sensible
-
                 time.sleep(
                     steps / self.axis_class[main_axis].step_freq)  # wait till stepping finished for readout
                 result = self._counting_device.get_finite_counts()
@@ -1159,7 +1141,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 #   retval = result[0]
 
                 # redo this now (not forever) in the other direction
-                time_back1 = time.time()
                 if self.map_scan_position:
                     if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
                         self.log.error("Starting the counter failed")
@@ -1168,13 +1149,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     if self._counting_device.start_finite_counter() < 0:
                         self.log.error("Starting the counter failed")
                         return [-1], []
-                time_back2 = time.time()
 
                 if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
                     self.log.error("moving of attocube failed")
                     return [-1], []
-                time_back3 = time.time()
-                time.sleep(steps / self.axis_class[main_axis].step_freq)
+
+                time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
                 result_back = self._counting_device.get_finite_counts()
                 if self.map_scan_position:
                     analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
@@ -1239,6 +1219,43 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 counts[3][:self._steps_scan_first_line])
             self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(
                 counts[3][self._steps_scan_first_line:])
+
+    def go_to_start_position(self):
+        # check starting position of fast scan direction
+        if self.map_scan_position:
+            # Todo: how is the position data saved for the backward direction?
+            new_position = [self.convert_voltage_to_position(self._first_scan_axis,
+                                                             self._scan_pos_voltages_back[
+                                                                 self._step_counter, 0, 0])]
+            self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
+        else:
+            new_position = self.get_position([self._first_scan_axis])
+            self._end_position_back_3[self._step_counter] = self.get_position(self._feedback_axis)
+
+        # check if end position differs from start position
+        if abs(self._start_position[0] - new_position[0]) > self.axis_class[
+            self._first_scan_axis].feedback_precision_position:
+            steps_res = int(
+                self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
+            # steps would be over correcting
+            # stop readout for scanning so positions can be optimised
+            # Todo: Let user choose offset
+            if steps_res > 0:
+                if self.map_scan_position:
+                    self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+                # go to start position
+                if self.optimize_position(self._first_scan_axis, self._start_position[0], steps_res) < 0:
+                    self.stopRequested = True
+                    self.log.warning('Optimisation of position failed. Step Scan stopped.')
+                    # restart position readout for scanning
+                    # the second if ensures that the analogue scanner is  s not started when
+                    # the stepping scan is already finished
+
+                if self.map_scan_position:
+                    self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                        self._steps_scan_first_line, self._first_scan_axis)
+                    self._position_feedback_device.add_analogue_reader_channel_to_measurement(
+                        self._first_scan_axis, [self._second_scan_axis])
 
     ##################################### Acquire Data ###########################################
     def kill_counter(self):
@@ -1364,7 +1381,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             data['y position (mm)'] = self.full_image[:, :, 1].flatten()
             data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
             data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
-            full_data = self.full_image # else it will be none to reduce domputiation time = drawing time
+            full_data = self.full_image  # else it will be none to reduce domputiation time = drawing time
             full_data_back = self.full_image_back
         else:
             data['x step'] = self.image_raw[:, :, 0].flatten()
@@ -1487,15 +1504,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            delimiter='\t',
                                            plotfig=figs[ch][1])
 
-
-
         self.log.debug('Confocal Stepper Image saved.')
         self.signal_data_saved.emit()
         # Todo Ask if it is possible to write only one save with options for which lines were scanned
         return
 
     def draw_figure(self, data, full_data=None, scan_axis=None, cbar_range=None,
-                    percentile_range=None, ch=0):  # crosshair_pos=None):
+                    percentile_range=None, ch=0, suffix="steps"):  # crosshair_pos=None):
         """ Create a 2-D color map figure of the scan image for saving
 
         @param: array data: The NxM array of count values from a scan with NxM pixels.
@@ -1562,8 +1577,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                             )
 
         ax.set_aspect(1)
-        ax.set_xlabel(self._first_scan_axis + ' steps ')
-        ax.set_ylabel(self._second_scan_axis + ' steps ')
+        ax.set_xlabel(self._first_scan_axis + " " + suffix)
+        ax.set_ylabel(self._second_scan_axis + " " + suffix)
         ax.spines['bottom'].set_position(('outward', 10))
         ax.spines['left'].set_position(('outward', 10))
         ax.spines['top'].set_visible(False)
