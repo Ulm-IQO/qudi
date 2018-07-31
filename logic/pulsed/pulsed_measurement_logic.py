@@ -109,6 +109,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # Internal signals
     sigStartTimer = QtCore.Signal()
     sigStopTimer = QtCore.Signal()
+    sigFiniteMeasLoop = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -134,6 +135,9 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_data = np.zeros((10, 20), dtype='int64')
         self.raw_data = np.zeros((10, 20), dtype='int64')
 
+        #TODO: In this dictionary, all the raw time traces of better the
+        #      analyzed data should be stored. This would be in a way a certain
+        #      kind of history.
         self._saved_raw_data = OrderedDict()  # temporary saved raw data
         self._recalled_raw_data_tag = None  # the currently recalled raw data dict key
 
@@ -146,8 +150,8 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module. """
+
         # Create an instance of PulseExtractor
         self._pulseextractor = PulseExtractor(pulsedmeasurementlogic=self)
         self._pulseanalyzer = PulseAnalyzer(pulsedmeasurementlogic=self)
@@ -199,11 +203,12 @@ class PulsedMeasurementLogic(GenericLogic):
         # Connect internal signals
         self.sigStartTimer.connect(self.__analysis_timer.start, QtCore.Qt.QueuedConnection)
         self.sigStopTimer.connect(self.__analysis_timer.stop, QtCore.Qt.QueuedConnection)
+        self.sigFiniteMeasLoop.connect(self._start_finite_meas_loop, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
-        """ Deactivate the module properly.
-        """
+        """ Deactivate the module properly. """
+
         if self.module_state() == 'locked':
             self.stop_pulsed_measurement()
 
@@ -217,6 +222,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
+        self.sigFiniteMeasLoop.disconnect()
         return
 
     ############################################################################
@@ -719,7 +725,15 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @QtCore.Slot(str)
     def start_pulsed_measurement(self, stashed_raw_data_tag=''):
-        """Start the analysis loop."""
+        """ Start the analysis loop.
+
+        @param str stashed_raw_data_tag: optional, the name tag of the previous
+                                         measurement. If the name is present in
+                                         self._saved_raw_data then the current
+                                         measurement will use the present data
+                                         and continue adding new data to the
+                                         previous measurement.
+        """
         self.sigMeasurementStatusUpdated.emit(True, False)
 
         # Check if measurement settings need to be invoked
@@ -758,10 +772,15 @@ class PulsedMeasurementLogic(GenericLogic):
                 # start microwave source
                 if self.__use_ext_microwave:
                     self.microwave_on()
-                # start fast counter
-                self.fast_counter_on()
-                # start pulse generator
-                self.pulse_generator_on()
+
+                fc_constraints = self.fastcounter().get_constraints()
+                if fc_constraints.continuous_measurement:
+                    # start fast counter
+                    self.fast_counter_on()
+                    # start pulse generator
+                    self.pulse_generator_on()
+                else:
+                    self.sigFiniteMeasLoop.emit()
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
@@ -779,10 +798,43 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.warning('Unable to start pulsed measurement. Measurement already running.')
         return
 
+    @QtCore.Slot()
+    def _start_finite_meas_loop(self):
+        """ Helper loop to emulate a continuous measurement for devices which
+            only provide finite measurement times.
+        """
+
+        # start fast counter
+        self.fast_counter_on()
+        # start pulse generator
+        self.pulse_generator_on()
+
+        # check whether fast counter is still running, or the measurement itself
+        # has stopped.
+        while True:
+
+            # This will stop the loop completely
+            if self.module_state() == 'idle':
+                return
+
+            # This will trigger the next loop round.
+            if self.fastcounter().get_status() == 2:
+                break
+
+        self.pulse_generator_off()
+        self.sigFiniteMeasLoop.emit()
+
+
+
     @QtCore.Slot(str)
     def stop_pulsed_measurement(self, stash_raw_data_tag=''):
-        """
-        Stop the measurement
+        """ Stop the measurement.
+
+        @param str stash_raw_data_tag: optional, specify a name tag, which is
+                                       used to save the current raw data in
+                                       self._saved_raw_data, so that they can be
+                                       retrieved/reused in a consecutive start
+                                       of a new measurement.
         """
         # Get raw data and analyze it a last time just before stopping the measurement.
         try:
@@ -818,8 +870,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @QtCore.Slot(bool)
     def toggle_measurement_pause(self, pause):
-        """
-        Convenience method to pause/continue measurement
+        """ Convenience method to pause/continue measurement
 
         @param bool pause: Pause the measurement (True) or continue the measurement (False)
         """
@@ -831,9 +882,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @QtCore.Slot()
     def pause_pulsed_measurement(self):
-        """
-        Pauses the measurement
-        """
+        """ Pauses the measurement. """
         with self._threadlock:
             if self.module_state() == 'locked':
                 # pausing the timer
