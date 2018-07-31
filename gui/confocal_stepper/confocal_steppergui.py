@@ -178,6 +178,7 @@ class ConfocalStepperGui(GUIBase):
     savelogic = Connector(interface='SaveLogic')
     stepperlogic1 = Connector(interface='ConfocalStepperLogic')
 
+    # signals
     sigStartSteppingScan = QtCore.Signal()
     sigStopSteppingScan = QtCore.Signal()
     sigContinueSteppingScan = QtCore.Signal()
@@ -294,6 +295,8 @@ class ConfocalStepperGui(GUIBase):
             QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-loop.png"),
             QtGui.QIcon.Normal,
             QtGui.QIcon.Off)
+
+        self._get_former_parameters()
 
     def initSettingsUI(self):
         """ Definition, configuration and initialisation of the settings GUI.
@@ -449,7 +452,7 @@ class ConfocalStepperGui(GUIBase):
             self._mw.y_new_position_doubleSpinBox.setRange(pos_range[0] * 1e-3, pos_range[1] * 1e-3)
             self._feedback_axis["y"] = self._mw.y_new_position_doubleSpinBox
         else:
-            self._mw.y_accuarcy_lcdNumber.setValue(-1)
+            self._mw.y_accuracy_doubleSpinBox.setValue(-1)
             self._mw.y_position_doubleSpinBox.setValue(-1)
             self._mw.set_y_position_pushButton.setEnabled(False)
             self._mw.y_new_position_doubleSpinBox.setEnabled(False)
@@ -463,7 +466,7 @@ class ConfocalStepperGui(GUIBase):
             self._mw.z_new_position_doubleSpinBox.setRange(pos_range[0] * 1e-3, pos_range[1] * 1e-3)
             self._feedback_axis["z"] = self._mw.z_new_position_doubleSpinBox
         else:
-            self._mw.z_accuarcy_lcdNumber.display(-1)
+            self._mw.z_accuracy_doubleSpinBox.setValue(-1)
             self._mw.z_position_doubleSpinBox.setValue(-1)
             self._mw.set_z_position_pushButton.setEnabled(False)
             self._mw.z_new_position_doubleSpinBox.setEnabled(False)
@@ -591,7 +594,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.step_direction_comboBox.addItem("XY", "xy")
         self._mw.step_direction_comboBox.addItem("XZ", "xz")
         self._mw.step_direction_comboBox.addItem("YZ", "yz")
-        self._inverted_axes = {"xy": "yx", "xz": "zx", "yz": "zy"}
+        self._inverted_axes = {"xy": "yx", "xz": "zx", "yz": "zy", "yx": "xy", "zx": "xz", "zy": "yz"}
         self._mw.step_direction_comboBox.activated.connect(self.update_step_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_step_direction)
 
@@ -650,6 +653,22 @@ class ConfocalStepperGui(GUIBase):
                 self.update_from_key(z=float(round(z_pos - self.slider_small_step, 10)))
             else:
                 event.ignore()
+
+    def _get_former_parameters(self):
+        inv_axes = self._stepper_logic._inverted_scan
+        self._mw.inverted_direction_checkBox.setCheckState(inv_axes)
+        if inv_axes:
+            current_axes = self._inverted_axes[self._stepper_logic._scan_axes]
+        else:
+            current_axes = self._stepper_logic._scan_axes
+        axes = self._mw.step_direction_comboBox.findData(current_axes)
+        if axes == -1:
+            self.log.error("the axes given in the confocal stepper logic is not possible in the gui")
+        else:
+            self._mw.step_direction_comboBox.setCurrentIndex(axes)
+        # Label the axes:
+        self._mw.ViewWidget.setLabel('bottom', units=current_axes[0] + ' Steps')
+        self._mw.ViewWidget.setLabel('left', units=current_axes[1] + ' Steps')
 
     ################## Step Scan ##################
     def get_cb_range(self):
@@ -1045,6 +1064,7 @@ class ConfocalStepperGui(GUIBase):
         if self._stepper_logic.module_state() != 'locked':
             self.enable_step_actions()
 
+
     ################## Step Parameters ##################
 
     def update_step_direction(self):
@@ -1052,10 +1072,10 @@ class ConfocalStepperGui(GUIBase):
             other GUI elements."""
 
         direction = self._mw.inverted_direction_checkBox.isChecked()
-        new_axes = self._mw.step_direction_comboBox.itemData(self._mw.step_direction_comboBox.currentIndex())
+        new_axes = self._mw.step_direction_comboBox.currentData()
         if direction:
             new_axes = self._inverted_axes[new_axes]
-
+        self._stepper_logic._inverted_scan = direction
         self._stepper_logic.set_scan_axes(new_axes)
 
     def update_from_input_x_piezo(self):
@@ -1333,7 +1353,6 @@ class ConfocalStepperGui(GUIBase):
                 h_step_pos = 0
             elif h_step_pos > self._stepper_logic._steps_scan_first_line - 1:
                 h_step_pos = self._stepper_logic._steps_scan_first_line - 1
-
 
             if v_step_pos < 0:
                 v_step_pos = 0

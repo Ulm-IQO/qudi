@@ -26,7 +26,7 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.module import Connector, StatusVar
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -70,14 +70,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     confocalcounter = Connector(interface='FiniteCounterInterface')
     analoguereader = Connector(interface='AnalogueReaderInterface')
 
-    # Todo: add connectors and QTCore Signals
+    # status vars
+    max_history_length = StatusVar(default=10)
+    _scan_axes = StatusVar("scan_axes", default="xy")
+    _inverted_scan = StatusVar(default=False)
+    _off_set_x = StatusVar(default=0.02)
+    _off_set_direction = StatusVar(default=True)
+
+    # Todo: add /check QTCore Signals (not all have functions yet)
     # signals
     signal_start_stepping = QtCore.Signal()
     signal_stop_stepping = QtCore.Signal()
     signal_continue_stepping = QtCore.Signal()
     signal_step_lines_next = QtCore.Signal(bool)
 
-    # signals
     signal_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
     signal_data_saved = QtCore.Signal()
@@ -379,11 +385,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     i].feedback_precision_position = self.calculate_precision_feedback(i)
 
         # Initialise step image constraints
-        self._scan_axes = "xy"
-        self._inverted_scan = False
         self.stopRequested = False
-        self._off_set_x = 0.02
-        self._off_set_direction = True
 
         # Initialise for scan_image
         self._step_counter = 0
@@ -396,8 +398,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.map_scan_position = True
         self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
         self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+        self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
+        self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
 
         self.initialize_image()
+        self._lines_correct_z = 5
+        self._z_direction_correction = True
         # Step values definitions
 
         # Sets connections between signals and functions
