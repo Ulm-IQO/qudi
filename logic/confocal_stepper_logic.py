@@ -26,7 +26,7 @@ import datetime
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.module import Connector, StatusVar
+from core.module import Connector, StatusVar, ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 
@@ -76,6 +76,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     _inverted_scan = StatusVar(default=False)
     _off_set_x = StatusVar(default=0.02)
     _off_set_direction = StatusVar(default=True)
+
+    # config
+    _ai_counter = ConfigOption("AI_counter", None, missing="warn")
 
     # Todo: add /check QTCore Signals (not all have functions yet)
     # signals
@@ -401,6 +404,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
         self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
 
+        if self._ai_counter != None:
+            if self._ai_counter in self._counting_device._analogue_input_channels:
+                self._ai_scanner = True
+                self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+                self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+            else:
+                self._ai_scanner = False
+        else:
+            self._ai_scanner = False
+
         self.initialize_image()
         self._lines_correct_z = 5
         self._z_direction_correction = True
@@ -618,8 +631,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def convert_voltage_to_position_for_image(self):
         # convert voltage to position for all position of a measured image
         if self.map_scan_position:
-            self.full_image = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
-            self.full_image_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+            self.full_image = np.zeros(
+                (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
+            self.full_image_back = np.zeros(
+                (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
             for i in range(self._steps_scan_first_line):
                 for j in range(self._steps_scan_second_line):
                     self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
@@ -778,7 +793,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # initialise position scan
                 # Todo: This is a little dirty and should not be done this way here. Fixme!
                 if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
-                                                                                self._first_scan_axis):
+                                                                                [self._first_scan_axis,
+                                                                                 self._second_scan_axis]):
                     self.stopRequested = True
                 elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
                         self._steps_scan_first_line, self._first_scan_axis):
@@ -789,6 +805,22 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         self.stopRequested = True
             else:
                 self.map_scan_position = False
+
+        # if AI is chosen for counts set this up.
+        if self._ai_scanner:
+            self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+            self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+            if 0 > self._counting_device.add_clock_task_to_channel("Scanner_clock",
+                                                                   [self._ai_counter]):
+                self.stopRequested = True
+            if self.map_scan_position:
+                if 0 > self._counting_device.add_analogue_reader_channel_to_measurement(
+                        self._first_scan_axis, [self._ai_counter]):
+                    self.stopRequested = True
+            else:
+                if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
+                        self._steps_scan_first_line, self._ai_counter):
+                    self.stopRequested = True
 
         self.initialize_image()
         self.signal_image_updated.emit()
@@ -1011,7 +1043,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if self.map_scan_position:
                     self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
                     self.convert_voltage_to_position_for_image()
-
+                elif self._ai_scanner:
+                    self._position_feedback_device.close_analogue_voltage_reader(self._ai_counter)
                 # it is not necessary to stop the analogue input reader. It is closed after each line scan
                 self.stopRequested = False
                 self.module_state.unlock()
@@ -1035,6 +1068,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         new_counts = self._step_and_count(self._first_scan_axis, self._second_scan_axis, direction,
                                           steps=self._steps_scan_first_line)
 
+        if type(new_counts[0]) == int:
+            self.stopRequested = True
+            self.signal_step_lines_next.emit(direction)
+            return
         # check if stepping worked
         if new_counts[0][0] == -1:
             self.stopRequested = True
@@ -1045,7 +1082,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.signal_step_lines_next.emit(direction)
             return
 
-        if self.map_scan_position:
+        if self.map_scan_position or self._ai_scanner:
             if new_counts[2][0] == -1:
                 self.stopRequested = True
                 self.signal_step_lines_next.emit(direction)
@@ -1095,6 +1132,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
                         self.log.error("Starting the counter failed")
                         return [-1], []
+                elif self._ai_scanner:
+                    if 0 > self._position_feedback_device.start_ai_counter_reader(self._ai_counter):
+                        self.log.error("Starting the counter failed")
+                        return [-1], []
                 else:
                     if self._counting_device.start_finite_counter() < 0:
                         self.log.error("Starting the counter failed")
@@ -1115,28 +1156,41 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 time.sleep(
                     steps / self.axis_class[main_axis].step_freq)  # wait till stepping finished for readout
                 result = self._counting_device.get_finite_counts()
-                if self.map_scan_position:
+                if self.map_scan_position and self._ai_scanner:
+                    analog_result = self._position_feedback_device.get_analogue_voltage_reader(
+                        [self._first_scan_axis, self._second_scan_axis, self._ai_counter])
+                elif self.map_scan_position:
                     analog_result = self._position_feedback_device.get_analogue_voltage_reader(
                         [self._first_scan_axis, self._second_scan_axis])
+                elif self._ai_scanner:
+                    analog_result = self._position_feedback_device.get_analogue_voltage_reader(
+                        [self._ai_counter])
+
                 retval = 0
                 a = self._counting_device.stop_finite_counter()
                 if self.map_scan_position:
                     if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._first_scan_axis):
                         self.log.error("Stopping the analog input failed")
                         retval = [-1], []
+                        return retval
+                elif self._ai_scanner:
+                    if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._ai_counter):
+                        self.log.error("Stopping the analog input counter failed")
+                        retval = [-1], []
+                        return retval
+
                 if result[0][0] == [-1]:
                     self.log.error("The readout of the counter failed")
                     retval = [-1], []
                     return retval
-                elif self.map_scan_position:
+                elif self.map_scan_position or self._ai_scanner:
                     if analog_result[0][0] == [-1]:
                         self.log.error("The readout of the analog reader failed")
                         retval = [-1], []
                         return retval
                 elif result[1] != steps:
                     self.log.error("A different amount of data than necessary was returned.\n "
-                                   "Received {} instead of {} bins with counts ".format(result[1],
-                                                                                        steps))
+                                   "Received {} instead of {} bins with counts ".format(result[1], steps))
                     retval = [-1], []
                     return [-1], []
                 elif a < 0:
@@ -1146,52 +1200,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # else:
                 #   retval = result[0]
 
-                # redo this now (not forever) in the other direction
-                if self.map_scan_position:
-                    if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
-                        self.log.error("Starting the counter failed")
-                        return [-1], []
-                else:
-                    if self._counting_device.start_finite_counter() < 0:
-                        self.log.error("Starting the counter failed")
-                        return [-1], []
-
-                if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
-                    self.log.error("moving of attocube failed")
+                result_back, analog_result_back = self.step_back_line(main_axis, second_axis, steps)
+                if type(result_back[0]) == int:
                     return [-1], []
-
-                time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
-                result_back = self._counting_device.get_finite_counts()
-                if self.map_scan_position:
-                    analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
-                        [self._first_scan_axis, self._second_scan_axis])
-
-                # move on line up
-                if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
-                    self.log.error("moving of attocube failed")
-                    return [-1], []
-                a = self._counting_device.stop_finite_counter()
-                if self.map_scan_position:
-                    if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._first_scan_axis):
-                        self.log.error("Stopping the analog input failed (2)")
-                        retval = [-1]
-
-                if result_back[0][0] == [-1]:
-                    self.log.error("The readout of the counter(2) failed")
-                    retval = [-1], []
-                elif self.map_scan_position:
-                    if analog_result_back[0][0] == [-1]:
-                        self.log.error("The readout of the analog reader failed")
-                        retval = [-1], []
-                        return retval
-                elif result_back[1] != steps:
-                    self.log.error("A different amount of data than necessary was returned(2).\n "
-                                   "Received {} instead of {} bins with counts ".format(result[1],
-                                                                                        steps))
-                    retval = [-1], []
-                elif a < 0:
-                    retval = [-1], []
-                    self.log.error("Stopping the counter failed (2)")
                 steps_offset = round(self._off_set_x * steps)
                 if steps_offset > 0:
                     if self._stepping_device.move_attocube(main_axis, True, self._off_set_direction,
@@ -1203,7 +1214,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 else:
                     if self._step_counter == 0:
                         self.log.warning("No offset used.")
-                if self.map_scan_position:
+                if self.map_scan_position or self._ai_scanner:
                     return result[0], result_back[0], analog_result[0], analog_result_back[0]
                 return result[0], result_back[0]
             else:
@@ -1215,16 +1226,97 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("main axis %s is not an axis %s of the stepper", main_axis, self.axis)
             return [-1], []
 
+    def step_back_line(self, main_axis, second_axis, steps):
+        # redo this now (not forever) in the other direction
+        if self.map_scan_position:
+            if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
+                self.log.error("Starting the counter failed")
+                return [-1], []
+        elif self._ai_scanner:
+            if 0 > self._position_feedback_device.start_ai_counter_reader(self._ai_counter):
+                self.log.error("Starting the counter failed")
+                return [-1], []
+        else:
+            if self._counting_device.start_finite_counter() < 0:
+                self.log.error("Starting the counter failed")
+                return [-1], []
+
+        if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
+            self.log.error("moving of attocube failed")
+            return [-1], []
+
+        time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
+        result_back = self._counting_device.get_finite_counts()
+        if self.map_scan_position and self._ai_scanner:
+            analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
+                [self._first_scan_axis, self._second_scan_axis, self._ai_counter])
+        elif self.map_scan_position:
+            analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
+                [self._first_scan_axis, self._second_scan_axis])
+        elif self._ai_scanner:
+            analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
+                [self._ai_counter])
+
+        # move on line up
+        if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
+            self.log.error("moving of attocube failed")
+            return [-1], []
+
+        a = self._counting_device.stop_finite_counter()
+        if self.map_scan_position:
+            if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._first_scan_axis):
+                self.log.error("Stopping the analog input failed")
+                retval = [-1], []
+                return retval
+        elif self._ai_scanner:
+            if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._ai_counter):
+                self.log.error("Stopping the analog input counter failed")
+                retval = [-1], []
+                return retval
+
+        if result_back[0][0] == [-1]:
+            self.log.error("The readout of the counter(2) failed")
+            retval = [-1], []
+            return retval
+        elif self.map_scan_position or self._ai_scanner:
+            if analog_result_back[0][0] == [-1]:
+                self.log.error("The readout of the analog reader failed")
+                retval = [-1], []
+                return retval
+        elif result_back[1] != steps:
+            self.log.error("A different amount of data than necessary was returned(2).\n "
+                           "Received {} instead of {} bins with counts ".format(result_back[1], steps))
+            retval = [-1], []
+            return retval
+        elif a < 0:
+            retval = [-1], []
+            self.log.error("Stopping the counter failed (2)")
+            return retval
+
+        return result_back, analog_result_back
+
     def sort_counted_data(self, counts):
         self.stepping_raw_data[self._step_counter] = counts[0]
         self.stepping_raw_data_back[self._step_counter] = np.flipud(counts[1])
+
         if self.map_scan_position:
             self._scan_pos_voltages[self._step_counter, :, 0] = counts[2][:self._steps_scan_first_line]
-            self._scan_pos_voltages[self._step_counter, :, 1] = counts[2][self._steps_scan_first_line:]
+            self._scan_pos_voltages[self._step_counter, :, 1] = \
+                counts[2][self._steps_scan_first_line:self._steps_scan_first_line * 2]
             self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(
                 counts[3][:self._steps_scan_first_line])
             self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(
-                counts[3][self._steps_scan_first_line:])
+                counts[3][self._steps_scan_first_line:self._steps_scan_first_line * 2])
+        if self._ai_scanner:
+            if self.map_scan_position:
+                self._ai_counter_voltages[self._step_counter] = \
+                    counts[2][self._steps_scan_first_line * 2:self._steps_scan_first_line * 3]
+                self._ai_counter_voltages_back[self._step_counter] = \
+                    np.flipud(counts[3])[self._steps_scan_first_line * 2:self._steps_scan_first_line * 3]
+            else:
+                self._ai_counter_voltages[self._step_counter] = counts[2]
+                self._ai_counter_voltages_back[self._step_counter] = np.flipud(
+                    counts[3])
 
     def go_to_start_position(self):
         # check starting position of fast scan direction
@@ -1249,6 +1341,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if steps_res > 0:
                 if self.map_scan_position:
                     self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+                # elif self._ai_scanner:
+                #    self._position_feedback_device.close_analogue_voltage_reader(self._ai_counter)
                 # go to start position
                 if self.optimize_position(self._first_scan_axis, self._start_position[0], steps_res) < 0:
                     self.stopRequested = True
@@ -1262,6 +1356,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         self._steps_scan_first_line, self._first_scan_axis)
                     self._position_feedback_device.add_analogue_reader_channel_to_measurement(
                         self._first_scan_axis, [self._second_scan_axis])
+                    if self._ai_scanner:
+                        self._counting_device.add_analogue_reader_channel_to_measurement(self._first_scan_axis,
+                                                                                         [self._ai_counter])
+
 
     ##################################### Acquire Data ###########################################
     def kill_counter(self):
@@ -1287,7 +1385,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """ Get lis of counting channels from counting device.
           @return list(str): names of counter channels
         """
-        return self._counting_device.get_scanner_count_channels()
+        ch = self._counting_device.get_scanner_count_channels()[:1]
+        if self._ai_scanner:
+            ch.append(self._ai_counter)
+        return ch
 
     def get_step_counter(self):
         """Returns the current line counter of stepper
@@ -1303,8 +1404,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         self._get_scan_axes()
-        image_raw = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
-        image_raw_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 3))
+        image_depth = 3 + self._ai_scanner
+        image_raw = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, image_depth))
+        image_raw_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, image_depth))
         image_raw[:, :, 2] = self.stepping_raw_data
         image_raw_back[:, :, 2] = self.stepping_raw_data_back
         if not self.map_scan_position:
@@ -1315,6 +1417,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             image_raw[:, :, 0] = first_position_array
             image_raw_back[:, :, 1] = second_position_array
             image_raw_back[:, :, 0] = first_position_array
+        if self._ai_scanner:
+            image_raw[:, :, 3] = self._ai_counter_voltages
+            image_raw_back[:, :, 3] = self._ai_counter_voltages_back
 
         self.image_raw = image_raw
         self.image_raw_back = image_raw_back
@@ -1327,8 +1432,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.image_raw[:, :, 2] = self.stepping_raw_data
         self.image_raw_back[:, :, 2] = self.stepping_raw_data
         if self.map_scan_position:
-            self.image_raw[:, :, 2] = self._scan_pos_voltages
-            self.image_raw_back[:, :, 2] = self._scan_pos_voltages_back
+            self.image_raw[:, :, :2] = self._scan_pos_voltages
+            self.image_raw_back[:, :, :2] = self._scan_pos_voltages_back
+        if self._ai_scanner:
+            self.image_raw[:, :, 3] = self._ai_counter_voltages
+            self.image_raw_back[:, :, 3] = self._ai_counter_voltages_back
 
     def update_image_data_line(self, line_counter):
         """
@@ -1340,6 +1448,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.map_scan_position:
             self.image_raw[line_counter, :, :2] = self._scan_pos_voltages[line_counter]
             self.image_raw_back[line_counter, :, :2] = self._scan_pos_voltages_back[line_counter]
+        if self._ai_scanner:
+            self.image_raw[line_counter, :, 3] = self._ai_counter_voltages[line_counter]
+            self.image_raw_back[line_counter, :, 3] = self._ai_counter_voltages_back[line_counter]
 
     def save_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.
@@ -1378,6 +1489,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
+        if self._z_direction_correction:
+            parameters["Z correction up (attocube axis)"] = self._lines_correct_z
+        else:
+            parameters["z correftion down (attocube axis"] = self._lines_correct_z
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -1400,6 +1515,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         for n, ch in enumerate(self.get_counter_count_channels()):
             data['count rate {0} (Hz)'.format(ch)] = self.image_raw[:, :, 2 + n].flatten()
             data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
+
+        if self._ai_scanner:
+            data["count rate AI (V)"] = self._ai_counter_voltages.flatten()
+            data_back["count rate AI (V)"] = self._ai_counter_voltages_back.flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_stepper_data'
@@ -1499,7 +1618,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                        filelabel=filelabel,
                                        fmt='%.6e',
                                        delimiter='\t',
-                                       plotfig=figs[ch][0])
+                                       plotfig=figs[ch][n])
             if self.map_scan_position:  # also plot image data for positions of steppers
                 self._save_logic.save_data(image_data,
                                            filepath=filepath,
@@ -1508,7 +1627,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            filelabel=filelabel + "_position",
                                            fmt='%.6e',
                                            delimiter='\t',
-                                           plotfig=figs[ch][1])
+                                           plotfig=figs[ch][n])
 
         self.log.debug('Confocal Stepper Image saved.')
         self.signal_data_saved.emit()
@@ -1684,10 +1803,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                   verticalalignment='center',
                                   rotation=90
                                   )
-            self.signal_draw_figure_completed.emit()
+            #self.signal_draw_figure_completed.emit()
             return fig, fig2
 
-        self.signal_draw_figure_completed.emit()
+        #self.signal_draw_figure_completed.emit()
         return fig, None
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
 

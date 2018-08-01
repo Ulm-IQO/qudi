@@ -377,7 +377,9 @@ class ConfocalStepperGui(GUIBase):
         scan_channels = self._stepper_logic.get_counter_count_channels()
         for n, ch in enumerate(scan_channels):
             self._mw.count_channel_ComboBox.addItem(str(ch), n)
+
         self._mw.count_channel_ComboBox.activated.connect(self.update_count_channel)
+        self.count_channel = int(self._mw.count_channel_ComboBox.currentData())
 
         self._mw.count_direction_ComboBox.addItem("Forward", True)
         self._mw.count_direction_ComboBox.addItem("Backward", False)
@@ -1014,6 +1016,11 @@ class ConfocalStepperGui(GUIBase):
         """
         self.count_channel = int(self._mw.count_channel_ComboBox.itemData(index,
                                                                           QtCore.Qt.UserRole))
+        if self.count_channel == 1:
+            self._mw.cb_ViewWidget.setLabel('left', 'Volt', units='V')
+        else:
+            self._mw.cb_ViewWidget.setLabel('left', 'Fluorescence', units='c/s')
+
         self.refresh_image()
 
     def update_count_direction(self, index):
@@ -1050,7 +1057,8 @@ class ConfocalStepperGui(GUIBase):
         #  be chosen
         # if self.count_direction:
         # Todo: add count_direction variable
-        step_image_data = self._stepper_logic.image_raw[:, :, 2]
+
+        step_image_data = self._stepper_logic.image_raw[:, :, 2 + self.count_channel]
 
         # else:
         #    step_image_data = self._stepper_logic.image_raw_back[:, :, 2]
