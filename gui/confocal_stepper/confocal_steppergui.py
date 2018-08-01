@@ -1057,8 +1057,10 @@ class ConfocalStepperGui(GUIBase):
         #  be chosen
         # if self.count_direction:
         # Todo: add count_direction variable
-
-        step_image_data = self._stepper_logic.image_raw[:, :, 2 + self.count_channel]
+        if self.count_direction:
+            step_image_data = self._stepper_logic.image_raw[:, :, 2 + self.count_channel]
+        else:
+            step_image_data = self._stepper_logic.image_raw_back[:, :, 2 + self.count_channel]
 
         # else:
         #    step_image_data = self._stepper_logic.image_raw_back[:, :, 2]
@@ -1066,6 +1068,7 @@ class ConfocalStepperGui(GUIBase):
 
         # Now update image with new color scale, and update colorbar
         self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
+        cb_range = self.get_cb_range()
         self.refresh_colorbar()
 
         # Unlock state widget if scan is finished
