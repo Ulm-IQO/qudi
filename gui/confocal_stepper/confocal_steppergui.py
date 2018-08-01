@@ -384,6 +384,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.count_direction_ComboBox.addItem("Forward", True)
         self._mw.count_direction_ComboBox.addItem("Backward", False)
         self._mw.count_direction_ComboBox.activated.connect(self.update_count_direction)
+        self.count_direction = bool(self._mw.count_direction_ComboBox.currentIndex())
 
         #################################################################
         #           Connect the colorbar and their actions              #
