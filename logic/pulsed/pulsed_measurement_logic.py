@@ -109,7 +109,8 @@ class PulsedMeasurementLogic(GenericLogic):
     # Internal signals
     sigStartTimer = QtCore.Signal()
     sigStopTimer = QtCore.Signal()
-    sigFiniteMeasLoop = QtCore.Signal()
+    sigStartFiniteTimer = QtCore.Signal()
+    sigStopFiniteTimer = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -164,6 +165,17 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer.timeout.connect(self._pulsed_analysis_loop,
                                               QtCore.Qt.QueuedConnection)
 
+
+        # Install a timer for finite measurements. This timer is running in the
+        # background and checks essentially the status of the fast counter
+        # before a new measurement is initiated.
+        self.__finite_meas_timer = QtCore.QTimer()
+        self.__finite_meas_timer.setSingleShot(False)
+        self.__finite_meas_timer.setInterval(0)
+        self.__finite_meas_timer.timeout.connect(self._pulsed_analysis_loop,
+                                                 QtCore.Qt.QueuedConnection)
+
+
         # Fitting
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
         self.fc.set_units(['s', 'arb.u.'])
@@ -203,7 +215,9 @@ class PulsedMeasurementLogic(GenericLogic):
         # Connect internal signals
         self.sigStartTimer.connect(self.__analysis_timer.start, QtCore.Qt.QueuedConnection)
         self.sigStopTimer.connect(self.__analysis_timer.stop, QtCore.Qt.QueuedConnection)
-        self.sigFiniteMeasLoop.connect(self._start_finite_meas_loop, QtCore.Qt.QueuedConnection)
+        self.sigStartFiniteTimer.connect(self.__finite_meas_timer.start, QtCore.Qt.QueuedConnection)
+        self.sigStopFiniteTimer.connect(self.__finite_meas_timer.stop, QtCore.Qt.QueuedConnection)
+
         return
 
     def on_deactivate(self):
@@ -222,7 +236,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer.timeout.disconnect()
         self.sigStartTimer.disconnect()
         self.sigStopTimer.disconnect()
-        self.sigFiniteMeasLoop.disconnect()
+        self.sigStartFiniteTimer.disconnect()
+        self.sigStopFiniteTimer.disconnect()
         return
 
     ############################################################################
@@ -773,14 +788,14 @@ class PulsedMeasurementLogic(GenericLogic):
                 if self.__use_ext_microwave:
                     self.microwave_on()
 
+                # start fast counter
+                self.fast_counter_on()
+                # start pulse generator
+                self.pulse_generator_on()
+
                 fc_constraints = self.fastcounter().get_constraints()
                 if fc_constraints.continuous_measurement:
-                    # start fast counter
-                    self.fast_counter_on()
-                    # start pulse generator
-                    self.pulse_generator_on()
-                else:
-                    self.sigFiniteMeasLoop.emit()
+                    self.sigStartFiniteTimer.emit()
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
@@ -799,30 +814,23 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot()
-    def _start_finite_meas_loop(self):
+    def _finite_meas_loop(self):
         """ Helper loop to emulate a continuous measurement for devices which
             only provide finite measurement times.
+
+            It is assumed, that after the fast counter has been turned on,
         """
 
-        # start fast counter
-        self.fast_counter_on()
-        # start pulse generator
-        self.pulse_generator_on()
+        if self.fastcounter().get_status() == 1:
 
-        # check whether fast counter is still running, or the measurement itself
-        # has stopped.
-        while True:
+            # switch off the pulser, if it is on
+            self.pulse_generator_off()
 
-            # This will stop the loop completely
-            if self.module_state() == 'idle':
-                return
+            # continue fast counter at first
+            self.fast_counter_continue()
 
-            # This will trigger the next loop round.
-            if self.fastcounter().get_status() == 2:
-                break
-
-        self.pulse_generator_off()
-        self.sigFiniteMeasLoop.emit()
+            # then start pulse generator
+            self.pulse_generator_on()
 
 
 
@@ -846,6 +854,12 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.module_state() == 'locked':
                 # stopping the timer
                 self.sigStopTimer.emit()
+
+                # stop the finite timer if in use
+                fc_constraints = self.fastcounter().get_constraints()
+                if fc_constraints.continuous_measurement:
+                    self.sigStopFiniteTimer.emit()
+
                 # Turn off fast counter
                 self.fast_counter_off()
                 # Turn off pulse generator
@@ -890,6 +904,11 @@ class PulsedMeasurementLogic(GenericLogic):
                     # stopping the timer
                     self.sigStopTimer.emit()
 
+                # pausing the finite timer if in use
+                fc_constraints = self.fastcounter().get_constraints()
+                if fc_constraints.continuous_measurement:
+                    self.sigStopFiniteTimer.emit()
+
                 self.fast_counter_pause()
                 self.pulse_generator_off()
                 if self.__use_ext_microwave:
@@ -913,12 +932,17 @@ class PulsedMeasurementLogic(GenericLogic):
             if self.module_state() == 'locked':
                 if self.__use_ext_microwave:
                     self.microwave_on()
+
                 self.fast_counter_continue()
                 self.pulse_generator_on()
 
                 # un-pausing the timer
                 if not self.__analysis_timer.isActive():
                     self.sigStartTimer.emit()
+
+                fc_constraints = self.fastcounter().get_constraints()
+                if fc_constraints.continuous_measurement:
+                    self.sigStartFiniteTimer.emit()
 
                 # Set measurement paused flag
                 self.__is_paused = False
