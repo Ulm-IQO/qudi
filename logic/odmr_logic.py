@@ -316,9 +316,10 @@ class ODMRLogic(GenericLogic):
         if self.module_state() != 'locked':
             if isinstance(start, (int, float)):
                 self.mw_start = limits.frequency_in_range(start)
-            if isinstance(stop, (int, float)):
+            if isinstance(stop, (int, float)) and isinstance(step, (int, float)):
+                if stop <= start:
+                    stop = start + step
                 self.mw_stop = limits.frequency_in_range(stop)
-            if isinstance(step, (int, float)):
                 if self.mw_scanmode == MicrowaveMode.LIST:
                     self.mw_step = limits.list_step_in_range(step)
                 elif self.mw_scanmode == MicrowaveMode.SWEEP:
