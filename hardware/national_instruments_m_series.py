@@ -134,13 +134,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
     _gate_in_channel = ConfigOption('gate_in_channel', True, missing='warn') # where to receive the gated signal
 
     # FastCounter Parameters
-    sigCollectData = QtCore.Signal()
-    sigDistributeData = QtCore.Signal(object)
-
-    sigStartMeas = QtCore.Signal()
-
-    run_collection_flag = False
-
     _FC_STATE_ERROR = -1
     _FC_STATE_UNCONFIGURED = 0
     _FC_STATE_IDLE = 1
@@ -176,12 +169,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # Gated counting:
         self._gated_counter_daq_task = None
-        # self.sigCollectData.connect(self._collect_data_completion, QtCore.Qt.QueuedConnection)
-
-        self.sigCollectData.connect(self._collect_data, QtCore.Qt.QueuedConnection)
-        self.sigDistributeData.connect(self._distribute_data, QtCore.Qt.QueuedConnection)
-
-        self.sigStartMeas.connect(self._perform_meas, QtCore.Qt.QueuedConnection)
 
         # FastCounting default poarameters
         self.status_var = 0
@@ -229,6 +216,14 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         constraints.min_count_frequency = 1e-3
         constraints.max_count_frequency = 10e9
         constraints.counting_mode = [CountingMode.CONTINUOUS]
+
+
+        # Test for FastCounterInterface, add just the contraints to the present
+        # ones.
+
+        
+
+
         return constraints
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None,
@@ -1813,8 +1808,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         """ Start the fast counter. """
         self.start_gated_counter()
 
-        # decouple the start_measure and the collect method with a signal
-        self.sigCollectData.emit()
 
     @QtCore.Slot()
     def _collect_data(self):
@@ -2160,7 +2153,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self._count_array = np.zeros(100, dtype=np.uint32)
         self._count_array_len = len(self._count_array)
-        self.run_collection_flag = True
         self.runs = 0
 
         self.spend_time = time.time()
@@ -2168,7 +2160,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self.start_gated_counter()
         self.log.info('Start gated counting task.')
-        self.sigCollectData.emit()
 
     def _collect_data_old(self):
         """ Collection signal loop
@@ -2179,17 +2170,10 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         counts, num_counts = self.get_gated_counts(self._data_array_len)
 
         #counts = np.zeros(2000)
-        #self.sigDistributeData.emit(counts)
         if len(counts[0]) > 1:
             data = counts[0].reshape((self._count_array_len, self._rows)).sum(axis=1, dtype=np.uint32)
-            # self.sigDistributeData.emit(counts[0])
-            self.sigDistributeData.emit(data)
         # time.sleep(1)
 
-        if not self.run_collection_flag:
-            return
-
-        self.sigCollectData.emit()
 
     def _distribute_data(self, data):
 
@@ -2204,7 +2188,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self.spend_time = time.time() - self.spend_time
 
-        self.run_collection_flag = False
 
     # Non Interface commands:
 
