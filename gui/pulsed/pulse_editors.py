@@ -164,8 +164,10 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
 
         self.activation_config = activation_config
-        self.digital_channels = sorted({chnl for chnl in activation_config if chnl.startswith('d')})
-        self.analog_channels = sorted({chnl for chnl in activation_config if chnl.startswith('a')})
+        self.digital_channels = sorted((chnl for chnl in activation_config if chnl.startswith('d')),
+                                       key=lambda chnl: int(chnl.split('ch')[-1]))
+        self.analog_channels = sorted((chnl for chnl in activation_config if chnl.startswith('a')),
+                                      key=lambda chnl: int(chnl.split('ch')[-1]))
 
         analog_shape = {chnl: SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_state = {chnl: False for chnl in self.digital_channels}
