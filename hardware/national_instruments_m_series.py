@@ -1625,7 +1625,9 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             all_data = np.full((len(self.get_odmr_channels()), self._odmr_length),
                                222,
                                dtype=np.float64)
-            all_data[0] = np.array(self._real_data * self._odmr_clock_frequency, np.float64)
+                               
+            # pulse frequency, divide by 2 such that length of semi period = count_interval
+            all_data[0] = np.array(self._real_data * self._odmr_clock_frequency/ 2, np.float64)
 
             # if len(self._scanner_ai_channels) > 0:
             #     all_data[1:] = self._odmr_analog_data[:, :-1]
