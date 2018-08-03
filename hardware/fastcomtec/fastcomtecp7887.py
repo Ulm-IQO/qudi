@@ -147,10 +147,18 @@ class ACQDATA(ctypes.Structure):
 
 
 class FastComtec(Base, FastCounterInterface):
-    """
+    """ Hardware Class for the FastComtec Card.
     unstable: Jochen Scheuer, Simon Schmitt
 
-    Hardware Class for the FastComtec Card.
+    example configuration for this file
+
+    fastcomtec:
+        module.Class: 'fastcomtec.fastcomtecp7887.FastComtec'
+        gated: False
+        trigger_safety: 200e-9 # in seconds
+        aom_delay: 400e-9 # in seconds
+        minimal_binwidth: 0.25e-9   # in seconds
+
     """
     _modclass = 'FastComtec'
     _modtype = 'hardware'

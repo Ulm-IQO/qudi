@@ -33,6 +33,7 @@ from interface.slow_counter_interface import CountingMode
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.analog_control_interface import AnalogControlInterface
+from interface.fast_counter_interface import FastCounterConstrains
 
 import multiprocessing as mp
 from random import randint
@@ -134,19 +135,13 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
     _gate_in_channel = ConfigOption('gate_in_channel', True, missing='warn') # where to receive the gated signal
 
     # FastCounter Parameters
-    sigCollectData = QtCore.Signal()
-    sigDistributeData = QtCore.Signal(object)
-
-    sigStartMeas = QtCore.Signal()
-
-    run_collection_flag = False
-
     _FC_STATE_ERROR = -1
     _FC_STATE_UNCONFIGURED = 0
     _FC_STATE_IDLE = 1
     _FC_STATE_RUNNING = 2
     _FC_STATE_PAUSED = 3
 
+    sigProcessData = QtCore.Signal(object)
 
     def on_activate(self):
         """ Starts up the NI Card at activation. """
@@ -176,12 +171,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # Gated counting:
         self._gated_counter_daq_task = None
-        # self.sigCollectData.connect(self._collect_data_completion, QtCore.Qt.QueuedConnection)
-
-        self.sigCollectData.connect(self._collect_data, QtCore.Qt.QueuedConnection)
-        self.sigDistributeData.connect(self._distribute_data, QtCore.Qt.QueuedConnection)
-
-        self.sigStartMeas.connect(self._perform_meas, QtCore.Qt.QueuedConnection)
 
         # FastCounting default poarameters
         self.status_var = 0
@@ -196,7 +185,9 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         self._MAX_BUFFER_LENGTH = 10000
 
 
-        self._data_array_len = 2000
+        self._fast_counter_data_arr = np.zeros([])
+
+        self.sigProcessData.connect(self._process_data, QtCore.Qt.QueuedConnection)
 
         # Analog output is always needed and it does not interfere with the
         # rest, so start it always and leave it running
@@ -229,6 +220,21 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         constraints.min_count_frequency = 1e-3
         constraints.max_count_frequency = 10e9
         constraints.counting_mode = [CountingMode.CONTINUOUS]
+
+
+        # Test for FastCounterInterface, add just the contraints to the present
+        # ones.
+        fc_constraints = FastCounterConstrains()
+
+        constraints.hardware_binwidth_list = [12.5e-9]
+        constraints.count_length = fc_constraints.count_length
+        constraints.count_length.min = 12.5e-9
+
+        # the timeout will basically limit the readout time
+        constraints.count_length.max = self._RWTimeout
+        constraints.continuous_measurement = False
+        constraints.is_gated = True
+
         return constraints
 
     def set_up_clock(self, clock_frequency=None, clock_channel=None,
@@ -1719,23 +1725,21 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         # number of gate required in order to minimize the communication with the
         # PC.
 
-
-        # the number of gates is always assumed to be an even number, since one
-        # part is used to read in the signal, and one part is used for the
-        # normalization.
-
-
-        # the NI card is only used in gated fashion, therefore the gates
-        # parameters will be assumed. The buffer length should be a multiple of
-        # the number of gates.
-
-        # self._MAX_BUFFER_SIZE is roughly the desired size for the buffer.
-
-        self._buffer_length = (self._MAX_BUFFER_LENGTH//number_of_gates)*number_of_gates
+        # It is assumed that during the laser pulse two gates appear, where the
+        # first one is used to read in the signal, and second one is used for
+        # the normalization.
 
 
 
-        # n*(n+1)/2
+        gates_per_readout = number_of_gates*2
+
+        # The buffer length should be a multiple of the number of gates.
+        self._buffer_length = (self._MAX_BUFFER_LENGTH // gates_per_readout) * gates_per_readout
+
+        #TODO: estimate the buffer depending on the sequence length, in order to
+        #      minimize the readout procedure, in which the gated counter is
+        #      not measuring.
+
         if self._gated_counter_daq_task is not None:
             self.close_gated_counter()
 
@@ -1747,7 +1751,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         self._record_length_s = record_length_s
         self._number_of_gates = number_of_gates
 
-        self._data_array = np.zeros(self._number_of_gates, dtype=np.uint)
+
 
         return self._bin_width_s, self._record_length_s, self._number_of_gates
 
@@ -1787,7 +1791,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         return self.status_var
 
-    def get_task_status(self):
+    def get_gated_counter_task_status(self):
         if self._gated_counter_daq_task is None:
             return 0
         else:
@@ -1810,33 +1814,27 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
             else:
                 return 2
 
-    @QtCore.Slot()
     def start_measure(self):
         """ Start the fast counter. """
+
+
+        # calculate the number of points for the laser pulse. This will be
+        # used as a reconstructed array.
+        num_point_per_pulse = int(self._record_length_s // self._bin_width_s)
+
+        self._start_signal = int(num_point_per_pulse*0.02)  # start after 2%
+        self._stop_signal = int(num_point_per_pulse*0.3)
+        self._start_norm = stop_signal + 1
+        self._stop_norm = int(num_point_per_pulse*0.98)
+
+        # This data array will contain the pulsed information, which the method
+        # self.get_data_trace will retrieve.
+        self._fast_counter_data_arr = np.zeros((self._number_of_gates,
+                                                num_point_per_pulse),
+                                               dtype=np.uint)
+
         self.start_gated_counter()
 
-        # decouple the start_measure and the collect method with a signal
-        self.sigCollectData.emit()
-
-    @QtCore.Slot()
-    def _collect_data(self):
-
-        self.log.info('start data collection')
-        self._data_array += self.get_gated_counts(samples=self._buffer_length)[0][0].reshape(self._number_of_gates, self._buffer_length//self._number_of_gates).sum(axis=1)
-        self.log.info('data collection finished.')
-        self.stop_gated_counter()
-
-    def _perform_meas(self):
-        self._stop_sign = False
-        for i in range(1):
-            self.start_measure()
-
-            while True:
-                if self.get_status() < 2:
-                    break
-                time.sleep(1)
-                if self._stop_sign:
-                    break
 
 
     def stop_measure(self):
@@ -1855,7 +1853,27 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         If fast counter is in pause state, then fast counter will be continued.
         """
-        pass
+
+        if not self.status_var == self._FC_STATE_RUNNING:
+            self.start_gated_counter()
+
+        raw_data = self.get_gated_counts(samples=self._buffer_length)[0][0]
+        self.sigProcessData.emit(raw_data)
+
+
+    @QtCore.Slot(object)
+    def _process_data(self, data):
+
+        rows = self._number_of_gates*2
+        columns = int(self._buffer_length // self._number_of_gates)
+
+        raw_data = data.reshape(rows, columns).sum(axis=1)
+
+        # Construct a signal, so that it can be read out in the extraction
+        for pulse in range(len(self._fast_counter_data_arr)):
+            self._fast_counter_data_arr[pulse][self._start_signal:self._stop_signal] += raw_data[pulse*2]
+            self._fast_counter_data_arr[pulse][self._start_norm:self._stop_norm] += raw_data[pulse * 2 + 1]
+
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -1887,7 +1905,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
 
 
-        return self._data_array
+        return self._fast_counter_data_arr
 
 
     # =================== End FastCounterInterface Commands ====================
@@ -2023,6 +2041,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         @return int: error code (0:OK, -1:error)
         """
         if self._gated_counter_daq_task is None:
+            self.status_var = self._FC_STATE_ERROR
             self.log.error(
                 'Cannot start Gated Counter Task since it is notconfigured!\n'
                 'Run the set_up_gated_counter routine.')
@@ -2162,7 +2181,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self._count_array = np.zeros(100, dtype=np.uint32)
         self._count_array_len = len(self._count_array)
-        self.run_collection_flag = True
         self.runs = 0
 
         self.spend_time = time.time()
@@ -2170,7 +2188,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self.start_gated_counter()
         self.log.info('Start gated counting task.')
-        self.sigCollectData.emit()
 
     def _collect_data_old(self):
         """ Collection signal loop
@@ -2181,17 +2198,10 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
         counts, num_counts = self.get_gated_counts(self._data_array_len)
 
         #counts = np.zeros(2000)
-        #self.sigDistributeData.emit(counts)
         if len(counts[0]) > 1:
             data = counts[0].reshape((self._count_array_len, self._rows)).sum(axis=1, dtype=np.uint32)
-            # self.sigDistributeData.emit(counts[0])
-            self.sigDistributeData.emit(data)
         # time.sleep(1)
 
-        if not self.run_collection_flag:
-            return
-
-        self.sigCollectData.emit()
 
     def _distribute_data(self, data):
 
@@ -2206,7 +2216,6 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         self.spend_time = time.time() - self.spend_time
 
-        self.run_collection_flag = False
 
     # Non Interface commands:
 

@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.util.interfaces import InterfaceMetaclass, ScalarConstraint
 
 
 class FastCounterInterface(metaclass=InterfaceMetaclass):
@@ -34,44 +34,36 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
 
-        @return dict: dict with keys being the constraint names as string and
-                      items are the definition for the constaints.
+        @return constraint object: object with fast counter constraints as
+                                   attributes
 
-         The keys of the returned dictionary are the str name for the constraints
-        (which are set in this method).
+        dict: dict with keys being the constraint names as string and
+                      items are the definition for the constraints.
 
-                    NO OTHER KEYS SHOULD BE INVENTED!
+        USE ONLY THE CONSTRAINTS DEFINED IN THE CLASS FastCounterConstrains
+        NO OTHER ATTRIBUTES SHOULD BE INVENTED!
 
         If you are not sure about the meaning, look in other hardware files to
         get an impression. If still additional constraints are needed, then they
         have to be added to all files containing this interface.
 
-        The items of the keys are again dictionaries which have the generic
-        dictionary form:
-            {'min': <value>,
-             'max': <value>,
-             'step': <value>,
-             'unit': '<value>'}
 
-        Only the key 'hardware_binwidth_list' differs, since they
-        contain the list of possible binwidths.
-
-        If the constraints cannot be set in the fast counting hardware then
-        write just zero to each key of the generic dicts.
         Note that there is a difference between float input (0.0) and
         integer input (0), because some logic modules might rely on that
         distinction.
 
-        ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
 
         # Example for configuration with default values:
 
-        constraints = dict()
+        constraints = FastCounterConstrains()
+        constraints.hardware_binwidth_list = [0.25e-9, 0.5e-9, 1e-9]
 
-        # the unit of those entries are seconds per bin. In order to get the
-        # current binwidth in seonds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = []
+        constraints.count_length.min = 0.25e-9  # in seconds
+        constraints.count_length.max = 6
+        constraints.count_length.step = 0.25e-9
 
+        constraints.continuous_measurement = True
+        constraints.is_gated = False
         """
         pass
 
@@ -108,7 +100,31 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def start_measure(self):
-        """ Start the fast counter. """
+        """ Start the fast counter.
+        Note, if the fast counter can only count in a finite scheme, then you
+        need also to start internally a data_poller method, which reads out the
+        data und saves it temporally, so that the method get_data_trace can get
+        from time to time the data.
+
+        A possibility to start a data_poller is via a QtSignal:
+
+                sigFiniteMeasLoop = QtCore.Signal() # define as class attribute
+
+        Then create a method self._poll_data() which should return and change
+        the status of the fast counter if the method has pulled all data from
+        the device:
+
+            def _poll_data(self):
+                # get the data, post process it and save to internal array
+                self.status = 1
+                return
+
+            # in the activation:
+            self.sigFiniteMeasLoop.connect(self._poll_data)
+
+        within this method, the signal will be eventually emited
+            self.sigFiniteMeasLoop.emit()
+        """
         pass
 
     @abc.abstractmethod
@@ -163,3 +179,16 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
             returnarray[gate_index, timebin_index]
         """
         pass
+
+
+class FastCounterConstrains:
+    def __init__(self):
+        self.hardware_binwidth_list = list()
+        # the minimal and maximal count length for the device (for gated
+        # devices it is the length of the gate, for ungated devices, it is the
+        # total length of the sequence)
+        self.count_length = ScalarConstraint(unit='s')
+        # indicate whether continuous measurement is possible, this measurement
+        # will be preferred it is possible.
+        self.continuous_measurement = True
+        self.is_gated = True

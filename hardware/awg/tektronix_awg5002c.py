@@ -842,28 +842,32 @@ class AWG5002C(Base, PulserInterface):
         return active_ch
 
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
-        @param dict ch: dictionary with keys being the analog or digital
-                          string generic names for the channels with items being
-                          a boolean value.
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return dict: with the actual set values for active channels for analog
-                      and digital values.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        If nothing is passed then the command will return an empty dict.
+        If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
+        digital channel 1. All other available channels will remain unchanged.
 
         AWG5000 Series instruments support only 14-bit resolution. Therefore
         this command will have no effect on the DAC for these instruments. On
