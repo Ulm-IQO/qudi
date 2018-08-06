@@ -51,6 +51,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     or for an other version (not recommended):
     http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
 
+    Another manual describes the functions a bit better:
+        http://spincore.com/CD/PulseBlasterESR/SP1/PBESR_Manual.pdf
+
     The SpinCore programming library spinapi.DLL is written in C and its data
     types correspond to standard C/C++ data types as follows:
 
@@ -459,33 +462,49 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
 
-        @param unsigned int flags: Set every bit to one for each flag you want
-                                   to set high. If 8 channels are addressable
-                                   then their bit representation would be
+        @param unsigned int flags: It is essentialy an integer number
+                                   corresponding to a bit representation of the
+                                   channel settings. Set every bit to one for
+                                   each flag you want to set high. If 8 channels
+                                   are addressable then their bit representation
+                                   would be
                                        0b00000000   (in python).
+                                       => int(0b00000000)= 0 is the number you
+                                          would specify
                                    where the most right corresponds to ch1 and
-                                   the most left to ch8. If you want to
-                                   set channel 1,2,3 and 7 to be on, then the
-                                   bit word must be
+                                   the most left to ch8. If you want to set
+                                   channel 1,2,3 and 7 to be on, then the bit
+                                   word must be
                                        0b01000111
+                                       => int(0b01000111) = 71
+                                    so the flags=71 will perform the job above.
                                    Valid values are from 0x0 (=0) to 0xFFFFFF
                                    (=)
         @param int inst: Specify the instruction you want. Valid instructions
                          are:
-                         Opcode#	Instruction	  Meaning of inst_data field
-                             0      CONTINUE          Continue
-                             1      STOP              Stop
-                             2      LOOP              Number of desired loops
-                             3      END_LOOP          Address of instruction
-                                                      originating loop
-                             4      JSR               Address of first
-                                                      instruction in subroutine
-                             5      RTS               ?
-                             6      BRANCH            Address of instruction to
-                                                      branch to
-                             7      LONG_DELAY        Number of desired
-                                                      repetitions
-                             8      WAIT              wait until something
+        Opcode# 	Instruction  Inst_data          Meaning of inst_data field
+             0      CONTINUE     Ignored                      Program execution continues to next
+                                                              instruction
+             1      STOP         Ignored                      Stop execution of program.
+             2      LOOP         Number of desired loops.     Specify beginning of a loop. Execution
+                                 This number must be          continues to next instruction.
+                                 greater than or equal to 1.
+             3      END_LOOP     Address of beginning of      Specify end of a loop.
+                                 originating loop
+             4      JSR          Address of first subroutine  Program execution jumps to beginning
+                                 instruction.                 of a subroutine.
+             5      RTS          Ignored                      Program execution returns to
+                                                              instruction after JSR was called.
+
+             6      BRANCH       Address of next instruction  Program execution continues at
+                                                              specific instruction.
+             7      LONG_DELAY   Desired multiplication       For long interval instructions.
+                                 factor for the “Delay Count”  Executes length of pulse given in the
+                                 field. This value must be    time field multiplied by the value
+                                 greater than or equal to 2.  in the data field.
+
+             8      WAIT         Ignored                      Program execution stops and waits for
+                                                              software or hardware trigger.
 
                         That means if you choose an operation code, which has
                         a meaning in the inst_data (like e.g. 2 = LOOP) you can
@@ -517,7 +536,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         length = ctypes.c_double(length)
 
         return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
-
 
     def get_status_bit(self):
         """Read status from the board.
@@ -553,6 +571,18 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         self._dll.pb_read_status.restype = ctypes.c_uint32
 
         return self._dll.pb_read_status()
+
+    def get_status_message(self):
+        """ Read status message from the board.
+
+        Not all boards support this, see your manual. The returned string will
+        either have the board's status or an error message.
+
+        @return str: containing the status message of the board.
+        """
+        self._dll.pb_status_message.restype = ctypes.c_char_p
+
+        return self._dll.pb_status_message().decode()
 
     # =========================================================================
     # Below all the higher level routines are situated which use the
@@ -630,7 +660,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         self.stop_programming()
 
         return num
-
 
     def _convert_pulse_to_inst(self, active_channels, length):
         """ Convert a pulse of one row to a instructions for the PulseBlaster.
