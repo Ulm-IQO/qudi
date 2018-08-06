@@ -87,7 +87,7 @@ Now you can perform either an installation of each package
     pip install asteval
     pip install fysom
     pip install gitpython    
-    pip install lmfitv
+    pip install lmfit
     pip install pydaqmx
     pip install pyflowgraph-qo
     pip install pyqtgraph-qo 
