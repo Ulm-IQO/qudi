@@ -50,6 +50,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     or for an other version (not recommended):
     http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
+    
+    The recommended version for the manual is the PDF file from SpinCore:
+    http://www.spincore.com/CD/PulseBlasterESR/SP4/PBESR-Pro_Manual.pdf
 
     Another manual describes the functions a bit better:
         http://spincore.com/CD/PulseBlasterESR/SP1/PBESR_Manual.pdf
