@@ -116,7 +116,7 @@ dependencies:
   - pyvisa==1.9.0
   - pyyaml==3.12
   - qtpy==1.4.2
-  - rpyc==4.0.1
+  - rpyc==4.0.2
   - ruamel.yaml==0.15.40
   - scipy==1.1.0
   - serial==0.0.66
