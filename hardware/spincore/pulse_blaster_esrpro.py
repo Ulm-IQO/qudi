@@ -35,6 +35,25 @@ from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
+import logging
+# logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
+log = logging.getLogger(__name__)
+
+class SpinAPI(object):
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 #class PulseBlasterESRPRO(Base, PulserInterface):
@@ -43,8 +62,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
 
     This file is compatible with the PCI version SP18A of the PulseBlasterESR.
-    The wrapped commands based on the 'spinapi.h' header file and can be looked
-    up in the SpinAPI Documentation (Version 2013-09-25) on the website:
+    The wrapped commands based on the 'spinapi.h' and the 'pulseblaster.h'
+    header file and can be looked up in the SpinAPI Documentation
+    (Version 2013-09-25) on the website:
 
     http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
 
