@@ -1,10 +1,10 @@
-# Remote Modules
+# Remote Modules {#remote_modules}
 
 Using rpyc Qudi modules can be accessed from a remote computer like they were locally used.
 
 ## Requirements
 
-* rpyc in at least version 3.3 has to be installed.
+* rpyc in at least version 4.0.2 has to be installed.
 
 ## Server Configuration
 
