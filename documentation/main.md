@@ -7,12 +7,13 @@
 
 * Setup
     * [Installation](@ref installation)
-    * [Required packages](@ref required-python-packages)
+    * [Manual installation of Qudi Development Environment](@ref manual-package-installation)
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
     * [Build the documentation](@ref build-docs)
 
 * Qudi programming and design concepts
+   * [How to participate](@ref participate)
    * [Programming style](@ref programming-style)
    * [Interfuses](@ref how_to_interfuses)
    * [Extensions](@ref extensions)
