@@ -56,18 +56,14 @@
     <property name="title">
      <string>Se&amp;ttings</string>
     </property>
-    <addaction name="action_Settings_Analysis"/>
     <addaction name="action_Predefined_Methods_Config"/>
+    <addaction name="separator"/>
+    <addaction name="action_Settings_Analysis"/>
     <addaction name="action_FitSettings"/>
-   </widget>
-   <widget class="QMenu" name="menuView">
-    <property name="title">
-     <string>&amp;View</string>
-    </property>
+    <addaction name="action_Settings_Generator"/>
    </widget>
    <addaction name="menuFile"/>
    <addaction name="menuSettings"/>
-   <addaction name="menuView"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="analysis_ToolBar">
@@ -116,25 +112,7 @@
      <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
-    <string>Analysis</string>
-   </property>
-  </action>
-  <action name="action_Settings_Block_Generation">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
-   </property>
-   <property name="text">
-    <string>Block Generation</string>
-   </property>
-  </action>
-  <action name="action_Settings_Sequence_Editor">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
-   </property>
-   <property name="text">
-    <string>Sequence Editor</string>
+    <string>Analysis Settings</string>
    </property>
   </action>
   <action name="actionSave">
@@ -207,11 +185,6 @@
     <string>&amp;Close</string>
    </property>
   </action>
-  <action name="action_Show_Predefined_Methods">
-   <property name="text">
-    <string>Show Predefined Methods</string>
-   </property>
-  </action>
   <action name="action_Predefined_Methods_Config">
    <property name="icon">
     <iconset>
@@ -231,6 +204,15 @@
    </property>
    <property name="toolTip">
     <string>Customize fitting routines for pulsed measurements</string>
+   </property>
+  </action>
+  <action name="action_Settings_Generator">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
+   </property>
+   <property name="text">
+    <string>Pulse Generator Settings</string>
    </property>
   </action>
  </widget>

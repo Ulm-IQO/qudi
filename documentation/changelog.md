@@ -87,6 +87,9 @@ Changes/New features:
     * Pulsed object instances (blocks, ensembles, sequences) are serialized to a directory that can 
     be changed via ConfigOption. Each instance is a separate file so it is easier to manage a large 
     number of instances. In the future these instances need to be saved as StatusVars
+    * New dialog box for pulse generator hardware settings. Previously the settings were located 
+    directly in a tab of the PulsedMainGUI. Also added voltage settings for digital and analog 
+    channels that were missing in the GUI before. 
     * Lots of smaller changes to improve programming flexibility and robustness against users
     
 
