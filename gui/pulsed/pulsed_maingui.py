@@ -102,6 +102,18 @@ class AnalysisSettingDialog(QtWidgets.QDialog):
         uic.loadUi(ui_file, self)
 
 
+class GeneratorSettingDialog(QtWidgets.QDialog):
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_pulsed_main_gui_settings_generator.ui')
+
+        # Load it
+        super().__init__()
+
+        uic.loadUi(ui_file, self)
+
+
 class PredefinedMethodsTab(QtWidgets.QWidget):
     def __init__(self):
         # Get the path to the *.ui file
@@ -166,6 +178,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pm = PredefinedMethodsTab()
         self._sg = SequenceGeneratorTab()
         self._as = AnalysisSettingDialog()
+        self._pgs = GeneratorSettingDialog()
         self._pm_cfg = PredefinedMethodsConfigDialog()
 
         self._mw.tabWidget.addTab(self._pa, 'Analysis')
@@ -181,6 +194,7 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_predefined_methods_ui()
         self._activate_sequence_generator_ui()
         self._activate_analysis_settings_ui()
+        self._activate_generator_settings_ui()
         self._activate_predefined_methods_settings_ui()
 
         self._connect_main_window_signals()
@@ -204,6 +218,7 @@ class PulsedMeasurementGui(GUIBase):
         """
         self._deactivate_predefined_methods_settings_ui()
         self._deactivate_analysis_settings_ui()
+        self._deactivate_generator_settings_ui()
         self._deactivate_sequence_generator_ui()
         self._deactivate_predefined_methods_ui()
         self._deactivate_pulse_generator_ui()
@@ -245,6 +260,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_save.triggered.connect(self.save_clicked)
         self._mw.actionSave.triggered.connect(self.save_clicked)
         self._mw.action_Settings_Analysis.triggered.connect(self.show_analysis_settings)
+        self._mw.action_Settings_Generator.triggered.connect(self.show_generator_settings)
         self._mw.action_FitSettings.triggered.connect(self._fsd.show)
         return
 
@@ -258,6 +274,11 @@ class PulsedMeasurementGui(GUIBase):
         self._as.accepted.connect(self.update_analysis_settings)
         self._as.rejected.connect(self.keep_former_analysis_settings)
         self._as.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_analysis_settings)
+
+        # Connect signals used in pulse generator settings dialog
+        self._pgs.accepted.connect(self.apply_generator_settings)
+        self._pgs.rejected.connect(self.keep_former_generator_settings)
+        self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.apply_generator_settings)
 
         # Connect signals used in fit settings dialog
         self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
@@ -289,10 +310,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.curr_ensemble_generate_PushButton.clicked.connect(self.editor_generate_ensemble_clicked)
         self._pg.curr_ensemble_del_PushButton.clicked.connect(self.editor_delete_ensemble_clicked)
         self._pg.curr_ensemble_load_PushButton.clicked.connect(self.editor_load_ensemble_clicked)
-
-        self._pg.gen_use_interleave_CheckBox.stateChanged.connect(self.pulse_generator_settings_changed)
-        self._pg.gen_activation_config_ComboBox.currentIndexChanged.connect(self.pulse_generator_settings_changed)
-        self._pg.gen_sample_freq_DSpinBox.editingFinished.connect(self.pulse_generator_settings_changed)
         return
 
     def _connect_sequence_generator_tab_signals(self):
@@ -393,6 +410,7 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.action_save.triggered.disconnect()
         self._mw.actionSave.triggered.disconnect()
         self._mw.action_Settings_Analysis.triggered.disconnect()
+        self._mw.action_Settings_Generator.triggered.disconnect()
         self._mw.action_FitSettings.triggered.disconnect()
         return
 
@@ -406,6 +424,11 @@ class PulsedMeasurementGui(GUIBase):
         self._as.accepted.disconnect()
         self._as.rejected.disconnect()
         self._as.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+
+        # Connect signals used in pulse generator settings dialog
+        self._pgs.accepted.disconnect()
+        self._pgs.rejected.disconnect()
+        self._pgs.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
 
         # Connect signals used in fit settings dialog
         self._fsd.sigFitsUpdated.disconnect()
@@ -437,10 +460,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.curr_ensemble_generate_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_del_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_load_PushButton.clicked.disconnect()
-
-        self._pg.gen_use_interleave_CheckBox.stateChanged.disconnect()
-        self._pg.gen_activation_config_ComboBox.currentIndexChanged.disconnect()
-        self._pg.gen_sample_freq_DSpinBox.editingFinished.disconnect()
         return
 
     def _disconnect_sequence_generator_tab_signals(self):
@@ -664,6 +683,15 @@ class PulsedMeasurementGui(GUIBase):
 
         # Enable/Disable widgets
         if is_running:
+            self._pgs.gen_use_interleave_CheckBox.setEnabled(False)
+            self._pgs.gen_sample_freq_DSpinBox.setEnabled(False)
+            self._pgs.gen_activation_config_ComboBox.setEnabled(False)
+            for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
+                widget1.setEnabled(False)
+                widget2.setEnabled(False)
+            for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
+                widget1.setEnabled(False)
+                widget2.setEnabled(False)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
             self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
             self._pa.ana_param_x_axis_start_ScienDSpinBox.setEnabled(False)
@@ -676,10 +704,7 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_ignore_last_CheckBox.setEnabled(False)
             self._pa.ana_param_alternating_CheckBox.setEnabled(False)
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
-            self._pg.gen_use_interleave_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
-            self._pg.gen_sample_freq_DSpinBox.setEnabled(False)
-            self._pg.gen_activation_config_ComboBox.setEnabled(False)
             self._sg.load_sequence_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(True)
@@ -687,14 +712,20 @@ class PulsedMeasurementGui(GUIBase):
             if not self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.toggle()
         else:
+            self._pgs.gen_use_interleave_CheckBox.setEnabled(True)
+            self._pgs.gen_sample_freq_DSpinBox.setEnabled(True)
+            self._pgs.gen_activation_config_ComboBox.setEnabled(True)
+            for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
+                widget1.setEnabled(True)
+                widget2.setEnabled(True)
+            for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
+                widget1.setEnabled(True)
+                widget2.setEnabled(True)
             self._pa.ext_control_use_mw_CheckBox.setEnabled(True)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._pa.ana_param_fc_bins_ComboBox.setEnabled(True)
-            self._pg.gen_use_interleave_CheckBox.setEnabled(True)
             self._pg.load_ensemble_PushButton.setEnabled(True)
-            self._pg.gen_sample_freq_DSpinBox.setEnabled(True)
-            self._pg.gen_activation_config_ComboBox.setEnabled(True)
             self._sg.load_sequence_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setEnabled(True)
             self._mw.action_continue_pause.setEnabled(False)
@@ -854,6 +885,160 @@ class PulsedMeasurementGui(GUIBase):
     def show_analysis_settings(self):
         """ Open the Analysis Settings Window. """
         self._as.exec_()
+        return
+
+    ###########################################################################
+    #             Pulse generator settings dialog related methods             #
+    ###########################################################################
+    def _activate_generator_settings_ui(self):
+        """
+        Initialize the dialog for the pulse generator settings.
+        """
+        # Dynamically create channel related widgets and keep them in dictionaries
+        self._analog_chnl_setting_widgets = dict()
+        self._digital_chnl_setting_widgets = dict()
+        self.__create_analog_channel_setting_widgets()
+        self.__create_digital_channel_setting_widgets()
+
+        # Apply hardware constraints to widgets
+        pg_constr = self.pulsedmasterlogic().pulse_generator_constraints
+        self._pgs.gen_sample_freq_DSpinBox.setMinimum(pg_constr.sample_rate.min)
+        self._pgs.gen_sample_freq_DSpinBox.setMaximum(pg_constr.sample_rate.max)
+        self._pgs.gen_activation_config_ComboBox.clear()
+        self._pgs.gen_activation_config_ComboBox.addItems(list(pg_constr.activation_config.keys()))
+        for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
+            widget1.setRange(pg_constr.a_ch_amplitude.min, pg_constr.a_ch_amplitude.max)
+            widget2.setRange(pg_constr.a_ch_offset.min, pg_constr.a_ch_offset.max)
+        for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
+            widget1.setRange(pg_constr.d_ch_low.min, pg_constr.d_ch_low.max)
+            widget2.setRange(pg_constr.d_ch_high.min, pg_constr.d_ch_high.max)
+
+        # Set widget values/content
+        self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
+        return
+
+    def _deactivate_generator_settings_ui(self):
+        """
+        De-initialize the dialog for the pulse generator settings.
+        """
+        self._pgs.close()
+        return
+
+    def __create_analog_channel_setting_widgets(self):
+        """
+        Dynamically creates analog channel setting input widgets (like analog offset and pp-voltage)
+        from the currently set activation config.
+        """
+        if self._analog_chnl_setting_widgets:
+            self.log.debug('Unable to create analog channel settings. Widgets already exist.')
+            return
+
+        analog_channels = set()
+        for cfg in self.pulsedmasterlogic().pulse_generator_constraints.activation_config.values():
+            for ach in (chnl for chnl in cfg if chnl.startswith('a')):
+                analog_channels.add(ach)
+        analog_channels = sorted(analog_channels, key=lambda chnl: int(chnl.split('ch')[1]))
+
+        for i, chnl in enumerate(analog_channels, 1):
+            self._analog_chnl_setting_widgets[chnl] = (
+                QtWidgets.QLabel(text=chnl + ':'), ScienDSpinBox(), ScienDSpinBox())
+            self._analog_chnl_setting_widgets[chnl][0].setAlignment(
+                QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            self._analog_chnl_setting_widgets[chnl][1].setAlignment(
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            self._analog_chnl_setting_widgets[chnl][1].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self._analog_chnl_setting_widgets[chnl][1].setDecimals(6)
+            self._analog_chnl_setting_widgets[chnl][1].setSuffix('V')
+            self._analog_chnl_setting_widgets[chnl][2].setAlignment(
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            self._analog_chnl_setting_widgets[chnl][2].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self._analog_chnl_setting_widgets[chnl][2].setDecimals(6)
+            self._analog_chnl_setting_widgets[chnl][2].setSuffix('V')
+            self._pgs.ach_groupBox.layout().addWidget(
+                self._analog_chnl_setting_widgets[chnl][0], i, 0)
+            self._pgs.ach_groupBox.layout().addWidget(
+                self._analog_chnl_setting_widgets[chnl][1], i, 1)
+            self._pgs.ach_groupBox.layout().addWidget(
+                self._analog_chnl_setting_widgets[chnl][2], i, 2)
+        return
+
+    def __create_digital_channel_setting_widgets(self):
+        """
+        Dynamically creates digital channel setting input widgets (like analog offset and pp-voltage)
+        from the currently set activation config.
+        """
+        if self._digital_chnl_setting_widgets:
+            self.log.debug('Unable to create digital channel settings. Widgets already exist.')
+            return
+
+        digital_channels = set()
+        for cfg in self.pulsedmasterlogic().pulse_generator_constraints.activation_config.values():
+            for dch in (chnl for chnl in cfg if chnl.startswith('d')):
+                digital_channels.add(dch)
+        digital_channels = sorted(digital_channels, key=lambda chnl: int(chnl.split('ch')[1]))
+
+        for i, chnl in enumerate(digital_channels, 1):
+            self._digital_chnl_setting_widgets[chnl] = (
+                QtWidgets.QLabel(text=chnl + ':'), ScienDSpinBox(), ScienDSpinBox())
+            self._digital_chnl_setting_widgets[chnl][0].setAlignment(
+                QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            self._digital_chnl_setting_widgets[chnl][1].setAlignment(
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            self._digital_chnl_setting_widgets[chnl][1].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self._digital_chnl_setting_widgets[chnl][1].setDecimals(6)
+            self._digital_chnl_setting_widgets[chnl][1].setSuffix('V')
+            self._digital_chnl_setting_widgets[chnl][2].setAlignment(
+                QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+            self._digital_chnl_setting_widgets[chnl][2].setSizePolicy(
+                QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self._digital_chnl_setting_widgets[chnl][2].setDecimals(6)
+            self._digital_chnl_setting_widgets[chnl][2].setSuffix('V')
+            self._pgs.dch_groupBox.layout().addWidget(
+                self._digital_chnl_setting_widgets[chnl][0], i, 0)
+            self._pgs.dch_groupBox.layout().addWidget(
+                self._digital_chnl_setting_widgets[chnl][1], i, 1)
+            self._pgs.dch_groupBox.layout().addWidget(
+                self._digital_chnl_setting_widgets[chnl][2], i, 2)
+        return
+
+    def apply_generator_settings(self):
+        """ Apply the new settings """
+        if self._mw.action_run_stop.isChecked():
+            self.keep_former_generator_settings()
+            return
+        settings_dict = dict()
+        settings_dict['sample_rate'] = self._pgs.gen_sample_freq_DSpinBox.value()
+        settings_dict['activation_config'] = self._pgs.gen_activation_config_ComboBox.currentText()
+        settings_dict['interleave'] = self._pgs.gen_use_interleave_CheckBox.isChecked()
+
+        analog_ppamp = dict()
+        analog_offset = dict()
+        for chnl, (label, widget1, widget2) in self._analog_chnl_setting_widgets.items():
+            analog_ppamp[chnl] = widget1.value()
+            analog_offset[chnl] = widget2.value()
+        settings_dict['analog_levels'] = (analog_ppamp, analog_offset)
+
+        digital_low = dict()
+        digital_high = dict()
+        for chnl, (label, widget1, widget2) in self._digital_chnl_setting_widgets.items():
+            digital_low[chnl] = widget1.value()
+            digital_high[chnl] = widget2.value()
+        settings_dict['digital_levels'] = (digital_low, digital_high)
+
+        self.pulsedmasterlogic().set_pulse_generator_settings(settings_dict)
+        return
+
+    def keep_former_generator_settings(self):
+        """ Keep the old settings """
+        self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
+        return
+
+    def show_generator_settings(self):
+        """ Open the Pulse generator settings window. """
+        self._pgs.exec_()
         return
 
     ###########################################################################
@@ -1120,9 +1305,6 @@ class PulsedMeasurementGui(GUIBase):
     def _activate_pulse_generator_ui(self):
         """ Initialize, connect and configure the 'Pulse Generator' Tab.
         """
-        # Apply hardware constraints to input widgets
-        self._pg_apply_hardware_constraints()
-
         # Configure widgets
         self._pg.curr_ensemble_length_DSpinBox.setRange(0, np.inf)
         self._pg.curr_ensemble_length_DSpinBox.setDecimals(6, dynamic_precision=False)
@@ -1130,7 +1312,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.curr_ensemble_laserpulses_SpinBox.setRange(0, 2**31-1)
 
         # initialize widgets
-        self.pulse_generator_settings_updated(self.pulsedmasterlogic().pulse_generator_settings)
         self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
         self.fast_counter_settings_updated(self.pulsedmasterlogic().fast_counter_settings)
         self.update_block_dict(self.pulsedmasterlogic().saved_pulse_blocks)
@@ -1143,40 +1324,6 @@ class PulsedMeasurementGui(GUIBase):
         # TODO: implement
         pass
 
-    def _pg_apply_hardware_constraints(self):
-        """
-        Retrieve the constraints from pulser hardware and apply these constraints to the pulse
-        generator GUI elements.
-        """
-        # block signals
-        self._pg.gen_activation_config_ComboBox.blockSignals(True)
-        self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
-        # apply constraints
-        pulser_constr = self.pulsedmasterlogic().pulse_generator_constraints
-        self._pg.gen_activation_config_ComboBox.addItems(list(pulser_constr.activation_config))
-        self._pg.gen_sample_freq_DSpinBox.setMinimum(pulser_constr.sample_rate.min)
-        self._pg.gen_sample_freq_DSpinBox.setMaximum(pulser_constr.sample_rate.max)
-        # unblock signals
-        self._pg.gen_activation_config_ComboBox.blockSignals(False)
-        self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
-        return
-
-    @QtCore.Slot()
-    def pulse_generator_settings_changed(self):
-        """
-
-        @return:
-        """
-        if self._mw.action_run_stop.isChecked():
-            return
-        # FIXME: Properly implement amplitude
-        settings_dict = dict()
-        settings_dict['sample_rate'] = self._pg.gen_sample_freq_DSpinBox.value()
-        settings_dict['activation_config'] = self._pg.gen_activation_config_ComboBox.currentText()
-        settings_dict['interleave'] = self._pg.gen_use_interleave_CheckBox.isChecked()
-        self.pulsedmasterlogic().set_pulse_generator_settings(settings_dict)
-        return
-
     @QtCore.Slot(dict)
     def pulse_generator_settings_updated(self, settings_dict):
         """
@@ -1185,11 +1332,18 @@ class PulsedMeasurementGui(GUIBase):
         @return:
         """
         # block signals
-        self._pg.gen_sample_freq_DSpinBox.blockSignals(True)
-        self._pg.gen_use_interleave_CheckBox.blockSignals(True)
-        self._pg.gen_activation_config_ComboBox.blockSignals(True)
-        self._pg.gen_analog_channels_lineEdit.blockSignals(True)
-        self._pg.gen_digital_channels_lineEdit.blockSignals(True)
+        self._pgs.gen_sample_freq_DSpinBox.blockSignals(True)
+        self._pgs.gen_use_interleave_CheckBox.blockSignals(True)
+        self._pgs.gen_activation_config_ComboBox.blockSignals(True)
+        self._pgs.gen_analog_channels_lineEdit.blockSignals(True)
+        self._pgs.gen_digital_channels_lineEdit.blockSignals(True)
+        if hasattr(self, '_analog_chnl_setting_widgets'):
+            for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
+                widget1.blockSignals(True)
+                widget2.blockSignals(True)
+            for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
+                widget1.blockSignals(True)
+                widget2.blockSignals(True)
         self._pg.gen_laserchannel_ComboBox.blockSignals(True)
         self._pg.gen_syncchannel_ComboBox.blockSignals(True)
         self._pg.gen_gatechannel_ComboBox.blockSignals(True)
@@ -1198,9 +1352,8 @@ class PulsedMeasurementGui(GUIBase):
                 widget.blockSignals(True)
 
         # Set widgets
-        # FIXME: Properly implement amplitude and interleave
         if 'sample_rate' in settings_dict:
-            self._pg.gen_sample_freq_DSpinBox.setValue(settings_dict['sample_rate'])
+            self._pgs.gen_sample_freq_DSpinBox.setValue(settings_dict['sample_rate'])
         if 'activation_config' in settings_dict:
             config_name = settings_dict['activation_config'][0]
             digital_channels = sorted(
@@ -1209,12 +1362,12 @@ class PulsedMeasurementGui(GUIBase):
             analog_channels = sorted(
                 (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')),
                 key=lambda chnl: int(chnl.split('ch')[-1]))
-            index = self._pg.gen_activation_config_ComboBox.findText(config_name)
-            self._pg.gen_activation_config_ComboBox.setCurrentIndex(index)
+            index = self._pgs.gen_activation_config_ComboBox.findText(config_name)
+            self._pgs.gen_activation_config_ComboBox.setCurrentIndex(index)
             digital_str = str(digital_channels).strip('[]').replace('\'', '').replace(',', ' |')
             analog_str = str(analog_channels).strip('[]').replace('\'', '').replace(',', ' |')
-            self._pg.gen_digital_channels_lineEdit.setText(digital_str)
-            self._pg.gen_analog_channels_lineEdit.setText(analog_str)
+            self._pgs.gen_digital_channels_lineEdit.setText(digital_str)
+            self._pgs.gen_analog_channels_lineEdit.setText(analog_str)
 
             # Update channel ComboBoxes
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
@@ -1254,17 +1407,65 @@ class PulsedMeasurementGui(GUIBase):
                         index = widget.findText(former_channel)
                         widget.setCurrentIndex(index)
 
+            # Hide/Show analog and digital channel setting groupBoxes if no respective channel is
+            # active.
+            if len(analog_channels) == 0:
+                self._pgs.ach_groupBox.hide()
+            else:
+                self._pgs.ach_groupBox.show()
+            if len(digital_channels) == 0:
+                self._pgs.dch_groupBox.hide()
+            else:
+                self._pgs.dch_groupBox.show()
+
+            # Hide/Show channel settings for inactive/active channels
+            for chnl, (label, widget1, widget2) in self._analog_chnl_setting_widgets.items():
+                if chnl in analog_channels:
+                    label.show()
+                    widget1.show()
+                    widget2.show()
+                else:
+                    label.hide()
+                    widget1.hide()
+                    widget2.hide()
+            for chnl, (label, widget1, widget2) in self._digital_chnl_setting_widgets.items():
+                if chnl in digital_channels:
+                    label.show()
+                    widget1.show()
+                    widget2.show()
+                else:
+                    label.hide()
+                    widget1.hide()
+                    widget2.hide()
+
             # Set activation config in block editor
             self._pg.block_editor.set_activation_config(settings_dict['activation_config'][1])
+        if 'analog_levels' in settings_dict:
+            for chnl, pp_amp in settings_dict['analog_levels'][0].items():
+                self._analog_chnl_setting_widgets[chnl][1].setValue(pp_amp)
+            for chnl, offset in settings_dict['analog_levels'][1].items():
+                self._analog_chnl_setting_widgets[chnl][2].setValue(offset)
+        if 'digital_levels' in settings_dict:
+            for chnl, low_voltage in settings_dict['digital_levels'][0].items():
+                self._digital_chnl_setting_widgets[chnl][1].setValue(low_voltage)
+            for chnl, high_voltage in settings_dict['digital_levels'][1].items():
+                self._digital_chnl_setting_widgets[chnl][2].setValue(high_voltage)
         if 'interleave' in settings_dict:
-            self._pg.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
+            self._pgs.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
 
         # unblock signals
-        self._pg.gen_sample_freq_DSpinBox.blockSignals(False)
-        self._pg.gen_use_interleave_CheckBox.blockSignals(False)
-        self._pg.gen_activation_config_ComboBox.blockSignals(False)
-        self._pg.gen_analog_channels_lineEdit.blockSignals(False)
-        self._pg.gen_digital_channels_lineEdit.blockSignals(False)
+        self._pgs.gen_sample_freq_DSpinBox.blockSignals(False)
+        self._pgs.gen_use_interleave_CheckBox.blockSignals(False)
+        self._pgs.gen_activation_config_ComboBox.blockSignals(False)
+        self._pgs.gen_analog_channels_lineEdit.blockSignals(False)
+        self._pgs.gen_digital_channels_lineEdit.blockSignals(False)
+        if hasattr(self, '_analog_chnl_setting_widgets'):
+            for label, widget1, widget2 in self._analog_chnl_setting_widgets.values():
+                widget1.blockSignals(False)
+                widget2.blockSignals(False)
+            for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
+                widget1.blockSignals(False)
+                widget2.blockSignals(False)
         self._pg.gen_laserchannel_ComboBox.blockSignals(False)
         self._pg.gen_syncchannel_ComboBox.blockSignals(False)
         self._pg.gen_gatechannel_ComboBox.blockSignals(False)
