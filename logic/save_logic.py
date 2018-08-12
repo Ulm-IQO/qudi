@@ -28,6 +28,7 @@ import numpy as np
 import os
 import sys
 import time
+from qtpy import QtCore
 
 from collections import OrderedDict
 from core.module import ConfigOption
@@ -115,10 +116,14 @@ class FunctionImplementationError(Exception):
 
 
 class SaveLogic(GenericLogic):
+    """  A general class which saves all kinds of data in a general sense.
 
+    @signal sigSaveData()
     """
-    A general class which saves all kinds of data in a general sense.
-    """
+
+    sigSaveData = QtCore.Signal(object, object, object, object, object, object,
+                                object, object, object, object)
+
 
     _modclass = 'savelogic'
     _modtype = 'logic'
@@ -188,8 +193,8 @@ class SaveLogic(GenericLogic):
         self._daily_loghandler = None
 
     def on_activate(self):
-        """ Definition, configuration and initialisation of the SaveLogic.
-        """
+        """ Definition, configuration and initialisation of the SaveLogic. """
+
         if self.log_into_daily_directory:
             # adds a log handler for logging into daily directory
             self._daily_loghandler = DailyLogHandler(
@@ -201,6 +206,8 @@ class SaveLogic(GenericLogic):
             logging.getLogger().addHandler(self._daily_loghandler)
         else:
             self._daily_loghandler = None
+
+        self.sigSaveData.connect(self._save_data, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         if self._daily_loghandler is not None:
@@ -218,7 +225,7 @@ class SaveLogic(GenericLogic):
         """
         Sets the log level of the daily log handler
 
-        @param level int: log level, see logging
+        @param int level: log level, see logging
         """
         self._daily_loghandler.setLevel(level)
 
@@ -314,6 +321,17 @@ class SaveLogic(GenericLogic):
         YOU ARE RESPONSIBLE FOR THE IDENTIFIER! DO NOT FORGET THE UNITS FOR THE SAVED TIME
         TRACE/MATRIX.
         """
+        self.sigSaveData.emit(data, filepath, parameters, filename, filelabel,
+                              timestamp, filetype, fmt, delimiter, plotfig)
+
+    QtCore.Slot(object, object, object, object, object, object, object, object,
+                object, object)
+    def _save_data(self, data, filepath=None, parameters=None, filename=None, filelabel=None,
+                  timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None):
+        """ The actual method to be called by a signal thread. See in the method
+            'save_data' for method description.
+        """
+
         start_time = time.time()
         # Create timestamp if none is present
         if timestamp is None:
