@@ -234,63 +234,60 @@ class SaveLogic(GenericLogic):
         """
         General save routine for data.
 
-        @param dictionary data: Dictionary containing the data to be saved. The keys should be
-                                strings containing the data header/description. The corresponding
-                                items are one or more 1D arrays or one 2D array containing the data
-                                (list or numpy.ndarray). Example:
-
+        @param dict data: Dictionary containing the data to be saved. The keys should be strings
+                          containing the data header/description. The corresponding items are one or
+                          more 1D arrays or one 2D array containing the data (list or numpy.ndarray).
+                          Example:
                                     data = {'Frequency (MHz)': [1,2,4,5,6]}
                                     data = {'Frequency': [1, 2, 4], 'Counts': [234, 894, 743, 423]}
                                     data = {'Frequency (MHz),Counts':[[1,234], [2,894],...[30,504]]}
 
-        @param string filepath: optional, the path to the directory, where the data will be saved.
-                                If the specified path does not exist yet, the saving routine will
-                                try to create it.
-                                If no path is passed (default filepath=None) the saving routine will
-                                create a directory by the name of the calling module inside the
-                                daily data directory.
-                                If no calling module can be inferred and/or the requested path can
-                                not be created the data will be saved in a subfolder of the daily
-                                data directory called UNSPECIFIED
-        @param dictionary parameters: optional, a dictionary with all parameters you want to save in
-                                      the header of the created file.
-        @parem string filename: optional, if you really want to fix your own filename. If passed,
-                                the whole file will have the name
+        @param str filepath: optional, the path to the directory, where the data will be saved. If
+                             the specified path does not exist yet, the saving routine will try to
+                             create it.
+                             If no path is passed (default filepath=None) the saving routine will
+                             create a directory by the name of the calling module inside the daily
+                             data directory.
+                             If no calling module can be inferred and/or the requested path can not
+                             be created the data will be saved in a subfolder of the daily data
+                             directory called UNSPECIFIED.
+        @param dict parameters: optional, a dictionary with all parameters you want to save in the
+                                header of the created file.
+        @parem str filename: optional, if you really want to fix your own filename. If passed, the
+                             whole file will have the name
 
                                     <filename>
 
-                                If nothing is specified the save logic will generate a filename
-                                either based on the module name from which this method was called,
-                                or it will use the passed filelabel if that is speficied.
-                                You also need to specify the ending of the filename!
-        @parem string filelabel: optional, if filelabel is set and no filename was specified, the
-                                 savelogic will create a name which looks like
+                             If nothing is specified the save logic will generate a filename either
+                             based on the module name from which this method was called, or it will
+                             use the passed filelabel if that is speficied. You also need to
+                             specify the ending of the filename!
+        @parem str filelabel: optional, if filelabel is set and no filename was specified, the
+                              savelogic will create a name which looks like
 
-                                     YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
+                                    YYYY-MM-DD_HHh-MMm-SSs_<filelabel>.dat
 
-                                 The timestamp will be created at runtime if no user defined
-                                 timestamp was passed.
-        @param datetime timestamp: optional, a datetime.datetime object. You can create this object
-                                   with datetime.datetime.now() in the calling module if you want to
-                                   fix the timestamp for the filename. Be careful when passing a
-                                   filename and a timestamp, because then the timestamp will be
-                                   ignored.
-        @param string filetype: optional, the file format the data should be saved in. Valid inputs
-                                are 'text', 'xml' and 'npz'. Default is 'text'.
-        @param string or list of strings fmt: optional, format specifier for saved data. See python
-                                              documentation for
-                                              "Format Specification Mini-Language". If you want for
-                                              example save a float in scientific notation with 6
-                                              decimals this would look like '%.6e'. For saving
-                                              integers you could use '%d', '%s' for strings.
-                                              The default is '%.15e' for numbers and '%s' for str.
-                                              If len(data) > 1 you should pass a list of format
-                                              specifiers; one for each item in the data dict. If
-                                              only one specifier is passed but the data arrays have
-                                              different data types this can lead to strange
-                                              behaviour or failure to save right away.
-        @param string delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
-                                 for tab, ',' for a comma ect.
+                              The timestamp will be created at runtime if no user defined timestamp
+                              was passed.
+        @param datetime.datetime timestamp: optional, a datetime.datetime object. You can create
+                                   this object with datetime.datetime.now() in the calling module
+                                   if you want to fix the timestamp for the filename. Be careful
+                                   when passing a filename and a timestamp, because then the
+                                   timestamp will be ignored.
+        @param str filetype: optional, the file format the data should be saved in. Valid inputs are
+                            'text', 'xml' and 'npz'. Default is 'text'.
+        @param str or list of str fmt: optional, format specifier for saved data. See python
+                                       documentation for "Format Specification Mini-Language". If
+                                       you want for example save a float in scientific notation with
+                                       6 decimals this would look like '%.6e'. For saving integers
+                                       you could use '%d', '%s' for strings. The default is '%.15e'
+                                       for numbers and '%s' for str. If len(data) > 1 you should
+                                       pass a list of format specifiers; one for each item in the
+                                       data dict. If only one specifier is passed but the data
+                                       arrays have different data types this can lead to strange
+                                       behaviour or failure to save right away.
+        @param str delimiter: optional, insert here the delimiter, like '\n' for new line, '\t'
+                              for tab, ',' for a comma ect.
 
         1D data
         =======
@@ -324,8 +321,8 @@ class SaveLogic(GenericLogic):
         self.sigSaveData.emit(data, filepath, parameters, filename, filelabel,
                               timestamp, filetype, fmt, delimiter, plotfig)
 
-    QtCore.Slot(object, object, object, object, object, object, object, object,
-                object, object)
+    @QtCore.Slot(object, object, object, object, object, object, object, object,
+                 object, object)
     def _save_data(self, data, filepath=None, parameters=None, filename=None, filelabel=None,
                   timestamp=None, filetype='text', fmt='%.15e', delimiter='\t', plotfig=None):
         """ The actual method to be called by a signal thread. See in the method
@@ -500,11 +497,12 @@ class SaveLogic(GenericLogic):
                                     fmt=fmt, header=header, delimiter=delimiter, comments='#',
                                     append=False)
         else:
-            self.log.error('Only saving of data as textfile and npz-file is implemented. Filetype "{0}" is not '
-                           'supported yet. Saving as textfile.'.format(filetype))
-            self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
-                                    fmt=fmt, header=header, delimiter=delimiter, comments='#',
-                                    append=False)
+            self.log.error('Only saving of data as textfile and npz-file is implemented. '
+                           'Filetype "{0}" is not supported yet. Saving as textfile.'.format(filetype))
+            for identifier_str in data:
+                self.save_array_as_text(data=data[identifier_str], filename=filename, filepath=filepath,
+                                        fmt=fmt, header=header, delimiter=delimiter, comments='#',
+                                        append=True)
 
         #--------------------------------------------------------------------------------------------
         # Save thumbnail figure of plot
@@ -620,7 +618,7 @@ class SaveLogic(GenericLogic):
             folderlist = [d for d in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, d))]
             # Search if there is a folder which starts with the current date:
             for entry in folderlist:
-                if (time.strftime("%Y%m%d") in (entry[:2])):
+                if time.strftime("%Y%m%d") in entry:
                     current_dir = os.path.join(current_dir, str(entry))
                     folder_exists = True
                     break
