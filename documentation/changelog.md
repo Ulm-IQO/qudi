@@ -23,6 +23,7 @@ Changes/New features:
 * Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
 * Added a how-to-participate guide to the documentation
 * Added installation options guide to the documentation
+* Savelogic becomes decoupled from main thread and saving happens in a non blocking way.
 
 Config changes:
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
