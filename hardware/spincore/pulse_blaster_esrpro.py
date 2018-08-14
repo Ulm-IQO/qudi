@@ -135,7 +135,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 
     #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-    GRAN_MIN = 2   # minimal possible granularity in time, in ns.
+    GRAN_MIN = 1   # minimal possible granularity in time, in ns.
     LEN_MIN = 12   # minimal possible length of a whole sequence, in ns
     SAMPLE_RATE = int(1/GRAN_MIN * 1000) # sample frequency in MHz.
 
@@ -932,17 +932,17 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         bitmask = self._convert_to_bitmask(ch_list)
 
-        if length == 2:
+        if np.isclose(length, self.GRAN_MIN*1):
             flags = self.ONE_PERIOD | bitmask
-        elif length == 4:
+        elif np.isclose(length, self.GRAN_MIN*2):
             flags = self.TWO_PERIOD | bitmask
-        elif length == 6:
+        elif np.isclose(length, self.GRAN_MIN*3):
             flags = self.THREE_PERIOD | bitmask
-        elif length == 8:
+        elif np.isclose(length, self.GRAN_MIN*4):
             flags = self.FOUR_PERIOD | bitmask
-        elif length == 10:
+        elif np.isclose(length, self.GRAN_MIN*5):
             flags = self.FIVE_PERIOD | bitmask
-        elif length > 11:
+        elif length >= self.GRAN_MIN*6:
             flags = self.ON | bitmask
 
         self.start_programming()
