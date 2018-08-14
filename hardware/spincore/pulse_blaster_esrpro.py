@@ -324,7 +324,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         went wrong.
         """
 
-        # self._dll.pb_get_error.restype = ctypes.c_char_p
+        self._dll.pb_get_error.restype = ctypes.c_char_p
 
         # The output value of this function is as declared above a pointer
         # to an address where the received data is stored as characters
@@ -340,7 +340,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      error.
         """
 
-        # self._dll.pb_count_boards.restype = ctypes.c_int
+        self._dll.pb_count_boards.restype = ctypes.c_int
 
         return self._dll.pb_count_boards()
 
@@ -376,6 +376,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                         returned. The version is a string in the form YYYYMMDD.
         """
         # .decode converts char into string:
+        self._dll.pb_get_version.restype = ctypes.c_char_p
         return self._dll.pb_get_version().decode('utf-8')
 
     def get_firmware_id(self):
@@ -383,7 +384,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         @return int: Returns the firmware id containing the version string.
         """
-        # self._dll.pb_get_firmware_id.restype = ctypes.c_uint
+        self._dll.pb_get_firmware_id.restype = ctypes.c_uint
 
         firmware_id = self._dll.pb_get_firmware_id()
 
@@ -522,7 +523,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # it cannot be detected whether the value was properly set. There is
         # also no get_core_clock method available. Strange.
 
-        return self._dll.pb_core_clock(clock_freq)
+        clock = ctypes.c_double(clock_freq)
+
+        return self._dll.pb_core_clock(clock)
 
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
@@ -598,7 +601,20 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         channel during a given time (here called 'length').
         """
 
-        # length = ctypes.c_double(length)
+        # if length == 2:
+        #     flags = self.ONE_PERIOD | flags
+        # elif length == 4:
+        #     flags = self.TWO_PERIOD | flags
+        # elif length == 6:
+        #     flags = self.THREE_PERIOD | flags
+        # elif length == 8:
+        #     flags = self.FOUR_PERIOD | flags
+        # elif length == 10:
+        #     flags = self.FIVE_PERIOD | flags
+        # elif length > 11:
+        #     flags = self.ON | flags
+
+        length = ctypes.c_double(length)
 
         return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
 
@@ -633,7 +649,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         bit representation, as it is mentioned in the spinapi documentation.
         """
 
-        # self._dll.pb_read_status.restype = ctypes.c_uint32
+        self._dll.pb_read_status.restype = ctypes.c_uint32
 
         return self._dll.pb_read_status()
 
@@ -645,7 +661,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         @return str: containing the status message of the board.
         """
-        # self._dll.pb_status_message.restype = ctypes.c_char_p
+        self._dll.pb_status_message.restype = ctypes.c_char_p
 
         return self._dll.pb_status_message().decode('utf8')
 
@@ -707,12 +723,12 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         bitmask = self._convert_to_bitmask(active_channels)
         # with the branch or the stop command
         if loop:
-            num = self._write_pulse(flags=self.ON | bitmask,
+            num = self._write_pulse(flags=bitmask,
                                     inst=self.BRANCH,
                                     inst_data=start_pulse,
                                     length=length)
         else:
-            num = self._write_pulse(flags=self.ON | bitmask,
+            num = self._write_pulse(flags=bitmask,
                                     inst=self.STOP,
                                     inst_data=None,
                                     length=length)
@@ -891,7 +907,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def activate_channels(self, ch_list, length=100, immediate_start=True):
+    def activate_channels(self, ch_list, length=10, immediate_start=True):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
@@ -931,7 +947,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         self.start_programming()
         retval = self._write_pulse(flags=flags,
-                                   inst=self.CONTINUE,
+                                   inst=self.BRANCH,
                                    inst_data=0,
                                    length=length)
         self.stop_programming()
