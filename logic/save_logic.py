@@ -118,11 +118,17 @@ class FunctionImplementationError(Exception):
 class SaveLogic(GenericLogic):
     """  A general class which saves all kinds of data in a general sense.
 
-    @signal sigSaveData()
+    @signal sigSaveData(object, object, object, object, object, object, object,
+                        object, object, object):
+                        will be used internally to decouple the save procedure.
+    @signal sigSaveComplete(str): Will indicate that the save is complete and
+                                  emit the path where the data has saved to.
     """
 
     sigSaveData = QtCore.Signal(object, object, object, object, object, object,
                                 object, object, object, object)
+
+    sigSaveComplete = QtCore.Signal(str)
 
 
     _modclass = 'savelogic'
@@ -562,6 +568,8 @@ class SaveLogic(GenericLogic):
             plt.close(plotfig)
             self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
             #----------------------------------------------------------------------------------
+
+        self.sigSaveComplete.emit(filepath)
 
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):
