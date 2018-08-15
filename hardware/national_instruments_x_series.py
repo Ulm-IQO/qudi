@@ -22,6 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import re
+import time
+
 from collections import OrderedDict
 
 import PyDAQmx as daq
@@ -2240,27 +2242,41 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         # The clock for the finite_counter is created on the same principle as it is
         # for the counter. Just to keep consistency, this function is a wrapper
         # around the set_up_clock.
+        channel = "Scanner_clock"
         if clock_frequency is None:
             clock_frequency = self._finite_clock_frequency
         else:
             self._finite_clock_frequency = clock_frequency
 
+        # use the correct clock channel in this method
+        # Todo: this has tio be done like in new clock normally .
+        # The way it is done here is just so it works with confocal
+        if clock_channel is None:
+            clock_channel = self._scanner_clock_channel
+
+        # check whether only one clock pair is available, since some NI cards
+        # only one clock channel pair.
+        if self._scanner_clock_channel == self._clock_channel:
+            if not ((self._clock_daq_task is None) and (self._scanner_clock_daq_task is None)):
+                self.log.error(
+                    'Only one clock channel is available!\n'
+                    'Another clock is already running, close this one first '
+                    'in order to use it for your purpose!')
+                return -1
+
+        if self._scanner_clock_daq_task is not None:
+            self.log.error('Another scanner clock is already running, close this one first.')
+            return -1
         # Todo: Check if this divided by 2 is sensible
-        retval = self.set_up_clock(
-            clock_frequency=clock_frequency / 2,  # because it will be multiplied by 2 in the setup
-            clock_channel=clock_channel,
-            scanner=True)
+        retval = self.set_up_clock_new(channel,
+                                       clock_frequency=clock_frequency,
+                                       clock_channel=clock_channel)
+
         if retval == 0:
             # Todo: This is a hot fix. It only makes sense to fix this when NIDAQ is rewritten completely
-            channel = "Scanner_clock"
-            # check if no task for channel to be added is configured
-            if channel in self._clock_daq_task_new:
-                self.log.error('The same channel %s already has an existing clock task running, '
-                               'close this one first.', channel)
-                return -1
-            self._clock_daq_task_new[channel] = self._scanner_clock_daq_task
-            self._clock_channel_new[channel] = self._scanner_clock_channel
-            self._clock_frequency_new[channel] = self._scanner_clock_frequency
+            self._scanner_clock_daq_task = self._clock_daq_task_new[channel]
+            self._scanner_clock_frequency = self._clock_frequency_new[channel]
+            self._scanner_clock_channel = self._clock_channel_new[channel]
             return 0
         else:
             return retval
@@ -2382,27 +2398,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        retval = self.close_clock(scanner=True)
+        retval = self.close_clock_new("Scanner_clock")
         if retval == 0:
-            # Todo: This is a hot fix. It only makes sense to fix this when NIDAQ is rewritten completely
-            if "Scanner_clock" in self._clock_daq_task_new:
-                my_task = self._clock_daq_task_new.pop("Scanner_clock")
-                my_channel = self._clock_channel_new.pop("Scanner_clock")
-                my_frequency = self._clock_frequency_new.pop("Scanner_clock")
-            else:
-                self.log.error("There was no task specified for the clock Scanner Clock that was tried to be closed.")
-                return -1
-
-            # removes channels from task list that used the same task
-            key_list = []
-            for task_key, value in self._clock_daq_task_new.items():
-                if value == my_task:
-                    key_list.append(task_key)
-            for item in key_list:
-                self._clock_daq_task_new.pop(item)
-                self._clock_channel_new.pop(item)
-                self._clock_frequency_new.pop(item)
-            return 0
+            self._scanner_clock_daq_task = None
         else:
             return retval
 
@@ -2633,8 +2631,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             # add sample number for this channel
             self._analogue_input_samples[channel] = self._analogue_input_samples[analogue_channel_orig]
             if analogue_channel_orig in self._clock_daq_task_new:
-                # add channels to clock task if this is a clocked task
-                self.add_clock_task_to_channel(analogue_channel_orig, analogue_channels)
+                # add channels to clock task if this is a clocked task, but only if it doesn`t exist yet ( necessary for stepping )
+                # Todo: This can be done better
+                for channel in analogue_channels:
+                    if channel not in self._clock_daq_task_new:
+                        self.add_clock_task_to_channel(analogue_channel_orig, [channel])
         return 0
 
     def set_up_continuous_analog_reader(self, analogue_channel):
