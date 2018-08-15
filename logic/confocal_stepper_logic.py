@@ -417,6 +417,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.initialize_image()
         self._lines_correct_z = 5
         self._z_direction_correction = True
+        self._save_positions = True
         # Step values definitions
 
         # Sets connections between signals and functions
@@ -636,7 +637,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.full_image_back = np.zeros(
                 (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
             for i in range(self._steps_scan_first_line):
-                for j in range(self._steps_scan_second_line):
+                for j in range(self._step_counter):
                     self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
                                                                                 self.image_raw[j, i, 0])
                     self.full_image[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
@@ -821,7 +822,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
                         self._steps_scan_first_line, self._ai_counter):
                     self.stopRequested = True
-
         self.initialize_image()
         self.signal_image_updated.emit()
 
@@ -1298,7 +1298,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def sort_counted_data(self, counts):
         self.stepping_raw_data[self._step_counter] = counts[0]
         self.stepping_raw_data_back[self._step_counter] = np.flipud(counts[1])
-
         if self.map_scan_position:
             self._scan_pos_voltages[self._step_counter, :, 0] = counts[2][:self._steps_scan_first_line]
             self._scan_pos_voltages[self._step_counter, :, 1] = \
@@ -1312,7 +1311,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._ai_counter_voltages[self._step_counter] = \
                     counts[2][self._steps_scan_first_line * 2:self._steps_scan_first_line * 3]
                 self._ai_counter_voltages_back[self._step_counter] = \
-                    np.flipud(counts[3])[self._steps_scan_first_line * 2:self._steps_scan_first_line * 3]
+                    np.flipud(counts[3][self._steps_scan_first_line * 2:self._steps_scan_first_line * 3])
             else:
                 self._ai_counter_voltages[self._step_counter] = counts[2]
                 self._ai_counter_voltages_back[self._step_counter] = np.flipud(
@@ -1497,7 +1496,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
         data_back = OrderedDict()
-        if self.map_scan_position:
+        if self.map_scan_position and self._save_positions:
             data['x position (mm)'] = self.full_image[:, :, 0].flatten()
             data['y position (mm)'] = self.full_image[:, :, 1].flatten()
             data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
@@ -1803,10 +1802,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                   verticalalignment='center',
                                   rotation=90
                                   )
-            #self.signal_draw_figure_completed.emit()
+            # self.signal_draw_figure_completed.emit()
             return fig, fig2
 
-        #self.signal_draw_figure_completed.emit()
+        # self.signal_draw_figure_completed.emit()
         return fig, None
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
 

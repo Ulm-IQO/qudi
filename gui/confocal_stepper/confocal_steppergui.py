@@ -823,7 +823,7 @@ class ConfocalStepperGui(GUIBase):
         pass
 
     def update_save_position(self):
-        pass
+        self._stepper_logic._save_positions = self._mw.save_pos_feedback_checkBox.isChecked()
 
     ################## Tool bar ##################
     def disable_step_actions(self):
@@ -1070,6 +1070,7 @@ class ConfocalStepperGui(GUIBase):
         # Now update image with new color scale, and update colorbar
         self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
         cb_range = self.get_cb_range()
+        self.step_image.setImage(image=step_image_data, levels=(cb_range[0], cb_range[1]))
         self.refresh_colorbar()
 
         # Unlock state widget if scan is finished
