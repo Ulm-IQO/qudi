@@ -325,10 +325,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             if scanner:
                 self._scanner_clock_daq_task = my_clock_daq_task
+                self._clock_channel_new["Scanner"] = self._scanner_clock_channel
             else:
                 # actually start the preconfigured clock task
                 daq.DAQmxStartTask(my_clock_daq_task)
                 self._clock_daq_task = my_clock_daq_task
+                self._clock_channel_new["Counter"] = self._clock_channel
         except:
             self.log.exception('Error while setting up clock.')
             return -1
@@ -686,8 +688,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             # Set the task handle to None as a safety
             if scanner:
                 self._scanner_clock_daq_task = None
+                self._clock_channel_new.pop("Scanner")
             else:
                 self._clock_daq_task = None
+                self._clock_channel_new.pop("Counter")
         except:
             self.log.exception('Could not close clock.')
             return -1
@@ -3261,7 +3265,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 length)
         except:
             self.log.exception("Not possible to configure timing for analogue channel %s", analogue_channel)
-            return -11
+            return -1
         return 0
 
     def analogue_scan_line(self, analogue_channel, voltages):
