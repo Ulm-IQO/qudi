@@ -3243,7 +3243,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # add to this task
                 self._analogue_output_daq_tasks[analogue_channel],
                 # use this channel as clock
-                self._clock_channel + 'InternalOutput',
+                self._clock_channel_new[analogue_channel] + 'InternalOutput',
                 # Maximum expected clock frequency
                 self._analogue_output_clock_frequency,
                 # Generate sample on falling edge
