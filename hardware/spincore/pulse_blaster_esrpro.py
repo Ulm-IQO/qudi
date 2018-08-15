@@ -35,29 +35,10 @@ from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 
 
-import logging
-# logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
-log = logging.getLogger(__name__)
-
-class SpinAPI(object):
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 #class PulseBlasterESRPRO(Base, PulserInterface):
-    """ UNSTABLE: ALEX
+    """ STABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
 
@@ -95,19 +76,34 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         pulseblaster:
             module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
             #library_file: 'spinapi64.dll' # optional, name of the library file or even whole path to the file
+            clock_frequency: 500 # in MHz
+            min_instr_len: 5    # number of clock cycles for minimal instruction
+                                # normally it is 5 but for some boards it is 6
+                                # or for old boards it might be even 7
+                                # this corresponds to a minimal instruction
+                                # length of  (1/clock_frequency)*min_instr_len
+            debug_mode: False   # optional, to set the debug mode on or off.
 
     Dummy config for the pulser interface:
 
         dummypulser:
             module.Class: 'pulser_dummy.PulserDummy'
+
     """
     _modclass = 'PulseBlasterESRPRO'
     _modtype = 'hardware'
 
     _library_path = ConfigOption('library_path', default='', missing='info')
 
+    # The clock freqency which is necessary for the board.
+    _clock_freq = ConfigOption('clock_frequency', default=500, missing='warn')
+    # in clock cycles:
+    _min_instr_len = ConfigOption('min_instr_len', default=5, missing='warn')
+
+    _debug_mode = ConfigOption('debug_mode', default=False)
+
     # the library pointer is saved here
-    _dll = None
+    _lib = None
 
     PULSE_PROGRAM = 0
 
@@ -144,10 +140,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     FIVE_PERIOD = 0xA00000  # 101       |       5       | 10
     ON = 0xE00000           # 111       |      > 5      | No short pulse
 
-    # Therefore, if the whole sequence has to be shorted (!) than 10ns, the
-    # special period flags have to be used, otherwise the ON flag needs to be
-    # used.
-    # SIX_PERIOD = 0xC00000   # 110 => not used!
+    # Therefore, if the instruction has to be shorted than 10ns, the
+    # special period flags have to be used, but the minimal instruction length
+    # of 10ns should be used. Otherwise, if the length is greater than 10ns the
+    # ON flag needs to be used.
+    SIX_PERIOD = 0xC00000   # 110 => used for some old boards
+
+    # To understand the usage of those flags, please refer to the manual on
+    # p. 28, Fig. 16 (for the manual version 2017/09/04).
 
     # Useful Constants for Output Pattern and Control Word, max size is 24bits
     ALL_FLAGS_ON = 0x1FFFFF   # set bits 0-20 to 1
@@ -155,9 +155,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 
     #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-    GRAN_MIN = 2   # minimal possible granularity in time, in ns.
-    LEN_MIN = 12   # minimal possible length of a whole sequence, in ns
-    SAMPLE_RATE = int(1/GRAN_MIN * 1000) # sample frequency in MHz.
+    GRAN_MIN = (1000/_clock_freq)       # minimal possible granularity in time, in ns.
+    LEN_MIN = GRAN_MIN*_min_instr_len   # minimal possible length of a whole sequence, in ns
+    SAMPLE_RATE = _clock_freq # sample frequency in MHz.
 
     STATUS_DICT = {1: 'Stopped',
                    2: 'Reset',
@@ -182,6 +182,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     channel_states = switch_states.copy()
 
 
+    #FIXME: implement a way to store already create waveforms
     # _current_pb_waveform_name = StatusVar(name='current_pb_waveform_name',
     #                                       default='')
     # _current_pb_waveform = StatusVar(name='current_pb_waveform',
@@ -239,9 +240,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'from SpinCore.')
             return -1
 
-        self._dll = self._load_library(lib_path)
+        self._lib = ctypes.cdll.LoadLibrary(lib_path)
 
-        # self._dll = ctypes.cdll.LoadLibrary(lib_path)
+        # self._lib = ctypes.cdll.LoadLibrary(lib_path)
         self.log.debug('SpinCore library loaded from: {0}'.format(lib_path))
         self.open_connection()
 
@@ -256,54 +257,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         self.stop()
         self.close_connection()
-
-
-    def _load_library(self, lib_path):
-        """ Load the library and configure it.
-
-        @param str lib_path: full path to the library.
-
-        @return library object: the pointer to the loaded library with the
-                                configured function interfaces.
-        """
-
-        lib = ctypes.cdll.LoadLibrary(lib_path)
-
-        lib.pb_get_error.restype = ctypes.c_char_p
-
-        lib.pb_count_boards.restype = ctypes.c_int
-
-        lib.pb_select_board.argtype = [ctypes.c_int]
-        lib.pb_select_board.restype = ctypes.c_void_p
-
-        lib.pb_get_version.restype = ctypes.c_char_p
-
-        lib.pb_get_firmware_id.restype = ctypes.c_uint
-
-        lib.pb_start.restype = ctypes.c_int
-
-        lib.pb_stop.restype = ctypes.c_int
-
-        lib.pb_reset.restype = ctypes.c_int
-
-        lib.pb_init.restype = ctypes.c_int
-
-        lib.pb_start_programming.restype = ctypes.c_int
-
-        lib.pb_stop_programming.restype = ctypes.c_int
-
-        lib.pb_core_clock.argtype = [ctypes.c_double]
-        lib.pb_core_clock.restype = ctypes.c_void_p
-
-        lib.pb_inst_pbonly.argtype = [ctypes.c_uint, ctypes.c_int, ctypes.c_int,
-                                      ctypes.c_double]
-        lib.pb_inst_pbonly.restype = ctypes.c_int
-
-        lib.pb_read_status.restype = ctypes.c_uint32
-
-        lib.pb_status_message.restype = ctypes.c_char_p
-
-        return lib
 
     # =========================================================================
     # Below all the low level routines which are wrapped with ctypes which
@@ -327,8 +280,17 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             err_str = self.get_error_string()
 
+            # Catch a very specific error code, where the error is normally not
+            # provided, just in the debug mode.
+            if func_val == -91 and err_str == '':
+
+                err_str = ('Instruction length is shorter then the minimal '
+                           'allowed length! Dependant on your device, it '
+                           'should be at least 5-7 clock cycles. Check the '
+                           'manual for more information.')
+
             self.log.error('Error in PulseBlaster with errorcode {0}:\n'
-                           '{1}'.format(func_val, err_str))
+                            '{1}'.format(func_val, err_str))
         return func_val
 
 
@@ -344,13 +306,13 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         went wrong.
         """
 
-        # self._dll.pb_get_error.restype = ctypes.c_char_p
+        self._lib.pb_get_error.restype = ctypes.c_char_p
 
         # The output value of this function is as declared above a pointer
         # to an address where the received data is stored as characters
         # (8bit per char). Use the decode method to convert a char to a
         # string.
-        return self._dll.pb_get_error().decode('utf8')
+        return self._lib.pb_get_error().decode('utf8')
 
     def count_boards(self):
         """ Return the number of SpinCore boards present in your system.
@@ -360,9 +322,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      error.
         """
 
-        # self._dll.pb_count_boards.restype = ctypes.c_int
+        # self._lib.pb_count_boards.restype = ctypes.c_int
 
-        return self._dll.pb_count_boards()
+        return self._lib.pb_count_boards()
 
     def select_board(self, board_num=0):
         """ Select the proper SpinCore card, if multiple are present.
@@ -387,7 +349,26 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'was passed:\n{0}'.format(board_num))
             return
 
-        self.check(self._dll.pb_select_board(board_num))
+        self.check(self._lib.pb_select_board(board_num))
+
+    def set_debug_mode(self, value):
+        """ Set the debug mode.
+
+        @param bool value: State to set the debug mode to.
+
+        @return: the current debug mode.
+        """
+
+        self._debug_mode = value
+        self._lib.pb_set_debug(int(value))  # convert to 0=False or 1=True.
+        return self._debug_mode
+
+    def get_debug_mode(self):
+        """ Retrieve whether debug mode is set.
+
+        @return bool: the current debug mode
+        """
+        return self._debug_mode
 
     def get_version(self):
         """Get the version date of this library.
@@ -395,17 +376,19 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         @return string: A string indicating the version of this library is
                         returned. The version is a string in the form YYYYMMDD.
         """
+
+        self._lib.pb_get_version.restype = ctypes.c_char_p
         # .decode converts char into string:
-        return self._dll.pb_get_version().decode('utf-8')
+        return self._lib.pb_get_version().decode('utf-8')
 
     def get_firmware_id(self):
         """Gets the current version of the SpinPTS API being used.
 
         @return int: Returns the firmware id containing the version string.
         """
-        # self._dll.pb_get_firmware_id.restype = ctypes.c_uint
+        # self._lib.pb_get_firmware_id.restype = ctypes.c_uint
 
-        firmware_id = self._dll.pb_get_firmware_id()
+        firmware_id = self._lib.pb_get_firmware_id()
 
         if firmware_id == 0:
             self.log.info('Retrieving the Firmware ID is not a feature of this '
@@ -425,7 +408,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         can also be accomplished through hardware, please see your board's
         manual for details on how to accomplish this.
         """
-        return self.check(self._dll.pb_start())
+        return self.check(self._lib.pb_start())
 
     def stop(self):
         """Stops output of board.
@@ -441,7 +424,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         trigger.
         """
 
-        return self.check(self._dll.pb_stop())
+        return self.check(self._lib.pb_stop())
 
     def reset_device(self):
         """ Stops the output of board and resets the PulseBlaster Core.
@@ -454,7 +437,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         again using self.start() or a hardware trigger.
         """
 
-        return self.check(self._dll.pb_reset())
+        return self.check(self._lib.pb_reset())
 
     def open_connection(self):
         """Initializes the board.
@@ -469,7 +452,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         board to initialize.
         """
         self.log.debug('Open connection to SpinCore library.')
-        ret_val = self.check(self._dll.pb_init())
+        ret_val = self.check(self._lib.pb_init())
         self._set_core_clock(self.SAMPLE_RATE)
         return ret_val
 
@@ -486,7 +469,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         continue to run indefinitely.
         """
         self.log.debug('Close connection to SpinCore library.')
-        return self.check(self._dll.pb_close())
+        return self.check(self._lib.pb_close())
 
     def start_programming(self):
         """ Tell the board to start programming one of the onboard devices.
@@ -507,7 +490,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         the PULSE_PROGRAM = 0.
         """
 
-        return self.check(self._dll.pb_start_programming(self.PULSE_PROGRAM))
+        return self.check(self._lib.pb_start_programming(self.PULSE_PROGRAM))
 
     def stop_programming(self):
         """ Finishes the programming for a specific onboard devices.
@@ -517,7 +500,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      success.
         """
 
-        return self.check(self._dll.pb_stop_programming())
+        return self.check(self._lib.pb_stop_programming())
 
     def _set_core_clock(self, clock_freq):
         """ Tell the library what clock frequency the board uses.
@@ -542,7 +525,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # it cannot be detected whether the value was properly set. There is
         # also no get_core_clock method available. Strange.
 
-        return self._dll.pb_core_clock(clock_freq)
+        return self._lib.pb_core_clock(clock_freq)
 
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
@@ -620,7 +603,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         # length = ctypes.c_double(length)
 
-        return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
+        return self.check(self._lib.pb_inst_pbonly(flags, inst, inst_data, length))
 
     def get_status_bit(self):
         """Read status from the board.
@@ -653,9 +636,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         bit representation, as it is mentioned in the spinapi documentation.
         """
 
-        # self._dll.pb_read_status.restype = ctypes.c_uint32
+        # self._lib.pb_read_status.restype = ctypes.c_uint32
 
-        return self._dll.pb_read_status()
+        return self._lib.pb_read_status()
 
     def get_status_message(self):
         """ Read status message from the board.
@@ -665,9 +648,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         @return str: containing the status message of the board.
         """
-        # self._dll.pb_status_message.restype = ctypes.c_char_p
+        # self._lib.pb_status_message.restype = ctypes.c_char_p
 
-        return self._dll.pb_status_message().decode('utf8')
+        return self._lib.pb_status_message().decode('utf8')
 
     # =========================================================================
     # Below all the higher level routines are situated which use the
