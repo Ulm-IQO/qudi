@@ -155,7 +155,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 
     #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-    GRAN_MIN = (1000/_clock_freq)       # minimal possible granularity in time, in ns.
+    GRAN_MIN = (1000 / _clock_freq)       # minimal possible granularity in time, in ns.
     LEN_MIN = GRAN_MIN*_min_instr_len   # minimal possible length of a whole sequence, in ns
     SAMPLE_RATE = _clock_freq # sample frequency in MHz.
 
@@ -527,7 +527,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         clock = ctypes.c_double(clock_freq)
 
-        return self._dll.pb_core_clock(clock)
+        return self._lib.pb_core_clock(clock)
 
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
@@ -605,7 +605,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         length = ctypes.c_double(length)
 
-        return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
+        return self.check(self._lib.pb_inst_pbonly(flags, inst, inst_data, length))
 
     def get_status_bit(self):
         """Read status from the board.
