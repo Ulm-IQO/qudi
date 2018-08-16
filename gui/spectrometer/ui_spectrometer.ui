@@ -165,8 +165,8 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/fontawesome_5_2/svgs/regular/square.svg</normaloff>
-     <normalon>../../artwork/icons/fontawesome_5_2/svgs/regular/check-square.svg</normalon>../../artwork/icons/fontawesome_5_2/svgs/regular/square.svg</iconset>
+     <normaloff>../../artwork/styles/application/qdark/checkbox_unchecked.png</normaloff>
+     <normalon>../../artwork/styles/application/qdark/checkbox_checked.png</normalon>../../artwork/styles/application/qdark/checkbox_unchecked.png</iconset>
    </property>
    <property name="text">
     <string>Correct Background</string>
