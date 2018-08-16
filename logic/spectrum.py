@@ -43,7 +43,6 @@ class SpectrumLogic(GenericLogic):
 
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
-    odmrlogic1 = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
 
     def __init__(self, **kwargs):
@@ -65,7 +64,6 @@ class SpectrumLogic(GenericLogic):
         self.repetition_count = 0    # count loops for differential spectrum
 
         self._spectrometer_device = self.spectrometer()
-        self._odmr_logic = self.odmrlogic1()
         self._save_logic = self.savelogic()
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
