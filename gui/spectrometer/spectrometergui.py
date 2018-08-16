@@ -49,7 +49,7 @@ class SpectrometerGui(GUIBase):
     _modtype = 'gui'
 
     # declare connectors
-    spectrumlogic1 = Connector(interface='SpectrumLogic')
+    spectrumlogic = Connector(interface='SpectrumLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -58,13 +58,14 @@ class SpectrometerGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
 
-        self._spectrum_logic = self.spectrumlogic1()
+        self._spectrum_logic = self.spectrumlogic()
 
         # setting up the window
         self._mw = SpectrometerWindow()
 
         self._mw.stop_diff_spec_Action.setEnabled(False)
         self._mw.resume_diff_spec_Action.setEnabled(False)
+        self._mw.correct_background_Action.setChecked(self._spectrum_logic.background_correction)
 
         # giving the plots names allows us to link their axes together
         self._pw = self._mw.plotWidget  # pg.PlotWidget(name='Counter1')
@@ -92,20 +93,24 @@ class SpectrometerGui(GUIBase):
         self._pw.setLabel('bottom', 'Wavelength', units='nm')
         self._pw.setLabel('top', 'Relative Frequency', units='Hz')
 
+        # Create an empty plot curve to be filled later, set its pen
+        self._curve1 = self._pw.plot()
+        self._curve1.setPen(palette.c2, width=2)
+        self.updateData()
+
         self._mw.rec_single_spectrum_Action.triggered.connect(self.record_single_spectrum)
         self._mw.start_diff_spec_Action.triggered.connect(self.start_differential_measurement)
         self._mw.stop_diff_spec_Action.triggered.connect(self.stop_differential_measurement)
         self._mw.resume_diff_spec_Action.triggered.connect(self.resume_differential_measurement)
 
         self._mw.save_spectrum_Action.triggered.connect(self.save_spectrum_data)
+        self._mw.correct_background_Action.triggered.connect(self.correct_background)
+        self._mw.acquire_background_Action.triggered.connect(self.acquire_background)
+        self._mw.save_background_Action.triggered.connect(self.save_background_data)
 
         self._spectrum_logic.sig_specdata_updated.connect(self.updateData)
 
         self._mw.show()
-
-        # Create an empty plot curve to be filled later, set its pen
-        self._curve1 = self._pw.plot()
-        self._curve1.setPen(palette.c2, width=2)
 
         self._save_PNG = True
 
@@ -132,8 +137,6 @@ class SpectrometerGui(GUIBase):
         """ Handling resume of the scanning without resetting the data.
         """
         self._spectrum_logic.get_single_spectrum()
-
-        self.updateData()
 
     def start_differential_measurement(self):
 
@@ -165,3 +168,12 @@ class SpectrometerGui(GUIBase):
 
     def save_spectrum_data(self):
         self._spectrum_logic.save_spectrum_data()
+
+    def correct_background(self):
+        self._spectrum_logic.background_correction = self._mw.correct_background_Action.isChecked()
+
+    def acquire_background(self):
+        self._spectrum_logic.get_single_spectrum(background=True)
+
+    def save_background_data(self):
+        self._spectrum_logic.save_spectrum_data(background=True)

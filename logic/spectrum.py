@@ -24,7 +24,7 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.module import Connector
+from core.module import Connector, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
@@ -35,9 +35,6 @@ class SpectrumLogic(GenericLogic):
     """This logic module gathers data from the spectrometer.
     """
 
-    sig_specdata_updated = QtCore.Signal()
-    sig_next_diff_loop = QtCore.Signal()
-
     _modclass = 'spectrumlogic'
     _modtype = 'logic'
 
@@ -45,6 +42,15 @@ class SpectrumLogic(GenericLogic):
     spectrometer = Connector(interface='SpectrometerInterface')
     odmrlogic = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
+
+    # declare status variables
+    _spectrum_data = StatusVar('spectrum_data', np.array([]))
+    _spectrum_background = StatusVar('spectrum_background', np.array([]))
+    _background_correction = StatusVar('background_correction', False)
+
+    # declare signals
+    sig_specdata_updated = QtCore.Signal()
+    sig_next_diff_loop = QtCore.Signal()
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
@@ -59,7 +65,9 @@ class SpectrumLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.spectrum_data = np.array([])
+        self._spectrum_data_corrected = np.array([])
+        self._calculate_corrected_spectrum()
+
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
         self.repetition_count = 0    # count loops for differential spectrum
@@ -69,6 +77,7 @@ class SpectrumLogic(GenericLogic):
         self._save_logic = self.savelogic()
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
+        self.sig_specdata_updated.emit()
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -76,16 +85,51 @@ class SpectrumLogic(GenericLogic):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             pass
 
-    def get_single_spectrum(self):
+    def get_single_spectrum(self, background=False):
         """ Record a single spectrum from the spectrometer.
         """
-        self.spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
+        if background:
+            self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
+        else:
+            self._spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
+
+        self._calculate_corrected_spectrum()
 
         # Clearing the differential spectra data arrays so that they do not get
         # saved with this single spectrum.
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
 
+        self.sig_specdata_updated.emit()
+
+    def _calculate_corrected_spectrum(self):
+        self._spectrum_data_corrected = np.copy(self._spectrum_data)
+        if len(self._spectrum_background) == 2 \
+                and len(self._spectrum_background[1, :]) == len(self._spectrum_data[1, :]):
+            self._spectrum_data_corrected[1, :] -= self._spectrum_background[1, :]
+        else:
+            self.log.warning('Background spectrum has a different dimension then the acquired spectrum. '
+                             'Returning raw spectrum. '
+                             'Try acquiring a new background spectrum.')
+
+    @property
+    def spectrum_data(self):
+        if self._background_correction:
+            self._calculate_corrected_spectrum()
+            return self._spectrum_data_corrected
+        else:
+            return self._spectrum_data
+
+    @property
+    def background_correction(self):
+        return self._background_correction
+
+    @background_correction.setter
+    def background_correction(self, correction=None):
+        if correction is None or correction:
+            self._background_correction = True
+        else:
+            self._background_correction = False
         self.sig_specdata_updated.emit()
 
     def save_raw_spectrometer_file(self, path='', postfix=''):
@@ -108,7 +152,7 @@ class SpectrumLogic(GenericLogic):
         empty_signal = np.zeros(len(wavelengths))
 
         # Using this information to initialise the differential spectrum data arrays.
-        self.spectrum_data = np.array([wavelengths, empty_signal])
+        self._spectrum_data = np.array([wavelengths, empty_signal])
         self.diff_spec_data_mod_on = np.array([wavelengths, empty_signal])
         self.diff_spec_data_mod_off = np.array([wavelengths, empty_signal])
         self.repetition_count = 0
@@ -149,7 +193,7 @@ class SpectrumLogic(GenericLogic):
         self.repetition_count += 1    # increment the loop count
 
         # Calculate the differential spectrum
-        self.spectrum_data[1, :] = self.diff_spec_data_mod_on[
+        self._spectrum_data[1, :] = self.diff_spec_data_mod_on[
             1, :] - self.diff_spec_data_mod_off[1, :]
 
         self.sig_specdata_updated.emit()
@@ -173,11 +217,16 @@ class SpectrumLogic(GenericLogic):
         else:
             print("Parameter 'on' needs to be boolean")
 
-    def save_spectrum_data(self):
+    def save_spectrum_data(self, background=False):
         """ Saves the current spectrum data to a file.
         """
         filepath = self._save_logic.get_path_for_module(module_name='spectra')
-        filelabel = 'spectrum'
+        if background:
+            filelabel = 'background'
+            spectrum_data = self._spectrum_background
+        else:
+            filelabel = 'spectrum'
+            spectrum_data = self._spectrum_data
 
         # write experimental parameters
         parameters = OrderedDict()
@@ -186,15 +235,18 @@ class SpectrumLogic(GenericLogic):
         # prepare the data in an OrderedDict:
         data = OrderedDict()
 
-        data['wavelength'] = self.spectrum_data[0, :]
+        data['wavelength'] = spectrum_data[0, :]
 
         # If the differential spectra arrays are not empty, save them as raw data
         if len(self.diff_spec_data_mod_on) != 0 and len(self.diff_spec_data_mod_off) != 0:
             data['signal_mod_on'] = self.diff_spec_data_mod_on[1, :]
             data['signal_mod_off'] = self.diff_spec_data_mod_off[1, :]
-            data['differential'] = self.spectrum_data[1, :]
+            data['differential'] = spectrum_data[1, :]
         else:
-            data['signal'] = self.spectrum_data[1, :]
+            data['signal'] = spectrum_data[1, :]
+
+        if not background and len(self._spectrum_data_corrected) != 0:
+            data['corrected'] = self._spectrum_data_corrected[1, :]
 
         # Prepare the figure to save as a "data thumbnail"
         plt.style.use(self._save_logic.mpl_qd_style)
