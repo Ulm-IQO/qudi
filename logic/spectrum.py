@@ -44,8 +44,8 @@ class SpectrumLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
 
     # declare status variables
-    _spectrum_data = StatusVar('spectrum_data', np.array([]))
-    _spectrum_background = StatusVar('spectrum_background', np.array([]))
+    _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
+    _spectrum_background = StatusVar('spectrum_background', np.empty((2, 0)))
     _background_correction = StatusVar('background_correction', False)
 
     # declare signals
