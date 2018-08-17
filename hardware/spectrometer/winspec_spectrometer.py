@@ -50,7 +50,7 @@ class WinSpec32(Base, SpectrometerInterface):
         self.expt_is_running = WinSpecLib.EXP_RUNNING
         self.path = 'asdf'
         self.prefix = 'test'
-        self.querytime = 10
+        self.querytime = 0.001
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -88,6 +88,7 @@ class WinSpec32(Base, SpectrometerInterface):
                 Pass a pointer to Winspec so it can put the spectrum in a place in
                 memory where python will be able to find it.
             """
+            
             datapointer = c_float()
             raw_spectrum = self.WinspecDoc.GetFrame(1, datapointer)
             # winspec uses 16 bit unsigned int. Make sure to consider that while converting to numpy arrays
