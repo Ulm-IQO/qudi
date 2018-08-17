@@ -324,7 +324,7 @@ class _Scope(scope_ivi_interface.ScopeIviInterface):
                 interaction with the instrument. Call the Error Query function at the
                 conclusion of the sequence to check the instrument status.
                 """
-                return self.root.driver.channels[self.parent().index].measurement.fetch_waveform()
+                return self.root.driver.channels[self.parent_namespace.index].measurement.fetch_waveform()
     
             def read_waveform(self):
                 """
@@ -358,7 +358,7 @@ class _Scope(scope_ivi_interface.ScopeIviInterface):
     
                 any(any(math.isnan(b) for b in a) for a in waveform)
                 """
-                return self.root.driver.channels[self.parent().index].measurement.read_waveform()
+                return self.root.driver.channels[self.parent_namespace.index].measurement.read_waveform()
     
     @Namespace
     class measurement(QObject,
@@ -1310,7 +1310,7 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
                 * 'preshoot'
                 """
                 return self.root.driver.channels[
-                    self.parent().index].measurement.fetch_waveform_measurement(measurement_function)
+                    self.parent_namespace.index].measurement.fetch_waveform_measurement(measurement_function)
         
             def read_waveform_measurement(self, measurement_function, maximum_time):
                 """
@@ -1343,7 +1343,7 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
                 * Measurement Mid Reference
                 """
                 return self.root.driver.channels[
-                    self.parent().index].measurement.read_waveform_measurement(measurement_function,
+                    self.parent_namespace.index].measurement.read_waveform_measurement(measurement_function,
                                                                                maximum_time)
 
 
@@ -1429,7 +1429,7 @@ class MinMaxWaveformExtension(scope_ivi_interface.MinMaxWaveformExtensionInterfa
                 conclusion of the sequence to check the instrument status.
                 """
                 return self.root.driver.channels[
-                    self.parent().index].measurement.fetch_waveform_min_max()
+                    self.parent_namespace.index].measurement.fetch_waveform_min_max()
 
             def read_waveform_min_max(self):
                 """
@@ -1471,7 +1471,7 @@ class MinMaxWaveformExtension(scope_ivi_interface.MinMaxWaveformExtensionInterfa
                 conclusion of the sequence to check the instrument status.
                 """
                 return self.root.driver.channels[
-                    self.parent().index].measurement.read_waveform_min_max()
+                    self.parent_namespace.index].measurement.read_waveform_min_max()
 
 
 # **************************************************************************************************
@@ -1487,6 +1487,33 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
     - uri : str unique remote identifier used to connect to instrument.
                 e.g. 'TCPIP0::192.168.1.1::hislip0::INSTR'
     """
+    def __getattribute__(self, name):
+        """
+        this enables getting data from dynamic descriptors
+        :param name: name of attribute
+        :return: the attrbite
+        """
+        value = object.__getattribute__(self, name)
+        if hasattr(value, '__get__'):
+            value = value.__get__(self, self.__class__)
+        return value
+
+    def __setattr__(self, name, value):
+        """
+        this enables settings data from dyamic descriptors
+        :param name: name of attribute
+        :param value: value
+        :return:
+        """
+        try:
+            obj = object.__getattribute__(self, name)
+        except AttributeError:
+            pass
+        else:
+            if hasattr(obj, '__set__'):
+                return obj.__set__(self, value)
+        return object.__setattr__(self, name, value)
+
     def on_activate(self):
         super().on_activate()
 
@@ -1536,7 +1563,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
 
         self.trigger = Namespace(IviTrigger)
 
-        class IviChannelMeasurementMetaclass(QObject, QtInterfaceMetaclass):
+        class IviChannelMeasurementMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.WaveformMeasurement in driver_capabilities:
                     bases = bases + (WaveformMeasurementExtension.channels.measurement,)
@@ -1557,7 +1584,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviChannel(_Scope.channels, metaclass=IviChannelMetaclass):
             measurement = Namespace(IviChannelMeasurement)
 
-        self.channels = Namespace.repeat(IviChannel, 4)  # FIXME
+        self.channels = Namespace.repeat(4)(IviChannel)  # FIXME 4 hardcoded
 
         if ivi.scope.WaveformMeasurement in driver_capabilities:
             self.reference_level = Namespace(WaveformMeasurementExtension.reference_level)

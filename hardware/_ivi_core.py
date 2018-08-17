@@ -60,6 +60,8 @@ class Namespace:
 
         # create instance
         namespace = self.cls()
+        # parent
+        namespace.parent_namespace = instance
         # find root, root has no root attribute
         namespace.root = instance
         while hasattr(namespace.root, 'root'):
@@ -105,6 +107,7 @@ class Namespace:
                 # create instances
                 namespaces = [self.cls() for ii in range(self.count)]
                 for ii in range(len(namespaces)):
+                    namespaces[ii].parent_namespace = instance
                     namespaces[ii].root = root
                     namespaces[ii].index = ii
                 setattr(instance, name, namespaces)
