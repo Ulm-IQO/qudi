@@ -23,6 +23,8 @@ Changes/New features:
 * Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
 * Added a how-to-participate guide to the documentation
 * Added installation options guide to the documentation
+* A lot of smaller fixes to the spectrometer (WinSpec) -> this also modifies the connectors in the default config
+* Added Font Awesome as further source for icons
 
 Config changes:
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
