@@ -38,18 +38,25 @@ from core.util.mutex import Mutex
 class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
 #class PulseBlasterESRPRO(Base, PulserInterface):
-    """ UNSTABLE: ALEX
+    """ STABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
 
     This file is compatible with the PCI version SP18A of the PulseBlasterESR.
-    The wrapped commands based on the 'spinapi.h' header file and can be looked
-    up in the SpinAPI Documentation (Version 2013-09-25) on the website:
+    The wrapped commands based on the 'spinapi.h' and the 'pulseblaster.h'
+    header file and can be looked up in the SpinAPI Documentation
+    (Version 2013-09-25) on the website:
 
     http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
 
     or for an other version (not recommended):
     http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
+    
+    The recommended version for the manual is the PDF file from SpinCore:
+    http://www.spincore.com/CD/PulseBlasterESR/SP4/PBESR-Pro_Manual.pdf
+
+    Another manual describes the functions a bit better:
+        http://spincore.com/CD/PulseBlasterESR/SP1/PBESR_Manual.pdf
 
     The SpinCore programming library spinapi.DLL is written in C and its data
     types correspond to standard C/C++ data types as follows:
@@ -69,24 +76,40 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         pulseblaster:
             module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
             #library_file: 'spinapi64.dll' # optional, name of the library file or even whole path to the file
+            clock_frequency: 500 # in MHz
+            min_instr_len: 5    # number of clock cycles for minimal instruction
+                                # normally it is 5 but for some boards it is 6
+                                # or for old boards it might be even 7
+                                # this corresponds to a minimal instruction
+                                # length of  (1/clock_frequency)*min_instr_len
+            debug_mode: False   # optional, to set the debug mode on or off.
 
     Dummy config for the pulser interface:
 
         dummypulser:
             module.Class: 'pulser_dummy.PulserDummy'
+
     """
     _modclass = 'PulseBlasterESRPRO'
     _modtype = 'hardware'
 
     _library_path = ConfigOption('library_path', default='', missing='info')
 
+    # The clock freqency which is necessary for the board.
+    _clock_freq = ConfigOption('clock_frequency', default=500, missing='warn')
+    # in clock cycles:
+    _min_instr_len = ConfigOption('min_instr_len', default=5, missing='warn')
+
+    _debug_mode = ConfigOption('debug_mode', default=False)
+
     # the library pointer is saved here
-    _dll = None
+    _lib = None
 
     PULSE_PROGRAM = 0
 
     # Defines for different pb_inst instruction types (in _write_pulse called
-    # inst_data):
+    # inst_data).
+    #TODO: Outsource into an Enum class for the Inst flags.
     CONTINUE = 0
     STOP = 1
     LOOP = 2
@@ -98,19 +121,43 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     WAIT = 8
     RTI = 9
 
-    # ON = 6<<21 # not working, even though it is according to docu, strange
-    ON = 0xE00000
-    ALL_FLAGS_ON = 0x1FFFFF
-    ONE_PERIOD = 0x200000
-    TWO_PERIOD = 0x400000
-    THREE_PERIOD = 0x600000
-    FOUR_PERIOD = 0x800000
-    FIVE_PERIOD = 0xA00000
-    SIX_PERIOD = 0xC00000
+    # Special consideration of the ESR-PRO short pulse feature must be taken
+    # when programming or operating this board. For signals of instruction time
+    # greater than 10 ns, the short pulse feature must be disabled by setting
+    # output bits 21-23 to HIGH at all times
+    # ON = 0xE00000  # = 7<<21, in order to have '0b111000000000000000000000'
+
+    # The Short Pulse feature utilizes the upper three bits of the instruction
+    # flag output bits (bits 21 to 23) to control the number of clock cycles
+    # output flags are enabled.
+
+    # Flags for Spin API  | Bits 21-23  | Clock periods | Pulse length (ns) @ 500MHz
+    #                       # 000       |       -       | Always low
+    ONE_PERIOD = 0x200000   # 001       |       1       | 2
+    TWO_PERIOD = 0x400000   # 010       |       2       | 4
+    THREE_PERIOD = 0x600000 # 011       |       3       | 6
+    FOUR_PERIOD = 0x800000  # 100       |       4       | 8
+    FIVE_PERIOD = 0xA00000  # 101       |       5       | 10
+    ON = 0xE00000           # 111       |      > 5      | No short pulse
+
+    # Therefore, if the instruction has to be shorted than 10ns, the
+    # special period flags have to be used, but the minimal instruction length
+    # of 10ns should be used. Otherwise, if the length is greater than 10ns the
+    # ON flag needs to be used.
+    SIX_PERIOD = 0xC00000   # 110 => used for some old boards
+
+    # To understand the usage of those flags, please refer to the manual on
+    # p. 28, Fig. 16 (for the manual version 2017/09/04).
+
+    # Useful Constants for Output Pattern and Control Word, max size is 24bits
+    ALL_FLAGS_ON = 0x1FFFFF   # set bits 0-20 to 1
+    ALL_FLAGS_OFF = 0x0
+
 
     #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-    GRAN_MIN = 2   # minimal possible granularity in time, in ns.
-    SAMPLE_RATE = int(1/GRAN_MIN * 1000) # sample frequency in MHz.
+    GRAN_MIN = (1000 / _clock_freq)       # minimal possible granularity in time, in ns.
+    LEN_MIN = GRAN_MIN*_min_instr_len   # minimal possible length of a whole sequence, in ns
+    SAMPLE_RATE = _clock_freq # sample frequency in MHz.
 
     STATUS_DICT = {1: 'Stopped',
                    2: 'Reset',
@@ -129,17 +176,18 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     # For pulser interface:
     _current_pb_waveform_name = ''
-    _current_pb_waveform = {'active_channels':[], 'length':GRAN_MIN}
+    _current_pb_waveform = {'active_channels': [], 'length': LEN_MIN}
 
     # Make a channel state dict, which indicates the current channel activation
     channel_states = switch_states.copy()
 
 
+    #FIXME: implement a way to store already create waveforms
     # _current_pb_waveform_name = StatusVar(name='current_pb_waveform_name',
     #                                       default='')
     # _current_pb_waveform = StatusVar(name='current_pb_waveform',
     #                                  default={'active_channels':[],
-    #                                           'length':self.GRAN_MIN})
+    #                                           'length': self.LEN_MIN})
 
     # @_current_pb_waveform.representer
     # def _convert_current_waveform(self, waveform_bytearray):
@@ -192,7 +240,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'from SpinCore.')
             return -1
 
-        self._dll = ctypes.cdll.LoadLibrary(lib_path)
+        self._lib = ctypes.cdll.LoadLibrary(lib_path)
+
+        # self._lib = ctypes.cdll.LoadLibrary(lib_path)
         self.log.debug('SpinCore library loaded from: {0}'.format(lib_path))
         self.open_connection()
 
@@ -207,8 +257,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         self.stop()
         self.close_connection()
-
-
 
     # =========================================================================
     # Below all the low level routines which are wrapped with ctypes which
@@ -232,8 +280,17 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             err_str = self.get_error_string()
 
+            # Catch a very specific error code, where the error is normally not
+            # provided, just in the debug mode.
+            if func_val == -91 and err_str == '':
+
+                err_str = ('Instruction length is shorter then the minimal '
+                           'allowed length! Dependant on your device, it '
+                           'should be at least 5-7 clock cycles. Check the '
+                           'manual for more information.')
+
             self.log.error('Error in PulseBlaster with errorcode {0}:\n'
-                           '{1}'.format(func_val, err_str))
+                            '{1}'.format(func_val, err_str))
         return func_val
 
 
@@ -248,13 +305,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         encounters an error, this function will return a description of what
         went wrong.
         """
-        self._dll.pb_get_error.restype = ctypes.c_char_p
+
+        self._lib.pb_get_error.restype = ctypes.c_char_p
 
         # The output value of this function is as declared above a pointer
         # to an address where the received data is stored as characters
         # (8bit per char). Use the decode method to convert a char to a
         # string.
-        return self._dll.pb_get_error().decode()
+        return self._lib.pb_get_error().decode('utf8')
 
     def count_boards(self):
         """ Return the number of SpinCore boards present in your system.
@@ -264,14 +322,17 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      error.
         """
 
-        self._dll.pb_count_boards.restype = ctypes.c_int
-        return self._dll.pb_count_boards()
+        self._lib.pb_count_boards.restype = ctypes.c_int
+
+        return self._lib.pb_count_boards()
 
     def select_board(self, board_num=0):
         """ Select the proper SpinCore card, if multiple are present.
 
         @param int board_num: Specifies which board to select. Counting starts
                               at 0.
+
+        @return int: the selected board number or -1 for an error.
 
         If multiple boards from SpinCore Technologies are present in your
         system, this function allows you to select which board to talk to. Once
@@ -286,7 +347,28 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             self.log.error('PulseBlaster cannot choose a board, since an '
                            'integer type was expected, but the following value '
                            'was passed:\n{0}'.format(board_num))
-        self.check(self._dll.pb_select_board(board_num))
+            return
+
+        self.check(self._lib.pb_select_board(board_num))
+
+    def set_debug_mode(self, value):
+        """ Set the debug mode.
+
+        @param bool value: State to set the debug mode to.
+
+        @return: the current debug mode.
+        """
+
+        self._debug_mode = value
+        self._lib.pb_set_debug(int(value))  # convert to 0=False or 1=True.
+        return self._debug_mode
+
+    def get_debug_mode(self):
+        """ Retrieve whether debug mode is set.
+
+        @return bool: the current debug mode
+        """
+        return self._debug_mode
 
     def get_version(self):
         """Get the version date of this library.
@@ -294,18 +376,19 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         @return string: A string indicating the version of this library is
                         returned. The version is a string in the form YYYYMMDD.
         """
-        self._dll.spinpts_get_version.restype = ctypes.c_char_p
+
         # .decode converts char into string:
-        return self._dll.spinpts_get_version().decode()
+        self._lib.pb_get_version.restype = ctypes.c_char_p
+        return self._lib.pb_get_version().decode('utf-8')
 
     def get_firmware_id(self):
         """Gets the current version of the SpinPTS API being used.
 
         @return int: Returns the firmware id containing the version string.
         """
-        self._dll.pb_get_firmware_id.restype = ctypes.c_uint
+        self._lib.pb_get_firmware_id.restype = ctypes.c_uint
 
-        firmware_id = self._dll.pb_get_firmware_id()
+        firmware_id = self._lib.pb_get_firmware_id()
 
         if firmware_id == 0:
             self.log.info('Retrieving the Firmware ID is not a feature of this '
@@ -325,8 +408,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         can also be accomplished through hardware, please see your board's
         manual for details on how to accomplish this.
         """
-        self._dll.pb_start.restype = ctypes.c_int
-        return self.check(self._dll.pb_start())
+        return self.check(self._lib.pb_start())
 
     def stop(self):
         """Stops output of board.
@@ -342,8 +424,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         trigger.
         """
 
-        self._dll.pb_stop.restype = ctypes.c_int
-        return self.check(self._dll.pb_stop())
+        return self.check(self._lib.pb_stop())
 
     def reset_device(self):
         """ Stops the output of board and resets the PulseBlaster Core.
@@ -355,8 +436,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         This also resets the PulseBlaster Core so that the board can be run
         again using self.start() or a hardware trigger.
         """
-        self._dll.pb_reset.restype = ctypes.c_int
-        return self.check(self._dll.pb_reset())
+
+        return self.check(self._lib.pb_reset())
 
     def open_connection(self):
         """Initializes the board.
@@ -371,7 +452,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         board to initialize.
         """
         self.log.debug('Open connection to SpinCore library.')
-        ret_val = self.check(self._dll.pb_init())
+        ret_val = self.check(self._lib.pb_init())
         self._set_core_clock(self.SAMPLE_RATE)
         return ret_val
 
@@ -388,7 +469,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         continue to run indefinitely.
         """
         self.log.debug('Close connection to SpinCore library.')
-        return self.check(self._dll.pb_close())
+        return self.check(self._lib.pb_close())
 
     def start_programming(self):
         """ Tell the board to start programming one of the onboard devices.
@@ -409,7 +490,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         the PULSE_PROGRAM = 0.
         """
 
-        return self.check(self._dll.pb_start_programming(self.PULSE_PROGRAM))
+        return self.check(self._lib.pb_start_programming(self.PULSE_PROGRAM))
 
     def stop_programming(self):
         """ Finishes the programming for a specific onboard devices.
@@ -418,7 +499,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      set to a description of the error. 0 is returned on
                      success.
         """
-        return self.check(self._dll.pb_stop_programming())
+
+        return self.check(self._lib.pb_stop_programming())
 
     def _set_core_clock(self, clock_freq):
         """ Tell the library what clock frequency the board uses.
@@ -442,37 +524,57 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # it seems that the spin api has no return value for that function, i.e.
         # it cannot be detected whether the value was properly set. There is
         # also no get_core_clock method available. Strange.
-        self._dll.pb_core_clock.restype = ctypes.c_void_p
-        return self._dll.pb_core_clock(ctypes.c_double(clock_freq))
+
+        clock = ctypes.c_double(clock_freq)
+
+        return self._lib.pb_core_clock(clock)
 
     def _write_pulse(self, flags, inst, inst_data, length):
         """Instruction programming function for boards without a DDS.
 
-        @param unsigned int flags: Set every bit to one for each flag you want
-                                   to set high. If 8 channels are addressable
-                                   then their bit representation would be
+        @param unsigned int flags: It is essentialy an integer number
+                                   corresponding to a bit representation of the
+                                   channel settings. Set every bit to one for
+                                   each flag you want to set high. If 8 channels
+                                   are addressable then their bit representation
+                                   would be
                                        0b00000000   (in python).
+                                       => int(0b00000000)= 0 is the number you
+                                          would specify
                                    where the most right corresponds to ch1 and
-                                   the most left to ch8. If you want to
-                                   set channel 1,2,3 and 7 to be on, then the
-                                   bit word must be
+                                   the most left to ch8. If you want to set
+                                   channel 1,2,3 and 7 to be on, then the bit
+                                   word must be
                                        0b01000111
+                                       => int(0b01000111) = 71
+                                    so the flags=71 will perform the job above.
+                                   Valid values are from 0x0 (=0) to 0xFFFFFF
+                                   (=)
         @param int inst: Specify the instruction you want. Valid instructions
                          are:
-                         Opcode#	Instruction	  Meaning of inst_data field
-                             0      CONTINUE          Continue
-                             1      STOP              Stop
-                             2      LOOP              Number of desired loops
-                             3      END_LOOP          Address of instruction
-                                                      originating loop
-                             4      JSR               Address of first
-                                                      instruction in subroutine
-                             5      RTS               ?
-                             6      BRANCH            Address of instruction to
-                                                      branch to
-                             7      LONG_DELAY        Number of desired
-                                                      repetitions
-                             8      WAIT              wait until something
+        Opcode# 	Instruction  Inst_data          Meaning of inst_data field
+             0      CONTINUE     Ignored                      Program execution continues to next
+                                                              instruction
+             1      STOP         Ignored                      Stop execution of program.
+             2      LOOP         Number of desired loops.     Specify beginning of a loop. Execution
+                                 This number must be          continues to next instruction.
+                                 greater than or equal to 1.
+             3      END_LOOP     Address of beginning of      Specify end of a loop.
+                                 originating loop
+             4      JSR          Address of first subroutine  Program execution jumps to beginning
+                                 instruction.                 of a subroutine.
+             5      RTS          Ignored                      Program execution returns to
+                                                              instruction after JSR was called.
+
+             6      BRANCH       Address of next instruction  Program execution continues at
+                                                              specific instruction.
+             7      LONG_DELAY   Desired multiplication       For long interval instructions.
+                                 factor for the “Delay Count”  Executes length of pulse given in the
+                                 field. This value must be    time field multiplied by the value
+                                 greater than or equal to 2.  in the data field.
+
+             8      WAIT         Ignored                      Program execution stops and waits for
+                                                              software or hardware trigger.
 
                         That means if you choose an operation code, which has
                         a meaning in the inst_data (like e.g. 2 = LOOP) you can
@@ -503,8 +605,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         length = ctypes.c_double(length)
 
-        return self.check(self._dll.pb_inst_pbonly(flags, inst, inst_data, length))
-
+        return self.check(self._lib.pb_inst_pbonly(flags, inst, inst_data, length))
 
     def get_status_bit(self):
         """Read status from the board.
@@ -537,9 +638,21 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         bit representation, as it is mentioned in the spinapi documentation.
         """
 
-        self._dll.pb_read_status.restype = ctypes.c_uint32
+        self._lib.pb_read_status.restype = ctypes.c_uint32
 
-        return self._dll.pb_read_status()
+        return self._lib.pb_read_status()
+
+    def get_status_message(self):
+        """ Read status message from the board.
+
+        Not all boards support this, see your manual. The returned string will
+        either have the board's status or an error message.
+
+        @return str: containing the status message of the board.
+        """
+        self._lib.pb_status_message.restype = ctypes.c_char_p
+
+        return self._lib.pb_status_message().decode('utf8')
 
     # =========================================================================
     # Below all the higher level routines are situated which use the
@@ -580,16 +693,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                             sequence_list[0]['active_channels'],
                             sequence_list[0]['length'])
 
-
         # go through each pulse in the sequence and write it to the
         # PulseBlaster.
         for pulse in sequence_list[1:-1]:
-            num  = self._convert_pulse_to_inst(pulse['active_channels'],
-                                               pulse['length'])
+            num = self._convert_pulse_to_inst(pulse['active_channels'],
+                                              pulse['length'])
             if num > 4094: # =(2**12 -2)
                 self.log.error('Error in PulseCreation: Command {0} exceeds '
                                'the maximal number of commands'.format(num))
-
 
         active_channels = sequence_list[-1]['active_channels']
         length = sequence_list[-1]['length']
@@ -598,26 +709,26 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # round and do no infinite looping or branching from out to
         # connect the end with the beginning of the pulse.
 
+        bitmask = self._convert_to_bitmask(active_channels)
         # with the branch or the stop command
-        if loop == False:
-            bitmask = self._convert_to_bitmask(active_channels)
-            num = self._write_pulse(self.ON|bitmask,
-                                    inst=self.STOP,
-                                    inst_data=None,
-                                    length=length)
-        else:
-            num = self._write_pulse(flags=self.ON|0,
+        if loop:
+            num = self._write_pulse(flags=self.ON | bitmask,
                                     inst=self.BRANCH,
                                     inst_data=start_pulse,
                                     length=length)
-        if num > 4094: # =(2**12 -2)
+        else:
+            num = self._write_pulse(flags=self.ON | bitmask,
+                                    inst=self.STOP,
+                                    inst_data=None,
+                                    length=length)
+
+        if num > 4094:  # =(2**12 -2)
             self.log.error('Error in PulseCreation: Command {0} exceeds '
                            'the maximal number of commands'.format(num))
 
         self.stop_programming()
 
         return num
-
 
     def _convert_pulse_to_inst(self, active_channels, length):
         """ Convert a pulse of one row to a instructions for the PulseBlaster.
@@ -632,7 +743,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         Helper method for write_pulse_form.
         """
 
-        # return bitrepresentation of active channels:
+        # return bit representation of active channels:
         channel_bitmask = self._convert_to_bitmask(active_channels)
 
         # Check, whether the length fulfills the minimal granularity (= every
@@ -660,9 +771,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # stable for the data processing.
 
         if length <= 256*self.GRAN_MIN:
-                          # pulses are written in 8 bit words. Save memory if
-                          # the length of the pulse is smaller than 256
-            num = self._write_pulse(self.ON|channel_bitmask,
+            # pulses are written in 8 bit words. Save memory if the length of
+            # the pulse is smaller than 256
+            num = self._write_pulse(flags=self.ON | channel_bitmask,
                                     inst=self.CONTINUE,
                                     inst_data=None,
                                     length=length)
@@ -680,7 +791,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
                 if value > 4:
                     if factor == 1:
-                        num = self._write_pulse(self.ON|channel_bitmask,
+                        num = self._write_pulse(flags=self.ON | channel_bitmask,
                                                 inst=self.CONTINUE,
                                                 inst_data=None,
                                                 length=value)
@@ -689,7 +800,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                         # check if you do not exceed the memory limit. Then
                         # you can use the factorized approach to loop your
                         # pulse forms. Therefore apply a LONG_DELAY instruction
-                        num = self._write_pulse(self.ON|channel_bitmask,
+                        num = self._write_pulse(flags=self.ON | channel_bitmask,
                                                 inst=self.LONG_DELAY,
                                                 inst_data=int(factor),
                                                 length=value)
@@ -702,7 +813,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                        'parameters!'.format(factor))
 
                     if i > 4:
-                        self._write_pulse(self.ON|channel_bitmask,
+                        self._write_pulse(flags=self.ON | channel_bitmask,
                                           inst=self.CONTINUE,
                                           inst_data=None,
                                           length=i)
@@ -785,7 +896,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def activate_channels(self, ch_list, length=100, immediate_start=True):
+    def activate_channels(self, ch_list, length=10, immediate_start=True):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
@@ -808,19 +919,19 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         """
 
+        bitmask = self._convert_to_bitmask(ch_list)
+
         self.start_programming()
-        flags = self.ON | self._convert_to_bitmask(ch_list)
-        retval = self._write_pulse(flags=flags,
-                                  inst=self.STOP,
-                                  inst_data=0,
-                                  length=length)
+        retval = self._write_pulse(flags=self.ON | bitmask,
+                                   inst=self.BRANCH,
+                                   inst_data=0,
+                                   length=length)
         self.stop_programming()
 
         if immediate_start:
             self.start()
 
         return retval
-
 
     # =========================================================================
     # Below the Switch interface implementation.
@@ -833,22 +944,22 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         """
         return len(self.switch_states)
 
-    def getSwitchState(self, switchNumber):
+    def getSwitchState(self, switch_num):
         """ Gives state of switch.
 
-        @param int switchNumber: number of switch, numbering starts with 0
+        @param int switch_num: number of switch, numbering starts with 0
 
         @return bool: True if on, False if off, None on error
         """
 
-        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+        return self.switch_states['d_ch{0}'.format(switch_num+1)]
 
-    def getCalibration(self, switchNumber, state):
+    def getCalibration(self, switch_num, switch_state):
         """ Get calibration parameter for switch.
 
-        @param int switchNumber: number of switch for which to get calibration
+        @param int switch_num: number of switch for which to get calibration
                                  parameter
-        @param str switchState: state ['On', 'Off'] for which to get
+        @param str switch_state: state ['On', 'Off'] for which to get
                                 calibration parameter
 
         @return str: calibration parameter for switch and state.
@@ -856,16 +967,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         # There is no possibility to calibrate the voltage values for the
         # Pulse Blaster, either it is on at 5.0V or off at 0.0V.
-        possible_states = {'On': 5.0, 'Off': 0.0}
-        return possible_states[state]
+        possible_states = {'On': 3.3, 'Off': 0.0}
+        return possible_states[switch_state]
 
-    def setCalibration(self, switchNumber, state, value):
+    def setCalibration(self, switch_num, switch_state, value):
         """ Set calibration parameter for switch.
 
-          @param int switchNumber: number of switch for which to get calibration
+          @param int switch_num: number of switch for which to get calibration
                                    parameter
-          @param str switchState: state ['On', 'Off'] for which to get
-                                  calibration parameter
+          @param str switch_state: state ['On', 'Off'] for which to get
+                                   calibration parameter
           @param int value: calibration parameter to be set.
 
           @return bool: True if succeeds, False otherwise
@@ -874,44 +985,43 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                          'PulseBlaster Devices. Command ignored.')
         return True
 
-    def switchOn(self, switchNumber):
+    def switchOn(self, switch_num):
         """ Switch on.
 
-        @param int switchNumber: number of switch to be switched, number starts
-                                 from zero.
+        @param int switch_num: number of switch to be switched, number starts
+                               from zero.
 
         @return bool: True if succeeds, False otherwise
         """
 
-        self.switch_states['d_ch{0}'.format(switchNumber+1)] = True
+        self.switch_states['d_ch{0}'.format(switch_num+1)] = True
 
-        ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
+        ch_list = [int(entry.replace('d_ch', ''))-1 for entry in self.switch_states if self.switch_states[entry]]
 
-        self.activate_channels(ch_list=ch_list, length=100,immediate_start=True)
+        self.activate_channels(ch_list=ch_list, length=100, immediate_start=True)
 
-        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+        return self.switch_states['d_ch{0}'.format(switch_num+1)]
 
-
-    def switchOff(self, switchNumber):
+    def switchOff(self, switch_num):
         """ Switch off.
 
-        @param int switchNumber: number of switch to be switched
+        @param int switch_num: number of switch to be switched
 
         @return bool: True if suceeds, False otherwise
         """
 
-        self.switch_states['d_ch{0}'.format(switchNumber+1)] = False
+        self.switch_states['d_ch{0}'.format(switch_num+1)] = False
 
-        ch_list = [int(entry.replace('d_ch',''))-1 for entry in self.switch_states if self.switch_states[entry]]
+        ch_list = [int(entry.replace('d_ch', ''))-1 for entry in self.switch_states if self.switch_states[entry]]
 
-        self.activate_channels(ch_list=ch_list, length=100,immediate_start=True)
+        self.activate_channels(ch_list=ch_list, length=100, immediate_start=True)
 
-        return self.switch_states['d_ch{0}'.format(switchNumber+1)]
+        return self.switch_states['d_ch{0}'.format(switch_num+1)]
 
-    def getSwitchTime(self, switchNumber):
+    def getSwitchTime(self, switch_num):
         """ Give switching time for switch.
 
-        @param int switchNumber: number of switch
+        @param int switch_num: number of switch
 
         @return float: time needed for switch state change
         """
@@ -919,7 +1029,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # switch time is limited to communication speed to the device,
         # therefore set the average communication time of 1ms as the limitation.
         return 0.001
-
 
     # =========================================================================
     # Below the pulser interface implementation.
@@ -1043,13 +1152,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         constraints.d_ch_low.default = 0.0
         constraints.d_ch_low.unit = 'V'
 
-        constraints.d_ch_high.min = 5.0
-        constraints.d_ch_high.max = 5.0
-        constraints.d_ch_high.step = 5.0
-        constraints.d_ch_high.default = 5.0
+        # it is a LVTTL standard with 3.3V as the logical one
+        constraints.d_ch_high.min = 3.3
+        constraints.d_ch_high.max = 3.3
+        constraints.d_ch_high.step = 3.3
+        constraints.d_ch_high.default = 3.3
         constraints.d_ch_high.unit = 'V'
 
-        constraints.waveform_length.min = 2
+        # Minimum instruction time of 5 clock cycles, translates to 10ns at
+        # 500MHz.
+        constraints.waveform_length.min = 10
         constraints.waveform_length.max = 2**20-1
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 128
@@ -1096,7 +1208,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
                                     If just a list of waveform names if given,
                                     the channel association will be invoked from
-                                    the channel suffix '_ch1', '_ch2' etc.
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
+
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
 
         @return dict: Dictionary containing the actually loaded waveforms per
                       channel.
@@ -1198,10 +1313,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+
         self._currently_loaded_waveform = ''
         self._current_pb_waveform_name = ''
-        self._current_pb_waveform = {'active_channels':[],
-                                     'length':self.GRAN_MIN}
+        self._current_pb_waveform = {'active_channels': [],
+                                     'length': self.LEN_MIN}
         return 0
 
 
@@ -1214,12 +1330,12 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                              of the pulse generator hardware.
         """
         num = self.get_status_bit()
-        if num in [1,2]:
+        if num in [1, 2]:
             state = 0
         else:
             state = 1
 
-        status_dict = {0: 'Idle', 1:'Running'}
+        status_dict = {0: 'Idle', 1: 'Running'}
 
         return state, status_dict
 
@@ -1251,7 +1367,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                          'Ignore the command.')
 
         return self.get_sample_rate()
-
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -1351,7 +1466,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             low_dict = {'d_ch{0:d}'.format(chnl + 1): 0.0 for chnl in range(21)}
 
         if high:
-            high_dict = {chnl: 5.0 for chnl in high}
+            high_dict = {chnl: 3.3 for chnl in high}
         else:
             high_dict = {'d_ch{0:d}'.format(chnl + 1): 5.0 for chnl in range(21)}
 
@@ -1466,7 +1581,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         return self.get_active_channels(ch=list(ch))
 
-
     def write_waveform(self, name, analog_samples, digital_samples,
                        is_first_chunk, is_last_chunk, total_number_of_samples):
         """ Write a new waveform or append samples to an already existing
@@ -1520,8 +1634,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                 return -1, list()
 
             else:
-                self._current_pb_waveform ={'active_channels':[],
-                                            'length':self.GRAN_MIN}
+                self._current_pb_waveform ={'active_channels': [],
+                                            'length': self.LEN_MIN}
                 self._current_pb_waveform_name = ''
                 return 0, list()
 
@@ -1599,12 +1713,13 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         for index in range(num_entries):
 
             # create at first a temporary array, with the minimal length of 2ns
-            temp_sequence_dict = {'active_channels' :[], 'length': self.GRAN_MIN}
+            temp_sequence_dict = {'active_channels': [],
+                                  'length': self.LEN_MIN}
 
             for ch_name in ch_list:
 
                 if digital_samples[ch_name][index]:
-                    temp_sequence_dict['active_channels'].append(int(ch_name.replace('d_ch',''))-1)
+                    temp_sequence_dict['active_channels'].append(int(ch_name.replace('d_ch', ''))-1)
 
             # compare it with the last array if present
 
@@ -1650,7 +1765,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
 
-        @return list: List of all uploaded waveform name strings in the device workspace.
+        @return list: List of all uploaded waveform name strings in the device
+                      workspace.
         """
 
         #FIXME: That seems not to be right. Docstring does not match with output.
@@ -1659,7 +1775,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
 
-        @return list: List of all uploaded sequence name strings in the device workspace.
+        @return list: List of all uploaded sequence name strings in the device
+                      workspace.
         """
         return list()
 
