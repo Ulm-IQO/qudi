@@ -51,7 +51,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     or for an other version (not recommended):
     http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
-    
+
     The recommended version for the manual is the PDF file from SpinCore:
     http://www.spincore.com/CD/PulseBlasterESR/SP4/PBESR-Pro_Manual.pdf
 
@@ -83,11 +83,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                 # this corresponds to a minimal instruction
                                 # length of  (1/clock_frequency)*min_instr_len
             debug_mode: False   # optional, to set the debug mode on or off.
-
-    Dummy config for the pulser interface:
-
-        dummypulser:
-            module.Class: 'pulser_dummy.PulserDummy'
+            use_smart_pulse_creation: False     # try to optimize the memory
+                                                # used on the device.
 
     """
     _modclass = 'PulseBlasterESRPRO'
@@ -96,11 +93,13 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     _library_path = ConfigOption('library_path', default='', missing='info')
 
     # The clock freqency which is necessary for the board.
-    _clock_freq = ConfigOption('clock_frequency', default=500, missing='warn')
+    _clock_freq = ConfigOption('clock_frequency', default=500e6, missing='warn')
     # in clock cycles:
-    _min_instr_len = ConfigOption('min_instr_len', default=5, missing='warn')
+    _min_instr_len = ConfigOption('min_instr_len', default=6, missing='warn')
 
     _debug_mode = ConfigOption('debug_mode', default=False)
+
+    _use_smart_pulse_creation = ConfigOption('use_smart_pulse_creation', default=False)
 
     # the library pointer is saved here
     _lib = None
@@ -153,12 +152,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     ALL_FLAGS_ON = 0x1FFFFF   # set bits 0-20 to 1
     ALL_FLAGS_OFF = 0x0
 
-
-    #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-    GRAN_MIN = (1000 / _clock_freq)       # minimal possible granularity in time, in ns.
-    LEN_MIN = GRAN_MIN*_min_instr_len   # minimal possible length of a whole sequence, in ns
-    SAMPLE_RATE = _clock_freq # sample frequency in MHz.
-
     STATUS_DICT = {1: 'Stopped',
                    2: 'Reset',
                    4: 'Running',
@@ -173,10 +166,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                      'd_ch13': False, 'd_ch14': False, 'd_ch15': False,
                      'd_ch16': False, 'd_ch17': False, 'd_ch18': False,
                      'd_ch19': False, 'd_ch20': False, 'd_ch21': False}
-
-    # For pulser interface:
-    _current_pb_waveform_name = ''
-    _current_pb_waveform = {'active_channels': [], 'length': LEN_MIN}
 
     # Make a channel state dict, which indicates the current channel activation
     channel_states = switch_states.copy()
@@ -208,6 +197,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     def on_activate(self):
         """ Initialization performed during activation of the module. """
+
+
+        #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
+        self.GRAN_MIN = 1/self._clock_freq       # minimal possible granularity in time, in ns.
+        self.LEN_MIN = self.GRAN_MIN*self._min_instr_len   # minimal possible length of a whole sequence, in ns
+        self.SAMPLE_RATE = self._clock_freq # sample frequency in MHz.
+
+        # For pulser interface:
+        self._current_pb_waveform_name = ''
+        self._current_pb_waveform = {'active_channels': [], 'length': self.LEN_MIN}
 
 
         # check at first the config option, whether a correct library was found
@@ -505,7 +504,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def _set_core_clock(self, clock_freq):
         """ Tell the library what clock frequency the board uses.
 
-        @param int clock_freq: Frequency of the clock in MHz.
+        @param float clock_freq: Frequency of the clock in Hz.
 
         This should be called at the beginning of each program, right after you
         initialize the board with pb_init().
@@ -524,6 +523,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # it seems that the spin api has no return value for that function, i.e.
         # it cannot be detected whether the value was properly set. There is
         # also no get_core_clock method available. Strange.
+
+        clock_freq = clock_freq/1e6
 
         clock = ctypes.c_double(clock_freq)
 
@@ -587,7 +588,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                               possible for a 20 bit number). See above table
                               to find out what this means for each instruction.
                               Pass None if the inst_data should be ignored.
-        @param double length: Length of this instruction in nanoseconds.
+        @param double length: Length of this instruction in seconds.
 
         @return int: a positive number represents the address of the created
                      instruction. This can be used as the branch address for any
@@ -603,7 +604,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         channel during a given time (here called 'length').
         """
 
-        length = ctypes.c_double(length)
+        # the function call expects nanoseconds as units
+        length = ctypes.c_double(length*1e9)
+
+        self._lib.pb_inst_pbonly.argtype = [ctypes.c_int, ctypes.c_int,
+                                            ctypes.c_int, ctypes.c_double]
 
         return self.check(self._lib.pb_inst_pbonly(flags, inst, inst_data, length))
 
@@ -669,8 +674,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                    number, which should be switched on. The
                                    channel numbers start with 0. E.g.
 
-                                   [{'active_channels':[0], 'length': 10000},
-                                    {'active_channels':[], 'length': 20000}]
+                                   [{'active_channels':[0], 'length': 10e-6},
+                                    {'active_channels':[], 'length': 20e-6}]
                                     which will switch on
 
         @param bool loop: optional, set if sequence should be looped (so that it
@@ -736,7 +741,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         @param np.array active_channels: the list of active channels like
                                          e.g. [0,4,7]. Note that the channels
                                          start from 0.
-        @param float length: length of the current row in ns.
+        @param float length: length of the current row in s.
 
         @return int: The address number num of the created instruction.
 
@@ -746,81 +751,100 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # return bit representation of active channels:
         channel_bitmask = self._convert_to_bitmask(active_channels)
 
-        # Check, whether the length fulfills the minimal granularity (= every
-        # pulse has to be dividable by 2ns, which corresponds to a 500MHz
-        # output sampling.)
-        residual = length % self.GRAN_MIN
-        if residual != 0:
+        # # Check, whether the length fulfills the minimal granularity:
+        old_length = length
+
+        length = np.round(np.round(length/self.GRAN_MIN+0.01) * self.GRAN_MIN, 12)
+        # the +0.01 moves the critical point by this value and avoids ambiguity
+        # at number divided by the sample rate (Note: the +0.01 does not remove
+        # the ambiguity, it is just shifted by this value. It is assume that an
+        # entry of 13.0 is much more likely than 13.01).
+
+
+        residual = old_length - length
+        if not np.isclose(residual, 0.0, atol=1e-12):
             self.log.warning('The length of the pulse does not fulfill the '
-                             'granularity of {0}ns. The length is rounded to a '
-                             'number, dividable by the granularity! {1}ns were '
-                             'dropped.'.format(self.GRAN_MIN, residual))
+                             'granularity of {0:.2e}s. The length is rounded '
+                             'to a number, dividable by the granularity! '
+                             '{1:.2e}s were dropped.'
+                             ''.format(self.GRAN_MIN, residual))
 
+        # an algorithm to utilize the long delay possibility of the pulse
+        # blaster.
 
-        length = int(np.round(length/self.GRAN_MIN)) * self.GRAN_MIN
+        if self._use_smart_pulse_creation:
 
+            # If the clock is 500MHz, then the time resolution is 2ns. However, the
+            # minimal length of every instruction is usually not a clock cycle, but
+            # more (can range from 5-7 clock cycles).
+            # A step of 2ns will be represented by one bit, i.e. by using 8bit a
+            # time of 2ns * 2^8 = 512ns can be sampled in one data word. Internally,
+            # this will be the time frame of the data processing. This procedure
+            # enables to run the data processing 8 times slower, and only the fast
+            # multiplexer, which combines and outputs the 8bit word, needs to run at
+            # the fast clock speed of 500MHz. This prevents errors and is more
+            # stable for the data processing.
 
-        # If the clock is 500MHz, then the time resolution is 2ns, i.e. every
-        # 2ns a change can occur in the pulse blaster. A step of 2ns will be
-        # represented by one bit, i.e. by using 8bit a time of
-        # 2ns * 2^8 = 512ns can be sampled in one data word. Internally, this
-        # will be the time frame of the data processing. This procedure
-        # enables to run the data processing 8 times slower, and only the fast
-        # multiplexer, which combines and outputs the 8bit word, needs to run at
-        # the fast clock speed of 500MHz. This prevents errors and is more
-        # stable for the data processing.
+            if length <= 256*self.GRAN_MIN:
 
-        if length <= 256*self.GRAN_MIN:
-            # pulses are written in 8 bit words. Save memory if the length of
-            # the pulse is smaller than 256
+                # pulses are written in 8 bit words. Save memory if the length of
+                # the pulse is smaller than 256
+                num = self._write_pulse(flags=self.ON | channel_bitmask,
+                                        inst=self.CONTINUE,
+                                        inst_data=None,
+                                        length=length)
+
+            elif length > 256*self.GRAN_MIN:
+                # reducing the length of the pulses by repeating them.
+                # Try to factorize successively, in order to reducing the total
+                # length of the pulse form. Put the subtracted amount into an
+                # additional short command if necessary.
+
+                remaining_time = length
+                i = 4
+                while True:
+
+                    num_clock_cycles = int(length/self.GRAN_MIN)
+                    value, factor = self._factor(num_clock_cycles)
+
+                    if value > 4:
+                        if factor == 1:
+                            num = self._write_pulse(flags=self.ON | channel_bitmask,
+                                                    inst=self.CONTINUE,
+                                                    inst_data=None,
+                                                    length=value*self.GRAN_MIN)
+
+                        elif factor < 1048576: # = (2**20 + 1)
+                            # check if you do not exceed the memory limit. Then
+                            # you can use the factorized approach to loop your
+                            # pulse forms. Therefore apply a LONG_DELAY instruction
+                            num = self._write_pulse(flags=self.ON | channel_bitmask,
+                                                    inst=self.LONG_DELAY,
+                                                    inst_data=int(factor),
+                                                    length=value*self.GRAN_MIN)
+                        else:
+                            self.log.error('Error in PulseCreation: Loop counts '
+                                           'are {0} in LONG_DELAY instruction and '
+                                           'exceedes the maximal possible value of '
+                                           '2^20+1 = 1048576.\n'
+                                           'Repeat PulseCreation with different '
+                                           'parameters!'.format(factor))
+
+                        if i > 4:
+                            self._write_pulse(flags=self.ON | channel_bitmask,
+                                              inst=self.CONTINUE,
+                                              inst_data=None,
+                                              length=i*self.GRAN_MIN)
+
+                        break
+                    i = i+1
+                    length = remaining_time - i*self.GRAN_MIN
+        else:
             num = self._write_pulse(flags=self.ON | channel_bitmask,
                                     inst=self.CONTINUE,
                                     inst_data=None,
                                     length=length)
 
-        elif length > 256*self.GRAN_MIN:
-            # reducing the length of the pulses by repeating them.
-            # Try to factorize successively, in order to reducing the total
-            # length of the pulse form. Put the subtracted amount into an
-            # additional short command if necessary.
-
-            remaining_time = length
-            i = 4
-            while True:
-                value, factor = self._factor(length)
-
-                if value > 4:
-                    if factor == 1:
-                        num = self._write_pulse(flags=self.ON | channel_bitmask,
-                                                inst=self.CONTINUE,
-                                                inst_data=None,
-                                                length=value)
-
-                    elif factor < 1048576: # = (2**20 + 1)
-                        # check if you do not exceed the memory limit. Then
-                        # you can use the factorized approach to loop your
-                        # pulse forms. Therefore apply a LONG_DELAY instruction
-                        num = self._write_pulse(flags=self.ON | channel_bitmask,
-                                                inst=self.LONG_DELAY,
-                                                inst_data=int(factor),
-                                                length=value)
-                    else:
-                        self.log.error('Error in PulseCreation: Loop counts '
-                                       'are {0} in LONG_DELAY instruction and '
-                                       'exceedes the maximal possible value of '
-                                       '2^20+1 = 1048576.\n'
-                                       'Repeat PulseCreation with different '
-                                       'parameters!'.format(factor))
-
-                    if i > 4:
-                        self._write_pulse(flags=self.ON | channel_bitmask,
-                                          inst=self.CONTINUE,
-                                          inst_data=None,
-                                          length=i)
-
-                    break
-                i = i+1
-                length = remaining_time - i
 
         return num
 
@@ -888,7 +912,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         div = 256
         while div > 4:
             if number % div == 0:
-                return div, number/div
+                return div, number//div
             div -= 1
         return 1, number
 
@@ -896,16 +920,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     # A bit higher methods for using the card as switch
     # =========================================================================
 
-    def activate_channels(self, ch_list, length=10, immediate_start=True):
+    def activate_channels(self, ch_list, length=100e-9, immediate_start=True):
         """ Set specific channels to high, all others to low.
 
         @param list ch_list: the list of active channels like  e.g. [0,4,7].
                              Note that the channels start from 0. Note, an empty
                              list will set all channels to low.
         @param int length: optional, length of the activated channel output in
-                           ns. Since there will be no switching of channels
+                           s. Since there will be no switching of channels
                            within this mode, the length of the pulsing time can
-                           be chosen arbitrary. Here 100ns is the default value.
+                           be chosen arbitrary. Here 100e-9s is the default value.
                            A larger number does not make a lot of sense.
 
         @param bool immediate_start: optional, indicate whether output should
@@ -1141,8 +1165,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         constraints.activation_config = activation_conf
         """
         constraints = PulserConstraints()
-        constraints.sample_rate.min = 500e6
-        constraints.sample_rate.max = 500e6
+        constraints.sample_rate.min = self._clock_freq
+        constraints.sample_rate.max = self._clock_freq
         constraints.step = 0.0
         constraints.unit = 'Hz'
 
@@ -1159,9 +1183,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         constraints.d_ch_high.default = 3.3
         constraints.d_ch_high.unit = 'V'
 
-        # Minimum instruction time of 5 clock cycles, translates to 10ns at
-        # 500MHz.
-        constraints.waveform_length.min = 10
+        # Minimum instruction time in clock cycles specified in the config,
+        # translates for 6 clock cycles to 12ns at 500MHz.
+        constraints.waveform_length.min = self._min_instr_len
         constraints.waveform_length.max = 2**20-1
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 128
@@ -1350,7 +1374,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         Do not return a saved sample rate from an attribute, but instead
         retrieve the current sample rate directly from the device.
         """
-        return self.SAMPLE_RATE*1e6
+        return self.SAMPLE_RATE
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
@@ -1671,8 +1695,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         if is_last_chunk:
             self.write_pulse_form(self._current_pb_waveform)
             self.log.debug('Waveform written in PulseBlaster with name "{0}" '
-                            'and a total length of {1} sequence '
-                            'entries.'.format(self._current_pb_waveform_name,
+                           'and a total length of {1} sequence '
+                           'entries.'.format(self._current_pb_waveform_name,
                                               len(self._current_pb_waveform) ))
 
         return chunk_length, [self._current_pb_waveform_name]
@@ -1693,8 +1717,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                       start with 0. The 'length' entry contains the length of
                       the 'active_channels' in ns. E.g.
 
-                        [{'active_channels':[0], 'length': 10000},
-                         {'active_channels':[], 'length': 20000}]
+                        [{'active_channels':[0], 'length': 10e-6},
+                         {'active_channels':[], 'length': 20e-6}]
 
                       which will switch on channel 0 for 10us on and switch all
                       channels off for 20us.
@@ -1712,9 +1736,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         for index in range(num_entries):
 
-            # create at first a temporary array, with the minimal length of 2ns
+            # create at first a temporary array, with the minimal granularity
+            # length. The sampling freq is fixed anyway and cannot be changed.
             temp_sequence_dict = {'active_channels': [],
-                                  'length': self.LEN_MIN}
+                                  'length': self.GRAN_MIN}
 
             for ch_name in ch_list:
 
@@ -1729,12 +1754,26 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             else:
 
-                 # if present and the same, accumulate length
+                 # if present and the same channels, accumulate length
                 if temp_sequence_dict['active_channels'] == last_sequence_dict['active_channels']:
                     last_sequence_dict['length'] += temp_sequence_dict['length']
 
-                # if present and not the same, append last array to sequence array
+                # if present and not the same channels, append last array to
+                # sequence array
                 else:
+                    # increase length by 1%, to remove the ambiguity for the
+                    # comparison
+                    if last_sequence_dict['length']*1.01 < self.LEN_MIN:
+                        self.log.warning('Current waveform contains a pulse of '
+                                         'length {0:.2f}ns, which is smaller '
+                                         'than the minimal allowed length of '
+                                         '{1:.2f}ns! Pulse sequence might '
+                                         'most probably look unexpected. '
+                                         'Increase the length of the smallest '
+                                         'pulse!'
+                                         ''.format(last_sequence_dict['length']*1e9,
+                                                   self.LEN_MIN*1e9))
+
                     pb_sequence_list.append(last_sequence_dict)
 
                     # and temporary array becomes last array for the next round
