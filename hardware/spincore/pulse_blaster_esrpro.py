@@ -22,7 +22,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import ctypes
 import platform
-import os
 import numpy as np
 from collections import OrderedDict
 
@@ -36,8 +35,6 @@ from core.util.mutex import Mutex
 
 
 class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
-
-#class PulseBlasterESRPRO(Base, PulserInterface):
     """ STABLE: ALEX
 
     Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
@@ -87,6 +84,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                                 # used on the device.
 
     """
+
     _modclass = 'PulseBlasterESRPRO'
     _modtype = 'hardware'
 
@@ -108,7 +106,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     # Defines for different pb_inst instruction types (in _write_pulse called
     # inst_data).
-    #TODO: Outsource into an Enum class for the Inst flags.
     CONTINUE = 0
     STOP = 1
     LOOP = 2
@@ -198,11 +195,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def on_activate(self):
         """ Initialization performed during activation of the module. """
 
-
-        #FIXME: Use SI units here, right now ns and MHz are used for easier debugging.
-        self.GRAN_MIN = 1/self._clock_freq       # minimal possible granularity in time, in ns.
-        self.LEN_MIN = self.GRAN_MIN*self._min_instr_len   # minimal possible length of a whole sequence, in ns
-        self.SAMPLE_RATE = self._clock_freq # sample frequency in MHz.
+        # minimal possible granularity in time, in s.
+        self.GRAN_MIN = 1/self._clock_freq
+        # minimal possible length of a single pulse/instruction in s:
+        self.LEN_MIN = self.GRAN_MIN*self._min_instr_len
+        self.SAMPLE_RATE = self._clock_freq # sample frequency in Hz.
 
         # For pulser interface:
         self._current_pb_waveform_name = ''
@@ -291,7 +288,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             self.log.error('Error in PulseBlaster with errorcode {0}:\n'
                             '{1}'.format(func_val, err_str))
         return func_val
-
 
     def get_error_string(self):
         """ Return the most recent error string.
@@ -844,8 +840,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                     inst=self.CONTINUE,
                                     inst_data=None,
                                     length=length)
-
-
         return num
 
     def _convert_to_bitmask(self, active_channels):
@@ -1270,11 +1264,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'held.'.format(waveform))
             return self.get_loaded_assets()
 
-
         self.write_pulse_form(self._current_pb_waveform)
         self._currently_loaded_waveform = waveform
-        return self.get_loaded_assets()[0]
 
+        return self.get_loaded_assets()[0]
 
     def load_sequence(self, sequence_name):
         """ Loads a sequence to the channels of the device in order to be ready
@@ -1306,7 +1299,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                          'sequencing capabilities.\n'
                          'load_sequence call ignored.')
         return {}
-
 
     def get_loaded_assets(self):
         """ Retrieve the currently loaded asset names for each active channel
@@ -1344,7 +1336,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                      'length': self.LEN_MIN}
         return 0
 
-
     def get_status(self):
         """ Retrieves the status of the pulsing hardware.
 
@@ -1362,9 +1353,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         status_dict = {0: 'Idle', 1: 'Running'}
 
         return state, status_dict
-
-        #return self.get_status_bit(), self.STATUS_DICT
-
 
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
@@ -1784,7 +1772,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         return pb_sequence_list
 
-
     def write_sequence(self, name, sequence_parameters):
         """
         Write a new sequence on the device memory.
@@ -1870,28 +1857,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                            'PulseBlaster.\n'
                            'Interleave state is always False.')
         return False
-
-    def write(self, command):
-        """ Sends a command string to the device.
-
-        @param str command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.log.info('PulseBlaster: You can talk to me, I am a good listener,'
-                      'but do not expect an answer, I keep my secrets. :P')
-        return 0
-
-    def query(self, question):
-        """ Asks the device a 'question' and receive and return an answer from it.
-
-        @param str question: string containing the command
-
-        @return str: the answer of the device to the 'question' in a string
-        """
-        self.log.info('PulseBlaster: I will not answer anything ;), so do '
-                         'not even try to query something.')
-        return 'No answer.'
 
     def reset(self):
         """ Reset the device.
