@@ -188,7 +188,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.pulse_generator_off()
 
         # Check and configure fast counter
-        binning_constraints = self.fastcounter().get_constraints()['hardware_binwidth_list']
+        binning_constraints = self.fastcounter().get_constraints().hardware_binwidth_list
         if self.__fast_counter_binwidth not in binning_constraints:
             self.__fast_counter_binwidth = binning_constraints[0]
         if self.__fast_counter_record_length <= 0:
@@ -249,7 +249,7 @@ class PulsedMeasurementLogic(GenericLogic):
         settings_dict['bin_width'] = float(self.__fast_counter_binwidth)
         settings_dict['record_length'] = float(self.__fast_counter_record_length)
         settings_dict['number_of_gates'] = int(self.__fast_counter_gates)
-        settings_dict['is_gated'] = bool(self.fastcounter().is_gated())
+        settings_dict['is_gated'] = bool(self.fastcounter().get_constraints().is_gated)
         return settings_dict
 
     @fast_counter_settings.setter
@@ -289,7 +289,7 @@ class PulsedMeasurementLogic(GenericLogic):
             if 'record_length' in settings_dict:
                 self.__fast_counter_record_length = float(settings_dict['record_length'])
             if 'number_of_gates' in settings_dict:
-                if self.fastcounter().is_gated():
+                if self.fastcounter().get_constraints().is_gated:
                     self.__fast_counter_gates = int(settings_dict['number_of_gates'])
                 else:
                     self.__fast_counter_gates = 0
@@ -711,7 +711,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                          dtype=float)
                 if 'number_of_lasers' in settings_dict:
                     self._number_of_lasers = int(settings_dict.get('number_of_lasers'))
-                    if self.fastcounter().is_gated():
+                    if self.fastcounter().get_constraints().is_gated:
                         self.set_fast_counter_settings(number_of_gates=self._number_of_lasers)
                 if 'laser_ignore_list' in settings_dict:
                     self._laser_ignore_list = sorted(settings_dict.get('laser_ignore_list'))
@@ -1088,7 +1088,7 @@ class PulsedMeasurementLogic(GenericLogic):
                            'Measurement information container is incomplete/invalid.')
             return
 
-        if self.fastcounter().is_gated():
+        if self.fastcounter().get_constraints().is_gated:
             self.set_fast_counter_settings(number_of_gates=self._number_of_lasers,
                                            record_length=fast_counter_record_length)
         else:
@@ -1110,7 +1110,7 @@ class PulsedMeasurementLogic(GenericLogic):
                            'controlled_variable ticks ({1:d}).'
                            ''.format(number_of_analyzed_lasers, len(self._controlled_variable)))
 
-        if self.fastcounter().is_gated() and self._number_of_lasers != self.__fast_counter_gates:
+        if self.fastcounter().get_constraints().is_gated and self._number_of_lasers != self.__fast_counter_gates:
             self.log.error('Gated fast counter gate number differs from number of laser pulses '
                            'configured in measurement settings.')
         return
