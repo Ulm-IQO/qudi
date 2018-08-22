@@ -2013,7 +2013,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ext_control_mw_power_DoubleSpinBox.setRange(mw_constraints.min_power,
                                                              mw_constraints.max_power)
         self._pa.ana_param_fc_bins_ComboBox.clear()
-        for binwidth in fc_constraints['hardware_binwidth_list']:
+        for binwidth in fc_constraints.hardware_binwidth_list:
             self._pa.ana_param_fc_bins_ComboBox.addItem(str(binwidth))
         # unblock signals
         self._pa.ext_control_mw_freq_DoubleSpinBox.blockSignals(False)
