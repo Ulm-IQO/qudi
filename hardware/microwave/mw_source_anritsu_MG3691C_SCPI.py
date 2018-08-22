@@ -312,22 +312,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
-        if is_running:
-            if mode == 'sweep':
-                return 0
-            else:
-                self.off()
 
-        if mode != 'sweep':
-            self._command_wait(':FREQ:MODE SWEEP')
-
-        self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
-        while not is_running:
-            time.sleep(0.2)
-            dummy, is_running = self.get_status()
-        return 0
+        return -1
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
         """
@@ -340,27 +326,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
-        mode, is_running = self.get_status()
 
-        if is_running:
-            self.off()
-
-        if mode != 'sweep':
-            self._command_wait(':FREQ:MODE SWE')
-
-        self._command_wait(':SWE:GEN STEP')
-        self._command_wait(':SWE:FREQ:STEP {0:f}'.format(step))
-        self._gpib_connection.write(':FREQ:STAR {0:f}'.format(start))
-        self._gpib_connection.write(':FREQ:STOP {0:f}'.format(stop))
-
-        if power is not None:
-            self._gpib_connection.write(':POW SWE')
-            self._gpib_connection.write(':POW {0}'.format(power))
-
-        actual_power = self.get_power()
-        freq_list = self.get_frequency()
-        mode, dummy = self.get_status()
-        return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
+        return -1
 
     def reset_sweeppos(self):
         """
@@ -368,8 +335,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._command_wait(':ABOR')
-        return 0
+
+        return -1
 
     def set_ext_trigger(self, pol=TriggerEdge.RISING):
         """ Set the external trigger for this device with proper polarization.
