@@ -326,8 +326,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
-
-        return -1
+        actual_power = self.get_power()
+        mode, dummy = self.get_status()
+        return -1, -1, -1, actual_power, mode
 
     def reset_sweeppos(self):
         """
