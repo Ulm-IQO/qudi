@@ -35,6 +35,7 @@ class OBISLaser(Base, SimpleLaserInterface):
     ```
     # obis:
     #     module.Class: 'SimpleLaserInterface.OBISLaser'
+    #     com_port: 'COM3'
     ```
     """
 
@@ -44,10 +45,12 @@ class OBISLaser(Base, SimpleLaserInterface):
     eol = '\r'
     _model_name = 'UNKNOWN'
 
+    _com_port = ConfigOption('com_port', missing='error')
+
     def on_activate(self):
         """ Activate module.
         """
-        self.obis = serial.Serial('COM3', timeout=1)
+        self.obis = serial.Serial(self._com_port, timeout=1)
 
         connected = self.connect_laser()
 

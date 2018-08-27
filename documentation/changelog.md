@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Improved scientific SpinBox validators to allow for more intuitive keyboard input
 * All modules use new connector style where feasible.
 * Bug fix for waveform generation larger than ~2 GSamples
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
@@ -23,8 +24,18 @@ In the process minor bug-fixes on the optimizer and stability improvements.
 * Added a functionality to also externalize sampling functions
 >>>>>>> remotes/origin/make_sampling_functions_externalizeable
 * Various stability improvements and minor bug fixes
+* Update conda environment to more recent versions of packages
+* Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
+* Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
+* Added a how-to-participate guide to the documentation
+* Added installation options guide to the documentation
 
 Config changes:
+* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
+* Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
+* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
+
+
 
 ## Release 0.9
 Released on 6 Mar 2018
@@ -62,6 +73,7 @@ Changes/New features:
 * Analog signal input (for PDMR measurements) now supported for slow counter/confocal/ODMR (see config changes)
 * Use of rpyc became optional (does not need to be installed if no remote module capability is needed)
 * Mayor cleanup/overhaul of the `microwave_interface.py` and adaption of all affected modules (hardware/logic)
+* New hardware file for Microwave source - Anritsu MG3691C has been added.
 
 
 Config changes:
