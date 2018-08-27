@@ -8,6 +8,7 @@ dependencies:
   - ca-certificates=2018.03.07=0
   - certifi=2018.4.16=py36_0
   - colorama=0.3.9=py36he9a059a_0
+  - comtypes=1.1.7=py36_0
   - cycler=0.10.0=py36hd299a41_0
   - cython=0.28.3=py36hfa6e2cd_0
   - decorator=4.3.0=py36_0
@@ -69,6 +70,7 @@ dependencies:
   - python=3.6.5=h0c2934d_0
   - python-dateutil=2.7.3=py36_0
   - pytz=2018.4=py36_0
+  - pywin32=223=py36hfa6e2cd_1
   - pywinpty=0.5.4=py36_0
   - pyzmq=17.0.0=py36hfa6e2cd_1
   - qt=5.9.6=vc14h62aca36_0
@@ -116,3 +118,4 @@ dependencies:
     - smmap2==2.0.3
     - typing==3.6.4
     - uncertainties==3.0.2
+prefix: C:\ProgramData\Anaconda3\envs\qudi
