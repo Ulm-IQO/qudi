@@ -40,7 +40,7 @@
     <property name="title">
      <string>&amp;View</string>
     </property>
-    <addaction name="actionReset_to_default_view"/>
+    <addaction name="restore_default_view_Action"/>
    </widget>
    <widget class="QMenu" name="menuOptions">
     <property name="title">
@@ -68,7 +68,7 @@
    <addaction name="rec_single_spectrum_Action"/>
    <addaction name="save_spectrum_Action"/>
   </widget>
-  <widget class="QToolBar" name="background_Toolbar">
+  <widget class="QToolBar" name="background_ToolBar">
    <property name="windowTitle">
     <string>toolBar</string>
    </property>
@@ -240,9 +240,9 @@
     <string>Stop differential</string>
    </property>
   </action>
-  <action name="actionReset_to_default_view">
+  <action name="restore_default_view_Action">
    <property name="text">
-    <string>&amp;Reset to default view</string>
+    <string>&amp;Restore default view</string>
    </property>
   </action>
   <action name="start_diff_spec_Action">

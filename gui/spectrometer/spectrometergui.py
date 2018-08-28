@@ -28,6 +28,7 @@ from core.util import units
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
+from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 
@@ -115,6 +116,8 @@ class SpectrometerGui(GUIBase):
         self._mw.correct_background_Action.triggered.connect(self.correct_background)
         self._mw.acquire_background_Action.triggered.connect(self.acquire_background)
         self._mw.save_background_Action.triggered.connect(self.save_background_data)
+
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
 
         self._spectrum_logic.sig_specdata_updated.connect(self.update_data)
         self._spectrum_logic.spectrum_fit_updated_Signal.connect(self.update_fit)
@@ -250,3 +253,26 @@ class SpectrometerGui(GUIBase):
         """
         self._mw.fit_domain_min_doubleSpinBox.setValue(domain[0])
         self._mw.fit_domain_max_doubleSpinBox.setValue(domain[1])
+
+    def restore_default_view(self):
+        """ Restore the arrangement of DockWidgets to the default
+        """
+        # Show any hidden dock widgets
+        self._mw.spectrum_fit_dockWidget.show()
+
+        # re-dock any floating dock widgets
+        self._mw.spectrum_fit_dockWidget.setFloating(False)
+
+        # Arrange docks widgets
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(QtCore.Qt.TopDockWidgetArea),
+                               self._mw.spectrum_fit_dockWidget
+                               )
+
+        # Set the toolbar to its initial top area
+        self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
+                            self._mw.measure_ToolBar)
+        self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
+                            self._mw.background_ToolBar)
+        self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
+                            self._mw.differential_ToolBar)
+        return 0
