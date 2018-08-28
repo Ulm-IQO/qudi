@@ -249,6 +249,12 @@ class SequenceGeneratorLogic(GenericLogic, SamplingFunctions, SamplesWriteMethod
                         # Add method to dictionary if it is a generator method
                         if method.startswith('generate_'):
                             self.generate_methods[method[9:]] = eval('self.'+method)
+                    # check for new _math_func and append them
+                    elif isinstance(ref, OrderedDict) and method == '_math_func':
+                        self._math_func.update(ref)
+                    # check for new func_config and append them
+                    elif isinstance(ref, OrderedDict) and method == 'func_config':
+                        self.func_config.update(ref)
                 except:
                     self.log.error('It was not possible to import element {0} from {1} into '
                                    'SequenceGenerationLogic.'.format(method, filepath))

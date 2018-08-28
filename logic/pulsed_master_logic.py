@@ -1253,6 +1253,14 @@ class PulsedMasterLogic(GenericLogic):
         self.sigPredefinedSequencesUpdated.emit(generator_methods_dict)
         return
 
+    def get_func_config(self):
+        """
+        This function is needed to make the available functions of the sequence generator available to the gui.
+
+        @return: the func_config dictionary of the sequence generator
+        """
+        return self._generator_logic.func_config
+
     #######################################################################
     ###             Helper  methods                                     ###
     #######################################################################

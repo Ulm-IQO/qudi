@@ -17,6 +17,7 @@ Changes/New features:
 * Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
 * Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
+* Added a functionality to also externalize sampling functions
 * Various stability improvements and minor bug fixes
 * Update conda environment to more recent versions of packages
 * Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
