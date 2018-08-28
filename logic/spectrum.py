@@ -65,6 +65,7 @@ class SpectrumLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self._spectrum_data = np.array([])
         self._spectrum_data_corrected = np.array([])
         self._calculate_corrected_spectrum()
 
