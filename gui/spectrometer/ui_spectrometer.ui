@@ -170,6 +170,13 @@
            </property>
           </widget>
          </item>
+         <item>
+          <widget class="QPushButton" name="fit_domain_all_data_pushButton">
+           <property name="text">
+            <string>All data</string>
+           </property>
+          </widget>
+         </item>
         </layout>
        </item>
       </layout>
@@ -306,7 +313,7 @@
   </action>
   <action name="action_FitSettings">
    <property name="text">
-    <string>Fit settings</string>
+    <string>&amp;Fit settings</string>
    </property>
   </action>
  </widget>
