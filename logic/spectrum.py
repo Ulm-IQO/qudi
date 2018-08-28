@@ -336,6 +336,12 @@ class SpectrumLogic(GenericLogic):
     def do_fit(self, fit_function=None, x_data=None, y_data=None):
         """
         Execute the currently configured fit on the measurement data. Optionally on passed data
+
+        @param string fit_function: The name of one of the defined fit functions.
+
+        @param array x_data: wavelength data for spectrum.
+
+        @param array y_data: intensity data for spectrum.
         """
         if (x_data is None) or (y_data is None):
             x_data = self.spectrum_data[0]
