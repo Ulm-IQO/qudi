@@ -103,7 +103,7 @@ class SpectrometerGui(GUIBase):
         self._curve2 = self._pw.plot()
         self._curve2.setPen(palette.c1, width=2)
 
-        self.updateData()
+        self.update_data()
 
         # Connect singals
         self._mw.rec_single_spectrum_Action.triggered.connect(self.record_single_spectrum)
@@ -116,7 +116,7 @@ class SpectrometerGui(GUIBase):
         self._mw.acquire_background_Action.triggered.connect(self.acquire_background)
         self._mw.save_background_Action.triggered.connect(self.save_background_data)
 
-        self._spectrum_logic.sig_specdata_updated.connect(self.updateData)
+        self._spectrum_logic.sig_specdata_updated.connect(self.update_data)
         self._spectrum_logic.spectrum_fit_updated_Signal.connect(self.update_fit)
         self._spectrum_logic.fit_domain_updated_Signal.connect(self.update_fit_domain)
 
@@ -153,7 +153,7 @@ class SpectrometerGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
-    def updateData(self):
+    def update_data(self):
         """ The function that grabs the data and sends it to the plot.
         """
         data = self._spectrum_logic.spectrum_data
