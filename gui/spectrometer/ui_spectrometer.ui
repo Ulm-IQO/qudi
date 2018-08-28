@@ -14,89 +14,7 @@
    <string>qudi: Spectrometer</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <widget class="QDockWidget" name="spectrum_fit_dockWidget">
-      <widget class="QWidget" name="dockWidgetContents">
-       <layout class="QGridLayout" name="gridLayout">
-        <item row="0" column="0">
-         <widget class="QLabel" name="label">
-          <property name="text">
-           <string>Fit Function</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
-          <property name="minimumSize">
-           <size>
-            <width>150</width>
-            <height>0</height>
-           </size>
-          </property>
-          <property name="maximumSize">
-           <size>
-            <width>150</width>
-            <height>16777215</height>
-           </size>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="2">
-         <widget class="QPushButton" name="do_fit_PushButton">
-          <property name="text">
-           <string>Fit</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="3">
-         <spacer name="horizontalSpacer">
-          <property name="orientation">
-           <enum>Qt::Horizontal</enum>
-          </property>
-          <property name="sizeHint" stdset="0">
-           <size>
-            <width>432</width>
-            <height>20</height>
-           </size>
-          </property>
-         </spacer>
-        </item>
-        <item row="0" column="4">
-         <widget class="QLabel" name="label_2">
-          <property name="text">
-           <string>Fit domain: </string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="5">
-         <widget class="QDoubleSpinBox" name="fit_domain_min_doubleSpinBox">
-          <property name="maximum">
-           <double>9999999.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="6">
-         <widget class="QDoubleSpinBox" name="fit_domain_max_doubleSpinBox">
-          <property name="maximum">
-           <double>9999999.000000000000000</double>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
-           <string>Fit Results</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1" colspan="6">
-         <widget class="QTextBrowser" name="spectrum_fit_results_DisplayWidget"/>
-        </item>
-       </layout>
-      </widget>
-     </widget>
-    </item>
+   <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
      <widget class="PlotWidget" name="plotWidget"/>
     </item>
@@ -126,7 +44,7 @@
    </widget>
    <widget class="QMenu" name="menuOptions">
     <property name="title">
-     <string>Options</string>
+     <string>Optio&amp;ns</string>
     </property>
     <addaction name="action_FitSettings"/>
    </widget>
@@ -177,6 +95,114 @@
    <addaction name="start_diff_spec_Action"/>
    <addaction name="stop_diff_spec_Action"/>
    <addaction name="resume_diff_spec_Action"/>
+  </widget>
+  <widget class="QDockWidget" name="spectrum_fit_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="windowTitle">
+    <string>Spectr&amp;um Fit</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_4">
+    <layout class="QHBoxLayout" name="horizontalLayout_4">
+     <item>
+      <layout class="QVBoxLayout" name="verticalLayout">
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_2">
+         <item>
+          <widget class="QLabel" name="label">
+           <property name="text">
+            <string>Fit Function</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>150</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="do_fit_PushButton">
+           <property name="text">
+            <string>Fit</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_3">
+         <item>
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>Fit domain: </string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="fit_domain_min_doubleSpinBox">
+           <property name="maximum">
+            <double>9999999.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="fit_domain_max_doubleSpinBox">
+           <property name="maximum">
+            <double>9999999.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <spacer name="horizontalSpacer">
+       <property name="orientation">
+        <enum>Qt::Horizontal</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>208</width>
+         <height>20</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="horizontalLayout">
+       <item>
+        <widget class="QLabel" name="label_3">
+         <property name="text">
+          <string>Fit Results</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QTextBrowser" name="spectrum_fit_results_DisplayWidget"/>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="actionClose">
    <property name="icon">
