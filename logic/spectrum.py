@@ -256,8 +256,16 @@ class SpectrumLogic(GenericLogic):
         else:
             print("Parameter 'on' needs to be boolean")
 
-    def save_spectrum_data(self, background=False):
+    def save_spectrum_data(self, background=False, name_tag='', custom_header = None):
         """ Saves the current spectrum data to a file.
+
+        @param bool background: Whether this is a background spectrum (dark field) or not.
+
+        @param string name_tag: postfix name tag for saved filename.
+
+        @param OrderedDict custom_header:
+            This ordered dictionary is added to the default data file header. It allows arbitrary
+            additional experimental information to be included in the saved data file header.
         """
         filepath = self._save_logic.get_path_for_module(module_name='spectra')
         if background:
@@ -267,9 +275,18 @@ class SpectrumLogic(GenericLogic):
             filelabel = 'spectrum'
             spectrum_data = self._spectrum_data
 
+        # Add name_tag as postfix to filename
+        if name_tag != '':
+            filelabel = filelabel + '_' + name_tag
+
         # write experimental parameters
         parameters = OrderedDict()
         parameters['Spectrometer acquisition repetitions'] = self.repetition_count
+
+        # add any custom header params
+        if custom_header is not None:
+            for key in custom_header:
+                parameters[key] = custom_header[key]
 
         # prepare the data in an OrderedDict:
         data = OrderedDict()
