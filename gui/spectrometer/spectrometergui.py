@@ -180,7 +180,7 @@ class SpectrometerGui(GUIBase):
             self._curve2.setData(x=fit_data[0, :], y=fit_data[1, :])
 
     def record_single_spectrum(self):
-        """ Handling resume of the scanning without resetting the data.
+        """ Handle resume of the scanning without resetting the data.
         """
         self._spectrum_logic.get_single_spectrum()
 
@@ -225,10 +225,14 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.save_spectrum_data(background=True)
 
     def do_fit(self):
+        """ Command spectrum logic to do the fit with the chosen fit function.
+        """
         fit_function = self._mw.fit_methods_ComboBox.getCurrentFit()[0]
         self._spectrum_logic.do_fit(fit_function)
 
     def set_fit_domain(self):
+        """ Set the fit domain in the spectrum logic to values given by the GUI spinboxes.
+        """
         lambda_min = self._mw.fit_domain_min_doubleSpinBox.value()
         lambda_max = self._mw.fit_domain_max_doubleSpinBox.value()
 
@@ -242,5 +246,7 @@ class SpectrometerGui(GUIBase):
         self._spectrum_logic.set_fit_domain()
 
     def update_fit_domain(self, domain):
+        """ Update the displayed fit domain to new values (set elsewhere).
+        """
         self._mw.fit_domain_min_doubleSpinBox.setValue(domain[0])
         self._mw.fit_domain_max_doubleSpinBox.setValue(domain[1])
