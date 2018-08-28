@@ -383,7 +383,16 @@ class SpectrumLogic(GenericLogic):
         idx = (np.abs(array-value)).argmin()
         return idx
 
-    def set_fit_domain(self, domain):
-        self.fit_domain = domain
+    def set_fit_domain(self, domain=None):
+        """ Set the fit domain to a user specified portion of the data.
+
+        If no domain is given, then this method sets the fit domain to match the full data domain.
+
+        @param np.array domain: two-element array containing min and max of domain.
+        """
+        if domain is not None:
+            self.fit_domain = domain
+        else:
+            self.fit_domain = np.array([self.spectrum_data[0, 0], self.spectrum_data[0, -1]])
 
         self.fit_domain_updated_Signal.emit(self.fit_domain)

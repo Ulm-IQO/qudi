@@ -130,6 +130,7 @@ class SpectrometerGui(GUIBase):
 
         # Internal trigger signals
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
+        self._mw.fit_domain_all_data_pushButton.clicked.connect(self.reset_fit_domain_all_data)
 
         # fit settings
         self._fsd = FitSettingsDialog(self._spectrum_logic.fc)
@@ -234,6 +235,11 @@ class SpectrometerGui(GUIBase):
         new_fit_domain = np.array([lambda_min, lambda_max])
 
         self._spectrum_logic.set_fit_domain(new_fit_domain)
+
+    def reset_fit_domain_all_data(self):
+        """ Reset the fit domain to match the full data set.
+        """
+        self._spectrum_logic.set_fit_domain()
 
     def update_fit_domain(self, domain):
         self._mw.fit_domain_min_doubleSpinBox.setValue(domain[0])
