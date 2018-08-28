@@ -325,7 +325,7 @@ class SpectrumLogic(GenericLogic):
         self.log.debug('Spectrum saved to:\n{0}'.format(filepath))
 
     ################
-    # Fitting things 
+    # Fitting things
 
     def get_fit_functions(self):
         """ Return the hardware constraints/limits
@@ -366,7 +366,7 @@ class SpectrumLogic(GenericLogic):
         else:
             result_str_dict = result.result_str_dict
         self.spectrum_fit_updated_Signal.emit(self.spectrum_fit,
-                                              result_str_dict, 
+                                              result_str_dict,
                                               self.fc.current_fit
                                               )
         return
@@ -385,5 +385,5 @@ class SpectrumLogic(GenericLogic):
 
     def set_fit_domain(self, domain):
         self.fit_domain = domain
-        
+
         self.fit_domain_updated_Signal.emit(self.fit_domain)
