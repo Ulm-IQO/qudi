@@ -42,15 +42,21 @@ class SpectrumLogic(GenericLogic):
     spectrometer = Connector(interface='SpectrometerInterface')
     odmrlogic = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
+    fitlogic = Connector(interface='FitLogic')
 
     # declare status variables
     _spectrum_data = StatusVar('spectrum_data', np.empty((2, 0)))
     _spectrum_background = StatusVar('spectrum_background', np.empty((2, 0)))
     _background_correction = StatusVar('background_correction', False)
+    fc = StatusVar('fits', None)
 
-    # declare signals
+    # Internal signals
     sig_specdata_updated = QtCore.Signal()
     sig_next_diff_loop = QtCore.Signal()
+
+    # External signals eg for GUI module
+    spectrum_fit_updated_Signal = QtCore.Signal(np.ndarray, dict, str)
+    fit_domain_updated_Signal = QtCore.Signal(np.ndarray)
 
     def __init__(self, **kwargs):
         """ Create SpectrometerLogic object with connectors.
@@ -69,6 +75,9 @@ class SpectrumLogic(GenericLogic):
         self._spectrum_data_corrected = np.array([])
         self._calculate_corrected_spectrum()
 
+        self.spectrum_fit = np.array([])
+        self.fit_domain = np.array([])
+
         self.diff_spec_data_mod_on = np.array([])
         self.diff_spec_data_mod_off = np.array([])
         self.repetition_count = 0    # count loops for differential spectrum
@@ -86,9 +95,38 @@ class SpectrumLogic(GenericLogic):
         if self.module_state() != 'idle' and self.module_state() != 'deactivated':
             pass
 
+    @fc.constructor
+    def sv_set_fits(self, val):
+        """ Set up fit container """
+        fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
+        fc.set_units(['Hz', 'c/s'])
+        if isinstance(val, dict) and len(val) > 0:
+            fc.load_from_dict(val)
+        else:
+            d1 = OrderedDict()
+            d1['Gaussian peak'] = {
+                'fit_function': 'gaussian',
+                'estimator': 'peak'
+                }
+            default_fits = OrderedDict()
+            default_fits['1d'] = d1
+            fc.load_from_dict(default_fits)
+        return fc
+
+    @fc.representer
+    def sv_get_fits(self, val):
+        """ save configured fits """
+        if len(val.fit_list) > 0:
+            return val.save_to_dict()
+        else:
+            return None
+
     def get_single_spectrum(self, background=False):
         """ Record a single spectrum from the spectrometer.
         """
+        # Clear any previous fit
+        self.fc.clear_result()
+
         if background:
             self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
         else:
@@ -268,3 +306,67 @@ class SpectrumLogic(GenericLogic):
                                    filelabel=filelabel,
                                    plotfig=fig)
         self.log.debug('Spectrum saved to:\n{0}'.format(filepath))
+
+    ################
+    # Fitting things 
+
+    def get_fit_functions(self):
+        """ Return the hardware constraints/limits
+        @return list(str): list of fit function names
+        """
+        return list(self.fc.fit_list)
+
+    def do_fit(self, fit_function=None, x_data=None, y_data=None):
+        """
+        Execute the currently configured fit on the measurement data. Optionally on passed data
+        """
+        if (x_data is None) or (y_data is None):
+            x_data = self.spectrum_data[0]
+            y_data = self.spectrum_data[1]
+            if self.fit_domain.any():
+                start_idx = self._find_nearest_idx(x_data, self.fit_domain[0])
+                stop_idx = self._find_nearest_idx(x_data, self.fit_domain[1])
+
+                x_data = x_data[start_idx:stop_idx]
+                y_data = y_data[start_idx:stop_idx]
+
+        if fit_function is not None and isinstance(fit_function, str):
+            if fit_function in self.get_fit_functions():
+                self.fc.set_current_fit(fit_function)
+            else:
+                self.fc.set_current_fit('No Fit')
+                if fit_function != 'No Fit':
+                    self.log.warning('Fit function "{0}" not available in Spectrum logic '
+                                     'fit container.'.format(fit_function)
+                                     )
+
+        spectrum_fit_x, spectrum_fit_y, result = self.fc.do_fit(x_data, y_data)
+
+        self.spectrum_fit = np.array([spectrum_fit_x, spectrum_fit_y])
+
+        if result is None:
+            result_str_dict = {}
+        else:
+            result_str_dict = result.result_str_dict
+        self.spectrum_fit_updated_Signal.emit(self.spectrum_fit,
+                                              result_str_dict, 
+                                              self.fc.current_fit
+                                              )
+        return
+
+    def _find_nearest_idx(self, array, value):
+        """ Find array index of element nearest to given value
+
+        @param list array: array to be searched.
+        @param float value: desired value.
+
+        @return index of nearest element.
+        """
+
+        idx = (np.abs(array-value)).argmin()
+        return idx
+
+    def set_fit_domain(self, domain):
+        self.fit_domain = domain
+        
+        self.fit_domain_updated_Signal.emit(self.fit_domain)
