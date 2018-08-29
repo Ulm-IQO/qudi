@@ -99,7 +99,7 @@ class SpectrumLogic(GenericLogic):
     def sv_set_fits(self, val):
         """ Set up fit container """
         fc = self.fitlogic().make_fit_container('ODMR sum', '1d')
-        fc.set_units(['Hz', 'c/s'])
+        fc.set_units(['m', 'c/s'])
         if isinstance(val, dict) and len(val) > 0:
             fc.load_from_dict(val)
         else:
