@@ -109,7 +109,7 @@ class WinSpec32(Base, SpectrometerInterface):
                     calibration.PolyCoeffs(1),
                     calibration.PolyCoeffs(0)
                 ])
-            specdata[0] = np.polyval(p, range(1, 1+len(spectrum)))
+            specdata[0] = np.polyval(p, range(1, 1+len(spectrum))) * 1e-9  # Send to logic in SI units (m)
             return specdata
 
         else:
