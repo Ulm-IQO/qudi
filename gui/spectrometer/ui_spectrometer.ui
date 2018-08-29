@@ -26,7 +26,7 @@
      <x>0</x>
      <y>0</y>
      <width>888</width>
-     <height>30</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuLaserscan">
@@ -104,7 +104,7 @@
     </sizepolicy>
    </property>
    <property name="windowTitle">
-    <string>Spectr&amp;um Fit</string>
+    <string>Spectrum Fit</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>4</number>
@@ -273,6 +273,9 @@
    <property name="text">
     <string>Record spectrum</string>
    </property>
+   <property name="toolTip">
+    <string>Record spectrum (A)</string>
+   </property>
    <property name="shortcut">
     <string>A</string>
    </property>
@@ -294,6 +297,12 @@
    <property name="text">
     <string>Start differential</string>
    </property>
+   <property name="toolTip">
+    <string>Start differential (D)</string>
+   </property>
+   <property name="shortcut">
+    <string>D</string>
+   </property>
   </action>
   <action name="save_spectrum_Action">
    <property name="icon">
@@ -302,6 +311,9 @@
    </property>
    <property name="text">
     <string>&amp;Save spectrum</string>
+   </property>
+   <property name="toolTip">
+    <string>Save spectrum (Strg+S)</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
@@ -312,15 +324,18 @@
     <string>Resume differential</string>
    </property>
    <property name="toolTip">
-    <string>resume a differential spectrum which was stopped</string>
+    <string>Resume a differential spectrum which was stopped</string>
    </property>
   </action>
   <action name="acquire_background_Action">
    <property name="text">
     <string>Acquire Background</string>
    </property>
+   <property name="iconText">
+    <string>Acquire &amp;Background</string>
+   </property>
    <property name="toolTip">
-    <string>Acquire Background Spectrum</string>
+    <string>Acquire Background Spectrum (B)</string>
    </property>
    <property name="shortcut">
     <string>B</string>
@@ -336,10 +351,10 @@
      <normalon>../../artwork/styles/application/qdark/checkbox_checked.png</normalon>../../artwork/styles/application/qdark/checkbox_unchecked.png</iconset>
    </property>
    <property name="text">
-    <string>Correct Background</string>
+    <string>&amp;Correct Background</string>
    </property>
    <property name="toolTip">
-    <string>Select if the background correction should be appied</string>
+    <string>Select if the background correction should be appied (C)</string>
    </property>
    <property name="shortcut">
     <string>C</string>
@@ -350,7 +365,7 @@
     <string>Save Background</string>
    </property>
    <property name="toolTip">
-    <string>Save the background spectrum</string>
+    <string>Save the background spectrum (Shift+B)</string>
    </property>
    <property name="shortcut">
     <string>Shift+B</string>
