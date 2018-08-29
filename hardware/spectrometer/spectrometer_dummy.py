@@ -76,6 +76,8 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
         data[1] += lorentz.eval(x=data[0], params=params)
 
+        data[0] = data[0] * 1e-9  # return to logic in SI units (m)
+
         time.sleep(self.exposure)
         return data
 
