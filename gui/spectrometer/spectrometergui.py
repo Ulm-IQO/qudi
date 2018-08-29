@@ -94,7 +94,7 @@ class SpectrometerGui(GUIBase):
 
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('right', 'Number of Points', units='#')
-        self._pw.setLabel('bottom', 'Wavelength', units='nm')
+        self._pw.setLabel('bottom', 'Wavelength', units='m')
         self._pw.setLabel('top', 'Relative Frequency', units='Hz')
 
         # Create an empty plot curve to be filled later, set its pen
