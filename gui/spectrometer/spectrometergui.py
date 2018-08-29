@@ -99,10 +99,10 @@ class SpectrometerGui(GUIBase):
 
         # Create an empty plot curve to be filled later, set its pen
         self._curve1 = self._pw.plot()
-        self._curve1.setPen(palette.c2, width=2)
+        self._curve1.setPen(palette.c1, width=2)
 
         self._curve2 = self._pw.plot()
-        self._curve2.setPen(palette.c1, width=2)
+        self._curve2.setPen(palette.c2, width=2)
 
         self.update_data()
 
