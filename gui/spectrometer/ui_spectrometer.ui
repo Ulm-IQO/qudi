@@ -157,16 +157,61 @@
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="fit_domain_min_doubleSpinBox">
+          <widget class="ScienDSpinBox" name="fit_domain_min_doubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>m</string>
+           </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
            <property name="maximum">
-            <double>9999999.000000000000000</double>
+            <double>1000000000.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QDoubleSpinBox" name="fit_domain_max_doubleSpinBox">
+          <widget class="ScienDSpinBox" name="fit_domain_max_doubleSpinBox">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="suffix">
+            <string>m</string>
+           </property>
+           <property name="decimals">
+            <number>3</number>
+           </property>
+           <property name="minimum">
+            <double>0.000000000000000</double>
+           </property>
            <property name="maximum">
-            <double>9999999.000000000000000</double>
+            <double>1000000000.000000000000000</double>
+           </property>
+           <property name="singleStep">
+            <double>0.100000000000000</double>
            </property>
           </widget>
          </item>
@@ -327,6 +372,11 @@
    <class>FitSettingsComboBox</class>
    <extends>QComboBox</extends>
    <header>gui/fitsettings</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
