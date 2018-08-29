@@ -283,6 +283,13 @@ class SpectrumLogic(GenericLogic):
         parameters = OrderedDict()
         parameters['Spectrometer acquisition repetitions'] = self.repetition_count
 
+        # add all fit parameter to the saved data:
+        if self.fc.current_fit_result is not None:
+            parameters['Fit function'] = self.fc.current_fit
+
+            for name, param in self.fc.current_fit_param.items():
+                parameters[name] = str(param)
+        
         # add any custom header params
         if custom_header is not None:
             for key in custom_header:
@@ -304,17 +311,7 @@ class SpectrumLogic(GenericLogic):
         if not background and len(self._spectrum_data_corrected) != 0:
             data['corrected'] = self._spectrum_data_corrected[1, :]
 
-        # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(self._save_logic.mpl_qd_style)
-
-        fig, ax1 = plt.subplots()
-
-        ax1.plot(data['wavelength'], data['signal'])
-
-        ax1.set_xlabel('Wavelength (nm)')
-        ax1.set_ylabel('Signal (arb. u.)')
-
-        fig.tight_layout()
+        fig = self.draw_figure()
 
         # Save to file
         self._save_logic.save_data(data,
@@ -323,6 +320,50 @@ class SpectrumLogic(GenericLogic):
                                    filelabel=filelabel,
                                    plotfig=fig)
         self.log.debug('Spectrum saved to:\n{0}'.format(filepath))
+
+    def draw_figure(self):
+        """ Draw the summary plot to save with the data.
+
+        @return fig fig: a matplotlib figure object to be saved to file.
+        """
+        wavelength = self.spectrum_data[0, :] * 1e9 # convert m to nm for plot
+        spec_data = self.spectrum_data[1, :]
+
+        prefix = ['', 'k', 'M', 'G', 'T']
+        prefix_index = 0
+        rescale_factor = 1
+        
+        # Rescale spectrum data with SI prefix
+        while np.max(spec_data) / rescale_factor > 1000:
+            rescale_factor = rescale_factor * 1000
+            prefix_index = prefix_index + 1
+
+        intensity_prefix = prefix[prefix_index]
+
+        # Prepare the figure to save as a "data thumbnail"
+        plt.style.use(self._save_logic.mpl_qd_style)
+
+        fig, ax1 = plt.subplots()
+
+        ax1.plot(wavelength,
+                 spec_data / rescale_factor,
+                 linestyle=':',
+                 linewidth=0.5
+                )
+        
+        # If there is a fit, plot it also
+        if self.fc.current_fit_result is not None:
+            ax1.plot(self.spectrum_fit[0] * 1e9,  # convert m to nm for plot
+                     self.spectrum_fit[1] / rescale_factor,
+                     marker='None'
+                    )
+
+        ax1.set_xlabel('Wavelength (nm)')
+        ax1.set_ylabel('Intensity ({}count)'.format(intensity_prefix))
+
+        fig.tight_layout()
+
+        return fig
 
     ################
     # Fitting things
