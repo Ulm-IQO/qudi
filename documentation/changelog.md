@@ -24,6 +24,8 @@ Changes/New features:
 * Added a how-to-participate guide to the documentation
 * Added installation options guide to the documentation
 * A lot of smaller fixes to the spectrometer (WinSpec) -> this also modifies the connectors in the default config
+* Added fitting to the spectrometer
+* Bug fixes and support for SMD12 laser controller
 
 Config changes:
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
