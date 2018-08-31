@@ -543,6 +543,7 @@ class SaveLogic(GenericLogic):
             png_image.save(fig_fname_image, "png", pnginfo=png_metadata)
 
             # close matplotlib figure
+            plt.gcf().clear()
             plt.close(plotfig)
             self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
             #----------------------------------------------------------------------------------
