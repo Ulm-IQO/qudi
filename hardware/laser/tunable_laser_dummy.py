@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Interface file for lasers where current, power and wavelength / voltage can be set
+This module acts like a tunable laser.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,252 +19,243 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from enum import Enum
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.module import Base
+from interface.tunable_laser_interface import TunableLaserInterface, PowerControlMode, WavelengthControlMode, LaserState, ShutterState
+import math
+import random
+import time
 
+class TunableLaserDummy(Base, TunableLaserInterface):
+    """
+    Tunable laser dummy
+    """
+    _modclass = 'tunablelaserdummy'
+    _modtype = 'hardware'
 
-class PowerControlMode(Enum):
-    MIXED = 0
-    POWER = 1
-    CURRENT = 2
+    def __init__(self, **kwargs):
+        """ """
+        super().__init__(**kwargs)
+        self.lstate = LaserState.OFF
+        self.shutter = ShutterState.CLOSED
+        self.power_mode = PowerControlMode.POWER
+        self.wavelength_mode = WavelengthControlMode.WAVELENGTH
+        self.wavelength = 950
+        self.current_setpoint = 0
+        self.power_setpoint = 0
+        self.wavelength_setpoint = 637e-9
 
-class WavelengthControlMode(Enum):
-    PIEZOVOLTAGE = 0
-    WAVELENGTH = 1
+    def on_activate(self):
+        """ Activate module.
+        """
+        pass
 
-class ShutterState(Enum):
-    CLOSED = 0
-    OPEN = 1
-    UNKNOWN = 2
-    NOSHUTTER = 3
+    def on_deactivate(self):
+        """ Deactivate module.
+        """
+        pass
 
-class LaserState(Enum):
-    OFF = 0
-    ON = 1
-    LOCKED = 2
-    UNKNOWN = 3
-
-class TunableLaserInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'TunableLaserInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
     def get_power_range(self):
         """ Return laser power
         @return tuple(p1, p2): Laser power range in watts
         """
-        pass
+        return (0, 0.250)
 
-    @abc.abstractmethod
     def get_power(self):
         """ Return laser power
         @return float: Actual laser power in watts
         """
-        pass
+        return self.power_setpoint * random.gauss(1, 0.01)
 
-    @abc.abstractmethod
     def set_power(self, power):
         """ Set laser power ins watts
           @param float power: laser power setpoint in watts
 
           @return float: laser power setpoint in watts
         """
-        pass
+        self.power_setpoint = power
+        self.current_setpoint = math.sqrt(4*self.power_setpoint)*100
+        return self.power_setpoint
 
-    @abc.abstractmethod
     def get_power_setpoint(self):
         """ Return laser power setpoint
         @return float: Laser power setpoint in watts
         """
-        pass
+        return self.power_setpoint
 
-    @abc.abstractmethod
     def get_wavelength_unit(self):
         """ Return laser wavelength unit
         @return str: unit
         """
-        pass
+        return "m"
 
-    @abc.abstractmethod
     def get_wavelength(self):
         """ Get laser wavelength in units given by "get_wavelength_unit"
-          @return float: laser wavelength in units given by "get_wavelength_unit"
+          @param float wavelength: laser wavelength in units given by "get_wavelength_unit"
         """
-        pass
+        return self.wavelength_setpoint * random.gauss(1, 1e-5)
 
-    @abc.abstractmethod
     def set_wavelength(self, wavelength):
         """ Set wavelength in units given by "get_wavelength_unit"
           @param float wavelength: laser wavelength in units given by "get_wavelength_unit"
           @return float: laser wavelength setpoint in units given by "get_wavelength_unit"
         """
-        pass
+        self.wavelength_setpoint = wavelength
+        return wavelength
 
-    @abc.abstractmethod
     def get_wavelength_setpoint(self):
         """ Return laser wavelength setpoint in units given by "get_wavelength_unit"
         @return float: Laser wavelength setpoint in units given by "get_wavelength_unit"
         """
-        pass
+        return self.wavelength_setpoint
 
-    @abc.abstractmethod
     def get_wavelength_range(self):
         """ Return wavelength range
         @return tuple(p1, p2): Laser wavelength range in units given by "get_wavelength_unit"
         """
-        pass
+        return (636e-9, 638e-9)
 
-    @abc.abstractmethod
     def get_current_unit(self):
         """ Return laser current unit
         @return str: unit
         """
-        pass
+        return "%"
 
-    @abc.abstractmethod
     def get_current(self):
         """ Return laser current
         @return float: actual laser current as ampere or percentage of maximum current
         """
-        pass
+        return self.current_setpoint * random.gauss(1, 0.05)
 
-    @abc.abstractmethod
     def get_current_range(self):
         """ Return laser current range
         @return tuple(c1, c2): Laser current range in current units
         """
-        pass
+        return (0, 100)
 
-    @abc.abstractmethod
     def get_current_setpoint(self):
         """ Return laser current
         @return float: Laser current setpoint in amperes
         """
-        pass
+        return self.current_setpoint
 
-    @abc.abstractmethod
     def set_current(self, current):
         """ Set laser current
         @param float current: Laser current setpoint in amperes
         @return float: Laser current setpoint in amperes
         """
-        pass
+        self.current_setpoint = current
+        self.power_setpoint = math.pow(self.current_setpoint/100, 2)/4
+        return self.current_setpoint
 
-    @abc.abstractmethod
     def allowed_power_control_modes(self):
         """ Get available power control mode of laser
           @return list: list with enum power control modes
         """
-        pass
+        return [PowerControlMode.POWER, PowerControlMode.CURRENT]
 
-    @abc.abstractmethod
     def get_power_control_mode(self):
         """ Get power control mode of laser
           @return enum PowerControlMode: power control mode
         """
-        pass
+        return self.power_mode
 
-    @abc.abstractmethod
     def set_power_control_mode(self, power_control_mode):
         """ Set laser power control mode.
           @param enum power_control_mode: desired power control mode
           @return enum PowerControlMode: actual power control mode
         """
-        pass
+        self.power_mode = power_control_mode
+        return self.power_mode
 
-    @abc.abstractmethod
     def allowed_wavelength_control_modes(self):
         """ Get available wavelength control mode of laser
           @return list: list with enum wavelength control modes
         """
-        pass
+        return [WavelengthControlMode.WAVELENGTH]
 
-    @abc.abstractmethod
     def get_wavelength_control_mode(self):
         """ Get power control mode of laser
           @return enum WavelengthControlMode: power control mode
         """
-        pass
+        return [WavelengthControlMode.WAVELENGTH]
 
-    @abc.abstractmethod
     def set_wavelength_control_mode(self, wavelength_control_mode):
         """ Set laser wavelength control mode.
           @param enum wavelength_control_mode: desired wavelength control mode
           @return enum WavelengthControlMode: actual wavelength control mode
         """
-        pass
+        return WavelengthControlMode.WAVELENGTH
 
-
-    @abc.abstractmethod
     def on(self):
         """ Turn on laser. Does not open shutter if one is present.
           @return enum LaserState: actual laser state
         """
-        pass
+        time.sleep(1)
+        self.lstate = LaserState.ON
+        return self.lstate
 
-    @abc.abstractmethod
     def off(self):
         """ Turn ooff laser. Does not close shutter if one is present.
           @return enum LaserState: actual laser state
         """
-        pass
+        time.sleep(1)
+        self.lstate = LaserState.OFF
+        return self.lstate
 
-    @abc.abstractmethod
     def get_laser_state(self):
         """ Get laser state.
           @return enum LaserState: laser state
         """
-        pass
+        return self.lstate
 
-    @abc.abstractmethod
     def set_laser_state(self, state):
         """ Set laser state.
           @param enum state: desired laser state
           @return enum LaserState: actual laser state
         """
-        pass
+        time.sleep(1)
+        self.lstate = state
+        return self.lstate
 
-    @abc.abstractmethod
     def get_shutter_state(self):
         """ Get shutter state. Has a state for no shutter present.
           @return enum ShutterState: actual shutter state
         """
-        pass
+        return self.shutter
 
-    @abc.abstractmethod
     def set_shutter_state(self, state):
         """ Set shutter state.
           @param enum state: desired shutter state
           @return enum ShutterState: actual shutter state
         """
-        pass
+        time.sleep(1)
+        self.shutter = state
+        return self.shutter
 
-    @abc.abstractmethod
     def get_temperatures(self):
         """ Get all available temperatures from laser.
           @return dict: dict of name, value for temperatures
         """
-        pass
+        return {
+            'psu': 32.2 * random.gauss(1, 0.1),
+            'head': 42.0 * random.gauss(1, 0.2)
+        }
 
-    @abc.abstractmethod
     def get_temperature_setpoints(self):
         """ Get all available temperature setpoints from laser.
           @return dict: dict of name, value for temperature setpoints
         """
-        pass
+        return {'psu': 32.2, 'head': 42.0}
 
-    @abc.abstractmethod
     def set_temperatures(self, temps):
         """ Set laser temperatures.
           @param temps: dict of name, value to be set
           @return dict: dict of name, value of temperatures that were set
         """
-        pass
+        return {} # cannot set temperatures of dummy laser
 
-    @abc.abstractmethod
     def get_extra_info(self):
         """ Show dianostic information about lasers.
           @return str: diagnostic info as a string
         """
-        pass
+        return "Dummy tunable laser v0.9.9\nnot used very much\nvery cheap price very good quality"
