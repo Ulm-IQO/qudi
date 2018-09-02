@@ -30,8 +30,8 @@ class PowerControlMode(Enum):
     CURRENT = 2
 
 class WavelengthControlMode(Enum):
-    VOLTAGE = 0
-    WAVELENGTH = 1
+    VOLTAGE_IN_VOLTS = 0
+    WAVELENGTH_IN_METERS = 1
 
 class ShutterState(Enum):
     CLOSED = 0
@@ -80,38 +80,31 @@ class TunableLaserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_wavelength_unit(self):
-        """ Return laser wavelength unit
-        @return str: unit
-        """
-        pass
-
-    @abc.abstractmethod
     def get_wavelength(self):
-        """ Get laser wavelength in units given by "get_wavelength_unit"
-          @return float: laser wavelength in units given by "get_wavelength_unit"
+        """ Get laser wavelength in units defined by the wavelength control mode
+          @return float: laser wavelength in units defined by the wavelength control mode
         """
         pass
 
     @abc.abstractmethod
     def set_wavelength(self, wavelength):
-        """ Set wavelength in units given by "get_wavelength_unit"
-          @param float wavelength: laser wavelength in units given by "get_wavelength_unit"
-          @return float: laser wavelength setpoint in units given by "get_wavelength_unit"
+        """ Set wavelength in units defined by the wavelength control mode
+          @param float wavelength: laser wavelength in units defined by the wavelength control mode
+          @return float: laser wavelength setpoint in units defined by the wavelength control mode
         """
         pass
 
     @abc.abstractmethod
     def get_wavelength_setpoint(self):
-        """ Return laser wavelength setpoint in units given by "get_wavelength_unit"
-        @return float: Laser wavelength setpoint in units given by "get_wavelength_unit"
+        """ Return laser wavelength setpoint in units defined by the wavelength control mode
+        @return float: Laser wavelength setpoint in units defined by the wavelength control mode
         """
         pass
 
     @abc.abstractmethod
     def get_wavelength_range(self):
         """ Return wavelength range
-        @return tuple(p1, p2): Laser wavelength range in units given by "get_wavelength_unit"
+        @return tuple(p1, p2): Laser wavelength range in units defined by the wavelength control mode
         """
         pass
 

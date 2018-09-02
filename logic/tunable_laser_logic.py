@@ -59,7 +59,6 @@ class TunableLaserLogic(GenericLogic):
         self.laser_shutter = self._laser.get_shutter_state()
         self.laser_can_turn_on = self.laser_state.value <= LaserState.ON.value
         self.laser_current_unit = self._laser.get_current_unit()
-        self.laser_wavelength_unit = self._laser.get_wavelength_unit()
         self.laser_power_range = self._laser.get_power_range()
         self.laser_current_range = self._laser.get_current_range()
         self.laser_wavelength_range = self._laser.get_wavelength_range()
@@ -69,8 +68,8 @@ class TunableLaserLogic(GenericLogic):
         self.laser_extra = self._laser.get_extra_info()
         self.laser_can_power = PowerControlMode.POWER in self._laser.allowed_power_control_modes()
         self.laser_can_current = PowerControlMode.CURRENT in self._laser.allowed_power_control_modes()
-        self.laser_can_wavelength = WavelengthControlMode.WAVELENGTH in self._laser.allowed_wavelength_control_modes()
-        self.laser_can_voltage = WavelengthControlMode.VOLTAGE in self._laser.allowed_wavelength_control_modes()
+        self.laser_can_wavelength = WavelengthControlMode.WAVELENGTH_IN_METERS in self._laser.allowed_wavelength_control_modes()
+        self.laser_can_voltage = WavelengthControlMode.VOLTAGE_IN_VOLTS in self._laser.allowed_wavelength_control_modes()
         if PowerControlMode.MIXED in self._laser.allowed_power_control_modes():
             self.laser_can_power = True
             self.laser_can_current = True
@@ -172,13 +171,14 @@ class TunableLaserLogic(GenericLogic):
             self.laser_wavelength = self._laser.get_wavelength()
             self._laser.set_wavelength(self.laser_wavelength)
             ctrl_mode = self._laser.set_wavelength_control_mode(mode)
+            self.laser_wavelength_range = self._laser.get_wavelength_range()
             self.log.info('Changed control mode to {0}'.format(ctrl_mode))
 
-
     @QtCore.Slot(WavelengthControlMode)
-    def get_wavelength_control_mode(self, mode):
+    def get_wavelength_control_mode(self):
         """ Retrieve whether the laser wavelength is controlled by piezo voltage or wavelength."""
-        self.laser_wavelength_control_mode = self._laser.get_wavelength_control_mode()
+        #self.laser_wavelength_control_mode = self._laser.get_wavelength_control_mode()
+        return self._laser.get_wavelength_control_mode()
 
     @QtCore.Slot(bool)
     def set_laser_state(self, state):

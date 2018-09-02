@@ -66,7 +66,7 @@ class TunableLaserGUI(GUIBase):
     _modclass = 'tunablelasergui'
     _modtype = 'gui'
 
-    ## declare connectors
+    # declare connectors
     tunablelaserlogic = Connector(interface='TunableLaserLogic')
 
     sigLaser = QtCore.Signal(bool)
@@ -85,8 +85,6 @@ class TunableLaserGUI(GUIBase):
         """
         self._tunable_laser_logic = self.tunablelaserlogic()
 
-        #####################
-        # Configuring the dock widgets
         self._mw = TunableLaserWindow()
 
         # Setup dock widgets
@@ -111,10 +109,6 @@ class TunableLaserGUI(GUIBase):
         plot1.getAxis('right').linkToView(plot2)
         plot2.setXLink(plot1)
 
-        plot3 = self._mw.wavelengthPlotWidget.getPlotItem()
-        plot3.setLabel('left', 'Wavelength', units=self._tunable_laser_logic.laser_wavelength_unit, color=palette.c1.name())
-        plot3.setLabel('bottom', 'Time', units=None)
-
         self.curves = {}
         colorlist = (palette.c2, palette.c3, palette.c4, palette.c5, palette.c6)
         i = 0
@@ -132,7 +126,14 @@ class TunableLaserGUI(GUIBase):
                 self.curves[name] = curve
                 i += 1
 
-        # plot the wavelength independently on separate graph
+        # setup plot for the wavelength display
+        if self._tunable_laser_logic.get_wavelength_control_mode() is WavelengthControlMode.WAVELENGTH_IN_METERS:
+            unit = 'm'
+        else:
+            unit = 'V'
+        plot3 = self._mw.wavelengthPlotWidget.getPlotItem()
+        plot3.setLabel('left', 'Wavelength', units=unit, color=palette.c1.name())
+        plot3.setLabel('bottom', 'Time', units=None)
         curve = pg.PlotDataItem()
         curve.setPen(palette.c1)
         plot3.addItem(curve)
@@ -247,18 +248,23 @@ class TunableLaserGUI(GUIBase):
         """ Process signal from laser control mode radio button group. """
         voltage = self._mw.voltageRadioButton.isChecked() and self._mw.voltageRadioButton.isEnabled()
         wavelength = self._mw.wavelengthRadioButton.isChecked() and self._mw.wavelengthRadioButton.isEnabled()
+        if wavelength and not voltage:
+            self._mw.setValueWavelengthSpinBox.setSuffix('m')
+            self.plot3.setLabel('left', 'Wavelength', units='m', color=palette.c1.name())
+            self.sigWavelengthCtrlMode.emit(WavelengthControlMode.WAVELENGTH_IN_METERS)
+        elif voltage and not wavelength:
+            self._mw.setValueWavelengthSpinBox.setSuffix('V')
+            self.plot3.setLabel('left', 'Wavelength', units='V', color=palette.c1.name())
+            self.sigWavelengthCtrlMode.emit(WavelengthControlMode.VOLTAGE_IN_VOLTS)
+        else:
+            self.log.error('How did you mess up the radio button group?')
+
+        # allow time for the control system change to propagate, otherwise end up
+        # with the spinbox limits remaining in the old unit system
+        time.sleep(0.05)
         lwr = self._tunable_laser_logic.laser_wavelength_range
         self._mw.setValueWavelengthSpinBox.setRange(lwr[0], lwr[1])
         self._mw.setValueWavelengthSpinBox.setValue(self._tunable_laser_logic.laser_wavelength_setpoint)
-
-        if wavelength and not voltage:
-            self._mw.setValueWavelengthSpinBox.setSuffix('m')
-            self.sigWavelengthCtrlMode.emit(WavelengthControlMode.WAVELENGTH)
-        elif voltage and not wavelength:
-            self._mw.setValueWavelengthSpinBox.setSuffix('V')
-            self.sigWavelengthCtrlMode.emit(WavelengthControlMode.VOLTAGE)
-        else:
-            self.log.error('How did you mess up the radio button group?')
 
     @QtCore.Slot()
     def updateButtonsEnabled(self):
@@ -299,18 +305,12 @@ class TunableLaserGUI(GUIBase):
                 self._tunable_laser_logic.laser_current,
                 self._tunable_laser_logic.laser_current_unit))
         self._mw.powerLabel.setText('{0:6.3f} W'.format(self._tunable_laser_logic.laser_power))
-        if self._tunable_laser_logic.get_wavelength_control_mode is WavelengthControlMode.VOLTAGE:
+        if self._tunable_laser_logic.get_wavelength_control_mode() is WavelengthControlMode.VOLTAGE_IN_VOLTS:
             self._mw.wavelengthLabel.setText(
-                '{0:6.3f} {1!s}'.format(self._tunable_laser_logic.laser_wavelength,
-                                        self._tunable_laser_logic.laser_wavelength_unit))
+                '{0:6.3f} V'.format(self._tunable_laser_logic.laser_wavelength))
         else:
-            if self._tunable_laser_logic.laser_wavelength_unit == 'm':
-                self._mw.wavelengthLabel.setText(
-                    '{0:6.3f} nm'.format(1e9*self._tunable_laser_logic.laser_wavelength))
-            else:
-                self._mw.wavelengthLabel.setText(
-                    '{0:6.3f} {1!s}'.format(self._tunable_laser_logic.laser_wavelength,
-                                            self._tunable_laser_logic.laser_wavelength_unit))
+            self._mw.wavelengthLabel.setText(
+                '{0:6.3f} nm'.format(1e9*self._tunable_laser_logic.laser_wavelength))
 
         self._mw.extraLabel.setText(self._tunable_laser_logic.laser_extra)
         self.updateButtonsEnabled()

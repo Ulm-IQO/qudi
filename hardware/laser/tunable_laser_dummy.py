@@ -38,7 +38,7 @@ class TunableLaserDummy(Base, TunableLaserInterface):
         self.lstate = LaserState.OFF
         self.shutter = ShutterState.CLOSED
         self.power_mode = PowerControlMode.POWER
-        self.wavelength_mode = WavelengthControlMode.WAVELENGTH
+        self.wavelength_mode = WavelengthControlMode.WAVELENGTH_IN_METERS
         self.wavelength = 950
         self.current_setpoint = 0
         self.power_setpoint = 0
@@ -82,37 +82,44 @@ class TunableLaserDummy(Base, TunableLaserInterface):
         """
         return self.power_setpoint
 
-    def get_wavelength_unit(self):
-        """ Return laser wavelength unit
-        @return str: unit
-        """
-        return "m"
-
     def get_wavelength(self):
-        """ Get laser wavelength in units given by "get_wavelength_unit"
-          @param float wavelength: laser wavelength in units given by "get_wavelength_unit"
+        """ Get laser wavelength in units defined by the wavelength control mode
+          @param float wavelength: laser wavelength in units defined by the wavelength control mode
         """
-        return self.wavelength_setpoint * random.gauss(1, 1e-5)
+        if self.wavelength_mode is WavelengthControlMode.WAVELENGTH_IN_METERS:
+            return self.wavelength_setpoint * random.gauss(1, 1e-5)
+        else:
+            return self._wavelength_to_voltage(self.wavelength_setpoint * random.gauss(1, 1e-5))
 
     def set_wavelength(self, wavelength):
-        """ Set wavelength in units given by "get_wavelength_unit"
-          @param float wavelength: laser wavelength in units given by "get_wavelength_unit"
-          @return float: laser wavelength setpoint in units given by "get_wavelength_unit"
+        """ Set wavelength in units defined by the wavelength control mode
+          @param float wavelength: laser wavelength in units defined by the wavelength control mode
+          @return float: laser wavelength setpoint in units defined by the wavelength control mode
         """
-        self.wavelength_setpoint = wavelength
-        return wavelength
+        if self.wavelength_mode is WavelengthControlMode.WAVELENGTH_IN_METERS:
+            self.wavelength_setpoint = wavelength
+            return wavelength
+        else:
+            self.wavelength_setpoint = self._voltage_to_wavelength(wavelength)
+            return wavelength
 
     def get_wavelength_setpoint(self):
-        """ Return laser wavelength setpoint in units given by "get_wavelength_unit"
-        @return float: Laser wavelength setpoint in units given by "get_wavelength_unit"
+        """ Return laser wavelength setpoint in units defined by the wavelength control mode
+        @return float: Laser wavelength setpoint in units defined by the wavelength control mode
         """
-        return self.wavelength_setpoint
+        if self.wavelength_mode is WavelengthControlMode.WAVELENGTH_IN_METERS:
+            return self.wavelength_setpoint
+        else:
+            return self._wavelength_to_voltage(self.wavelength_setpoint)
 
     def get_wavelength_range(self):
         """ Return wavelength range
-        @return tuple(p1, p2): Laser wavelength range in units given by "get_wavelength_unit"
+        @return tuple(p1, p2): Laser wavelength range in units defined by the wavelength control mode
         """
-        return (636e-9, 638e-9)
+        if self.wavelength_mode is WavelengthControlMode.WAVELENGTH_IN_METERS:
+            return (636e-9, 638e-9)
+        else:
+            return (-10, 10)
 
     def get_current_unit(self):
         """ Return laser current unit
@@ -171,20 +178,21 @@ class TunableLaserDummy(Base, TunableLaserInterface):
         """ Get available wavelength control mode of laser
           @return list: list with enum wavelength control modes
         """
-        return [WavelengthControlMode.WAVELENGTH]
+        return [WavelengthControlMode.WAVELENGTH_IN_METERS, WavelengthControlMode.VOLTAGE_IN_VOLTS]
 
     def get_wavelength_control_mode(self):
         """ Get power control mode of laser
           @return enum WavelengthControlMode: power control mode
         """
-        return [WavelengthControlMode.WAVELENGTH]
+        return self.wavelength_mode
 
     def set_wavelength_control_mode(self, wavelength_control_mode):
         """ Set laser wavelength control mode.
           @param enum wavelength_control_mode: desired wavelength control mode
           @return enum WavelengthControlMode: actual wavelength control mode
         """
-        return WavelengthControlMode.WAVELENGTH
+        self.wavelength_mode = wavelength_control_mode
+        return self.wavelength_mode
 
     def on(self):
         """ Turn on laser. Does not open shutter if one is present.
@@ -259,3 +267,9 @@ class TunableLaserDummy(Base, TunableLaserInterface):
           @return str: diagnostic info as a string
         """
         return "Dummy tunable laser v0.9.9\nnot used very much\nvery cheap price very good quality"
+
+    def _voltage_to_wavelength(self, voltage):
+        return (voltage + 6370)/1e10
+
+    def _wavelength_to_voltage(self, wavelength):
+        return (1e10 * wavelength) - 6370
