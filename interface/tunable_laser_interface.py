@@ -30,7 +30,7 @@ class PowerControlMode(Enum):
     CURRENT = 2
 
 class WavelengthControlMode(Enum):
-    PIEZOVOLTAGE = 0
+    VOLTAGE = 0
     WAVELENGTH = 1
 
 class ShutterState(Enum):
