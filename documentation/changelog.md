@@ -16,6 +16,13 @@ Changes/New features:
 * Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
 * Added a how-to-participate guide to the documentation
 * Added installation options guide to the documentation
+* A lot of smaller fixes to the spectrometer (WinSpec) -> this also modifies the connectors in the default config
+* Added fitting to the spectrometer
+* Bug fixes and support for SMD12 laser controller
+* New hardware file for Microwave source - Anritsu MG3691C has been added.
+* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
+* Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
+* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
     * Bug fix for waveform generation larger than ~2 GSamples
@@ -94,12 +101,6 @@ Changes/New features:
     
 
 Config changes:
-* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
-* Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
-* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
-
-
-
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
 subfolder "pulsed". As an example instead of
     ```
@@ -196,6 +197,7 @@ Changes/New features:
 * Analog signal input (for PDMR measurements) now supported for slow counter/confocal/ODMR (see config changes)
 * Use of rpyc became optional (does not need to be installed if no remote module capability is needed)
 * Mayor cleanup/overhaul of the `microwave_interface.py` and adaption of all affected modules (hardware/logic)
+
 
 
 Config changes:

@@ -37,6 +37,7 @@ Some parts of the code are originally from the IPython/jupyter projct
 (http://jupyter.org) and continue to be distributed under
 [BSD license](@ref bsdlicense-ipython) as well as [GPLv3](@ref gpl).
 
+
 [1] ACQ4: an open-source software platform for data acquisition and analysis in neurophysiology research.
     Campagnola L, Kratz MB, and Manis PB. Front. Neuroinform., 30 January 2014. doi: 10.3389/fninf.2014.00003
 
