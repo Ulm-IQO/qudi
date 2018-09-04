@@ -160,6 +160,17 @@ look somewhat like:
     Essentially "additional_extraction_path" and "additional_analysis_path" only need to be 
     specified when you want to import sampling functions or predefined methods from an additional 
     directory other than the default directories situated in qudi.logic.pulsed.
+* The fitting has been added to the spectrometer logic module. You need to connect the FitLogic to 
+the SpectrometerLogic module like:
+    ```
+    spectrumlogic: 
+    module.Class: 'spectrum.SpectrumLogic' 
+    connect: 
+        spectrometer: 'myspectrometer' 
+        savelogic: 'savelogic' 
+        odmrlogic: 'odmrlogic' 
+        fitlogic: 'fitlogic'
+    ```
 
 ## Release 0.9
 Released on 6 Mar 2018
