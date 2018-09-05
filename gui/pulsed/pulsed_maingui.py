@@ -190,11 +190,11 @@ class PulsedMeasurementGui(GUIBase):
         self._activate_main_window_ui()
         self._activate_extraction_ui()
         self._activate_analysis_ui()
+        self._activate_generator_settings_ui()
         self._activate_pulse_generator_ui()
         self._activate_predefined_methods_ui()
         self._activate_sequence_generator_ui()
         self._activate_analysis_settings_ui()
-        self._activate_generator_settings_ui()
         self._activate_predefined_methods_settings_ui()
 
         self._connect_main_window_signals()
