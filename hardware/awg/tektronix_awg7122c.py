@@ -263,7 +263,7 @@ class AWG7122C(Base, PulserInterface):
             # wait until the AWG has actually stopped
             while self._is_output_on():
                 time.sleep(0.2)
-        return self.get_status()
+        return self.get_status()[0]
 
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
