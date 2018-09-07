@@ -55,8 +55,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
@@ -64,10 +64,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         # Example for configuration with default values:
         constraints = PulserConstraints()
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = ['wfm', 'wfmx']
-        constraints.sequence_format = ['seq', 'seqx']
 
         constraints.sample_rate.min = 10.0e6
         constraints.sample_rate.max = 12.0e9
@@ -94,10 +90,10 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         constraints.d_ch_high.step = 0.01
         constraints.d_ch_high.default = 5.0
 
-        constraints.sampled_file_length.min = 80
-        constraints.sampled_file_length.max = 64800000
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 80
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -120,28 +116,21 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = ['A', 'B', 'C', 'D']
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_conf = OrderedDict()
-        activation_conf['yourconf'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_conf['different_conf'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_conf['something_else'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
         constraints.activation_config = activation_conf
         """
         pass
@@ -163,50 +152,73 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device mass memory.
-            Also loads these files into the device workspace if present.
-            Does NOT load waveforms/sequences/patterns into channels.
+    def load_waveform(self, load_dict):
+        """ Loads a waveform to the specified channel of the pulsing device.
 
-        @param asset_name: string, name of the ensemble/sequence to be uploaded
+        @param dict|list load_dict: a dictionary with keys being one of the
+                                    available channel index and values being the
+                                    name of the already written waveform to load
+                                    into the channel. Examples:
 
-        @return int: error code (0:OK, -1:error)
+                                        {1: rabi_ch1, 2: rabi_ch2}
+                                    or
+                                        {1: rabi_ch2, 2: rabi_ch1}
 
-        If nothing is passed, method will be skipped.
+                                    If just a list of waveform names if given,
+                                    the channel association will be invoked from
+                                    the channel suffix '_ch1', '_ch2' etc. A
+                                    possible configuration can be e.g.
 
-        This method has no effect when using pulser hardware without own mass memory
-        (i.e. PulseBlaster, FPGA)
+                                        ['rabi_ch1', 'rabi_ch2', 'rabi_ch3']
+
+        @return dict: Dictionary containing the actually loaded waveforms per
+                      channel.
+
+        For devices that have a workspace (i.e. AWG) this will load the waveform
+        from the device workspace into the channel. For a device without mass
+        memory, this will make the waveform/pattern that has been previously
+        written with self.write_waveform ready to play.
+
+        Please note that the channel index used here is not to be confused with the number suffix
+        in the generic channel descriptors (i.e. 'd_ch1', 'a_ch1'). The channel index used here is
+        highly hardware specific and corresponds to a collection of digital and analog channels
+        being associated to a SINGLE wavfeorm asset.
         """
         pass
 
     @abc.abstractmethod
-    def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing device.
-        For devices that have a workspace (i.e. AWG) this will load the asset from the device
-        workspace into the channel.
-        For a device without mass memory this will transfer the waveform/sequence/pattern data
-        directly to the device so that it is ready to play.
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
 
-        @param str asset_name: The name of the asset to be loaded
+        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
 
-        @param dict load_dict:  a dictionary with keys being one of the available channel numbers
-                                and items being the name of the already sampled waveform/sequence
-                                files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given then the channel
-                                association is invoked from the file name, i.e. the appendix
-                                (_ch1, _ch2 etc.)
-
-        @return int: error code (0:OK, -1:error)
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
         pass
 
     @abc.abstractmethod
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
+    def get_loaded_assets(self):
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
 
-        @return str: Name of the current asset ready to play. (no filename)
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
         """
         pass
 
@@ -275,15 +287,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
             amplitude = ['a_ch1', 'a_ch4'], offset = None
         to obtain the amplitude of channel 1 and 4 and the offset of all channels
             {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
-
-        The major difference to digital signals is that analog signals are always oscillating or
-        changing signals, otherwise you can use just digital output. In contrast to digital output
-        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
-        an (absolute) voltage).
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -306,15 +309,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Note: After setting the amplitude and/or offset values of the device, use the actual set
               return values for further processing.
-
-        The major difference to digital signals is that analog signals are always oscillating or
-        changing signals, otherwise you can use just digital output. In contrast to digital output
-        levels, analog output levels are defined by an amplitude (here total signal span, denoted in
-        Voltage peak to peak) and an offset (a value around which the signal oscillates, denoted by
-        an (absolute) voltage).
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -340,14 +334,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         to obtain the low voltage values of digital channel 1 an 4. A possible answer might be
             {'d_ch1': -0.5, 'd_ch4': 2.0} {'d_ch1': 1.0, 'd_ch2': 1.0, 'd_ch3': 1.0, 'd_ch4': 4.0}
         Since no high request was performed, the high values for ALL channels are returned (here 4).
-
-        The major difference to analog signals is that digital signals are either ON or OFF,
-        whereas analog channels have a varying amplitude range. In contrast to analog output
-        levels, digital output levels are defined by a voltage, which corresponds to the ON status
-        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -370,14 +356,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         Note: After setting the high and/or low values of the device, use the actual set return
               values for further processing.
-
-        The major difference to analog signals is that digital signals are either ON or OFF,
-        whereas analog channels have a varying amplitude range. In contrast to analog output
-        levels, digital output levels are defined by a voltage, which corresponds to the ON status
-        and a voltage which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between (amplitude, offset) and
-        (value high, value low)!
         """
         pass
 
@@ -402,7 +380,16 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
         @param dict ch: dictionary with keys being the analog or digital string generic names for
                         the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
@@ -412,72 +399,93 @@ class PulserInterface(metaclass=InterfaceMetaclass):
 
         If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device,
-              use the returned dict for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation is possible.
+        digital channel 1. All other available channels will remain unchanged.
         """
         pass
 
     @abc.abstractmethod
-    def get_uploaded_asset_names(self):
-        """ Retrieve the names of all uploaded assets on the device.
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                       total_number_of_samples):
+        """
+        Write a new waveform or append samples to an already existing waveform on the device memory.
+        The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
+        be created or if the write process to a waveform should be terminated.
 
-        @return list: List of all uploaded asset name strings in the current device directory.
-                      This is no list of the file names.
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
+
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
+                             created waveform names
         """
         pass
 
     @abc.abstractmethod
-    def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC. This is no list of
-            the file names.
+    def write_sequence(self, name, sequence_parameters):
+        """
+        Write a new sequence on the device memory.
 
-        @return list: List of all saved asset name strings in the current
-                      directory of the host PC.
+        @param name: str, the name of the waveform to be created/append to
+        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
+
+        @return: int, number of sequence steps written (-1 indicates failed process)
         """
         pass
 
     @abc.abstractmethod
-    def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device
-            memory (mass storage as well as i.e. awg workspace/channels).
+    def get_waveform_names(self):
+        """ Retrieve the names of all uploaded waveforms on the device.
 
-        @param str asset_name: The name of the asset to be deleted
-                               Optionally a list of asset names can be passed.
-
-        @return list: a list with strings of the files which were deleted.
-
-        Unused for pulse generators without sequence storage capability (PulseBlaster, FPGA).
+        @return list: List of all uploaded waveform name strings in the device workspace.
         """
         pass
 
     @abc.abstractmethod
-    def set_asset_dir_on_device(self, dir_path):
-        """ Change the directory where the assets are stored on the device.
+    def get_sequence_names(self):
+        """ Retrieve the names of all uploaded sequence on the device.
 
-        @param str dir_path: The target directory
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for pulse generators without changeable file structure (PulseBlaster, FPGA).
+        @return list: List of all uploaded sequence name strings in the device workspace.
         """
         pass
 
     @abc.abstractmethod
-    def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on the device.
+    def delete_waveform(self, waveform_name):
+        """ Delete the waveform with name "waveform_name" from the device memory.
 
-        @return str: The current file directory
+        @param str waveform_name: The name of the waveform to be deleted
+                                  Optionally a list of waveform names can be passed.
 
-        Unused for pulse generators without changeable file structure (i.e. PulseBlaster, FPGA).
+        @return list: a list of deleted waveform names.
+        """
+        pass
+
+    @abc.abstractmethod
+    def delete_sequence(self, sequence_name):
+        """ Delete the sequence with name "sequence_name" from the device memory.
+
+        @param str sequence_name: The name of the sequence to be deleted
+                                  Optionally a list of sequence names can be passed.
+
+        @return list: a list of deleted sequence names.
         """
         pass
 
@@ -508,26 +516,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def tell(self, command):
-        """ Sends a command string to the device.
-
-        @param string command: string containing the command
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def ask(self, question):
-        """ Asks the device a 'question' and receive and return an answer from it.
-a
-        @param string question: string containing the command
-
-        @return string: the answer of the device to the 'question' in a string
-        """
-        pass
-
-    @abc.abstractmethod
     def reset(self):
         """ Reset the device.
 
@@ -554,19 +542,17 @@ class PulserConstraints:
         # Low and high voltage level of the digital channels
         self.d_ch_low = ScalarConstraint(unit='V')
         self.d_ch_high = ScalarConstraint(unit='V')
-        # length of the created waveform files in samples
-        self.sampled_file_length = ScalarConstraint(unit='Samples')
+        # length of the created waveform in samples
+        self.waveform_length = ScalarConstraint(unit='Samples')
         # number of waveforms/sequences to put in a single asset (sequence mode)
         self.waveform_num = ScalarConstraint(unit='#')
         self.sequence_num = ScalarConstraint(unit='#')
         self.subsequence_num = ScalarConstraint(unit='#')
-        # compatible file formats, e.g. 'wfm', 'wfmx', 'fpga', 'seq', 'seqx'
-        self.waveform_format = []
-        self.sequence_format = []
-        # Not used yet
+        # Sequence parameters
+        self.sequence_steps = ScalarConstraint(unit='#', min=0)
         self.repetitions = ScalarConstraint(unit='#')
-        self.trigger_in = ScalarConstraint(unit='chnl')
-        self.event_jump_to = ScalarConstraint(unit='step')
-        self.go_to = ScalarConstraint(unit='step')
-        # add CountingMode enums to this list in instances
+        self.event_triggers = list()
+        self.flags = list()
+
+
         self.activation_config = dict()

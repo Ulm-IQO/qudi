@@ -4,28 +4,173 @@
 
 Changes/New features:
 
+* Improved scientific SpinBox validators to allow for more intuitive keyboard input
 * All modules use new connector style where feasible.
-* Bug fix for waveform generation larger than ~2 GSamples
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
-* Default waveform format can now be set via optional config option for `SequenceGeneratorLogic`
 * Added a how-to-get-started guide to the documentation
-* Added chirp function to available analog shapes in pulsed measurements
-* Bug fix for pulsed measurements with large photon count numbers (`numpy.int32` vs. `numpy.int64`)
-* Bug fixes and improvements for the scientific SpinBox introduced in v0.9
-* Tab order in pulsed measurement GUI is now more useful
-* Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
-* Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a switch in lines caused negative width 
+* Bug fixes and improvements for the scientific SpinBox introduced in v0.9 
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
-* Refined pid interfaces in sub interfaces with inheritance
-* Added a camera interface with logic and basic GUI
-* Added a hardware module for Thorlabs camera
-* Added a hardware module for Andor Newton spectrometer camera for camera, spectro, and setpoint of temperature
-* Added a general multi axis piezo stepper interface
-* Added a hardware module for attocube piezzo steppers
-* Added logo_qudi.ico for Windows shortcut
+* Update conda environment to more recent versions of packages
+* Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
+* Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
+* Added a how-to-participate guide to the documentation
+* Added installation options guide to the documentation
+* A lot of smaller fixes to the spectrometer (WinSpec) -> this also modifies the connectors in the default config
+* Added fitting to the spectrometer
+* Bug fixes and support for SMD12 laser controller
+* New hardware file for Microwave source - Anritsu MG3691C has been added.
+* Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
+* Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
+* Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
+* **Pulsed 3.0:**\
+    _A truckload of changes regarding all pulsed measurement related modules_
+    * Bug fix for waveform generation larger than ~2 GSamples
+    * Added chirp function to available analog shapes in pulsed measurements
+    * Tab order in pulsed measurement GUI is now more useful
+    * Added delta plot of alternating sequence in the pulsed analysis window (including errorbars)
+    * Bug fix for pulsed extraction window where zooming caused InfiteLines to disappear and a 
+    switch in lines caused negative width
+    * Bug fix for pulsed measurements with large photon count numbers (`numpy.int32` vs. 
+    `numpy.int64`)
+    * Pulsed related logic modules have been moved to `<main_dir>/logic/pulsed`
+    * Graphical editors for `PulseBlock`, `PulseBlockEnsemble` and `PulseSequence` instance 
+    generation are now implemented according to the _Qt_ model/view concept. Several delegates and 
+    custom widgets needed by the editors can be found in `<main_dir>/gui/pulsed`. The editors 
+    (_QTableView_) and corresponding models (_QAbstractTableModel_) can be found in 
+    `pulse_editors.py`.
+    * Several GUI tweaks and clean-ups for all tabs of `PulsedMeasurementGui`
+    * Removal of several "logic components" from GUI module
+    * `SequenceGeneratorLogic` is now fully responsible for controlling the pulse generator hardware.
+    `PulsedMeasurementLogic` also has access to the pulse generator but only to start/stop it.
+    `samples_write_methods.py` became obsolete and will be removed once all hardware modules 
+    implement waveform/sequence generation on their own.
+    * The purpose of `PulsedMasterLogic` is now mainly to decouple function calls to 
+    `SequenceGeneratorLogic` and `PulsedMeasurementLogic` via signals. Due to the very diverse 
+    usage of the pulsed modules in a combination of custom scripts together with the GUI this is 
+    a crucial feature to ensure safe threading.
+    * Pulser hardware interface has been changed. The pulser hardware module is now fully 
+    responsible for waveform and sequence generation on the device. The `SequenceGeneratorLogic` 
+    now only calculates the analog and digital samples and hands them over to the hardware module 
+    to be written to the device. This makes it more flexible since no in-depth knowledge about the 
+    hardware specific memory/file management is needed in the logic making the interface more 
+    generic. Makes it easier to create new pulse generator modules as long as the hardware can be 
+    abstracted to a waveform/sequence terminology.
+    * Adapted pulse generator modules to new pulser interface.
+    * All groups of settings in pulsed logic modules are now represented as dictionaries improving 
+    flexibility as well as minimizing necessary code changes when adding new features.
+    * Most parameter sets in `PulsedMeasurementLogic` and `SequenceGeneratorLogic` are now 
+    properties of the respective module. `PulsedMasterLogic` also provides an interface to all those 
+    properties.
+    * Dynamic import of pulse analysis and pulse extraction methods now realized through helper 
+    class instances held by `PulsedMeasurementLogic`. For detailed information about adding 
+    methods, please see `how_to_add_analysis_methods.md` and `how_to_add_extraction_methods.md`
+    * Dynamic import of predefined methods now realized through helper class instance held by 
+    `SequenceGeneratorLogic`. For detailed information about adding methods, please see 
+    `how_to_add_predefined_methods.md`
+    * Dynamic import of sampling function definitions (analog waveform shapes) handled by class 
+    `SamplingFunctions` and will be refreshed upon activation of `SequenceGeneratorLogic`. For 
+    detailed information about adding functions, please see `how_to_add_sampling_functions.md`
+    * Alternative plot data will now always be saved if available
+    * Automatic setting of parameters in pulsed analysis tab (invoke settings) will only be possible
+    for ensembles/sequences generated by predefined methods (instances must have fully populated 
+    `measurement_information` dictionary) NOT for ensembles/sequences created or edited by the table
+    editors.
+    * Each `PulseBlockEnsemble` and `PulseSequence` instance will have a dictionary attribute called
+    `sampling_information` which will be populated during waveform/sequence creation. It provides 
+    information about the "real life" realization of the waveform/sequence like the actual length of
+    each `PulseBlockElement` in integer time bins or the times at which transitions of digital 
+    channels occur. It will also contain the set of pulse genrator settings used during sampling 
+    (e.g. sample_rate, activation_config etc.).
+    When the respective pulser assets (waveforms and sequences) get deleted from the device, this 
+    dictionary will be emptied to indicate that the asset has not yet been sampled.
+    This will only work if you delete waveforms/sequences on the device via qudi commands or upon a 
+    restart of qudi. Hardware assets directly deleted by hand can lead to faulty behaviour of the 
+    pulsed measurement modules.
+    * Pulse analysis and extraction methods now have read-only access to the entire 
+    `PulsedMeasurementLogic` allowing to implement more sophisticated methods that need in-depth 
+    information about the running waveform.
+    * Predefined methods now have read-only access to the entire `SequenceGeneratorLogic`
+    * Pulsed object instances (blocks, ensembles, sequences) are serialized to a directory that can 
+    be changed via ConfigOption. Each instance is a separate file so it is easier to manage a large 
+    number of instances. In the future these instances need to be saved as StatusVars
+    * New dialog box for pulse generator hardware settings. Previously the settings were located 
+    directly in a tab of the PulsedMainGUI. Also added voltage settings for digital and analog 
+    channels that were missing in the GUI before. 
+    * Lots of smaller changes to improve programming flexibility and robustness against users
+    
 
 Config changes:
+* **All** pulsed related logic module paths need to be changed because they have been moved in the logic
+subfolder "pulsed". As an example instead of
+    ```
+    module.Class: 'pulsed_master_logic.PulsedMasterLogic'
+    ```
+    it should be now
+    ```
+    module.Class: 'pulsed.pulsed_master_logic.PulsedMasterLogic'
+    ```
+* `PulseExtractionLogic` and `PulseAnalysisLogic` are no qudi logic modules anymore and must be 
+removed from the config. Also remember to remove them from the "connect" section of all other 
+modules (probably just `PulsedMeasurementLogic`).
+
+* The connection to `SaveLogic` has been removed from `PulsedMeasurementGui` and thus needs to be 
+removed from the "connect" section in the config. So the GUI entry in the config should look 
+somewhat like:
+    ```
+    pulsedmeasurement:
+        module.Class: 'pulsed.pulsed_maingui.PulsedMeasurementGui'
+        connect:
+            pulsedmasterlogic: 'pulsedmasterlogic'
+    ```
+    
+* The connectors and ConfigOptions for `SequenceGeneratorLogic` have changed. The new config should 
+look somewhat like:
+    ```
+    sequencegeneratorlogic:
+        module.Class: 'pulsed.sequence_generator_logic.SequenceGeneratorLogic'
+        assets_storage_path: 'C:/Users/username/saved_pulsed_assets'  # optional
+        additional_predefined_methods_path: 'C:\\Custom_dir'  # optional
+        additional_sampling_functions_path: 'C:\\Custom_dir'  # optional
+        connect:
+            pulsegenerator: 'mydummypulser'
+    ```
+    Essentially "additional_predefined_methods_path" and "additional_sampling_functions_path" only 
+    need to be specified when you want to import sampling functions or predefined methods from an 
+    additional directory other than the default directories situated in qudi.logic.pulsed.
+    "assets_storage_path" is the directory where the object instances for blocks, ensembles and 
+    sequences are saved to. If not specified this directory will default to a subfolder in the home 
+    directory.
+
+* The connectors and ConfigOptions for `PulsedMeasurementLogic` have changed. The new config should 
+look somewhat like:
+    ```
+    pulsedmeasurementlogic:
+        module.Class: 'pulsed.pulsed_measurement_logic.PulsedMeasurementLogic'
+        raw_data_save_type: 'text'  # optional
+        additional_extraction_path: 'C:\\Custom_dir'  # optional
+        additional_analysis_path: 'C:\\Custom_dir'  # optional
+        connect:
+            fastcounter: 'mydummyfastcounter'
+            pulsegenerator: 'mydummypulser'
+            fitlogic: 'fitlogic'
+            savelogic: 'savelogic'
+            microwave: 'microwave_dummy'
+    ```
+    Essentially "additional_extraction_path" and "additional_analysis_path" only need to be 
+    specified when you want to import sampling functions or predefined methods from an additional 
+    directory other than the default directories situated in qudi.logic.pulsed.
+* The fitting has been added to the spectrometer logic module. You need to connect the FitLogic to 
+the SpectrometerLogic module like:
+    ```
+    spectrumlogic: 
+    module.Class: 'spectrum.SpectrumLogic' 
+    connect: 
+        spectrometer: 'myspectrometer' 
+        savelogic: 'savelogic' 
+        odmrlogic: 'odmrlogic' 
+        fitlogic: 'fitlogic'
+    ```
 
 ## Release 0.9
 Released on 6 Mar 2018
@@ -63,6 +208,7 @@ Changes/New features:
 * Analog signal input (for PDMR measurements) now supported for slow counter/confocal/ODMR (see config changes)
 * Use of rpyc became optional (does not need to be installed if no remote module capability is needed)
 * Mayor cleanup/overhaul of the `microwave_interface.py` and adaption of all affected modules (hardware/logic)
+
 
 
 Config changes:

@@ -5,6 +5,7 @@
 1. Get a Python 3 version of the conda package manager (eg Anaconda, miniconda, etc).
 2. Clone https://github.com/Ulm-IQO/qudi.git
 3. Install the qudi conda environment suitable for your operating system (located in the `tools` directory of the qudi code).
+4. Copy the default example config into a 'config/local' subdirectory so that you can edit it without impacting the project examples.
 4. Run `start.py` in this conda environment.
 
 See below for more specific instructions.
@@ -21,7 +22,7 @@ This tool also ease the installation as you can create an environment for Qudi w
 them from the ``.yml`` file in the ``tool`` folder.
 
 It is highly recommended you use this option. If however you want to go mannual, you can find more information 
-[here](@ref required_python_packages)
+[here](@ref manual-package-installation)
 
 #### Git vs Download
 
@@ -74,20 +75,30 @@ https://www.jetbrains.com/pycharm/help/configuring-python-interpreter-for-a-proj
 You can create a Desktop shortcut to launch Qudi easily on your machine.
 
 - On your Desktop, right click and go to ``New->Shortcut``
-- For the location you need to copy the following target :
-    - %windir%\System32\cmd.exe "/K" C:\ProgramData\Miniconda3\Scripts\activate.bat
-    "C:\Users\username\Miniconda3\envs\qudi" &#65120;&#65120; python "start.py"
-        - The &#65120; might cause troube when copy/pasting, you might need to add it by hand
-        - ``C:\ProgramData\Miniconda3\Scripts\activate.bat`` is the Anaconda activation file, it might be in another
-        location depending on your installation
-        - ``C:\Users\username\Miniconda3\envs\qudi`` is the environment folder for Qudi. You can find it by typing
-        ``conda info`` in the terminal while qudi is activated
+- For the location you need to copy the following target 
+    - ` %windir%\System32\cmd.exe "/K" <path-to-activation-script> "<path-to-qudi-environment>"
+     && cd "<path-to-qudi-directory>" && python "start.py" `
+    - In order for the shortcut to work on every windows setup, you need to specify 3 things :
+        - `<path-to-activation-script>` : the path to the Anaconda activate.bat file, for example
+        `C:\ProgramData\Miniconda3\Scripts\activate.bat`.
+        - `<path-to-qudi-environment>` : this can be found using command `conda info --envs` in a terminal.
+        - `<path-to-qudi-directory>` : the path where Qudi's `start.py` can be found.  
 - Click ``Next``
 - Give the name you want fot the shortcut : ``Qudi``
 - Click ``Finish``
-- Right click on the newly created shortcut and go to `Proprerties`
-- In the ``Start in :`` line, write the path to to Qudi folder where the ``start.py`` can be found
-- (Optionally) Click ``Change Icon...`` and browse for the ``artwork\logo\logo_qudi.ico`` logo
+- (Optional) Right click on the newly created shortcut and go to `Proprerties`
+    - Click ``Change Icon...`` and browse for the ``artwork\logo\logo_qudi.ico`` logo
+
+##### Troubleshooting
+
+Please note, in Windows you cannot switch directly between partitions with cd (i.e. between C: and D:).
+If Qudi's program is stored in another partition, you need to change the command to :
+` %windir%\System32\cmd.exe "/K" <path-to-activation-script> "<path-to-qudi-environment>" && D:
+     && cd "<path-to-qudi-directory-on-D-partition>" && python "start.py" `
+
+
+
+
 
 
 ## Linux installation

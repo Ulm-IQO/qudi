@@ -19,11 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, ConfigOption
-from core.util.modules import get_home_dir
+from core.module import Base, ConfigOption, StatusVar
 from core.util.modules import get_main_dir
 from interface.pulser_interface import PulserInterface, PulserConstraints
 import okfrontpanel as ok
+import numpy as np
 import time
 import os
 from collections import OrderedDict
@@ -46,49 +46,38 @@ class OkFpgaPulser(Base, PulserInterface):
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
 
-    fpga_serial = ConfigOption('fpga_serial', missing='error')
-    _fpga_type = ConfigOption('fpga_type', 'XEM6310_LX150', missing='warn')
+    _fpga_serial = ConfigOption(name='fpga_serial', missing='error')
+    _fpga_type = ConfigOption(name='fpga_type', default='XEM6310_LX150', missing='warn')
+
+    __current_waveform = StatusVar(name='current_waveform', default=np.zeros(1, dtype='uint8'))
+    __current_waveform_name = StatusVar(name='current_waveform_name', default='')
+    __sample_rate = StatusVar(name='sample_rate', default=950e6)
  
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
-
-            if not os.path.exists(self.pulsed_file_dir):
-
-                homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directory defined in parameter '
-                            '"pulsed_file_dir" in the config for '
-                            'SequenceGeneratorLogic class does not exist!\n'
-                            'The default home directory\n{0}\n will be taken '
-                            'instead.'.format(self.pulsed_file_dir))
-        else:
-            homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified in the config for '
-                             'OkFpgaPulser as directory for the pulsed files!\nThe default home '
-                             'directory\n{0}\nwill be taken instead.'.format(self.pulsed_file_dir))
-            self.log.warning(
-                'No parameter "fpga_type" specified in the config!\n'
-                'Possible types are "XEM6310_LX150" or "XEM6310_LX45".\n'
-                'Taking the type "{0}" as default.'.format(self._fpga_type))
-
-        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        self.current_status = -1
-        self.sample_rate = 950e6
-        self.current_loaded_asset = ''
+        self.__current_status = -1
+        self.__currently_loaded_waveform = ''  # loaded and armed waveform name
+        self.__samples_written = 0
+        self.fpga = None  # Reference to the OK FrontPanel instance
 
     def on_activate(self):
-        self.current_loaded_asset = ''
+        self.__samples_written = 0
+        self.__currently_loaded_waveform = ''
         self.fpga = ok.FrontPanel()
         self._connect_fpga()
-        self.sample_rate = self.get_sample_rate()
+        self.set_sample_rate(self.__sample_rate)
 
     def on_deactivate(self):
         self._disconnect_fpga()
+
+    @__current_waveform.representer
+    def _convert_current_waveform(self, waveform_bytearray):
+        return np.frombuffer(waveform_bytearray, dtype='uint8')
+
+    @__current_waveform.constructor
+    def _recover_current_waveform(self, waveform_nparray):
+        return bytearray(waveform_nparray.tobytes())
 
     def get_constraints(self):
         """
@@ -111,8 +100,8 @@ class OkFpgaPulser(Base, PulserInterface):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
@@ -120,14 +109,20 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         constraints = PulserConstraints()
 
-        # The file formats are hardware specific.
-        constraints.waveform_format = ['fpga']
-        constraints.sequence_format = []
-
         constraints.sample_rate.min = 500e6
         constraints.sample_rate.max = 950e6
         constraints.sample_rate.step = 450e6
         constraints.sample_rate.default = 950e6
+
+        constraints.a_ch_amplitude.min = 0.0
+        constraints.a_ch_amplitude.max = 0.0
+        constraints.a_ch_amplitude.step = 0.0
+        constraints.a_ch_amplitude.default = 0.0
+
+        constraints.a_ch_offset.min = 0.0
+        constraints.a_ch_offset.max = 0.0
+        constraints.a_ch_offset.step = 0.0
+        constraints.a_ch_offset.default = 0.0
 
         constraints.d_ch_low.min = 0.0
         constraints.d_ch_low.max = 0.0
@@ -139,19 +134,18 @@ class OkFpgaPulser(Base, PulserInterface):
         constraints.d_ch_high.step = 0.0
         constraints.d_ch_high.default = 3.3
 
-        constraints.sampled_file_length.min = 1024
-        constraints.sampled_file_length.max = 134217728
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 1024
+        constraints.waveform_length.min = 1024
+        constraints.waveform_length.max = 134217728
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 1024
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7',
-                                    'd_ch8']
+        activation_config['all'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'}
         constraints.activation_config = activation_config
-
         return constraints
 
     def pulser_on(self):
@@ -159,75 +153,56 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        # start the pulse sequence
-        self.fpga.SetWireInValue(0x00, 0x01)
-        self.fpga.UpdateWireIns()
-        return 0
+        return self.write(0x01)
 
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:OK, -1:error)
         """
-        # stop the pulse sequence
-        self.fpga.SetWireInValue(0x00, 0x00)
-        self.fpga.UpdateWireIns()
-        return 0
+        return self.write(0x00)
 
-    def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device.
-            Does NOT load it into channels.
+    def load_waveform(self, load_dict):
+        """ Loads a waveform to the specified channel of the pulsing device.
+        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
+        workspace into the channel.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
 
-        @param name: string, name of the ensemble/seqeunce to be uploaded
+        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
 
-        @return int: error code (0:OK, -1:error)
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
-        self.log.debug('FPGA pulser has no own storage capability.\n"upload_asset" call ignored.')
-        return 0
+        # Since only one waveform can be present at a time check if only a single name is given
+        if isinstance(load_dict, list):
+            waveforms = list(set(load_dict))
+        elif isinstance(load_dict, dict):
+            waveforms = list(set(load_dict.values()))
+        else:
+            self.log.error('Method load_waveform expects a list of waveform names or a dict.')
+            return self.get_loaded_assets()
 
-    def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
+        if len(waveforms) != 1:
+            self.log.error('FPGA pulser expects exactly one waveform name for load_waveform.')
+            return self.get_loaded_assets()
 
-        @param str asset_name: The name of the asset to be loaded
+        waveform = waveforms[0]
+        if waveform != self.__current_waveform_name:
+            self.log.error('No waveform by the name "{0}" generated for FPGA pulser.\n'
+                           'Only one waveform at a time can be held.'.format(waveform))
+            return self.get_loaded_assets()
 
-        @param dict load_dict:  a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given
-                                then the channel association is invoked from
-                                the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
-        """
-        # ignore if no asset_name is given
-        if asset_name is None:
-            self.log.warning('"load_asset" called with asset_name = None.')
-            return 0
-
-        # check if asset exists
-        saved_assets = self.get_saved_asset_names()
-        if asset_name not in saved_assets:
-            self.log.error('No asset with name "{0}" found for FPGA pulser.\n'
-                           '"load_asset" call ignored.'.format(asset_name))
-            return -1
-
-        # get samples from file
-        filepath = os.path.join(self.host_waveform_directory, asset_name + '.fpga')
-        with open(filepath, 'rb') as asset_file:
-            samples = bytearray(asset_file.read())
-
-        # calculate size of the two bytearrays to be transmitted
-        # the biggest part is tranfered in 1024 byte blocks and the rest is transfered in 32 byte blocks
-        big_bytesize = (len(samples) // 1024) * 1024
-        small_bytesize = len(samples) - big_bytesize
+        # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
+        # in 1024 byte blocks and the rest is transfered in 32 byte blocks
+        big_bytesize = (len(self.__current_waveform) // 1024) * 1024
+        small_bytesize = len(self.__current_waveform) - big_bytesize
 
         # try repeatedly to upload the samples to the FPGA RAM
         # stop if the upload was successful
@@ -235,54 +210,87 @@ class OkFpgaPulser(Base, PulserInterface):
         while True:
             loop_count += 1
             # reset FPGA
-            self.fpga.SetWireInValue(0x00, 0x04)
-            self.fpga.UpdateWireIns()
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            self.reset()
             # upload sequence
             if big_bytesize != 0:
                 # enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (255 << 24) + 2)
-                self.fpga.UpdateWireIns()
+                self.write((255 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 1024, samples[0:big_bytesize])
+                self.fpga.WriteToBlockPipeIn(0x80, 1024, self.__current_waveform[0:big_bytesize])
             if small_bytesize != 0:
                 # enable sequence write mode in FPGA
-                self.fpga.SetWireInValue(0x00, (8 << 24) + 2)
-                self.fpga.UpdateWireIns()
+                self.write((8 << 24) + 2)
                 # write to FPGA DDR2-RAM
-                self.fpga.WriteToBlockPipeIn(0x80, 32,
-                                             samples[big_bytesize:big_bytesize + small_bytesize])
+                self.fpga.WriteToBlockPipeIn(0x80, 32, self.__current_waveform[big_bytesize:])
 
             # check if upload was successful
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            self.write(0x00)
             # start the pulse sequence
-            self.fpga.SetWireInValue(0x00, 0x01)
-            self.fpga.UpdateWireIns()
+            self.write(0x01)
             # wait for 600ms
             time.sleep(0.6)
             # get status flags from FPGA
-            self.fpga.UpdateWireOuts()
-            flags = self.fpga.GetWireOutValue(0x20)
-            self.fpga.SetWireInValue(0x00, 0x00)
-            self.fpga.UpdateWireIns()
+            flags = self.query()
+            self.write(0x00)
             # check if the memory readout works.
             if flags == 0:
-                self.log.info('Loading of the asset "{0}" to FPGA was successful.\n'
-                              'Upload attempts needed: {1}'.format(asset_name, loop_count))
+                self.log.info('Loading of waveform "{0}" to FPGA was successful.\n'
+                              'Upload attempts needed: {1}'.format(waveform, loop_count))
+                self.__currently_loaded_waveform = waveform
                 break
-        self.current_loaded_asset = asset_name
-        return 0
+            if loop_count == 10:
+                self.log.error('Unable to upload waveform to FPGA.\n'
+                               'Abort loading after 10 failed attempts.')
+                self.reset()
+                break
+        return self.get_loaded_assets()[0]
+
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
+
+        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
+
+        @return dict: Dictionary containing the actually loaded waveforms per channel.
+        """
+        self.log.warning('FPGA digital pulse generator has no sequencing capabilities.\n'
+                         'load_sequence call ignored.')
+        return
+
+    def get_loaded_assets(self):
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
+
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
+        """
+        asset_type = 'waveform' if self.__currently_loaded_waveform else None
+        asset_dict = {chnl_num: self.__currently_loaded_waveform for chnl_num in range(1, 9)}
+        return asset_dict, asset_type
 
     def clear_all(self):
-        """ Clears all loaded waveforms from the pulse generators RAM.
+        """ Clears all loaded waveforms from the pulse generators RAM/workspace.
 
         @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without storage capability
-        (PulseBlaster, FPGA).
         """
+        self.__currently_loaded_waveform = ''
+        self.__current_waveform_name = ''
+        self.__current_waveform = bytearray([0])
         return 0
 
     def get_status(self):
@@ -298,270 +306,332 @@ class OkFpgaPulser(Base, PulserInterface):
         status_dic[0] = 'Device has stopped, but can receive commands.'
         status_dic[1] = 'Device is active and running.'
 
-        return self.current_status, status_dic
+        return self.__current_status, status_dic
 
     def get_sample_rate(self):
         """ Get the sample rate of the pulse generator hardware
 
         @return float: The current sample rate of the device (in Hz)
-
-        Do not return a saved sample rate in a class variable, but instead
-        retrieve the current sample rate directly from the device.
         """
-        return self.sample_rate
+        return self.__sample_rate
 
     def set_sample_rate(self, sample_rate):
         """ Set the sample rate of the pulse generator hardware.
 
         @param float sample_rate: The sampling rate to be set (in Hz)
 
-        @return float: the sample rate returned from the device.
+        @return float: the sample rate returned from the device (in Hz).
 
-        Note: After setting the sampling rate of the device, retrieve it again
-              for obtaining the actual set value and use that information for
+        Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
-        bitfile_name = 'pulsegen_8chnl_'
-        if sample_rate == 950e6:
-            bitfile_name = bitfile_name + '950MHz_' + self._fpga_type.split('_')[1] + '.bit'
-        elif sample_rate == 500e6:
-            bitfile_name = bitfile_name + '500MHz_' + self._fpga_type.split('_')[1] + '.bit'
+        # Round sample rate either to 500MHz or 950MHz since no other values are possible.
+        if sample_rate < 725e6:
+            self.__sample_rate = 500e6
+            bitfile_name = 'pulsegen_8chnl_500MHz_{0}.bit'.format(self._fpga_type.split('_')[1])
         else:
-            self.log.error('Setting "{0:.3e}" as sample rate for FPGA pulse generator is not allowed. '
-                           'Use 950e6 or 500e6 instead.'.format(sample_rate))
-            return -1
+            self.__sample_rate = 950e6
+            bitfile_name = 'pulsegen_8chnl_950MHz_{0}.bit'.format(self._fpga_type.split('_')[1])
+
         bitfile_path = os.path.join(get_main_dir(), 'thirdparty', 'qo_fpga', bitfile_name)
 
-        self.sample_rate = sample_rate
         self.fpga.ConfigureFPGA(bitfile_path)
         self.log.debug('FPGA pulse generator configured with {0}'.format(bitfile_path))
-        return self.sample_rate
+        return self.__sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
 
-        @param list amplitude: optional, if a specific amplitude value (in Volt
-                               peak to peak, i.e. the full amplitude) of a
-                               channel is desired.
-        @param list offset: optional, if a specific high value (in Volt) of a
-                            channel is desired.
+        @param list amplitude: optional, if the amplitude value (in Volt peak to peak, i.e. the
+                               full amplitude) of a specific channel is desired.
+        @param list offset: optional, if the offset value (in Volt) of a specific channel is
+                            desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Amplitude is always denoted in
-                               Volt-peak-to-peak and Offset in (absolute)
-                               Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel descriptor string
+                               (i.e. 'a_ch1') and items being the values for those channels.
+                               Amplitude is always denoted in Volt-peak-to-peak and Offset in volts.
+
+        Note: Do not return a saved amplitude and/or offset value but instead retrieve the current
+              amplitude and/or offset directly from the device.
+
+        If nothing (or None) is passed then the levels of all channels will be returned. If no
+        analog channels are present in the device, return just empty dicts.
+
+        Example of a possible input:
+            amplitude = ['a_ch1', 'a_ch4'], offset = None
+        to obtain the amplitude of channel 1 and 4 and the offset of all channels
+            {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
         """
-        return {}, {}
+        return dict(), dict()
 
     def set_analog_level(self, amplitude=None, offset=None):
-        """ Set amplitude and/or offset value of the provided analog channel.
+        """ Set amplitude and/or offset value of the provided analog channel(s).
 
-        @param dict amplitude: dictionary, with key being the channel and items
-                               being the amplitude values (in Volt peak to peak,
-                               i.e. the full amplitude) for the desired channel.
-        @param dict offset: dictionary, with key being the channel and items
-                            being the offset values (in absolute volt) for the
-                            desired channel.
+        @param dict amplitude: dictionary, with key being the channel descriptor string
+                               (i.e. 'a_ch1', 'a_ch2') and items being the amplitude values
+                               (in Volt peak to peak, i.e. the full amplitude) for the desired
+                               channel.
+        @param dict offset: dictionary, with key being the channel descriptor string
+                            (i.e. 'a_ch1', 'a_ch2') and items being the offset values
+                            (in absolute volt) for the desired channel.
 
-        @return (dict, dict): tuple of two dicts with the actual set values for
-                              amplitude and offset.
+        @return (dict, dict): tuple of two dicts with the actual set values for amplitude and
+                              offset for ALL channels.
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return the current amplitudes/offsets.
+
+        Note: After setting the amplitude and/or offset values of the device, use the actual set
+              return values for further processing.
         """
         return {}, {}
 
     def get_digital_level(self, low=None, high=None):
-        """ Retrieve the digital low and high level of the provided channels.
+        """ Retrieve the digital low and high level of the provided/all channels.
 
-        @param list low: optional, if a specific low value (in Volt) of a
-                         channel is desired.
-        @param list high: optional, if a specific high value (in Volt) of a
-                          channel is desired.
+        @param list low: optional, if the low value (in Volt) of a specific channel is desired.
+        @param list high: optional, if the high value (in Volt) of a specific channel is desired.
 
-        @return: (dict, dict): tuple of two dicts, with keys being the channel
-                               number and items being the values for those
-                               channels. Both low and high value of a channel is
-                               denoted in (absolute) Voltage.
+        @return: (dict, dict): tuple of two dicts, with keys being the channel descriptor strings
+                               (i.e. 'd_ch1', 'd_ch2') and items being the values for those
+                               channels. Both low and high value of a channel is denoted in volts.
 
         Note: Do not return a saved low and/or high value but instead retrieve
               the current low and/or high value directly from the device.
 
-        If no entries provided then the levels of all channels where simply
-        returned. If no digital channels provided, return just an empty dict.
+        If nothing (or None) is passed then the levels of all channels are being returned.
+        If no digital channels are present, return just an empty dict.
 
         Example of a possible input:
-            low = [1,4]
-        to obtain the low voltage values of digital channel 1 an 4. A possible
-        answer might be
-            {1: -0.5, 4: 2.0} {}
-        since no high request was performed.
-
-        The major difference to analog signals is that digital signals are
-        either ON or OFF, whereas analog channels have a varying amplitude
-        range. In contrast to analog output levels, digital output levels are
-        defined by a voltage, which corresponds to the ON status and a voltage
-        which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+            low = ['d_ch1', 'd_ch4']
+        to obtain the low voltage values of digital channel 1 an 4. A possible answer might be
+            {'d_ch1': -0.5, 'd_ch4': 2.0} {'d_ch1': 1.0, 'd_ch2': 1.0, 'd_ch3': 1.0, 'd_ch4': 4.0}
+        Since no high request was performed, the high values for ALL channels are returned (here 4).
         """
-        if low is None:
-            low = []
-        if high is None:
-            high = []
-        low_dict = {}
-        high_dict = {}
-        if low is [] and high is []:
-            for channel in range(8):
-                low_dict[channel] = 0.0
-                high_dict[channel] = 3.3
+        if low:
+            low_dict = {chnl: 0.0 for chnl in low}
         else:
-            for channel in low:
-                low_dict[channel] = 0.0
-            for channel in high:
-                high_dict[channel] = 3.3
+            low_dict = {'d_ch{0:d}'.format(chnl + 1): 0.0 for chnl in range(8)}
+
+        if high:
+            high_dict = {chnl: 3.3 for chnl in high}
+        else:
+            high_dict = {'d_ch{0:d}'.format(chnl + 1): 3.3 for chnl in range(8)}
+
         return low_dict, high_dict
 
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
 
-        @param dict low: dictionary, with key being the channel and items being
-                         the low values (in volt) for the desired channel.
-        @param dict high: dictionary, with key being the channel and items being
-                         the high values (in volt) for the desired channel.
+        @param dict low: dictionary, with key being the channel descriptor string
+                         (i.e. 'd_ch1', 'd_ch2') and items being the low values (in volt) for the
+                         desired channel.
+        @param dict high: dictionary, with key being the channel descriptor string
+                          (i.e. 'd_ch1', 'd_ch2') and items being the high values (in volt) for the
+                          desired channel.
 
-        @return (dict, dict): tuple of two dicts where first dict denotes the
-                              current low value and the second dict the high
-                              value.
+        @return (dict, dict): tuple of two dicts where first dict denotes the current low value and
+                              the second dict the high value for ALL digital channels.
+                              Keys are the channel descriptor strings (i.e. 'd_ch1', 'd_ch2')
 
-        If nothing is passed then the command will return two empty dicts.
+        If nothing is passed then the command will return the current voltage levels.
 
-        Note: After setting the high and/or low values of the device, retrieve
-              them again for obtaining the actual set value(s) and use that
-              information for further processing.
-
-        The major difference to analog signals is that digital signals are
-        either ON or OFF, whereas analog channels have a varying amplitude
-        range. In contrast to analog output levels, digital output levels are
-        defined by a voltage, which corresponds to the ON status and a voltage
-        which corresponds to the OFF status (both denoted in (absolute) voltage)
-
-        In general there is no bijective correspondence between
-        (amplitude, offset) and (value high, value low)!
+        Note: After setting the high and/or low values of the device, use the actual set return
+              values for further processing.
         """
-        if low is None:
-            low = {}
-        if high is None:
-            high = {}
         self.log.warning('FPGA pulse generator logic level cannot be adjusted!')
-        return 0
+        return self.get_digital_level()
 
     def get_active_channels(self,  ch=None):
-        if ch is None:
-            ch = {}
-        d_ch_dict = {}
-        if len(ch) < 1:
-            for chnl in range(1, 9):
-                d_ch_dict['d_ch{0}'.format(chnl)] = True
+        """ Get the active channels of the pulse generator hardware.
+
+        @param list ch: optional, if specific analog or digital channels are needed to be asked
+                        without obtaining all the channels.
+
+        @return dict:  where keys denoting the channel string and items boolean expressions whether
+                       channel are active or not.
+
+        Example for an possible input (order is not important):
+            ch = ['a_ch2', 'd_ch2', 'a_ch1', 'd_ch5', 'd_ch1']
+        then the output might look like
+            {'a_ch2': True, 'd_ch2': False, 'a_ch1': False, 'd_ch5': True, 'd_ch1': False}
+
+        If no parameter (or None) is passed to this method all channel states will be returned.
+        """
+        if ch:
+            d_ch_dict = {chnl: True for chnl in ch}
         else:
-            for channel in ch:
-                d_ch_dict[channel] = True
+            d_ch_dict = {'d_ch1': True,
+                         'd_ch2': True,
+                         'd_ch3': True,
+                         'd_ch4': True,
+                         'd_ch5': True,
+                         'd_ch6': True,
+                         'd_ch7': True,
+                         'd_ch8': True}
         return d_ch_dict
 
     def set_active_channels(self, ch=None):
-        if ch is None:
-            ch = {}
-        d_ch_dict = {
-            'd_ch1': True,
-            'd_ch2': True,
-            'd_ch3': True,
-            'd_ch4': True,
-            'd_ch5': True,
-            'd_ch6': True,
-            'd_ch7': True,
-            'd_ch8': True}
-        return d_ch_dict
-
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
-
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
         """
-        return self.current_loaded_asset
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
-    def get_uploaded_asset_names(self):
-        """ Retrieve the names of all uploaded assets on the device.
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return list: List of all uploaded asset name strings in the current
-                      device directory. This is no list of the file names.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        If nothing is passed then the command will simply return the unchanged current state.
+
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
+
+        Example for possible input:
+            ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
+        to activate analog channel 2 digital channel 3 and 4 and to deactivate
+        digital channel 1. All other available channels will remain unchanged.
         """
-        names = []
-        return names
+        return self.get_active_channels()
 
-    def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC.
-        This is no list of the file names.
-
-        @return list: List of all saved asset name strings in the current
-                      directory of the host PC.
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                       total_number_of_samples):
         """
-        file_list = self._get_filenames_on_host()
+        Write a new waveform or append samples to an already existing waveform on the device memory.
+        The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
+        be created or if the write process to a waveform should be terminated.
 
-        saved_assets = []
-        for filename in file_list:
-            if filename.endswith('.fpga'):
-                asset_name = filename.rsplit('.', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-        return saved_assets
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
 
-    def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device memory.
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
 
-        @param str asset_name: The name of the asset to be deleted
-                               Optionally a list of asset names can be passed.
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
+                             created waveform names
         """
-        return 0
+        if analog_samples:
+            self.log.error('FPGA pulse generator is purely digital and does not support waveform '
+                           'generation with analog samples.')
+            return -1, list()
+        if not digital_samples:
+            if total_number_of_samples > 0:
+                self.log.warning('No samples handed over for waveform generation.')
+                return -1, list()
+            else:
+                self.__current_waveform = bytearray([0])
+                self.__current_waveform_name = ''
+                return 0, list()
 
-    def set_asset_dir_on_device(self, dir_path):
-        """ Change the directory where the assets are stored on the device.
+        # Initialize waveform array if this is the first chunk to write
+        # Also append zero-timebins to waveform if the length is no integer multiple of 32
+        if is_first_chunk:
+            self.__samples_written = 0
+            self.__current_waveform_name = name
+            if total_number_of_samples % 32 != 0:
+                number_of_zeros = 32 - (total_number_of_samples % 32)
+                self.__current_waveform = np.zeros(total_number_of_samples + number_of_zeros,
+                                                   dtype='uint8')
+                self.log.warning('FPGA pulse sequence length is no integer multiple of 32 samples.'
+                                 '\nAppending {0:d} zero-samples to the sequence.'
+                                 ''.format(number_of_zeros))
+            else:
+                self.__current_waveform = np.zeros(total_number_of_samples, dtype='uint8')
 
-        @param str dir_path: The target directory
+        # Determine which part of the waveform array should be written
+        chunk_length = len(digital_samples[list(digital_samples)[0]])
+        write_end_index = self.__samples_written + chunk_length
 
-        @return int: error code (0:OK, -1:error)
+        # Encode samples for each channel in bit mask and create waveform array
+        for chnl, samples in digital_samples.items():
+            # get channel index in range 0..7
+            chnl_ind = int(chnl.rsplit('ch', 1)[1]) - 1
+            # Represent bool values as np.uint8
+            uint8_samples = samples.view('uint8')
+            # left shift 0/1 values to bit position corresponding to channel index
+            np.left_shift(uint8_samples, chnl_ind, out=uint8_samples)
+            # Add samples to waveform array
+            np.add(self.__current_waveform[self.__samples_written:write_end_index],
+                   uint8_samples,
+                   out=self.__current_waveform[self.__samples_written:write_end_index])
 
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        # Convert numpy array to bytearray
+        self.__current_waveform = bytearray(self.__current_waveform.tobytes())
+
+        # increment the current write index
+        self.__samples_written += chunk_length
+        return chunk_length, [self.__current_waveform_name]
+
+    def write_sequence(self, name, sequence_parameters):
         """
-        return 0
+        Write a new sequence on the device memory.
 
-    def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on
-            the device.
+        @param name: str, the name of the waveform to be created/append to
+        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
 
-        @return str: The current file directory
-
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
+        @return: int, number of sequence steps written (-1 indicates failed process)
         """
-        return ''
+        self.log.warning('FPGA digital pulse generator has no sequencing capabilities.\n'
+                         'write_sequence call ignored.')
+        return -1
+
+    def get_waveform_names(self):
+        """ Retrieve the names of all uploaded waveforms on the device.
+
+        @return list: List of all uploaded waveform name strings in the device workspace.
+        """
+        return
+
+    def get_sequence_names(self):
+        """ Retrieve the names of all uploaded sequence on the device.
+
+        @return list: List of all uploaded sequence name strings in the device workspace.
+        """
+        return list()
+
+    def delete_waveform(self, waveform_name):
+        """ Delete the waveform with name "waveform_name" from the device memory.
+
+        @param str waveform_name: The name of the waveform to be deleted
+                                  Optionally a list of waveform names can be passed.
+
+        @return list: a list of deleted waveform names.
+        """
+        return
+
+    def delete_sequence(self, sequence_name):
+        """ Delete the sequence with name "sequence_name" from the device memory.
+
+        @param str sequence_name: The name of the sequence to be deleted
+                                  Optionally a list of sequence names can be passed.
+
+        @return list: a list of deleted sequence names.
+        """
+        return list()
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
 
         @return bool: True: ON, False: OFF
 
-        Unused for pulse generator hardware other than an AWG.
+        Will always return False for pulse generator hardware without interleave.
         """
         return False
 
@@ -578,35 +648,42 @@ class OkFpgaPulser(Base, PulserInterface):
 
         Unused for pulse generator hardware other than an AWG.
         """
+        if state:
+            self.log.error('No interleave functionality available in FPGA pulser.\n'
+                           'Interleave state is always False.')
         return False
 
-    def tell(self, command):
+    def write(self, command):
         """ Sends a command string to the device.
 
         @param string command: string containing the command
 
         @return int: error code (0:OK, -1:error)
         """
+        if not isinstance(command, int):
+            return -1
+        self.fpga.SetWireInValue(0x00, command)
+        self.fpga.UpdateWireIns()
         return 0
 
-    def ask(self, question):
+    def query(self, question=None):
         """ Asks the device a 'question' and receive and return an answer from it.
-a
+
         @param string question: string containing the command
 
         @return string: the answer of the device to the 'question' in a string
         """
-        return ''
+        self.fpga.UpdateWireOuts()
+        return self.fpga.GetWireOutValue(0x20)
 
     def reset(self):
         """ Reset the device.
 
         @return int: error code (0:OK, -1:error)
         """
-        self.fpga.SetWireInValue(0x00, 0x04)
-        self.fpga.UpdateWireIns()
-        self.fpga.SetWireInValue(0x00, 0x00)
-        self.fpga.UpdateWireIns()
+        self.write(0x04)
+        self.write(0x00)
+        self.clear_all()
         return 0
 
     def has_sequence_mode(self):
@@ -618,7 +695,7 @@ a
 
     def _connect_fpga(self):
         # connect to FPGA by serial number
-        self.fpga.OpenBySerial(self.fpga_serial)
+        self.fpga.OpenBySerial(self._fpga_serial)
         # upload configuration bitfile to FPGA
         self.set_sample_rate(self.sample_rate)
 
@@ -637,27 +714,7 @@ a
         stop FPGA and disconnect
         """
         # set FPGA in reset state
-        self.fpga.SetWireInValue(0x00, 0x04)
-        self.fpga.UpdateWireIns()
+        self.write(0x04)
         self.current_status = -1
         del self.fpga
         return 0
-
-    def _get_dir_for_name(self, name):
-        """ Get the path to the pulsed sub-directory 'name'.
-
-        @param name: string, name of the folder
-        @return: string, absolute path to the directory with folder 'name'.
-        """
-        path = os.path.join(self.pulsed_file_dir, name)
-        if not os.path.exists(path):
-            os.makedirs(os.path.abspath(path))
-        return os.path.abspath(path)
-
-    def _get_filenames_on_host(self):
-        """ Get the full filenames of all assets saved on the host PC.
-
-        @return: list, The full filenames of all assets saved on the host PC.
-        """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if f.endswith('.fpga')]
-        return filename_list

@@ -57,7 +57,8 @@ class FloatValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or when incomplete "[+-]inf"
-        if string.strip() in '+.-.' or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
+        if string.strip() in '+.-.' or string.strip() in list('YZEPTGMkmµunpfazy') or re.match(
+                r'[+-]?(in$|i$)', string, re.IGNORECASE):
             return self.Intermediate, string, position
 
         # Accept input of [+-]inf. Not case sensitive.
@@ -137,7 +138,7 @@ class IntegerValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or cursor is at index 0
-        if not string.strip():
+        if not string.strip() or string.strip() in list('YZEPTGMk'):
             return self.Intermediate, string, position
 
         group_dict = self.get_group_dict(string)
@@ -982,8 +983,8 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.__value = 0
-        self.__minimum = 2 ** 31 - 1  # Use a 32bit integer size by default. Same as QSpinBox.
-        self.__maximum = -2 ** 31  # Use a 32bit integer size by default. Same as QSpinBox.
+        self.__minimum = -2 ** 63  # Use a 64bit integer size by default.
+        self.__maximum = 2 ** 63 - 1  # Use a 64bit integer size by default.
         self.__prefix = ''
         self.__suffix = ''
         self.__singleStep = 1
@@ -1397,13 +1398,14 @@ class ScienSpinBox(QtWidgets.QAbstractSpinBox):
         # the scaled integer string that is still missing the order of magnitude (si-prefix or e)
         integer_str = value_str[:digit_index + missing_zeros]
 
+        space = ' ' if self.__suffix else ''
         # Add si-prefix or, if the exponent is too big, add e-notation
         if 2 < exponent <= 24:
             si_prefix = ' ' + 'kMGTPEZY'[exponent // 3 - 1]
         elif exponent > 24:
-            si_prefix = 'e{0:d}'.format(exponent)
+            si_prefix = 'e{0:d}'.format(exponent) + space
         else:
-            si_prefix = ''
+            si_prefix = space
 
         # Assemble the string and return it
         return sign + integer_str + si_prefix
