@@ -1376,19 +1376,19 @@ class SequenceGeneratorLogic(GenericLogic):
             if not ensemble:
                 self.log.error('Unable to sample PulseBlockEnsemble. Not found in saved ensembles.')
                 self.sigSampleEnsembleComplete.emit(None)
-                return -1, list()
+                return -1, list(), dict()
 
         # Perform sanity checks on ensemble and corresponding blocks
         if self._sampling_ensemble_sanity_check(ensemble) < 0:
             self.sigSampleEnsembleComplete.emit(None)
-            return -1, list()
+            return -1, list(), dict()
 
         # lock module if it's not already locked (sequence sampling in progress)
         if self.module_state() == 'idle':
             self.module_state.lock()
         elif not self.__sequence_generation_in_progress:
             self.sigSampleEnsembleComplete.emit(None)
-            return -1, list()
+            return -1, list(), dict()
 
         # Set the waveform name (excluding the device specific channel naming suffix, i.e. '_ch1')
         waveform_name = name_tag if name_tag else ensemble.name
@@ -1433,7 +1433,7 @@ class SequenceGeneratorLogic(GenericLogic):
             if not self.__sequence_generation_in_progress:
                 self.module_state.unlock()
             self.sigSampleEnsembleComplete.emit(None)
-            return -1, list()
+            return -1, list(), dict()
 
         # integer to keep track of the sampls already processed
         processed_samples = 0
@@ -1512,7 +1512,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                     self.module_state.unlock()
                                 self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
                                 self.sigSampleEnsembleComplete.emit(None)
-                                return -1, list()
+                                return -1, list(), dict()
 
                             # Reset array write start pointer
                             array_write_index = 0
