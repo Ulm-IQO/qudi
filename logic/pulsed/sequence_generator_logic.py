@@ -1370,6 +1370,7 @@ class SequenceGeneratorLogic(GenericLogic):
         It is a dictionary containing:
         TODO: Add parameters that are stored
         """
+        print('Sample Ensemble called: {0}, {1}'.format(ensemble, name_tag))
         # Get PulseBlockEnsemble from saved ensembles if string has been passed as argument
         if isinstance(ensemble, str):
             ensemble = self.get_ensemble(ensemble)
@@ -1629,7 +1630,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 # to make something like 001
                 name_tag = sequence.name + '_' + str(sequence_step).zfill(3)
             else:
-                name_tag = None
+                name_tag = ensemble_name
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
