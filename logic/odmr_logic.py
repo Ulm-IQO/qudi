@@ -388,10 +388,18 @@ class ODMRLogic(GenericLogic):
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         else:
-            freq_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
+            # adjust the end frequency in order to have an integer multiple of step size
+            # The master module (i.e. GUI) will be notified about the changed end frequency
+            num_steps = int(np.rint((self.mw_stop - self.mw_start) / self.mw_step))
+            end_freq = self.mw_start + num_steps * self.mw_step
+            freq_list = np.linspace(self.mw_start, end_freq, num_steps + 1)
             freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(freq_list,
                                                                             self.sweep_mw_power)
-            param_dict = {'sweep_mw_power': self.sweep_mw_power}
+            self.mw_start = freq_list[0]
+            self.mw_stop = freq_list[-1]
+            self.mw_step = (self.mw_stop - self.mw_start) / (len(freq_list) - 1)
+            param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
+                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         self.sigParameterUpdated.emit(param_dict)
 
         if mode != 'list' and mode != 'sweep':
