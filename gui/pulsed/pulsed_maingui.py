@@ -2240,7 +2240,10 @@ class PulsedMeasurementGui(GUIBase):
 
         # create ErrorBarItems
         tmp_array = signal_data[0, 1:] - signal_data[0, :-1]
-        beamwidth = tmp_array.min() if tmp_array.min() > 0 else tmp_array.max()
+        if len(tmp_array) > 0:
+            beamwidth = tmp_array.min() if tmp_array.min() > 0 else tmp_array.max()
+        else:
+            beamwidth = 0
         del tmp_array
         beamwidth /= 3
         self.signal_image_error_bars.setData(x=signal_data[0],

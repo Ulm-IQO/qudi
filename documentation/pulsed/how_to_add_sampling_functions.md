@@ -38,7 +38,7 @@ An additional import path can be set using the `ConfigOption` `additional_sampli
 
 ## Class signature
 Each sampling function class must meet the following requirements:
-* The **ONLY** parent class must be `SamplingBase`
+* The parent class must be `SamplingBase` or another sampling function class
 * `__init__` method must have all function parameters as optional keyword arguments.
 * The class attribute `params` must be specified for all parameters 
 (see `basic_sampling_functions.py` as example)
@@ -56,7 +56,7 @@ Depending on the type the GUI will automatically create the proper input widget.
 calculate and return the analog voltages corresponding to the time bins provided by `time_array`.
 
 ## Adding new sampling functions procedure
-1. Define a class with `SamplingBase` as the **ONLY** parent class. The class name should be the 
+1. Define a class with `SamplingBase` or another sampling function class as the parent class. The class name should be the 
 function name.
 2. Define all function parameters in `params` dictionary. (see section "Class signature")
 3. Define `__init__` with all parameters as optional arguments. Upon creating an instance the 
@@ -98,4 +98,8 @@ class MyFunc(SamplingBase):
         
     def _some_helper_method(self):
         pass
+        
+
+class MyFuncWithNewName(MyFunc):
+    """ This is the same sampling function as MyFunc but it is now called MyFuncWithNewName """
 ```
