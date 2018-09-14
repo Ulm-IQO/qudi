@@ -86,7 +86,7 @@ class AWG7122C(Base, PulserInterface):
         else:
             self.awg = self._rm.open_resource(self._visa_address)
             # set timeout by default to 30 sec
-            self.awg.timeout = self._visa_timeout * 1000
+            self.awg.timeout = self._visa_timeout * 2
 
         # try connecting to AWG using FTP protocol
         with FTP(self._ip_address) as ftp:
@@ -248,7 +248,7 @@ class AWG7122C(Base, PulserInterface):
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.2)
-        return self.get_status()
+        return self.get_status()[0]
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -1048,7 +1048,7 @@ class AWG7122C(Base, PulserInterface):
         """
         wfm_list_len = int(self.query('WLIS:SIZE?'))
         wfm_list = list()
-        for index in range(1, wfm_list_len + 1):
+        for index in range(1, wfm_list_len):
             wfm_list.append(self.query('WLIS:NAME? {0:d}'.format(index)))
         return sorted(wfm_list)
 
