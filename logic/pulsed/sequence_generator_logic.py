@@ -735,12 +735,11 @@ class SequenceGeneratorLogic(GenericLogic):
         @param PulseBlock block: The PulseBlock instance to be saved
         """
         filename = '{0}.block'.format(block.name)
-        # try:
-        with open(os.path.join(self._assets_storage_dir, filename), 'wb') as file:
-            print(block)
-            pickle.dump(block, file)
-        # except:
-        #     self.log.error('Failed to serialize PulseBlock "{0}" to file.'.format(block.name))
+        try:
+            with open(os.path.join(self._assets_storage_dir, filename), 'wb') as file:
+                pickle.dump(block, file)
+        except:
+            self.log.error('Failed to serialize PulseBlock "{0}" to file.'.format(block.name))
         return
 
     def _save_blocks_to_file(self):
