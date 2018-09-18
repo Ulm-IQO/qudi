@@ -646,7 +646,9 @@ class PulseSequence(object):
         """
         self.name = name
         self.rotating_frame = rotating_frame
-        self.ensemble_list = list() if ensemble_list is None else ensemble_list
+        self.ensemble_list = list()
+        if ensemble_list is not None:
+            self.extend(ensemble_list)
         self.is_finite = True
         self.refresh_parameters()
 
@@ -825,7 +827,7 @@ class PulseSequence(object):
         if len(self.ensemble_list) < position or position < 0:
             raise IndexError('PulseSequence ensemble list index out of range')
 
-        self.ensemble_list.insert(position, tuple(element))
+        self.ensemble_list.insert(position, tuple(copy.deepcopy(element)))
         if element[1]['repetitions'] < 0:
             self.is_finite = False
         self.sampling_information = dict()
