@@ -141,7 +141,7 @@ class AnalogParametersWidget(QtGui.QWidget):
             elif issubclass(self._parameters[param]['type'], Enum):
                 widget = QtGui.QComboBox()
                 for option in self._parameters[param]['type']:
-                    widget.addItem(option.name, option.value)
+                    widget.addItem(option.name, option)
                 widget.setCurrentText(self._parameters[param]['init'].name)
                 # Set size constraints
                 widget.setFixedWidth(90)
@@ -190,7 +190,7 @@ class AnalogParametersWidget(QtGui.QWidget):
             elif self._parameters[param]['type'] == bool:
                 analog_params[param] = widget.isChecked()
             elif issubclass(self._parameters[param]['type'], Enum):
-                analog_params[param] = self._parameters[param]['type'][widget.currentText()]
+                analog_params[param] = widget.itemData(widget.currentIndex())
         return analog_params
 
     def sizeHint(self):
