@@ -117,7 +117,7 @@ class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
 
 ### Advanced use of Enum subclass
 If you have used an Enum subclass as a parameter type of a sampling function 
-than you might want to wish to use the same Enum subclass in the predefined functions.
+then you might want to wish to use the same Enum subclass in the predefined functions.
 
 To do so, you will have to access the sampling function and grab the Enum subclass from there.
 
@@ -133,12 +133,12 @@ from logic.pulsed.sampling_functions import SamplingFunctions
 import sys
 
 if 'MyFunc' not in SamplingFunctions.parameters or 'my_enum_param' not in SamplingFunctions.parameters['MyFunc']:
-    print('Error: Cannot find the sampling function DDSymmetric and therefore cannot supply the required Enums.\n'
+    print('Error: Cannot find the sampling function and therefore cannot supply the required Enums.\n'
           'Aborting the import of predefined methods in module {}.'.format(__name__), file=sys.stderr)
 else:
     Colour = SamplingFunctions.parameters['MyFunc']['my_enum_param']['type']
 
-    class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
+    class MyPredefinedGenerator(PredefinedGeneratorBase):
         """ Description goes here """
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
