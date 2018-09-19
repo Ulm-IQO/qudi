@@ -968,7 +968,7 @@ class PredefinedGeneratorBase:
 
     @property
     def sample_rate(self):
-        return self.pulse_generator_settings['sample_rate']
+        return self.pulse_generator_settings.get('sample_rate')
 
     ################################################################################################
     #                                   Helper methods                                          ####
