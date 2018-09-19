@@ -966,6 +966,10 @@ class PredefinedGeneratorBase:
     def rabi_period(self):
         return self.generation_parameters.get('rabi_period')
 
+    @property
+    def sample_rate(self):
+        return self.pulse_generator_settings.get('sample_rate')
+
     ################################################################################################
     #                                   Helper methods                                          ####
     ################################################################################################
