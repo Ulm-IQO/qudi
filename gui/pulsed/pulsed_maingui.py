@@ -32,6 +32,7 @@ from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, uic
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from enum import Enum
 
 
 # TODO: Display the Pulse graphically (similar to AWG application)
@@ -1277,10 +1278,17 @@ class PulsedMeasurementGui(GUIBase):
                         input_obj = QtWidgets.QLineEdit(groupBox)
                         input_obj.setMinimumSize(QtCore.QSize(80, 0))
                         input_obj.setText(param)
+                    elif issubclass(type(param), Enum):
+                        input_obj = QtWidgets.QComboBox(groupBox)
+                        for option in type(param):
+                            input_obj.addItem(option.name, option)
+                        input_obj.setCurrentText(param.name)
+                        # Set size constraints
+                        input_obj.setMinimumSize(QtCore.QSize(80, 0))
                     else:
-                        self.log.error('The predefined method "{0}" has an argument "{1}" which is '
+                        self.log.error('The predefined method "{0}" has an argument "{1}" which '
                                        'has no default argument or an invalid type (str, float, '
-                                       'int or bool allowed)!\nCreation of the viewbox aborted.'
+                                       'int, bool or Enum allowed)!\nCreation of the viewbox aborted.'
                                        ''.format('generate_' + method_name, param_name))
                         continue
                     # Adjust size policy
@@ -1871,6 +1879,8 @@ class PulsedMeasurementGui(GUIBase):
                 param_dict[param_name] = input_obj.value()
             elif hasattr(input_obj, 'text'):
                 param_dict[param_name] = input_obj.text()
+            elif hasattr(input_obj, 'currentIndex') and hasattr(input_obj, 'itemData'):
+                param_dict[param_name] = input_obj.itemData(input_obj.currentIndex())
             else:
                 self.log.error('Not possible to get the value from the widgets, since it does not '
                                'have one of the possible access methods!')
