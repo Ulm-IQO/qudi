@@ -1236,7 +1236,7 @@ class AWG70K(Base, PulserInterface):
                            'Sequencer option not installed.')
             return -1
 
-        goto = str(int(goto)) if seq_params['go_to'] > 0 else 'NEXT'
+        goto = str(int(goto)) if goto > 0 else 'NEXT'
         self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}", {2}'.format(step, sequence_name, goto))
         return 0
 
@@ -1317,7 +1317,7 @@ class AWG70K(Base, PulserInterface):
             else:
                 state = 'LOW'
 
-            self.write('SLIS:SEQ:STEP{0:d}:TFL1:{2}FL "{3}",{4}'.format(step,
+            self.write('SLIS:SEQ:STEP{0:d}:TFL1:{1}FL "{2}",{3}'.format(step,
                                                                         flag,
                                                                         sequence_name,
                                                                         state))
