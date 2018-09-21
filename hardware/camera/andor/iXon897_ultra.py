@@ -31,7 +31,6 @@ import numpy as np
 from core.module import Base, ConfigOption
 
 from interface.camera_interface import CameraInterface
-from interface.setpoint_controller_interface import SetpointControllerInterface
 
 
 class ReadMode(Enum):
@@ -355,6 +354,8 @@ class IxonUltra(Base, CameraInterface):
                 check_val = -1
         ret_val1 = self._set_trigger_mode('EXTERNAL')
         ret_val2 = self._set_acquisition_mode('RUN_TILL_ABORT')
+        # let's test the FT mode
+        ret_val3 = self._set_frame_transfer(True)
         error_code = self.dll.PrepareAcquisition()
         error_msg = ERROR_DICT[error_code]
         if error_msg == 'DRV_SUCCESS':
@@ -560,6 +561,25 @@ class IxonUltra(Base, CameraInterface):
             error_code = self.dll.CoolerOFF()
 
         return ERROR_DICT[error_code]
+
+    def _set_frame_transfer(self, bool):
+        acq_mode = self._acquisition_mode
+
+        if (acq_mode == 'SINGLE_SCAN') | (acq_mode == 'KINETIC'):
+            self.log.debug('Setting of frame transfer mode has no effect in acquisition '
+                           'mode \'SINGLE_SCAN\' or \'KINETIC\'.')
+            return -1
+        else:
+            if bool:
+                rtrn_val = self.dll.SetFrameTransferMode(1)
+            else:
+                rtrn_val = self.dll.SetFrameTransferMode(0)
+
+        if ERROR_DICT[rtrn_val] == 'DRV_SUCCESS':
+            return 0
+        else:
+            self.log.warning('Could not set frame transfer mode:{0}'.format(ERROR_DICT[rtrn_val]))
+            return -1
 
 # getter functions
     def _get_status(self, status):
