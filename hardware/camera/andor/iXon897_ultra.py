@@ -31,7 +31,6 @@ import numpy as np
 from core.module import Base, ConfigOption
 
 from interface.camera_interface import CameraInterface
-from interface.setpoint_controller_interface import SetpointControllerInterface
 
 
 class ReadMode(Enum):
@@ -560,6 +559,17 @@ class IxonUltra(Base, CameraInterface):
             error_code = self.dll.CoolerOFF()
 
         return ERROR_DICT[error_code]
+
+    def _set_frame_transfer(self, bool):
+        acq_mode = self._acquisition_mode
+        if (acq_mode == 'SINGLE_SCAN') | (acq_mode == 'KINETIC') :
+            if bool:
+                self.dll.SetFrameTransfer(1)
+            else:
+                self.dll.SetFrameTransfer(0)
+        else:
+            self.log.debug('Setting of frame transfer mode has no effect in acquisition '
+                           'mode \'SINGLE_SCAN\' or \'KINETIC\'.')
 
 # getter functions
     def _get_status(self, status):
