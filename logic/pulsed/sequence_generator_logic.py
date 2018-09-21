@@ -102,7 +102,7 @@ class SequenceGeneratorLogic(GenericLogic):
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
 
-    sigPredefinedSequenceGenerated = QtCore.Signal(object)
+    sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -1000,6 +1000,7 @@ class SequenceGeneratorLogic(GenericLogic):
         except:
             self.log.error('Generation of predefined sequence "{0}" failed.'
                            ''.format(predefined_sequence_name))
+            self.sigPredefinedSequenceGenerated.emit(None, False)
             raise
         # Save objects
         for block in blocks:
@@ -1010,7 +1011,7 @@ class SequenceGeneratorLogic(GenericLogic):
         for sequence in sequences:
             sequence.sampling_information = dict()
             self.save_sequence(sequence)
-        self.sigPredefinedSequenceGenerated.emit(predefined_sequence_name)
+        self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
         return
     # ---------------------------------------------------------------------------
     #                    END sequence/block generation
