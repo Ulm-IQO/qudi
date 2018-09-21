@@ -355,7 +355,7 @@ class IxonUltra(Base, CameraInterface):
         ret_val1 = self._set_trigger_mode('EXTERNAL')
         ret_val2 = self._set_acquisition_mode('RUN_TILL_ABORT')
         # let's test the FT mode
-        ret_val3 = self._set_frame_transfer(True)
+        # ret_val3 = self._set_frame_transfer(True)
         error_code = self.dll.PrepareAcquisition()
         error_msg = ERROR_DICT[error_code]
         if error_msg == 'DRV_SUCCESS':
@@ -363,7 +363,6 @@ class IxonUltra(Base, CameraInterface):
         else:
             self.log.debug('could not prepare acquisition: {0}'.format(error_msg))
         self._get_acquisition_timings()
-        msg = self._start_acquisition()
         if check_val == 0:
             check_val = ret_val1 | ret_val2
 
