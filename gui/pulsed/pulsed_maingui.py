@@ -397,7 +397,7 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigLoadedAssetUpdated.connect(self.loaded_asset_updated)
         self.pulsedmasterlogic().sigGeneratorSettingsUpdated.connect(self.pulse_generator_settings_updated)
         self.pulsedmasterlogic().sigSamplingSettingsUpdated.connect(self.generation_parameters_updated)
-        # self.pulsedmasterlogic().sigPredefinedSequenceGenerated.connect()
+        self.pulsedmasterlogic().sigPredefinedSequenceGenerated.connect(self.predefined_generated)
         return
 
     def _disconnect_main_window_signals(self):
@@ -553,7 +553,7 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigLoadedAssetUpdated.disconnect()
         self.pulsedmasterlogic().sigGeneratorSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigSamplingSettingsUpdated.disconnect()
-        # self.pulsedmasterlogic().sigPredefinedSequenceGenerated.disconnect()
+        self.pulsedmasterlogic().sigPredefinedSequenceGenerated.disconnect()
         return
 
     ###########################################################################
@@ -653,6 +653,10 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.load_sequence_PushButton.setEnabled(True)
         self._sg.samplo_sequence_PushButton.setEnabled(True)
         self._sg.sample_sequence_PushButton.setEnabled(True)
+        # Reactivate predefined method buttons
+        if hasattr(self._pm, 'samplo_buttons'):
+            for button in self._pm.samplo_buttons.values():
+                button.setEnabled(True)
         return
 
     @QtCore.Slot(bool)
@@ -1097,23 +1101,6 @@ class PulsedMeasurementGui(GUIBase):
     #                Predefined Methods tab related methods                   #
     ###########################################################################
     def _activate_predefined_methods_ui(self):
-        # Set ranges for the global parameters and default values
-        # self._pm.pm_mw_amp_Widget.setRange(0, np.inf)
-        # self._pm.pm_mw_freq_Widget.setRange(0, np.inf)
-        # self._pm.pm_channel_amp_Widget.setRange(0, np.inf)
-        # self._pm.pm_delay_length_Widget.setRange(0, np.inf)
-        # self._pm.pm_wait_time_Widget.setRange(0, np.inf)
-        # self._pm.pm_laser_length_Widget.setRange(0, np.inf)
-        # self._pm.pm_rabi_period_Widget.setRange(0, np.inf)
-        #
-        # self._pm.pm_mw_amp_Widget.setValue('0.125')
-        # self._pm.pm_mw_freq_Widget.setValue('2.87e6')
-        # self._pm.pm_channel_amp_Widget.setValue(0)
-        # self._pm.pm_delay_length_Widget.setValue('500.0e-9')
-        # self._pm.pm_wait_time_Widget.setValue('1.5e-6')
-        # self._pm.pm_laser_length_Widget.setValue('3.0e-6')
-        # self._pm.pm_rabi_period_Widget.setValue('200.0e-9')
-
         # Contraint some widgets by hardware constraints
         self._pm_apply_hardware_constraints()
 
@@ -1124,6 +1111,9 @@ class PulsedMeasurementGui(GUIBase):
         self.generation_parameters_updated(self.pulsedmasterlogic().generation_parameters)
 
         # Dynamically create GUI elements for predefined methods
+        self._pm.gen_buttons = dict()
+        self._pm.samplo_buttons = dict()
+        self._pm.method_param_widgets = dict()
         self._create_predefined_methods()
         return
 
@@ -1231,6 +1221,11 @@ class PulsedMeasurementGui(GUIBase):
         """
         Initializes the GUI elements for the predefined methods
         """
+        # Empty reference containers
+        self._pm.gen_buttons = dict()
+        self._pm.samplo_buttons = dict()
+        self._pm.method_param_widgets = dict()
+
         method_params = self.pulsedmasterlogic().generate_method_params
         for method_name in sorted(self.pulsedmasterlogic().generate_methods):
             # Create the widgets for the predefined methods dialogue
@@ -1248,11 +1243,14 @@ class PulsedMeasurementGui(GUIBase):
             samplo_button = QtWidgets.QPushButton(groupBox)
             samplo_button.setText('GenSampLo')
             samplo_button.setObjectName('samplo_' + method_name)
-            samplo_button.clicked.connect(self.samplo_predefined_clicked)
+            samplo_button.clicked.connect(self.generate_predefined_clicked)
             gridLayout.addWidget(gen_button, 0, 0, 1, 1)
             gridLayout.addWidget(samplo_button, 1, 0, 1, 1)
+            self._pm.gen_buttons[method_name] = gen_button
+            self._pm.samplo_buttons[method_name] = samplo_button
 
             # run through all parameters of the current method and create the widgets
+            self._pm.method_param_widgets[method_name] = dict()
             for param_index, (param_name, param) in enumerate(method_params[method_name].items()):
                     # create a label for the parameter
                     param_label = QtWidgets.QLabel(groupBox)
@@ -1296,7 +1294,7 @@ class PulsedMeasurementGui(GUIBase):
                     input_obj.setMaximumWidth(100)
                     gridLayout.addWidget(param_label, 0, param_index + 1, 1, 1)
                     gridLayout.addWidget(input_obj, 1, param_index + 1, 1, 1)
-                    setattr(self._pm, method_name + '_param_' + param_name + '_Widget', input_obj)
+                    self._pm.method_param_widgets[method_name][param_name] = input_obj
             h_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Expanding,
                                              QtWidgets.QSizePolicy.Minimum)
             gridLayout.addItem(h_spacer, 1, param_index + 2, 1, 1)
@@ -1816,6 +1814,9 @@ class PulsedMeasurementGui(GUIBase):
         if not self.pulsedmasterlogic().status_dict['sampload_busy']:
             self._pg.sample_ensemble_PushButton.setEnabled(True)
             self._pg.samplo_ensemble_PushButton.setEnabled(True)
+            # Reactivate predefined method buttons
+            for button in self._pm.samplo_buttons.values():
+                button.setEnabled(True)
         return
 
     @QtCore.Slot()
@@ -1857,63 +1858,64 @@ class PulsedMeasurementGui(GUIBase):
             button_obj = self.sender()
         method_name = button_obj.objectName()
         if method_name.startswith('gen_'):
+            sample_and_load = False
             method_name = method_name[4:]
         elif method_name.startswith('samplo_'):
+            sample_and_load = True
             method_name = method_name[7:]
         else:
             self.log.error('Strange naming of generate buttons in predefined methods occured.')
             return
 
         # get parameters from input widgets
-        param_searchstr = method_name + '_param_'
-        param_widgets = [widget for widget in dir(self._pm) if widget.startswith(param_searchstr)]
         # Store parameters together with the parameter names in a dictionary
         param_dict = dict()
-        for widget_name in param_widgets:
-            input_obj = getattr(self._pm, widget_name)
-            param_name = widget_name.replace(param_searchstr, '').replace('_Widget', '')
-
-            if hasattr(input_obj, 'isChecked'):
-                param_dict[param_name] = input_obj.isChecked()
-            elif hasattr(input_obj, 'value'):
-                param_dict[param_name] = input_obj.value()
-            elif hasattr(input_obj, 'text'):
-                param_dict[param_name] = input_obj.text()
-            elif hasattr(input_obj, 'currentIndex') and hasattr(input_obj, 'itemData'):
-                param_dict[param_name] = input_obj.itemData(input_obj.currentIndex())
+        for param_name, widget in self._pm.method_param_widgets[method_name].items():
+            if hasattr(widget, 'isChecked'):
+                param_dict[param_name] = widget.isChecked()
+            elif hasattr(widget, 'value'):
+                param_dict[param_name] = widget.value()
+            elif hasattr(widget, 'text'):
+                param_dict[param_name] = widget.text()
+            elif hasattr(widget, 'currentIndex') and hasattr(widget, 'itemData'):
+                param_dict[param_name] = widget.itemData(widget.currentIndex())
             else:
                 self.log.error('Not possible to get the value from the widgets, since it does not '
                                'have one of the possible access methods!')
                 return
 
-        self.pulsedmasterlogic().generate_predefined_sequence(method_name, param_dict)
+        if sample_and_load:
+            # disable buttons
+            for button in self._pm.gen_buttons.values():
+                button.setEnabled(False)
+            for button in self._pm.samplo_buttons.values():
+                button.setEnabled(False)
+
+        self.pulsedmasterlogic().generate_predefined_sequence(
+            method_name, param_dict, sample_and_load)
         return
 
-    @QtCore.Slot()
-    def samplo_predefined_clicked(self):
-        button_obj = self.sender()
-        method_name = button_obj.objectName()[7:]
-        self.generate_predefined_clicked(button_obj)
-        # get name of the generated ensemble
-        if not hasattr(self._pm, method_name + '_param_name_Widget'):
-            self.log.error('Predefined sequence methods must have an argument called "name" in '
-                           'order to use the sample/upload/load functionality. It must be the '
-                           'naming of the generated asset.\n"{0}" has probably been generated '
-                           'but not sampled/uploaded/loaded'.format(method_name))
-            return
-        input_obj = getattr(self._pm, method_name + '_param_name_Widget')
-        if not hasattr(input_obj, 'text'):
-            self.log.error('Predefined sequence methods must have as first argument the name of '
-                           'the asset to be generated.')
-            return
-        asset_name = input_obj.text()
+    @QtCore.Slot(object, bool)
+    def predefined_generated(self, asset_name, is_sequence):
+        # Enable all "Generate" buttons in predefined methods tab
+        for button in self._pm.gen_buttons.values():
+            button.setEnabled(True)
 
-        # disable buttons
-        self._pg.sample_ensemble_PushButton.setEnabled(False)
-        self._pg.samplo_ensemble_PushButton.setEnabled(False)
-        self._pg.load_ensemble_PushButton.setEnabled(False)
-
-        self.pulsedmasterlogic().sample_ensemble(asset_name, True)
+        # Enable all "GenSampLo" buttons in predefined methods tab if generation failed or
+        # "sampload_busy" flag in PulsedMasterLogic status_dict is False.
+        # If generation was successful and "sampload_busy" flag is True, disable respective buttons
+        # in "Pulse Generator" and "Sequence Generator" tab
+        if asset_name is None or not self.pulsedmasterlogic().status_dict['sampload_busy']:
+            for button in self._pm.samplo_buttons.values():
+                button.setEnabled(True)
+        else:
+            self._pg.sample_ensemble_PushButton.setEnabled(False)
+            self._pg.samplo_ensemble_PushButton.setEnabled(False)
+            self._pg.load_ensemble_PushButton.setEnabled(False)
+            if is_sequence:
+                self._sg.load_sequence_PushButton.setEnabled(False)
+                self._sg.samplo_sequence_PushButton.setEnabled(False)
+                self._sg.sample_sequence_PushButton.setEnabled(False)
         return
 
     @QtCore.Slot(list)
@@ -2081,6 +2083,9 @@ class PulsedMeasurementGui(GUIBase):
         if not self.pulsedmasterlogic().status_dict['sampload_busy']:
             self._sg.sample_sequence_PushButton.setEnabled(True)
             self._sg.samplo_sequence_PushButton.setEnabled(True)
+            # Reactivate predefined method buttons
+            for button in self._pm.samplo_buttons.values():
+                button.setEnabled(True)
         return
 
     @QtCore.Slot()
