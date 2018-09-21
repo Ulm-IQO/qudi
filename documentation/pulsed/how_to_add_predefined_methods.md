@@ -33,6 +33,7 @@ laser_channel etc.)
 * `laser_length` (dict containing the current settings for the fast counter hardware)
 * `wait_time` (the wait time after a laser pulse before any microwave irradiation takes place)
 * `rabi_period` (the rabi period of the spin to manipulate in seconds)
+* `sample_rate` (the sampling rate of the hardware device)
 
 If you need access to another attribute of the logic module simply add it as property to 
 `PredefinedGeneratorBase` but make sure to protect it properly against changes to the logic module.
@@ -63,7 +64,7 @@ Each generation method must meet the following requirements:
 * Method name starts with prefix `generate_`
 * Must contain the optional keyword argument `name` to give the instance to created a name
 * Additional parameters must be defined as optional keyword arguments
-* Default values for additional arguments must be of type `int`, `float`, `str` or `bool`. 
+* Default values for additional arguments must be of type `int`, `float`, `str`, `bool` or Enum subclass. 
 Depending on the default argument type the GUI will automatically create the proper input widget.
 
 ## Adding new methods procedure
@@ -88,6 +89,15 @@ altered unless you intend to contribute your methods to the _qudi_ repository.
 
 A template for a new `PredefinedGenerator` class could look like:
 ```python
+from enum import Enum
+
+
+class Colour(Enum):
+    red = 1
+    green = 2
+    blue = 3
+
+
 class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
     """ Description goes here """
     def __init__(self, *args, **kwargs):
@@ -97,10 +107,46 @@ class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
         # Do something
         pass
         
-    def generate_my_method_name2(self, name='my_name', my_str_param='derp', my_bool_param=True):
+    def generate_my_method_name2(self, name='my_name', my_str_param='derp', my_bool_param=True, my_enum_param=Colour.green):
         # Do something
         pass
         
     def _some_helper_method(self):
         pass
 ```
+
+### Advanced use of Enum subclass
+If you have used an Enum subclass as a parameter type of a sampling function 
+then you might want to wish to use the same Enum subclass in the predefined functions.
+
+To do so, you will have to access the sampling function and grab the Enum subclass from there.
+
+**Attention:** Be aware however that this requires the sampling function to be loaded 
+and you have to make sure, that the Enum subclass you are wanting to access really exists. 
+If you access an Enum subclass that does not exist without checking, the loading of qudi will fail!
+
+The following example is requiring the template from the [sampling functions](@ref sampling_functions):
+
+
+```python
+from logic.pulsed.sampling_functions import SamplingFunctions
+import sys
+
+if 'MyFunc' not in SamplingFunctions.parameters or 'my_enum_param' not in SamplingFunctions.parameters['MyFunc']:
+    print('Error: Cannot find the sampling function and therefore cannot supply the required Enums.\n'
+          'Aborting the import of predefined methods in module {}.'.format(__name__), file=sys.stderr)
+else:
+    Colour = SamplingFunctions.parameters['MyFunc']['my_enum_param']['type']
+
+    class MyPredefinedGenerator(PredefinedGeneratorBase):
+        """ Description goes here """
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+    
+        def generate_my_enum_method(self, name='my_enum_method', my_enum_param=Colour.green):
+            # Do something
+            pass
+```
+
+Notice that the whole class definition is encapsulated in an if-clause and only is loaded, 
+if the Enum-subclass-parameter can be found int the sampling functions.

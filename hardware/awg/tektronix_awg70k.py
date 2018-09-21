@@ -597,7 +597,7 @@ class AWG70K(Base, PulserInterface):
         # Load sequence
         for chnl in range(1, trac_num + 1):
             self.write('SOUR{0:d}:CASS:SEQ "{1}", {2:d}'.format(chnl, sequence_name, chnl))
-            while self.query('SOUR{0:d}:CASS?'.format(chnl))[1:-2] != '{0},{1:d}'.format(
+            while self.query('SOUR{0:d}:CASS?'.format(chnl)) != '{0},{1:d}'.format(
                     sequence_name, chnl):
                 time.sleep(0.2)
 
