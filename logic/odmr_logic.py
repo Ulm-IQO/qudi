@@ -604,7 +604,7 @@ class ODMRLogic(GenericLogic):
 
             # Add new count data to mean signal
             if self._clearOdmrData:
-                self.odmr_plot_y[:, :, :] = 0
+                self.odmr_plot_y[:, :] = 0
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 
