@@ -130,5 +130,5 @@ class SamplingFunctions:
         @return bool: True if obj is a valid sampling function class, False otherwise
         """
         if inspect.isclass(obj):
-            return SamplingBase in obj.__bases__ and len(obj.__bases__) == 1
+            return SamplingBase in inspect.getmro(obj) and object not in obj.__bases__
         return False

@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore, QtGui
 from collections import OrderedDict
 from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
+from enum import Enum
 
 
 class DigitalChannelsWidget(QtGui.QWidget):
@@ -137,6 +138,15 @@ class AnalogParametersWidget(QtGui.QWidget):
                 widget.setFixedWidth(90)
                 # Forward editingFinished signal of child widget
                 widget.stateChanged.connect(self.editingFinished)
+            elif issubclass(self._parameters[param]['type'], Enum):
+                widget = QtGui.QComboBox()
+                for option in self._parameters[param]['type']:
+                    widget.addItem(option.name, option)
+                widget.setCurrentText(self._parameters[param]['init'].name)
+                # Set size constraints
+                widget.setFixedWidth(90)
+                # Forward editingFinished signal of child widget
+                widget.currentIndexChanged.connect(self.editingFinished)
 
             self._ach_widgets[param] = {'label': label, 'widget': widget}
 
@@ -162,6 +172,8 @@ class AnalogParametersWidget(QtGui.QWidget):
                 widget.setText(data[param])
             elif self._parameters[param]['type'] == bool:
                 widget.setChecked(data[param])
+            elif issubclass(self._parameters[param]['type'], Enum):
+                widget.setCurrentText(data[param].name)
 
         self.editingFinished.emit()
         return
@@ -177,6 +189,8 @@ class AnalogParametersWidget(QtGui.QWidget):
                 analog_params[param] = widget.text()
             elif self._parameters[param]['type'] == bool:
                 analog_params[param] = widget.isChecked()
+            elif issubclass(self._parameters[param]['type'], Enum):
+                analog_params[param] = widget.itemData(widget.currentIndex())
         return analog_params
 
     def sizeHint(self):
