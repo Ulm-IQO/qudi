@@ -160,8 +160,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             stop = float(self._gpib_connection.query(':LIST:FREQ?'))
             self._gpib_connection.write(':LIST:IND 0')
             start = float(self._gpib_connection.query(':LIST:FREQ?'))
-            step = (stop - start) / (stop_index-1)
-            return_val = np.arange(start, stop + step, step)
+            return_val = np.linspace(start, stop, stop_index + 1)
         return return_val
 
     def cw_on(self):
@@ -261,13 +260,10 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:IND 0')
 
         if frequency is not None:
-            s = ' {0:f},'.format(frequency[0])
-            for f in frequency[:-2]:
-                s += ' {0:f},'.format(f)
-            s += ' {0:f}'.format(frequency[-1])
-            self._gpib_connection.write(':LIST:FREQ' + s)
+            s = ', '.join('{0:f}'.format(f) for f in frequency)
+            self._gpib_connection.write(':LIST:FREQ ' + s)
             self._gpib_connection.write(':LIST:STAR 0')
-            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)))
+            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)-1))
             self._gpib_connection.write(':LIST:MODE MAN')
             self._gpib_connection.write('*WAI')
             self._command_wait(':LIST:IND 0')
