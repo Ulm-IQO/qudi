@@ -154,7 +154,7 @@ class AutoMeasurementLogic(GenericLogic):
         """
         return
 
-    @nv_list.respresenter
+    @nv_list.representer
     def get_nv_dict_repr(self, val):
         return [nv.get_dict_repr() for nv in val]
 
