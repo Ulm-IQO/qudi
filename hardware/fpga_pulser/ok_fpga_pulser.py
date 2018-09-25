@@ -338,7 +338,7 @@ class OkFpgaPulser(Base, PulserInterface):
         bitfile_path = os.path.join(get_main_dir(), 'thirdparty', 'qo_fpga', bitfile_name)
 
         self.fpga.ConfigureFPGA(bitfile_path)
-        self.log.debug('FPGA pulse generator configured with {0}'.format(bitfile_path))
+        self.log.info('FPGA pulse generator configured with {0}'.format(bitfile_path))
         return self.__sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
