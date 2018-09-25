@@ -12,7 +12,9 @@ automatically includes the function together with its custom parameter set.
 ## Architecture
 Each sampling function is a child class of `SamplingBase`. 
 The base class provides methods to save and restore sampling function instances using _qudi_ 
-StatusVars.
+StatusVars. It also provides the logging module to be used in the same way as in qudi modules. 
+So you can call for example `self.log.error('My awesome error message!')` from your sampling 
+function class.
 
 Each `PulseBlockElement` instance created will contain as many sampling function instances as analog
 channels active. During initialization the sampling function instance will receive a desired set of 
@@ -111,6 +113,7 @@ class MyFunc(SamplingBase):
         return np.zeros(time_array.size)
         
     def _some_helper_method(self):
+        self.log.info('I am just some helper method and I have just been called.')
         pass
         
 
