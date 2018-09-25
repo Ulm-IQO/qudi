@@ -205,7 +205,6 @@ class OkFpgaPulser(Base, PulserInterface):
         big_bytesize = (len(self.__current_waveform) // 1024) * 1024
         small_bytesize = len(self.__current_waveform) - big_bytesize
 
-        print(big_bytesize, small_bytesize)
         # try repeatedly to upload the samples to the FPGA RAM
         # stop if the upload was successful
         loop_count = 0
@@ -691,7 +690,6 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         self.write(0x04)
         self.write(0x00)
-        self.clear_all()
         return 0
 
     def has_sequence_mode(self):
