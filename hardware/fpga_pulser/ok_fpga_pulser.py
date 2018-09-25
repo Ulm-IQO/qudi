@@ -59,6 +59,7 @@ class OkFpgaPulser(Base, PulserInterface):
         self.__current_status = -1
         self.__currently_loaded_waveform = ''  # loaded and armed waveform name
         self.__samples_written = 0
+        self._fp3support = False
         self.fpga = None  # Reference to the OK FrontPanel instance
 
     def on_activate(self):
@@ -204,6 +205,7 @@ class OkFpgaPulser(Base, PulserInterface):
         big_bytesize = (len(self.__current_waveform) // 1024) * 1024
         small_bytesize = len(self.__current_waveform) - big_bytesize
 
+        print(big_bytesize, small_bytesize)
         # try repeatedly to upload the samples to the FPGA RAM
         # stop if the upload was successful
         loop_count = 0
@@ -265,7 +267,7 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         self.log.warning('FPGA digital pulse generator has no sequencing capabilities.\n'
                          'load_sequence call ignored.')
-        return
+        return dict()
 
     def get_loaded_assets(self):
         """
@@ -362,6 +364,7 @@ class OkFpgaPulser(Base, PulserInterface):
         to obtain the amplitude of channel 1 and 4 and the offset of all channels
             {'a_ch1': -0.5, 'a_ch4': 2.0} {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 1.0, 'a_ch4': 0.0}
         """
+        self.log.warning('The FPGA has no analog channels.')
         return dict(), dict()
 
     def set_analog_level(self, amplitude=None, offset=None):
@@ -383,7 +386,8 @@ class OkFpgaPulser(Base, PulserInterface):
         Note: After setting the amplitude and/or offset values of the device, use the actual set
               return values for further processing.
         """
-        return {}, {}
+        self.log.warning('The FPGA has no analog channels.')
+        return dict(), dict()
 
     def get_digital_level(self, low=None, high=None):
         """ Retrieve the digital low and high level of the provided/all channels.
@@ -498,6 +502,7 @@ class OkFpgaPulser(Base, PulserInterface):
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
         digital channel 1. All other available channels will remain unchanged.
         """
+        self.log.warning('The channels of the FPGA are always active.')
         return self.get_active_channels()
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
@@ -597,7 +602,10 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return
+        waveform_names = list()
+        if self.__current_waveform_name != '' and self.__current_waveform_name is not None:
+            waveform_names = [self.__current_waveform_name]
+        return waveform_names
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
@@ -697,7 +705,7 @@ class OkFpgaPulser(Base, PulserInterface):
         # connect to FPGA by serial number
         self.fpga.OpenBySerial(self._fpga_serial)
         # upload configuration bitfile to FPGA
-        self.set_sample_rate(self.sample_rate)
+        self.set_sample_rate(self.__sample_rate)
 
         # Check connection
         if not self.fpga.IsFrontPanelEnabled():
@@ -707,6 +715,12 @@ class OkFpgaPulser(Base, PulserInterface):
         else:
             self.current_status = 0
             self.log.info('FPGA pulse generator connected')
+            if self.fpga.IsFrontPanel3Supported():
+                self._fp3support = True
+            else:
+                self._fp3support = False
+                self.log.warning('FrontPanel3 is not supported. '
+                                 'Please check if the FPGA is directly connected by USB3.')
             return 0
 
     def _disconnect_fpga(self):
