@@ -154,6 +154,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.__current_status = 1
         return self.write(0x01)
 
     def pulser_off(self):
@@ -161,6 +162,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.__current_status = 0
         return self.write(0x00)
 
     def load_waveform(self, load_dict):
@@ -227,11 +229,13 @@ class OkFpgaPulser(Base, PulserInterface):
             # check if upload was successful
             self.write(0x00)
             # start the pulse sequence
+            self.__current_status = 1
             self.write(0x01)
             # wait for 600ms
             time.sleep(0.6)
             # get status flags from FPGA
             flags = self.query()
+            self.__current_status = 0
             self.write(0x00)
             # check if the memory readout works.
             if flags == 0:
@@ -289,15 +293,18 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
+        self.pulser_off()
         self.__currently_loaded_waveform = ''
         self.__current_waveform_name = ''
-        self.__current_waveform = bytearray([0])
+        self.__samples_written = 32
+        self.__current_waveform = bytearray(np.zeros(32))
+        self.load_waveform([self.__current_waveform_name])
         return 0
 
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): tuple with an interger value of the current status
+        @return (int, dict): tuple with an integer value of the current status
                              and a corresponding dictionary containing status
                              description for all the possible status variables
                              of the pulse generator hardware.
@@ -326,6 +333,10 @@ class OkFpgaPulser(Base, PulserInterface):
         Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
+        if self.__current_status != 0:
+            self.log.error('Can`t change the sample rate while the FPGA is not on idle.')
+            return self.__sample_rate
+
         # Round sample rate either to 500MHz or 950MHz since no other values are possible.
         if sample_rate < 725e6:
             self.__sample_rate = 500e6
@@ -531,6 +542,10 @@ class OkFpgaPulser(Base, PulserInterface):
         @return (int, list): Number of samples written (-1 indicates failed process) and list of
                              created waveform names
         """
+        if self.__current_status != 0:
+            self.log.error('FPGA is not idle, so the waveform can`t be written at this time.')
+            return -1, list()
+
         if analog_samples:
             self.log.error('FPGA pulse generator is purely digital and does not support waveform '
                            'generation with analog samples.')
@@ -702,6 +717,7 @@ class OkFpgaPulser(Base, PulserInterface):
     def _connect_fpga(self):
         # connect to FPGA by serial number
         self.fpga.OpenBySerial(self._fpga_serial)
+        self.__current_status = 0
         # upload configuration bitfile to FPGA
         self.set_sample_rate(self.__sample_rate)
 
@@ -709,7 +725,8 @@ class OkFpgaPulser(Base, PulserInterface):
         if not self.fpga.IsFrontPanelEnabled():
             self.current_status = -1
             self.log.error('ERROR: FrontPanel is not enabled in FPGA pulse generator!')
-            return -1
+            self.__current_status = -1
+            return self.__current_status
         else:
             self.current_status = 0
             self.log.info('FPGA pulse generator connected')
@@ -719,7 +736,7 @@ class OkFpgaPulser(Base, PulserInterface):
                 self._fp3support = False
                 self.log.warning('FrontPanel3 is not supported. '
                                  'Please check if the FPGA is directly connected by USB3.')
-            return 0
+            return self.__current_status
 
     def _disconnect_fpga(self):
         """
@@ -727,6 +744,6 @@ class OkFpgaPulser(Base, PulserInterface):
         """
         # set FPGA in reset state
         self.write(0x04)
-        self.current_status = -1
+        self.__current_status = -1
         del self.fpga
-        return 0
+        return self.__current_status
