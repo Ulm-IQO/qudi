@@ -308,7 +308,7 @@ class PulsedMasterLogic(GenericLogic):
     #######################################################################
     @property
     def fast_counter_constraints(self):
-        return self.pulsedmeasurementlogic().fastcounter_constraints
+        return self.pulsedmeasurementlogic().fast_counter_constraints
 
     @property
     def fast_counter_settings(self):
@@ -737,8 +737,10 @@ class PulsedMasterLogic(GenericLogic):
 
         if object_instance is None:
             self.pulsedmeasurementlogic().measurement_information = dict()
+            self.pulsedmeasurementlogic().sampling_information = dict()
         else:
             self.pulsedmeasurementlogic().measurement_information = object_instance.measurement_information
+            self.pulsedmeasurementlogic().sampling_information = object_instance.sampling_information
         return
 
     @QtCore.Slot(object)

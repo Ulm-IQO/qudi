@@ -33,12 +33,12 @@ from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 
 
-class SingleShotLogic(GenericLogic):
+class SingleShotReadoutLogic(GenericLogic):
     """ This class brings raw data coming from fastcounter measurements (gated or ungated)
         into trace form processable by the trace_analysis_logic.
     """
 
-    _modclass = 'SingleShotLogic'
+    _modclass = 'SingleShotReadoutLogic'
     _modtype = 'logic'
 
     # declare connectors

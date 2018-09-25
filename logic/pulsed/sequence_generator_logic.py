@@ -479,7 +479,6 @@ class SequenceGeneratorLogic(GenericLogic):
                            ' is no instance of PulseSequence.'.format(type(sequence)))
             self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
             return
-
         # Check if the PulseSequence has been sampled already.
         if sequence.sampling_information and sequence.name in self.sampled_sequences:
             # Check if the corresponding waveforms are present in the pulse generator memory
@@ -1627,9 +1626,9 @@ class SequenceGeneratorLogic(GenericLogic):
         for sequence_step, (ensemble_name, seq_param) in enumerate(sequence.ensemble_list):
             if sequence.rotating_frame:
                 # to make something like 001
-                name_tag = sequence.name + '_' + str(sequence_step).zfill(3)
+                name_tag = ensemble_name + '_' + str(sequence_step).zfill(3)
             else:
-                name_tag = None
+                name_tag = ensemble_name
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
@@ -1651,7 +1650,6 @@ class SequenceGeneratorLogic(GenericLogic):
                 # Add to generated ensembles
                 ensemble_info['waveforms'] = waveform_list
                 generated_ensembles[name_tag] = ensemble_info
-
                 # Add created waveform names to the set
                 written_waveforms.update(waveform_list)
 

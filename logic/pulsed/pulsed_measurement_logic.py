@@ -238,7 +238,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @property
-    def fastcounter_constraints(self):
+    def fast_counter_constraints(self):
         return self.fastcounter().get_constraints()
 
     @QtCore.Slot(dict)
@@ -750,8 +750,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 # recall stashed raw data
                 if stashed_raw_data_tag in self._saved_raw_data:
                     self._recalled_raw_data_tag = stashed_raw_data_tag
-                    self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
-                                  ''.format(stashed_raw_data_tag))
+                    #self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
+                     #              ''.format(stashed_raw_data_tag))
                 else:
                     self._recalled_raw_data_tag = None
 
@@ -772,6 +772,43 @@ class PulsedMeasurementLogic(GenericLogic):
                 # Set starting time and start timer (if present)
                 self.__start_time = time.time()
                 self.sigStartTimer.emit()
+
+                # Set measurement paused flag
+                self.__is_paused = False
+            else:
+                self.log.warning('Unable to start pulsed measurement. Measurement already running.')
+        return
+
+
+    @QtCore.Slot(str)
+    def start_simple_pulsed_measurement(self, stashed_raw_data_tag=''):
+        """Start the analysis loop."""
+        self.sigMeasurementStatusUpdated.emit(True, False)
+
+        with self._threadlock:
+            if self.module_state() == 'idle':
+                # Lock module state
+                self.module_state.lock()
+
+                # Clear previous fits
+                self.fc.clear_result()
+
+                # recall stashed raw data
+                if stashed_raw_data_tag in self._saved_raw_data:
+                    self._recalled_raw_data_tag = stashed_raw_data_tag
+                    #self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
+                     #              ''.format(stashed_raw_data_tag))
+                else:
+                    self._recalled_raw_data_tag = None
+
+                # start microwave source
+                if self.__use_ext_microwave:
+                    self.microwave_on()
+
+                # start fast counter
+                self.fast_counter_on()
+                # start pulse generator
+                self.pulse_generator_on()
 
                 # Set measurement paused flag
                 self.__is_paused = False
@@ -804,8 +841,40 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                                  'later point.')
+                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
+                    #              'later point.'.format(stash_raw_data_tag))
+                    self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
+                self._recalled_raw_data_tag = None
+
+                # Set measurement paused flag
+                self.__is_paused = False
+
+                self.module_state.unlock()
+                self.sigMeasurementStatusUpdated.emit(False, False)
+        return
+
+    @QtCore.Slot(str)
+    def stop_simple_pulsed_measurement(self, stash_raw_data_tag=''):
+        """
+        Stop the measurement
+        """
+
+        with self._threadlock:
+            if self.module_state() == 'locked':
+                # stopping the timer
+                self.sigStopTimer.emit()
+                # Turn off fast counter
+                self.fast_counter_off()
+                # Turn off pulse generator
+                self.pulse_generator_off()
+                # Turn off microwave source
+                if self.__use_ext_microwave:
+                    self.microwave_off()
+
+                # stash raw data if requested
+                if stash_raw_data_tag:
+                    # self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
+                    #              'later point.'.format(stash_raw_data_tag))
                     self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self._recalled_raw_data_tag = None
 
@@ -1051,21 +1120,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 # Update elapsed time
                 self.__elapsed_time = time.time() - self.__start_time
 
-                # Get counter raw data (including recalled raw data from previous measurement)
-                self.raw_data = self._get_raw_data()
+                self._extract_laser_pulses()
 
-                # extract laser pulses from raw data
-                return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
-                self.laser_data = return_dict['laser_counts_arr']
-
-                # analyze pulses and get data points for signal array. Also check if extraction
-                # worked (non-zero array returned).
-                if self.laser_data.any():
-                    tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
-                        self.laser_data)
-                else:
-                    tmp_signal = np.zeros(self.laser_data.shape[0])
-                    tmp_error = np.zeros(self.laser_data.shape[0])
+                tmp_signal, tmp_error = self._analyze_laser_pulses()
 
                 # exclude laser pulses to ignore
                 if len(self._laser_ignore_list) > 0:
@@ -1097,6 +1154,26 @@ class PulsedMeasurementLogic(GenericLogic):
             self.sigMeasurementDataUpdated.emit()
             return
 
+    def _extract_laser_pulses(self):
+        # Get counter raw data (including recalled raw data from previous measurement)
+        self.raw_data = self._get_raw_data()
+
+        # extract laser pulses from raw data
+        return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
+        self.laser_data = return_dict['laser_counts_arr']
+        return
+
+    def _analyze_laser_pulses(self):
+        # analyze pulses and get data points for signal array. Also check if extraction
+        # worked (non-zero array returned).
+        if self.laser_data.any():
+            tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
+                self.laser_data)
+        else:
+            tmp_signal = np.zeros(self.laser_data.shape[0])
+            tmp_error = np.zeros(self.laser_data.shape[0])
+        return tmp_signal, tmp_error
+
     def _get_raw_data(self):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
@@ -1108,14 +1185,14 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # add old raw data from previous measurements if necessary
         if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
-            self.log.info('Found old saved raw data with tag "{0}".'
-                          ''.format(self._recalled_raw_data_tag))
+            #self.log.info('Found old saved raw data with tag "{0}".'
+                   #       ''.format(self._recalled_raw_data_tag))
             if not fc_data.any():
-                self.log.warning('Only zeros received from fast counter!\n'
-                                 'Using recalled raw data only.')
+                #self.log.warning('Only zeros received from fast counter!\n'
+                 #                'Using recalled raw data only.')
                 fc_data = self._saved_raw_data[self._recalled_raw_data_tag]
             elif self._saved_raw_data[self._recalled_raw_data_tag].shape == fc_data.shape:
-                self.log.debug('Recalled raw data has the same shape as current data.')
+                #self.log.debug('Recalled raw data has the same shape as current data.')
                 fc_data = self._saved_raw_data[self._recalled_raw_data_tag] + fc_data
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'

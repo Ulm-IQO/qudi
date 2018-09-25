@@ -341,7 +341,7 @@ class AWG70K(Base, PulserInterface):
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
             else:
                 mrk_bytes = None
-            print('Prepare digital channel data: {0}'.format(time.time()-start))
+            #print('Prepare digital channel data: {0}'.format(time.time()-start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -358,12 +358,12 @@ class AWG70K(Base, PulserInterface):
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
-            print('Write WFMX file: {0}'.format(time.time() - start))
+            #print('Write WFMX file: {0}'.format(time.time() - start))
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
             self._send_file(filename=wfm_name + '.wfmx')
-            print('Send WFMX file: {0}'.format(time.time() - start))
+            #print('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
@@ -374,7 +374,7 @@ class AWG70K(Base, PulserInterface):
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.25)
-            print('Load WFMX file into workspace: {0}'.format(time.time() - start))
+            #print('Load WFMX file into workspace: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
@@ -424,20 +424,30 @@ class AWG70K(Base, PulserInterface):
                 return -1
 
             # Set event jump trigger
-            self.sequence_set_event_jump(name,
-                                         step,
-                                         seq_params['event_trigger'],
-                                         seq_params['event_jump_to'])
+            if 'event_trigger' in seq_params:
+                self.sequence_set_event_jump(name,
+                                             step,
+                                             seq_params['event_trigger'],
+                                             seq_params['event_jump_to'])
             # Set wait trigger
-            self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
+            if 'wait_for' in seq_params:
+                self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
             # Set repetitions
-            self.sequence_set_repetitions(name, step, seq_params['repetitions'])
+            if 'repetitions' in seq_params:
+                self.sequence_set_repetitions(name, step, seq_params['repetitions'])
             # Set go_to parameter
-            self.sequence_set_goto(name, step, seq_params['go_to'])
+            if 'go_to' in seq_params:
+                if seq_params['go_to'] <= num_steps:
+                    self.sequence_set_goto(name, step, seq_params['go_to'])
+                else:
+                    self.log.error('Assigned "go_to" "{0}" is larger '
+                               'than the number of steps "{1}".'.format(seq_params['go_to'],num_steps))
+                    return -1
             # Set flag states
-            trigger = seq_params['flag_trigger'] != 'OFF'
-            flag_list = [seq_params['flag_trigger']] if trigger else [seq_params['flag_high']]
-            self.sequence_set_flags(name, step, flag_list, trigger)
+            if 'flag_trigger' in seq_params:
+                trigger = seq_params['flag_trigger'] != 'OFF'
+                flag_list = [seq_params['flag_trigger']] if trigger else [seq_params['flag_high']]
+                self.sequence_set_flags(name, step, flag_list, trigger)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -586,21 +596,17 @@ class AWG70K(Base, PulserInterface):
         chnl_activation = self.get_active_channels()
         analog_channels = sorted(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
-
         # Check if number of sequence tracks matches the number of analog channels
         trac_num = int(self.query('SLIS:SEQ:TRAC? "{0}"'.format(sequence_name)))
         if trac_num != len(analog_channels):
             self.log.error('Unable to load sequence.\nNumber of tracks in sequence to load does '
                            'not match the number of active analog channels.')
             return self.get_loaded_assets()
-
         # Load sequence
         for chnl in range(1, trac_num + 1):
             self.write('SOUR{0:d}:CASS:SEQ "{1}", {2:d}'.format(chnl, sequence_name, chnl))
-            while self.query('SOUR{0:d}:CASS?'.format(chnl))[1:-2] != '{0},{1:d}'.format(
-                    sequence_name, chnl):
-                time.sleep(0.2)
-
+            while self.query('SOUR{0:d}:CASS?'.format(chnl)) != '{0},{1:d}'.format(
+                    sequence_name, chnl): time.sleep(0.2)
         return self.get_loaded_assets()
 
     def get_loaded_assets(self):
@@ -1236,7 +1242,7 @@ class AWG70K(Base, PulserInterface):
                            'Sequencer option not installed.')
             return -1
 
-        goto = str(int(goto)) if seq_params['go_to'] > 0 else 'NEXT'
+        goto = str(int(goto)) if goto > 0 else 'NEXT'
         self.write('SLIS:SEQ:STEP{0:d}:GOTO "{1}", {2}'.format(step, sequence_name, goto))
         return 0
 
