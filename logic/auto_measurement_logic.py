@@ -68,7 +68,7 @@ class NV:
     def shift(self):
         return self._shift
 
-    @anchor.setter
+    @shift.setter
     def shift(self, new_shift):
         if len(new_shift) == 3:
             self._shift = np.array(new_shift, dtype=float)
@@ -126,9 +126,9 @@ class AutoMeasurementLogic(GenericLogic):
 
     # StatusVars
     refocus_interval = StatusVar(name='refocus_interval', default=300)
-    odmr = StatusVar(name='odmr', default={'runtime': 60, 'fit': None, 'start': 2.65e9,
+    odmr = StatusVar(name='odmr', default={'runtime': 60, 'fit': 'Lorentzian dip', 'start': 2.65e9,
                                            'stop': 3.15e9, 'step': 2.0e6, 'power': -20.0})
-    rabi = StatusVar(name='rabi', default={'runtime': 60, 'fit': None, 'start': 10.0e-9,
+    rabi = StatusVar(name='rabi', default={'runtime': 60, 'fit': 'sine_decay', 'start': 10.0e-9,
                                            'step': 10.0e-9, 'points': 50})
     hahnecho = StatusVar(name='hahnecho', default={'runtime': 600, 'fit': None, 'start': 1e-6,
                                                    'step': 1e-6, 'points': 20, 'alternating': True})
@@ -218,7 +218,13 @@ class AutoMeasurementLogic(GenericLogic):
     #######################################################################
     def add_nv(self, label='', position=None):
         if position is None:
-            position = self.confocallogic().get_position()
+            position = self.confocallogic().get_position()[:3]
+        for i, nv in enumerate(self.nv_list):
+            if nv.label == label:
+                self.log.warning('Another NV with label "{0}" found in nv_list. Overwriting old NV '
+                                 'with new one.')
+                del self.nv_list[i]
+                break
         self.nv_list.append(NV(anchor=position, label=label))
         return
 
@@ -294,6 +300,7 @@ class AutoMeasurementLogic(GenericLogic):
         err_code = self.confocallogic().set_position('optimizer', *position)
         if err_code != 0:
             self.log.error('Move to "{0}" failed. Scanner busy.'.format(position))
+        time.sleep(1)
         return
 
     def refocus(self):
@@ -328,18 +335,13 @@ class AutoMeasurementLogic(GenericLogic):
     def measure_odmr(self, label='', **kwargs):
         """
         """
-        if 'start' in kwargs:
-            self.odmr_start = kwargs['start']
-        if 'stop' in kwargs:
-            self.odmr_stop = kwargs['stop']
-        if 'step' in kwargs:
-            self.odmr_step = kwargs['step']
-        if 'power' in kwargs:
-            self.odmr_power = kwargs['power']
+        for param in kwargs.keys():
+            if param in self.odmr:
+                self.odmr[param] = kwargs[param]
 
-        self.odmr_start, self.odmr_stop, self.odmr_step, self.odmr_power = self.odmrlogic().set_sweep_parameters(
-            start=self.odmr_start, stop=self.odmr_stop, step=self.odmr_step, power=self.odmr_power)
-        self.odmr_runtime = self.odmrlogic().set_runtime(self.odmr_runtime)
+        self.odmr['start'], self.odmr['stop'], self.odmr['step'], self.odmr['power'] = self.odmrlogic().set_sweep_parameters(
+            start=self.odmr['start'], stop=self.odmr['stop'], step=self.odmr['step'], power=self.odmr['power'])
+        self.odmr['runtime'] = self.odmrlogic().set_runtime(self.odmr['runtime'])
 
         self.odmrlogic().start_odmr_scan()
         while self.odmrlogic().module_state() == 'idle':
@@ -347,7 +349,7 @@ class AutoMeasurementLogic(GenericLogic):
         while self.odmrlogic().module_state() == 'locked':
             time.sleep(1)
         time.sleep(1)
-        self.odmrlogic().do_fit(fit_function=self.odmr_fit)
+        self.odmrlogic().do_fit(fit_function=self.odmr['fit'])
         fit_result = copy.deepcopy(self.odmrlogic().fc.current_fit_param)
         savetag = 'autoODMR_{0}'.format(label) if label else 'autoODMR'
         self.odmrlogic().save_odmr_data(tag=savetag, percentile_range=[1.0, 99.0])
@@ -359,23 +361,18 @@ class AutoMeasurementLogic(GenericLogic):
     def measure_pulsedodmr(self, label='', **kwargs):
         """
         """
-        if 'start' in kwargs:
-            self.odmr_start = kwargs['start']
-        if 'stop' in kwargs:
-            self.odmr_stop = kwargs['stop']
-        if 'step' in kwargs:
-            self.odmr_step = kwargs['step']
-        if 'power' in kwargs:
-            self.odmr_power = kwargs['power']
+        for param in kwargs.keys():
+            if param in self.odmr:
+                self.odmr[param] = kwargs[param]
         if 'rabi_period' in kwargs:
             self.rabi_period = kwargs['rabi_period']
 
         param_dict = dict()
         param_dict['name'] = 'pulsedODMR'
-        param_dict['freq_start'] = self.odmr_start
-        param_dict['freq_step'] = self.odmr_step
+        param_dict['freq_start'] = self.odmr['start']
+        param_dict['freq_step'] = self.odmr['step']
         param_dict['num_of_points'] = int(
-            np.rint((self.odmr_stop - self.odmr_start) / self.odmr_step)) + 1
+            np.rint((self.odmr['stop'] - self.odmr['start']) / self.odmr['step'])) + 1
 
         self.generate_predefined_sequence('pulsedodmr', param_dict)
         self.sample_ensemble('pulsedODMR', with_load=True)
@@ -386,7 +383,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         start_time = time.time()
         last_refocus = time.time()
-        while time.time()-start_time < self.odmr_runtime:
+        while time.time()-start_time < self.odmr['runtime']:
             if self.refocus_interval > 0:
                 current_time = time.time()
                 if current_time-last_refocus >= self.refocus_interval:
@@ -397,7 +394,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         self.turn_off_pulsed_measurement()
 
-        fit_result = copy.deepcopy(self.fit_pulsed(self.odmr_fit))
+        fit_result = copy.deepcopy(self.fit_pulsed(self.odmr['fit']))
         savetag = 'autoPulsedODMR_{0}'.format(label) if label else 'autoPulsedODMR'
         self.pulsedmasterlogic().save_measurement_data(tag=savetag, with_error=True)
         return fit_result
@@ -405,20 +402,17 @@ class AutoMeasurementLogic(GenericLogic):
     def measure_rabi(self, label='', **kwargs):
         """
         """
-        if 'start' in kwargs:
-            self.rabi_start = kwargs['start']
-        if 'step' in kwargs:
-            self.rabi_step = kwargs['step']
-        if 'points' in kwargs:
-            self.rabi_points = kwargs['points']
+        for param in kwargs.keys():
+            if param in self.rabi:
+                self.rabi[param] = kwargs[param]
         if 'amplitude' in kwargs:
             self.mw_amplitude = kwargs['amplitude']
 
         param_dict = dict()
         param_dict['name'] = 'rabi'
-        param_dict['tau_start'] = self.rabi_start
-        param_dict['tau_step'] = self.rabi_step
-        param_dict['number_of_taus'] = self.rabi_points
+        param_dict['tau_start'] = self.rabi['start']
+        param_dict['tau_step'] = self.rabi['step']
+        param_dict['number_of_taus'] = self.rabi['points']
 
         self.generate_predefined_sequence('rabi', param_dict)
         self.sample_ensemble('rabi', with_load=True)
@@ -429,7 +423,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         start_time = time.time()
         last_refocus = time.time()
-        while time.time()-start_time < self.rabi_runtime:
+        while time.time()-start_time < self.rabi['runtime']:
             if self.refocus_interval > 0:
                 current_time = time.time()
                 if current_time-last_refocus >= self.refocus_interval:
@@ -440,7 +434,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         self.turn_off_pulsed_measurement()
 
-        fit_result = copy.deepcopy(self.fit_pulsed(self.rabi_fit))
+        fit_result = copy.deepcopy(self.fit_pulsed(self.rabi['fit']))
         savetag = 'autoRabi_{0}'.format(label) if label else 'autoRabi'
         self.pulsedmasterlogic().save_measurement_data(tag=savetag, with_error=True)
         return fit_result
@@ -448,14 +442,9 @@ class AutoMeasurementLogic(GenericLogic):
     def measure_hahnecho(self, label='', **kwargs):
         """
         """
-        if 'start' in kwargs:
-            self.hahn_start = kwargs['start']
-        if 'step' in kwargs:
-            self.hahn_step = kwargs['step']
-        if 'points' in kwargs:
-            self.hahn_points = kwargs['points']
-        if 'alternating' in kwargs:
-            self.hahn_alternating = kwargs['alternating']
+        for param in kwargs.keys():
+            if param in self.hahnecho:
+                self.hahnecho[param] = kwargs[param]
         if 'amplitude' in kwargs:
             self.mw_amplitude = kwargs['amplitude']
         if 'rabi_period' in kwargs:
@@ -463,10 +452,10 @@ class AutoMeasurementLogic(GenericLogic):
 
         param_dict = dict()
         param_dict['name'] = 'hahn_echo'
-        param_dict['tau_start'] = self.hahn_start
-        param_dict['tau_step'] = self.hahn_step
-        param_dict['num_of_points'] = self.hahn_points
-        param_dict['alternating'] = self.hahn_alternating
+        param_dict['tau_start'] = self.hahnecho['start']
+        param_dict['tau_step'] = self.hahnecho['step']
+        param_dict['num_of_points'] = self.hahnecho['points']
+        param_dict['alternating'] = self.hahnecho['alternating']
 
         self.generate_predefined_sequence('hahnecho', param_dict)
         self.sample_ensemble('hahn_echo', with_load=True)
@@ -477,7 +466,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         start_time = time.time()
         last_refocus = time.time()
-        while time.time()-start_time < self.hahn_runtime:
+        while time.time()-start_time < self.hahnecho['runtime']:
             if self.refocus_interval > 0:
                 current_time = time.time()
                 if current_time-last_refocus >= self.refocus_interval:
@@ -488,7 +477,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         self.turn_off_pulsed_measurement()
 
-        fit_result = copy.deepcopy(self.fit_pulsed(self.hahn_fit))
+        fit_result = copy.deepcopy(self.fit_pulsed(self.hahnecho['fit']))
         savetag = 'autoHahnEcho_{0}'.format(label) if label else 'autoHahnEcho'
         self.pulsedmasterlogic().save_measurement_data(tag=savetag, with_error=True)
         return fit_result
@@ -496,16 +485,9 @@ class AutoMeasurementLogic(GenericLogic):
     def measure_xy8(self, label='', **kwargs):
         """
         """
-        if 'start' in kwargs:
-            self.xy8_start = kwargs['start']
-        if 'step' in kwargs:
-            self.xy8_step = kwargs['step']
-        if 'order' in kwargs:
-            self.xy8_order = kwargs['order']
-        if 'points' in kwargs:
-            self.xy8_points = kwargs['points']
-        if 'alternating' in kwargs:
-            self.xy8_alternating = kwargs['alternating']
+        for param in kwargs.keys():
+            if param in self.xy8:
+                self.xy8[param] = kwargs[param]
         if 'amplitude' in kwargs:
             self.mw_amplitude = kwargs['amplitude']
         if 'rabi_period' in kwargs:
@@ -513,11 +495,11 @@ class AutoMeasurementLogic(GenericLogic):
 
         param_dict = dict()
         param_dict['name'] = 'xy8'
-        param_dict['tau_start'] = self.xy8_start
-        param_dict['tau_step'] = self.xy8_step
-        param_dict['xy8_order'] = self.xy8_order
-        param_dict['num_of_points'] = self.xy8_points
-        param_dict['alternating'] = self.xy8_alternating
+        param_dict['tau_start'] = self.xy8['start']
+        param_dict['tau_step'] = self.xy8['step']
+        param_dict['xy8_order'] = self.xy8['order']
+        param_dict['num_of_points'] = self.xy8['points']
+        param_dict['alternating'] = self.xy8['alternating']
 
         self.generate_predefined_sequence('xy8_tau', param_dict)
         self.sample_ensemble('xy8', with_load=True)
@@ -528,7 +510,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         start_time = time.time()
         last_refocus = time.time()
-        while time.time()-start_time < self.xy8_runtime:
+        while time.time()-start_time < self.xy8['runtime']:
             if self.refocus_interval > 0:
                 current_time = time.time()
                 if current_time-last_refocus >= self.refocus_interval:
@@ -539,7 +521,7 @@ class AutoMeasurementLogic(GenericLogic):
 
         self.turn_off_pulsed_measurement()
 
-        fit_result = copy.deepcopy(self.fit_pulsed(self.xy8_fit))
+        fit_result = copy.deepcopy(self.fit_pulsed(self.xy8['fit']))
         savetag = 'autoXY8_{0}'.format(label) if label else 'autoXY8'
         self.pulsedmasterlogic().save_measurement_data(tag=savetag, with_error=True)
         return fit_result
