@@ -25,6 +25,7 @@ import importlib
 import sys
 import inspect
 import copy
+import logging
 from collections import OrderedDict
 
 
@@ -33,6 +34,7 @@ class SamplingBase:
     Base class for all sampling functions
     """
     params = OrderedDict()
+    log = logging.getLogger(__name__)
 
     def __repr__(self):
         kwargs = []
