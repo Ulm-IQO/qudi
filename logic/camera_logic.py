@@ -144,6 +144,9 @@ class CameraLogic(GenericLogic):
         """ Return last acquired image """
         return self._last_image
 
+    def get_size(self):
+        return self._hardware.get_size()
+
     def save_xy_data(self, colorscale_range=None, percentile_range=None):
         """ Save the current confocal xy data to file.
 
@@ -168,7 +171,7 @@ class CameraLogic(GenericLogic):
         # Prepare a figure to be saved
 
         axes = ['X', 'Y']
-        xy_pixels = self._hardware.get_size()
+        xy_pixels = self.get_size()
         image_extent = [0,
                         xy_pixels[0],
                         0,
