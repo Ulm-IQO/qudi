@@ -241,6 +241,8 @@ class PulsedMasterLogic(GenericLogic):
             self.sample_sequence_finished, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.connect(
             self.loaded_asset_updated, QtCore.Qt.QueuedConnection)
+        self.sequencegeneratorlogic().sigPulserRunningUpdated.connect(
+            self.pulser_running_updated, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
