@@ -395,7 +395,7 @@ class SequenceGeneratorLogic(GenericLogic):
                              'Unable to apply new settings.'.format(pulser_status,
                                                                     status_dict[pulser_status]))
 
-        if pulser_status == 1:
+        if pulser_status >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
@@ -428,7 +428,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         self.sigLoadedAssetUpdated.emit('', '')
 
-        if self.pulsegenerator().get_status()[0] == 1:
+        if self.pulsegenerator().get_status()[0] >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
@@ -471,7 +471,7 @@ class SequenceGeneratorLogic(GenericLogic):
                            'It has not been generated yet.'.format(ensemble.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
-        if self.pulsegenerator().get_status()[0] == 1:
+        if self.pulsegenerator().get_status()[0] >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
@@ -514,7 +514,7 @@ class SequenceGeneratorLogic(GenericLogic):
                            'It has not been generated yet.'.format(sequence.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
 
-        if self.pulsegenerator().get_status()[0] == 1:
+        if self.pulsegenerator().get_status()[0] >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
@@ -576,7 +576,7 @@ class SequenceGeneratorLogic(GenericLogic):
         set_state = self.pulsegenerator().set_active_channels(channel_state)
         set_config = set([chnl for chnl in set_state if set_state[chnl]])
 
-        if self.pulsegenerator().get_status()[0] == 1:
+        if self.pulsegenerator().get_status()[0] >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
@@ -679,7 +679,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         self.sigSamplingSettingsUpdated.emit(self.generation_parameters)
 
-        if self.pulsegenerator().get_status()[0] == 1:
+        if self.pulsegenerator().get_status()[0] >= 0:
             self.sigPulserRunningUpdated.emit(True)
         else:
             self.sigPulserRunningUpdated.emit(False)
