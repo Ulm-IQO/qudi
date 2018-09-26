@@ -426,8 +426,8 @@ class AWG5002C(Base, PulserInterface):
                              description for all the possible status variables
                              of the pulse generator hardware.
                 0 indicates that the instrument has stopped.
-                1 indicates that the instrument is waiting for trigger.
-                2 indicates that the instrument is running.
+                1 indicates that the instrument is running.
+                2 indicates that the instrument is waiting for trigger.
                -1 indicates that the request of the status for AWG has failed.
         """
 
