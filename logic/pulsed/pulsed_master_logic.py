@@ -305,6 +305,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sequencegeneratorlogic().sigSampleEnsembleComplete.disconnect()
         self.sequencegeneratorlogic().sigSampleSequenceComplete.disconnect()
         self.sequencegeneratorlogic().sigLoadedAssetUpdated.disconnect()
+        self.sequencegeneratorlogic().sigPulserRunningUpdated.disconnect()
         return
 
     #######################################################################

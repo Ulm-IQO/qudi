@@ -49,7 +49,7 @@ class OkFpgaPulser(Base, PulserInterface):
     _fpga_serial = ConfigOption(name='fpga_serial', missing='error')
     _fpga_type = ConfigOption(name='fpga_type', default='XEM6310_LX150', missing='warn')
 
-    __current_waveform = StatusVar(name='current_waveform', default=np.zeros(1, dtype='uint8'))
+    __current_waveform = StatusVar(name='current_waveform', default=np.zeros(32, dtype='uint8'))
     __current_waveform_name = StatusVar(name='current_waveform_name', default='')
     __sample_rate = StatusVar(name='sample_rate', default=950e6)
  
@@ -190,17 +190,17 @@ class OkFpgaPulser(Base, PulserInterface):
             waveforms = list(set(load_dict.values()))
         else:
             self.log.error('Method load_waveform expects a list of waveform names or a dict.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         if len(waveforms) != 1:
             self.log.error('FPGA pulser expects exactly one waveform name for load_waveform.')
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         waveform = waveforms[0]
         if waveform != self.__current_waveform_name:
             self.log.error('No waveform by the name "{0}" generated for FPGA pulser.\n'
                            'Only one waveform at a time can be held.'.format(waveform))
-            return self.get_loaded_assets()
+            return self.get_loaded_assets()[0]
 
         # calculate size of the two bytearrays to be transmitted. The biggest part is tranfered
         # in 1024 byte blocks and the rest is transfered in 32 byte blocks
@@ -296,8 +296,9 @@ class OkFpgaPulser(Base, PulserInterface):
         self.pulser_off()
         self.__currently_loaded_waveform = ''
         self.__current_waveform_name = ''
-        self.__samples_written = 32
+        # just for good measures, write and load a empty waveform
         self.__current_waveform = bytearray(np.zeros(32))
+        self.__samples_written = 32
         self.load_waveform([self.__current_waveform_name])
         return 0
 
@@ -333,8 +334,8 @@ class OkFpgaPulser(Base, PulserInterface):
         Note: After setting the sampling rate of the device, use the actually set return value for
               further processing.
         """
-        if self.__current_status != 0:
-            self.log.error('Can`t change the sample rate while the FPGA is not on idle.')
+        if self.__current_status == 1:
+            self.log.error('Can`t change the sample rate while the FPGA is running.')
             return self.__sample_rate
 
         # Round sample rate either to 500MHz or 950MHz since no other values are possible.
@@ -349,6 +350,14 @@ class OkFpgaPulser(Base, PulserInterface):
 
         self.fpga.ConfigureFPGA(bitfile_path)
         self.log.info('FPGA pulse generator configured with {0}'.format(bitfile_path))
+
+        if self.fpga.IsFrontPanel3Supported():
+            self._fp3support = True
+        else:
+            self._fp3support = False
+            self.log.warning('FrontPanel3 is not supported. '
+                             'Please check if the FPGA is directly connected by USB3.')
+        self.__current_status = 0
         return self.__sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
@@ -555,7 +564,8 @@ class OkFpgaPulser(Base, PulserInterface):
                 self.log.warning('No samples handed over for waveform generation.')
                 return -1, list()
             else:
-                self.__current_waveform = bytearray([0])
+                self.__current_waveform = bytearray(np.zeros(32))
+                self.__samples_written = 32
                 self.__current_waveform_name = ''
                 return 0, list()
 
@@ -636,7 +646,7 @@ class OkFpgaPulser(Base, PulserInterface):
 
         @return list: a list of deleted waveform names.
         """
-        return
+        return list()
 
     def delete_sequence(self, sequence_name):
         """ Delete the sequence with name "sequence_name" from the device memory.
@@ -717,7 +727,6 @@ class OkFpgaPulser(Base, PulserInterface):
     def _connect_fpga(self):
         # connect to FPGA by serial number
         self.fpga.OpenBySerial(self._fpga_serial)
-        self.__current_status = 0
         # upload configuration bitfile to FPGA
         self.set_sample_rate(self.__sample_rate)
 
@@ -730,12 +739,6 @@ class OkFpgaPulser(Base, PulserInterface):
         else:
             self.current_status = 0
             self.log.info('FPGA pulse generator connected')
-            if self.fpga.IsFrontPanel3Supported():
-                self._fp3support = True
-            else:
-                self._fp3support = False
-                self.log.warning('FrontPanel3 is not supported. '
-                                 'Please check if the FPGA is directly connected by USB3.')
             return self.__current_status
 
     def _disconnect_fpga(self):
