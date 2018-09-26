@@ -98,6 +98,12 @@ Changes/New features:
     directly in a tab of the PulsedMainGUI. Also added voltage settings for digital and analog 
     channels that were missing in the GUI before. 
     * Lots of smaller changes to improve programming flexibility and robustness against users
+	* Added a new ungated extraction method ('ungated_gated_conv_deriv') which uses the keys in the 
+	  sampling information to convert an ungated timetrace into a gated timetrace which is then 
+	  anaylzed with the ungated method 'gated_conv_deriv'. The conversion is based on the rising
+	  and falling bins in the laser channel which indicate the positions of the laser pulses in 
+	  the ungated trace. For fine-tuning additional delays (for example from AOMs) can be taken 
+	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
     
 
 Config changes:
