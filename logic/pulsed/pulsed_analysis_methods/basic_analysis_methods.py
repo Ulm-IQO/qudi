@@ -87,7 +87,6 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
 
         return signal_data, error_data
 
-
     def analyse_sum(self, laser_data, signal_start=0.0, signal_end=200e-9):
         """
         @param laser_data:
@@ -157,8 +156,8 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
         for ii, laser_arr in enumerate(laser_data):
             # calculate the mean of the data in the signal window
             signal = laser_arr[signal_start_bin:signal_end_bin].mean()
-            signal_sum = laser_arr[signal_start_bin:signal_end_bin].sum()
-            signal_error = np.sqrt(signal_sum) / (signal_end_bin - signal_start_bin)
+            signal_error = np.sqrt(laser_arr[signal_start_bin:signal_end_bin].sum()) / \
+                               (signal_end_bin - signal_start_bin)
 
             # Avoid numpy C type variables overflow and NaN values
             if signal < 0 or signal != signal:

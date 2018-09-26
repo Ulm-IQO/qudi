@@ -1198,9 +1198,9 @@ class PredefinedGeneratorBase:
         return created_blocks, block_ensemble
 
 
-    def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating = False, laser_ignore_list = list(),
+    def _add_metadata_to_settings(self, block_ensemble, alternating = False, laser_ignore_list = list(),
                                   controlled_variable = [0,1], units=('s', ''), number_of_lasers = None,
-                                  counting_length=None):
+                                  counting_length=None, created_blocks=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list

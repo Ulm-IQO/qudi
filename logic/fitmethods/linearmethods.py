@@ -229,6 +229,46 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
     result.result_str_dict = result_str_dict
     return result
 
+def estimate_linear_fixed(self, x_axis, data, params):
+    """ Provide an estimation for the initial values of a linear function.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+
+    try:
+        # calculate the parameters using Least-squares estimation of linear
+        # regression
+        a_1 = 0
+        a_2 = 0
+        x_mean = x_axis.mean()
+        data_mean = data.mean()
+
+        for i in range(0, len(x_axis)):
+            a_1 += (x_axis[i]-x_mean)*(data[i]-data_mean)
+            a_2 += np.power(x_axis[i]-x_mean, 2)
+        slope = a_1/a_2
+        intercept = data_mean - slope * x_mean
+        params['offset'].value = intercept
+        params['slope'].value = slope
+    except:
+        self.log.warning('The estimation for linear fit did not work.')
+        params['slope'].value = 0
+        params['offset'].value = 0
+
+    return error, params
+
+
 def estimate_linear(self, x_axis, data, params):
     """ Provide an estimation for the initial values of a linear function.
 
@@ -267,3 +307,4 @@ def estimate_linear(self, x_axis, data, params):
         params['offset'].value = 0
 
     return error, params
+
