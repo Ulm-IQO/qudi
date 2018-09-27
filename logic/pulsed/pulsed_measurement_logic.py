@@ -779,43 +779,6 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.warning('Unable to start pulsed measurement. Measurement already running.')
         return
 
-
-    @QtCore.Slot(str)
-    def start_simple_pulsed_measurement(self, stashed_raw_data_tag=''):
-        """Start the analysis loop."""
-        self.sigMeasurementStatusUpdated.emit(True, False)
-
-        with self._threadlock:
-            if self.module_state() == 'idle':
-                # Lock module state
-                self.module_state.lock()
-
-                # Clear previous fits
-                self.fc.clear_result()
-
-                # recall stashed raw data
-                if stashed_raw_data_tag in self._saved_raw_data:
-                    self._recalled_raw_data_tag = stashed_raw_data_tag
-                    #self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
-                     #              ''.format(stashed_raw_data_tag))
-                else:
-                    self._recalled_raw_data_tag = None
-
-                # start microwave source
-                if self.__use_ext_microwave:
-                    self.microwave_on()
-
-                # start fast counter
-                self.fast_counter_on()
-                # start pulse generator
-                self.pulse_generator_on()
-
-                # Set measurement paused flag
-                self.__is_paused = False
-            else:
-                self.log.warning('Unable to start pulsed measurement. Measurement already running.')
-        return
-
     @QtCore.Slot(str)
     def stop_pulsed_measurement(self, stash_raw_data_tag=''):
         """
@@ -842,38 +805,6 @@ class PulsedMeasurementLogic(GenericLogic):
                 # stash raw data if requested
                 if stash_raw_data_tag:
                     #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                    #              'later point.'.format(stash_raw_data_tag))
-                    self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
-                self._recalled_raw_data_tag = None
-
-                # Set measurement paused flag
-                self.__is_paused = False
-
-                self.module_state.unlock()
-                self.sigMeasurementStatusUpdated.emit(False, False)
-        return
-
-    @QtCore.Slot(str)
-    def stop_simple_pulsed_measurement(self, stash_raw_data_tag=''):
-        """
-        Stop the measurement
-        """
-
-        with self._threadlock:
-            if self.module_state() == 'locked':
-                # stopping the timer
-                self.sigStopTimer.emit()
-                # Turn off fast counter
-                self.fast_counter_off()
-                # Turn off pulse generator
-                self.pulse_generator_off()
-                # Turn off microwave source
-                if self.__use_ext_microwave:
-                    self.microwave_off()
-
-                # stash raw data if requested
-                if stash_raw_data_tag:
-                    # self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
                     #              'later point.'.format(stash_raw_data_tag))
                     self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self._recalled_raw_data_tag = None
