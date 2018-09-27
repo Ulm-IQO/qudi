@@ -87,7 +87,6 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
 
         return signal_data, error_data
 
-
     def analyse_sum(self, laser_data, signal_start=0.0, signal_end=200e-9):
         """
         @param laser_data:
@@ -126,8 +125,6 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
                 error_data[ii] = signal_error
 
         return signal_data, error_data
-
-
 
     def analyse_mean(self, laser_data, signal_start=0.0, signal_end=200e-9):
         """

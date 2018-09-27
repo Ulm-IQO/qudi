@@ -238,7 +238,7 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @property
-    def fastcounter_constraints(self):
+    def fast_counter_constraints(self):
         return self.fastcounter().get_constraints()
 
     @QtCore.Slot(dict)
@@ -804,8 +804,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                                  'later point.')
+                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
+                    #              'later point.'.format(stash_raw_data_tag))
                     self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
                 self._recalled_raw_data_tag = None
 
@@ -1051,21 +1051,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 # Update elapsed time
                 self.__elapsed_time = time.time() - self.__start_time
 
-                # Get counter raw data (including recalled raw data from previous measurement)
-                self.raw_data = self._get_raw_data()
+                self._extract_laser_pulses()
 
-                # extract laser pulses from raw data
-                return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
-                self.laser_data = return_dict['laser_counts_arr']
-
-                # analyze pulses and get data points for signal array. Also check if extraction
-                # worked (non-zero array returned).
-                if self.laser_data.any():
-                    tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
-                        self.laser_data)
-                else:
-                    tmp_signal = np.zeros(self.laser_data.shape[0])
-                    tmp_error = np.zeros(self.laser_data.shape[0])
+                tmp_signal, tmp_error = self._analyze_laser_pulses()
 
                 # exclude laser pulses to ignore
                 if len(self._laser_ignore_list) > 0:
@@ -1096,6 +1084,26 @@ class PulsedMeasurementLogic(GenericLogic):
                                       self.__timer_interval)
             self.sigMeasurementDataUpdated.emit()
             return
+
+    def _extract_laser_pulses(self):
+        # Get counter raw data (including recalled raw data from previous measurement)
+        self.raw_data = self._get_raw_data()
+
+        # extract laser pulses from raw data
+        return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
+        self.laser_data = return_dict['laser_counts_arr']
+        return
+
+    def _analyze_laser_pulses(self):
+        # analyze pulses and get data points for signal array. Also check if extraction
+        # worked (non-zero array returned).
+        if self.laser_data.any():
+            tmp_signal, tmp_error = self._pulseanalyzer.analyse_laser_pulses(
+                self.laser_data)
+        else:
+            tmp_signal = np.zeros(self.laser_data.shape[0])
+            tmp_error = np.zeros(self.laser_data.shape[0])
+        return tmp_signal, tmp_error
 
     def _get_raw_data(self):
         """
