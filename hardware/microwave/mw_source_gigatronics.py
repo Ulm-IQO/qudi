@@ -333,9 +333,10 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
                         falling edge)
         @param float timing: estimated time between triggers
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
-        return TriggerEdge.RISING
+        return TriggerEdge.RISING, timing
 
     def sweep_on(self):
         """ Switches on the sweep mode.

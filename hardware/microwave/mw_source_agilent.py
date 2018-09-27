@@ -431,7 +431,8 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
                         falling edge)
         @param float timing: estimated time between triggers
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
 
         if pol == TriggerEdge.RISING:
@@ -439,15 +440,15 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         elif pol == TriggerEdge.FALLING:
             edge = 'EXTN'
         else:
-            return -1
+            return pol, timing
         try:
             self._usb_connection.write(':SWE:PTRG:SLOP {0}'.format(edge))
             time.sleep(0.5)
             self._usb_connection.write(':SWE:STRG:SLOP {0}'.format(edge))
         except:
             self.log.error("Setting of trigger did not work!")
-            return -1
-        return 0
+            return pol, timing
+        return pol, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
