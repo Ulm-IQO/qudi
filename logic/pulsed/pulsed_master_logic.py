@@ -310,7 +310,7 @@ class PulsedMasterLogic(GenericLogic):
     #######################################################################
     @property
     def fast_counter_constraints(self):
-        return self.pulsedmeasurementlogic().fastcounter_constraints
+        return self.pulsedmeasurementlogic().fast_counter_constraints
 
     @property
     def fast_counter_settings(self):
