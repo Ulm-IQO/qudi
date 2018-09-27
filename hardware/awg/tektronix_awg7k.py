@@ -33,14 +33,12 @@ from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
-# TODO: add a method to sequencing to change from dynamic to jump in order to get triggers for odmr
-class AWG7122C(Base, PulserInterface):
-    """
-    Unstable and under construction, Jochen Scheuer
-    ... but about to be become awesome, Nikolas Tomek
+class AWG7k(Base, PulserInterface):
+    """ A hardware module for the Tektronix AWG7000 series for generating waveforms and
+        sequences thereof.
     """
 
-    _modclass = 'awg7122c'
+    _modclass = 'awg7k'
     _modtype = 'hardware'
 
     # config options
@@ -66,8 +64,14 @@ class AWG7122C(Base, PulserInterface):
         self.ftp_working_dir = 'waves'  # subfolder of FTP root dir on AWG disk to work in
 
         self.installed_options = list()  # will hold the encoded installed options available on awg
-        self.__loaded_sequence = ''  # Helper variable since a loaded sequence can not be queried :(
+        self._internal_ch_state = {
+            'a_ch1': False,
+            'a_ch2': False,
+        }
+        self._written_sequences = []  # Helper variable since written sequences can not be queried
+        self._loaded_sequences = []  # Helper variable since a loaded sequence can not be queried :(
         self._marker_byte_dict = {0: b'\x00', 1: b'\x01', 2: b'\x02', 3: b'\x03'}
+        self._event_triggers = {'OFF': 'OFF', 'ON': 'ON'}
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -76,31 +80,40 @@ class AWG7122C(Base, PulserInterface):
         if not os.path.exists(self._tmp_work_dir):
             os.makedirs(os.path.abspath(self._tmp_work_dir))
 
-        # connect to awg using PyVISA
-        if self._visa_address not in self._rm.list_resources():
+        try:
+            self.awg = self._rm.open_resource(
+                self._visa_address,
+            )
+            # set timeout by default to 30 sec
+            self.awg.timeout = self._visa_timeout * 1000
+        except:
             self.awg = None
             self.log.error(
                 'VISA address "{0}" not found by the pyVISA resource manager.\nCheck '
                 'the connection by using for example "Agilent Connection Expert".'
                 ''.format(self._visa_address))
-        else:
-            self.awg = self._rm.open_resource(self._visa_address)
-            # set timeout by default to 30 sec
-            self.awg.timeout = self._visa_timeout * 1000
 
         # try connecting to AWG using FTP protocol
         with FTP(self._ip_address) as ftp:
             ftp.login(user=self._username, passwd=self._password)
             ftp.cwd(self.ftp_working_dir)
+            self.log.debug('FTP working dir: {0}'.format(ftp.pwd()))
+
+        idn = self.query('*IDN?').split(',')
+        self.mfg, self.model, self.ser, self.fw_ver = idn
 
         # Options of AWG7000 series:
         #              Option 01: Memory expansion to 64,8 MSamples (Million points)
         #              Option 06: Interleave and extended analog output bandwidth
         #              Option 08: Fast sequence switching
         #              Option 09: Subsequence and Table Jump
+
         self.installed_options = self.query('*OPT?').split(',')
         # TODO: inclulde proper routine to check and change zeroing functionality
 
+        self.log.info('Found {} {} Serial: {} FW: {} options: {}'.format(
+            self.mfg, self.model, self.ser, self.fw_ver, self.installed_options
+        ))
         # Set current directory on AWG
         self.write('MMEM:CDIR "{0}"'.format(os.path.join(self._ftp_dir, self.ftp_working_dir)))
 
@@ -150,20 +163,39 @@ class AWG7122C(Base, PulserInterface):
         # TODO: Check values for AWG7122c
         constraints = PulserConstraints()
 
-        if self.get_interleave():
-            constraints.sample_rate.min = 12.0e9
-            constraints.sample_rate.max = 24.0e9
-            constraints.sample_rate.step = 5.0e2
-            constraints.sample_rate.default = 24.0e9
-        else:
-            constraints.sample_rate.min = 10.0e6
-            constraints.sample_rate.max = 12.0e9
-            constraints.sample_rate.step = 10.0e6
-            constraints.sample_rate.default = 12.0e9
+        if self.model == 'AWG7122C':
+            if self.get_interleave():
+                constraints.sample_rate.min = 12.0e9
+                constraints.sample_rate.max = 24.0e9
+                constraints.sample_rate.step = 5.0e2
+                constraints.sample_rate.default = 24.0e9
+            else:
+                constraints.sample_rate.min = 10.0e6
+                constraints.sample_rate.max = 12.0e9
+                constraints.sample_rate.step = 10.0e6
+                constraints.sample_rate.default = 12.0e9
 
-        constraints.a_ch_amplitude.max = 1.0
-        constraints.a_ch_amplitude.step = 0.001
-        constraints.a_ch_amplitude.default = 1.0
+        elif self.model == 'AWG7082C':
+            if self.get_interleave():
+                constraints.sample_rate.min = 8.0e9
+                constraints.sample_rate.max = 16.0e9
+                constraints.sample_rate.step = 5.0e2
+                constraints.sample_rate.default = 16.0e9
+            else:
+                constraints.sample_rate.min = 10.0e6
+                constraints.sample_rate.max = 8.0e9
+                constraints.sample_rate.step = 10.0e6
+                constraints.sample_rate.default = 8.0e9
+
+        if '02' in self.installed_options or self._has_interleave():
+            constraints.a_ch_amplitude.max = 1.0
+            constraints.a_ch_amplitude.step = 0.001
+            constraints.a_ch_amplitude.default = 1.0
+        else:
+            constraints.a_ch_amplitude.max = 2.0
+            constraints.a_ch_amplitude.step = 0.001
+            constraints.a_ch_amplitude.default = 2.0
+
         if self._zeroing_enabled():
             constraints.a_ch_amplitude.min = 0.25
         else:
@@ -208,8 +240,8 @@ class AWG7122C(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        # ToDo: Check how many external triggers this device has
-        constraints.event_triggers = ['A', 'B']
+        # Device has only one trigger and no flags
+        constraints.event_triggers = ['ON']
         constraints.flags = list()
 
         constraints.sequence_steps.min = 0
@@ -221,7 +253,7 @@ class AWG7122C(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['All'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
         # Usage of channel 1 only:
         activation_config['A1_M1_M2'] = {'a_ch1', 'd_ch1', 'd_ch2'}
         # Usage of channel 2 only:
@@ -242,13 +274,19 @@ class AWG7122C(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
+        # Get all active channels
+        chnl_activation = self.get_active_channels()
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+                                 chnl.startswith('a') and chnl_activation[chnl])
         # do nothing if AWG is already running
         if not self._is_output_on():
+            for ch in channel_numbers:
+                self.write('OUTPUT{0}:STATE ON'.format(ch))
             self.write('AWGC:RUN')
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.2)
-        return self.get_status()
+        return self.get_status()[0]
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -263,7 +301,7 @@ class AWG7122C(Base, PulserInterface):
             # wait until the AWG has actually stopped
             while self._is_output_on():
                 time.sleep(0.2)
-        return self.get_status()
+        return self.get_status()[0]
 
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
@@ -315,7 +353,7 @@ class AWG7122C(Base, PulserInterface):
             while self.query('SOUR{0:d}:WAV?'.format(chnl_num)) != waveform:
                 time.sleep(0.1)
 
-        self.__loaded_sequence = ''
+        self.set_mode('C')
         return self.get_loaded_assets()
 
     def load_sequence(self, sequence_name):
@@ -341,19 +379,11 @@ class AWG7122C(Base, PulserInterface):
                            'Sequence to load is missing on device memory.')
             return self.get_loaded_assets()
 
-        # Load sequence
-        file_name = sequence_name + '{0}.seq'.format(sequence_name)
-
-        # self.tell('MMEMORY:IMPORT "{0}","{1}",SEQ \n'.format(asset_name , asset_name + '.seq'))
-        self.write('SOUR1:FUNC:USER "{0!s}"'.format(file_name))
-        print(self.query('SOUR1:FUNC:USER?'))
-        # while self.query('SOUR1:FUNC:USER?') != sequence_name:
-        #     time.sleep(0.2)
-
         # set the AWG to the event jump mode:
         self.write('AWGC:EVENT:JMODE EJUMP')
+        self.set_mode('S')
 
-        self.__loaded_sequence = sequence_name
+        self._loaded_sequences = [sequence_name]
         return self.get_loaded_assets()
 
     def get_loaded_assets(self):
@@ -376,11 +406,18 @@ class AWG7122C(Base, PulserInterface):
         # Get assets per channel
         loaded_assets = dict()
         current_type = None
-        for chnl_num in channel_numbers:
-            # Ask AWG for currently loaded waveform or sequence. The answer for a waveform will
-            # look like
-            # FIXME: What does an AWG7000 return with this query?
-            asset_name = self.query('SOUR1:FUNC:USER?')
+
+        run_mode = self.query('AWGC:RMOD?')
+        if run_mode == 'CONT':
+            current_type = 'waveform'
+            for chnl_num in channel_numbers:
+                loaded_assets[chnl_num] = self.query('SOUR{0}:WAV?'.format(chnl_num))
+
+        elif run_mode == 'SEQ':
+            current_type = 'sequence'
+            for chnl_num in channel_numbers:
+                if len(self._loaded_sequences) > 0:
+                    loaded_assets[chnl_num] = self._loaded_sequences[0]
 
         return loaded_assets, current_type
 
@@ -390,7 +427,11 @@ class AWG7122C(Base, PulserInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.write('WLIS:WAV:DEL ALL')
-        self.__loaded_sequence = ''
+        if '09' in self.installed_options:
+            self.write('SLIS:SUBS:DEL ALL')
+        self.write('SEQUENCE:LENGTH 0')
+        self._written_sequences = []
+        self._loaded_sequences = []
         return 0
 
     def get_status(self):
@@ -435,129 +476,6 @@ class AWG7122C(Base, PulserInterface):
         # and therefore the ask in get_sample_rate will return an empty string.
         time.sleep(1)
         return self.get_sample_rate()
-
-    # def load_asset(self, asset_name, load_dict=None):
-    #     """ Loads a sequence or waveform to the specified channel of the pulsing
-    #         device.
-    #
-    #     @param str asset_name: The name of the asset to be loaded
-    #
-    #     @param dict load_dict:  a dictionary with keys being one of the
-    #                             available channel numbers and items being the
-    #                             name of the already sampled
-    #                             waveform/sequence files.
-    #                             Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-    #                                         {1: rabi_Ch2, 2: rabi_Ch1}
-    #                             This parameter is optional. If none is given
-    #                             then the channel association is invoked from
-    #                             the sequence generation,
-    #                             i.e. the filename appendix (_Ch1, _Ch2 etc.)
-    #
-    #     @return int: error code (0:OK, -1:error)
-    #
-    #     Unused for digital pulse generators without sequence storage capability
-    #     (PulseBlaster, FPGA).
-    #     """
-    #     if load_dict is None:
-    #         load_dict = {}
-    #     path = self.ftp_path + self.get_asset_dir_on_device()
-    #
-    #     # Find all files associated with the specified asset name
-    #     file_list = self._get_filenames_on_device()
-    #     filename = []
-    #
-    #     # Get current channel activation state to be restored after loading the asset
-    #     chnl_activation = self.get_active_channels()
-    #
-    #     if (asset_name + '.seq') in file_list:
-    #         file_name = asset_name + '.seq'
-    #
-    #         # self.tell('MMEMORY:IMPORT "{0}","{1}",SEQ \n'.format(asset_name , asset_name + '.seq'))
-    #         self.tell('SOUR1:FUNC:USER "{0!s}/{1!s}"\n'.format(path, file_name))
-    #         # self.tell('SOUR1:FUNC:USER "{0}/{1}"\n'.format(path, file_name))
-    #         # set the AWG to the event jump mode:
-    #         self.tell('AWGCONTROL:EVENT:JMODE EJUMP')
-    #
-    #         self.current_loaded_asset = asset_name
-    #     else:
-    #
-    #         for file in file_list:
-    #
-    #             if file == asset_name + '_ch1.wfm':
-    #                 #load into workspace
-    #                 self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name +'_ch1', asset_name + '_ch1.wfm'))
-    #                 #load into channel
-    #                 self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch1'))
-    #                 self.log.debug('Ch1 loaded: "{0}"'.format(asset_name))
-    #                 filename.append(file)
-    #             elif file == asset_name + '_ch2.wfm':
-    #                 self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch2', asset_name + '_ch2.wfm'))
-    #                 self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset_name + '_ch2'))
-    #                 self.log.debug('Ch2 loaded: "{0}"'.format(asset_name))
-    #                 filename.append(file)
-    #
-    #         if load_dict == {} and filename == []:
-    #             self.log.warning('No file and channel provided for load!\nCorrect that!\n'
-    #                              'Command will be ignored.')
-    #
-    #     # for channel_num in list(load_dict):
-    #         #asset_name = str(load_dict[channel_num])
-    #         #self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset_name + '_ch{0}'.format(int(channel_num)), asset_name + '_ch{0}.wfm'.format(int(channel_num))))
-    #         #self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset_name + '_ch{0}'.format(int(channel_num))))
-    #
-    #     #if len(list(load_dict)) > 0:
-    #     self.current_loaded_asset = asset_name
-    #
-    #     # Restore channel activation state
-    #     self.set_active_channels(chnl_activation)
-    #     return 0
-
-
-
-        # file_list = self._get_filenames_on_device()
-        # filename = []
-        #
-        # for file in file_list:
-        #     if file == asset_name+'_ch1.wfm' or file == asset_name+'_ch2.wfm':
-        #         filename.append(file)
-        #
-        #
-        # # Check if something could be found
-        # if len(filename) == 0:
-        #     self.log.error('No files associated with asset {0} were found on AWG7122c.'
-        #                 'Load to channels failed!'.format(asset_name)
-        #                 )        #         if asset.split("_")[-1][:3] == 'ch1':
-        #             self.tell('SOUR1:WAVEFORM "{0}"\n'.format(asset[:-4]))
-        #         if asset.split("_")[-1][:3] == 'ch2':
-        #             self.tell('SOUR2:WAVEFORM "{0}"\n'.format(asset[:-4]))
-        #         self.current_loaded_asset = asset_name
-        # else:
-        #     for channel in load_dict:
-        #     return -1
-        #
-        # self.log.info('The following files associated with the asset {0} were found on AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename))
-        #
-        # # load files in AWG Waveform list
-        # for asset in filename:
-        #     if asset.endswith('.wfm'):
-        #         self.tell('MMEMORY:IMPORT "{0}","{1}",WFM \n'.format(asset[:-4], asset))
-        #     else:
-        #         self.log.error('Could not load asset {0} to AWG7122c:\n'
-        #             '"{1}"'.format(asset_name, filename))
-        #
-        # file_path = self.ftp_path + self.get_asset_dir_on_device()
-        # # simply use the channel association of the filenames if no load_dict is given
-        # if load_dict == {}:
-        #     for asset in filename:
-        #         # load waveforms into channels as given in filename
-
-        #         # load waveforms into channels
-        #         name = load_dict[channel]
-        #         self.tell('SOUR'+str(channel)+':FUNC:USER "{0}/{1}"\n'.format(file_path, name))
-        #     self.current_loaded_asset = name
-        #
-        # return 0
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -606,7 +524,7 @@ class AWG7122C(Base, PulserInterface):
         if offset is None:
             for ch_num, chnl in enumerate(chnl_list):
                 off[chnl] = 0.0 if no_offset else float(
-                    self.query('SOUR{0:d}:VOLT:OFFS?'.format(ch_num)))
+                    self.query('SOUR{0:d}:VOLT:OFFS?'.format(ch_num + 1)))
         else:
             for chnl in offset:
                 if chnl in chnl_list:
@@ -778,19 +696,43 @@ class AWG7122C(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        ret_low = {}
+        ret_high = {}
+
+        if low is None:
+            low = {}
+
+        if high is None:
+            high = {}
+
         # If you want to check the input use the constraints:
         # constraints = self.get_constraints()
-        #
-        # for d_ch, value in low.items():
-        #     #FIXME: Tell the device the proper digital voltage low value:
-        #     # self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
-        #     pass
-        #
-        # for d_ch, value in high.items():
-        #     #FIXME: Tell the device the proper digital voltage high value:
-        #     # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
-        #     pass
-        return self.get_digital_level()
+
+        digital_channels = self._get_all_digital_channels()
+
+        # set low marker levels
+        for ch, level in low.items():
+            if ch not in digital_channels:
+                continue
+            d_ch_number = int(ch.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:LOW {2}'.format(a_ch_number, marker_index, level))
+            ret_low[ch] = float(
+                self.query('SOUR{0:d}:MARK{1:d}:VOLT:LOW?'.format(a_ch_number, marker_index)))
+
+        # set high marker levels
+        for ch, level in high.items():
+            if ch not in digital_channels:
+                continue
+            d_ch_number = int(ch.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:HIGH {2}'.format(a_ch_number, marker_index, level))
+            ret_high[ch] = float(
+                self.query('SOUR{0:d}:MARK{1:d}:VOLT:HIGH?'.format(a_ch_number, marker_index)))
+
+        return ret_low, ret_high
 
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
@@ -817,7 +759,10 @@ class AWG7122C(Base, PulserInterface):
         for ch_num, a_ch in enumerate(analog_channels):
             ch_num = ch_num + 1
             # check what analog channels are active
-            active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num))))
+            if self._is_output_on():
+                active_ch[a_ch] = bool(int(self.query('OUTPUT{0:d}:STATE?'.format(ch_num))))
+            else:
+                active_ch[a_ch] = self._internal_ch_state[a_ch]
             # check how many markers are active on each channel, i.e. the DAC resolution
             if active_ch[a_ch]:
                 digital_mrk = 10 - int(self.query('SOUR{0:d}:DAC:RES?'.format(ch_num)))
@@ -909,6 +854,7 @@ class AWG7122C(Base, PulserInterface):
                 self.write('OUTPUT{0:d}:STATE ON'.format(ach_num))
             else:
                 self.write('OUTPUT{0:d}:STATE OFF'.format(ach_num))
+            self._internal_ch_state[a_ch] = new_channels_state[a_ch]
         return self.get_active_channels()
 
     def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
@@ -944,16 +890,18 @@ class AWG7122C(Base, PulserInterface):
         constraints = self.get_constraints()
 
         if len(analog_samples) == 0:
-            self.log.error('No analog samples passed to write_waveform method in awg7122c.')
+            self.log.error('No analog samples passed to write_waveform method in awg7k.')
             return -1, waveforms
 
         if total_number_of_samples < constraints.waveform_length.min:
-            self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
+            self.log.error('Unable to write waveform.\n'
+                           'Number of samples to write ({0:d}) is '
                            'smaller than the allowed minimum waveform length ({1:d}).'
                            ''.format(total_number_of_samples, constraints.waveform_length.min))
             return -1, waveforms
         if total_number_of_samples > constraints.waveform_length.max:
-            self.log.error('Unable to write waveform.\nNumber of samples to write ({0:d}) is '
+            self.log.error('Unable to write waveform.\n'
+                           'Number of samples to write ({0:d}) is '
                            'greater than the allowed maximum waveform length ({1:d}).'
                            ''.format(total_number_of_samples, constraints.waveform_length.max))
             return -1, waveforms
@@ -984,12 +932,13 @@ class AWG7122C(Base, PulserInterface):
             if mrk_ch_1 in digital_samples and mrk_ch_2 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_2].view('uint8')
                 tmp_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 7, out=mrk_bytes)
-                np.left_shift(tmp_bytes, 6, out=tmp_bytes)
+                # Marker bits live in the LSB of the byte, as opposed to the AWG70k
+                np.left_shift(mrk_bytes, 1, out=mrk_bytes)
+                np.left_shift(tmp_bytes, 0, out=tmp_bytes)
                 np.add(mrk_bytes, tmp_bytes, out=mrk_bytes)
             else:
                 mrk_bytes = None
-            print('Prepare digital channel data: {0}'.format(time.time() - start))
+            self.log.debug('Prepare digital channel data: {0}'.format(time.time() - start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -998,17 +947,17 @@ class AWG7122C(Base, PulserInterface):
             start = time.time()
             self._write_wfm(filename=wfm_name,
                             analog_samples=analog_samples[a_ch],
-                            digital_samples=mrk_bytes,
+                            marker_bytes=mrk_bytes,
                             is_first_chunk=is_first_chunk,
                             is_last_chunk=is_last_chunk,
                             total_number_of_samples=total_number_of_samples)
 
-            print('Write WFM file: {0}'.format(time.time() - start))
+            self.log.debug('Write WFM file: {0}'.format(time.time() - start))
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
             self._send_file(filename=wfm_name + '.wfm')
-            print('Send WFM file: {0}'.format(time.time() - start))
+            self.log.debug('Send WFM file: {0}'.format(time.time() - start))
 
             start = time.time()
             self.write('MMEM:IMP "{0}","{1}",WFM'.format(wfm_name, wfm_name + '.wfm'))
@@ -1018,18 +967,19 @@ class AWG7122C(Base, PulserInterface):
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.2)
-            print('Load WFM file into workspace: {0}'.format(time.time() - start))
+            self.log.debug('Load WFM file into workspace: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
         return total_number_of_samples, waveforms
 
-    def write_sequence(self, name, sequence_parameters):
+    def write_sequence(self, name, sequence_parameter_list):
         """
         Write a new sequence on the device memory.
 
         @param name: str, the name of the waveform to be created/append to
-        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
+        @param sequence_parameter_list: list, contains the parameters for each sequence step and
+                                        the according waveform names.
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
@@ -1038,8 +988,52 @@ class AWG7122C(Base, PulserInterface):
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
-        # FIXME: I can not possibly implement that without the hardware to test it.
-        return -1
+
+        # Check if all waveforms are present on device memory
+        avail_waveforms = set(self.get_waveform_names())
+        for waveform_tuple, param_dict in sequence_parameter_list:
+            if not avail_waveforms.issuperset(waveform_tuple):
+                self.log.error('Failed to create sequence "{0}" due to waveforms "{1}" not '
+                               'present in device memory.'.format(name, waveform_tuple))
+                return -1
+
+        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        num_tracks = len(active_analog)
+        num_steps = len(sequence_parameter_list)
+
+        # Create new sequence and set jump timing to immediate.
+        # Delete old sequence by the same name if present.
+        self.write('SEQ:LENG 0')
+        self.write('SEQ:LENG {0:d}'.format(num_steps))
+
+        # Fill in sequence information
+        for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list, 1):
+            # Set waveforms to play
+            if num_tracks == len(wfm_tuple):
+                for track, waveform in enumerate(wfm_tuple, 1):
+                    self.sequence_set_waveform(waveform, step, track)
+            else:
+                self.log.error('Unable to write sequence.\n'
+                               'Length of waveform tuple "{0}" does not '
+                               'match the number of sequence tracks.'.format(wfm_tuple))
+                return -1
+
+            # Set event jump trigger
+            self.sequence_set_event_jump(step, seq_params['event_jump_to'])
+            # Set wait trigger
+            self.sequence_set_wait_trigger(step, seq_params['wait_for'])
+            # Set repetitions
+            self.sequence_set_repetitions(step, seq_params['repetitions'])
+            # Set go_to parameter
+            self.sequence_set_goto(step, seq_params['go_to'])
+            # Set flag states
+
+        # Wait for everything to complete
+        while int(self.query('*OPC?')) != 1:
+            time.sleep(0.25)
+
+        self._written_sequences = [name]
+        return num_steps
 
     def get_waveform_names(self):
         """ Retrieve the names of all uploaded waveforms on the device.
@@ -1048,7 +1042,7 @@ class AWG7122C(Base, PulserInterface):
         """
         wfm_list_len = int(self.query('WLIS:SIZE?'))
         wfm_list = list()
-        for index in range(1, wfm_list_len + 1):
+        for index in range(wfm_list_len):
             wfm_list.append(self.query('WLIS:NAME? {0:d}'.format(index)))
         return sorted(wfm_list)
 
@@ -1057,8 +1051,8 @@ class AWG7122C(Base, PulserInterface):
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        # FIXME: No idea without hardware to test
-        return list()
+
+        return self._written_sequences
 
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.
@@ -1087,7 +1081,7 @@ class AWG7122C(Base, PulserInterface):
 
         @return list: a list of deleted sequence names.
         """
-        # FIXME: Again... no idea without hardware to play with
+        self.write('SEQUENCE:LENGTH 0')
         return list()
 
     def get_interleave(self):
@@ -1097,7 +1091,9 @@ class AWG7122C(Base, PulserInterface):
 
         Will always return False for pulse generator hardware without interleave.
         """
-        return bool(int(self.query('AWGC:INT:STAT?')))
+        if self._has_interleave():
+            return bool(int(self.query('AWGC:INT:STAT?')))
+        return False
 
     def set_interleave(self, state=False):
         """ Turns the interleave of an AWG on or off.
@@ -1119,9 +1115,10 @@ class AWG7122C(Base, PulserInterface):
         if state is self.get_interleave():
             return state
 
-        self.write('AWGC:INT:STAT {0:d}'.format(int(state)))
-        while int(self.query('*OPC?')) != 1:
-            time.sleep(0.1)
+        if self._has_interleave():
+            self.write('AWGC:INT:STAT {0:d}'.format(int(state)))
+            while int(self.query('*OPC?')) != 1:
+                time.sleep(0.1)
         return self.get_interleave()
 
     def write(self, command):
@@ -1162,7 +1159,9 @@ class AWG7122C(Base, PulserInterface):
 
         @return: bool, True for yes, False for no.
         """
-        return True
+        if '08' in self.installed_options:
+            return True
+        return False
 
     def set_lowpass_filter(self, a_ch, cutoff_freq):
         """ Set a lowpass filter to the analog channels of the AWG.
@@ -1218,11 +1217,12 @@ class AWG7122C(Base, PulserInterface):
         variable output_as_int sets if the returned value should be either an
         integer number or string.
         """
-        message = self.query('AWGC:SEQ:TYPE?')
-        if 'HARD' in message:
-            return 0 if output_as_int else 'Hardware-Sequencer'
-        elif 'SOFT' in message:
-            return 1 if output_as_int else 'Software-Sequencer'
+        if self.has_sequence_mode():
+            message = self.query('AWGC:SEQ:TYPE?')
+            if 'HARD' in message:
+                return 0 if output_as_int else 'Hardware-Sequencer'
+            elif 'SOFT' in message:
+                return 1 if output_as_int else 'Software-Sequencer'
         return -1 if output_as_int else 'Request-Error'
 
     def _delete_file(self, filename):
@@ -1335,9 +1335,16 @@ class AWG7122C(Base, PulserInterface):
 
         @return bool: True: enabled, False: disabled
         """
-        if '06' not in self.installed_options:
-            return False
-        return bool(int(self.query('AWGC:INT:ZER?')))
+        if self._has_interleave():
+            return bool(int(self.query('AWGC:INT:ZER?')))
+        return False
+
+    def _has_interleave(self):
+        """ Check if the device has the interleave option installed
+
+            @return bool: device has interleave option
+        """
+        return '06' in self.installed_options
 
     def _write_wfm(self, filename, analog_samples, marker_bytes, is_first_chunk, is_last_chunk,
                    total_number_of_samples):
@@ -1411,3 +1418,173 @@ class AWG7122C(Base, PulserInterface):
             with open(wfm_path, 'ab') as wfm_file:
                 wfm_file.write(footer.encode())
         return
+
+    def sequence_set_waveform(self, waveform_name, step, track):
+        """
+        Set the waveform 'waveform_name' to position 'step' in the sequence 'sequence_name'.
+
+        @param str waveform_name: Name of the waveform which should be added
+        @param int step: Position of the added waveform
+        @param int track: track which should be editted
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        self.write('SEQ:ELEM{0:d}:WAV{1} "{2}"'.format(step, track, waveform_name))
+        return 0
+
+    def sequence_set_repetitions(self, step, repeat=1):
+        """
+        Set the repetition counter of sequence "sequence_name" at step "step" to "repeat".
+        A repeat value of -1 denotes infinite repetitions; 0 means the step is played once.
+
+        @param int step: Sequence step to be edited
+        @param int repeat: number of repetitions. (-1: infinite, 0: once, 1: twice, ...)
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+        if repeat < 0:
+            self.write('SEQ:ELEM{0:d}:LOOP:INFINITE ON'.format(step))
+        else:
+            self.write('SEQ:ELEM{0:d}:LOOP:INFINITE OFF'.format(step))
+            self.write('SEQ:ELEM{0:d}:LOOP:COUNT {1:d}'.format(step, repeat + 1))
+        return 0
+
+    def sequence_set_goto(self, step, goto=-1):
+        """
+
+        @param int step:
+        @param int goto:
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        if goto > 0:
+            goto = str(int(goto))
+            self.write('SEQ:ELEM{0:d}:GOTO:STATE ON'.format(step))
+            self.write('SEQ:ELEM{0:d}:GOTO:INDEX {1}'.format(step, goto))
+        else:
+            self.write('SEQ:ELEM{0:d}:GOTO:STATE OFF'.format(step))
+        return 0
+
+    def sequence_set_event_jump(self, step, jumpto=0):
+        """
+        Set the event trigger input of the specified sequence step and the jump_to destination.
+
+        @param int step: Sequence step to be edited
+        @param str trigger: Trigger string specifier. ('OFF', 'A', 'B' or 'INT')
+        @param int jumpto: The sequence step to jump to. 0 or -1 is interpreted as next step
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        # Set event_jump_to if event trigger is enabled
+        if jumpto > 0:
+            self.write('SEQ:ELEM{0:d}:JTAR:TYPE INDEX'.format(step))
+            self.write('SEQ:ELEM{0:d}:JTAR:INDEX {1}'.format(step, jumpto))
+        return 0
+
+    def sequence_set_wait_trigger(self, step, trigger='OFF'):
+        """
+        Make a certain sequence step wait for a trigger to start playing.
+
+        @param int step: Sequence step to be edited
+        @param str trigger: Trigger string specifier. ('OFF', 'A', 'B' or 'INT')
+
+        @return int: error code
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        trigger = self._event_triggers.get(trigger)
+        if trigger is None:
+            self.log.error('Invalid trigger specifier "{0}".\n'
+                           'Please choose one of: "OFF", "ON"')
+            return -1
+
+        if trigger != 'OFF':
+            self.write('SEQ:ELEM{0:d}:TWAIT ON'.format(step))
+        else:
+            self.write('SEQ:ELEM{0:d}:TWAIT OFF'.format(step))
+
+        return 0
+
+    def make_sequence_continuous(self):
+        """
+        Usually after a run of a sequence the output stops. Many times it is desired that the full
+        sequence is repeated many times. This is achieved here by setting the 'jump to' value of
+        the last element to 'First'
+
+        @param sequencename: Name of the sequence which should be made continous
+
+        @return int last_step: The step number which 'jump to' has to be set to 'First'
+        """
+        if not self.has_sequence_mode():
+            self.log.error('Direct sequence generation in AWG not possible. '
+                           'Sequencer option not installed.')
+            return -1
+
+        last_step = int(self.query('SEQ:LENG?'))
+        err = self.sequence_set_goto(last_step, 1)
+        if err < 0:
+            last_step = err
+        return last_step
+
+    def force_jump_sequence(self, final_step, channel=1):
+        """
+        This command forces the sequencer to jump to the specified step per channel. A
+        force jump does not require a trigger event to execute the jump.
+        For two channel instruments, if both channels are playing the same sequence, then
+        both channels jump simultaneously to the same sequence step.
+
+        @param channel: determines the channel number. If omitted, interpreted as 1
+        @param final_step: Step to jump to. Possible options are
+            FIRSt - This enables the sequencer to jump to first step in the sequence.
+            CURRent - This enables the sequencer to jump to the current sequence step,
+            essentially starting the current step over.
+            LAST - This enables the sequencer to jump to the last step in the sequence.
+            END - This enables the sequencer to go to the end and play 0 V until play is
+            stopped.
+            <NR1> - This enables the sequencer to jump to the specified step, where the
+            value is between 1 and 16383.
+
+        """
+        self.write('SOURCE{0:d}:JUMP:FORCE {1}'.format(channel, final_step))
+        return
+
+    def get_errors(self):
+        """
+        Get all errors from the device and log them.
+
+        @return bool: whether any error was found
+        """
+        next_err = True
+        has_error = False
+        while next_err:
+            err = self.query('SYST:ERR?').split(',')
+            if int(err[0]) == 0:
+                next_err = False
+            else:
+                self.log.error('{0} error: {1} {2}'.format(self.model, err[0], err[1]))
+                has_error = True
+
+        return has_error
+

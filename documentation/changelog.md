@@ -179,6 +179,17 @@ the SpectrometerLogic module like:
         fitlogic: 'fitlogic'
     ```
 
+* Tektronix 7000 series is now in file `tektronix_awg7k.py` and class `AWG7k`.
+ Use that instead of `tektronix_awg7122c.py` and change the configuration like this:
+    ```
+    pulser_awg7000:
+        module.Class: 'awg.tektronix_awg7k.AWG7k'
+        awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
+        awg_ip_address: '10.42.0.211'
+        timeout: 60
+
+   ```
+   
 ## Release 0.9
 Released on 6 Mar 2018
 Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.9
