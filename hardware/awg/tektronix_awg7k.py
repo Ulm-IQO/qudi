@@ -34,9 +34,8 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWG7k(Base, PulserInterface):
-    """
-    Unstable and under construction, Jochen Scheuer
-    ... but about to be become awesome, Nikolas Tomek
+    """ A hardware module for the Tektronix AWG7000 series for generating waveforms and
+        sequences thereof.
     """
 
     _modclass = 'awg7k'
@@ -93,13 +92,6 @@ class AWG7k(Base, PulserInterface):
                 'VISA address "{0}" not found by the pyVISA resource manager.\nCheck '
                 'the connection by using for example "Agilent Connection Expert".'
                 ''.format(self._visa_address))
-
-        #try:
-        #    result = self.awg.clear()
-        #    if result != visa.constants.VI_SUCCESS:
-        #        self.log.error('Clear failed, read {}'.format(self.awg.read()))
-        #except Exception as e:
-        #    self.log.error('Clear failed with exception {}'.format(e))
 
         # try connecting to AWG using FTP protocol
         with FTP(self._ip_address) as ftp:
