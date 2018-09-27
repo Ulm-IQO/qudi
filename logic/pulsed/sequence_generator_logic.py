@@ -101,7 +101,6 @@ class SequenceGeneratorLogic(GenericLogic):
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
     sigAvailableWaveformsUpdated = QtCore.Signal(list)
     sigAvailableSequencesUpdated = QtCore.Signal(list)
-    sigPulserRunningUpdated = QtCore.Signal(bool)
 
     sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
@@ -395,11 +394,6 @@ class SequenceGeneratorLogic(GenericLogic):
                              'Unable to apply new settings.'.format(pulser_status,
                                                                     status_dict[pulser_status]))
 
-        if pulser_status == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
-
         # emit update signal for master (GUI or other logic module)
         self.sigGeneratorSettingsUpdated.emit(self.pulse_generator_settings)
         # Apply potential changes to generation_parameters
@@ -427,11 +421,6 @@ class SequenceGeneratorLogic(GenericLogic):
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         self.sigLoadedAssetUpdated.emit('', '')
-
-        if self.pulsegenerator().get_status()[0] == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
         return
 
     @QtCore.Slot(str)
@@ -470,11 +459,6 @@ class SequenceGeneratorLogic(GenericLogic):
             self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
                            'It has not been generated yet.'.format(ensemble.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
-
-        if self.pulsegenerator().get_status()[0] == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
         return
 
     @QtCore.Slot(str)
@@ -513,11 +497,6 @@ class SequenceGeneratorLogic(GenericLogic):
             self.log.error('Loading of PulseSequence "{0}" failed.\n'
                            'It has not been generated yet.'.format(sequence.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
-
-        if self.pulsegenerator().get_status()[0] == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
         return
 
     def _read_settings_from_device(self):
@@ -575,11 +554,6 @@ class SequenceGeneratorLogic(GenericLogic):
                 channel_state[chnl] = False
         set_state = self.pulsegenerator().set_active_channels(channel_state)
         set_config = set([chnl for chnl in set_state if set_state[chnl]])
-
-        if self.pulsegenerator().get_status()[0] == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
         return set_config
 
     ############################################################################
@@ -678,11 +652,6 @@ class SequenceGeneratorLogic(GenericLogic):
                            'SequenceGeneratorLogic is busy generating a waveform/sequence.')
 
         self.sigSamplingSettingsUpdated.emit(self.generation_parameters)
-
-        if self.pulsegenerator().get_status()[0] == 1:
-            self.sigPulserRunningUpdated.emit(True)
-        else:
-            self.sigPulserRunningUpdated.emit(False)
         return self.generation_parameters
 
     def save_block(self, block):
