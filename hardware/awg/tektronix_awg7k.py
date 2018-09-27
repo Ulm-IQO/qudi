@@ -33,14 +33,13 @@ from core.module import Base, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
-# TODO: add a method to sequencing to change from dynamic to jump in order to get triggers for odmr
 class AWG7k(Base, PulserInterface):
     """
     Unstable and under construction, Jochen Scheuer
     ... but about to be become awesome, Nikolas Tomek
     """
 
-    _modclass = 'awg7122c'
+    _modclass = 'awg7k'
     _modtype = 'hardware'
 
     # config options
@@ -95,12 +94,12 @@ class AWG7k(Base, PulserInterface):
                 'the connection by using for example "Agilent Connection Expert".'
                 ''.format(self._visa_address))
 
-        try:
-            result = self.awg.clear()
-            if result != visa.constants.VI_SUCCESS:
-                self.log.error('Clear failed, read {}'.format(self.awg.read()))
-        except Exception as e:
-            self.log.error('Clear failed with exception {}'.format(e))
+        #try:
+        #    result = self.awg.clear()
+        #    if result != visa.constants.VI_SUCCESS:
+        #        self.log.error('Clear failed, read {}'.format(self.awg.read()))
+        #except Exception as e:
+        #    self.log.error('Clear failed with exception {}'.format(e))
 
         # try connecting to AWG using FTP protocol
         with FTP(self._ip_address) as ftp:
@@ -172,20 +171,39 @@ class AWG7k(Base, PulserInterface):
         # TODO: Check values for AWG7122c
         constraints = PulserConstraints()
 
-        if self.get_interleave():
-            constraints.sample_rate.min = 12.0e9
-            constraints.sample_rate.max = 24.0e9
-            constraints.sample_rate.step = 5.0e2
-            constraints.sample_rate.default = 24.0e9
-        else:
-            constraints.sample_rate.min = 10.0e6
-            constraints.sample_rate.max = 12.0e9
-            constraints.sample_rate.step = 10.0e6
-            constraints.sample_rate.default = 12.0e9
+        if self.model == 'AWG7122C':
+            if self.get_interleave():
+                constraints.sample_rate.min = 12.0e9
+                constraints.sample_rate.max = 24.0e9
+                constraints.sample_rate.step = 5.0e2
+                constraints.sample_rate.default = 24.0e9
+            else:
+                constraints.sample_rate.min = 10.0e6
+                constraints.sample_rate.max = 12.0e9
+                constraints.sample_rate.step = 10.0e6
+                constraints.sample_rate.default = 12.0e9
 
-        constraints.a_ch_amplitude.max = 1.0
-        constraints.a_ch_amplitude.step = 0.001
-        constraints.a_ch_amplitude.default = 1.0
+        elif self.model == 'AWG7082C':
+            if self.get_interleave():
+                constraints.sample_rate.min = 8.0e9
+                constraints.sample_rate.max = 16.0e9
+                constraints.sample_rate.step = 5.0e2
+                constraints.sample_rate.default = 16.0e9
+            else:
+                constraints.sample_rate.min = 10.0e6
+                constraints.sample_rate.max = 8.0e9
+                constraints.sample_rate.step = 10.0e6
+                constraints.sample_rate.default = 8.0e9
+
+        if '02' in self.installed_options or self._has_interleave():
+            constraints.a_ch_amplitude.max = 1.0
+            constraints.a_ch_amplitude.step = 0.001
+            constraints.a_ch_amplitude.default = 1.0
+        else:
+            constraints.a_ch_amplitude.max = 2.0
+            constraints.a_ch_amplitude.step = 0.001
+            constraints.a_ch_amplitude.default = 2.0
+
         if self._zeroing_enabled():
             constraints.a_ch_amplitude.min = 0.25
         else:
@@ -230,7 +248,7 @@ class AWG7k(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        # ToDo: Check how many external triggers this device has
+        # Device has only one trigger and no flags
         constraints.event_triggers = ['ON']
         constraints.flags = list()
 
@@ -343,7 +361,7 @@ class AWG7k(Base, PulserInterface):
             while self.query('SOUR{0:d}:WAV?'.format(chnl_num)) != waveform:
                 time.sleep(0.1)
 
-        self.write('AWGC:RMODE CONTINUOUS')
+        self.set_mode('C')
         return self.get_loaded_assets()
 
     def load_sequence(self, sequence_name):
@@ -369,17 +387,9 @@ class AWG7k(Base, PulserInterface):
                            'Sequence to load is missing on device memory.')
             return self.get_loaded_assets()
 
-        # Load sequence
-        #file_name = sequence_name + '{0}.seq'.format(sequence_name)
-
-        #self.write('SOUR1:FUNC:USER "{0!s}"'.format(file_name))
-        #print(self.query('SOUR1:FUNC:USER?'))
-        # while self.query('SOUR1:FUNC:USER?') != sequence_name:
-        #     time.sleep(0.2)
-
         # set the AWG to the event jump mode:
         self.write('AWGC:EVENT:JMODE EJUMP')
-        self.write('AWGC:RMODE SEQUENCE')
+        self.set_mode('S')
 
         self._loaded_sequences = [sequence_name]
         return self.get_loaded_assets()
@@ -414,7 +424,6 @@ class AWG7k(Base, PulserInterface):
         elif run_mode == 'SEQ':
             current_type = 'sequence'
             for chnl_num in channel_numbers:
-                #loaded_assets[chnl_num] = self.query('SOUR{0}:FUNC:USER?')
                 if len(self._loaded_sequences) > 0:
                     loaded_assets[chnl_num] = self._loaded_sequences[0]
 
@@ -695,19 +704,43 @@ class AWG7k(Base, PulserInterface):
         In general there is no bijective correspondence between
         (amplitude, offset) and (value high, value low)!
         """
+        ret_low = {}
+        ret_high = {}
+
+        if low is None:
+            low = {}
+
+        if high is None:
+            high = {}
+
         # If you want to check the input use the constraints:
         # constraints = self.get_constraints()
-        #
-        # for d_ch, value in low.items():
-        #     #FIXME: Tell the device the proper digital voltage low value:
-        #     # self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
-        #     pass
-        #
-        # for d_ch, value in high.items():
-        #     #FIXME: Tell the device the proper digital voltage high value:
-        #     # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
-        #     pass
-        return self.get_digital_level()
+
+        digital_channels = self._get_all_digital_channels()
+
+        # set low marker levels
+        for ch, level in low.items():
+            if ch not in digital_channels:
+                continue
+            d_ch_number = int(ch.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:LOW {2}'.format(a_ch_number, marker_index, level))
+            ret_low[ch] = float(
+                self.query('SOUR{0:d}:MARK{1:d}:VOLT:LOW?'.format(a_ch_number, marker_index)))
+
+        # set high marker levels
+        for ch, level in high.items():
+            if ch not in digital_channels:
+                continue
+            d_ch_number = int(ch.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:HIGH {2}'.format(a_ch_number, marker_index, level))
+            ret_high[ch] = float(
+                self.query('SOUR{0:d}:MARK{1:d}:VOLT:HIGH?'.format(a_ch_number, marker_index)))
+
+        return ret_low, ret_high
 
     def get_active_channels(self, ch=None):
         """ Get the active channels of the pulse generator hardware.
@@ -907,8 +940,9 @@ class AWG7k(Base, PulserInterface):
             if mrk_ch_1 in digital_samples and mrk_ch_2 in digital_samples:
                 mrk_bytes = digital_samples[mrk_ch_2].view('uint8')
                 tmp_bytes = digital_samples[mrk_ch_1].view('uint8')
-                np.left_shift(mrk_bytes, 7, out=mrk_bytes)
-                np.left_shift(tmp_bytes, 6, out=tmp_bytes)
+                # Marker bits live in the LSB of the byte, as opposed to the AWG70k
+                np.left_shift(mrk_bytes, 1, out=mrk_bytes)
+                np.left_shift(tmp_bytes, 0, out=tmp_bytes)
                 np.add(mrk_bytes, tmp_bytes, out=mrk_bytes)
             else:
                 mrk_bytes = None
@@ -1545,6 +1579,11 @@ class AWG7k(Base, PulserInterface):
         return
 
     def get_errors(self):
+        """
+        Get all errors from the device and log them.
+
+        @return bool: whether any error was found
+        """
         next_err = True
         has_error = False
         while next_err:
