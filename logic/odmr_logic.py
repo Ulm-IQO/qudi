@@ -214,6 +214,7 @@ class ODMRLogic(GenericLogic):
         Set trigger polarity of external microwave trigger (for list and sweep mode).
 
         @param object trigger_pol: one of [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @param float frequency: trigger frequency during ODMR scan
 
         @return object: actually set trigger polarity returned from hardware
         """
