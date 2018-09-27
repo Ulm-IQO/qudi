@@ -21,6 +21,7 @@ Changes/New features:
 * Microwave interface passes trigger timing to microwave source, needs hardware module adjustments for not-in-tree modules
 * Bug fixes and support for SMD12 laser controller
 * New hardware file for Microwave source - Anritsu MG3691C has been added.
+* New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
 * Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
 * Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
