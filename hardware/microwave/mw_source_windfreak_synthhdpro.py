@@ -77,7 +77,8 @@ class MicrowaveSynthHDPro(Base, MicrowaveInterface):
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-        pass
+        self._conn.close()
+        self.rm.close()
 
     def get_limits(self):
         """SynthHD Pro limits"""
@@ -137,7 +138,6 @@ class MicrowaveSynthHDPro(Base, MicrowaveInterface):
             mw_cw_power = float(self._conn.query('W?'))
             return mw_cw_power
         else:
-
             return self.mw_sweep_power
 
     def get_frequency(self):
@@ -342,14 +342,26 @@ class MicrowaveSynthHDPro(Base, MicrowaveInterface):
         return
 
     def _off(self):
+        """ Turn the current channel off.
+
+        @return tuple: see _stat()
+        """
         self._conn.write('E0r0h0')
         return self._stat()
 
     def _on(self):
+        """ Turn on the current channel.
+
+        @return tuple(bool): see _stat()
+        """
         self._conn.write('E1r1h1')
         return self._stat()
 
     def _stat(self):
+        """ Return status of PLL, power amplifier and output power muting for current channel.
+
+        @return tuple(bool): PLL on, power amplifier on, output power muting on
+        """
         E = int(self._conn.query('E?'))
         r = int(self._conn.query('r?'))
         h = int(self._conn.query('h?'))
