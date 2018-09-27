@@ -57,6 +57,7 @@ Changes/New features:
     generic. Makes it easier to create new pulse generator modules as long as the hardware can be 
     abstracted to a waveform/sequence terminology.
     * Adapted pulse generator modules to new pulser interface.
+    * Adapted FPGA hardware file to run with new interface.
     * All groups of settings in pulsed logic modules are now represented as dictionaries improving 
     flexibility as well as minimizing necessary code changes when adding new features.
     * Most parameter sets in `PulsedMeasurementLogic` and `SequenceGeneratorLogic` are now 
@@ -178,6 +179,17 @@ the SpectrometerLogic module like:
         fitlogic: 'fitlogic'
     ```
 
+* Tektronix 7000 series is now in file `tektronix_awg7k.py` and class `AWG7k`.
+ Use that instead of `tektronix_awg7122c.py` and change the configuration like this:
+    ```
+    pulser_awg7000:
+        module.Class: 'awg.tektronix_awg7k.AWG7k'
+        awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
+        awg_ip_address: '10.42.0.211'
+        timeout: 60
+
+   ```
+   
 ## Release 0.9
 Released on 6 Mar 2018
 Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.9
