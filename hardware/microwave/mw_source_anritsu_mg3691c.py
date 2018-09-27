@@ -345,7 +345,8 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
         @param float timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
         if pol == TriggerEdge.RISING:
             edge = 'POS'
@@ -360,9 +361,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         polarity = self._gpib_connection.query(':TRIG:SEQ3:SLOP?').strip('\r\n')
         if polarity == 'NEG':
-            return TriggerEdge.FALLING
+            return TriggerEdge.FALLING, timing
         else:
-            return TriggerEdge.RISING
+            return TriggerEdge.RISING, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

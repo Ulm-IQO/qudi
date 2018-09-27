@@ -385,12 +385,13 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
 
         self.log.warning('No external trigger channel can be set in this '
                          'hardware. Method will be skipped.')
-        return 0
+        return pol, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
