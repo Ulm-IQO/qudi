@@ -189,7 +189,8 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
         @param timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing as queried from device
         """
         pass
 
