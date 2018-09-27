@@ -335,7 +335,6 @@ class BasicPulseExtractor(PulseExtractorBase):
 
         return return_dict
 
-
     def ungated_gated_conv_deriv(self, count_data, conv_std_dev=20.0, delay=5e-7, safety=2e-7):
         """
             Extracts the laser pulses in the ungated timetrace data using laser_start_indices and laser_length
@@ -383,3 +382,4 @@ class BasicPulseExtractor(PulseExtractorBase):
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
 
         return return_dict
+    
