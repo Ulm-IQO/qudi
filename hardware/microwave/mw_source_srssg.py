@@ -378,10 +378,10 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self.log.error('This was never tested!')
         return self.reset_listpos()
 
-
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
+        @param float timing: estimated time between triggers
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 

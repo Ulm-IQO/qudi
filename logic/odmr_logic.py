@@ -34,6 +34,7 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
 
+
 class ODMRLogic(GenericLogic):
 
     """This is the Logic class for ODMR."""
