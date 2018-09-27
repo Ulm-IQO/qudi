@@ -408,6 +408,9 @@ class SequenceGeneratorLogic(GenericLogic):
     def clear_pulser(self):
         """
         """
+        if self.pulsegenerator().get_status()[0] > 0:
+            self.log.error('Can´t clear the pulser as it is running. Switch off the pulser and try again.')
+            return -1
         self.pulsegenerator().clear_all()
         # Delete all sampling information from all PulseBlockEnsembles and PulseSequences
         for seq_name in self.saved_pulse_sequences:
@@ -421,7 +424,7 @@ class SequenceGeneratorLogic(GenericLogic):
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigAvailableSequencesUpdated.emit(self.sampled_sequences)
         self.sigLoadedAssetUpdated.emit('', '')
-        return
+        return 0
 
     @QtCore.Slot(str)
     @QtCore.Slot(object)
@@ -453,13 +456,17 @@ class SequenceGeneratorLogic(GenericLogic):
                                    'PulseBlockEnsemble.'.format(waveform, ensemble.name))
                     self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                     return
+
+            if self.pulsegenerator().get_status()[0] > 0:
+                self.log.error('Can´t load a waveform, because pulser running. Switch off the pulser and try again.')
+                return -1
             # Actually load the waveforms to the generic channels
             self.pulsegenerator().load_waveform(ensemble.sampling_information['waveforms'])
         else:
             self.log.error('Loading of PulseBlockEnsemble "{0}" failed.\n'
                            'It has not been generated yet.'.format(ensemble.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
-        return
+        return 0
 
     @QtCore.Slot(str)
     @QtCore.Slot(object)
@@ -491,13 +498,17 @@ class SequenceGeneratorLogic(GenericLogic):
                                    'PulseSequence.'.format(waveform, sequence.name))
                     self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                     return
+
+            if self.pulsegenerator().get_status()[0] > 0:
+                self.log.error('Can´t load a sequence, because pulser running. Switch off the pulser and try again.')
+                return -1
             # Actually load the sequence to the generic channels
             self.pulsegenerator().load_sequence(sequence.name)
         else:
             self.log.error('Loading of PulseSequence "{0}" failed.\n'
                            'It has not been generated yet.'.format(sequence.name))
         self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
-        return
+        return 0
 
     def _read_settings_from_device(self):
         """
