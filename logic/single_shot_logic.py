@@ -48,7 +48,7 @@ class SingleShotLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
     singleshotreadoutcounter = Connector(interface='SingleShotInterface')
-    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
+    pulsegenerator = Connector(interface='PulserInterface')
 
     # ssr counter settings
     countlength = StatusVar(default=100)
@@ -67,13 +67,6 @@ class SingleShotLogic(GenericLogic):
     timer_interval = StatusVar(default=5)
 
 
-    # ssr measurement settings
-    _number_of_ssr_readouts = StatusVar(default=1000)
-    _normalized = StatusVar(default=False)
-
-    # Container to store measurement information about the currently loaded sequence
-    _ssr_measurement_information = StatusVar(default=dict())
-
     # notification signals for master module (i.e. GUI)
     sigTimerUpdated = QtCore.Signal(float, int, float)
     sigStatusSSRUpdated = QtCore.Signal(bool)
@@ -87,7 +80,6 @@ class SingleShotLogic(GenericLogic):
     sigTraceUpdated = QtCore.Signal(np.ndarray, np.ndarray, float, float, int)
     sigHistogramUpdated = QtCore.Signal(np.ndarray)
     sigFitUpdated = QtCore.Signal(dict)
-
 
 
     # Internal signals
@@ -155,14 +147,10 @@ class SingleShotLogic(GenericLogic):
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
         self.fc.set_units(['s', 'arb.u.'])
 
-        self.timer_pulsed_old = self.pulsedmeasurementlogic().timer_interval
 
         # Recall saved status variables
         if 'fits' in self._statusVariables and isinstance(self._statusVariables.get('fits'), dict):
             self.fc.load_from_dict(self._statusVariables['fits'])
-
-        # Turn off pulse generator
-        self.pulsedmeasurementlogic().pulse_generator_off()
 
 
         # update gui
@@ -242,9 +230,43 @@ class SingleShotLogic(GenericLogic):
         return err
 
 
+  ############################################################################
+    # Pulse generator control methods and properties
+    ############################################################################
+    @property
+    def pulse_generator_constraints(self):
+        return self.pulsegenerator().get_constraints()
 
+    def pulse_generator_on(self):
+        """Switching on the pulse generator. """
+        err = self.pulsegenerator().pulser_on()
+        if err < 0:
+            self.log.error('Failed to turn on pulse generator output.')
+        return err
 
+    def pulse_generator_off(self):
+        """Switching off the pulse generator. """
+        err = self.pulsegenerator().pulser_off()
+        if err < 0:
+            self.log.error('Failed to turn off pulse generator output.')
+        return err
 
+    @QtCore.Slot(bool)
+    def toggle_pulse_generator(self, switch_on):
+        """
+        Switch the pulse generator on or off.
+
+        :param switch_on: bool, turn the pulse generator on (True) or off (False)
+        :return int: error code (0: OK, -1: error)
+        """
+        if not isinstance(switch_on, bool):
+            return -1
+
+        if switch_on:
+            err = self.pulse_generator_on()
+        else:
+            err = self.pulse_generator_off()
+        return err
     ############################################################################
     # Measurement control methods and properties
     ############################################################################
@@ -266,16 +288,26 @@ class SingleShotLogic(GenericLogic):
     def start_ssr_measurement(self, stashed_raw_data_tag=''):
         """Start the ssr measurement."""
 
-        #turn off the analysis timer for pulsedmeasurment by setting it to zero
-        self.timer_pulsed_old = self.pulsedmeasurementlogic().timer_interval
-        self.pulsedmeasurementlogic().set_timer_interval(0)
 
         with self._threadlock:
             if self.module_state() == 'idle':
                 # Lock module state
                 self.module_state.lock()
 
-                self.pulsedmeasurementlogic().start_pulsed_measurement(stashed_raw_data_tag)
+
+                # recall stashed raw data
+                if stashed_raw_data_tag in self._saved_raw_data:
+                    self._recalled_raw_data_tag = stashed_raw_data_tag
+                    self.log.info('Starting ssr measurement with stashed raw data "{0}".'
+                                  ''.format(stashed_raw_data_tag))
+                else:
+                    self._recalled_raw_data_tag = None
+
+                # start fast counter
+                self.ssr_counter_on()
+                # start pulse generator
+                self.pulse_generator_on()
+
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
@@ -300,14 +332,24 @@ class SingleShotLogic(GenericLogic):
             pass
         with self._threadlock:
             if self.module_state() == 'locked':
-                self.pulsedmeasurementlogic().stop_pulsed_measurement(stash_raw_data_tag)
+
+                # stash raw data if requested
+                if stash_raw_data_tag:
+                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
+                    #              'later point.'.format(stash_raw_data_tag))
+                    self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
+                self._recalled_raw_data_tag = None
+
+                # Turn off fast counter
+                self.ssr_counter_off()
+                # Turn off pulse generator
+                self.pulse_generator_off()
+
                 self.sigStopTimer.emit()
                 self.module_state.unlock()
                 # update status
                 self.sigStatusSSRUpdated.emit(False)
 
-        # set pulsedmeasurement timer again
-        self.pulsedmeasurementlogic().set_timer_interval(self.timer_pulsed_old)
         return
 
 

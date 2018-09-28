@@ -186,8 +186,8 @@ class SSRCounterDummy(Base, SingleShotInterface):
         # add some random data
         for ii in range(10):
             if uniform(-1,1) > 0:
-                self._count_data = np.append(self._count_data,np.random.normal(loc = -1., scale = 1.0))
+                self._count_data = np.append(self._count_data,np.random.normal(loc = -1., scale = 0.4))
             else:
-                self._count_data = np.append(self._count_data,np.random.normal(loc = 1., scale = 1.0))
+                self._count_data = np.append(self._count_data,np.random.normal(loc = 1., scale = 0.4))
         return self._count_data
 
