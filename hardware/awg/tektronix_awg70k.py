@@ -167,8 +167,8 @@ class AWG70K(Base, PulserInterface):
         #constraints.d_ch_difference.max = 1.4
         #constraints.d_ch_difference.min = 0.5
 
-        constraints.waveform_length.min = self.query('WLISt:WAVeform:LMINImum?')
-        constraints.waveform_length.max = self.query('WLISt:WAVeform:LMAXimum?')
+        constraints.waveform_length.min = int(self.query('WLISt:WAVeform:LMINImum?'))
+        constraints.waveform_length.max = int(self.query('WLISt:WAVeform:LMAXimum?'))
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 1
 
@@ -190,7 +190,7 @@ class AWG70K(Base, PulserInterface):
 
         # If sequencer mode is available then these should be specified
         constraints.repetitions.min = 0
-        constraints.repetitions.max = self.query('SLIST:SEQUENCE:STEP:RCOUNT:MAX?')
+        constraints.repetitions.max = int(self.query('SLIST:SEQUENCE:STEP:RCOUNT:MAX?'))
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
         # ToDo: Check how many external triggers are available
@@ -198,11 +198,11 @@ class AWG70K(Base, PulserInterface):
         constraints.flags = ['A', 'B', 'C', 'D']
 
         constraints.sequence_steps.min = 0
-        constraints.sequence_steps.max = self.query('SLIST:SEQUENCE:STEP:MAX?')
+        constraints.sequence_steps.max = int(self.query('SLIST:SEQUENCE:STEP:MAX?'))
         constraints.sequence_steps.step = 1
         constraints.sequence_steps.default = 0
 
-        #constraints.seqence_tracks.max = self.query('SLISt:SEQuence:TRACk:MAX?')
+        #constraints.seqence_tracks.max = int(self.query('SLISt:SEQuence:TRACk:MAX?'))
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
