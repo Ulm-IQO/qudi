@@ -489,12 +489,14 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         self._command_wait(':ABORT')
         return 0
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
+        @param float timing: estimated time between triggers
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
         if pol == TriggerEdge.RISING:
             edge = 'POS'
@@ -512,9 +514,9 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         polarity = self._ask(':TRIG1:SLOP?')
         if 'NEG' in polarity:
-            return TriggerEdge.FALLING
+            return TriggerEdge.FALLING, timing
         else:
-            return TriggerEdge.RISING
+            return TriggerEdge.RISING, timing
 
     # ================== Non interface commands: ==================
 
