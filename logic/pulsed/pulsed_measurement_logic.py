@@ -77,6 +77,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _alternating = StatusVar(default=False)
     _laser_ignore_list = StatusVar(default=list())
     _data_units = StatusVar(default=('s', ''))
+    _data_labels = StatusVar(default=('Tau', 'Signal'))
 
     # PulseExtractor settings
     extraction_parameters = StatusVar(default=None)
@@ -507,6 +508,7 @@ class PulsedMeasurementLogic(GenericLogic):
         settings_dict['laser_ignore_list'] = list(self._laser_ignore_list).copy()
         settings_dict['alternating'] = bool(self._alternating)
         settings_dict['units'] = self._data_units
+        settings_dict['labels'] = self._data_labels
         return settings_dict
 
     @measurement_settings.setter
@@ -682,6 +684,9 @@ class PulsedMeasurementLogic(GenericLogic):
             with self._threadlock:
                 if 'units' in settings_dict:
                     self._data_units = settings_dict.get('units')
+                    self.fc.set_units(self._data_units)
+                if 'labels' in settings_dict:
+                    self._data_labels = list(settings_dict.get('labels'))
 
             if self.module_state() == 'idle':
                 # Get all other parameters if present
@@ -974,6 +979,10 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'units' in self._measurement_information:
             with self._threadlock:
                 self._data_units = self._measurement_information.get('units')
+                self.fc.set_units(self._data_units)
+        if 'labels' in self._measurement_information:
+            with self._threadlock:
+                self._data_labels = list(self._measurement_information.get('labels'))
 
         # Check if a measurement is running and apply following settings if this is not the case
         if self.module_state() == 'locked':
@@ -1359,12 +1368,19 @@ class PulsedMeasurementLogic(GenericLogic):
                     inverse_cont_var = 's'
                 else:
                     inverse_cont_var = '(1/{0})'.format(self._data_units[0])
-                x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
-                y_axis_ft_label = 'Fourier amplitude (arb. u.)'
+                x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+                    self._data_labels[0], x_axis_prefix, inverse_cont_var)
+                y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
                 ft_label = 'FT of data trace 1'
             else:
-                x_axis_ft_label = 'controlled variable (' + self._data_units[0] + ')'
-                y_axis_ft_label = 'norm. sig (arb. u.)'
+                if self._data_units[1]:
+                    x_axis_ft_label = '{0} ({1})'.format(self._data_labels[0], self._data_units[0])
+                else:
+                    x_axis_ft_label = '{0}'.format(self._data_labels[0])
+                if self._data_units[1]:
+                    y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+                else:
+                    y_axis_ft_label = '{0}'.format(self._data_labels[1])
                 ft_label = ''
 
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
@@ -1377,8 +1393,12 @@ class PulsedMeasurementLogic(GenericLogic):
                        mode="expand", borderaxespad=0.)
 
         #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
-        ax1.set_xlabel('controlled variable (' + counts_prefix + self._data_units[0] + ')')
-        ax1.set_ylabel('signal (' + self._data_units[1] + ')')
+        ax1.set_xlabel(
+            '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        if self._data_units[1]:
+            ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+        else:
+            ax1.set_ylabel('{0}'.format(self._data_labels[1]))
 
         fig.tight_layout()
         ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
