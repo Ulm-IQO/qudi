@@ -297,6 +297,14 @@ class AutoMeasurementLogic(GenericLogic):
     ###                        Confocal methods                         ###
     #######################################################################
     def move_to(self, position):
+        if isinstance(position, str):
+            for nv in self.nv_list:
+                if nv.label == position:
+                    break
+            if nv is self.nv_list[-1] and nv.label != position:
+                self.log.error('No NV with label "{0}" found in nv_list.')
+                return
+            position = nv.position
         err_code = self.confocallogic().set_position('optimizer', *position)
         if err_code != 0:
             self.log.error('Move to "{0}" failed. Scanner busy.'.format(position))
