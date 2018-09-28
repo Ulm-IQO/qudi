@@ -144,28 +144,31 @@ class AWG70K(Base, PulserInterface):
             constraints.sample_rate.step = 5.0e2
             constraints.sample_rate.default = 25.0e9
         elif self.awg_model == 'AWG70001A':
-            constraints.sample_rate.min = 3.0e3
+            constraints.sample_rate.min = 1.49e3
             constraints.sample_rate.max = 50.0e9
-            constraints.sample_rate.step = 1.0e3
+            constraints.sample_rate.step = 10
             constraints.sample_rate.default = 50.0e9
 
         constraints.a_ch_amplitude.min = 0.25
         constraints.a_ch_amplitude.max = 0.5
-        constraints.a_ch_amplitude.step = 0.001
+        constraints.a_ch_amplitude.step = 0.0001
         constraints.a_ch_amplitude.default = 0.5
         # FIXME: Enter the proper digital channel low constraints:
-        constraints.d_ch_low.min = 0.0
-        constraints.d_ch_low.max = 0.0
-        constraints.d_ch_low.step = 0.0
+        constraints.d_ch_low.min = -1.4
+        constraints.d_ch_low.max = 0.9
+        constraints.d_ch_low.step = 0.1e-3
         constraints.d_ch_low.default = 0.0
         # FIXME: Enter the proper digital channel high constraints:
-        constraints.d_ch_high.min = 0.0
+        constraints.d_ch_high.min = -0.9
         constraints.d_ch_high.max = 1.4
-        constraints.d_ch_high.step = 0.1
+        constraints.d_ch_high.step = 0.1e-3
         constraints.d_ch_high.default = 1.4
 
-        constraints.waveform_length.min = 1
-        constraints.waveform_length.max = 8000000000
+        #constraints.d_ch_difference.max = 1.4
+        #constraints.d_ch_difference.min = 0.5
+
+        constraints.waveform_length.min = self.query('WLISt:WAVeform:LMINImum?')
+        constraints.waveform_length.max = self.query('WLISt:WAVeform:LMAXimum?')
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 1
 
@@ -187,17 +190,19 @@ class AWG70K(Base, PulserInterface):
 
         # If sequencer mode is available then these should be specified
         constraints.repetitions.min = 0
-        constraints.repetitions.max = 65536
+        constraints.repetitions.max = self.query('SLIST:SEQUENCE:STEP:RCOUNT:MAX?')
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
         # ToDo: Check how many external triggers are available
-        constraints.event_triggers = ['A', 'B']
+        constraints.event_triggers = ['OFF', 'A', 'B', 'INT']
         constraints.flags = ['A', 'B', 'C', 'D']
 
         constraints.sequence_steps.min = 0
-        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.max = self.query('SLIST:SEQUENCE:STEP:MAX?')
         constraints.sequence_steps.step = 1
         constraints.sequence_steps.default = 0
+
+        #constraints.seqence_tracks.max = self.query('SLISt:SEQuence:TRACk:MAX?')
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -424,20 +429,39 @@ class AWG70K(Base, PulserInterface):
                 return -1
 
             # Set event jump trigger
-            self.sequence_set_event_jump(name,
-                                         step,
-                                         seq_params['event_trigger'],
-                                         seq_params['event_jump_to'])
+            if 'event_trigger' in seq_params:
+                self.sequence_set_event_jump(name,
+                                             step,
+                                             seq_params['event_trigger'],
+                                             seq_params['event_jump_to'])
             # Set wait trigger
-            self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
+            if 'wait_for' in seq_params:
+                self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
             # Set repetitions
-            self.sequence_set_repetitions(name, step, seq_params['repetitions'])
+            if 'repetitions' in seq_params:
+                self.sequence_set_repetitions(name, step, seq_params['repetitions'])
             # Set go_to parameter
-            self.sequence_set_goto(name, step, seq_params['go_to'])
+            if 'go_to' in seq_params:
+                if seq_params['go_to'] <= num_steps:
+                    self.sequence_set_goto(name, step, seq_params['go_to'])
+                else:
+                    self.log.error('Assigned "go_to" "{0}" is larger '
+                                   'than the number of steps "{1}".'.format(seq_params['go_to'], num_steps))
+                    return -1
             # Set flag states
-            trigger = seq_params['flag_trigger'] != 'OFF'
-            flag_list = [seq_params['flag_trigger']] if trigger else [seq_params['flag_high']]
-            self.sequence_set_flags(name, step, flag_list, trigger)
+            if 'flag_trigger' in seq_params:
+                if seq_params['flag_trigger'] != 'OFF':
+                    flag_list = [seq_params['flag_trigger']]
+                    self.sequence_set_flags(name, step, flag_list, True)
+                else:
+                    if 'flag_high' in seq_params:
+                        flag_list = [seq_params['flag_high']]
+                        self.sequence_set_flags(name, step, flag_list, False)
+                    else:
+                        self.log.warning('No flag trigger set!')
+            elif 'flag_trigger' not in seq_params and 'flag_high' in seq_params:
+                flag_list = [seq_params['flag_high']]
+                self.sequence_set_flags(name, step, flag_list, False)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -955,22 +979,58 @@ class AWG70K(Base, PulserInterface):
         (amplitude, offset) and (value high, value low)!
         """
         if low is None:
-            low = dict()
+            low = self.get_digital_level()[0]
         if high is None:
-            high = dict()
+            high = self.get_digital_level()[1]
 
         #If you want to check the input use the constraints:
         constraints = self.get_constraints()
+        digital_channels = self._get_all_digital_channels()
 
-        for d_ch, value in low.items():
-            #FIXME: Tell the device the proper digital voltage low value:
-            # self.tell('SOURCE1:MARKER{0}:VOLTAGE:LOW {1}'.format(d_ch, low[d_ch]))
-            pass
+        # Check the constraints for marker high level
+        for key in high:
+            if high[key] < constraints.d_ch_high.min:
+                self.log.warning('Voltages for digital values are too small for high. Setting to minimum value')
+                high[key] = constraints.d_ch_high.min
+            elif high[key] > constraints.d_ch_high.max:
+                self.log.warning('Voltages for digital values are too high for high. Setting to maximum value')
+                high[key] = constraints.d_ch_high.max
 
-        for d_ch, value in high.items():
-            #FIXME: Tell the device the proper digital voltage high value:
-            # self.tell('SOURCE1:MARKER{0}:VOLTAGE:HIGH {1}'.format(d_ch, high[d_ch]))
-            pass
+        # Check the constraints for marker low level
+        for key in low:
+            if low[key] < constraints.d_ch_low.min:
+                self.log.warning('Voltages for digital values are too small for low. Setting to minimum value')
+                low[key] = constraints.d_ch_low.min
+            elif low[key] > constraints.d_ch_low.max:
+                self.log.warning('Voltages for digital values are too high for low. Setting to maximum value')
+                low[key] = constraints.d_ch_low.max
+
+        # Check the difference between marker high and low
+        for key in high:
+            if high[key] - low[key] < 0.5:
+                self.log.warning('Voltage difference is too small. Reducing low voltage level.')
+                low[key] = high[key] - 0.5
+            elif high[key] - low[key] > 1.4:
+                self.log.warning('Voltage difference is too large. Increasing low voltage level.')
+                low[key] = high[key] - 1.4
+
+        # set high marker levels
+        for chnl in high:
+            if chnl not in digital_channels:
+                continue
+            d_ch_number = int(chnl.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:HIGH {2}'.format(a_ch_number, marker_index, high[chnl]))
+        # set low marker levels
+        for chnl in low:
+            if chnl not in digital_channels:
+                continue
+            d_ch_number = int(chnl.rsplit('_ch', 1)[1])
+            a_ch_number = (1 + d_ch_number) // 2
+            marker_index = 2 - (d_ch_number % 2)
+            self.write('SOUR{0:d}:MARK{1:d}:VOLT:LOW {2}'.format(a_ch_number, marker_index, low[chnl]))
+
         return self.get_digital_level()
 
     def get_active_channels(self, ch=None):
