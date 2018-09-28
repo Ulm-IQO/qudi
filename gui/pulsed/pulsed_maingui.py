@@ -2239,10 +2239,13 @@ class PulsedMeasurementGui(GUIBase):
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
 
         # create ErrorBarItems
-        tmp_array = signal_data[0, 1:] - signal_data[0, :-1]
-        beamwidth = tmp_array.min() if tmp_array.min() > 0 else tmp_array.max()
-        del tmp_array
-        beamwidth /= 3
+        try:
+            tmp_array = signal_data[0, 1:] - signal_data[0, :-1]
+            beamwidth = tmp_array.min() if tmp_array.min() > 0 else tmp_array.max()
+            del tmp_array
+            beamwidth /= 3
+        except:
+            beamwidth = 1
         self.signal_image_error_bars.setData(x=signal_data[0],
                                              y=signal_data[1],
                                              top=measurement_error[1],
