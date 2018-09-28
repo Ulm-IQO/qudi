@@ -332,12 +332,14 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         self._command_wait(':ABOR:SWE')
         return 0
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param float timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
         mode, is_running = self.get_status()
         if is_running:
@@ -356,9 +358,9 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
         polarity = self._gpib_connection.query(':TRIG1:SLOP?')
         if 'NEG' in polarity:
-            return TriggerEdge.FALLING
+            return TriggerEdge.FALLING, timing
         else:
-            return TriggerEdge.RISING
+            return TriggerEdge.RISING, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
