@@ -789,7 +789,7 @@ class AWG70K(Base, PulserInterface):
             for chnl in offset:
                 if chnl in chnl_list:
                     ch_num = int(chnl.rsplit('_ch', 1)[1])
-                    off[chnl] = 0.0
+                    off[chnl] = float(self.query('SOUR{0:d}:VOLT:OFFS?'.format(ch_num)))
                 else:
                     self.log.warning('Get analog offset from AWG70k channel "{0}" failed. '
                                      'Channel non-existent.'.format(chnl))
@@ -870,16 +870,16 @@ class AWG70K(Base, PulserInterface):
                     offset[chnl] = constraints.a_ch_offset.max
 
         if amplitude is not None:
-            for a_ch in amplitude:
+            for chnl, amp in amplitude.items():
                 ch_num = int(chnl.rsplit('_ch', 1)[1])
-                self.write('SOUR{0:d}:VOLT:AMPL {1}'.format(ch_num, amplitude[a_ch]))
+                self.write('SOUR{0:d}:VOLT:AMPL {1}'.format(ch_num, amp))
                 while int(self.query('*OPC?')) != 1:
                     time.sleep(0.25)
 
         if offset is not None:
-            for a_ch in offset:
+            for chnl, off in offset.items():
                 ch_num = int(chnl.rsplit('_ch', 1)[1])
-                self.write('SOUR{0:d}:VOLT:OFFSET {1}'.format(ch_num, offset[a_ch]))
+                self.write('SOUR{0:d}:VOLT:OFFSET {1}'.format(ch_num, off))
                 while int(self.query('*OPC?')) != 1:
                     time.sleep(0.25)
         return self.get_analog_level()
