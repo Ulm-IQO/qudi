@@ -18,8 +18,10 @@ Changes/New features:
 * Added installation options guide to the documentation
 * A lot of smaller fixes to the spectrometer (WinSpec) -> this also modifies the connectors in the default config
 * Added fitting to the spectrometer
+* Microwave interface passes trigger timing to microwave source, needs hardware module adjustments for not-in-tree modules
 * Bug fixes and support for SMD12 laser controller
 * New hardware file for Microwave source - Anritsu MG3691C has been added.
+* New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
 * Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
 * Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
@@ -57,6 +59,7 @@ Changes/New features:
     generic. Makes it easier to create new pulse generator modules as long as the hardware can be 
     abstracted to a waveform/sequence terminology.
     * Adapted pulse generator modules to new pulser interface.
+    * Adapted FPGA hardware file to run with new interface.
     * All groups of settings in pulsed logic modules are now represented as dictionaries improving 
     flexibility as well as minimizing necessary code changes when adding new features.
     * Most parameter sets in `PulsedMeasurementLogic` and `SequenceGeneratorLogic` are now 
@@ -178,6 +181,17 @@ the SpectrometerLogic module like:
         fitlogic: 'fitlogic'
     ```
 
+* Tektronix 7000 series is now in file `tektronix_awg7k.py` and class `AWG7k`.
+ Use that instead of `tektronix_awg7122c.py` and change the configuration like this:
+    ```
+    pulser_awg7000:
+        module.Class: 'awg.tektronix_awg7k.AWG7k'
+        awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
+        awg_ip_address: '10.42.0.211'
+        timeout: 60
+
+   ```
+   
 ## Release 0.9
 Released on 6 Mar 2018
 Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.9

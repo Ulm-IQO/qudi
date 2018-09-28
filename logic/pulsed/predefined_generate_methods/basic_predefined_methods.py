@@ -313,8 +313,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-
-
     def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating = True):
         """
 
@@ -397,7 +395,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
 
     def generate_hahnecho(self, name='hahn_echo', tau_start=0.0e-6, tau_step=1.0e-6,
                           num_of_points=50, alternating=True):
@@ -487,8 +484,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
-
 
     def generate_hahnecho_exp(self, name='hahn_echo', tau_start=1.0e-6, tau_end=1.0e-6,
                                  num_of_points=50, alternating=True):
@@ -583,8 +578,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-
-
     def generate_t1(self, name='T1', tau_start=1.0e-6, tau_step=1.0e-6,
                     num_of_points=50, alternating = False):
         """
@@ -647,7 +640,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
 
     def generate_t1_exponential(self, name='T1_exp', tau_start=1.0e-6, tau_end=1.0e-6,
                     num_of_points=50, alternating=False):
@@ -715,7 +707,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
 
     def generate_HHamp(self, name='hh_amp', spinlock_length=20e-6, amp_start=0.05, amp_step=0.01,
                        num_of_points=50):
