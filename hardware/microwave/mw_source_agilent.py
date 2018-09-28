@@ -47,7 +47,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
     _usb_address = ConfigOption('usb_address', missing='error')
     _usb_timeout = ConfigOption('usb_timeout', 100, missing='warn')
 
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
@@ -75,7 +74,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         self._usb_connection.close()
         self.rm.close()
         return
-
 
     def off(self):
         """ Switches off any microwave output.
@@ -154,7 +152,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
                 return_val[ii] = float(self._command_wait(':LIST:RF?'))
         return return_val
 
-
     def cw_on(self):
         """ Switches on any preconfigured microwave output.
 
@@ -228,7 +225,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
             self.log.warning("Turning on of List mode does not work")
             return -1
 
-
     def set_list(self, freq=None, power=None):
         """ There is no list mode for agilent
         # Also the list is created by giving 'start_freq, step, stop_freq'
@@ -296,8 +292,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         mode, dummy = self.get_status()
         return actual_freq, actual_power, mode
 
-
-
     def reset_listpos(self):
         """ Reset of MW List Mode position to start from first given frequency
 
@@ -313,7 +307,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         except:
             self.log.error("Reset of list position did not work")
             return -1
-
 
     def sweep_on(self):
         """ Switches on the list mode.
@@ -341,8 +334,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         except:
             self.log.error("Turning on of sweep mode did not work!")
             return -1
-
-
 
     def set_sweep(self, start, stop, step, power):
         """
@@ -397,28 +388,27 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         while is_running and index < repetitions:
             time.sleep(0.5)
             dummy, is_running = self.get_status()
-            index =+ 1
+            index += 1
 
         index = 0
         self._usb_connection.write(':SWE:RF:STAT OFF')
         while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 0  and index < repetitions:
             time.sleep(0.5)
-            index =+ 1
-
+            index += 1
 
     def _turn_on_output(self,repetitions=10):
         self._usb_connection.write(':SWE:RF:STAT ON')
         index = 0
         while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1 and index < repetitions:
             time.sleep(0.5)
-            index =+ 1
+            index += 1
         self._usb_connection.write(':RFO:STAT ON')
         dummy, is_running = self.get_status()
         index = 0
         while not is_running and index < repetitions:
             time.sleep(0.5)
             dummy, is_running = self.get_status()
-            index =+ 1
+            index += 1
 
     def reset_sweeppos(self):
         """ Reset of MW List Mode position to start from first given frequency
@@ -434,16 +424,15 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         return 0
 
-
-
-    def set_ext_trigger(self, pol=TriggerEdge.FALLING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
-        @param str source: channel name, where external trigger is expected.
         @param str pol: polarisation of the trigger (basically rising edge or
                         falling edge)
+        @param float timing: estimated time between triggers
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
 
         if pol == TriggerEdge.RISING:
@@ -451,16 +440,15 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         elif pol == TriggerEdge.FALLING:
             edge = 'EXTN'
         else:
-            return -1
+            return pol, timing
         try:
             self._usb_connection.write(':SWE:PTRG:SLOP {0}'.format(edge))
             time.sleep(0.5)
             self._usb_connection.write(':SWE:STRG:SLOP {0}'.format(edge))
         except:
             self.log.error("Setting of trigger did not work!")
-            return -1
-        return 0
-
+            return pol, timing
+        return pol, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
@@ -506,7 +494,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         #limits.list_maxstep = limits.max_frequency
         #limits.sweep_maxstep = limits.max_frequency
         return limits
-
 
     def set_power(self, power=0.):
         """ Sets the microwave output power.

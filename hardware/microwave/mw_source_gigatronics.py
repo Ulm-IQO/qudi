@@ -326,15 +326,17 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         mode, is_running = self.get_status()
         return 0 if ('list' in mode) and is_running else -1
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
+        @param float timing: estimated time between triggers
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
-        return TriggerEdge.RISING
+        return TriggerEdge.RISING, timing
 
     def sweep_on(self):
         """ Switches on the sweep mode.
