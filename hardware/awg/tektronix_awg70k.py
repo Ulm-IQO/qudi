@@ -765,7 +765,7 @@ class AWG70K(Base, PulserInterface):
             for chnl in offset:
                 if chnl in chnl_list:
                     ch_num = int(chnl.rsplit('_ch', 1)[1])
-                    off[chnl] = 0.0
+                    off[chnl] = float(self.query('SOUR{0:d}:VOLT:OFFS?'.format(ch_num)))
                 else:
                     self.log.warning('Get analog offset from AWG70k channel "{0}" failed. '
                                      'Channel non-existent.'.format(chnl))
