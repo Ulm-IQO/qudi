@@ -49,7 +49,6 @@ class SingleShotLogic(GenericLogic):
     fitlogic = Connector(interface='FitLogic')
     singleshotreadoutcounter = Connector(interface='SingleShotInterface')
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
-    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 
     # ssr counter settings
     countlength = StatusVar(default=100)
@@ -76,21 +75,7 @@ class SingleShotLogic(GenericLogic):
     _ssr_measurement_information = StatusVar(default=dict())
 
     # notification signals for master module (i.e. GUI)
-    sigssrMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
-    sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
-    sigPulserRunningUpdated = QtCore.Signal(bool)
-    sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
-    sigExtMicrowaveSettingsUpdated = QtCore.Signal(dict)
-    sigFastCounterSettingsUpdated = QtCore.Signal(dict)
-    sigssrMeasurementSettingsUpdated = QtCore.Signal(dict)
-    sigAnalysisSettingsUpdated = QtCore.Signal(dict)
-    sigExtractionSettingsUpdated = QtCore.Signal(dict)
-    # Internal signals
-    sigStartTimer = QtCore.Signal()
-    sigStopTimer = QtCore.Signal()
-
     sigStatusSSRUpdated = QtCore.Signal(bool)
     sigSSRCounterSettingsUpdated = QtCore.Signal(dict)
     sigNumBinsUpdated = QtCore.Signal(int)
@@ -102,6 +87,14 @@ class SingleShotLogic(GenericLogic):
     sigTraceUpdated = QtCore.Signal(np.ndarray, np.ndarray, float, float, int)
     sigHistogramUpdated = QtCore.Signal(np.ndarray)
     sigFitUpdated = QtCore.Signal(dict)
+
+
+
+    # Internal signals
+    sigStartTimer = QtCore.Signal()
+    sigStopTimer = QtCore.Signal()
+
+
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -132,7 +125,6 @@ class SingleShotLogic(GenericLogic):
 
 
 
-
         self._saved_raw_data = OrderedDict()  # temporary saved raw data
         self._recalled_raw_data_tag = None  # the currently recalled raw data dict key
 
@@ -143,7 +135,6 @@ class SingleShotLogic(GenericLogic):
         # for fit:
         self.fc = None  # Fit container
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
-
 
         return
 
@@ -284,7 +275,7 @@ class SingleShotLogic(GenericLogic):
                 # Lock module state
                 self.module_state.lock()
 
-                self.pulsedmeasurementlogic().start_simple_pulsed_measurement(stashed_raw_data_tag)
+                self.pulsedmeasurementlogic().start_pulsed_measurement(stashed_raw_data_tag)
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
@@ -309,7 +300,7 @@ class SingleShotLogic(GenericLogic):
             pass
         with self._threadlock:
             if self.module_state() == 'locked':
-                self.pulsedmeasurementlogic().stop_simple_pulsed_measurement(stash_raw_data_tag)
+                self.pulsedmeasurementlogic().stop_pulsed_measurement(stash_raw_data_tag)
                 self.sigStopTimer.emit()
                 self.module_state.unlock()
                 # update status
@@ -423,7 +414,6 @@ class SingleShotLogic(GenericLogic):
 
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
                                       self.timer_interval)
-        return
 
         self.timer_interval = analysis_period
         self.__analysis_timer.setInterval(round(1000. * self.timer_interval))
@@ -816,7 +806,7 @@ class SingleShotLogic(GenericLogic):
     ############################################################################
     def save_measurement(self, save_tag):
 
-        filepath = self.savelogic().get_path_for_module('PulsedMeasurement')
+        filepath = self.savelogic().get_path_for_module('SSR')
         timestamp = datetime.datetime.now()
 
         data = OrderedDict()
