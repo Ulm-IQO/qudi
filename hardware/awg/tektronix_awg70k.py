@@ -374,8 +374,12 @@ class AWG70K(Base, PulserInterface):
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
                 self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
             # Wait for everything to complete
-            while int(self.query('*OPC?')) != 1:
-                time.sleep(0.25)
+            opc = 0
+            while opc != 1:
+                try:
+                    opc = int(self.query('*OPC?'))
+                except:
+                    opc = 0
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.25)
