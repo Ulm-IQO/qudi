@@ -44,17 +44,15 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     http://www.spincore.com/support/spinapi/reference/production/2013-09-25/index.html
 
-    or for an other version (not recommended):
-    http://www.spincore.com/support/spinapi/reference/production/2010-07-14/index.html
-
     The recommended version for the manual is the PDF file from SpinCore:
-    http://www.spincore.com/CD/PulseBlasterESR/SP4/PBESR-Pro_Manual.pdf
+        http://www.spincore.com/CD/PulseBlasterESR/SP4/PBESR-Pro_Manual.pdf
 
     Another manual describes the functions a bit better:
         http://spincore.com/CD/PulseBlasterESR/SP1/PBESR_Manual.pdf
 
-    The SpinCore programming library spinapi.DLL is written in C and its data
-    types correspond to standard C/C++ data types as follows:
+    The SpinCore programming library (spinapi.dll, spinapi64.dll, libspinapi.so 
+    or libspinapi64.so) is written in C and its data types correspond to 
+    standard C/C++ data types as follows:
 
             char                    8 bit, byte (or characters in ASCII)
             short int               16 bit signed integer
@@ -66,7 +64,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             float                   32 bit floating point number
             double                  64 bit floating point number
 
-    Example config for copy paste:
+    Example config for copy-paste:
 
         pulseblaster:
             module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
@@ -77,7 +75,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                                             # optimize the memory used on the device.
             #library_file: 'spinapi64.dll'  # optional, name of the library file
                                             # or  whole path to the file
-
 
     Remark to the config values:
         library_file: if the library does not lay in the default directory of
@@ -134,8 +131,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     # ON = 0xE00000  # = 7<<21, in order to have '0b111000000000000000000000'
 
     # The Short Pulse feature utilizes the upper three bits of the instruction
-    # flag output bits (bits 21 to 23) to control the number of clock cycles
-    # output flags are enabled.
+    # flag output bits (bits 21 to 23) to control the number of clock cycles.
 
     # Flags for Spin API  | Bits 21-23  | Clock periods | Pulse length (ns) @ 500MHz
     #                       # 000       |       -       | Always low
@@ -146,14 +142,21 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     FIVE_PERIOD = 0xA00000  # 101       |       5       | 10
     ON = 0xE00000           # 111       |      > 5      | No short pulse
 
-    # Therefore, if the instruction has to be shorted than 10ns, the
-    # special period flags have to be used, but the minimal instruction length
-    # of 10ns should be used. Otherwise, if the length is greater than 10ns the
-    # ON flag needs to be used.
+    # The length of the short pulse cannot be shorter than 10ns, however, with 
+    # the instruction flags above, it can be specified how many clock cycles are
+    # set to HIGH within the minimal instruction length from the beginning. 
+    # All other clock cycles of the 10ns pulse will be set to LOW.
+    # Otherwise, if the length of the pulse is greater than 10ns the ON flag 
+    # needs to be specified.
+    #
+    # This instruction might only be used for some old boards
     SIX_PERIOD = 0xC00000   # 110 => used for some old boards
-
+    #
     # To understand the usage of those flags, please refer to the manual on
     # p. 28, Fig. 16 (for the manual version 2017/09/04).
+    #
+    # NOTE: The short pulse flags are not used in this file, but are implemented 
+    #       for potential future use.
 
     # Useful Constants for Output Pattern and Control Word, max size is 24bits
     ALL_FLAGS_ON = 0x1FFFFF   # set bits 0-20 to 1
@@ -247,8 +250,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             return -1
 
         self._lib = ctypes.cdll.LoadLibrary(lib_path)
-
-        # self._lib = ctypes.cdll.LoadLibrary(lib_path)
         self.log.debug('SpinCore library loaded from: {0}'.format(lib_path))
         self.open_connection()
 
@@ -286,8 +287,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             err_str = self.get_error_string()
 
-            # Catch a very specific error code, where the error is normally not
-            # provided, just in the debug mode.
+            # Catch a very specific error code, which is not proviced by the 
+            # documentation. The error text of this error value appears only in 
+            # the debug mode. Return the required error message.
             if func_val == -91 and err_str == '':
 
                 err_str = ('Instruction length is shorter then the minimal '
