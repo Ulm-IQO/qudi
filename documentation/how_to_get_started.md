@@ -25,6 +25,11 @@ on a machine that have access to the instruments.
 The basic installation is exactly the same as for the test machine.
 
 Once you have done this, you will need to configure Qudi to your requirements.
+It is best to create a `config/local` directory to hold your site-specific config files.
+An `app_status` folder is created in the directory of the active config file, and this 
+directory holds saved status variables that allow Qudi to restore to the previous state
+after shutdown. Some modules may have different values (number of channels, etc) for different
+config files, and so it is important to have a subdirectory for each config file.
 
 #### Basic Configuration
 
@@ -55,7 +60,7 @@ For now, you can refer to [National Instrument X Series Hardware] to understand 
 
 ## Other modules
 
-Qudi now have a lot of other modules and capabilities. We won't go through all of them here, we're just going to cite
+Qudi now has a lot of other modules and capabilities. We won't go through all of them here, we're just going to cite
 some of them. To find out about all of them, you will need to go through the documentation and might need to dive into
 the Python code.
 - [ODMR] (Continous wave, sweep or list)
