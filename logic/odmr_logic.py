@@ -34,6 +34,7 @@ from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
 
+
 class ODMRLogic(GenericLogic):
 
     """This is the Logic class for ODMR."""
@@ -104,7 +105,7 @@ class ODMRLogic(GenericLogic):
         # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
         # theoretically this can be changed, but the current counting scheme will not support that
         self.mw_trigger_pol = TriggerEdge.RISING
-        self.set_trigger_pol(self.mw_trigger_pol)
+        self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
 
         # Elapsed measurement time and number of sweeps
         self.elapsed_time = 0.0
@@ -208,18 +209,19 @@ class ODMRLogic(GenericLogic):
         self.sigOdmrFitUpdated.emit(self.odmr_fit_x, self.odmr_fit_y, {}, current_fit)
         return
 
-    def set_trigger_pol(self, trigger_pol):
+    def set_trigger(self, trigger_pol, frequency):
         """
         Set trigger polarity of external microwave trigger (for list and sweep mode).
 
         @param object trigger_pol: one of [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @param float frequency: trigger frequency during ODMR scan
 
         @return object: actually set trigger polarity returned from hardware
         """
         if self.module_state() != 'locked':
-            self.mw_trigger_pol = self._mw_device.set_ext_trigger(trigger_pol)
+            self.mw_trigger_pol, triggertime = self._mw_device.set_ext_trigger(trigger_pol, 1/frequency)
         else:
-            self.log.warning('set_trigger_pol failed. Logic is locked.')
+            self.log.warning('set_trigger failed. Logic is locked.')
 
         update_dict = {'trigger_pol': self.mw_trigger_pol}
         self.sigParameterUpdated.emit(update_dict)
@@ -388,10 +390,18 @@ class ODMRLogic(GenericLogic):
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         else:
-            freq_list = np.arange(self.mw_start, self.mw_stop + self.mw_step, self.mw_step)
+            # adjust the end frequency in order to have an integer multiple of step size
+            # The master module (i.e. GUI) will be notified about the changed end frequency
+            num_steps = int(np.rint((self.mw_stop - self.mw_start) / self.mw_step))
+            end_freq = self.mw_start + num_steps * self.mw_step
+            freq_list = np.linspace(self.mw_start, end_freq, num_steps + 1)
             freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(freq_list,
                                                                             self.sweep_mw_power)
-            param_dict = {'sweep_mw_power': self.sweep_mw_power}
+            self.mw_start = freq_list[0]
+            self.mw_stop = freq_list[-1]
+            self.mw_step = (self.mw_stop - self.mw_start) / (len(freq_list) - 1)
+            param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
+                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
         self.sigParameterUpdated.emit(param_dict)
 
         if mode != 'list' and mode != 'sweep':
@@ -438,6 +448,7 @@ class ODMRLogic(GenericLogic):
 
         @return int: error code (0:OK, -1:error)
         """
+
         clock_status = self._odmr_counter.set_up_odmr_clock(clock_frequency=self.clock_frequency)
         if clock_status < 0:
             return -1
@@ -475,6 +486,8 @@ class ODMRLogic(GenericLogic):
             if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
+
+            self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
 
             self.module_state.lock()
             self._clearOdmrData = False
@@ -524,6 +537,8 @@ class ODMRLogic(GenericLogic):
             if self.module_state() == 'locked':
                 self.log.error('Can not start ODMR scan. Logic is already locked.')
                 return -1
+
+            self.set_trigger(self.mw_trigger_pol, self.clock_frequency)
 
             self.module_state.lock()
             self.stopRequested = False
@@ -604,7 +619,7 @@ class ODMRLogic(GenericLogic):
 
             # Add new count data to mean signal
             if self._clearOdmrData:
-                self.odmr_plot_y[:, :, :] = 0
+                self.odmr_plot_y[:, :] = 0
             self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
                 self.elapsed_sweeps + 1)
 

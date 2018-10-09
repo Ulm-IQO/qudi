@@ -87,6 +87,45 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
 
         return signal_data, error_data
 
+    def analyse_sum(self, laser_data, signal_start=0.0, signal_end=200e-9):
+        """
+        @param laser_data:
+        @param signal_start:
+        @param signal_end:
+        @return:
+        """
+        # Get number of lasers
+        num_of_lasers = laser_data.shape[0]
+        # Get counter bin width
+        bin_width = self.fast_counter_settings.get('bin_width')
+
+        if not isinstance(bin_width, float):
+            return np.zeros(num_of_lasers), np.zeros(num_of_lasers)
+
+        # Convert the times in seconds to bins (i.e. array indices)
+        signal_start_bin = round(signal_start / bin_width)
+        signal_end_bin = round(signal_end / bin_width)
+
+        # initialize data arrays for signal and measurement error
+        signal_data = np.empty(num_of_lasers, dtype=float)
+        error_data = np.empty(num_of_lasers, dtype=float)
+
+        # loop over all laser pulses and analyze them
+        for ii, laser_arr in enumerate(laser_data):
+            # calculate the sum of the data in the signal window
+            signal = laser_arr[signal_start_bin:signal_end_bin].sum()
+            signal_error = np.sqrt(signal)
+
+            # Avoid numpy C type variables overflow and NaN values
+            if signal < 0 or signal != signal:
+                signal_data[ii] = 0.0
+                error_data[ii] = 0.0
+            else:
+                signal_data[ii] = signal
+                error_data[ii] = signal_error
+
+        return signal_data, error_data
+
     def analyse_mean(self, laser_data, signal_start=0.0, signal_end=200e-9):
         """
 
@@ -113,15 +152,17 @@ class BasicPulseAnalyzer(PulseAnalyzerBase):
 
         # loop over all laser pulses and analyze them
         for ii, laser_arr in enumerate(laser_data):
-            # calculate the sum and mean of the data in the signal window
-            signal_mean = laser_arr[signal_start_bin:signal_end_bin].mean()
+            # calculate the mean of the data in the signal window
+            signal = laser_arr[signal_start_bin:signal_end_bin].mean()
+            signal_sum = laser_arr[signal_start_bin:signal_end_bin].sum()
+            signal_error = np.sqrt(signal_sum) / (signal_end_bin - signal_start_bin)
 
             # Avoid numpy C type variables overflow and NaN values
-            if signal_mean < 0 or signal_mean != signal_mean:
+            if signal < 0 or signal != signal:
                 signal_data[ii] = 0.0
                 error_data[ii] = 0.0
             else:
-                signal_data[ii] = signal_mean
-                error_data[ii] = np.sqrt(signal_mean)
+                signal_data[ii] = signal
+                error_data[ii] = signal_error
 
         return signal_data, error_data

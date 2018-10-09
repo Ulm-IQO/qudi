@@ -12,7 +12,9 @@ automatically includes the function together with its custom parameter set.
 ## Architecture
 Each sampling function is a child class of `SamplingBase`. 
 The base class provides methods to save and restore sampling function instances using _qudi_ 
-StatusVars.
+StatusVars. It also provides the logging module to be used in the same way as in qudi modules. 
+So you can call for example `self.log.error('My awesome error message!')` from your sampling 
+function class.
 
 Each `PulseBlockElement` instance created will contain as many sampling function instances as analog
 channels active. During initialization the sampling function instance will receive a desired set of 
@@ -38,7 +40,7 @@ An additional import path can be set using the `ConfigOption` `additional_sampli
 
 ## Class signature
 Each sampling function class must meet the following requirements:
-* The **ONLY** parent class must be `SamplingBase`
+* The parent class must be `SamplingBase` or another sampling function class
 * `__init__` method must have all function parameters as optional keyword arguments.
 * The class attribute `params` must be specified for all parameters 
 (see `basic_sampling_functions.py` as example)
@@ -47,16 +49,16 @@ The attributes for each parameter are:
     * `'init'` (The default value of the parameter)
     * `'min'` (The minimum allowed value of the parameter)
     * `'max'` (The maximum allowed value of the parameter)
-    * `'type'` (The python type of the parameter. allowed types: `int`, `float`, `str`, `bool`)
+    * `'type'` (The python type of the parameter. allowed types: `int`, `float`, `str`, `bool` and Enum subclass)
 * If a parameter is not given in a call to `__init__`, it must be set using its default value 
 defined in `params`
-* Allowed parameter types are `int`, `float`, `str` and `bool`. 
+* Allowed parameter types are `int`, `float`, `str`, `bool` and subclasses of Enum (see example). 
 Depending on the type the GUI will automatically create the proper input widget.
 * Must implement a method `get_samples` which has only one argument `time_array`. This function will
 calculate and return the analog voltages corresponding to the time bins provided by `time_array`.
 
 ## Adding new sampling functions procedure
-1. Define a class with `SamplingBase` as the **ONLY** parent class. The class name should be the 
+1. Define a class with `SamplingBase` or another sampling function class as the parent class. The class name should be the 
 function name.
 2. Define all function parameters in `params` dictionary. (see section "Class signature")
 3. Define `__init__` with all parameters as optional arguments. Upon creating an instance the 
@@ -75,13 +77,23 @@ altered unless you intend to contribute your sampling functions to the _qudi_ re
 
 A template for a new sampling function class could look like:
 ```python
+from enum import Enum
+
+
+class Colour(Enum):
+    red = 1
+    green = 2
+    blue = 3
+
+
 class MyFunc(SamplingBase):
     """ Description goes here """
     params = OrderedDict()
     params['my_float_param'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['my_int_param'] = {'unit': '', 'init': 0, 'min': 0, 'max': 42, 'type': int}
+    params['my_enum_param'] = {'unit': '', 'init': Colour.green, 'min': Colour.red, 'max': Colour.blue, 'type': Colour}
     
-    def __init__(self, my_float_param=None, my_int_param=None):
+    def __init__(self, my_float_param=None, my_int_param=None, my_enum_param=None):
         if my_float_param is None:
             self.my_float_param = params['my_float_param']['init']
         else:
@@ -90,6 +102,10 @@ class MyFunc(SamplingBase):
             self.my_int_param = params['my_int_param']['init']
         else:
             self.my_int_param = my_int_param
+        if my_enum_param is None:
+            self.my_enum_param = params['my_enum_param']['init']
+        else:
+            self.my_enum_param = my_enum_param
         return
 
     def get_samples(self, time_array):
@@ -97,5 +113,11 @@ class MyFunc(SamplingBase):
         return np.zeros(time_array.size)
         
     def _some_helper_method(self):
+        self.log.info('I am just some helper method and I have just been called.')
         pass
+        
+
+class MyFuncWithNewName(MyFunc):
+    """ This is the same sampling function as MyFunc but it is now called MyFuncWithNewName """
+    pass
 ```

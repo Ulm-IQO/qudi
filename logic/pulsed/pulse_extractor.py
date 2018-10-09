@@ -271,7 +271,8 @@ class PulseExtractor(PulseExtractorBase):
                            os.path.isfile(os.path.join(path, name)) and name.endswith('.py')]
 
             # append import path to sys.path
-            sys.path.append(path)
+            if path not in sys.path:
+                sys.path.append(path)
 
             # Go through all modules and create instances of each class found.
             for module_name in module_list:
