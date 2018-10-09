@@ -160,8 +160,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             stop = float(self._gpib_connection.query(':LIST:FREQ?'))
             self._gpib_connection.write(':LIST:IND 0')
             start = float(self._gpib_connection.query(':LIST:FREQ?'))
-            step = (stop - start) / (stop_index-1)
-            return_val = np.arange(start, stop + step, step)
+            return_val = np.linspace(start, stop, stop_index + 1)
         return return_val
 
     def cw_on(self):
@@ -261,13 +260,10 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:IND 0')
 
         if frequency is not None:
-            s = ' {0:f},'.format(frequency[0])
-            for f in frequency[:-2]:
-                s += ' {0:f},'.format(f)
-            s += ' {0:f}'.format(frequency[-1])
-            self._gpib_connection.write(':LIST:FREQ' + s)
+            s = ', '.join('{0:f}'.format(f) for f in frequency)
+            self._gpib_connection.write(':LIST:FREQ ' + s)
             self._gpib_connection.write(':LIST:STAR 0')
-            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)))
+            self._gpib_connection.write(':LIST:STOP {0:d}'.format(len(frequency)-1))
             self._gpib_connection.write(':LIST:MODE MAN')
             self._gpib_connection.write('*WAI')
             self._command_wait(':LIST:IND 0')
@@ -360,12 +356,14 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._command_wait(':ABORT')
         return 0
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param float timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
         if pol == TriggerEdge.RISING:
             edge = 'POS'
@@ -380,9 +378,9 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         polarity = self._gpib_connection.query(':TRIG:SEQ3:SLOPE?')
         if 'NEG' in polarity:
-            return TriggerEdge.FALLING
+            return TriggerEdge.FALLING, timing
         else:
-            return TriggerEdge.RISING
+            return TriggerEdge.RISING, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

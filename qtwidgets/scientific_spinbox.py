@@ -57,7 +57,8 @@ class FloatValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or when incomplete "[+-]inf"
-        if string.strip() in '+.-.' or re.match(r'[+-]?(in$|i$)', string, re.IGNORECASE):
+        if string.strip() in '+.-.' or string.strip() in list('YZEPTGMkmµunpfazy') or re.match(
+                r'[+-]?(in$|i$)', string, re.IGNORECASE):
             return self.Intermediate, string, position
 
         # Accept input of [+-]inf. Not case sensitive.
@@ -137,7 +138,7 @@ class IntegerValidator(QtGui.QValidator):
                  str: the input string, int: the cursor position
         """
         # Return intermediate status when empty string is passed or cursor is at index 0
-        if not string.strip():
+        if not string.strip() or string.strip() in list('YZEPTGMk'):
             return self.Intermediate, string, position
 
         group_dict = self.get_group_dict(string)
