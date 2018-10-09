@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 
+import ctypes
 import os
 import datetime
 import numpy as np
@@ -68,6 +69,13 @@ class M3202A(Base, PulserInterface):
         self.loaded_waveforms = {}
         # uploaded waveforms, waveform name -> instrument wfm number
         self.written_waveforms = {}
+
+        self.cfg = {
+            'a_ch1': M3202ChannelCfg(),
+            'a_ch2': M3202ChannelCfg(),
+            'a_ch3': M3202ChannelCfg(),
+            'a_ch4': M3202ChannelCfg(),
+        }
 
         constraints = PulserConstraints()
 
@@ -122,7 +130,7 @@ class M3202A(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
         # ToDo: Check how many external triggers are available
-        constraints.event_triggers = []
+        constraints.event_triggers = ['EXT', 'CYCLE']
         constraints.flags = []
 
         constraints.sequence_steps.min = 1
@@ -314,7 +322,7 @@ class M3202A(Base, PulserInterface):
 
         @return float: the sample rate returned from the device (in Hz).
         """
-        return self.awg.clockSetFrequency(sample_rate, 0)
+        return self.awg.clockSetFrequency(sample_rate, ksd1.SD)
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
@@ -551,10 +559,13 @@ class M3202A(Base, PulserInterface):
                 for track, waveform in enumerate(wfm_tuple, 1):
                     # !!!
                     wfm_nr = self.written_waveforms[waveform]
-                    if seq_params['wait_for'] != 'OFF':
-                        self.log.debug('Ch{} Trig EXT'.format(track))
+                    if seq_params['wait_for'] == 'EXT':
                         trig = ksd1.SD_TriggerModes.EXTTRIG
-                        #trig = ksd1.SD_TriggerModes.EXTTRIG_CYCLE
+                        self.log.debug('Ch{} Trig EXT'.format(track))
+
+                    elif seq_params['wait_for'] == 'CYCLE':
+                        trig = ksd1.SD_TriggerModes.EXTTRIG_CYCLE
+                        self.log.debug('Ch{} Trig EXT_CYCLE'.format(track))
                     else:
                         self.log.debug('Ch{} TrigAuto'.format(track))
                         trig = ksd1.SD_TriggerModes.AUTOTRIG
@@ -590,22 +601,11 @@ class M3202A(Base, PulserInterface):
             self.log.debug('QueueSyncMode {}'.format(
                 self.awg.AWGqueueSyncMode(self.__ch_map[a_ch], ksd1.SD_SyncModes.SYNC_CLK10)))
 
-        err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_IN)
-        if err < 0:
-            self.log.error('Error configuring triggers: {} {}'.format(
-                err, ksd1.SD_Error.getErrorMessage(err)))
-
-        #print('trg', self.awg.AWGtriggerExternalConfig(1, 0, 3, 1))
-        #print('trg', self.awg.AWGtriggerExternalConfig(2, 0, 3, 1))
-        #print('trg', self.awg.AWGtriggerExternalConfig(3, 0, 3, 1))
-        #print('trg', self.awg.AWGtriggerExternalConfig(4, 0, 3, 1))
-        #print(self.awg.AWGqueueMarkerConfig(1, ksd1.SD_MarkerModes.START, 0, 1, 1, 0, 2, 0))
-        #print(self.awg.AWGqueueMarkerConfig(2, ksd1.SD_MarkerModes.START, 1, 0, 1, 1, 10, 0))
-        #print(self.awg.AWGqueueMarkerConfig(3, ksd1.SD_MarkerModes.START, 2, 0, 1, 1, 10, 0))
-
         if num_steps == steps_written:
             self.last_sequence = name
             self.loaded_waveforms = wfms_added
+
+        self.set_channel_triggers(active_analog, sequence_parameter_list)
 
         return steps_written
 
@@ -687,15 +687,114 @@ class M3202A(Base, PulserInterface):
         """
         return True
 
-    def _fast_newFromArrayDouble(self, waveform_object, waveform_type, samples):
+    def _fast_newFromArrayDouble(self,wfm, waveformType, waveformDataA, waveformDataB=None):
         """ Reimplement newArrayFromDouble() for numpy arrays for massive speed gains.
         Original signature:
         int SD_Wave::newFromArrayDouble(
             int waveformType, double[] waveformDataA, double[] waveformDataB=0));
 
-        @param object waveform_object: SD1 waveform object
-        @param object waveform_type: SD1 waveform Type
-        @param ndarray samples: array containing samples
+        @param object wfm: SD1 waveform object
+        @param object waveformType: SD1 waveform Type
+        @param ndarray waveformDataA: array containing samples
+        @param ndarray waveformDataB: optional array containing samples
         @return int: id of waveform or error code
         """
-        return waveform_object.newFromArrayDouble(waveform_type, samples)
+
+        c_double_p = ctypes.POINTER(ctypes.c_double)
+        if len(waveformDataA) > 0 and (waveformDataB is None or len(waveformDataA) == len(waveformDataB)):
+            if isinstance(waveformDataA, np.ndarray):
+                print(type(waveformDataA), waveformDataA.dtype)
+                waveform_dataA_C = waveformDataA.ctypes.data_as(c_double_p)
+                length = len(waveformDataA)
+            else:
+                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA);
+                length = waveform_dataA_C._length_
+
+            if waveformDataB is None:
+                waveform_dataB_C = ctypes.c_void_p(0)
+            else:
+                if isinstance(waveformDataB, np.ndarray):
+                    waveform_dataB_C = waveformDataB.ctypes.data_as(c_double_p)
+                else:
+                    waveform_dataB_C = (ctypes.c_double * len(waveformDataB))(*waveformDataB)
+            # print('newFromArray DLL', length, type(waveform_dataA_C), type(waveform_dataB_C))
+
+            wfm._SD_Object__handle = wfm._SD_Object__core_dll.SD_Wave_newFromArrayDouble(
+                waveformType, length, waveform_dataA_C, waveform_dataB_C)
+
+            return wfm._SD_Object__handle
+        else:
+            wfm._SD_Object__handle = 0
+            return ksd1.SD_Error.INVALID_VALUE
+
+    def set_channel_triggers(self, active_channels, sequence_parameter_list):
+        """
+
+        :return:
+        """
+        err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_OUT)
+        if err < 0:
+            self.log.error('Error configuring triggers: {} {}'.format(
+                err, ksd1.SD_Error.getErrorMessage(err)))
+
+        for ch in active_channels:
+            if self.cfg[ch].enable_trigger:
+                trig_err = self.awg.AWGtriggerExternalConfig(
+                    self.__ch_map[ch],
+                    self.cfg[ch].trig_source,
+                    self.cfg[ch].trig_behaviour,
+                    self.cfg[ch].trig_sync
+                )
+                self.log.info('Trig: Ch{} src: {} beh: {} sync: {}'.format(
+                    self.__ch_map[ch],
+                    self.cfg[ch].trig_source,
+                    self.cfg[ch].trig_behaviour,
+                    self.cfg[ch].trig_sync,
+                    trig_err
+                ))
+
+            mark_err = self.awg.AWGqueueMarkerConfig(
+                self.__ch_map[ch],
+                self.cfg[ch].mark_mode,
+                self.cfg[ch].mark_pxi,
+                self.cfg[ch].mark_io,
+                self.cfg[ch].mark_value,
+                self.cfg[ch].mark_sync,
+                self.cfg[ch].mark_length,
+                self.cfg[ch].mark_delay
+            )
+            self.log.info('Ch {} mm: {} pxi: {} io: {} val: {}, sync: {} len: {} delay: {} err: {}'.format(
+                self.__ch_map[ch],
+                self.cfg[ch].mark_mode,
+                self.cfg[ch].mark_pxi,
+                self.cfg[ch].mark_io,
+                self.cfg[ch].mark_value,
+                self.cfg[ch].mark_sync,
+                self.cfg[ch].mark_length,
+                self.cfg[ch].mark_delay,
+                mark_err
+                ))
+
+    def sync_clock(self):
+        err = self.awg.clockResetPhase(1, 0, 0.0)
+        clk = self.awg.clockIOconfig(1)
+        freq = self.awg.clockGetFrequency()
+        sfreq = self.awg.clockGetSyncFrequency()
+        sfreq2 = self.awg.clockSetFrequency(freq)
+        self.log.info('err: {} Clkcfg: {} SyncFreq: {} SyncFreq: {} Freq: {}'.format(err, clk, sfreq, sfreq2, freq))
+
+
+class M3202ChannelCfg:
+    def __init__(self):
+        self.enable_trigger = False
+        self.trig_source = ksd1.SD_TriggerExternalSources.TRIGGER_EXTERN
+        self.trig_behaviour = ksd1.SD_TriggerBehaviors.TRIGGER_RISE
+        self.trig_sync = ksd1.SD_SyncModes.SYNC_CLK10
+
+        self.mark_sync = ksd1.SD_SyncModes.SYNC_CLK10
+        self.mark_mode = ksd1.SD_MarkerModes.DISABLED
+        self.mark_pxi = 0
+        self.mark_io = 0
+        self.mark_value = 1
+        self.mark_length = 10
+        self.mark_delay = 0
