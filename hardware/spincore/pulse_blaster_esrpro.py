@@ -35,9 +35,7 @@ from core.util.mutex import Mutex
 
 
 class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
-    """ STABLE: ALEX
-
-    Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
+    """ Hardware class to control the PulseBlasterESR-PRO card from SpinCore.
 
     This file is compatible with the PCI version SP18A of the PulseBlasterESR.
     The wrapped commands based on the 'spinapi.h' and the 'pulseblaster.h'
@@ -68,21 +66,33 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             float                   32 bit floating point number
             double                  64 bit floating point number
 
-    Example config:
+    Example config for copy paste:
 
         pulseblaster:
             module.Class: 'spincore.pulse_blaster_esrpro.PulseBlasterESRPRO'
-            #library_file: 'spinapi64.dll' # optional, name of the library file or even whole path to the file
-            clock_frequency: 500 # in MHz
+            clock_frequency: 500e6 # in Hz
             min_instr_len: 5    # number of clock cycles for minimal instruction
-                                # normally it is 5 but for some boards it is 6
-                                # or for old boards it might be even 7
-                                # this corresponds to a minimal instruction
-                                # length of  (1/clock_frequency)*min_instr_len
             debug_mode: False   # optional, to set the debug mode on or off.
-            use_smart_pulse_creation: False     # try to optimize the memory
-                                                # used on the device.
+            use_smart_pulse_creation: False # optinal, default is false, try to
+                                            # optimize the memory used on the device.
+            #library_file: 'spinapi64.dll'  # optional, name of the library file
+                                            # or  whole path to the file
 
+
+    Remark to the config values:
+        library_file: if the library does not lay in the default directory of
+                      your OS (for windows it is 'C:/Windows/System32'), then
+                      you need to specify the path.
+        clock_frequency: the Spincore board contains a oscillator crystal, which
+                         is attached to it and whose value cannot be determined
+                         by the hardware. This number should be specified on the
+                         board. The PulseBlasterESR-PRO can have the values
+                         [300e6, 400e6, 500e6]. Select the correct one!
+        min_instr_len:  number of clock cycles for minimal instruction, default
+                        is 5. Normally it is 5 but for some boards it is 6 or
+                        for old boards it might be even 7. This corresponds to
+                        a minimal instruction length of
+                            (1/clock_frequency)*min_instr_len
     """
 
     _modclass = 'PulseBlasterESRPRO'
@@ -515,10 +525,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         converter and the PulseBlaster core operate at the same clock
         frequency.
         """
-
-        # it seems that the spin api has no return value for that function, i.e.
-        # it cannot be detected whether the value was properly set. There is
-        # also no get_core_clock method available. Strange.
 
         clock_freq = clock_freq/1e6
 
