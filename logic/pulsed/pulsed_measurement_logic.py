@@ -619,6 +619,11 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             settings_dict.update(kwargs)
 
+        for key in settings_dict:
+            if key in ['signal_start', 'signal_end', 'norm_start', 'norm_end']:
+                num_bins_fast = round(settings_dict[key]/self.fast_counter_settings['bin_width'])
+                settings_dict[key] = num_bins_fast * self.fast_counter_settings['bin_width']
+
         # Use threadlock to update settings during a running measurement
         with self._threadlock:
             self._pulseanalyzer.analysis_settings = settings_dict
