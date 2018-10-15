@@ -22,9 +22,13 @@ Changes/New features:
 * Bug fixes and support for SMD12 laser controller
 * New hardware file for Microwave source - Anritsu MG3691C has been added.
 * New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
+* New hardware file for AWG - Keysight M3202A 1GS/s 4-channel PXIe AWG
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
 * Extend the windows installation procedure of the conda environment for qudi. The conda environments is selected automatically for the correct windows version and the appropriate environment file is taken.
 * Rewrite the documentation for required python packages for Qudi and mention instead the installation procedure, how to create manually a python environment for qudi.
+* Correct the low level implementation for the PulseBlasterESR-PRO.
+* Implement the pulser interface for PulseBlasterESR-PRO devices.
+* Implement the switch interface for PulseBlasterESR-PRO devices.
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
     * Bug fix for waveform generation larger than ~2 GSamples
