@@ -111,6 +111,7 @@ Changes/New features:
 	  and falling bins in the laser channel which indicate the positions of the laser pulses in 
 	  the ungated trace. For fine-tuning additional delays (for example from AOMs) can be taken 
 	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
+	* Improved pulsed measurement textfile and plot layout for saved data
     
 
 Config changes:
