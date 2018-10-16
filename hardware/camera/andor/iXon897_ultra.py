@@ -421,7 +421,6 @@ class IxonUltra(Base, CameraInterface):
         return ERROR_DICT[error_code]
 
 # setter functions
-
     def _set_shutter(self, typ, mode, closingtime, openingtime):
         """
         @param int typ:   0 Output TTL low signal to open shutter
@@ -436,6 +435,12 @@ class IxonUltra(Base, CameraInterface):
         error_code = self.dll.SetShutter(typ, mode, closingtime, openingtime)
 
         return ERROR_DICT[error_code]
+
+    def _open_shutter(self):
+        return self._set_shutter(0, 1, 0.1, 0.1)
+
+    def _close_shutter(self):
+        return self._set_shutter(0, 0, 0.1, 0.1)
 
     def _set_exposuretime(self, time):
         """
