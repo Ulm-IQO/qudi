@@ -920,6 +920,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.error('Can not set "Delta" as alternative data calculation if measurement is '
                                'not alternating.\n'
                                'Setting to previous type "{0}".'.format(self.alternative_data_type))
+            elif alt_data_type == 'None':
+                self._alternative_data_type = None
             else:
                 self._alternative_data_type = alt_data_type
 
@@ -1185,7 +1187,7 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_laser_pulses'
         else:
             filelabel = 'laser_pulses'
@@ -1193,7 +1195,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         laser_trace = self.laser_data
-        data['Signal (counts)'.format()] = laser_trace.transpose()
+        data['Signal (counts)'] = laser_trace.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1214,22 +1216,33 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_pulsed_measurement'
         else:
             filelabel = 'pulsed_measurement'
 
         # prepare the data in a dict or in an OrderedDict:
-        header_str = 'Controlled variable({0})\tSignal({1})\t'.format(*self._data_units)
+        header_str = 'Controlled variable'
+        if self._data_units[0]:
+            header_str += '({0})'.format(self._data_units[0])
+        header_str += '\tSignal'
+        if self._data_units[1]:
+            header_str += '({0})'.format(self._data_units[1])
         if self._alternating:
-            header_str += 'Signal2({0})'.format(self._data_units[1])
+            header_str += '\tSignal2'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
         if with_error:
-            header_str += 'Error({0})'.format(self._data_units[1])
+            header_str += '\tError'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
             if self._alternating:
-                header_str += 'Error2({0})'.format(self._data_units[1])
+                header_str += '\tError2'
+                if self._data_units[1]:
+                    header_str += '({0})'.format(self._data_units[1])
         data = OrderedDict()
         if with_error:
-            data[header_str] = np.vstack((self.signal_data, self.measurement_error)).transpose()
+            data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
         else:
             data[header_str] = self.signal_data.transpose()
 
@@ -1368,7 +1381,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 y_axis_ft_label = 'Fourier amplitude (arb. u.)'
                 ft_label = 'FT of data trace 1'
             else:
-                x_axis_ft_label = 'controlled variable (' + self._data_units[0] + ')'
+                x_axis_ft_label = 'controlled variable'
+                if self._data_units[0]:
+                    x_axis_ft_label += ' ({0})'.format(self._data_units[0])
                 y_axis_ft_label = 'norm. sig (arb. u.)'
                 ft_label = ''
 
