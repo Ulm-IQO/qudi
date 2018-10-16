@@ -1361,7 +1361,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the alternative data plot
-        if self._alternative_data_type:
+        if self._alternative_data_type and self._alternative_data_type != 'None':
 
             # scale the x_axis for plotting
             max_val = np.max(self.signal_alt_data[0])
