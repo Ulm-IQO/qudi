@@ -1390,6 +1390,10 @@ class PulsedMeasurementLogic(GenericLogic):
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
                      label=ft_label)
+            if self._alternating:
+                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+                         linestyle=':', linewidth=0.5, color=colors[3],
+                         label=ft_label.replace('1', '2'))
 
             ax2.set_xlabel(x_axis_ft_label)
             ax2.set_ylabel(y_axis_ft_label)
