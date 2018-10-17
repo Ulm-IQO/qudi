@@ -844,10 +844,16 @@ class PulsedMeasurementGui(GUIBase):
         axis_units = (self._as.ana_param_x_axis_unit_LineEdit.text(),
                       self._as.ana_param_y_axis_unit_LineEdit.text())
 
-        self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
-        self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
-        self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
-        self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        if self.pulsedmasterlogic().alternative_data_type == 'Delta':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
 
         self.pulsedmasterlogic().set_measurement_settings(units=axis_units, labels=axis_labels)
 
@@ -2656,6 +2662,8 @@ class PulsedMeasurementGui(GUIBase):
 
         if second_plot != self.pulsedmasterlogic().alternative_data_type:
             self.pulsedmasterlogic().set_alternative_data_type(second_plot)
+
+        self.update_analysis_settings()
         return
 
     ###########################################################################
