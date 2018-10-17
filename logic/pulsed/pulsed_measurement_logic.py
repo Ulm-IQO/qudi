@@ -1373,7 +1373,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
                 ft_label = 'FT of data trace 1'
             else:
-                if self._data_units[1]:
+                if self._data_units[0]:
                     x_axis_ft_label = '{0} ({1})'.format(self._data_labels[0], self._data_units[0])
                 else:
                     x_axis_ft_label = '{0}'.format(self._data_labels[0])
