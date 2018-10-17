@@ -1283,7 +1283,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         count_length = 0.0
         for k in k_array:
             t1_sequence.append(tau_ensemble.name)
-            t1_sequence[-1].repetitions = k - 1
+            t1_sequence[-1].repetitions = k
             count_length += k * self._get_ensemble_count_length(ensemble=tau_ensemble,
                                                                 created_blocks=created_blocks)
 
