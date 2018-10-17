@@ -823,10 +823,12 @@ class PulsedMeasurementGui(GUIBase):
             self.pulsedmasterlogic().measurement_settings['labels'][1])
         self._as.ana_param_y_axis_unit_LineEdit.setText(
             self.pulsedmasterlogic().measurement_settings['units'][1])
+
         self._as.ana_param_second_plot_x_axis_name_LineEdit.setText(self._ana_param_second_plot_x_axis_name_text)
         self._as.ana_param_second_plot_x_axis_unit_LineEdit.setText(self._ana_param_second_plot_x_axis_unit_text)
         self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._ana_param_second_plot_y_axis_name_text)
         self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._ana_param_second_plot_y_axis_unit_text)
+
         self.update_analysis_settings()
         return
 
@@ -844,27 +846,12 @@ class PulsedMeasurementGui(GUIBase):
         axis_units = (self._as.ana_param_x_axis_unit_LineEdit.text(),
                       self._as.ana_param_y_axis_unit_LineEdit.text())
 
-        if self.pulsedmasterlogic().alternative_data_type == 'Delta':
-            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
-            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
-            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
-            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
-        else:
-            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
-            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
-            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
-            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+        self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+        self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+        self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+        self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
 
         self.pulsedmasterlogic().set_measurement_settings(units=axis_units, labels=axis_labels)
-
-        self._pa.pulse_analysis_second_PlotWidget.setLabel(
-            axis='bottom',
-            text=self._ana_param_second_plot_x_axis_name_text,
-            units=self._ana_param_second_plot_x_axis_unit_text)
-        self._pa.pulse_analysis_second_PlotWidget.setLabel(
-            axis='left',
-            text=self._ana_param_second_plot_y_axis_name_text,
-            units=self._ana_param_second_plot_y_axis_unit_text)
         return
 
     def keep_former_analysis_settings(self):
@@ -2573,6 +2560,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_invoke_settings_CheckBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
+
+        self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
         return
 
     def set_plot_dimensions(self):
@@ -2663,7 +2652,26 @@ class PulsedMeasurementGui(GUIBase):
         if second_plot != self.pulsedmasterlogic().alternative_data_type:
             self.pulsedmasterlogic().set_alternative_data_type(second_plot)
 
-        self.update_analysis_settings()
+        if self.pulsedmasterlogic().alternative_data_type == 'Delta':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='bottom',
+            text=self._ana_param_second_plot_x_axis_name_text,
+            units=self._ana_param_second_plot_x_axis_unit_text)
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='left',
+            text=self._ana_param_second_plot_y_axis_name_text,
+            units=self._ana_param_second_plot_y_axis_unit_text)
+
         return
 
     ###########################################################################
