@@ -624,27 +624,38 @@ class SequenceStep(dict):
                     args = tuple()
                 break
 
+        # Initialize the dict.
+        super().__init__(*args, **kwargs)
         # Check for allowed keys in order to avoid overwriting built-in dict methods and the
         # ensemble name.
         # Also check presence of a valid mandatory "ensemble" entry
-        tmp = dict(*args, **kwargs)
-        if not isinstance(tmp.get('ensemble'), str):
+        if not isinstance(self.get('ensemble'), str):
             raise KeyError('"ensemble" entry of type str must be present in SequenceStep. Either '
                            'include it as dict item or pass it as positional argument in the '
                            'constructor.')
         for attribute in dir(dict):
-            if attribute in tmp:
+            if attribute in self:
                 raise KeyError('It is not allowed to overwrite built-in dict attributes. '
                                'Please use another key than "{0}".'.format(attribute))
 
-        # Initialize the dict and merge namespaces
-        super().__init__(*args, **kwargs)
+        # Merge namespaces (this is where the magic happens)
         self.__dict__ = self
 
         # Add missing default parameters
         for key, default_value in self.__default_parameters.items():
             if key not in self:
                 self[key] = default_value
+        return
+
+    def __setitem__(self, key, value):
+        """
+        Overwrite this method in order to avoid namespace collision with the native dict
+        members/attributes.
+        """
+        if key in dir(dict):
+            raise KeyError('It is not allowed to overwrite built-in dict attributes. '
+                           'Please use another key than "{0}".'.format(key))
+        super().__setitem__(key, value)
         return
 
     def copy(self):
