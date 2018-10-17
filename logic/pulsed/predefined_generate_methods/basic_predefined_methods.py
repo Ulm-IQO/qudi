@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
 
 """
@@ -45,6 +45,9 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+    ################################################################################################
+    #                             Generation methods for waveforms                                 #
+    ################################################################################################
     def generate_laser_on(self, name='laser_on', length=3.0e-6):
         """ Generates Laser on.
 
@@ -1218,4 +1221,92 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    ################################################################################################
+    #                             Generation methods for sequences                                 #
+    ################################################################################################
+    def generate_t1_sequencing(self, name='t1_seq', tau_start=1.0e-6, tau_max=1.0e-3,
+                               num_of_points=10):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # Get logarithmically spaced steps in multiples of tau_start.
+        # Note that the number of points and the position of the last point can change here.
+        k_array = np.unique(
+            np.rint(np.logspace(0., np.log10(tau_max / tau_start), num_of_points)).astype(int))
+        # get tau array for measurement ticks
+        tau_array = k_array * tau_start
+
+        # Create the readout PulseBlockEnsemble
+        # Get necessary PulseBlockElements
+        laser_element = self._get_laser_gate_element(length=self.laser_length,  increment=0)
+        delay_element = self._get_delay_gate_element()
+        # Create PulseBlock and append PulseBlockElements
+        readout_block = PulseBlock(name='{0}_readout'.format(name))
+        readout_block.append(laser_element)
+        readout_block.append(delay_element)
+        created_blocks.append(readout_block)
+        # Create PulseBlockEnsemble and append block to it
+        readout_ensemble = PulseBlockEnsemble(name='{0}_readout'.format(name), rotating_frame=False)
+        readout_ensemble.append((readout_block.name, 0))
+        created_ensembles.append(readout_ensemble)
+
+        # Create the tau/waiting PulseBlockEnsemble
+        # Get tau PulseBlockElement
+        tau_element = self._get_idle_element(length=tau_start, increment=0)
+        # Create PulseBlock and append PulseBlockElements
+        tau_block = PulseBlock(name='{0}_tau'.format(name))
+        tau_block.append(tau_element)
+        created_blocks.append(tau_block)
+        # Create PulseBlockEnsemble and append block to it
+        tau_ensemble = PulseBlockEnsemble(name='{0}_tau'.format(name), rotating_frame=False)
+        tau_ensemble.append((tau_block.name, 0))
+        created_ensembles.append(tau_ensemble)
+
+        # Create the sync trigger PulseBlockEnsemble if needed
+        if self.sync_channel:
+            sync_block = PulseBlock(name='sync_trigger')
+            sync_block.append(self._get_sync_element())
+            created_blocks.append(sync_block)
+            sync_ensemble = PulseBlockEnsemble(name='sync_trigger', rotating_frame=False)
+            sync_ensemble.append((sync_block.name, 0))
+            created_ensembles.append(sync_ensemble)
+
+        # Create the PulseSequence and append the PulseBlockEnsemble names as sequence steps
+        # together with the necessary parameters.
+        t1_sequence = PulseSequence(name=name, rotating_frame=False)
+        count_length = 0.0
+        for k in k_array:
+            t1_sequence.append(tau_ensemble.name)
+            t1_sequence[-1].repetitions = k - 1
+            count_length += k * self._get_ensemble_count_length(ensemble=tau_ensemble,
+                                                                created_blocks=created_blocks)
+
+            t1_sequence.append(readout_ensemble.name)
+            count_length += self._get_ensemble_count_length(ensemble=readout_ensemble,
+                                                            created_blocks=created_blocks)
+        if self.sync_channel:
+            t1_sequence.append(sync_ensemble.name)
+            t1_sequence[-1].go_to = 1
+            count_length += self._get_ensemble_count_length(ensemble=sync_ensemble,
+                                                            created_blocks=created_blocks)
+
+        # Trigger the calculation of parameters in the PulseSequence instance
+        t1_sequence.refresh_parameters()
+
+        # add metadata to invoke settings later on
+        t1_sequence.measurement_information['alternating'] = False
+        t1_sequence.measurement_information['laser_ignore_list'] = list()
+        t1_sequence.measurement_information['controlled_variable'] = tau_array
+        t1_sequence.measurement_information['units'] = ('s', '')
+        t1_sequence.measurement_information['number_of_lasers'] = len(tau_array)
+        t1_sequence.measurement_information['counting_length'] = count_length
+
+        # Append PulseSequence to created_sequences list
+        created_sequences.append(t1_sequence)
         return created_blocks, created_ensembles, created_sequences
