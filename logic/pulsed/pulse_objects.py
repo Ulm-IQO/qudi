@@ -603,7 +603,7 @@ class SequenceStep(dict):
         mystep.repetitions = 0
     """
 
-    __default_parameters = {'repetitions': 0,
+    __default_parameters = {'repetitions': 1,
                             'go_to': -1,
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
@@ -683,9 +683,9 @@ class PulseSequence(object):
                                           according parameter (as item).
                                           Available parameters are:
                                           'repetitions': The number of repetitions for that sequence
-                                                         step. (Default 0)
-                                                         0 meaning the step is played once.
-                                                         Set to -1 for infinite looping.
+                                                         step. (Default 1)
+                                                         1 meaning the step is played once.
+                                                         Set to -1 or 0 for infinite looping.
                                           'go_to':   The sequence step index to jump to after
                                                      having played all repetitions. (Default -1)
                                                      Indices starting at 1 for first step.
@@ -710,7 +710,7 @@ class PulseSequence(object):
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
-                                            seq_param = {'repetitions': 41}
+                                            seq_param = {'repetitions': 42}
                                           and so the respective sequence step will play 42 times.
         @param bool rotating_frame: indicates, whether the phase has to be preserved in all
                                     analog signals ACROSS different waveforms
@@ -741,7 +741,7 @@ class PulseSequence(object):
     def refresh_parameters(self):
         self.is_finite = True
         for sequence_step in self.ensemble_list:
-            if sequence_step.repetitions < 0:
+            if sequence_step.repetitions <= 0:
                 self.is_finite = False
                 break
         return
@@ -799,9 +799,9 @@ class PulseSequence(object):
                                 '\t- a dict containing the sequence parameters including the '
                                 'PulseBlockEnsemble name')
 
-            if value.repetitions < 0:
+            if value.repetitions <= 0:
                 self.is_finite = False
-            elif not self.is_finite and self[key].repetitions < 0:
+            elif not self.is_finite and self[key].repetitions <= 0:
                 stage_refresh = True
         elif isinstance(key, slice):
             if isinstance(value[0], (str, dict)):
@@ -824,7 +824,7 @@ class PulseSequence(object):
                                     '\t- a dict containing the sequence parameters including the '
                                     'PulseBlockEnsemble name')
 
-                if element.repetitions < 0:
+                if element.repetitions <= 0:
                     self.is_finite = False
                 elif not self.is_finite:
                     stage_refresh = True
@@ -841,11 +841,11 @@ class PulseSequence(object):
         if isinstance(key, slice):
             stage_refresh = False
             for element in self.ensemble_list[key]:
-                if element.repetitions < 0:
+                if element.repetitions <= 0:
                     stage_refresh = True
                     break
         elif isinstance(key, int):
-            stage_refresh = self.ensemble_list[key].repetitions < 0
+            stage_refresh = self.ensemble_list[key].repetitions <= 0
         else:
             raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
         del self.ensemble_list[key]
@@ -875,7 +875,7 @@ class PulseSequence(object):
 
         self.sampling_information = dict()
         self.measurement_information = dict()
-        if self.ensemble_list[position].repetitions < 0:
+        if self.ensemble_list[position].repetitions <= 0:
             stage_refresh = True
         popped_element = self.ensemble_list.pop(position)
         if stage_refresh:
@@ -914,7 +914,7 @@ class PulseSequence(object):
             raise IndexError('PulseSequence ensemble list index out of range')
 
         self.ensemble_list.insert(position, element)
-        if element.repetitions < 0:
+        if element.repetitions <= 0:
             self.is_finite = False
         self.sampling_information = dict()
         self.measurement_information = dict()
