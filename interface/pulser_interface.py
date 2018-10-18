@@ -49,7 +49,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         If still additional constraints are needed, then they have to be added to the
         PulserConstraints class.
 
-        Each scalar parameter is an ScalarConstraints object defined in cor.util.interfaces.
+        Each scalar parameter is an ScalarConstraints object defined in core.util.interfaces.
         Essentially it contains min/max values as well as min step size, default value and unit of
         the parameter.
 
@@ -155,10 +155,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def load_waveform(self, load_dict):
         """ Loads a waveform to the specified channel of the pulsing device.
 
-        @param dict|list load_dict: a dictionary with keys being one of the
-                                    available channel index and values being the
-                                    name of the already written waveform to load
-                                    into the channel. Examples:
+        @param dict|list load_dict: a dictionary with keys being one of the available channel
+                                    index and values being the name of the already written
+                                    waveform to load into the channel.
+                                    Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                {1: rabi_ch2, 2: rabi_ch1}
+                                    If just a list of waveform names if given, the channel
+                                    association will be invoked from the channel
+                                    suffix '_ch1', '_ch2' etc.
 
                                         {1: rabi_ch1, 2: rabi_ch2}
                                     or
@@ -194,14 +198,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         For a device without mass memory this will make the waveform/pattern that has been
         previously written with self.write_waveform ready to play.
 
-        @param sequence_name:  dict|list, a dictionary with keys being one of the available channel
-                                      index and values being the name of the already written
-                                      waveform to load into the channel.
-                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
-                                                  {1: rabi_ch2, 2: rabi_ch1}
-                                      If just a list of waveform names if given, the channel
-                                      association will be invoked from the channel
-                                      suffix '_ch1', '_ch2' etc.
+        @param dict|list sequence_name: a dictionary with keys being one of the available channel
+                                        index and values being the name of the already written
+                                        waveform to load into the channel.
+                                        Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                    {1: rabi_ch2, 2: rabi_ch1}
+                                        If just a list of waveform names if given, the channel
+                                        association will be invoked from the channel
+                                        suffix '_ch1', '_ch2' etc.
 
         @return dict: Dictionary containing the actually loaded waveforms per channel.
         """
@@ -234,7 +238,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
 
-        @return (int, dict): tuple with an interger value of the current status and a corresponding
+        @return (int, dict): tuple with an integer value of the current status and a corresponding
                              dictionary containing status description for all the possible status
                              variables of the pulse generator hardware.
         """
@@ -444,8 +448,8 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         Write a new sequence on the device memory.
 
-        @param name: str, the name of the waveform to be created/append to
-        @param sequence_parameters: dict, dictionary containing the parameters for a sequence
+        @param str name: the name of the waveform to be created/append to
+        @param dict sequence_parameters: dictionary containing the parameters for a sequence
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
