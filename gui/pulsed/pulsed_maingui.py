@@ -815,14 +815,20 @@ class PulsedMeasurementGui(GUIBase):
         """
         Initialize the settings dialog for 'Analysis' Tab.
         """
-        self._as.ana_param_x_axis_name_LineEdit.setText(self._ana_param_x_axis_name_text)
-        self._as.ana_param_x_axis_unit_LineEdit.setText(self._ana_param_x_axis_unit_text)
-        self._as.ana_param_y_axis_name_LineEdit.setText(self._ana_param_y_axis_name_text)
-        self._as.ana_param_y_axis_unit_LineEdit.setText(self._ana_param_y_axis_unit_text)
+        self._as.ana_param_x_axis_name_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['labels'][0])
+        self._as.ana_param_x_axis_unit_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['units'][0])
+        self._as.ana_param_y_axis_name_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['labels'][1])
+        self._as.ana_param_y_axis_unit_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['units'][1])
+
         self._as.ana_param_second_plot_x_axis_name_LineEdit.setText(self._ana_param_second_plot_x_axis_name_text)
         self._as.ana_param_second_plot_x_axis_unit_LineEdit.setText(self._ana_param_second_plot_x_axis_unit_text)
         self._as.ana_param_second_plot_y_axis_name_LineEdit.setText(self._ana_param_second_plot_y_axis_name_text)
         self._as.ana_param_second_plot_y_axis_unit_LineEdit.setText(self._ana_param_second_plot_y_axis_unit_text)
+
         self.update_analysis_settings()
         return
 
@@ -835,48 +841,29 @@ class PulsedMeasurementGui(GUIBase):
 
     def update_analysis_settings(self):
         """ Apply the new settings """
-        self._ana_param_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
-        self._ana_param_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
-        self._ana_param_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
-        self._ana_param_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
+        axis_labels = (self._as.ana_param_x_axis_name_LineEdit.text(),
+                       self._as.ana_param_y_axis_name_LineEdit.text())
+        axis_units = (self._as.ana_param_x_axis_unit_LineEdit.text(),
+                      self._as.ana_param_y_axis_unit_LineEdit.text())
 
         self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
         self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
         self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
         self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
 
-        self._pa.pulse_analysis_PlotWidget.setLabel(
-            axis='bottom',
-            text=self._ana_param_x_axis_name_text,
-            units=self._ana_param_x_axis_unit_text)
-        self._pa.pulse_analysis_PlotWidget.setLabel(
-            axis='left',
-            text=self._ana_param_y_axis_name_text,
-            units=self._ana_param_y_axis_unit_text)
-        self._pa.pulse_analysis_second_PlotWidget.setLabel(
-            axis='bottom',
-            text=self._ana_param_second_plot_x_axis_name_text,
-            units=self._ana_param_second_plot_x_axis_unit_text)
-        self._pa.pulse_analysis_second_PlotWidget.setLabel(
-            axis='left',
-            text=self._ana_param_second_plot_y_axis_name_text,
-            units=self._ana_param_second_plot_y_axis_unit_text)
-        self._pe.measuring_error_PlotWidget.setLabel(
-            axis='bottom',
-            text=self._ana_param_x_axis_name_text,
-            units=self._ana_param_x_axis_unit_text)
-
-        # FIXME: Not very elegant
-        self.pulsedmasterlogic().fit_container.set_units(
-            [self._ana_param_x_axis_unit_text, self._ana_param_y_axis_unit_text])
+        self.pulsedmasterlogic().set_measurement_settings(units=axis_units, labels=axis_labels)
         return
 
     def keep_former_analysis_settings(self):
         """ Keep the old settings """
-        self._as.ana_param_x_axis_name_LineEdit.setText(self._ana_param_x_axis_name_text)
-        self._as.ana_param_x_axis_unit_LineEdit.setText(self._ana_param_x_axis_unit_text)
-        self._as.ana_param_y_axis_name_LineEdit.setText(self._ana_param_y_axis_name_text)
-        self._as.ana_param_y_axis_unit_LineEdit.setText(self._ana_param_y_axis_unit_text)
+        self._as.ana_param_x_axis_name_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['labels'][0])
+        self._as.ana_param_x_axis_unit_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['units'][0])
+        self._as.ana_param_y_axis_name_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['labels'][1])
+        self._as.ana_param_y_axis_unit_LineEdit.setText(
+            self.pulsedmasterlogic().measurement_settings['units'][1])
         self._as.ana_param_second_plot_x_axis_name_LineEdit.setText(
             self._ana_param_second_plot_x_axis_name_text)
         self._as.ana_param_second_plot_x_axis_unit_LineEdit.setText(
@@ -2507,6 +2494,10 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(True)
         self._pa.ana_param_invoke_settings_CheckBox.blockSignals(True)
         self._pe.laserpulses_ComboBox.blockSignals(True)
+        self._as.ana_param_x_axis_name_LineEdit.blockSignals(True)
+        self._as.ana_param_x_axis_unit_LineEdit.blockSignals(True)
+        self._as.ana_param_y_axis_name_LineEdit.blockSignals(True)
+        self._as.ana_param_y_axis_unit_LineEdit.blockSignals(True)
 
         # set widgets
         if 'number_of_lasers' in settings_dict:
@@ -2538,8 +2529,29 @@ class PulsedMeasurementGui(GUIBase):
         if 'invoke_settings' in settings_dict:
             self._pa.ana_param_invoke_settings_CheckBox.setChecked(settings_dict['invoke_settings'])
             self.toggle_measurement_settings_editor(settings_dict['invoke_settings'])
+        if 'units' in settings_dict and 'labels' in settings_dict:
+            self._as.ana_param_x_axis_name_LineEdit.setText(settings_dict['labels'][0])
+            self._as.ana_param_x_axis_unit_LineEdit.setText(settings_dict['units'][0])
+            self._as.ana_param_y_axis_name_LineEdit.setText(settings_dict['labels'][1])
+            self._as.ana_param_y_axis_unit_LineEdit.setText(settings_dict['units'][1])
+            self._pa.pulse_analysis_PlotWidget.setLabel(
+                axis='bottom',
+                text=settings_dict['labels'][0],
+                units=settings_dict['units'][0])
+            self._pa.pulse_analysis_PlotWidget.setLabel(
+                axis='left',
+                text=settings_dict['labels'][1],
+                units=settings_dict['units'][1])
+            self._pe.measuring_error_PlotWidget.setLabel(
+                axis='bottom',
+                text=settings_dict['labels'][0],
+                units=settings_dict['units'][0])
 
         # unblock signals
+        self._as.ana_param_x_axis_name_LineEdit.blockSignals(False)
+        self._as.ana_param_x_axis_unit_LineEdit.blockSignals(False)
+        self._as.ana_param_y_axis_name_LineEdit.blockSignals(False)
+        self._as.ana_param_y_axis_unit_LineEdit.blockSignals(False)
         self._pa.ana_param_ignore_first_CheckBox.blockSignals(False)
         self._pa.ana_param_ignore_last_CheckBox.blockSignals(False)
         self._pa.ana_param_alternating_CheckBox.blockSignals(False)
@@ -2548,6 +2560,8 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_x_axis_inc_ScienDSpinBox.blockSignals(False)
         self._pa.ana_param_invoke_settings_CheckBox.blockSignals(False)
         self._pe.laserpulses_ComboBox.blockSignals(False)
+
+        self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
         return
 
     def set_plot_dimensions(self):
@@ -2637,6 +2651,27 @@ class PulsedMeasurementGui(GUIBase):
 
         if second_plot != self.pulsedmasterlogic().alternative_data_type:
             self.pulsedmasterlogic().set_alternative_data_type(second_plot)
+
+        if self.pulsedmasterlogic().alternative_data_type == 'Delta':
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_y_axis_unit_LineEdit.text()
+        else:
+            self._ana_param_second_plot_x_axis_name_text = self._as.ana_param_second_plot_x_axis_name_LineEdit.text()
+            self._ana_param_second_plot_x_axis_unit_text = self._as.ana_param_second_plot_x_axis_unit_LineEdit.text()
+            self._ana_param_second_plot_y_axis_name_text = self._as.ana_param_second_plot_y_axis_name_LineEdit.text()
+            self._ana_param_second_plot_y_axis_unit_text = self._as.ana_param_second_plot_y_axis_unit_LineEdit.text()
+
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='bottom',
+            text=self._ana_param_second_plot_x_axis_name_text,
+            units=self._ana_param_second_plot_x_axis_unit_text)
+        self._pa.pulse_analysis_second_PlotWidget.setLabel(
+            axis='left',
+            text=self._ana_param_second_plot_y_axis_name_text,
+            units=self._ana_param_second_plot_y_axis_unit_text)
+
         return
 
     ###########################################################################

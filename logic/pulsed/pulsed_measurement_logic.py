@@ -77,6 +77,7 @@ class PulsedMeasurementLogic(GenericLogic):
     _alternating = StatusVar(default=False)
     _laser_ignore_list = StatusVar(default=list())
     _data_units = StatusVar(default=('s', ''))
+    _data_labels = StatusVar(default=('Tau', 'Signal'))
 
     # PulseExtractor settings
     extraction_parameters = StatusVar(default=None)
@@ -507,6 +508,7 @@ class PulsedMeasurementLogic(GenericLogic):
         settings_dict['laser_ignore_list'] = list(self._laser_ignore_list).copy()
         settings_dict['alternating'] = bool(self._alternating)
         settings_dict['units'] = self._data_units
+        settings_dict['labels'] = self._data_labels
         return settings_dict
 
     @measurement_settings.setter
@@ -687,6 +689,9 @@ class PulsedMeasurementLogic(GenericLogic):
             with self._threadlock:
                 if 'units' in settings_dict:
                     self._data_units = settings_dict.get('units')
+                    self.fc.set_units(self._data_units)
+                if 'labels' in settings_dict:
+                    self._data_labels = list(settings_dict.get('labels'))
 
             if self.module_state() == 'idle':
                 # Get all other parameters if present
@@ -920,6 +925,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.error('Can not set "Delta" as alternative data calculation if measurement is '
                                'not alternating.\n'
                                'Setting to previous type "{0}".'.format(self.alternative_data_type))
+            elif alt_data_type == 'None':
+                self._alternative_data_type = None
             else:
                 self._alternative_data_type = alt_data_type
 
@@ -979,6 +986,10 @@ class PulsedMeasurementLogic(GenericLogic):
         if 'units' in self._measurement_information:
             with self._threadlock:
                 self._data_units = self._measurement_information.get('units')
+                self.fc.set_units(self._data_units)
+        if 'labels' in self._measurement_information:
+            with self._threadlock:
+                self._data_labels = list(self._measurement_information.get('labels'))
 
         # Check if a measurement is running and apply following settings if this is not the case
         if self.module_state() == 'locked':
@@ -1185,7 +1196,7 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_laser_pulses'
         else:
             filelabel = 'laser_pulses'
@@ -1193,7 +1204,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         laser_trace = self.laser_data
-        data['Signal (counts)'.format()] = laser_trace.transpose()
+        data['Signal (counts)'] = laser_trace.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1214,22 +1225,33 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_pulsed_measurement'
         else:
             filelabel = 'pulsed_measurement'
 
         # prepare the data in a dict or in an OrderedDict:
-        header_str = 'Controlled variable({0})\tSignal({1})\t'.format(*self._data_units)
+        header_str = 'Controlled variable'
+        if self._data_units[0]:
+            header_str += '({0})'.format(self._data_units[0])
+        header_str += '\tSignal'
+        if self._data_units[1]:
+            header_str += '({0})'.format(self._data_units[1])
         if self._alternating:
-            header_str += 'Signal2({0})'.format(self._data_units[1])
+            header_str += '\tSignal2'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
         if with_error:
-            header_str += 'Error({0})'.format(self._data_units[1])
+            header_str += '\tError'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
             if self._alternating:
-                header_str += 'Error2({0})'.format(self._data_units[1])
+                header_str += '\tError2'
+                if self._data_units[1]:
+                    header_str += '({0})'.format(self._data_units[1])
         data = OrderedDict()
         if with_error:
-            data[header_str] = np.vstack((self.signal_data, self.measurement_error)).transpose()
+            data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
         else:
             data[header_str] = self.signal_data.transpose()
 
@@ -1348,7 +1370,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the alternative data plot
-        if self._alternative_data_type:
+        if self._alternative_data_type and self._alternative_data_type != 'None':
 
             # scale the x_axis for plotting
             max_val = np.max(self.signal_alt_data[0])
@@ -1364,17 +1386,29 @@ class PulsedMeasurementLogic(GenericLogic):
                     inverse_cont_var = 's'
                 else:
                     inverse_cont_var = '(1/{0})'.format(self._data_units[0])
-                x_axis_ft_label = 'Fourier Transformed controlled variable (' + x_axis_prefix + inverse_cont_var + ')'
-                y_axis_ft_label = 'Fourier amplitude (arb. u.)'
+                x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+                    self._data_labels[0], x_axis_prefix, inverse_cont_var)
+                y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
                 ft_label = 'FT of data trace 1'
             else:
-                x_axis_ft_label = 'controlled variable (' + self._data_units[0] + ')'
-                y_axis_ft_label = 'norm. sig (arb. u.)'
+                if self._data_units[0]:
+                    x_axis_ft_label = '{0} ({1})'.format(self._data_labels[0], self._data_units[0])
+                else:
+                    x_axis_ft_label = '{0}'.format(self._data_labels[0])
+                if self._data_units[1]:
+                    y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+                else:
+                    y_axis_ft_label = '{0}'.format(self._data_labels[1])
+
                 ft_label = ''
 
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
                      label=ft_label)
+            if self._alternating and len(self.signal_alt_data) > 2:
+                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+                         linestyle=':', linewidth=0.5, color=colors[3],
+                         label=ft_label.replace('1', '2'))
 
             ax2.set_xlabel(x_axis_ft_label)
             ax2.set_ylabel(y_axis_ft_label)
@@ -1382,8 +1416,12 @@ class PulsedMeasurementLogic(GenericLogic):
                        mode="expand", borderaxespad=0.)
 
         #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
-        ax1.set_xlabel('controlled variable (' + counts_prefix + self._data_units[0] + ')')
-        ax1.set_ylabel('signal (' + self._data_units[1] + ')')
+        ax1.set_xlabel(
+            '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        if self._data_units[1]:
+            ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+        else:
+            ax1.set_ylabel('{0}'.format(self._data_labels[1]))
 
         fig.tight_layout()
         ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
