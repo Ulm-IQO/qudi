@@ -621,6 +621,11 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             settings_dict.update(kwargs)
 
+        for key in settings_dict:
+            if key in ['signal_start', 'signal_end', 'norm_start', 'norm_end']:
+                num_bins_fast = round(settings_dict[key]/self.fast_counter_settings['bin_width'])
+                settings_dict[key] = num_bins_fast * self.fast_counter_settings['bin_width']
+
         # Use threadlock to update settings during a running measurement
         with self._threadlock:
             self._pulseanalyzer.analysis_settings = settings_dict
@@ -920,6 +925,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.log.error('Can not set "Delta" as alternative data calculation if measurement is '
                                'not alternating.\n'
                                'Setting to previous type "{0}".'.format(self.alternative_data_type))
+            elif alt_data_type == 'None':
+                self._alternative_data_type = None
             else:
                 self._alternative_data_type = alt_data_type
 
@@ -1189,7 +1196,7 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_laser_pulses'
         else:
             filelabel = 'laser_pulses'
@@ -1197,7 +1204,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # prepare the data in a dict or in an OrderedDict:
         data = OrderedDict()
         laser_trace = self.laser_data
-        data['Signal (counts)'.format()] = laser_trace.transpose()
+        data['Signal (counts)'] = laser_trace.transpose()
 
         # write the parameters:
         parameters = OrderedDict()
@@ -1218,22 +1225,33 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
-        if tag is not None and len(tag) > 0:
+        if tag:
             filelabel = tag + '_pulsed_measurement'
         else:
             filelabel = 'pulsed_measurement'
 
         # prepare the data in a dict or in an OrderedDict:
-        header_str = 'Controlled variable({0})\tSignal({1})\t'.format(*self._data_units)
+        header_str = 'Controlled variable'
+        if self._data_units[0]:
+            header_str += '({0})'.format(self._data_units[0])
+        header_str += '\tSignal'
+        if self._data_units[1]:
+            header_str += '({0})'.format(self._data_units[1])
         if self._alternating:
-            header_str += 'Signal2({0})'.format(self._data_units[1])
+            header_str += '\tSignal2'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
         if with_error:
-            header_str += 'Error({0})'.format(self._data_units[1])
+            header_str += '\tError'
+            if self._data_units[1]:
+                header_str += '({0})'.format(self._data_units[1])
             if self._alternating:
-                header_str += 'Error2({0})'.format(self._data_units[1])
+                header_str += '\tError2'
+                if self._data_units[1]:
+                    header_str += '({0})'.format(self._data_units[1])
         data = OrderedDict()
         if with_error:
-            data[header_str] = np.vstack((self.signal_data, self.measurement_error)).transpose()
+            data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
         else:
             data[header_str] = self.signal_data.transpose()
 
@@ -1352,7 +1370,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 is_first_column = False
 
         # handle the save of the alternative data plot
-        if self._alternative_data_type:
+        if self._alternative_data_type and self._alternative_data_type != 'None':
 
             # scale the x_axis for plotting
             max_val = np.max(self.signal_alt_data[0])
@@ -1381,11 +1399,16 @@ class PulsedMeasurementLogic(GenericLogic):
                     y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
                 else:
                     y_axis_ft_label = '{0}'.format(self._data_labels[1])
+
                 ft_label = ''
 
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
                      label=ft_label)
+            if self._alternating and len(self.signal_alt_data) > 2:
+                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+                         linestyle=':', linewidth=0.5, color=colors[3],
+                         label=ft_label.replace('1', '2'))
 
             ax2.set_xlabel(x_axis_ft_label)
             ax2.set_ylabel(y_axis_ft_label)
