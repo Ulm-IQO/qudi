@@ -1221,7 +1221,7 @@ class AWG70K(Base, PulserInterface):
                                                                           waveform_name))
         return 0
 
-    def sequence_set_repetitions(self, sequence_name, step, repeat=1):
+    def sequence_set_repetitions(self, sequence_name, step, repeat=0):
         """
         Set the repetition counter of sequence "sequence_name" at step "step" to "repeat".
         A repeat value of -1 denotes infinite repetitions; 0 means the step is played once.
@@ -1236,7 +1236,7 @@ class AWG70K(Base, PulserInterface):
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
-        repeat = 'INF' if repeat < 0 else str(int(repeat))
+        repeat = 'INF' if repeat < 0 else str(int(repeat + 1))
         self.write('SLIS:SEQ:STEP{0:d}:RCO "{1}", {2}'.format(step, sequence_name, repeat))
         return 0
 

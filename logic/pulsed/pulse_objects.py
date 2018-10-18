@@ -603,7 +603,7 @@ class SequenceStep(dict):
         mystep.repetitions = 0
     """
 
-    __default_parameters = {'repetitions': 1,
+    __default_parameters = {'repetitions': 0,
                             'go_to': -1,
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
@@ -683,9 +683,9 @@ class PulseSequence(object):
                                           according parameter (as item).
                                           Available parameters are:
                                           'repetitions': The number of repetitions for that sequence
-                                                         step. (Default 1)
-                                                         1 meaning the step is played once.
-                                                         Set to -1 or 0 for infinite looping.
+                                                         step. (Default 0)
+                                                         0 meaning the step is played once.
+                                                         Set to -1 for infinite looping.
                                           'go_to':   The sequence step index to jump to after
                                                      having played all repetitions. (Default -1)
                                                      Indices starting at 1 for first step.
