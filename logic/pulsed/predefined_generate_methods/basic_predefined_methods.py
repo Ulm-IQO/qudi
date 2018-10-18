@@ -1283,7 +1283,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         count_length = 0.0
         for k in k_array:
             t1_sequence.append(tau_ensemble.name)
-            t1_sequence[-1].repetitions = k
+            t1_sequence[-1].repetitions = int(k)
             count_length += k * self._get_ensemble_count_length(ensemble=tau_ensemble,
                                                                 created_blocks=created_blocks)
 
@@ -1291,6 +1291,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             count_length += self._get_ensemble_count_length(ensemble=readout_ensemble,
                                                             created_blocks=created_blocks)
         if self.sync_channel:
+            print('AAAAAAAAAAAAA')
             t1_sequence.append(sync_ensemble.name)
             t1_sequence[-1].go_to = 1
             count_length += self._get_ensemble_count_length(ensemble=sync_ensemble,
