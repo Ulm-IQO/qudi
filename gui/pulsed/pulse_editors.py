@@ -1163,13 +1163,16 @@ class SequenceEditor(QtWidgets.QTableView):
                                                               self.model().ensembleNameRole,
                                                               QtCore.QSize(100, 50)))
         # Set item delegate (SpinBoxes) for repetition column
-        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 1, 'min': -1},
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().repetitionsRole))
         # Set item delegate (SpinBoxes) for go_to column
-        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().goToRole))
         # Set item delegate (SpinBoxes) for event_jump_to column
-        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().eventJumpToRole))
         # Set item delegate (ComboBox) for event_trigger column
         self.setItemDelegateForColumn(4, ComboBoxItemDelegate(self, ['OFF'],
@@ -1317,9 +1320,7 @@ class SequenceEditor(QtWidgets.QTableView):
         @return: object, an instance of PulseSequence
         """
         data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
-        sequence_copy = copy.deepcopy(data_container)
-        sequence_copy.name = ''
-        sequence_copy.refresh_parameters()
+        sequence_copy = PulseSequence('', ensemble_list=data_container.ensemble_list)
         return sequence_copy
 
     def load_sequence(self, pulse_sequence):
