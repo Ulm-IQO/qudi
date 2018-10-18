@@ -4,7 +4,8 @@
 
 Changes/New features:
 
-* Improved scientific SpinBox validators to allow for more intuitive keyboard input
+* Added the keyword "labels" to the "measurement_information" dict container in predefined methods.
+This can be used to specify the axis labels for the measurement (excluding units)
 * All modules use new connector style where feasible.
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
 * Added a how-to-get-started guide to the documentation
