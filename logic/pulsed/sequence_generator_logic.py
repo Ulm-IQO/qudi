@@ -1276,22 +1276,38 @@ class SequenceGeneratorLogic(GenericLogic):
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
 
+
+
         # If the sequence does not contain infinite loop steps, determine the remaining parameters
         # TODO: Implement this!
         length_bins = 0
         length_s = 0 if sequence.is_finite else np.inf
+        starting_bin = 0
+        digital_rising_bins = {chnl: list() for chnl in digital_channels}
+        digital_falling_bins = {chnl: list() for chnl in digital_channels}
         for ensemble_name, seq_params in sequence.ensemble_list:
             ensemble = self.get_ensemble(name=ensemble_name)
             ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_params['repetitions'] + 1)
-
+            analyzed_block = self.analyze_block_ensemble(
+            self.get_ensemble(ensemble_name))
+            rising_bins = analyzed_block['digital_rising_bins']
+            falling_bins = analyzed_block['digital_falling_bins']
+            for channel in digital_channels:
+                digital_rising_bins[channel] = np.append(digital_rising_bins[channel],
+                                                         rising_bins[channel] + starting_bin)
+                digital_falling_bins[channel] = np.append(digital_falling_bins[channel],
+                                                          falling_bins[channel] + starting_bin)
+            starting_bin += analyzed_block['number_of_samples']*seq_params['repetitions']
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
         return_dict['analog_channels'] = analog_channels
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
+        return_dict['digital_rising_bins'] = digital_rising_bins
+        return_dict['digital_falling_bins'] = digital_falling_bins
         return return_dict
 
     def _sampling_ensemble_sanity_check(self, ensemble):
