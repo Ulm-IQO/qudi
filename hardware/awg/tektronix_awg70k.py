@@ -164,7 +164,7 @@ class AWG70K(Base, PulserInterface):
         constraints.d_ch_high.step = 0.1
         constraints.d_ch_high.default = 1.0
 
-        constraints.waveform_length.min = 1
+        constraints.waveform_length.min = 4800
         constraints.waveform_length.max = 8000000000
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 1
