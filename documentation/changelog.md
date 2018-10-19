@@ -4,7 +4,10 @@
 
 Changes/New features:
 
-* Improved scientific SpinBox validators to allow for more intuitive keyboard input
+* Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
+* Added command line argument --logdir to specify the path to the logging directory
+* Added the keyword "labels" to the "measurement_information" dict container in predefined methods.
+This can be used to specify the axis labels for the measurement (excluding units)
 * All modules use new connector style where feasible.
 * Bug fix for POI manager was losing active POI when moving crosshair in confocal
 * Added a how-to-get-started guide to the documentation
@@ -111,6 +114,7 @@ Changes/New features:
 	  and falling bins in the laser channel which indicate the positions of the laser pulses in 
 	  the ungated trace. For fine-tuning additional delays (for example from AOMs) can be taken 
 	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
+	* Improved pulsed measurement textfile and plot layout for saved data
     
 
 Config changes:

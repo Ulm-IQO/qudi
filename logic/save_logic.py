@@ -178,6 +178,9 @@ class SaveLogic(GenericLogic):
         else:
             raise Exception('Identify the operating system.')
 
+        # Expand environment variables in the data_dir path (e.g. $HOME)
+        self.data_dir = os.path.expandvars(self.data_dir)
+
         # start logging into daily directory?
         if not isinstance(self.log_into_daily_directory, bool):
                 self.log.warning(
