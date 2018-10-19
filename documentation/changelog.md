@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
 * Added command line argument --logdir to specify the path to the logging directory
 * Added the keyword "labels" to the "measurement_information" dict container in predefined methods.
 This can be used to specify the axis labels for the measurement (excluding units)
