@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Added command line argument --logdir to specify the path to the logging directory
 * Added the keyword "labels" to the "measurement_information" dict container in predefined methods.
 This can be used to specify the axis labels for the measurement (excluding units)
 * All modules use new connector style where feasible.
