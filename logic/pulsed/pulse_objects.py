@@ -1158,7 +1158,8 @@ class PredefinedGeneratorBase:
         """
 
         """
-        return self._get_trigger_element(length=50e-9,
+        minimum_length = self.__sequencegeneratorlogic.pulse_generator_constraints.waveform_length.min/self.sample_rate
+        return self._get_trigger_element(length=max(50e-9, minimum_length),
                                          increment=0,
                                          channels=self.sync_channel)
 
