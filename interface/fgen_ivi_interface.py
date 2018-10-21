@@ -23,12 +23,10 @@ import abc
 from core.util.interfaces import InterfaceMetaclass
 
 
-class FGenInterface(metaclass=InterfaceMetaclass):
+class FGenIviInterface(metaclass=InterfaceMetaclass):
     """
     Interface for functions generators following the IVI specification.
     """
-    outputs = []
-
     @abc.abstractmethod
     def abort_generation(self):
         """
@@ -105,116 +103,111 @@ class FGenInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    class outputs(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def name(self):
+            """
+            This property returns the physical name defined by the specific driver for
+            the output channel that corresponds to the 0-based index that the user
+            specifies. If the driver defines a qualified channel name, this property
+            returns the qualified name. If the value that the user passes for the
+            Index parameter is less than zero or greater than the value of Output
+            Count, the property returns an empty string and returns an error.
+            """
+            pass
 
-class OutputInterface(metaclass=abc.ABCMeta):
-    """
-    Base IVI methods for all function generators related to an output.
+        @property
+        @abc.abstractmethod
+        def operation_mode(self):
+            """
+            Specifies how the function generator produces output on a channel.
 
-    Implement as outputs[]
-    """
+            Values for operation_mode:
 
-    @property
-    @abc.abstractmethod
-    def name(self):
-        """
-        This property returns the physical name defined by the specific driver for
-        the output channel that corresponds to the 0-based index that the user
-        specifies. If the driver defines a qualified channel name, this property
-        returns the qualified name. If the value that the user passes for the
-        Index parameter is less than zero or greater than the value of Output
-        Count, the property returns an empty string and returns an error.
-        """
-        pass
+            * 'continuous'
+            * 'burst'
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def operation_mode(self):
-        """
-        Specifies how the function generator produces output on a channel.
+        @operation_mode.setter
+        def operation_mode(self, value):
+            pass
 
-        Values for operation_mode:
+        @property
+        @abc.abstractmethod
+        def enabled(self):
+            """
+            If set to True, the signal the function generator produces appears at the
+            output connector. If set to False, the signal the function generator
+            produces does not appear at the output connector.
+            """
+            pass
 
-        * 'continuous'
-        * 'burst'
-        """
-        pass
+        @enabled.setter
+        def enabled(self, value):
+            pass
 
-    @operation_mode.setter
-    def operation_mode(self, value):
-        pass
+        @property
+        @abc.abstractmethod
+        def impedance(self):
+            """
+            Specifies the impedance of the output channel. The units are Ohms.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def enabled(self):
-        """
-        If set to True, the signal the function generator produces appears at the
-        output connector. If set to False, the signal the function generator
-        produces does not appear at the output connector.
-        """
-        pass
+        @impedance.setter
+        def impedance(self, value):
+            pass
 
-    @enabled.setter
-    def enabled(self, value):
-        pass
+        @property
+        @abc.abstractmethod
+        def output_mode(self):
+            """
+            Determines how the function generator produces waveforms. This attribute
+            determines which extension group's functions and attributes are used to
+            configure the waveform the function generator produces.
 
-    @property
-    @abc.abstractmethod
-    def impedance(self):
-        """
-        Specifies the impedance of the output channel. The units are Ohms.
-        """
-        pass
+            Values for output_mode:
 
-    @impedance.setter
-    def impedance(self, value):
-        pass
+            * 'function'
+            * 'arbitrary'
+            * 'sequence'
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def output_mode(self):
-        """
-        Determines how the function generator produces waveforms. This attribute
-        determines which extension group's functions and attributes are used to
-        configure the waveform the function generator produces.
+        @output_mode.setter
+        def output_mode(self, value):
+            pass
 
-        Values for output_mode:
+        @property
+        @abc.abstractmethod
+        def reference_clock_source(self):
+            """
+            Specifies the source of the reference clock. The function generator
+            derives frequencies and sample rates that it uses to generate waveforms
+            from the reference clock.
 
-        * 'function'
-        * 'arbitrary'
-        * 'sequence'
-        """
-        pass
+            The source of the reference clock is a string. If an IVI driver supports a
+            reference clock source and the reference clock source is listed in IVI-3.3
+            Cross Class Capabilities Specification, Section 3, then the IVI driver
+            shall accept the standard string for that reference clock. This attribute
+            is case insensitive, but case preserving. That is, the setting is case
+            insensitive but when reading it back the programmed case is returned. IVI
+            specific drivers may define new reference clock source strings for
+            reference clock sources that are not defined by IVI-3.3 Cross Class
+            Capabilities Specification if needed.
+            """
+            pass
 
-    @output_mode.setter
-    def output_mode(self, value):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def reference_clock_source(self):
-        """
-        Specifies the source of the reference clock. The function generator
-        derives frequencies and sample rates that it uses to generate waveforms
-        from the reference clock.
-
-        The source of the reference clock is a string. If an IVI driver supports a
-        reference clock source and the reference clock source is listed in IVI-3.3
-        Cross Class Capabilities Specification, Section 3, then the IVI driver
-        shall accept the standard string for that reference clock. This attribute
-        is case insensitive, but case preserving. That is, the setting is case
-        insensitive but when reading it back the programmed case is returned. IVI
-        specific drivers may define new reference clock source strings for
-        reference clock sources that are not defined by IVI-3.3 Cross Class
-        Capabilities Specification if needed.
-        """
-        pass
-
-    @reference_clock_source.setter
-    def reference_clock_source(self, value):
-        pass
+        @reference_clock_source.setter
+        def reference_clock_source(self, value):
+            pass
 
 
-class StdFuncInterface(metaclass=abc.ABCMeta):
+# ************************ EXTENSIONS **************************************************************
+
+class StdFuncExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce manufacturer-supplied periodic waveforms
 
@@ -227,116 +220,115 @@ class StdFuncInterface(metaclass=abc.ABCMeta):
     the following list:
     Standard Waveform – The overall “shape” of one period of the standard waveform. This specification defines six
     waveform types: Sine, Square, Triangle, Ramp Up, Ramp Down, and DC.
-
-    Implement as outputs[].standard_waveform
     """
+    class outputs:
+        class standard_waveform(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def amplitude(self):
+                """
+                Specifies the amplitude of the standard waveform the function generator
+                produces. When the Waveform attribute is set to Waveform DC, this
+                attribute does not affect signal output. The units are volts.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def amplitude(self):
-        """
-        Specifies the amplitude of the standard waveform the function generator
-        produces. When the Waveform attribute is set to Waveform DC, this
-        attribute does not affect signal output. The units are volts.
-        """
-        pass
+            @amplitude.setter
+            def amplitude(self, value):
+                pass
 
-    @amplitude.setter
-    def amplitude(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def dc_offset(self):
+                """
+                Specifies the DC offset of the standard waveform the function generator
+                produces. If the Waveform attribute is set to Waveform DC, this attribute
+                specifies the DC level the function generator produces. The units are
+                volts.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def dc_offset(self):
-        """
-        Specifies the DC offset of the standard waveform the function generator
-        produces. If the Waveform attribute is set to Waveform DC, this attribute
-        specifies the DC level the function generator produces. The units are
-        volts.
-        """
-        pass
+            @dc_offset.setter
+            def dc_offset(self, value):
+                pass
 
-    @dc_offset.setter
-    def dc_offset(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def duty_cycle_high(self):
+                """
+                Specifies the duty cycle for a square waveform. This attribute affects
+                function generator behavior only when the Waveform attribute is set to
+                Waveform Square. The value is expressed as a percentage.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def duty_cycle_high(self):
-        """
-        Specifies the duty cycle for a square waveform. This attribute affects
-        function generator behavior only when the Waveform attribute is set to
-        Waveform Square. The value is expressed as a percentage.
-        """
-        pass
+            @duty_cycle_high.setter
+            def duty_cycle_high(self, value):
+                pass
 
-    @duty_cycle_high.setter
-    def duty_cycle_high(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def start_phase(self):
+                """
+                Specifies the start phase of the standard waveform the function generator
+                produces. When the Waveform attribute is set to Waveform DC, this
+                attribute does not affect signal output. The units are degrees.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def start_phase(self):
-        """
-        Specifies the start phase of the standard waveform the function generator
-        produces. When the Waveform attribute is set to Waveform DC, this
-        attribute does not affect signal output. The units are degrees.
-        """
-        pass
+            @start_phase.setter
+            def start_phase(self, value):
+                pass
 
-    @start_phase.setter
-    def start_phase(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def frequency(self):
+                """
+                Specifies the frequency of the standard waveform the function generator
+                produces. When the Waveform attribute is set to Waveform DC, this
+                attribute does not affect signal output. The units are Hertz.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def frequency(self):
-        """
-        Specifies the frequency of the standard waveform the function generator
-        produces. When the Waveform attribute is set to Waveform DC, this
-        attribute does not affect signal output. The units are Hertz.
-        """
-        pass
+            @frequency.setter
+            def frequency(self, value):
+                pass
 
-    @frequency.setter
-    def frequency(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def waveform(self):
+                """
+                Specifies which standard waveform the function generator produces.
 
-    @property
-    @abc.abstractmethod
-    def waveform(self):
-        """
-        Specifies which standard waveform the function generator produces.
+                Values for waveform:
 
-        Values for waveform:
+                * 'sine'
+                * 'square'
+                * 'triangle'
+                * 'ramp_up'
+                * 'ramp_down'
+                * 'dc'
+                """
+                pass
 
-        * 'sine'
-        * 'square'
-        * 'triangle'
-        * 'ramp_up'
-        * 'ramp_down'
-        * 'dc'
-        """
-        pass
+            @waveform.setter
+            def waveform(self, value):
+                pass
 
-    @waveform.setter
-    def waveform(self, value):
-        pass
+            def configure(self, waveform, amplitude, dc_offset, frequency, start_phase):
+                """
+                This function configures the attributes of the function generator that
+                affect standard waveform generation. These attributes are the Waveform,
+                Amplitude, DC Offset, Frequency, and Start Phase.
 
-    def configure(self, waveform, amplitude, dc_offset, frequency, start_phase):
-        """
-        This function configures the attributes of the function generator that
-        affect standard waveform generation. These attributes are the Waveform,
-        Amplitude, DC Offset, Frequency, and Start Phase.
-
-        When the Waveform parameter is set to Waveform DC, this function ignores
-        the Amplitude, Frequency, and Start Phase parameters and does not set the
-        Amplitude, Frequency, and Start Phase attributes.
-        """
-        pass
+                When the Waveform parameter is set to Waveform DC, this function ignores
+                the Amplitude, Frequency, and Start Phase parameters and does not set the
+                Amplitude, Frequency, and Start Phase attributes.
+                """
+                pass
 
 
-class ArbWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
+class ArbWfmExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms
 
@@ -356,174 +348,136 @@ class ArbWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
     Offset – The value the function generator adds to the scaled arbitrary waveform data. For
              example, scaled arbitrary waveform data that ranges from –1.0V to +1.0V is generated
              from 0.0V to 2.0V when the end user specifies a waveform offset of 1.0V.
-
-    Implement as outputs[].arbitrary
-
-    See also: ArbWfm_OutputsArbitraryWaveform_Interface,
-              ArbWfm_Arbitrary_Interface,
-              ArbWfm_ArbitraryWaveform_Interface
     """
+    class outputs:
+        class arbitrary(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def gain(self):
+                """
+                Specifies the gain of the arbitrary waveform the function generator produces. This value is
+                unitless.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def gain(self):
-        """
-        Specifies the gain of the arbitrary waveform the function generator produces. This value is
-        unitless.
-        """
-        pass
+            @gain.setter
+            def gain(self, value):
+                pass
 
-    @gain.setter
-    def gain(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def offset(self):
+                """
+                Specifies the offset of the arbitrary waveform the function generator produces. The units
+                are volts.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def offset(self):
-        """
-        Specifies the offset of the arbitrary waveform the function generator produces. The units
-        are volts.
-        """
-        pass
+            @offset.setter
+            def offset(self, value):
+                pass
 
-    @offset.setter
-    def offset(self, value):
-        pass
+            def configure(self, waveform, gain, offset):
+                """
+                Configures the attributes of the function generator that affect arbitrary
+                waveform generation. These attributes are the arbitrary waveform,
+                gain, and offset.
+                """
+                pass
 
-    def configure(self, waveform, gain, offset):
-        """
-        Configures the attributes of the function generator that affect arbitrary
-        waveform generation. These attributes are the arbitrary waveform,
-        gain, and offset.
-        """
-        pass
+            class waveform(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def handle(self):
+                    """
+                    Identifies which arbitrary waveform the function generator produces. You create arbitrary
+                    waveforms with the Create Arbitrary Waveform function. This function returns a handle that
+                    identifies the particular waveform. To configure the function generator to produce a
+                    specific waveform, set this attribute to the waveform’s handle.
+                    """
+                    pass
 
+                @handle.setter
+                def handle(self, value):
+                    pass
 
-class ArbWfm_OutputsArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that can produce arbitrary waveforms.
+    class arbitrary(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def sample_rate(self):
+            """
+            Specifies the sample rate of the arbitrary waveforms the function
+            generator produces. The units are samples per second.
+            """
+            pass
 
-    Arbitrary Waveform handle – A handle to an uploaded waveform
+        @sample_rate.setter
+        def sample_rate(self, value):
+            pass
 
-    Implement as outputs[].arbitrary.waveform
+        class waveform(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def number_waveforms_max(self):
+                """
+                Returns the maximum number of arbitrary waveforms that the function
+                generator allows.
+                """
+                pass
 
-    See also: ArbWfm_OutputsArbitrary_Interface,
-              ArbWfm_Arbitrary_Interface,
-              ArbWfm_ArbitraryWaveform_Interface
-    """
+            @property
+            @abc.abstractmethod
+            def size_max(self):
+                """
+                Returns the maximum number of points the function generator allows in an
+                arbitrary waveform.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def handle(self):
-        """
-        Identifies which arbitrary waveform the function generator produces. You create arbitrary
-        waveforms with the Create Arbitrary Waveform function. This function returns a handle that
-        identifies the particular waveform. To configure the function generator to produce a
-        specific waveform, set this attribute to the waveform’s handle.
-        """
-        pass
+            @property
+            @abc.abstractmethod
+            def size_min(self):
+                """
+                Returns the minimum number of points the function generator allows in an
+                arbitrary waveform.
+                """
+                pass
 
-    @handle.setter
-    def handle(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def quantum(self):
+                """
+                The size of each arbitrary waveform shall be a multiple of a quantum
+                value. This attribute returns the quantum value the function generator
+                allows. For example, if this attribute returns a value of 8, all waveform
+                sizes must be a multiple of 8.
+                """
+                pass
 
+            @abc.abstractmethod
+            def clear(self, waveform):
+                """
+                Removes a previously created arbitrary waveform from the function
+                generator's memory and invalidates the waveform's handle.
 
-class ArbWfm_Arbitrary_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that can produce arbitrary waveforms.
+                If the waveform cannot be cleared because it is currently being generated,
+                or it is specified as part of an existing arbitrary waveform sequence,
+                this function returns the Waveform In Use error.
+                """
+                pass
 
-    Implement as arbitrary
-
-    See also: ArbWfm_OutputsArbitrary_Interface,
-              ArbWfm_OutputsArbitraryWaveform_Interface,
-              ArbWfm_ArbitraryWaveform_Interface
-    """
-    @property
-    @abc.abstractmethod
-    def sample_rate(self):
-        """
-        Specifies the sample rate of the arbitrary waveforms the function
-        generator produces. The units are samples per second.
-        """
-        pass
-
-    @sample_rate.setter
-    def sample_rate(self, value):
-        pass
-
-
-class ArbWfm_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that can produce arbitrary waveforms.
-
-    Implement as arbitrary.waveform
-
-    See also: ArbWfm_OutputsArbitrary_Interface,
-              ArbWfm_OutputsArbitraryWaveform_Interface,
-              ArbWfm_Arbitrary_Interface
-    """
-    @property
-    @abc.abstractmethod
-    def number_waveforms_max(self):
-        """
-        Returns the maximum number of arbitrary waveforms that the function
-        generator allows.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def size_max(self):
-        """
-        Returns the maximum number of points the function generator allows in an
-        arbitrary waveform.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def size_min(self):
-        """
-        Returns the minimum number of points the function generator allows in an
-        arbitrary waveform.
-        """
-        pass
-
-    @property
-    @abc.abstractmethod
-    def quantum(self):
-        """
-        The size of each arbitrary waveform shall be a multiple of a quantum
-        value. This attribute returns the quantum value the function generator
-        allows. For example, if this attribute returns a value of 8, all waveform
-        sizes must be a multiple of 8.
-        """
-        pass
-
-    @abc.abstractmethod
-    def clear(self, waveform):
-        """
-        Removes a previously created arbitrary waveform from the function
-        generator's memory and invalidates the waveform's handle.
-
-        If the waveform cannot be cleared because it is currently being generated,
-        or it is specified as part of an existing arbitrary waveform sequence,
-        this function returns the Waveform In Use error.
-        """
-        pass
-
-    @abc.abstractmethod
-    def create(self, data):
-        """
-        Creates an arbitrary waveform from an array of data points. The function
-        returns a handle that identifies the waveform. You pass a waveform handle
-        to the Handle parameter of the Configure Arbitrary Waveform function to
-        produce that waveform.
-        """
-        pass
+            @abc.abstractmethod
+            def create(self, data):
+                """
+                Creates an arbitrary waveform from an array of data points. The function
+                returns a handle that identifies the waveform. You pass a waveform handle
+                to the Handle parameter of the Configure Arbitrary Waveform function to
+                produce that waveform.
+                """
+                pass
 
 
-class ArbFrequencyInterface(metaclass=abc.ABCMeta):
+class ArbFrequencyExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce arbitrary waveforms with variable rate
 
@@ -533,25 +487,24 @@ class ArbFrequencyInterface(metaclass=abc.ABCMeta):
     group’s attributes of Arbitrary Waveform Handle, Arbitrary Gain, and Arbitrary Offset to configure an arbitrary
     waveform.
     This extension affects instrument behavior when the Output Mode attribute is set to Output Arbitrary.
-
-    Implement as outputs[].arbitrary
     """
+    class outputs:
+        class arbitrary(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def frequency(self):
+                """
+                Specifies the rate in Hertz at which an entire arbitrary waveform is
+                generated.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def frequency(self):
-        """
-        Specifies the rate in Hertz at which an entire arbitrary waveform is
-        generated.
-        """
-        pass
-
-    @frequency.setter
-    def frequency(self, value):
-        pass
+            @frequency.setter
+            def frequency(self, value):
+                pass
 
 
-class ArbSeq_ArbitrarySequence_Interface(metaclass=abc.ABCMeta):
+class ArbSeqExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
 
@@ -567,117 +520,100 @@ class ArbSeq_ArbitrarySequence_Interface(metaclass=abc.ABCMeta):
     sequence is repeated a discrete number of times before producing the next waveform. When generating an arbitrary
     sequence, the waveform properties of Gain, Offset and Sample Rate defined in Section 6.1, IviFgenArbWfm Overview
     apply to all waveforms in the sequence.
-
-    Implement as arbitrary.sequence
-
-    See also: ArbSeq_Arbitrary_Interface, ArbSeq_OutputsArbitrarySequence_Interface
     """
-    @property
-    @abc.abstractmethod
-    def number_sequences_max(self):
-        """
-        Returns the maximum number of arbitrary sequences that the function
-        generator allows.
-        """
-        pass
+    class arbitrary(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def clear_memory(self):
+            """
+            Removes all previously created arbitrary waveforms and sequences from the
+            function generator's memory and invalidates all waveform and sequence
+            handles.
+
+            If a waveform cannot be cleared because it is currently being generated,
+            this function returns the error Waveform In Use.
+
+            If a sequence cannot be cleared because it is currently being generated,
+            this function returns the error Sequence In Use.
+            """
+            pass
+
+        class sequence(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def number_sequences_max(self):
+                """
+                Returns the maximum number of arbitrary sequences that the function
+                generator allows.
+                """
+                pass
 
 
-    @property
-    @abc.abstractmethod
-    def loop_count_max(self):
-        """
-        Returns the maximum number of times that the function generator can repeat
-        a waveform in a sequence.
-        """
-        pass
+            @property
+            @abc.abstractmethod
+            def loop_count_max(self):
+                """
+                Returns the maximum number of times that the function generator can repeat
+                a waveform in a sequence.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def length_max(self):
-        """
-        Returns the maximum number of arbitrary waveforms that the function
-        generator allows in an arbitrary sequence.
-        """
-        pass
+            @property
+            @abc.abstractmethod
+            def length_max(self):
+                """
+                Returns the maximum number of arbitrary waveforms that the function
+                generator allows in an arbitrary sequence.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def length_min(self):
-        """
-        Returns the minimum number of arbitrary waveforms that the function
-        generator allows in an arbitrary sequence.
-        """
-        pass
+            @property
+            @abc.abstractmethod
+            def length_min(self):
+                """
+                Returns the minimum number of arbitrary waveforms that the function
+                generator allows in an arbitrary sequence.
+                """
+                pass
 
-    @abc.abstractmethod
-    def clear(self, sequence_handle):
-        """
-        Removes a previously created arbitrary sequence from the function
-        generator's memory and invalidates the sequence's handle.
+            @abc.abstractmethod
+            def clear(self, sequence_handle):
+                """
+                Removes a previously created arbitrary sequence from the function
+                generator's memory and invalidates the sequence's handle.
 
-        If the sequence cannot be cleared because it is currently being generated,
-        this function returns the error Sequence In Use.
-        """
-        pass
+                If the sequence cannot be cleared because it is currently being generated,
+                this function returns the error Sequence In Use.
+                """
+                pass
 
-    @abc.abstractmethod
-    def create(self, waveform_handles):
-        """
-        Creates an arbitrary waveform sequence from an array of waveform handles
-        and a corresponding array of loop counts. The function returns a handle
-        that identifies the sequence. You pass a sequence handle to the Handle
-        parameter of the Configure Arbitrary Sequence function to produce that
-        sequence.
+            @abc.abstractmethod
+            def create(self, waveform_handles):
+                """
+                Creates an arbitrary waveform sequence from an array of waveform handles
+                and a corresponding array of loop counts. The function returns a handle
+                that identifies the sequence. You pass a sequence handle to the Handle
+                parameter of the Configure Arbitrary Sequence function to produce that
+                sequence.
 
-        If the function generator cannot store any more arbitrary sequences, this
-        function returns the error No Sequences Available.
-        """
-        pass
+                If the function generator cannot store any more arbitrary sequences, this
+                function returns the error No Sequences Available.
+                """
+                pass
 
-
-class ArbSeq_Arbitrary_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
-
-    Implement as arbitrary
-
-    See also: ArbSeq_ArbitrarySequence_Interface, ArbSeq_OutputsArbitrarySequence_Interface
-    """
-    @abc.abstractmethod
-    def clear_memory(self):
-        """
-        Removes all previously created arbitrary waveforms and sequences from the
-        function generator's memory and invalidates all waveform and sequence
-        handles.
-
-        If a waveform cannot be cleared because it is currently being generated,
-        this function returns the error Waveform In Use.
-
-        If a sequence cannot be cleared because it is currently being generated,
-        this function returns the error Sequence In Use.
-        """
-        pass
+    class outputs:
+        class arbitrary:
+            class sequence(metaclass=abc.ABCMeta):
+                @abc.abstractmethod
+                def configure(self, sequence_handle, gain, offset):
+                    """
+                    Configures the attributes of the function generator that affect arbitrary
+                    sequence generation. These attributes are the arbitrary sequence handle,
+                    gain, and offset.
+                    """
+                    pass
 
 
-class ArbSeq_OutputsArbitrarySequence_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that can produce sequences of arbitrary waveforms
-
-    Implement as outputs[].arbitrary.sequence
-
-    See also: ArbSeq_ArbitrarySequence_Interface, ArbSeq_Arbitrary_Interface
-    """
-    @abc.abstractmethod
-    def configure(self, sequence_handle, gain, offset):
-        """
-        Configures the attributes of the function generator that affect arbitrary
-        sequence generation. These attributes are the arbitrary sequence handle,
-        gain, and offset.
-        """
-        pass
-
-
-class TriggerInterface(metaclass=abc.ABCMeta):
+class TriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support triggering
 
@@ -688,24 +624,24 @@ class TriggerInterface(metaclass=abc.ABCMeta):
     with version 5.0 or later of the IviFgen class specification.
 
     This extension affects instrument behavior when the Operation Mode attribute is set to Operate Burst.
-
-    Implement as outputs[].trigger
     """
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the trigger source. After the function generator receives a
-        trigger from this source, it produces a signal.
-        """
-        pass
+    class outputs:
+        class trigger(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def source(self):
+                """
+                Specifies the trigger source. After the function generator receives a
+                trigger from this source, it produces a signal.
+                """
+                pass
 
-    @source.setter
-    def source(self, value):
-        pass
+            @source.setter
+            def source(self, value):
+                pass
 
 
-class StartTrigger_OutputsTriggerStart_Interface(metaclass=abc.ABCMeta):
+class StartTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support start triggering
 
@@ -714,93 +650,84 @@ class StartTrigger_OutputsTriggerStart_Interface(metaclass=abc.ABCMeta):
 
     Setting the Start Trigger Source attribute to a value other than None enables the start trigger. To
     disable the start trigger, set the Start Trigger Source to None
-
-    Implement as outputs[].trigger.start
-
-    See also: StartTrigger_TriggerStart_Interface
     """
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies an additional length of time to delay from the start trigger to
-        the first point in the waveform generation. The units are seconds.
-        """
-        pass
+    class outputs:
+        class trigger:
+            class start(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def delay(self):
+                    """
+                    Specifies an additional length of time to delay from the start trigger to
+                    the first point in the waveform generation. The units are seconds.
+                    """
+                    pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+                @delay.setter
+                def delay(self, value):
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def slope(self):
-        """
-        Specifies the slope of the trigger that starts the generator.
+                @property
+                @abc.abstractmethod
+                def slope(self):
+                    """
+                    Specifies the slope of the trigger that starts the generator.
 
-        Values for slope:
+                    Values for slope:
 
-        * 'positive'
-        * 'negative'
-        * 'either'
-        """
-        pass
+                    * 'positive'
+                    * 'negative'
+                    * 'either'
+                    """
+                    pass
 
-    @slope.setter
-    def slope(self, value):
-        pass
+                @slope.setter
+                def slope(self, value):
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the start trigger.
-        """
-        pass
+                @property
+                @abc.abstractmethod
+                def source(self):
+                    """
+                    Specifies the source of the start trigger.
+                    """
+                    pass
 
-    @source.setter
-    def source(self, value):
-        pass
+                @source.setter
+                def source(self, value):
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def threshold(self):
-        """
-        Specifies the voltage threshold for the start trigger. The units are
-        volts.
-        """
-        pass
+                @property
+                @abc.abstractmethod
+                def threshold(self):
+                    """
+                    Specifies the voltage threshold for the start trigger. The units are
+                    volts.
+                    """
+                    pass
 
-    @threshold.setter
-    def threshold(self, value):
-        pass
+                @threshold.setter
+                def threshold(self, value):
+                    pass
 
-    @abc.abstractmethod
-    def configure(self, source, slope):
-        """
-        This function configures the start trigger properties.
-        """
-        pass
+                @abc.abstractmethod
+                def configure(self, source, slope):
+                    """
+                    This function configures the start trigger properties.
+                    """
+                    pass
 
-
-class StartTrigger_TriggerStart_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support start triggering
-
-    Implement as trigger.start
-
-    See also: StartTrigger_OutputsTriggerStart_Interface
-    """
-
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """
-        This function sends a software-generated start trigger to the instrument.
-        """
-        pass
+    class trigger:
+        class start(metaclass=abc.ABCMeta):
+            @abc.abstractmethod
+            def send_software_trigger(self):
+                """
+                This function sends a software-generated start trigger to the instrument.
+                """
+                pass
 
 
-class StopTrigger_OutputsTriggerStop_Interface(metaclass=abc.ABCMeta):
+class StopTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support stop triggering
 
@@ -809,93 +736,83 @@ class StopTrigger_OutputsTriggerStop_Interface(metaclass=abc.ABCMeta):
     AbortGeneration function.
     Setting the Stop Trigger Source attribute to a value other than None enables the stop trigger. To
     disable the stop trigger, set the Stop Trigger Source to None.
-
-    Implement as outputs[].trigger.stop
-
-    See also: StopTrigger_TriggerStop_Interface
     """
+    class outputs:
+        class trigger:
+            class stop(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def delay(self):
+                    """
+                    Specifies an additional length of time to delay from the stop trigger to
+                    the termination of the generation. The units are seconds.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies an additional length of time to delay from the stop trigger to
-        the termination of the generation. The units are seconds.
-        """
-        pass
+                @delay.setter
+                def delay(self, value):
+                    pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def slope(self):
+                    """
+                    Specifies the slope of the stop trigger.
 
-    @property
-    @abc.abstractmethod
-    def slope(self):
-        """
-        Specifies the slope of the stop trigger.
+                    Values for slope:
 
-        Values for slope:
+                    * 'positive'
+                    * 'negative'
+                    * 'either'
+                    """
+                    pass
 
-        * 'positive'
-        * 'negative'
-        * 'either'
-        """
-        pass
+                @slope.setter
+                def slope(self, value):
+                    pass
 
-    @slope.setter
-    def slope(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def source(self):
+                    """
+                    Specifies the source of the stop trigger.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the stop trigger.
-        """
-        pass
+                @source.setter
+                def source(self, value):
+                    pass
 
-    @source.setter
-    def source(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def threshold(self):
+                    """
+                    Specifies the voltage threshold for the stop trigger. The units are volts.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def threshold(self):
-        """
-        Specifies the voltage threshold for the stop trigger. The units are volts.
-        """
-        pass
+                @threshold.setter
+                def threshold(self, value):
+                    pass
 
-    @threshold.setter
-    def threshold(self, value):
-        pass
+                @abc.abstractmethod
+                def configure(self, source, slope):
+                    """
+                    This function configures the stop trigger properties.
+                    """
+                    pass
 
-    @abc.abstractmethod
-    def configure(self, source, slope):
-        """
-        This function configures the stop trigger properties.
-        """
-        pass
-
-
-class StopTrigger_TriggerStop_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support stop triggering
-
-    Implement as trigger.stop
-
-    See also: StopTrigger_OutputsTriggerStop_Interface
-    """
-
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """
-        This function sends a software-generated stop trigger to the instrument.
-        """
-        pass
+    class trigger:
+        class stop(metaclass=abc.ABCMeta):
+            @abc.abstractmethod
+            def send_software_trigger(self):
+                """
+                This function sends a software-generated stop trigger to the instrument.
+                """
+                pass
 
 
-class HoldTrigger_OutputsTriggerHold_Interface(metaclass=abc.ABCMeta):
+class HoldTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support hold triggering
 
@@ -905,93 +822,83 @@ class HoldTrigger_OutputsTriggerHold_Interface(metaclass=abc.ABCMeta):
 
     Setting the hold Trigger Source attribute to a value other than None enables the hold trigger. To
     disable the hold trigger, set the Hold Trigger Source to None.
-
-    Implement as outputs[].trigger.hold
-
-    See also: HoldTrigger_TriggerHold_Interface
     """
+    class outputs:
+        class trigger:
+            class hold(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def delay(self):
+                    """
+                    Specifies an additional length of time to delay from the hold trigger to
+                    the pause of the generation. The units are seconds.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies an additional length of time to delay from the hold trigger to
-        the pause of the generation. The units are seconds.
-        """
-        pass
+                @delay.setter
+                def delay(self, value):
+                    pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def slope(self):
+                    """
+                    Specifies the slope of the hold trigger.
 
-    @property
-    @abc.abstractmethod
-    def slope(self):
-        """
-        Specifies the slope of the hold trigger.
+                    Values for slope:
 
-        Values for slope:
+                    * 'positive'
+                    * 'negative'
+                    * 'either'
+                    """
+                    pass
 
-        * 'positive'
-        * 'negative'
-        * 'either'
-        """
-        pass
+                @slope.setter
+                def slope(self, value):
+                    pass
 
-    @slope.setter
-    def slope(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def source(self):
+                    """
+                    Specifies the source of the hold trigger.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the hold trigger.
-        """
-        pass
+                @source.setter
+                def source(self, value):
+                    pass
 
-    @source.setter
-    def source(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def threshold(self):
+                    """
+                    Specifies the voltage threshold for the hold trigger. The units are volts.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def threshold(self):
-        """
-        Specifies the voltage threshold for the hold trigger. The units are volts.
-        """
-        pass
+                @threshold.setter
+                def threshold(self, value):
+                    pass
 
-    @threshold.setter
-    def threshold(self, value):
-        pass
+                @abc.abstractmethod
+                def configure(self, source, slope):
+                    """
+                    This function configures the hold trigger properties.
+                    """
+                    pass
 
-    @abc.abstractmethod
-    def configure(self, source, slope):
-        """
-        This function configures the hold trigger properties.
-        """
-        pass
-
-
-class HoldTrigger_TriggerHold_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support hold triggering
-
-    Implement as trigger.hold
-
-    See also: HoldTrigger_OutputsTriggerHold_Interface
-    """
-
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """
-        This function sends a software-generated hold trigger to the instrument.
-        """
-        pass
+    class trigger:
+        class hold(metaclass=abc.ABCMeta):
+            @abc.abstractmethod
+            def send_software_trigger(self):
+                """
+                This function sends a software-generated hold trigger to the instrument.
+                """
+                pass
 
 
-class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=abc.ABCMeta):
+class ResumeTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support resume triggering
 
@@ -999,94 +906,84 @@ class ResumeTrigger_OutputsTriggerResume_Interface(metaclass=abc.ABCMeta):
     generation after it has been paused by a hold trigger, starting with the next point.
     Setting the Resume Trigger Source attribute to a value other than None enables the resume trigger.
     To disable the resume trigger, set the Resume Trigger Source to None.
-
-    Implement as outputs[].trigger.resume
-
-    See also: ResumeTrigger_TriggerResume_Interface
     """
+    class outputs:
+        class trigger:
+            class resume(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def delay(self):
+                    """
+                    Specifies an additional length of time to delay from the resume trigger to
+                    the resumption of the generation. The units are seconds.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies an additional length of time to delay from the resume trigger to
-        the resumption of the generation. The units are seconds.
-        """
-        pass
+                @delay.setter
+                def delay(self, value):
+                    pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def slope(self):
+                    """
+                    Specifies the slope of the resume trigger.
 
-    @property
-    @abc.abstractmethod
-    def slope(self):
-        """
-        Specifies the slope of the resume trigger.
+                    Values for slope:
 
-        Values for slope:
+                    * 'positive'
+                    * 'negative'
+                    * 'either'
+                    """
+                    pass
 
-        * 'positive'
-        * 'negative'
-        * 'either'
-        """
-        pass
+                @slope.setter
+                def slope(self, value):
+                    pass
 
-    @slope.setter
-    def slope(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def source(self):
+                    """
+                    Specifies the source of the resume trigger.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the resume trigger.
-        """
-        pass
+                @source.setter
+                def source(self, value):
+                    pass
 
-    @source.setter
-    def source(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def threshold(self):
+                    """
+                    Specifies the voltage threshold for the resume trigger. The units are
+                    volts.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def threshold(self):
-        """
-        Specifies the voltage threshold for the resume trigger. The units are
-        volts.
-        """
-        pass
+                @threshold.setter
+                def threshold(self, value):
+                    pass
 
-    @threshold.setter
-    def threshold(self, value):
-        pass
+                @abc.abstractmethod
+                def configure(self, source, slope):
+                    """
+                    This function configures the resume trigger properties.
+                    """
+                    pass
 
-    @abc.abstractmethod
-    def configure(self, source, slope):
-        """
-        This function configures the resume trigger properties.
-        """
-        pass
-
-
-class ResumeTrigger_TriggerResume_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support resume triggering
-
-    Implement as trigger.resume
-
-    See also: ResumeTrigger_OutputsTriggerResume_Interface
-    """
-
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """
-        This function sends a software-generated resume trigger to the instrument.
-        """
-        pass
+    class trigger:
+        class resume(metaclass=abc.ABCMeta):
+            @abc.abstractmethod
+            def send_software_trigger(self):
+                """
+                This function sends a software-generated resume trigger to the instrument.
+                """
+                pass
 
 
-class AdvanceTrigger_OutputsTriggerAdvance_Interface(metaclass=abc.ABCMeta):
+class AdvanceTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support advance triggering
 
@@ -1095,85 +992,75 @@ class AdvanceTrigger_OutputsTriggerAdvance_Interface(metaclass=abc.ABCMeta):
     where generation proceeds according to the current configuration.
     Setting the Advance Trigger Source attribute to a value other than None enables the advance
     trigger. To disable the advance trigger, set the Advance Trigger Source to None.
-
-    Implement as outputs[].trigger.advance
-
-    See also: AdvanceTrigger_TriggerAdvance_Interface
     """
+    class outputs:
+        class trigger:
+            class advance(metaclass=abc.ABCMeta):
+                @property
+                @abc.abstractmethod
+                def delay(self):
+                    """
+                    Specifies an additional length of time to delay from the advance trigger
+                    to the advancing to the end of the current waveform. Units are seconds.
+                    """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies an additional length of time to delay from the advance trigger
-        to the advancing to the end of the current waveform. Units are seconds.
-        """
-        pass
+                @delay.setter
+                def delay(self, value):
+                    pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def slope(self):
+                    """
+                    Specifies the slope of the advance trigger.
 
-    @property
-    @abc.abstractmethod
-    def slope(self):
-        """
-        Specifies the slope of the advance trigger.
+                    Values for slope:
 
-        Values for slope:
+                    * 'positive'
+                    * 'negative'
+                    * 'either'
+                    """
+                    pass
 
-        * 'positive'
-        * 'negative'
-        * 'either'
-        """
-        pass
+                @slope.setter
+                def slope(self, value):
+                    pass
 
-    @slope.setter
-    def slope(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def source(self):
+                    """ Specifies the source of the advance trigger. """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """ Specifies the source of the advance trigger. """
-        pass
+                @source.setter
+                def source(self, value):
+                    pass
 
-    @source.setter
-    def source(self, value):
-        pass
+                @property
+                @abc.abstractmethod
+                def threshold(self):
+                    """ Specifies the voltage threshold for the advance trigger. The units are volts. """
+                    pass
 
-    @property
-    @abc.abstractmethod
-    def threshold(self):
-        """ Specifies the voltage threshold for the advance trigger. The units are volts. """
-        pass
+                @threshold.setter
+                def threshold(self, value):
+                    pass
 
-    @threshold.setter
-    def threshold(self, value):
-        pass
+                @abc.abstractmethod
+                def configure(self, source, slope):
+                    """ This function configures the advance trigger properties. """
+                    pass
 
-    @abc.abstractmethod
-    def configure(self, source, slope):
-        """ This function configures the advance trigger properties. """
-        pass
-
-
-class AdvanceTrigger_TriggerAdvance_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support advance triggering
-
-    Implement as trigger.advance
-
-    See also: AdvanceTrigger_OutputsTriggerAdvance_Interface
-    """
-
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """ This function sends a software-generated advance trigger to the instrument. """
-        pass
+    class trigger:
+        class advance(metaclass=abc.ABCMeta):
+            @abc.abstractmethod
+            def send_software_trigger(self):
+                """ This function sends a software-generated advance trigger to the instrument. """
+                pass
 
 
-class InternalTriggerInterface(metaclass=abc.ABCMeta):
+class InternalTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support internal triggering
 
@@ -1182,25 +1069,23 @@ class InternalTriggerInterface(metaclass=abc.ABCMeta):
     triggers are generated.
     This extension affects instrument behavior when the Trigger Source attribute is set to Internal
     Trigger.
-
-    Implement as trigger
     """
+    class trigger(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def internal_rate(self):
+            """
+            Specifies the rate at which the function generator's internal trigger
+            source produces a trigger, in triggers per second.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def internal_rate(self):
-        """
-        Specifies the rate at which the function generator's internal trigger
-        source produces a trigger, in triggers per second.
-        """
-        pass
-
-    @internal_rate.setter
-    def internal_rate(self, value):
-        pass
+        @internal_rate.setter
+        def internal_rate(self, value):
+            pass
 
 
-class SoftwareTriggerInterface(metaclass=abc.ABCMeta):
+class SoftwareTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support software triggering
 
@@ -1209,10 +1094,7 @@ class SoftwareTriggerInterface(metaclass=abc.ABCMeta):
     output to occur.
     This extension affects instrument behavior when the Trigger Source attribute is set to Software
     Trigger
-
-    Implement in fgen class.
     """
-
     @abc.abstractmethod
     def send_software_trigger(self):
         """
@@ -1245,7 +1127,7 @@ class SoftwareTriggerInterface(metaclass=abc.ABCMeta):
         pass
 
 
-class BurstOutputsInterface(metaclass=abc.ABCMeta):
+class BurstExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support triggered burst output.
 
@@ -1255,25 +1137,23 @@ class BurstOutputsInterface(metaclass=abc.ABCMeta):
     For standard and arbitrary waveforms, a cycle is one period of the waveform. For arbitrary sequences, a cycle is
     one complete progression through the generation of all iterations of all waveforms in the sequence.
     This extension affects instrument behavior when the Operation Mode attribute is set to Operate Burst.
-
-    Implement in outputs[]
     """
+    class outputs(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def burst_count(self):
+            """
+            Specifies the number of waveform cycles that the function generator
+            produces after it receives a trigger.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def burst_count(self):
-        """
-        Specifies the number of waveform cycles that the function generator
-        produces after it receives a trigger.
-        """
-        pass
-
-    @burst_count.setter
-    def burst_count(self, value):
-        pass
+        @burst_count.setter
+        def burst_count(self, value):
+            pass
 
 
-class ModulateAM_OutputsAM_Interface(metaclass=abc.ABCMeta):
+class ModulateAMExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support amplitude modulation
 
@@ -1305,123 +1185,111 @@ class ModulateAM_OutputsAM_Interface(metaclass=abc.ABCMeta):
     At a modulation depth of 0 percent, the modulating waveform has no affect on the carrier waveform. At a modulation
     depth of 100 percent, the amplitude of the output signal varies between 0.0V and twice the amplitude of the carrier
     signal.
-
-    Implement as outputs[].am
-
-    See also: ModuleAM_AM_Interface
     """
+    class outputs:
+        class am(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def enabled(self):
+                """
+                Specifies whether the function generator applies amplitude modulation to
+                the signal that the function generator produces with the IviFgenStdFunc,
+                IviFgenArbWfm, or IviFgenArbSeq capability groups. If set to True, the
+                function generator applies amplitude modulation to the output signal. If
+                set to False, the function generator does not apply amplitude modulation
+                to the output signal.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def enabled(self):
-        """
-        Specifies whether the function generator applies amplitude modulation to
-        the signal that the function generator produces with the IviFgenStdFunc,
-        IviFgenArbWfm, or IviFgenArbSeq capability groups. If set to True, the
-        function generator applies amplitude modulation to the output signal. If
-        set to False, the function generator does not apply amplitude modulation
-        to the output signal.
-        """
-        pass
+            @enabled.setter
+            def enabled(self, value):
+                pass
 
-    @enabled.setter
-    def enabled(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def source(self):
+                """
+                Specifies the source of the signal that the function generator uses as the
+                modulating waveform.
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the signal that the function generator uses as the
-        modulating waveform.
+                This attribute affects instrument behavior only when the AM Enabled
+                attribute is set to True.
+                """
+                pass
 
-        This attribute affects instrument behavior only when the AM Enabled
-        attribute is set to True.
-        """
-        pass
+            @source.setter
+            def source(self, value):
+                pass
 
-    @source.setter
-    def source(self, value):
-        pass
+    class am(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def internal_depth(self):
+            """
+            Specifies the extent of modulation the function generator applies to the
+            carrier waveform when the AM Source attribute is set to AM Internal. The
+            unit is percentage.
 
+            This attribute affects the behavior of the instrument only when the AM
+            ource attribute is set to AM Internal.
+            """
+            pass
 
-class ModulateAM_AM_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support amplitude modulation
+        @internal_depth.setter
+        def internal_depth(self,value):
+            pass
 
-    Implement as am
+        @property
+        @abc.abstractmethod
+        def internal_frequency(self):
+            """
+            Specifies the frequency of the internal modulating waveform source. The
+            units are Hertz.
 
-    See also: ModulateAM_OutputsAM_Interface
-    """
+            This attribute affects the behavior of the instrument only when the AM
+            ource attribute is set to AM Internal.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def internal_depth(self):
-        """
-        Specifies the extent of modulation the function generator applies to the
-        carrier waveform when the AM Source attribute is set to AM Internal. The
-        unit is percentage.
+        @internal_frequency.setter
+        def internal_frequency(self, value):
+            pass
 
-        This attribute affects the behavior of the instrument only when the AM
-        ource attribute is set to AM Internal.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def internal_waveform(self):
+            """
+            Specifies the waveform of the internal modulating waveform source.
 
-    @internal_depth.setter
-    def internal_depth(self,value):
-        pass
+            This attribute affects the behavior of the instrument only when the AM
+            ource attribute is set to AM Internal.
 
-    @property
-    @abc.abstractmethod
-    def internal_frequency(self):
-        """
-        Specifies the frequency of the internal modulating waveform source. The
-        units are Hertz.
+            Values for internal_waveform:
 
-        This attribute affects the behavior of the instrument only when the AM
-        ource attribute is set to AM Internal.
-        """
-        pass
+            * 'sine'
+            * 'square'
+            * 'triangle'
+            * 'ramp_up'
+            * 'ramp_down'
+            * 'dc'
+            """
+            pass
 
-    @internal_frequency.setter
-    def internal_frequency(self, value):
-        pass
+        @internal_waveform.setter
+        def internal_waveform(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def internal_waveform(self):
-        """
-        Specifies the waveform of the internal modulating waveform source.
-
-        This attribute affects the behavior of the instrument only when the AM
-        ource attribute is set to AM Internal.
-
-        Values for internal_waveform:
-
-        * 'sine'
-        * 'square'
-        * 'triangle'
-        * 'ramp_up'
-        * 'ramp_down'
-        * 'dc'
-        """
-        pass
-
-    @internal_waveform.setter
-    def internal_waveform(self, value):
-        pass
-
-    @abc.abstractmethod
-    def configure_internal(self, modulation_depth, waveform, frequency):
-        """
-        Configures the attributes that control the function generator's internal
-        amplitude modulating waveform source. These attributes are the modulation
-        depth, waveform, and frequency.
-        """
-        pass
+        @abc.abstractmethod
+        def configure_internal(self, modulation_depth, waveform, frequency):
+            """
+            Configures the attributes that control the function generator's internal
+            amplitude modulating waveform source. These attributes are the modulation
+            depth, waveform, and frequency.
+            """
+            pass
 
 
-class ModulateFM_OutputsFM_Interface(metaclass=abc.ABCMeta):
+class ModulateFMExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support frequency modulation
 
@@ -1450,124 +1318,112 @@ class ModulateFM_OutputsFM_Interface(metaclass=abc.ABCMeta):
     At the maximum peak of the modulating waveform, the frequency of the output signal is equal to the frequency of the
     carrier signal plus the Peak Frequency Deviation. At the minimum peak of the modulating waveform, the frequency of
     the output signal is equal to the frequency of the carrier signal minus the Peak Frequency Deviation.
-
-    Implement as outputs[].fm.
-
-    See also: ModulateFM_FM_Interface
     """
+    class outputs:
+        class fm(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def enabled(self):
+                """
+                Specifies whether the function generator applies amplitude modulation to
+                the carrier waveform. If set to True, the function generator applies
+                frequency modulation to the output signal. If set to False, the function
+                generator does not apply frequency modulation to the output signal.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def enabled(self):
-        """
-        Specifies whether the function generator applies amplitude modulation to
-        the carrier waveform. If set to True, the function generator applies
-        frequency modulation to the output signal. If set to False, the function
-        generator does not apply frequency modulation to the output signal.
-        """
-        pass
+            @enabled.setter
+            def enabled(self, value):
+                pass
 
-    @enabled.setter
-    def enabled(self, value):
-        pass
+            @property
+            @abc.abstractmethod
+            def source(self):
+                """
+                Specifies the source of the signal that the function generator uses as the
+                modulating waveform.
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the source of the signal that the function generator uses as the
-        modulating waveform.
+                This attribute affects instrument behavior only when the FM Enabled
+                attribute is set to True.
+                """
+                pass
 
-        This attribute affects instrument behavior only when the FM Enabled
-        attribute is set to True.
-        """
-        pass
+            @source.setter
+            def source(self, value):
+                pass
 
-    @source.setter
-    def source(self, value):
-        pass
+    class fm(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def internal_deviation(self):
+            """
+            Specifies the maximum frequency deviation, in Hertz, that the function
+            generator applies to the carrier waveform when the FM Source attribute is
+            set to FM Internal.
 
+            This attribute affects the behavior of the instrument only when the FM
+            Source attribute is set to FM Internal.
+            """
+            pass
 
-class ModulateFM_FM_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support frequency modulation
+        @internal_deviation.setter
+        def internal_deviation(self, value):
+            pass
 
-    Implement as fm.
+        @property
+        @abc.abstractmethod
+        def internal_frequency(self):
+            """
+            Specifies the frequency of the internal modulating waveform source. The
+            units are hertz.
 
-    See also: ModulateFM_OutputsFM_Interface
-    """
+            This attribute affects the behavior of the instrument only when the FM
+            Source attribute is set to FM Internal.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def internal_deviation(self):
-        """
-        Specifies the maximum frequency deviation, in Hertz, that the function
-        generator applies to the carrier waveform when the FM Source attribute is
-        set to FM Internal.
+        @internal_frequency.setter
+        def internal_frequency(self, value):
+            pass
 
-        This attribute affects the behavior of the instrument only when the FM
-        Source attribute is set to FM Internal.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def internal_waveform(self):
+            """
+            Specifies the waveform of the internal modulating waveform source.
 
-    @internal_deviation.setter
-    def internal_deviation(self, value):
-        pass
+            This attribute affects the behavior of the instrument only when the FM
+            Source attribute is set to FM Internal.
 
-    @property
-    @abc.abstractmethod
-    def internal_frequency(self):
-        """
-        Specifies the frequency of the internal modulating waveform source. The
-        units are hertz.
+            Values for internal_waveform:
 
-        This attribute affects the behavior of the instrument only when the FM
-        Source attribute is set to FM Internal.
-        """
-        pass
+            * 'sine'
+            * 'square'
+            * 'triangle'
+            * 'ramp_up'
+            * 'ramp_down'
+            * 'dc'
+            """
+            pass
 
-    @internal_frequency.setter
-    def internal_frequency(self, value):
-        pass
+        @internal_waveform.setter
+        def internal_waveform(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def internal_waveform(self):
-        """
-        Specifies the waveform of the internal modulating waveform source.
+        @abc.abstractmethod
+        def configure_internal(self, deviation, waveform, frequency):
+            """
+            Configures the attributes that control the function generator's internal frequency
+            modulating waveform source. These attributes are the modulation peak deviation, waveform,
+            and frequency.
 
-        This attribute affects the behavior of the instrument only when the FM
-        Source attribute is set to FM Internal.
-
-        Values for internal_waveform:
-
-        * 'sine'
-        * 'square'
-        * 'triangle'
-        * 'ramp_up'
-        * 'ramp_down'
-        * 'dc'
-        """
-        pass
-
-    @internal_waveform.setter
-    def internal_waveform(self, value):
-        pass
-
-    @abc.abstractmethod
-    def configure_internal(self, deviation, waveform, frequency):
-        """
-        Configures the attributes that control the function generator's internal frequency
-        modulating waveform source. These attributes are the modulation peak deviation, waveform,
-        and frequency.
-
-        This attribute affects instrument behavior only when the FM Enabled
-        attribute is set to True.
-        """
-        pass
+            This attribute affects instrument behavior only when the FM Enabled
+            attribute is set to True.
+            """
+            pass
 
 
-class SampleClockInterface(metaclass=abc.ABCMeta):
+class SampleClockExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support external sample clocks
 
@@ -1575,67 +1431,63 @@ class SampleClockInterface(metaclass=abc.ABCMeta):
     to use (or provide) an external sample clock. Note that when using an external sample clock,
     the Arbitrary Sample Rate attribute must be set to the corresponding frequency of the external
     sample clock.
-
-    Implement as sample_clock.
     """
+    class sample_clock(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def source(self):
+            """
+            Specifies the clock used for the waveform generation. Note that when using
+            an external sample clock, the Arbitrary Sample Rate attribute must be set
+            to the corresponding frequency of the external sample clock.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def source(self):
-        """
-        Specifies the clock used for the waveform generation. Note that when using
-        an external sample clock, the Arbitrary Sample Rate attribute must be set
-        to the corresponding frequency of the external sample clock.
-        """
-        pass
+        @source.setter
+        def source(self, value):
+            pass
 
-    @source.setter
-    def source(self, value):
-        pass
+        @property
+        @abc.abstractmethod
+        def output_enabled(self):
+            """
+            Specifies whether or not the sample clock appears at the sample clock output of the
+            generator.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def output_enabled(self):
-        """
-        Specifies whether or not the sample clock appears at the sample clock output of the
-        generator.
-        """
-        pass
-
-    @output_enabled.setter
-    def output_enabled(self, value):
-        pass
+        @output_enabled.setter
+        def output_enabled(self, value):
+            pass
 
 
-class TerminalConfigurationInterface(metaclass=abc.ABCMeta):
+class TerminalConfigurationExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support single ended or differential
     output selection.
-
-    Implement as mixin to outputs[].
     """
+    class outputs(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def terminal_configuration(self):
+            """
+            Determines whether the generator will run in single-ended or differential
+            mode, and whether the output gain and offset values will be analyzed
+            based on single-ended or differential operation.
 
-    @property
-    @abc.abstractmethod
-    def terminal_configuration(self):
-        """
-        Determines whether the generator will run in single-ended or differential
-        mode, and whether the output gain and offset values will be analyzed
-        based on single-ended or differential operation.
+            Values for terminal_configuration:
 
-        Values for terminal_configuration:
+            * 'single_ended'
+            * 'differential'
+            """
+            pass
 
-        * 'single_ended'
-        * 'differential'
-        """
-        pass
-
-    @terminal_configuration.setter
-    def terminal_configuration(self, value):
-        pass
+        @terminal_configuration.setter
+        def terminal_configuration(self, value):
+            pass
 
 
-class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
+class ArbChannelWfmExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary waveform
     generation
@@ -1644,67 +1496,55 @@ class ArbChannelWfm_OutputsArbitrary_Interface(metaclass=abc.ABCMeta):
     generators capable of producing user-defined arbitrary waveforms for specific output channels.
     The IviFgenArbChannelWfm extension group includes functions for creating, configuring, and
     generating arbitrary waveforms.
-
-    Implement as mixin to outputs[].arbitrary
-
-    See also: ArbChannelWfm_ArbitraryWaveform_Interface
     """
+    class outputs:
+        class arbitrary:
+            class waveform(metaclass=abc.ABCMeta):
+                @abc.abstractmethod
+                def create_waveform(self, data):
+                    """
+                    Creates a channel-specific arbitrary waveform and returns a handle that
+                    identifies that waveform. You pass a waveform handle as the waveformHandle
+                    parameter of the Configure Arbitrary Waveform function to produce that
+                    waveform. You also use the handles this function returns to create a
+                    sequence of arbitrary waveforms with the Create Arbitrary Sequence
+                    function.
 
-    @abc.abstractmethod
-    def create_waveform(self, data):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. You pass a waveform handle as the waveformHandle
-        parameter of the Configure Arbitrary Waveform function to produce that
-        waveform. You also use the handles this function returns to create a
-        sequence of arbitrary waveforms with the Create Arbitrary Sequence
-        function.
+                    If the instrument has multiple channels, it is possible to create
+                    multi-channel waveforms: the channel names are passed as a
+                    comma-separated list of channel names, and the waveform arrays are
+                    concatenated into a single array. In this case, all waveforms must be of
+                    the same length.
 
-        If the instrument has multiple channels, it is possible to create
-        multi-channel waveforms: the channel names are passed as a
-        comma-separated list of channel names, and the waveform arrays are
-        concatenated into a single array. In this case, all waveforms must be of
-        the same length.
+                    If the function generator cannot store any more arbitrary waveforms, this
+                    function returns the error No Waveforms Available.
+                    """
+                    pass
 
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
+    class arbitrary:
+        class waveform(metaclass=abc.ABCMeta):
+            def create_channel_waveform(self, channel_names, waveforms):
+                """
+                Creates a channel-specific arbitrary waveform and returns a handle that
+                identifies that waveform. You pass a waveform handle as the waveformHandle
+                parameter of the Configure Arbitrary Waveform function to produce that
+                waveform. You also use the handles this function returns to create a
+                sequence of arbitrary waveforms with the Create Arbitrary Sequence
+                function.
 
+                If the instrument has multiple channels, it is possible to create
+                multi-channel waveforms: the channel names are passed as a
+                comma-separated list of channel names, and the waveform arrays are
+                concatenated into a single array. In this case, all waveforms must be of
+                the same length.
 
-class ArbChannelWfm_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
-    """
-    The IviFgenArbChannelWfm Extension Group supports single channel and multichannel function
-    generators capable of producing user-defined arbitrary waveforms for specific output channels.
-    The IviFgenArbChannelWfm extension group includes functions for creating, configuring, and
-    generating arbitrary waveforms.
-
-    Implement as arbitrary.waveform
-
-    See also: ArbChannelWfm_OutputsArbitrary_Interface
-    """
-    def create_channel_waveform(self, channel_names, waveforms):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. You pass a waveform handle as the waveformHandle
-        parameter of the Configure Arbitrary Waveform function to produce that
-        waveform. You also use the handles this function returns to create a
-        sequence of arbitrary waveforms with the Create Arbitrary Sequence
-        function.
-
-        If the instrument has multiple channels, it is possible to create
-        multi-channel waveforms: the channel names are passed as a
-        comma-separated list of channel names, and the waveform arrays are
-        concatenated into a single array. In this case, all waveforms must be of
-        the same length.
-
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
+                If the function generator cannot store any more arbitrary waveforms, this
+                function returns the error No Waveforms Available.
+                """
+                pass
 
 
-class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
+class ArbWfmBinaryExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support user-defined arbitrary binary
     waveform generation
@@ -1713,150 +1553,120 @@ class ArbWfmBinary_OutputsArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
     producing user-defined arbitrary waveforms that can be specified in binary format. The
     IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
     arbitrary waveforms.
-
-    Implement as outputs[].arbitrary.waveform
-
-    See also: ArbWfmBinary_Arbitrary_Interface, ArbWfmBinary_ArbitraryWaveform_Interface
     """
-    @abc.abstractmethod
-    def create_channel_waveform_int16(self, waveform):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. Data is passed in as 16-bit binary data. If the
-        arbitrary waveform generator supports formats less than 16 bits, call the
-        BinaryAlignment property to determine whether to left or right justify the
-        data before passing it to this call. You pass a waveform handle as the
-        waveformHandle parameter of the Configure Arbitrary Waveform function to
-        produce that waveform. You also use the handles this function returns to
-        create a sequence of arbitrary waveforms with the Create Arbitrary
-        Sequence function.
+    class outputs:
+        class arbitrary:
+            class waveform(metaclass=abc.ABCMeta):
+                @abc.abstractmethod
+                def create_waveform_int16(self, waveform):
+                    """
+                    Creates a channel-specific arbitrary waveform and returns a handle that
+                    identifies that waveform. Data is passed in as 16-bit binary data. If the
+                    arbitrary waveform generator supports formats less than 16 bits, call the
+                    BinaryAlignment property to determine whether to left or right justify the
+                    data before passing it to this call. You pass a waveform handle as the
+                    waveformHandle parameter of the Configure Arbitrary Waveform function to
+                    produce that waveform. You also use the handles this function returns to
+                    create a sequence of arbitrary waveforms with the Create Arbitrary
+                    Sequence function.
 
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
+                    If the function generator cannot store any more arbitrary waveforms, this
+                    function returns the error No Waveforms Available.
+                    """
+                    pass
 
-    @abc.abstractmethod
-    def create_channel_waveform_int32(self, waveform):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. Data is passed in as 32-bit binary data. If the
-        arbitrary waveform generator supports formats less than 32 bits, call the
-        BinaryAlignment property to determine whether to left or right justify the
-        data before passing it to this call. You pass a waveform handle as the
-        waveformHandle parameter of the Configure Arbitrary Waveform function to
-        produce that waveform. You also use the handles this function returns to
-        create a sequence of arbitrary waveforms with the Create Arbitrary
-        Sequence function.
+                @abc.abstractmethod
+                def create_waveform_int32(self, waveform):
+                    """
+                    Creates a channel-specific arbitrary waveform and returns a handle that
+                    identifies that waveform. Data is passed in as 32-bit binary data. If the
+                    arbitrary waveform generator supports formats less than 32 bits, call the
+                    BinaryAlignment property to determine whether to left or right justify the
+                    data before passing it to this call. You pass a waveform handle as the
+                    waveformHandle parameter of the Configure Arbitrary Waveform function to
+                    produce that waveform. You also use the handles this function returns to
+                    create a sequence of arbitrary waveforms with the Create Arbitrary
+                    Sequence function.
 
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
+                    If the function generator cannot store any more arbitrary waveforms, this
+                    function returns the error No Waveforms Available.
+                    """
+                    pass
 
+    class arbitrary(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def binary_alignment(self):
+            """
+            Identifies whether the arbitrary waveform generator treats binary data
+            provided to the Create Channel Arbitrary Waveform Int16 or Create Channel
+            Arbitrary Waveform Int32 functions as left-justified or right-justified.
+            Binary Alignment is only relevant if the generator supports bit-depths
+            less than the size of the binary data type of the create waveform function
+            being used. For a 16-bit or a 32-bit generator, this function can return
+            either value.
+            """
+            pass
 
-class ArbWfmBinary_Arbitrary_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support user-defined arbitrary binary
-    waveform generation
+        @property
+        @abc.abstractmethod
+        def sample_bit_resolution(self):
+            """
+            Returns the number of significant bits that the generator supports in an
+            arbitrary waveform. Together with the binary alignment, this allows the
+            user to know the range and resolution of the integers in the waveform.
+            """
+            pass
 
-    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of
-    producing user-defined arbitrary waveforms that can be specified in binary format. The
-    IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
-    arbitrary waveforms.
+        class waveform(metaclass=abc.ABCMeta):
+            def create_channel_waveform_int16(self, channel_names, waveforms):
+                """
+                Creates a channel-specific arbitrary waveform and returns a handle that
+                identifies that waveform. Data is passed in as 16-bit binary data. If the
+                arbitrary waveform generator supports formats less than 16 bits, call the
+                BinaryAlignment property to determine whether to left or right justify the
+                data before passing it to this call. You pass a waveform handle as the
+                waveformHandle parameter of the Configure Arbitrary Waveform function to
+                produce that waveform. You also use the handles this function returns to
+                create a sequence of arbitrary waveforms with the Create Arbitrary
+                Sequence function.
 
-    Implement as arbitrary
+                If the instrument has multiple channels, it is possible to create
+                multi-channel waveforms: the channel names are passed as a
+                comma-separated list of channel names, and the waveform arrays
+                are concatenated into a single array. In this case, all waveforms
+                must be of the same length.
 
-    See also: ArbWfmBinary_OutputsArbitraryWaveform_Interface,
-              ArbWfmBinary_ArbitraryWaveform_Interface
-    """
-    @property
-    @abc.abstractmethod
-    def binary_alignment(self):
-        """
-        Identifies whether the arbitrary waveform generator treats binary data
-        provided to the Create Channel Arbitrary Waveform Int16 or Create Channel
-        Arbitrary Waveform Int32 functions as left-justified or right-justified.
-        Binary Alignment is only relevant if the generator supports bit-depths
-        less than the size of the binary data type of the create waveform function
-        being used. For a 16-bit or a 32-bit generator, this function can return
-        either value.
-        """
-        pass
+                If the function generator cannot store any more arbitrary waveforms, this
+                function returns the error No Waveforms Available.
+                """
+                pass
 
-    @property
-    @abc.abstractmethod
-    def sample_bit_resolution(self):
-        """
-        Returns the number of significant bits that the generator supports in an
-        arbitrary waveform. Together with the binary alignment, this allows the
-        user to know the range and resolution of the integers in the waveform.
-        """
-        pass
+            def create_channel_waveform_int32(self, channel_names, waveforms):
+                """
+                Creates a channel-specific arbitrary waveform and returns a handle that
+                identifies that waveform. Data is passed in as 32-bit binary data. If the
+                arbitrary waveform generator supports formats less than 32 bits, call the
+                BinaryAlignment property to determine whether to left or right justify the
+                data before passing it to this call. You pass a waveform handle as the
+                waveformHandle parameter of the Configure Arbitrary Waveform function to
+                produce that waveform. You also use the handles this function returns to
+                create a sequence of arbitrary waveforms with the Create Arbitrary
+                Sequence function.
 
+                If the instrument has multiple channels, it is possible to create
+                multi-channel waveforms: the channel names are passed as a
+                comma-separated list of channel names, and the waveform arrays
+                are concatenated into a single array. In this case, all waveforms
+                must be of the same length.
 
-class ArbWfmBinary_ArbitraryWaveform_Interface(metaclass=abc.ABCMeta):
-    """
-    Extension IVI methods for function generators that support user-defined arbitrary binary
-    waveform generation
-
-    The IviFgenArbWfmBinary Extension Group supports multichannel function generators capable of
-    producing user-defined arbitrary waveforms that can be specified in binary format. The
-    IviFgenArbWfmBinary extension group includes functions for creating, configuring, and generating
-    arbitrary waveforms.
-
-    Implement as arbitrary.waveform
-
-    See also: ArbWfmBinary_OutputsArbitraryWaveform_Interface, ArbWfmBinary_Arbitrary_Interface
-    """
-    def create_channel_waveform_int16(self, channel_names, waveforms):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. Data is passed in as 16-bit binary data. If the
-        arbitrary waveform generator supports formats less than 16 bits, call the
-        BinaryAlignment property to determine whether to left or right justify the
-        data before passing it to this call. You pass a waveform handle as the
-        waveformHandle parameter of the Configure Arbitrary Waveform function to
-        produce that waveform. You also use the handles this function returns to
-        create a sequence of arbitrary waveforms with the Create Arbitrary
-        Sequence function.
-
-        If the instrument has multiple channels, it is possible to create
-        multi-channel waveforms: the channel names are passed as a
-        comma-separated list of channel names, and the waveform arrays
-        are concatenated into a single array. In this case, all waveforms
-        must be of the same length.
-
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
-
-    def create_channel_waveform_int32(self, channel_names, waveforms):
-        """
-        Creates a channel-specific arbitrary waveform and returns a handle that
-        identifies that waveform. Data is passed in as 32-bit binary data. If the
-        arbitrary waveform generator supports formats less than 32 bits, call the
-        BinaryAlignment property to determine whether to left or right justify the
-        data before passing it to this call. You pass a waveform handle as the
-        waveformHandle parameter of the Configure Arbitrary Waveform function to
-        produce that waveform. You also use the handles this function returns to
-        create a sequence of arbitrary waveforms with the Create Arbitrary
-        Sequence function.
-
-        If the instrument has multiple channels, it is possible to create
-        multi-channel waveforms: the channel names are passed as a
-        comma-separated list of channel names, and the waveform arrays
-        are concatenated into a single array. In this case, all waveforms
-        must be of the same length.
-
-        If the function generator cannot store any more arbitrary waveforms, this
-        function returns the error No Waveforms Available.
-        """
-        pass
+                If the function generator cannot store any more arbitrary waveforms, this
+                function returns the error No Waveforms Available.
+                """
+                pass
 
 
-class DataMarkerInterface(metaclass=abc.ABCMeta):
+class DataMarkerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support output of particular waveform data
     bits as markers
@@ -1870,153 +1680,151 @@ class DataMarkerInterface(metaclass=abc.ABCMeta):
 
     Setting the Data Marker Destination attribute to a value other than None enables the data
     marker. To disable the data marker, set the Data Marker Destination to None.
-
-    Implement in a list as data_markers[].
     """
-    @property
-    @abc.abstractmethod
-    def name(self):
-        """
-        This attribute returns the repeated capability identifier defined by
-        specific driver for the data marker that corresponds to the index that the
-        user specifies. If the driver defines a qualified Data Marker name, this
-        property returns the qualified name.
+    class data_markers(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def name(self):
+            """
+            This attribute returns the repeated capability identifier defined by
+            specific driver for the data marker that corresponds to the index that the
+            user specifies. If the driver defines a qualified Data Marker name, this
+            property returns the qualified name.
 
-        If the value that the user passes for the Index parameter is less than
-        zero or greater than the value of the Data Marker Count, the attribute
-        returns an empty string for the value and returns an error.
-        """
-        pass
+            If the value that the user passes for the Index parameter is less than
+            zero or greater than the value of the Data Marker Count, the attribute
+            returns an empty string for the value and returns an error.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def amplitude(self):
-        """
-        Specifies the amplitude of the data marker output. The units are volts.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def amplitude(self):
+            """
+            Specifies the amplitude of the data marker output. The units are volts.
+            """
+            pass
 
-    @amplitude.setter
-    def amplitude(self, value):
-        pass
+        @amplitude.setter
+        def amplitude(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def bit_position(self):
-        """
-        Specifies the bit position of the binary representation of the waveform
-        data that will be output as a data marker. A value of 0 indicates the
-        least significant bit.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def bit_position(self):
+            """
+            Specifies the bit position of the binary representation of the waveform
+            data that will be output as a data marker. A value of 0 indicates the
+            least significant bit.
+            """
+            pass
 
-    @bit_position.setter
-    def bit_position(self, value):
-        pass
+        @bit_position.setter
+        def bit_position(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies the amount of delay applied to the data marker output with
-        respect to the analog data output. A value of zero indicates the marker is
-        aligned with the analog data output.  The units are seconds.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def delay(self):
+            """
+            Specifies the amount of delay applied to the data marker output with
+            respect to the analog data output. A value of zero indicates the marker is
+            aligned with the analog data output.  The units are seconds.
+            """
+            pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+        @delay.setter
+        def delay(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def destination(self):
-        """
-        Specifies the destination terminal for the data marker output.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def destination(self):
+            """
+            Specifies the destination terminal for the data marker output.
+            """
+            pass
 
-    @destination.setter
-    def destination(self, value):
-        pass
+        @destination.setter
+        def destination(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def polarity(self):
-        """
-        Specifies the polarity of the data marker output.
+        @property
+        @abc.abstractmethod
+        def polarity(self):
+            """
+            Specifies the polarity of the data marker output.
 
-        Values for polarity:
+            Values for polarity:
 
-        * 'active_high'
-        * 'active_low'
-        """
-        pass
+            * 'active_high'
+            * 'active_low'
+            """
+            pass
 
-    @polarity.setter
-    def polarity(self, value):
-        pass
+        @polarity.setter
+        def polarity(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def source_channel(self):
-        """
-        Specifies the channel whose data bit will be output as a marker.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def source_channel(self):
+            """
+            Specifies the channel whose data bit will be output as a marker.
+            """
+            pass
 
-    @source_channel.setter
-    def source_channel(self, value):
-        pass
+        @source_channel.setter
+        def source_channel(self, value):
+            pass
 
-    @abc.abstractmethod
-    def configure(self, source_channel, bit_position, destination):
-        """
-        Configures some of the common data marker attributes: source channel, bit position and
-        destination.
-        """
-        pass
+        @abc.abstractmethod
+        def configure(self, source_channel, bit_position, destination):
+            """
+            Configures some of the common data marker attributes: source channel, bit position and
+            destination.
+            """
+            pass
 
-    @abc.abstractmethod
-    def clear(self):
-        """
-        Disables all of the data markers by setting their Data Marker Destination
-        attribute to None.
-        """
-        pass
+        @abc.abstractmethod
+        def clear(self):
+            """
+            Disables all of the data markers by setting their Data Marker Destination
+            attribute to None.
+            """
+            pass
 
 
-class ArbDataMaskInterface(metaclass=abc.ABCMeta):
+class ArbDataMaskExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support masking of waveform data bits
 
     The IviFgenArbDataMask extension group supports arbitrary waveform generators with the ability
     to mask out bits of the output data.
-
-    Implement as mixing to arbitrary
     """
-    @property
-    @abc.abstractmethod
-    def data_mask(self):
-        """
-        Determines which bits of the output data are masked out. This is
-        especially useful when combined with Data Markers so that the bits
-        embedded with the data to be used for markers are not actually output by
-        the generator.
+    class arbitrary(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def data_mask(self):
+            """
+            Determines which bits of the output data are masked out. This is
+            especially useful when combined with Data Markers so that the bits
+            embedded with the data to be used for markers are not actually output by
+            the generator.
 
-        A value of 1 for a particular bit indicates that the data bit should be
-        output. A value of 0 indicates that the data bit should be masked out. For
-        example, if the value of this property is 0xFFFFFFFF (all bits are 1), no
-        masking is applied.
-        """
-        pass
+            A value of 1 for a particular bit indicates that the data bit should be
+            output. A value of 0 indicates that the data bit should be masked out. For
+            example, if the value of this property is 0xFFFFFFFF (all bits are 1), no
+            masking is applied.
+            """
+            pass
 
-    @data_mask.setter
-    def data_mask(self, value):
-        pass
+        @data_mask.setter
+        def data_mask(self, value):
+            pass
 
 
-class SparseMarkerInterface(metaclass=abc.ABCMeta):
+class SparseMarkerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support output of markers associated with
     output data samples.
@@ -2031,142 +1839,141 @@ class SparseMarkerInterface(metaclass=abc.ABCMeta):
 
     Setting the Sparse Marker Destination attribute to a value other than None enables the sparse
     marker. To disable the sparse marker, set the Sparse Marker Destination to None.
-
-    Implement as sparse_markers[]
     """
-    @property
-    @abc.abstractmethod
-    def name(self):
-        """
-        This attribute returns the repeated capability identifier defined by
-        specific driver for the sparse marker that corresponds to the index that
-        the user specifies. If the driver defines a qualified Sparse Marker name,
-        this property returns the qualified name.
-        """
-        pass
+    class sparse_markers(metaclass=abc.ABCMeta):
+        @property
+        @abc.abstractmethod
+        def name(self):
+            """
+            This attribute returns the repeated capability identifier defined by
+            specific driver for the sparse marker that corresponds to the index that
+            the user specifies. If the driver defines a qualified Sparse Marker name,
+            this property returns the qualified name.
+            """
+            pass
 
-    @property
-    @abc.abstractmethod
-    def amplitude(self):
-        """
-        Specifies the amplitude of the sparse marker output. The units are volts.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def amplitude(self):
+            """
+            Specifies the amplitude of the sparse marker output. The units are volts.
+            """
+            pass
 
-    @amplitude.setter
-    def amplitude(self, value):
-        pass
+        @amplitude.setter
+        def amplitude(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def delay(self):
-        """
-        Specifies the amount of delay applied to the sparse marker output with
-        respect to the analog data output. A value of zero indicates the marker is
-        aligned with the analog data output. The units are seconds.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def delay(self):
+            """
+            Specifies the amount of delay applied to the sparse marker output with
+            respect to the analog data output. A value of zero indicates the marker is
+            aligned with the analog data output. The units are seconds.
+            """
+            pass
 
-    @delay.setter
-    def delay(self, value):
-        pass
+        @delay.setter
+        def delay(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def destination(self):
-        """
-        Specifies the destination terminal for the sparse marker output.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def destination(self):
+            """
+            Specifies the destination terminal for the sparse marker output.
+            """
+            pass
 
-    @destination.setter
-    def destination(self, value):
-        pass
+        @destination.setter
+        def destination(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def polarity(self):
-        """
-        Specifies the polarity of the sparse marker output.
+        @property
+        @abc.abstractmethod
+        def polarity(self):
+            """
+            Specifies the polarity of the sparse marker output.
 
-        Values for polarity:
+            Values for polarity:
 
-        * 'active_high'
-        * 'active_low'
-        """
-        pass
+            * 'active_high'
+            * 'active_low'
+            """
+            pass
 
-    @polarity.setter
-    def polarity(self, value):
-        pass
+        @polarity.setter
+        def polarity(self, value):
+            pass
 
-    @property
-    @abc.abstractmethod
-    def waveform_handle(self):
-        """
-        Specifies the waveform whose indexes the sparse marker refers to.
-        """
-        pass
+        @property
+        @abc.abstractmethod
+        def waveform_handle(self):
+            """
+            Specifies the waveform whose indexes the sparse marker refers to.
+            """
+            pass
 
-    @waveform_handle.setter
-    def waveform_handle(self, value):
-        pass
+        @waveform_handle.setter
+        def waveform_handle(self, value):
+            pass
 
-    @abc.abstractmethod
-    def configure(self, waveform_handle, indexes, destination):
-        """
-        Configures some of the common sparse marker attributes.
-        """
-        pass
+        @abc.abstractmethod
+        def configure(self, waveform_handle, indexes, destination):
+            """
+            Configures some of the common sparse marker attributes.
+            """
+            pass
 
-    @abc.abstractmethod
-    def get_indexes(self):
-        """
-        Gets the coerced indexes associated with the sparse marker. These indexes
-        are specified by either the Configure SparseMarker function or the Set
-        Sparse Marker Indexes function.
-        """
-        pass
+        @abc.abstractmethod
+        def get_indexes(self):
+            """
+            Gets the coerced indexes associated with the sparse marker. These indexes
+            are specified by either the Configure SparseMarker function or the Set
+            Sparse Marker Indexes function.
+            """
+            pass
 
-    @abc.abstractmethod
-    def set_indexes(self, indexes):
-        """
-        Sets the indexes associated with the sparse marker. These indexes may be
-        coerced by the driver. Use the Get Sparse Marker Indexes function to find
-        the coerced values.
-        """
-        pass
+        @abc.abstractmethod
+        def set_indexes(self, indexes):
+            """
+            Sets the indexes associated with the sparse marker. These indexes may be
+            coerced by the driver. Use the Get Sparse Marker Indexes function to find
+            the coerced values.
+            """
+            pass
 
-    @abc.abstractmethod
-    def clear(self):
-        """
-        Disables all of the sparse markers by setting their Sparse Marker
-        Destination attribute to None.
-        """
-        pass
+        @abc.abstractmethod
+        def clear(self):
+            """
+            Disables all of the sparse markers by setting their Sparse Marker
+            Destination attribute to None.
+            """
+            pass
 
 
-class ArbSeqDepthInterface(metaclass=abc.ABCMeta):
+class ArbSeqDepthExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for function generators that support producing sequences of sequences
     of waveforms.
 
     The IviFgenArbSeqDepth extension group supports arbitrary waveform generators supporting
     IviFgenArbSeq and that are capable of producing sequences of sequences of arbitrary waveforms.
-
-    Implement as arbitrary.sequence
     """
-    @property
-    @abc.abstractmethod
-    def depth_max(self):
-        """
-        Returns the maximum sequence depth - that is, the number of times a
-        sequence can include other sequences recursively. A depth of zero
-        indicates the generator supports waveforms only. A depth of 1 indicates a
-        generator supports sequences of waveforms, but not sequences of sequences.
-        A depth of 2 or greater indicates that the generator supports sequences of
-        sequences. Note that if the MaxSequenceDepth is 2 or greater, the driver
-        must return unique handles for waveforms and sequences so that a sequence
-        may contain both waveform and sequence handles.
-        """
-        pass
+    class arbitrary:
+        class sequence(metaclass=abc.ABCMeta):
+            @property
+            @abc.abstractmethod
+            def depth_max(self):
+                """
+                Returns the maximum sequence depth - that is, the number of times a
+                sequence can include other sequences recursively. A depth of zero
+                indicates the generator supports waveforms only. A depth of 1 indicates a
+                generator supports sequences of waveforms, but not sequences of sequences.
+                A depth of 2 or greater indicates that the generator supports sequences of
+                sequences. Note that if the MaxSequenceDepth is 2 or greater, the driver
+                must return unique handles for waveforms and sequences so that a sequence
+                may contain both waveform and sequence handles.
+                """
+                pass

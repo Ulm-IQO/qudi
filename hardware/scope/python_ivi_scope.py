@@ -1491,7 +1491,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         """
         this enables getting data from dynamic descriptors
         :param name: name of attribute
-        :return: the attrbite
+        :return: the attribute
         """
         value = object.__getattribute__(self, name)
         if hasattr(value, '__get__'):
@@ -1584,7 +1584,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviChannel(_Scope.channels, metaclass=IviChannelMetaclass):
             measurement = Namespace(IviChannelMeasurement)
 
-        self.channels = Namespace.repeat(4)(IviChannel)  # FIXME 4 hardcoded
+        self.channels = Namespace.repeat(self.driver._channel_count)(IviChannel)
 
         if ivi.scope.WaveformMeasurement in driver_capabilities:
             self.reference_level = Namespace(WaveformMeasurementExtension.reference_level)
