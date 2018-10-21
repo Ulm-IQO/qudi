@@ -191,7 +191,6 @@ class _FGen(fgen_ivi_interface.FGenIviInterface):
             self.impedance_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def output_mode(self):
             """
             Determines how the function generator produces waveforms. This attribute
@@ -212,7 +211,6 @@ class _FGen(fgen_ivi_interface.FGenIviInterface):
             self.output_mode_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def reference_clock_source(self):
             """
             Specifies the source of the reference clock. The function generator
@@ -293,7 +291,6 @@ class StdFuncExtension(fgen_ivi_interface.StdFuncExtensionInterface):
                 self.dc_offset_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def duty_cycle_high(self):
                 """
                 Specifies the duty cycle for a square waveform. This attribute affects
@@ -308,7 +305,6 @@ class StdFuncExtension(fgen_ivi_interface.StdFuncExtensionInterface):
                 self.duty_cycle_high_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def start_phase(self):
                 """
                 Specifies the start phase of the standard waveform the function generator
@@ -323,7 +319,6 @@ class StdFuncExtension(fgen_ivi_interface.StdFuncExtensionInterface):
                 self.start_phase_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def frequency(self):
                 """
                 Specifies the frequency of the standard waveform the function generator
@@ -338,7 +333,6 @@ class StdFuncExtension(fgen_ivi_interface.StdFuncExtensionInterface):
                 self.frequency_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def waveform(self):
                 """
                 Specifies which standard waveform the function generator produces.
@@ -480,7 +474,6 @@ class ArbWfmExtension(fgen_ivi_interface.ArbWfmExtensionInterface):
                 return self.root.driver.arbitrary.waveform.number_waveforms_max
 
             @property
-            @abc.abstractmethod
             def size_max(self):
                 """
                 Returns the maximum number of points the function generator allows in an
@@ -489,7 +482,6 @@ class ArbWfmExtension(fgen_ivi_interface.ArbWfmExtensionInterface):
                 return self.root.driver.arbitrary.waveform.size_max
 
             @property
-            @abc.abstractmethod
             def size_min(self):
                 """
                 Returns the minimum number of points the function generator allows in an
@@ -498,7 +490,6 @@ class ArbWfmExtension(fgen_ivi_interface.ArbWfmExtensionInterface):
                 return self.root.driver.arbitrary.waveform.size_min
 
             @property
-            @abc.abstractmethod
             def quantum(self):
                 """
                 The size of each arbitrary waveform shall be a multiple of a quantum
@@ -508,7 +499,6 @@ class ArbWfmExtension(fgen_ivi_interface.ArbWfmExtensionInterface):
                 """
                 return self.root.driver.arbitrary.waveform.quantum
 
-            @abc.abstractmethod
             def clear(self, waveform):
                 """
                 Removes a previously created arbitrary waveform from the function
@@ -520,7 +510,6 @@ class ArbWfmExtension(fgen_ivi_interface.ArbWfmExtensionInterface):
                 """
                 self.root.driver.arbitrary.waveform.clear(waveform)
 
-            @abc.abstractmethod
             def create(self, data):
                 """
                 Creates an arbitrary waveform from an array of data points. The function
@@ -953,7 +942,6 @@ class HoldTriggerExtension(fgen_ivi_interface.HoldTriggerExtensionInterface):
                     self.source_changed.emit(value)
 
                 @property
-                @abc.abstractmethod
                 def threshold(self):
                     """
                     Specifies the voltage threshold for the hold trigger. The units are volts.
@@ -1364,7 +1352,6 @@ class ModulateAMExtension(fgen_ivi_interface.ModulateAMExtensionInterface):
             self.internal_depth_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def internal_frequency(self):
             """
             Specifies the frequency of the internal modulating waveform source. The
@@ -1546,7 +1533,6 @@ class ModulateFMExtension(fgen_ivi_interface.ModulateFMExtensionInterface):
             self.root.driver.fm.internal_waveform = value
             self.internal_waveform_changed.emit(value)
 
-        @abc.abstractmethod
         def configure_internal(self, deviation, waveform, frequency):
             """
             Configures the attributes that control the function generator's internal frequency
@@ -1589,7 +1575,6 @@ class SampleClockExtension(fgen_ivi_interface.SampleClockExtensionInterface):
             self.source_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def output_enabled(self):
             """
             Specifies whether or not the sample clock appears at the sample clock output of the
