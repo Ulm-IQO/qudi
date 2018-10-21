@@ -5,6 +5,7 @@
 1. Get a Python 3 version of the conda package manager (eg Anaconda, miniconda, etc).
 2. Clone https://github.com/Ulm-IQO/qudi.git
 3. Install the qudi conda environment suitable for your operating system (located in the `tools` directory of the qudi code).
+4. Copy the default example config into a 'config/local' subdirectory so that you can edit it without impacting the project examples.
 4. Run `start.py` in this conda environment.
 
 See below for more specific instructions.
