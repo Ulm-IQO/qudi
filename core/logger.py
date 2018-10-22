@@ -27,6 +27,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 import logging
 import logging.handlers
+import os
 import sys
 import traceback
 import functools
@@ -112,7 +113,7 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
             self.sigLoggedMessage.emit(record)
 
 
-def initialize_logger():
+def initialize_logger(path=''):
     """sets up the logger including a console, file and qt handler
     """
     # initialize logger
@@ -130,8 +131,9 @@ def initialize_logger():
     logger.handlers[0].setLevel(logging.WARNING)
 
     # add file logger
+    logfile_path = os.path.join(path, 'qudi.log')
     rotating_file_handler = logging.handlers.RotatingFileHandler(
-        'qudi.log', maxBytes=10*1024*1024, backupCount=5)
+        logfile_path, maxBytes=10*1024*1024, backupCount=5)
     rotating_file_handler.setFormatter(logging.Formatter(
         '%(asctime)s %(levelname)s %(name)s %(message)s',
         datefmt="%Y-%m-%d %H:%M:%S"))
