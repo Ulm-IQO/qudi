@@ -374,15 +374,17 @@ class AWG70K(Base, PulserInterface):
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
                 self._ftp_dir, self.ftp_working_dir, wfm_name + '.wfmx')))
             # Wait for everything to complete
-            opc = 0
-            while opc != 1:
-                try:
-                    opc = int(self.query('*OPC?'))
-                except:
-                    opc = 0
+            timeout_old = self.awg.timeout
+            # increase this time so that there is no timeout for loading longer sequences
+            # which might take some minutes
+            self.awg.timeout = 5e6
+            # the answer of the *opc-query is received as soon as the loading is finished
+            opc = int(self.query('*OPC?'))
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.25)
+            # reset the timeout
+            self.awg.timeout = timeout_old
             print('Load WFMX file into workspace: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
