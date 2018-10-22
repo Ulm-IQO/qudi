@@ -2239,7 +2239,7 @@ class PythonIviFGen(PythonIviBase, _FGen, fgen_ivi_interface.FGenIviInterface):
                 if ivi.fgen.ArbChannelWfm in driver_capabilities:
                     bases += (ArbChannelWfmExtension.arbitrary.waveform, )
                 if ivi.fgen.ArbWfmBinary in driver_capabilities:
-                    bases += (ArbWfmBinaryExtension.arbitrary.waveform)
+                    bases += (ArbWfmBinaryExtension.arbitrary.waveform, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviArbitraryWaveform(QObject, metaclass=IviArbitraryWaveformMetaclass):
