@@ -1256,6 +1256,22 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         readout_ensemble.append((readout_block.name, 0))
         created_ensembles.append(readout_ensemble)
 
+        if self.sync_channel:
+            # Create the last readout PulseBlockEnsemble including a sync trigger
+            # Get necessary PulseBlockElements
+            sync_element = self._get_sync_element()
+            # Create PulseBlock and append PulseBlockElements
+            sync_readout_block = PulseBlock(name='{0}_readout_sync'.format(name))
+            sync_readout_block.append(laser_element)
+            sync_readout_block.append(delay_element)
+            sync_readout_block.append(sync_element)
+            created_blocks.append(sync_readout_block)
+            # Create PulseBlockEnsemble and append block to it
+            sync_readout_ensemble = PulseBlockEnsemble(name='{0}_readout_sync'.format(name),
+                                                       rotating_frame=False)
+            sync_readout_ensemble.append((sync_readout_block.name, 0))
+            created_ensembles.append(sync_readout_ensemble)
+
         # Create the tau/waiting PulseBlockEnsemble
         # Get tau PulseBlockElement
         tau_element = self._get_idle_element(length=tau_start, increment=0)
@@ -1268,15 +1284,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         tau_ensemble.append((tau_block.name, 0))
         created_ensembles.append(tau_ensemble)
 
-        # Create the sync trigger PulseBlockEnsemble if needed
-        if self.sync_channel:
-            sync_block = PulseBlock(name='sync_trigger')
-            sync_block.append(self._get_sync_element())
-            created_blocks.append(sync_block)
-            sync_ensemble = PulseBlockEnsemble(name='sync_trigger', rotating_frame=False)
-            sync_ensemble.append((sync_block.name, 0))
-            created_ensembles.append(sync_ensemble)
-
         # Create the PulseSequence and append the PulseBlockEnsemble names as sequence steps
         # together with the necessary parameters.
         t1_sequence = PulseSequence(name=name, rotating_frame=False)
@@ -1287,14 +1294,15 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             count_length += k * self._get_ensemble_count_length(ensemble=tau_ensemble,
                                                                 created_blocks=created_blocks)
 
-            t1_sequence.append(readout_ensemble.name)
+            if self.sync_channel and k == k_array[-1]:
+                t1_sequence.append(sync_readout_ensemble.name)
+            else:
+                t1_sequence.append(readout_ensemble.name)
             count_length += self._get_ensemble_count_length(ensemble=readout_ensemble,
                                                             created_blocks=created_blocks)
-        if self.sync_channel:
-            t1_sequence.append(sync_ensemble.name)
-            t1_sequence[-1].go_to = 1
-            count_length += self._get_ensemble_count_length(ensemble=sync_ensemble,
-                                                            created_blocks=created_blocks)
+        # Make the sequence loop infinitely by setting the go_to parameter of the last sequence
+        # step to the first step.
+        t1_sequence[-1].go_to = 1
 
         # Trigger the calculation of parameters in the PulseSequence instance
         t1_sequence.refresh_parameters()
