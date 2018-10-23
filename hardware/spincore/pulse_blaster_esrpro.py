@@ -93,11 +93,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         _channel_delays: Specify the delay of some channels to correct it automatically
                          by this module. For example :
                           channel_delays:
-                                '2': 200-9
-                                '3': 500-9
-                         tell the card the line 2 and 3 have a delay of 200 ns and 500 ns respectively
+                                '0': 200-9
+                                '2': 500-9
+                         tell the card the line 0 and 2 have a delay of 200 ns and 500 ns respectively
                          so that the pulse are emitted sooner relatively to other channels.
-                         The first line is 1 and the last is 21.
+                         The first line is 0 and the last is 20.
     """
 
     _modclass = 'PulseBlasterESRPRO'
@@ -942,15 +942,18 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # construct a table with delay of each channel
         delays = np.zeros(21)
         for entry in self._channel_delays:
-            delays[int(entry)-1] = self._channel_delays[entry]
+            delays[int(entry)] = self._channel_delays[entry]
 
         # First let's construct the array that encode the pulses as :
         # {'channel': single channel, 'direction': toggle direction, 'time': time of event}
+        # the event based approach misses the always on channels
         last_state = set(sequence[-1]['active_channels'])
+        always_on = set(sequence[-1]['active_channels'])
         time = 0
         events = []
         for pulse in sequence[:]:
             new_state = set(pulse['active_channels'])
+            always_on &= new_state
             toggle_on = new_state - last_state
             toggle_off = last_state - new_state
             for channel in toggle_on:
@@ -963,7 +966,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         # Let's move the events around the cycle
         for event in events:
-            event['time'] -= delays[event['channel']-1]
+            event['time'] -= delays[event['channel']]
             event['time'] %= total_time
 
         # Sort the array by event time
@@ -984,7 +987,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         for event in events:
             duration = event['time'] - time
             # add the pulse between last event an this event (so use the last state)
-            corrected_sequence.append({'active_channels': list(state), 'length': duration})
+            corrected_sequence.append({'active_channels': list(state | always_on), 'length': duration})
             if event['direction']:
                 state |= set([event['channel']])
             else:
