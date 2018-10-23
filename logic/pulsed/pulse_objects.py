@@ -1158,10 +1158,7 @@ class PredefinedGeneratorBase:
         """
 
         """
-        minimum_length = self.__sequencegeneratorlogic.pulse_generator_constraints.waveform_length.min/self.sample_rate
-        return self._get_trigger_element(length=max(50e-9, minimum_length),
-                                         increment=0,
-                                         channels=self.sync_channel)
+        return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
 
     def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
         """
@@ -1273,8 +1270,7 @@ class PredefinedGeneratorBase:
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
-        return [laser_element, delay_element, waiting_element]
-
+        return laser_element, delay_element, waiting_element
 
     def _add_trigger(self, created_blocks, block_ensemble):
         if self.sync_channel:
@@ -1284,10 +1280,9 @@ class PredefinedGeneratorBase:
             block_ensemble.append((sync_block.name, 0))
         return created_blocks, block_ensemble
 
-
-    def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating = False, laser_ignore_list = list(),
-                                  controlled_variable = [0,1], units=('s', ''), number_of_lasers = None,
-                                  counting_length=None):
+    def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
+                                  laser_ignore_list=list(), controlled_variable=[0, 1],
+                                  units=('s', ''), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
@@ -1308,28 +1303,28 @@ class PredefinedGeneratorBase:
 
         return block_ensemble
 
-
-    def _adjust_to_samplingrate(self,value,divisibility):
-        '''
-        @param self: Every pulsing device has a sampling rate which is most of the time adjustable
+    def _adjust_to_samplingrate(self, value, divisibility):
+        """
+        Every pulsing device has a sampling rate which is most of the time adjustable
         but always limited. Thus it is not possible to generate any arbitrary time value. This function
         should check if the timing value is generateable with the current sampling rate and if nout round
         it to the next possible value...
-        @param value: the desired timing value
-        @param divisibility: Takes into account that vonly parts of variables might be used (for example for a pi/2 pulse...)
-        @return: value matching to the current sampling rate of pulser
-        '''
-        resolution=1/self.pulse_generator_settings['sample_rate']*divisibility
-        mod=value%(resolution)
-        if mod<resolution/2:
-            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value-mod))
-            value=value-mod
-        else:
-            value=value+resolution-mod
-        # correct for computational errors
-        value=np.around(value,13)
-        return float(value)
 
+        @param value: the desired timing value
+        @param divisibility: Takes into account that only parts of variables might be used
+                             (for example for a pi/2 pulse...)
+        @return: value matching to the current sampling rate of pulser
+        """
+        resolution = 1 / self.sample_rate * divisibility
+        mod = value % resolution
+        if mod < resolution / 2:
+            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value-mod))
+            value = value - mod
+        else:
+            value = value + resolution - mod
+        # correct for computational errors
+        value = float(np.around(value, 13))
+        return value
 
     def _get_ensemble_count_length(self, ensemble, created_blocks):
         """
