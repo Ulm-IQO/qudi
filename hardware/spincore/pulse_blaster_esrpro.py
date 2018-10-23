@@ -995,7 +995,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             time += duration
 
         # We need to add the last pulse manually
-        corrected_sequence.append({'active_channels': list(state), 'length': total_time-time})
+        corrected_sequence.append({'active_channels': list(state | always_on), 'length': total_time-time})
 
         # Let's treat the short pulses we created
         delta_time = 0
