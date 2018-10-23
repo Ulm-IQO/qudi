@@ -95,6 +95,8 @@ class AWG70K(Base, PulserInterface):
             self.awg_model = self.query('*IDN?').split(',')[1]
         else:
             self.awg_model = ''
+
+        self.__min_waveform_length = int(self.query('WLIS:WAV:LMIN?'))
         return
 
     def on_deactivate(self):
@@ -164,7 +166,10 @@ class AWG70K(Base, PulserInterface):
         constraints.d_ch_high.step = 0.1
         constraints.d_ch_high.default = 1.0
 
-        constraints.waveform_length.min = 4800
+        if self.awg_model == 'AWG70002A':
+            constraints.waveform_length.min = 2400
+        elif self.awg_model == 'AWG70001A':
+            constraints.waveform_length.min = 4800
         constraints.waveform_length.max = 8000000000
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 1
