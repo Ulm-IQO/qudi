@@ -90,6 +90,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                         for old boards it might be even 7. This corresponds to
                         a minimal instruction length of
                             (1/clock_frequency)*min_instr_len
+        _channel_delays: Specify the delay of some channels to correct it automatically
+                         by this module. For example :
+                          channel_delays:
+                                '2': 200-9
+                                '3': 500-9
+                         tell the card the line 2 and 3 have a delay of 200 ns and 500 ns respectively
+                         so that the pulse are emitted sooner relatively to other channels.
+                         The first line is 1 and the last is 21.
     """
 
     _modclass = 'PulseBlasterESRPRO'
@@ -106,11 +114,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
     _use_smart_pulse_creation = ConfigOption('use_smart_pulse_creation', default=False)
 
-    # Specify the delay of some channels to correct it automatically by this module
-    # Example [[2, 200e-9], [3, 500e-9]] tell the card the line 2 and 3 have a delay of 200 ns and 500 ns respectively
-    # so that the pulse are emitted sooner relatively to other channels.
-    # The first line is 1 and the last is 21.
-    _channel_delays = ConfigOption('channel_delays', default=[[]])
+    _channel_delays = ConfigOption('channel_delays', default=[])
 
     # the library pointer is saved here
     _lib = None
@@ -222,8 +226,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         # For pulser interface:
         self._current_pb_waveform_name = ''
-        self._current_pb_waveform_theoretical = {'active_channels': [], 'length': self.LEN_MIN}
-        self._current_pb_waveform = {'active_channels': [], 'length': self.LEN_MIN}
+        self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
+        self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
 
 
         # check at first the config option, whether a correct library was found
@@ -938,7 +942,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # construct a table with delay of each channel
         delays = np.zeros(21)
         for entry in self._channel_delays:
-            delays[entry[0]-1] = entry[1]
+            delays[int(entry)-1] = self._channel_delays[entry]
 
         # First let's construct the array that encode the pulses as :
         # {'channel': single channel, 'direction': toggle direction, 'time': time of event}
@@ -1440,8 +1444,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         self._currently_loaded_waveform = ''
         self._current_pb_waveform_name = ''
-        self._current_pb_waveform = {'active_channels': [], 'length': self.LEN_MIN}
-        self._current_pb_waveform_theoretical = {'active_channels': [], 'length': self.LEN_MIN}
+        self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
+        self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
         return 0
 
     def get_status(self):
@@ -1754,8 +1758,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                 return -1, list()
 
             else:
-                self._current_pb_waveform_theoretical = {'active_channels': [], 'length': self.LEN_MIN}
-                self._current_pb_waveform = {'active_channels': [], 'length': self.LEN_MIN}
+                self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
+                self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
                 self._current_pb_waveform_name = ''
                 return 0, list()
 
