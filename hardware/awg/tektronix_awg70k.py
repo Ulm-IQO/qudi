@@ -430,7 +430,7 @@ class AWG70K(Base, PulserInterface):
         self.new_sequence(name=name, steps=num_steps)
 
         # Fill in sequence information
-        for step, (wfm_tuple, seq_params) in enumerate(sequence_parameter_list, 1):
+        for step, (wfm_tuple, seq_step) in enumerate(sequence_parameter_list, 1):
             # Set waveforms to play
             if num_tracks == len(wfm_tuple):
                 for track, waveform in enumerate(wfm_tuple, 1):
@@ -441,38 +441,31 @@ class AWG70K(Base, PulserInterface):
                 return -1
 
             # Set event jump trigger
-            if 'event_trigger' in seq_params:
+            if seq_step.event_trigger != 'OFF':
                 self.sequence_set_event_jump(name,
                                              step,
-                                             seq_params['event_trigger'],
-                                             seq_params['event_jump_to'])
+                                             seq_step.event_trigger,
+                                             seq_step.event_jump_to)
             # Set wait trigger
-            if 'wait_for' in seq_params:
-                self.sequence_set_wait_trigger(name, step, seq_params['wait_for'])
+            if seq_step.wait_for != 'OFF':
+                self.sequence_set_wait_trigger(name, step, seq_step.wait_for)
             # Set repetitions
-            if 'repetitions' in seq_params:
-                self.sequence_set_repetitions(name, step, seq_params['repetitions'])
+            if seq_step.repetitions != 0:
+                self.sequence_set_repetitions(name, step, seq_step.repetitions)
             # Set go_to parameter
-            if 'go_to' in seq_params:
-                if seq_params['go_to'] <= num_steps:
-                    self.sequence_set_goto(name, step, seq_params['go_to'])
+            if seq_step.go_to > 0:
+                if seq_step.go_to <= num_steps:
+                    self.sequence_set_goto(name, step, seq_step.go_to)
                 else:
-                    self.log.error('Assigned "go_to" "{0}" is larger '
-                                   'than the number of steps "{1}".'.format(seq_params['go_to'], num_steps))
+                    self.log.error('Assigned "go_to = {0}" is larger than the number of steps '
+                                   '"{1}".'.format(seq_step.go_to, num_steps))
                     return -1
             # Set flag states
-            if 'flag_trigger' in seq_params:
-                if seq_params['flag_trigger'] != 'OFF':
-                    flag_list = [seq_params['flag_trigger']]
+            if seq_step.flag_trigger != 'OFF':
+                    flag_list = [seq_step.flag_trigger]
                     self.sequence_set_flags(name, step, flag_list, True)
-                else:
-                    if 'flag_high' in seq_params:
-                        flag_list = [seq_params['flag_high']]
-                        self.sequence_set_flags(name, step, flag_list, False)
-                    else:
-                        self.log.warning('No flag trigger set!')
-            elif 'flag_trigger' not in seq_params and 'flag_high' in seq_params:
-                flag_list = [seq_params['flag_high']]
+            elif seq_step.flag_high != 'OFF':
+                flag_list = [seq_step.flag_high]
                 self.sequence_set_flags(name, step, flag_list, False)
 
         # Wait for everything to complete
