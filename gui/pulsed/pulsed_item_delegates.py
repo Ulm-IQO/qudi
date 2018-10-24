@@ -20,6 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
+import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_custom_widgets import DigitalChannelsWidget, AnalogParametersWidget
 from qtwidgets.scientific_spinbox import ScienDSpinBox
@@ -196,10 +197,10 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         understood by the editor.
         """
         data = index.data(self._access_role)
-        if not isinstance(data, int):
+        if not isinstance(data, (np.integer, int)):
             data = self.item_dict['init_val']
         editor.blockSignals(True)
-        editor.setValue(data)
+        editor.setValue(int(data))
         editor.blockSignals(False)
         return
 
