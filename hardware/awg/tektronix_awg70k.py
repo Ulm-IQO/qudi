@@ -351,7 +351,7 @@ class AWG70K(Base, PulserInterface):
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
             else:
                 mrk_bytes = None
-            print('Prepare digital channel data: {0}'.format(time.time()-start))
+            self.log.debug('Prepare digital channel data: {0}'.format(time.time()-start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -368,12 +368,12 @@ class AWG70K(Base, PulserInterface):
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
-            print('Write WFMX file: {0}'.format(time.time() - start))
+            self.log.debug('Write WFMX file: {0}'.format(time.time() - start))
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
             self._send_file(filename=wfm_name + '.wfmx')
-            print('Send WFMX file: {0}'.format(time.time() - start))
+            self.log.debug('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
@@ -388,9 +388,10 @@ class AWG70K(Base, PulserInterface):
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
                 time.sleep(0.25)
+
             # reset the timeout
             self.awg.timeout = timeout_old
-            print('Load WFMX file into workspace: {0}'.format(time.time() - start))
+            self.log.debug('Load WFMX file into workspace: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
@@ -1274,7 +1275,7 @@ class AWG70K(Base, PulserInterface):
                                                                           waveform_name))
         return 0
 
-    def sequence_set_repetitions(self, sequence_name, step, repeat=1):
+    def sequence_set_repetitions(self, sequence_name, step, repeat=0):
         """
         Set the repetition counter of sequence "sequence_name" at step "step" to "repeat".
         A repeat value of -1 denotes infinite repetitions; 0 means the step is played once.
@@ -1289,7 +1290,7 @@ class AWG70K(Base, PulserInterface):
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
-        repeat = 'INF' if repeat < 0 else str(int(repeat))
+        repeat = 'INF' if repeat < 0 else str(int(repeat + 1))
         self.write('SLIS:SEQ:STEP{0:d}:RCO "{1}", {2}'.format(step, sequence_name, repeat))
         return 0
 
