@@ -584,6 +584,84 @@ class PulseBlockEnsemble(object):
         return new_ens
 
 
+class SequenceStep(dict):
+    """
+    This is basically a dictionary where each key can be accessed like an attribute.
+    In addition it needs a mandatory key "ensemble" whose value must be a str containing the
+    PulseBlockEnsemble name associated with this sequence step.
+    You can initialize this the same way as a dict or pass the ensemble name as positional argument:
+        mystep = SequenceStep(ensemble='myPulseBlockEnsembleName', repetitions=10, go_to=-1)
+        mystep = SequenceStep(
+            [('ensemble', 'myPulseBlockEnsembleName'), ('repetitions', 10), ('go_to', -1)])
+        mystep = SequenceStep(
+            {'ensemble': 'myPulseBlockEnsembleName', 'repetitions': 10, 'go_to': -1})
+        mystep = SequenceStep('myPulseBlockEnsembleName', repetitions=10, go_to=-1)
+        mystep = SequenceStep('myPulseBlockEnsembleName', {'repetitions': 10, 'go_to': -1})
+    You have all the built-in dict methods, e.g. keys(), items() etc...
+    You can access the keys/values in a dict-like way or like an attribute:
+        mystep['repetitions'] = 0
+        mystep.repetitions = 0
+    """
+
+    __default_parameters = {'repetitions': 0,
+                            'go_to': -1,
+                            'event_jump_to': -1,
+                            'event_trigger': 'OFF',
+                            'wait_for': 'OFF',
+                            'flag_trigger': 'OFF',
+                            'flag_high': 'OFF'}
+
+    def __init__(self, *args, **kwargs):
+        if len(args) > 2:
+            raise TypeError('SequenceStep expected at most 2 arguments, got {0}'.format(len(args)))
+        # Allow the PulseBlockEnsemble name to be passed as positional argument
+        for i, pos_arg in enumerate(args):
+            if isinstance(pos_arg, str):
+                kwargs['ensemble'] = pos_arg
+                if len(args) == 2:
+                    args = (args[0],) if i == 1 else (args[1],)
+                else:
+                    args = tuple()
+                break
+
+        # Initialize the dict.
+        super().__init__(*args, **kwargs)
+        # Check for allowed keys in order to avoid overwriting built-in dict methods and the
+        # ensemble name.
+        # Also check presence of a valid mandatory "ensemble" entry
+        if not isinstance(self.get('ensemble'), str):
+            raise KeyError('"ensemble" entry of type str must be present in SequenceStep. Either '
+                           'include it as dict item or pass it as positional argument in the '
+                           'constructor.')
+        for attribute in dir(dict):
+            if attribute in self:
+                raise KeyError('It is not allowed to overwrite built-in dict attributes. '
+                               'Please use another key than "{0}".'.format(attribute))
+
+        # Merge namespaces (this is where the magic happens)
+        self.__dict__ = self
+
+        # Add missing default parameters
+        for key, default_value in self.__default_parameters.items():
+            if key not in self:
+                self[key] = default_value
+        return
+
+    def __setitem__(self, key, value):
+        """
+        Overwrite this method in order to avoid namespace collision with the native dict
+        members/attributes.
+        """
+        if key in dir(dict):
+            raise KeyError('It is not allowed to overwrite built-in dict attributes. '
+                           'Please use another key than "{0}".'.format(key))
+        super().__setitem__(key, value)
+        return
+
+    def copy(self):
+        return SequenceStep(super().copy())
+
+
 class PulseSequence(object):
     """
     Higher order object for sequence capability.
@@ -591,13 +669,6 @@ class PulseSequence(object):
     Represents a playback procedure for a number of PulseBlockEnsembles. Unused for pulse
     generator hardware without sequencing functionality.
     """
-    __default_seq_params = {'repetitions': 0,
-                            'go_to': -1,
-                            'event_jump_to': -1,
-                            'event_trigger': 'OFF',
-                            'wait_for': 'OFF',
-                            'flag_trigger': 'OFF',
-                            'flag_high': 'OFF'}
 
     def __init__(self, name, ensemble_list=None, rotating_frame=False):
         """
@@ -669,8 +740,8 @@ class PulseSequence(object):
 
     def refresh_parameters(self):
         self.is_finite = True
-        for ensemble_name, params in self.ensemble_list:
-            if params['repetitions'] < 0:
+        for sequence_step in self.ensemble_list:
+            if sequence_step.repetitions < 0:
                 self.is_finite = False
                 break
         return
@@ -714,46 +785,52 @@ class PulseSequence(object):
     def __setitem__(self, key, value):
         stage_refresh = False
         if isinstance(key, int):
-            if isinstance(value, str):
-                value = (value, self.__default_seq_params.copy())
-            if not isinstance(value, (tuple, list)) or len(value) != 2:
-                raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
-                                'length 2')
-            elif not isinstance(value[0], str):
-                raise ValueError('PulseSequence element tuple index 0 must contain str, not {0}'
-                                 ''.format(type(value[0])))
-            elif not isinstance(value[1], dict):
-                raise ValueError('PulseSequence element tuple index 1 must contain dict, not {0}'
-                                 ''.format(type(value[1])))
+            if isinstance(value, (str, dict)):
+                value = SequenceStep(value)
+            elif isinstance(value, (tuple, list)) and len(value) == 2:
+                value = SequenceStep(*value)
 
-            if value[1]['repetitions'] < 0:
+            if not isinstance(value, SequenceStep):
+                raise TypeError('PulseSequence ensemble list entries must be either:\n'
+                                '\t- a tuple or list of length 2 with one entry being the '
+                                'PulseBlockEnsemble name and the other being a sequence parameter '
+                                'dictionary\n'
+                                '\t- a str containing the PulseBlockEnsemble name\n'
+                                '\t- a dict containing the sequence parameters including the '
+                                'PulseBlockEnsemble name')
+
+            if value.repetitions < 0:
                 self.is_finite = False
-            elif not self.is_finite and self[key][1]['repetitions'] < 0:
+            elif not self.is_finite and self[key].repetitions < 0:
                 stage_refresh = True
         elif isinstance(key, slice):
-            if isinstance(value[0], str):
+            if isinstance(value[0], (str, dict)):
                 tmp_value = list()
                 for element in value:
-                    tmp_value.append((element, self.__default_seq_params.copy()))
+                    tmp_value.append(SequenceStep(element))
+                value = tmp_value
+            elif isinstance(value[0], (tuple, list)) and len(value[0]) == 2:
+                tmp_value = list()
+                for element in value:
+                    tmp_value.append(SequenceStep(*element))
                 value = tmp_value
             for element in value:
-                if not isinstance(element, (tuple, list)) or len(value) != 2:
-                    raise TypeError('PulseSequence block list entries must be a tuple or list '
-                                    'of length 2')
-                elif not isinstance(element[0], str):
-                    raise ValueError('PulseSequence element tuple index 0 must contain str, not {0}'
-                                     ''.format(type(element[0])))
-                elif not isinstance(element[1], dict):
-                    raise ValueError('PulseSequence element tuple index 1 must contain dict, not '
-                                     '{0}'.format(type(element[1])))
+                if not isinstance(element, SequenceStep):
+                    raise TypeError('PulseSequence ensemble list entries must be either:\n'
+                                    '\t- a tuple or list of length 2 with one entry being the '
+                                    'PulseBlockEnsemble name and the other being a sequence parameter '
+                                    'dictionary\n'
+                                    '\t- a str containing the PulseBlockEnsemble name\n'
+                                    '\t- a dict containing the sequence parameters including the '
+                                    'PulseBlockEnsemble name')
 
-                if element[1]['repetitions'] < 0:
+                if element.repetitions < 0:
                     self.is_finite = False
                 elif not self.is_finite:
                     stage_refresh = True
         else:
             raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
-        self.ensemble_list[key] = tuple(value)
+        self.ensemble_list[key] = value
         self.sampling_information = dict()
         self.measurement_information = dict()
         if stage_refresh:
@@ -764,11 +841,11 @@ class PulseSequence(object):
         if isinstance(key, slice):
             stage_refresh = False
             for element in self.ensemble_list[key]:
-                if element[1]['repetitions'] < 0:
+                if element.repetitions < 0:
                     stage_refresh = True
                     break
         elif isinstance(key, int):
-            stage_refresh = self.ensemble_list[key][1]['repetitions'] < 0
+            stage_refresh = self.ensemble_list[key].repetitions < 0
         else:
             raise TypeError('PulseSequence indices must be int or slice, not {0}'.format(type(key)))
         del self.ensemble_list[key]
@@ -779,6 +856,7 @@ class PulseSequence(object):
         return
 
     def pop(self, position=None):
+        stage_refresh = False
         if len(self.ensemble_list) == 0:
             raise IndexError('pop from empty PulseSequence')
 
@@ -797,38 +875,46 @@ class PulseSequence(object):
 
         self.sampling_information = dict()
         self.measurement_information = dict()
-        if self.ensemble_list[-1][1]['repetitions'] < 0:
-            popped_element = self.ensemble_list.pop(position)
+        if self.ensemble_list[position].repetitions < 0:
+            stage_refresh = True
+        popped_element = self.ensemble_list.pop(position)
+        if stage_refresh:
             self.refresh_parameters()
-            return popped_element
-        return self.ensemble_list.pop(position)
+        return popped_element
 
     def insert(self, position, element):
-        """ Insert a (PulseSequence.name, parameters) tuple at the given position. The old element
+        """
+        Insert a SequenceStep instance at the given position. The old element
         at this position and all consecutive elements after that will be shifted to higher indices.
 
         @param int position: position in the ensemble list
-        @param tuple|str element: PulseBlock name (str)[, seq_parameters (dict)]
+        @param tuple|list|str|dict|SequenceStep element:
+            PulseBlockEnsemble name (str) |
+            (PulseBlockEnsemble name, sequence parameters dict) (tuple|list) |
+            sequence parameters dict including PulseBlockEnsemble name (dict) |
+            SequenceStep instance (SequenceStep)
         """
-        if isinstance(element, str):
-            element = (element, self.__default_seq_params.copy())
+        if isinstance(element, (str, dict)):
+            element = SequenceStep(element)
+        elif isinstance(element, (tuple, list)) and len(element) == 2:
+            element = SequenceStep(*element)
 
-        if not isinstance(element, (tuple, list)) or len(element) != 2:
-            raise TypeError('PulseSequence ensemble list entries must be a tuple or list of '
-                            'length 2')
-        elif not isinstance(element[0], str):
-            raise ValueError('PulseSequence element tuple index 0 must contain str, '
-                             'not {0}'.format(type(element[0])))
-        elif not isinstance(element[1], dict):
-            raise ValueError('PulseSequence element tuple index 1 must contain dict')
+        if not isinstance(element, SequenceStep):
+            raise TypeError('PulseSequence ensemble list entries must be either:\n'
+                            '\t- a tuple or list of length 2 with one entry being the '
+                            'PulseBlockEnsemble name and the other being a sequence parameter '
+                            'dictionary\n'
+                            '\t- a str containing the PulseBlockEnsemble name\n'
+                            '\t- a dict containing the sequence parameters including the '
+                            'PulseBlockEnsemble name')
 
         if position < 0:
             position = len(self.ensemble_list) + position
         if len(self.ensemble_list) < position or position < 0:
             raise IndexError('PulseSequence ensemble list index out of range')
 
-        self.ensemble_list.insert(position, tuple(copy.deepcopy(element)))
-        if element[1]['repetitions'] < 0:
+        self.ensemble_list.insert(position, element)
+        if element.repetitions < 0:
             self.is_finite = False
         self.sampling_information = dict()
         self.measurement_information = dict()
@@ -837,7 +923,7 @@ class PulseSequence(object):
     def append(self, element):
         """
         """
-        self.insert(position=len(self), element=element)
+        self.insert(position=len(self.ensemble_list), element=element)
         return
 
     def extend(self, iterable):
@@ -1072,9 +1158,7 @@ class PredefinedGeneratorBase:
         """
 
         """
-        return self._get_trigger_element(length=50e-9,
-                                         increment=0,
-                                         channels=self.sync_channel)
+        return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
 
     def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
         """
@@ -1186,8 +1270,7 @@ class PredefinedGeneratorBase:
         waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
         laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
         delay_element = self._get_delay_gate_element()
-        return [laser_element, delay_element, waiting_element]
-
+        return laser_element, delay_element, waiting_element
 
     def _add_trigger(self, created_blocks, block_ensemble):
         if self.sync_channel:
@@ -1197,10 +1280,9 @@ class PredefinedGeneratorBase:
             block_ensemble.append((sync_block.name, 0))
         return created_blocks, block_ensemble
 
-
-    def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating = False, laser_ignore_list = list(),
-                                  controlled_variable = [0,1], units=('s', ''), number_of_lasers = None,
-                                  counting_length=None):
+    def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
+                                  laser_ignore_list=list(), controlled_variable=[0, 1],
+                                  units=('s', ''), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
@@ -1221,28 +1303,28 @@ class PredefinedGeneratorBase:
 
         return block_ensemble
 
-
-    def _adjust_to_samplingrate(self,value,divisibility):
-        '''
-        @param self: Every pulsing device has a sampling rate which is most of the time adjustable
+    def _adjust_to_samplingrate(self, value, divisibility):
+        """
+        Every pulsing device has a sampling rate which is most of the time adjustable
         but always limited. Thus it is not possible to generate any arbitrary time value. This function
         should check if the timing value is generateable with the current sampling rate and if nout round
         it to the next possible value...
-        @param value: the desired timing value
-        @param divisibility: Takes into account that vonly parts of variables might be used (for example for a pi/2 pulse...)
-        @return: value matching to the current sampling rate of pulser
-        '''
-        resolution=1/self.pulse_generator_settings['sample_rate']*divisibility
-        mod=value%(resolution)
-        if mod<resolution/2:
-            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value-mod))
-            value=value-mod
-        else:
-            value=value+resolution-mod
-        # correct for computational errors
-        value=np.around(value,13)
-        return float(value)
 
+        @param value: the desired timing value
+        @param divisibility: Takes into account that only parts of variables might be used
+                             (for example for a pi/2 pulse...)
+        @return: value matching to the current sampling rate of pulser
+        """
+        resolution = 1 / self.sample_rate * divisibility
+        mod = value % resolution
+        if mod < resolution / 2:
+            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value-mod))
+            value = value - mod
+        else:
+            value = value + resolution - mod
+        # correct for computational errors
+        value = float(np.around(value, 13))
+        return value
 
     def _get_ensemble_count_length(self, ensemble, created_blocks):
         """
