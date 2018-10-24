@@ -95,6 +95,12 @@ class AWG70K(Base, PulserInterface):
             self.awg_model = self.query('*IDN?').split(',')[1]
         else:
             self.awg_model = ''
+
+        # Query some constraints from the device and stash them in order to avoid redundant queries.
+        self.__max_seq_steps = int(self.query('SLIS:SEQ:STEP:MAX?'))
+        self.__max_seq_repetitions = int(self.query('SLIS:SEQ:STEP:RCO:MAX?'))
+        self.__min_waveform_length = int(self.query('WLIS:WAV:LMIN?'))
+        self.__max_waveform_length = int(self.query('WLIS:WAV:LMAX?'))
         return
 
     def on_deactivate(self):
@@ -163,12 +169,11 @@ class AWG70K(Base, PulserInterface):
         constraints.d_ch_high.max = 1.4
         constraints.d_ch_high.step = 0.1e-3
         constraints.d_ch_high.default = 1.4
+        # constraints.d_ch_difference.max = 1.4
+        # constraints.d_ch_difference.min = 0.5
 
-        #constraints.d_ch_difference.max = 1.4
-        #constraints.d_ch_difference.min = 0.5
-
-        constraints.waveform_length.min = int(self.query('WLISt:WAVeform:LMINImum?'))
-        constraints.waveform_length.max = int(self.query('WLISt:WAVeform:LMAXimum?'))
+        constraints.waveform_length.min = self.__min_waveform_length
+        constraints.waveform_length.max = self.__max_waveform_length
         constraints.waveform_length.step = 1
         constraints.waveform_length.default = 1
 
@@ -190,7 +195,7 @@ class AWG70K(Base, PulserInterface):
 
         # If sequencer mode is available then these should be specified
         constraints.repetitions.min = 0
-        constraints.repetitions.max = int(self.query('SLIST:SEQUENCE:STEP:RCOUNT:MAX?'))
+        constraints.repetitions.max = self.__max_seq_repetitions
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
         # ToDo: Check how many external triggers are available
@@ -198,11 +203,11 @@ class AWG70K(Base, PulserInterface):
         constraints.flags = ['A', 'B', 'C', 'D']
 
         constraints.sequence_steps.min = 0
-        constraints.sequence_steps.max = int(self.query('SLIST:SEQUENCE:STEP:MAX?'))
+        constraints.sequence_steps.max = self.__max_seq_steps
         constraints.sequence_steps.step = 1
         constraints.sequence_steps.default = 0
 
-        #constraints.seqence_tracks.max = int(self.query('SLISt:SEQuence:TRACk:MAX?'))
+        # constraints.seqence_tracks.max = int(self.query('SLISt:SEQuence:TRACk:MAX?'))
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
