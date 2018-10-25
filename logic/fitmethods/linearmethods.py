@@ -229,6 +229,7 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
     result.result_str_dict = result_str_dict
     return result
 
+
 def estimate_linear(self, x_axis, data, params):
     """ Provide an estimation for the initial values of a linear function.
 
@@ -267,3 +268,4 @@ def estimate_linear(self, x_axis, data, params):
         params['offset'].value = 0
 
     return error, params
+

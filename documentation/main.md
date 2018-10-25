@@ -35,6 +35,11 @@
 * Logic documentation
     * [Task Usage](@ref task-usage)
     * [Fitting](@ref fit_logic)
+    * Custom Pulsed Measurement Extensions:
+        * [Writing Pulse Analysis Methods](@ref pulse_analysis_methods)
+        * [Writing Pulse Extraction Methods](@ref pulse_extraction_methods)
+        * [Writing Predefined Measurements](@ref predefined_generate_methods)
+        * [Writing Analog Waveform Primitives](@ref sampling_functions)
 
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
