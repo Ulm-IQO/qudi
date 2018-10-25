@@ -50,8 +50,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     Another manual describes the functions a bit better:
         http://spincore.com/CD/PulseBlasterESR/SP1/PBESR_Manual.pdf
 
-    The SpinCore programming library (spinapi.dll, spinapi64.dll, libspinapi.so
-    or libspinapi64.so) is written in C and its data types correspond to
+    The SpinCore programming library (spinapi.dll, spinapi64.dll, libspinapi.so 
+    or libspinapi64.so) is written in C and its data types correspond to 
     standard C/C++ data types as follows:
 
             char                    8 bit, byte (or characters in ASCII)
@@ -142,11 +142,11 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     FIVE_PERIOD = 0xA00000  # 101       |       5       | 10
     ON = 0xE00000           # 111       |      > 5      | No short pulse
 
-    # The length of the short pulse cannot be shorter than 10ns, however, with
+    # The length of the short pulse cannot be shorter than 10ns, however, with 
     # the instruction flags above, it can be specified how many clock cycles are
-    # set to HIGH within the minimal instruction length from the beginning.
+    # set to HIGH within the minimal instruction length from the beginning. 
     # All other clock cycles of the 10ns pulse will be set to LOW.
-    # Otherwise, if the length of the pulse is greater than 10ns the ON flag
+    # Otherwise, if the length of the pulse is greater than 10ns the ON flag 
     # needs to be specified.
     #
     # This instruction might only be used for some old boards
@@ -155,7 +155,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     # To understand the usage of those flags, please refer to the manual on
     # p. 28, Fig. 16 (for the manual version 2017/09/04).
     #
-    # NOTE: The short pulse flags are not used in this file, but are implemented
+    # NOTE: The short pulse flags are not used in this file, but are implemented 
     #       for potential future use.
 
     # Useful Constants for Output Pattern and Control Word, max size is 24bits
@@ -287,8 +287,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             err_str = self.get_error_string()
 
-            # Catch a very specific error code, which is not proviced by the
-            # documentation. The error text of this error value appears only in
+            # Catch a very specific error code, which is not proviced by the 
+            # documentation. The error text of this error value appears only in 
             # the debug mode. Return the required error message.
             if func_val == -91 and err_str == '':
 

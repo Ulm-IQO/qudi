@@ -64,7 +64,7 @@ Each generation method must meet the following requirements:
 * Method name starts with prefix `generate_`
 * Must contain the optional keyword argument `name` to give the instance to created a name
 * Additional parameters must be defined as optional keyword arguments
-* Default values for additional arguments must be of type `int`, `float`, `str`, `bool` or Enum subclass.
+* Default values for additional arguments must be of type `int`, `float`, `str`, `bool` or Enum subclass. 
 Depending on the default argument type the GUI will automatically create the proper input widget.
 
 ## Adding new methods procedure
@@ -116,13 +116,13 @@ class MyPredefinedGeneratorBase(PredefinedGeneratorBase):
 ```
 
 ### Advanced use of Enum subclass
-If you have used an Enum subclass as a parameter type of a sampling function
+If you have used an Enum subclass as a parameter type of a sampling function 
 then you might want to wish to use the same Enum subclass in the predefined functions.
 
 To do so, you will have to access the sampling function and grab the Enum subclass from there.
 
-**Attention:** Be aware however that this requires the sampling function to be loaded
-and you have to make sure, that the Enum subclass you are wanting to access really exists.
+**Attention:** Be aware however that this requires the sampling function to be loaded 
+and you have to make sure, that the Enum subclass you are wanting to access really exists. 
 If you access an Enum subclass that does not exist without checking, the loading of qudi will fail!
 
 The following example is requiring the template from the [sampling functions](@ref sampling_functions):
@@ -142,11 +142,11 @@ else:
         """ Description goes here """
         def __init__(self, *args, **kwargs):
             super().__init__(*args, **kwargs)
-
+    
         def generate_my_enum_method(self, name='my_enum_method', my_enum_param=Colour.green):
             # Do something
             pass
 ```
 
-Notice that the whole class definition is encapsulated in an if-clause and only is loaded,
+Notice that the whole class definition is encapsulated in an if-clause and only is loaded, 
 if the Enum-subclass-parameter can be found int the sampling functions.

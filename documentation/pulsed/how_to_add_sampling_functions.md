@@ -12,8 +12,8 @@ automatically includes the function together with its custom parameter set.
 ## Architecture
 Each sampling function is a child class of `SamplingBase`. 
 The base class provides methods to save and restore sampling function instances using _qudi_ 
-StatusVars. It also provides the logging module to be used in the same way as in qudi modules.
-So you can call for example `self.log.error('My awesome error message!')` from your sampling
+StatusVars. It also provides the logging module to be used in the same way as in qudi modules. 
+So you can call for example `self.log.error('My awesome error message!')` from your sampling 
 function class.
 
 Each `PulseBlockElement` instance created will contain as many sampling function instances as analog
@@ -52,13 +52,13 @@ The attributes for each parameter are:
     * `'type'` (The python type of the parameter. allowed types: `int`, `float`, `str`, `bool` and Enum subclass)
 * If a parameter is not given in a call to `__init__`, it must be set using its default value 
 defined in `params`
-* Allowed parameter types are `int`, `float`, `str`, `bool` and subclasses of Enum (see example).
+* Allowed parameter types are `int`, `float`, `str`, `bool` and subclasses of Enum (see example). 
 Depending on the type the GUI will automatically create the proper input widget.
 * Must implement a method `get_samples` which has only one argument `time_array`. This function will
 calculate and return the analog voltages corresponding to the time bins provided by `time_array`.
 
 ## Adding new sampling functions procedure
-1. Define a class with `SamplingBase` or another sampling function class as the parent class. The class name should be the
+1. Define a class with `SamplingBase` or another sampling function class as the parent class. The class name should be the 
 function name.
 2. Define all function parameters in `params` dictionary. (see section "Class signature")
 3. Define `__init__` with all parameters as optional arguments. Upon creating an instance the 
@@ -92,7 +92,7 @@ class MyFunc(SamplingBase):
     params['my_float_param'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['my_int_param'] = {'unit': '', 'init': 0, 'min': 0, 'max': 42, 'type': int}
     params['my_enum_param'] = {'unit': '', 'init': Colour.green, 'min': Colour.red, 'max': Colour.blue, 'type': Colour}
-
+    
     def __init__(self, my_float_param=None, my_int_param=None, my_enum_param=None):
         if my_float_param is None:
             self.my_float_param = params['my_float_param']['init']
@@ -115,7 +115,7 @@ class MyFunc(SamplingBase):
     def _some_helper_method(self):
         self.log.info('I am just some helper method and I have just been called.')
         pass
-
+        
 
 class MyFuncWithNewName(MyFunc):
     """ This is the same sampling function as MyFunc but it is now called MyFuncWithNewName """
