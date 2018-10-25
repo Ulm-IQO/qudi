@@ -108,7 +108,7 @@ class PulsedMasterLogic(GenericLogic):
     sigLoadedAssetUpdated = QtCore.Signal(str, str)
     sigGeneratorSettingsUpdated = QtCore.Signal(dict)
     sigSamplingSettingsUpdated = QtCore.Signal(dict)
-    sigPredefinedSequenceGenerated = QtCore.Signal(object)
+    sigPredefinedSequenceGenerated = QtCore.Signal(object, bool)
 
     def __init__(self, config, **kwargs):
         """ Create PulsedMasterLogic object with connectors.
@@ -132,7 +132,9 @@ class PulsedMasterLogic(GenericLogic):
                             'loading_busy': False,
                             'pulser_running': False,
                             'measurement_running': False,
-                            'microwave_running': False}
+                            'microwave_running': False,
+                            'predefined_generation_busy': False,
+                            'fitting_busy': False}
 
         # Connect signals controlling PulsedMeasurementLogic
         self.sigDoFit.connect(
@@ -168,7 +170,7 @@ class PulsedMasterLogic(GenericLogic):
         self.pulsedmeasurementlogic().sigTimerUpdated.connect(
             self.sigTimerUpdated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigFitUpdated.connect(
-            self.sigFitUpdated, QtCore.Qt.QueuedConnection)
+            self.fit_updated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigMeasurementStatusUpdated.connect(
             self.measurement_status_updated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigPulserRunningUpdated.connect(
@@ -232,7 +234,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sequencegeneratorlogic().sigSamplingSettingsUpdated.connect(
             self.sigSamplingSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigPredefinedSequenceGenerated.connect(
-            self.sigPredefinedSequenceGenerated, QtCore.Qt.QueuedConnection)
+            self.predefined_sequence_generated, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigSampleEnsembleComplete.connect(
             self.sample_ensemble_finished, QtCore.Qt.QueuedConnection)
         self.sequencegeneratorlogic().sigSampleSequenceComplete.connect(
@@ -554,7 +556,18 @@ class PulsedMasterLogic(GenericLogic):
         @param fit_function:
         """
         if isinstance(fit_function, str):
+            self.status_dict['fitting_busy'] = True
             self.sigDoFit.emit(fit_function)
+        return
+
+    @QtCore.Slot(str, np.ndarray, object)
+    def fit_updated(self, fit_name, fit_data, fit_result):
+        """
+
+        @return:
+        """
+        self.status_dict['fitting_busy'] = False
+        self.sigFitUpdated.emit(fit_name, fit_data, fit_result)
         return
 
     def save_measurement_data(self, tag, with_error):
@@ -736,11 +749,11 @@ class PulsedMasterLogic(GenericLogic):
             object_instance = None
 
         if object_instance is None:
-            self.pulsedmeasurementlogic().measurement_information = dict()
             self.pulsedmeasurementlogic().sampling_information = dict()
+            self.pulsedmeasurementlogic().measurement_information = dict()
         else:
-            self.pulsedmeasurementlogic().measurement_information = object_instance.measurement_information
             self.pulsedmeasurementlogic().sampling_information = object_instance.sampling_information
+            self.pulsedmeasurementlogic().measurement_information = object_instance.measurement_information
         return
 
     @QtCore.Slot(object)
@@ -848,16 +861,34 @@ class PulsedMasterLogic(GenericLogic):
 
     @QtCore.Slot(str)
     @QtCore.Slot(str, dict)
-    def generate_predefined_sequence(self, generator_method_name, kwarg_dict=None):
+    @QtCore.Slot(str, dict, bool)
+    def generate_predefined_sequence(self, generator_method_name, kwarg_dict=None, sample_and_load=False):
         """
 
         @param generator_method_name:
         @param kwarg_dict:
+        @param sample_and_load:
         @return:
         """
         if not isinstance(kwarg_dict, dict):
             kwarg_dict = dict()
+        self.status_dict['predefined_generation_busy'] = True
+        if sample_and_load:
+            self.status_dict['sampload_busy'] = True
         self.sigGeneratePredefinedSequence.emit(generator_method_name, kwarg_dict)
+        return
+
+    @QtCore.Slot(object, bool)
+    def predefined_sequence_generated(self, asset_name, is_sequence):
+        self.status_dict['predefined_generation_busy'] = False
+        if asset_name is None:
+            self.status_dict['sampload_busy'] = False
+        self.sigPredefinedSequenceGenerated.emit(asset_name, is_sequence)
+        if self.status_dict['sampload_busy']:
+            if is_sequence:
+                self.sample_sequence(asset_name, True)
+            else:
+                self.sample_ensemble(asset_name, True)
         return
 
     def get_ensemble_info(self, ensemble):

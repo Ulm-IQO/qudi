@@ -61,7 +61,7 @@ class MagnetLogic(GenericLogic):
     drastic changes.
 
     ---
-    Alexander Stark
+    Alexander Stark, Simon Schmitt
     """
 
 
@@ -672,15 +672,8 @@ class MagnetLogic(GenericLogic):
 
         return matrix, data_axis0, data_axis1
 
-
-
-
     def _prepare_1d_graph(self, axis_range, axis_step):
         pass
-
-
-
-
 
     def start_1d_alignment(self, axis_name, axis_range, axis_step, axis_vel,
                                  stepwise_meas=True, continue_meas=False):
@@ -713,8 +706,6 @@ class MagnetLogic(GenericLogic):
         # run at first the _move_to_curr_pathway_index method to go to the
         # index position:
         self._sigInitializeMeasPos.emit(stepwise_meas)
-
-
 
     def start_2d_alignment(self,stepwise_meas=True, continue_meas=False):
 
@@ -865,6 +856,7 @@ class MagnetLogic(GenericLogic):
         """
 
         if self._stop_measure:
+            self._end_alignment_procedure()
             return
 
         self._do_premeasurement_proc()
@@ -942,6 +934,7 @@ class MagnetLogic(GenericLogic):
 
         else:
             self._end_alignment_procedure()
+        return
 
 
     def _continuous_loop_body(self):

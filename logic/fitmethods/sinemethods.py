@@ -113,6 +113,7 @@ def make_sinewithoutoffset_model(self, prefix=None):
 # General sine with offset #
 ############################
 
+
 def make_sine_model(self, prefix=None):
     """ Create a sine model with amplitude and offset.
 
@@ -135,6 +136,7 @@ def make_sine_model(self, prefix=None):
 ###############################################
 # Sinus with exponential decay but not offset #
 ###############################################
+
 
 def make_sineexpdecaywithoutoffset_model(self, prefix=None):
     """ Create a model of a sine with exponential decay.
@@ -206,6 +208,7 @@ def make_sinestretchedexponentialdecay_model(self, prefix=None):
 # Sum of two individual Sinus with offset #
 ###########################################
 
+
 def make_sinedouble_model(self, prefix=None):
     """ Create a model of two summed sine with an offset.
 
@@ -235,6 +238,7 @@ def make_sinedouble_model(self, prefix=None):
 ################################################################################
 #    Sum of two individual Sinus with offset and single exponential decay      #
 ################################################################################
+
 
 def make_sinedoublewithexpdecay_model(self, prefix=None):
     """ Create a model of two summed sine with an exponential decay and offset.
@@ -267,6 +271,7 @@ def make_sinedoublewithexpdecay_model(self, prefix=None):
 # Sum of two individual Sinus exponential decays (and offset) #
 ###############################################################
 
+
 def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
     """ Create a model of two summed sine with three exponential decays and offset.
 
@@ -295,6 +300,7 @@ def make_sinedoublewithtwoexpdecay_model(self, prefix=None):
 #############################################
 # Sum of three individual Sinus with offset #
 #############################################
+
 
 def make_sinetriple_model(self, prefix=None):
     """ Create a model of three summed sine with an offset.
@@ -326,6 +332,7 @@ def make_sinetriple_model(self, prefix=None):
 ##########################################################################
 # Sum of three individual Sinus with offset and single exponential decay #
 ##########################################################################
+
 
 def make_sinetriplewithexpdecay_model(self, prefix=None):
     """ Create a model of three summed sine with an exponential decay and offset.
@@ -359,6 +366,7 @@ def make_sinetriplewithexpdecay_model(self, prefix=None):
 #########################################################################
 # Sum of three individual Sinus with offset and three exponential decay #
 #########################################################################
+
 
 def make_sinetriplewiththreeexpdecay_model(self, prefix=None):
     """ Create a model of three summed sine with three exponential decays and offset.
@@ -669,7 +677,7 @@ def estimate_sine(self, x_axis, data, params):
 
 
 def estimate_sine_cosine(self, x_axis, data, params):
-    """ Provides an estimator to obtain initial values for cosine (fixed phase) fitting.
+    """ Provides an estimator to obtain initial values for cosine fitting.
 
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -683,18 +691,9 @@ def estimate_sine_cosine(self, x_axis, data, params):
         Parameters object params: set parameters of initial values
     """
 
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
+    error, params = self.estimate_sine(x_axis=x_axis, data=data, params=params)
 
-    # set the offset as the average of the data
-    offset = np.average(data)
-
-    # level data
-    data_level = data - offset
-
-    error, params = self.estimate_sinewithoutoffset(x_axis=x_axis, data=data_level, params=params)
-
-    params['offset'].set(value=offset)
-    params['phase'].set(value=np.pi/2, vary=False)
+    params['phase'].set(value=np.pi/2)
 
     return error, params
 
@@ -1094,8 +1093,6 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
                                  'error': result.params['offset'].stderr,
                                  'unit': units[1]}
 
-    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
     result.result_str_dict = result_str_dict
     return result
 
@@ -1134,56 +1131,6 @@ def estimate_sinedouble(self, x_axis, data, params):
     params['s2_amplitude'].set(value=result2.params['amplitude'].value)
     params['s2_frequency'].set(value=result2.params['frequency'].value)
     params['s2_phase'].set(value=result2.params['phase'].value)
-
-    params['offset'].set(value=data.mean())
-
-    return error, params
-
-
-
-def estimate_sinedouble_fixed(self, x_axis, data, params):
-    """ Provides an estimator for initial values of two sines with offset fitting.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param lmfit.Parameters params: object includes parameter dictionary which
-                                    can be set
-
-    @return tuple (error, params):
-
-    Explanation of the return parameter:
-        int error: error code (0:OK, -1:error)
-        Parameters object params: set parameters of initial values
-    """
-
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-    hf_splitting = 3030e3
-
-    # That procedure seems to work extremely reliable: make two consecutive
-    # sine offset fits where for the second the first fit is subtracted to
-    # delete the first sine in the data.
-
-    result1 = self.make_sine_fit(x_axis=x_axis, data=data, estimator=self.estimate_sine)
-    data_sub = data - result1.best_fit
-
-    result2 = self.make_sine_fit(x_axis=x_axis, data=data_sub, estimator=self.estimate_sine)
-
-    if result1.params['frequency'].value < result2.params['frequency'].value:
-        freq1 = result1.params['frequency'].value
-    else:
-        freq1 = result2.params['frequency'].value
-
-    # Fill the parameter dict:
-    params['s1_amplitude'].set(value=result1.params['amplitude'].value,
-                               min=1e-12)
-    params['s1_frequency'].set(value=freq1)
-    params['s1_phase'].set(value=-np.pi/2, vary=False)
-
-    params['s2_amplitude'].set(value=result1.params['amplitude'].value,
-                               min=1e-3)
-    params['s2_frequency'].set(value=freq1+hf_splitting,
-                               expr = 's1_frequency+{0}'.format(hf_splitting))
-    params['s2_phase'].set(value=-np.pi/2, vary=False)
 
     params['offset'].set(value=data.mean())
 
@@ -1305,8 +1252,6 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                                    'error': result.params['lifetime'].stderr,
                                    'unit': units[0]}
 
-    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-
     result.result_str_dict = result_str_dict
     return result
 
@@ -1354,64 +1299,6 @@ def estimate_sinedoublewithexpdecay(self, x_axis, data, params):
     params['s2_phase'].set(value=result2.params['phase'].value)
 
     lifetime = (result1.params['lifetime'].value + result2.params['lifetime'].value)/2
-    params['lifetime'].set(value=lifetime, min=2*(x_axis[1]-x_axis[0]))
-    params['offset'].set(value=data.mean())
-
-    return error, params
-
-
-def estimate_sinedoublewithexpdecay_fixed(self, x_axis, data, params):
-    """ Provides an estimator for initial values of two sine with offset and
-        exponential decay fitting.
-
-    @param numpy.array x_axis: 1D axis values
-    @param numpy.array data: 1D data, should have the same dimension as x_axis.
-    @param lmfit.Parameters params: object includes parameter dictionary which
-                                    can be set
-
-    @return tuple (error, params):
-
-    Explanation of the return parameter:
-        int error: error code (0:OK, -1:error)
-        Parameters object params: set parameters of initial values
-    """
-
-    hf_splitting = 3030e3
-    error = self._check_1D_input(x_axis=x_axis, data=data, params=params)
-
-    # That procedure seems to work extremely reliable: make two consecutive
-    # sine offset fits where for the second the first fit is subtracted to
-    # delete the first sine in the data.
-
-    result1 = self.make_sineexponentialdecay_fit(
-        x_axis=x_axis,
-        data=data,
-        estimator=self.estimate_sineexponentialdecay)
-    data_sub = data - result1.best_fit
-
-    result2 = self.make_sineexponentialdecay_fit(
-        x_axis=x_axis,
-        data=data_sub,
-        estimator=self.estimate_sineexponentialdecay)
-
-    if result1.params['frequency'].value < result2.params['frequency'].value:
-        freq1 = result1.params['frequency'].value
-    else:
-        freq1 = result2.params['frequency'].value
-
-    # Fill the parameter dict:
-    params['s1_amplitude'].set(value=result1.params['amplitude'].value,
-                               min=1e-12)
-    params['s1_frequency'].set(value=freq1)
-    params['s1_phase'].set(value=-np.pi / 2, vary=False)
-
-    params['s2_amplitude'].set(value=result1.params['amplitude'].value,
-                               min=1e-3)
-    params['s2_frequency'].set(value=freq1 + hf_splitting,
-                               expr='s1_frequency+{0}'.format(hf_splitting))
-    params['s2_phase'].set(value=-np.pi / 2, vary=False)
-
-    lifetime = (result1.params['lifetime'].value + result1.params['lifetime'].value)/2
     params['lifetime'].set(value=lifetime, min=2*(x_axis[1]-x_axis[0]))
     params['offset'].set(value=data.mean())
 
