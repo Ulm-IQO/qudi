@@ -26,6 +26,12 @@ import importlib
 class PythonIviBase(Base):
     """
     Base class for connecting to hardware via PythonIVI library.
+
+    Config options:
+    - driver : str module.class name of driver within the python IVI library
+                   e.g. 'ivi.tektronix.tektronixAWG5000.tektronixAWG5002c'
+    - uri : str unique remote identifier used to connect to instrument.
+                e.g. 'TCPIP::192.168.1.1::INSTR'
     """
 
     driver_config = ConfigOption('driver', missing='error')
@@ -38,6 +44,11 @@ class PythonIviBase(Base):
         self.driver = None
 
     def on_activate(self):
+        """
+        Event handler called when module is activated.
+
+        Opens connection to instrument.
+        """
 
         # load driver package
         module_name, class_name = self.driver_config.rsplit('.', 1)
@@ -48,7 +59,12 @@ class PythonIviBase(Base):
         self.driver = self._driver_class(self.uri)
 
     def on_deactivate(self):
-        if (self.driver is not None):
+        """
+        Event handler called when module is deactivated.
+
+        Closes connection to instrument.
+        """
+        if self.driver is not None:
             self.driver.close()
             self.driver = None
         self._driver_class = None

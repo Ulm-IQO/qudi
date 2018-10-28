@@ -10,7 +10,7 @@ hardware:
     dsos204a:
         module.Class: 'scope.python_ivi_scope.PythonIviScope'
         driver: 'ivi.agilent.agilentDSOS204A.agilentDSOS204A'
-        uri: 'TCPIP0::192.168.1.1::hislip0::INSTR'
+        uri: 'TCPIP::192.168.1.1::INSTR'
 
 
 Qudi is free software: you can redistribute it and/or modify
@@ -1226,8 +1226,7 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
             """
             self.root.driver.reference_level.configure(low, middle, high)
 
-
-    class channels(scope_ivi_interface.WaveformMeasurementExtensionInterface.channels):
+    class channels:
         class measurement(
             scope_ivi_interface.WaveformMeasurementExtensionInterface.channels.measurement):
             """
@@ -1336,7 +1335,7 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
                 """
                 return self.root.driver.channels[
                     self.parent_namespace.index].measurement.read_waveform_measurement(measurement_function,
-                                                                               maximum_time)
+                                                                                       maximum_time)
 
 
 class MinMaxWaveformExtension(scope_ivi_interface.MinMaxWaveformExtensionInterface):
@@ -1466,9 +1465,6 @@ class MinMaxWaveformExtension(scope_ivi_interface.MinMaxWaveformExtensionInterfa
                     self.parent_namespace.index].measurement.read_waveform_min_max()
 
 
-# **************************************************************************************************
-
-
 class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
     """
     Module for accessing oscilloscopes via PythonIVI library.
@@ -1507,12 +1503,15 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         return object.__setattr__(self, name, value)
 
     def on_activate(self):
-        super().on_activate()
+        """
+        Event handler called when module is activated.
+        """
+        super().on_activate()  # connects to instrument
 
         # find all base classes of driver
         driver_capabilities = inspect.getmro(type(self.driver))
 
-        # dynamic acquisition class generator
+        # dynamic class generator
         class IviAcquisitionMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.Interpolation in driver_capabilities:
@@ -1539,6 +1538,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
 
         class IviMeasurement(_Scope.measurement, metaclass=IviMeasurementMetaclass):
             pass
+
         self.measurement = Namespace(IviMeasurement)
 
         # dynamic trigger class generator

@@ -2128,7 +2128,7 @@ class PythonIviFGen(PythonIviBase, _FGen, fgen_ivi_interface.FGenIviInterface):
     - driver : str module.class name of driver within the python IVI library
                    e.g. 'ivi.tektronix.tektronixAWG5000.tektronixAWG5002c'
     - uri : str unique remote identifier used to connect to instrument.
-                e.g. 'TCPIP0::192.168.1.1::INSTR'
+                e.g. 'TCPIP::192.168.1.1::INSTR'
     """
     def __getattribute__(self, name):
         """
@@ -2158,7 +2158,10 @@ class PythonIviFGen(PythonIviBase, _FGen, fgen_ivi_interface.FGenIviInterface):
         return object.__setattr__(self, name, value)
 
     def on_activate(self):
-        super().on_activate()
+        """
+        Event handler called when module is activated.
+        """
+        super().on_activate()  # connects to instrument
 
         # find all base classes of driver
         driver_capabilities = inspect.getmro(type(self.driver))
@@ -2232,7 +2235,6 @@ class PythonIviFGen(PythonIviBase, _FGen, fgen_ivi_interface.FGenIviInterface):
             self.fm = Namespace(ModulateFMExtension.fm)
         if ivi.fgen.SampleClock in driver_capabilities:
             self.sample_clock = Namespace(SampleClockExtension.sample_clock)
-
 
         class IviArbitraryWaveformMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
