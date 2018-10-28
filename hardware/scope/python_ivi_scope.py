@@ -434,22 +434,7 @@ class _Scope(scope_ivi_interface.ScopeIviInterface):
         level_changed = Signal(float)
         source_changed = Signal(str)
         type_changed = Signal(str)
-    
-        def __init__(self, **kwargs):
-            super().__init__(**kwargs)
-            # go through all trigger extensions the driver supports and add the corresponding
-            # implementation
-            TriggerInterfaceMap = {
-                ivi.scope.TVTrigger: (TVTriggerExtension, 'tv'),
-                ivi.scope.RuntTrigger: (RuntTriggerExtension, 'runt'),
-                ivi.scope.GlitchTrigger: (GlitchTriggerExtension, 'glitch'),
-                ivi.scope.WidthTrigger: (WidthTriggerExtension, 'width'),
-                ivi.scope.AcLineTrigger: (AcLineTriggerExtension, 'ac_line')
-            }
-            for TriggerInterface, item in TriggerInterfaceMap.items():
-                if isinstance(self.root.driver, TriggerInterface):
-                    setattr(self, item[1], item[0]())
-    
+
         @property
         def coupling(self):
             """
@@ -657,6 +642,7 @@ class TVTriggerExtension(scope_ivi_interface.TVTriggerExtensionInterface):
     Extension IVI methods for oscilloscopes supporting TV triggering
     """
     class trigger:
+        @Namespace
         class tv(QObject,
                  scope_ivi_interface.TVTriggerExtensionInterface.trigger.tv,
                  metaclass=QtInterfaceMetaclass):
@@ -751,6 +737,7 @@ class RuntTriggerExtension(scope_ivi_interface.RuntTriggerExtensionInterface):
     Extension IVI methods for oscilloscopes supporting runt triggering
     """
     class trigger:
+        @Namespace
         class runt(QObject,
                    scope_ivi_interface.RuntTriggerExtensionInterface.trigger.runt,
                    metaclass=QtInterfaceMetaclass):
@@ -824,6 +811,7 @@ class WidthTriggerExtension:
     Extension IVI methods for oscilloscopes supporting width triggering
     """
     class trigger:
+        @Namespace
         class width(QObject,
                     scope_ivi_interface.WidthTriggerExtensionInterface.trigger.width,
                     metaclass=QtInterfaceMetaclass):
@@ -924,6 +912,7 @@ class GlitchTriggerExtension(scope_ivi_interface.GlitchTriggerExtensionInterface
     Extension IVI methods for oscilloscopes supporting glitch triggering
     """
     class trigger:
+        @Namespace
         class glitch(QObject,
                      scope_ivi_interface.GlitchTriggerExtensionInterface.trigger.glitch,
                      metaclass=QtInterfaceMetaclass):
@@ -1004,6 +993,7 @@ class AcLineTriggerExtension(scope_ivi_interface.AcLineTriggerExtensionInterface
     Extension IVI methods for oscilloscopes supporting AC line triggering
     """
     class trigger:
+        @Namespace
         class ac_line(QObject,
                       scope_ivi_interface.AcLineTriggerExtensionInterface.trigger.ac_line,
                       metaclass=QtInterfaceMetaclass):
@@ -1178,7 +1168,9 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
     Extension IVI methods for oscilloscopes supporting waveform measurements
     """
     class reference_level(
-        scope_ivi_interface.WaveformMeasurementExtensionInterface.reference_level):
+        QObject,
+        scope_ivi_interface.WaveformMeasurementExtensionInterface.reference_level,
+        metaclass=QtInterfaceMetaclass):
 
         high_changed = Signal(float)
         middle_changed = Signal(float)
@@ -1524,13 +1516,13 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviAcquisitionMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.Interpolation in driver_capabilities:
-                    bases = bases + (InterpolationExtension.acquisition,)
+                    bases += (InterpolationExtension.acquisition, )
                 if ivi.scope.AverageAcquisition in driver_capabilities:
-                    bases = bases + (AverageAcquisitionExtension.acquisition,)
+                    bases += (AverageAcquisitionExtension.acquisition, )
                 if ivi.scope.MinMaxWaveform in driver_capabilities:
-                    bases = bases + (MinMaxWaveformExtension.acquisition,)
+                    bases += (MinMaxWaveformExtension.acquisition, )
                 if ivi.scope.SampleMode in driver_capabilities:
-                    bases = bases + (SampleModeExtension.acquisition,)
+                    bases += (SampleModeExtension.acquisition, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviAcquisition(_Scope.acquisition, metaclass=IviAcquisitionMetaclass):
@@ -1542,7 +1534,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviMeasurementMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.AutoSetup in driver_capabilities:
-                    bases = bases + (AutoSetupExtension.measurement,)
+                    bases += (AutoSetupExtension.measurement, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviMeasurement(_Scope.measurement, metaclass=IviMeasurementMetaclass):
@@ -1552,10 +1544,20 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         # dynamic trigger class generator
         class IviTriggerMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
+                if ivi.scope.TVTrigger in driver_capabilities:
+                    bases += (TVTriggerExtension.trigger, )
+                if ivi.scope.RuntTrigger in driver_capabilities:
+                    bases += (RuntTriggerExtension.trigger, )
+                if ivi.scope.GlitchTrigger in driver_capabilities:
+                    bases += (GlitchTriggerExtension.trigger, )
+                if ivi.scope.WidthTrigger in driver_capabilities:
+                    bases += (WidthTriggerExtension.trigger, )
+                if ivi.scope.AcLineTrigger in driver_capabilities:
+                    bases += (AcLineTriggerExtension.trigger, )
                 if ivi.scope.ContinuousAcquisition in driver_capabilities:
-                    bases = bases + (ContinuousAcquisitionExtension.trigger,)
+                    bases += (ContinuousAcquisitionExtension.trigger, )
                 if ivi.scope.TriggerModifier in driver_capabilities:
-                    bases = bases + (TriggerModifierExtension.trigger,)
+                    bases += (TriggerModifierExtension.trigger, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviTrigger(_Scope.trigger, metaclass=IviTriggerMetaclass):
@@ -1566,9 +1568,9 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviChannelMeasurementMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.WaveformMeasurement in driver_capabilities:
-                    bases = bases + (WaveformMeasurementExtension.channels.measurement,)
+                    bases += (WaveformMeasurementExtension.channels.measurement, )
                 if ivi.scope.MinMaxWaveform in driver_capabilities:
-                    bases = bases + (MinMaxWaveformExtension.channels.measurement,)
+                    bases += (MinMaxWaveformExtension.channels.measurement, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviChannelMeasurement(_Scope.channels.measurement,
@@ -1578,7 +1580,7 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         class IviChannelMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.ProbeAutoSense in driver_capabilities:
-                    bases = bases + (ProbeAutoSenseExtension.channels,)
+                    bases += (ProbeAutoSenseExtension.channels, )
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviChannel(_Scope.channels, metaclass=IviChannelMetaclass):
