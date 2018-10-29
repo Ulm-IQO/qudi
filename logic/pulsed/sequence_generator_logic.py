@@ -477,7 +477,7 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         # If str has been passed, get the sequence object from saved sequences
         if isinstance(sequence, str):
-            sequence = self.saved_pulse_sequences[sequence]
+            sequence = self.saved_pulse_sequences.get(sequence)
             if sequence is None:
                 self.sigLoadedAssetUpdated.emit(*self.loaded_asset)
                 return
@@ -1106,8 +1106,8 @@ class SequenceGeneratorLogic(GenericLogic):
         length_bins = 0
         length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
-        for ensemble_name, seq_params in sequence.ensemble_list:
-            ensemble = self.get_ensemble(name=ensemble_name)
+        for seq_step in sequence:
+            ensemble = self.get_ensemble(name=seq_step.ensemble)
             if ensemble is None:
                 length_bins = -1
                 length_s = np.inf
@@ -1116,8 +1116,8 @@ class SequenceGeneratorLogic(GenericLogic):
             ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
             length_bins += ens_bins
             if sequence.is_finite:
-                length_s += ens_length * (seq_params['repetitions'] + 1)
-                number_of_lasers += ens_lasers * (seq_params['repetitions'] + 1)
+                length_s += ens_length * (seq_step.repetitions + 1)
+                number_of_lasers += ens_lasers * (seq_step.repetitions + 1)
         return length_s, length_bins, number_of_lasers
 
     def analyze_block_ensemble(self, ensemble):
@@ -1269,14 +1269,12 @@ class SequenceGeneratorLogic(GenericLogic):
         # Determine channel activation
         digital_channels = set()
         analog_channels = set()
-        if len(sequence.ensemble_list) > 0:
-            ensemble = self.get_ensemble(sequence.ensemble_list[0][0])
+        if len(sequence) > 0:
+            ensemble = self.get_ensemble(sequence[0].ensemble)
             if len(ensemble.block_list) > 0:
                 block = self.get_block(ensemble.block_list[0][0])
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
-
-
 
         # If the sequence does not contain infinite loop steps, determine the remaining parameters
         # TODO: Implement this!
@@ -1285,14 +1283,15 @@ class SequenceGeneratorLogic(GenericLogic):
         starting_bin = 0
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
-        for ensemble_name, seq_params in sequence.ensemble_list:
-            ensemble = self.get_ensemble(name=ensemble_name)
+        for seq_step in sequence:
+            ensemble = self.get_ensemble(seq_step.ensemble)
             ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
             length_bins += ens_bins
             if sequence.is_finite:
-                length_s += ens_length * (seq_params['repetitions'] + 1)
+                length_s += ens_length * (seq_step.repetitions + 1)
+
             analyzed_block = self.analyze_block_ensemble(
-            self.get_ensemble(ensemble_name))
+                                self.get_ensemble(seq_step.ensemble))
             rising_bins = analyzed_block['digital_rising_bins']
             falling_bins = analyzed_block['digital_falling_bins']
             for channel in digital_channels:
@@ -1300,7 +1299,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                                          rising_bins[channel] + starting_bin)
                 digital_falling_bins[channel] = np.append(digital_falling_bins[channel],
                                                           falling_bins[channel] + starting_bin)
-            starting_bin += analyzed_block['number_of_samples']*seq_params['repetitions']
+            starting_bin += analyzed_block['number_of_samples']*seq_step.repetitions
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
         return_dict['analog_channels'] = analog_channels
@@ -1338,11 +1337,11 @@ class SequenceGeneratorLogic(GenericLogic):
 
     def _sampling_sequence_sanity_check(self, sequence):
         ensembles_missing = set()
-        for ensemble_name, seq_params in sequence.ensemble_list:
-            ensemble = self._saved_pulse_block_ensembles.get(ensemble_name)
+        for seq_step in sequence:
+            ensemble = self._saved_pulse_block_ensembles.get(seq_step.ensemble)
             # Check if ensemble is present
             if ensemble is None:
-                ensembles_missing.add(ensemble_name)
+                ensembles_missing.add(seq_step.ensemble)
                 continue
 
         # print error messages
@@ -1571,8 +1570,8 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information['waveforms'] = sorted(written_waveforms)
             self.save_ensemble(ensemble)
 
-        self.log.info('Time needed for sampling and writing PulseBlockEnsemble to device: {0} sec'
-                      ''.format(int(np.rint(time.time() - start_time))))
+        self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
+                      ''.format(ensemble.name, int(np.rint(time.time() - start_time))))
         if ensemble_info['number_of_samples'] == 0:
             self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
                              ''.format(ensemble.name))
@@ -1652,25 +1651,25 @@ class SequenceGeneratorLogic(GenericLogic):
         # of the sampled Pulse_Block_Ensembles one has to introduce a running number as an
         # additional name tag, so keep the sampled files separate.
         offset_bin = 0  # that will be used for phase preservation
-        for sequence_step, (ensemble_name, seq_param) in enumerate(sequence.ensemble_list):
+        for step_index, seq_step in enumerate(sequence):
             if sequence.rotating_frame:
                 # to make something like 001
-                name_tag = ensemble_name + '_' + str(sequence_step).zfill(3)
+                name_tag = seq_step.ensemble + '_' + str(step_index).zfill(3)
             else:
-                name_tag = ensemble_name
+                name_tag = seq_step.ensemble
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
-            if sequence.rotating_frame or ensemble_name not in generated_ensembles:
+            if sequence.rotating_frame or seq_step.ensemble not in generated_ensembles:
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
-                    ensemble=ensemble_name,
+                    ensemble=seq_step.ensemble,
                     offset_bin=offset_bin,
                     name_tag=name_tag)
 
                 if len(waveform_list) == 0:
                     self.log.error('Sampling of PulseBlockEnsemble "{0}" failed during sampling of '
                                    'PulseSequence "{1}".\nFailed to create waveforms on device.'
-                                   ''.format(ensemble_name, sequence.name))
+                                   ''.format(seq_step.ensemble, sequence.name))
                     self.module_state.unlock()
                     self.__sequence_generation_in_progress = False
                     self.sigSampleSequenceComplete.emit(None)
@@ -1685,7 +1684,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
             # Append written sequence step to sequence_param_dict_list
             sequence_param_dict_list.append(
-                (tuple(generated_ensembles[name_tag]['waveforms']), seq_param))
+                (tuple(generated_ensembles[name_tag]['waveforms']), seq_step))
 
         # pass the whole information to the sequence creation method:
         steps_written = self.pulsegenerator().write_sequence(sequence.name,
@@ -1705,8 +1704,8 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information['step_parameters'] = sequence_param_dict_list
         self.save_sequence(sequence)
 
-        self.log.info('Time needed for sampling and writing PulseSequence to device: {0} sec.'
-                      ''.format(int(np.rint(time.time() - start_time))))
+        self.log.info('Time needed for sampling and writing PulseSequence {0} to device: {1} sec.'
+                      ''.format(sequence.name, int(np.rint(time.time() - start_time))))
 
         # unlock module
         self.module_state.unlock()
