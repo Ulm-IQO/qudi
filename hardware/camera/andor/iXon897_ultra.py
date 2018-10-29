@@ -111,6 +111,7 @@ class IxonUltra(Base, CameraInterface):
     _default_cooler_on = ConfigOption('default_cooler_on', True)
     _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN')
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
+    _default_preamp_gain_index = ConfigOption('default_preamp_gain_index', 2)
     _dll_location = ConfigOption('dll_location', missing='error')
 
 
@@ -131,6 +132,7 @@ class IxonUltra(Base, CameraInterface):
     _trigger_mode = _default_trigger_mode
     _scans = 1 #TODO get from camera
     _acquiring = False
+    _preamp_gain_index = _default_preamp_gain_index
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -148,6 +150,7 @@ class IxonUltra(Base, CameraInterface):
         self._set_trigger_mode(self._trigger_mode)
         self._set_exposuretime(self._exposure)
         self._set_acquisition_mode(self._acquisition_mode)
+        self._set_preamp_gain(self._preamp_gain_index)
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -313,15 +316,26 @@ class IxonUltra(Base, CameraInterface):
         @return float: new exposure gain
         """
         n_pre_amps = self._get_number_preamp_gains()
-        msg = ''
-        if (gain >= 0) & (gain < n_pre_amps):
-            msg = self._set_preamp_gain(c_int(gain))
-        else:
-            self.log.warning('Choose gain value between 0 and {0}'.format(n_pre_amps-1))
+        gain_values = list()
+        for index in range(n_pre_amps):
+            gain_values.append(self._get_preamp_gain(index))
+
+        if gain not in gain_values:
+            self.log.warning('Given gain value not available. Choose one:{0}'.format(gain_values))
+            return -1
+
+        for index, gain_val in enumerate(gain_values):
+            if gain == gain_val:
+                gain_index = index
+                break
+
+        msg = self._set_preamp_gain(c_int(gain_index))
         if msg == 'DRV_SUCCESS':
+            self._preamp_gain_index = gain_index
             self._gain = gain
         else:
             self.log.warning('The gain wasn\'t set. {0}'.format(msg))
+
         return self._gain
 
     def get_gain(self):
@@ -329,7 +343,6 @@ class IxonUltra(Base, CameraInterface):
 
         @return float: exposure gain
         """
-        _, self._gain = self._get_preamp_gain()
         return self._gain
 
     def get_ready_state(self):
@@ -897,8 +910,9 @@ class IxonUltra(Base, CameraInterface):
         @param: int index:
         @return: float gain: Gain factor to the index
         """
+        index = c_int(index)
         gain = c_float()
-        self.dll.GetPreAmpGain(c_int(index), byref(gain))
+        self.dll.GetPreAmpGain(index, byref(gain))
         return gain.value
 
     def _get_bit_depth(self):
