@@ -865,6 +865,7 @@ class MagnetLogic(GenericLogic):
         """
 
         if self._stop_measure:
+            self._end_alignment_procedure()
             return
 
         self._do_premeasurement_proc()
