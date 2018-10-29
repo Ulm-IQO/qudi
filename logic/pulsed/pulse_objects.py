@@ -1223,7 +1223,7 @@ class PredefinedGeneratorBase:
                     frequency=freqs[0],
                     phase=phases[0])
             elif sine_number == 2:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     frequency_1=freqs[0],
@@ -1231,7 +1231,7 @@ class PredefinedGeneratorBase:
                     phase_1=phases[0],
                     phase_2=phases[1])
             else:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     amplitude_3=amps[2],
