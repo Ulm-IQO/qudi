@@ -122,6 +122,11 @@ class CameraGUI(GUIBase):
 
         # connect Settings action under Options menu
         self._mw.actionSettings.triggered.connect(self.menu_settings)
+        self._sd.accepted.connect(self.update_settings)
+        self._sd.rejected.connect(self.keep_former_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.update_settings)
+        self.keep_former_settings()
         # connect save action to save function
         self._mw.actionSave_XY_Scan.triggered.connect(self.save_xy_scan_data)
 
