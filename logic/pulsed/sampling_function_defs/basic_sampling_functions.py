@@ -157,7 +157,7 @@ class DoubleSin(SamplingBase):
         phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
         return samples_arr
 
 
@@ -237,13 +237,13 @@ class TripleSin(SamplingBase):
         phase_rad = np.pi * self.phase_2 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
 
         # Second sine wave (add on sum of first and second)
         phase_rad = np.pi * self.phase_3 / 180
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude_3
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
+        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
         return samples_arr
 
 
