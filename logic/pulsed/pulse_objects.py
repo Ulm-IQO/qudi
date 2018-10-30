@@ -1223,7 +1223,7 @@ class PredefinedGeneratorBase:
                     frequency=freqs[0],
                     phase=phases[0])
             elif sine_number == 2:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     frequency_1=freqs[0],
@@ -1231,7 +1231,7 @@ class PredefinedGeneratorBase:
                     phase_1=phases[0],
                     phase_2=phases[1])
             else:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     amplitude_3=amps[2],
@@ -1281,13 +1281,14 @@ class PredefinedGeneratorBase:
         return created_blocks, block_ensemble
 
     def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
-                                  laser_ignore_list=list(), controlled_variable=[0, 1],
-                                  units=('s', ''), number_of_lasers=None, counting_length=None):
+                                  laser_ignore_list=list(), controlled_variable=[0, 1], units=('s', ''),
+                                  labels=('Tau', 'Signal'), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
         block_ensemble.measurement_information['controlled_variable'] = controlled_variable
         block_ensemble.measurement_information['units'] = units
+        block_ensemble.measurement_information['labels'] = labels
         if number_of_lasers is None:
             if alternating:
                 block_ensemble.measurement_information['number_of_lasers'] = len(controlled_variable) * 2

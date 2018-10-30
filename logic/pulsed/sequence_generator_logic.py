@@ -1555,8 +1555,8 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information['waveforms'] = sorted(written_waveforms)
             self.save_ensemble(ensemble)
 
-        self.log.info('Time needed for sampling and writing PulseBlockEnsemble to device: {0} sec'
-                      ''.format(int(np.rint(time.time() - start_time))))
+        self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
+                      ''.format(ensemble.name, int(np.rint(time.time() - start_time))))
         if ensemble_info['number_of_samples'] == 0:
             self.log.warning('Empty waveform (0 samples) created from PulseBlockEnsemble "{0}".'
                              ''.format(ensemble.name))
@@ -1689,8 +1689,8 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information['step_parameters'] = sequence_param_dict_list
         self.save_sequence(sequence)
 
-        self.log.info('Time needed for sampling and writing PulseSequence to device: {0} sec.'
-                      ''.format(int(np.rint(time.time() - start_time))))
+        self.log.info('Time needed for sampling and writing PulseSequence {0} to device: {1} sec.'
+                      ''.format(sequence.name, int(np.rint(time.time() - start_time))))
 
         # unlock module
         self.module_state.unlock()
