@@ -329,7 +329,7 @@ class IxonUltra(Base, CameraInterface):
                 gain_index = index
                 break
 
-        msg = self._set_preamp_gain(c_int(gain_index))
+        msg = self._set_preamp_gain(gain_index)
         if msg == 'DRV_SUCCESS':
             self._preamp_gain_index = gain_index
             self._gain = gain
@@ -577,8 +577,11 @@ class IxonUltra(Base, CameraInterface):
         Set the gain given by the pre amplifier. The actual gain
         factor can be retrieved with a call to '_get_pre_amp_gain'.
         @param c_int index: 0 - (Number of Preamp gains - 1)
+        @return: string error_msg: Describing if call to function was ok or not
         """
-        error_code = self.dll.SetPreAmpGain(index)
+        error_code = self.dll.SetPreAmpGain(c_int(index))
+        if ERROR_DICT[error_code] == 'DRV_SUCCESS':
+            self._gain = self._get_preamp_gain(index)
         return ERROR_DICT[error_code]
 
     def _set_temperature(self, temp):

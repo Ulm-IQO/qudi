@@ -124,6 +124,8 @@ class CameraGUI(GUIBase):
         self._mw.actionSettings.triggered.connect(self.menu_settings)
         self._sd.accepted.connect(self.update_settings)
         self._sd.rejected.connect(self.keep_former_settings)
+        self._sd.exposureDSpinBox.setValue(self._logic._exposure)
+        self._sd.gainSpinBox.setValue(self._logic._gain)
         self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
             self.update_settings)
         self.keep_former_settings()
