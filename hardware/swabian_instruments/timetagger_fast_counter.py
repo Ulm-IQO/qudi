@@ -33,9 +33,11 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
     fastcounter_timetagger:
         module.Class: 'swabian_instruments.timetagger_fast_counter.TimeTaggerFastCounter'
-        pulsestreamer_ip: '192.168.1.100'
-        laser_channel: 0
-        uw_x_channel: 2
+        timetagger_channel_apd_0: 0
+        timetagger_channel_apd_1: 1
+        timetagger_channel_detect: 2
+        timetagger_channel_sequence: 3
+        timetagger_sum_channels: 4
 
     """
     _modclass = 'TimeTaggerFastCounter'
