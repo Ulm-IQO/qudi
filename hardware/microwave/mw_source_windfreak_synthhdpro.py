@@ -30,7 +30,7 @@ import time
 
 
 class MicrowaveSynthHDPro(Base, MicrowaveInterface):
-    """ Hardware control class to controls a SynthHD Pro.
+    """ Hardware class to controls a SynthHD Pro.
 
     Example config for copy-paste:
 
