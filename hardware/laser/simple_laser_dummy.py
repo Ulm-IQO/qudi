@@ -29,9 +29,15 @@ import random
 import time
 
 class SimpleLaserDummy(Base, SimpleLaserInterface):
+    """ Lazor dummy
+
+    Example config for copy-paste:
+
+    laser_dummy:
+        module.Class: 'laser.simple_laser_dummy.SimpleLaserDummy'
+
     """
-    Lazor dummy
-    """
+
     _modclass = 'laserdummy'
     _modtype = 'hardware'
 
