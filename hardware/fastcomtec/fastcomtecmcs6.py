@@ -160,11 +160,21 @@ class BOARDSETTING(ctypes.Structure):
                 ('timepreset',  ctypes.c_double), ]
 
 class FastComtec(Base, FastCounterInterface):
-    """
+    """ Hardware Class for the FastComtec Card.
+
     stable: Jochen Scheuer, Simon Schmitt
 
-    Hardware Class for the FastComtec Card.
+    Example config for copy-paste:
+
+    fastcomtec_mcs6:
+        module.Class: 'fastcomtec.fastcomtecmcs6.FastComtec'
+        gated: False
+        trigger_safety: 400e-9
+        aom_delay: 390e-9
+        minimal_binwidth: 0.2e-9
+
     """
+
     _modclass = 'FastComtec'
     _modtype = 'hardware'
     gated = ConfigOption('gated', False, missing='warn')
