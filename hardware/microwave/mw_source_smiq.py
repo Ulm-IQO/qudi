@@ -38,14 +38,14 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     """ This is the Interface class to define the controls for the simple
         microwave hardware.
 
-    Example configuration:
-    ```
-    smiq:
+    Example config for copy-paste:
+
+    mw_source_smiq:
         module.Class: 'microwave.mw_source_smiq.MicrowaveSmiq'
         gpib_address: 'GPIB0::28::INSTR'
-        gpib_timeout: 20
-        gpib_baud_rate: 460800  # optional
-    ```
+        gpib_timeout: 10
+        #gpib_baud_rate: 460800  # optional
+
     """
 
     _modclass = 'MicrowaveSmiq'
