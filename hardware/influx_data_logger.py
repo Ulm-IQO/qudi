@@ -26,7 +26,22 @@ from influxdb import InfluxDBClient
 
 class InfluxLogger(Base, DataLoggerInterface):
     """ Log instrument values to InfluxDB.
+
+    Example config for copy-paste:
+
+    influx_data_logger:
+        module.Class: 'influx_data_logger.InfluxLogger'
+        user: 'client_user'
+        password: 'client_password'
+        dbname: 'db_name'
+        host: 'localhost'
+        port: 8086
+        dataseries: 'data_series_name'
+        field: 'field_name'
+        criterion: 'criterion_name'
+
     """
+
     _modclass = 'InfluxLogger'
     _modtype = 'hardware'
 
