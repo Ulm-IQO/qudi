@@ -36,15 +36,23 @@ from .uc480_h import *
 
 
 class CameraThorlabs(Base, CameraInterface):
-    """
-    Main class of the module
+    """ Main class of the module
+
+    Example config for copy-paste:
+
+    thorlabs_camera:
+        module.Class: 'camera.thorlabs.thorlabs_DCx.CameraThorlabs'
+        default_exposure: 0.1
+        default_gain: 1.0
+        id_camera: 0 # if more tha one camera is present
+
     """
 
     _modtype = 'camera'
     _modclass = 'hardware'
 
     _default_exposure = ConfigOption('default_exposure', 0.1)
-    _default_gain = ConfigOption('_default_gain', 1.0)
+    _default_gain = ConfigOption('default_gain', 1.0)
     _id_camera = ConfigOption('id_camera', 0)  # if more than one camera is present
 
     _dll = None

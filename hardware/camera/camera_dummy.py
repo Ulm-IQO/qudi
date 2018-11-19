@@ -28,6 +28,16 @@ from interface.camera_interface import CameraInterface
 
 class CameraDummy(Base, CameraInterface):
     """ Dummy hardware for camera interface
+
+    Example config for copy-paste:
+
+    camera_dummy:
+        module.Class: 'camera.camera_dummy.CameraDummy'
+        support_live: True
+        camera_name: 'Dummy camera'
+        resolution: (1280, 720)
+        exposure: 0.1
+        gain: 1.0
     """
 
     _modtype = 'DummyCamera'
