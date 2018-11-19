@@ -35,8 +35,16 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveSmbv(Base, MicrowaveInterface):
-    """ This is the Interface class to define the controls for the simple
-        microwave hardware.
+    """ Hardware file to control a R&S SMBV100A microwave device.
+
+    Example config for copy-paste:
+
+    mw_source_smbv:
+        module.Class: 'microwave.mw_source_smbv.MicrowaveSmbv'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10
+
     """
 
     _modclass = 'MicrowaveSmbv'
