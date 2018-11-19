@@ -46,6 +46,12 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 class M3202A(Base, PulserInterface):
     """ Qudi module for the Keysight M3202A PXIe AWG card (1GHz sampling frequency)
 
+    Example config for copy-paste:
+
+    keysight_m3202a:
+        module.Class: 'awg.keysight_M3202A.M3202A'
+        awg_serial: 0000000000 # here the serial number of current AWG
+
     """
     _modclass = 'M3202A'
     _modtype = 'hardware'
