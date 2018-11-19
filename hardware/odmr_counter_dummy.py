@@ -26,7 +26,7 @@ from core.module import Base, Connector, ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
 class ODMRCounterDummy(Base, ODMRCounterInterface):
-    """This is the Dummy hardware class that simulates the controls for a simple ODMR.
+    """ Dummy hardware class to simulate the controls for a simple ODMR.
 
     Example config for copy-paste:
 

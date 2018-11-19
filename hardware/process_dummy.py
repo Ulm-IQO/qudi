@@ -27,7 +27,14 @@ import numpy as np
 
 class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
     """ Methods to control slow laser switching devices.
+
+    Example config for copy-paste:
+
+    process_dummy:
+        module.Class: 'process_dummy.ProcessDummy'
+
     """
+
     _modclass = 'Process'
     _modtype = 'hardware'
 
