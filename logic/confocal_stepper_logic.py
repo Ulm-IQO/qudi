@@ -25,6 +25,8 @@ import time
 import datetime
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy import ndimage  # For gaussian smoothing of data
+from scipy.stats import norm  # To fit gaussian average to data
 
 from core.module import Connector, StatusVar, ConfigOption
 from logic.generic_logic import GenericLogic
@@ -403,6 +405,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
         self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
         self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
+        # For position smoothing
+        self._gaussian_smoothing_parameter = 20  # This is used for position feedback smoothing
 
         if self._ai_counter != None:
             if self._ai_counter in self._counting_device._analogue_input_channels:
@@ -649,6 +653,42 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             for n, ch in enumerate(self.get_counter_count_channels()):
                 self.full_image[:, :, 2 + n] = self.image_raw[:, :, 2 + n]
                 self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
+
+    def smooth_out_position_data(self):
+        """Smooths out noise of position feedback using gaussian filter and averaging.
+
+        """
+        # Replace maybe already existing smoothed data with unsmoothed full data set to increase robustness
+        self.full_image_smoothed = self.full_image
+        self.full_image_back_smoothed = self.full_image_back
+
+        # first axes smoothing using gaussian smoothing filter
+        for i in range(self._steps_scan_second_line):
+            self.full_image_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
+                self.full_image[i, :, 0], self._gaussian_smoothing_parameter)
+            self.full_image_back_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
+                self.full_image_back[i, :, 0], self._gaussian_smoothing_parameter)
+
+        # second axis smoothing
+        # Todo: If possible do gaussian fitting of data, as this is more accurate than mean
+        average = []
+        average_back = []
+        ones_array = np.ones(self._steps_scan_first_line)
+        # average the second axis position for every scan of the first axis. It should be constant along
+        # the first scan axis
+        for i in range(self._steps_scan_second_line):
+            average.append(norm.fit(self.full_image[i, :, 1])[0])
+            average_back.append(np.mean(self.full_image_back[i, :, 1]))
+
+        # smooth data out along second axis with gaussian filter
+        smoothed_average = ndimage.filters.gaussian_filter(average, self._gaussian_smoothing_parameter)
+        smoothed_average_back = ndimage.filters.gaussian_filter(average_back, self._gaussian_smoothing_parameter)
+
+        # generate new data of second axis along first axis and fill array
+        for i in range(self._steps_scan_second_line):
+            self.full_image_smoothed[i, :, 1] = ones_array * smoothed_average[i]
+            self.full_image_back_smoothed[i, :, 1] = ones_array * smoothed_average_back[i]
+
 
     ################################# Stepper Scan Methods #######################################
 
@@ -1050,6 +1090,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.module_state.unlock()
                 # self._stepping_device.module_state.unlock()
                 self.update_image_data_line(self._step_counter - 1)
+                self.smooth_out_position_data()
                 self.signal_image_updated.emit()
                 # add new history entry
                 # new_history = ConfocalHistoryEntry(self)
@@ -1098,8 +1139,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.update_image_data_line(self._step_counter)
         self.signal_image_updated.emit()
 
-        if self.axis_class[self._first_scan_axis].closed_loop:
-            self.go_to_start_position()
+        # if self.axis_class[self._first_scan_axis].closed_loop:
+        #    self.go_to_start_position()
 
         # do z position correction
         # Todo: This is still very crude
@@ -1359,6 +1400,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         self._counting_device.add_analogue_reader_channel_to_measurement(self._first_scan_axis,
                                                                                          [self._ai_counter])
 
+    def measure_end_position_during_scan(self):
+        if self.map_scan_position:
+            self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
+        position = self.get_position(self._feedback_axis)
+        if self.map_scan_position:
+            self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                self._steps_scan_first_line, self._first_scan_axis)
+            self._position_feedback_device.add_analogue_reader_channel_to_measurement(
+                self._first_scan_axis, [self._second_scan_axis])
+        return position
 
     ##################################### Acquire Data ###########################################
     def kill_counter(self):
@@ -1424,6 +1475,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.image_raw_back = image_raw_back
         self.full_image = image_raw
         self.full_image_back = image_raw_back
+
+        # for smoothed position feedback image
+        self.full_image_smoothed = image_raw
+        self.full_image_back_smoothed = image_raw_back
 
     def update_image_data(self):
         """Updates the images data
@@ -1754,7 +1809,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             fig2, ax2 = plt.subplots()
 
             # Create image plot
-            cfimage2 = ax2.pcolor(xdata, ydata, zdata,
+            cfimage2 = ax2.tripcolor(np.ndarray.flatten(xdata), np.ndarray.flatten(ydata), np.ndarray.flatten(zdata),
                                   cmap=plt.get_cmap('inferno')  # reference the right place in qd
                                   )
 

@@ -1371,8 +1371,8 @@ class ConfocalStepperGui(GUIBase):
                 v_step_pos = 0
             elif v_step_pos > self._stepper_logic._steps_scan_second_line - 1:
                 v_step_pos = self._stepper_logic._steps_scan_first_line - 1
-            h_pos = self._stepper_logic.full_image[v_step_pos, h_step_pos, 0]
-            v_pos = self._stepper_logic.full_image[v_step_pos, h_step_pos, 1]
+            h_pos = self._stepper_logic.full_image_smoothed[v_step_pos, h_step_pos, 0]
+            v_pos = self._stepper_logic.full_image_smoothed[v_step_pos, h_step_pos, 1]
 
             self._feedback_axis[self._stepper_logic._first_scan_axis].setValue(h_pos * 1e-3)
             self._feedback_axis[self._stepper_logic._second_scan_axis].setValue(v_pos * 1e-3)
