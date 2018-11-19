@@ -41,6 +41,14 @@ class MicrowaveSMR(Base, MicrowaveInterface):
     GPIB connection through visa, please have a look at:
 
     http://cdn.rohde-schwarz.com/pws/dl_downloads/dl_common_library/dl_manuals/gb_1/s/smr_1/smr_20-40.pdf
+
+    Example config for copy-paste:
+
+    mw_source_smr:
+        module.Class: 'microwave.mw_source_smr.MicrowaveSMR'
+        gpib_address: 'GPIB0::28::INSTR'
+        gpib_timeout: 10
+
     """
 
     _modclass = 'MicrowaveSMR'

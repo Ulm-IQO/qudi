@@ -31,8 +31,13 @@ import time
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ A dummy class to emulate a microwave source.
+
+    Example config for copy-paste:
+
+    mw_source_dummy:
+        module.Class: 'microwave.mw_source_dummy.MicrowaveDummy'
+
     """
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
