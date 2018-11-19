@@ -56,7 +56,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                          had happened.
         """
         config = self.getConfiguration()
-
         # some default values for the hardware:
         # Todo: This needs to be calculated by a more complicated formula depnding on the measured capacitance.
         # Todo: voltage range should be defined for each axis, the same for frequency
@@ -800,11 +799,11 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                 self.log.warning("Set mode to stepping. Current mode is ground.")
                 # Todo: this needs to check actually if it is in allowed mode. Figure out which modes are allowed.
                 return -1
+
             if direction:
                 command = "stepu {} ".format(self._attocube_axis[axis])
             else:
                 command = "stepd {} ".format(self._attocube_axis[axis])
-
             if not mode:
                 command += "c"
             else:

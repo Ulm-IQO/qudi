@@ -2894,7 +2894,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # wait till all finite counts are acquired then return
                 -1,
                 # maximal timeout for the read process
-                timeout,
+                -1,
                 # defines that first all samples from one channel are returned and then
                 # all from the next and so on
                 daq.DAQmx_Val_GroupByChannel,
