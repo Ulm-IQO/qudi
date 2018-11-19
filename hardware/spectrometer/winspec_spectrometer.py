@@ -31,6 +31,7 @@ import numpy as np
 import comtypes.client as ctc
 import win32com.client as w32c
 from ctypes import byref, pointer, c_long, c_float, c_bool
+import time
 
 import datetime
 
@@ -49,6 +50,7 @@ class WinSpec32(Base, SpectrometerInterface):
         self.expt_is_running = WinSpecLib.EXP_RUNNING
         self.path = 'asdf'
         self.prefix = 'test'
+        self.querytime = 0.001
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -77,25 +79,20 @@ class WinSpec32(Base, SpectrometerInterface):
 
             while self.expt_is_running and self.status == 0:
                 self.expt_is_running, self.status = self.WinspecExpt.GetParam(WinSpecLib.EXP_RUNNING)
+                time.sleep(self.querytime)
 
             if self.status != 0:
                 print('Error running experiment.')
-
-            #timestr = strftime("_%Y-%m-%d_%H%M%S", localtime())
-            #self.WinspecDoc.SetParam(
-            #    WinSpecLib.DM_FILENAME,
-            #    str(self.path) + str(self.prefix) + timestr + ".spe"
-            #    )
-            ##print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
-            #self.WinspecDoc.Save()
 
             """
                 Pass a pointer to Winspec so it can put the spectrum in a place in
                 memory where python will be able to find it.
             """
+            
             datapointer = c_float()
             raw_spectrum = self.WinspecDoc.GetFrame(1, datapointer)
-            spectrum = np.array(raw_spectrum).flatten()
+            # winspec uses 16 bit unsigned int. Make sure to consider that while converting to numpy arrays
+            spectrum = np.array(raw_spectrum, dtype=np.uint16).flatten()
             specdata = np.empty((2, len(spectrum)), dtype=np.double)
             specdata[1] = spectrum
             calibration = self.WinspecDoc.GetCalibration()
@@ -112,7 +109,7 @@ class WinSpec32(Base, SpectrometerInterface):
                     calibration.PolyCoeffs(1),
                     calibration.PolyCoeffs(0)
                 ])
-            specdata[0] = np.polyval(p, range(1, 1+len(spectrum)))
+            specdata[0] = np.polyval(p, range(1, 1+len(spectrum))) * 1e-9  # Send to logic in SI units (m)
             return specdata
 
         else:

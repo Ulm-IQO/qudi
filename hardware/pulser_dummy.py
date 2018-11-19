@@ -20,12 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
+import time
 from collections import OrderedDict
-from fnmatch import fnmatch
 
-from core.util.modules import get_home_dir
-from core.module import Base, ConfigOption
+from core.module import Base, StatusVar, ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -39,65 +37,36 @@ class PulserDummy(Base, PulserInterface):
     _modclass = 'PulserDummy'
     _modtype = 'hardware'
 
+    activation_config = StatusVar(default=None)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self.log.info('Dummy Pulser: I will simulate an AWG :) !')
 
-        self.awg_waveform_directory = '/waves'
-
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
-
-            if not os.path.exists(self.pulsed_file_dir):
-
-                homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-                self.log.warning('The directory defined in parameter '
-                        '"pulsed_file_dir" in the config for '
-                        'SequenceGeneratorLogic class does not exist!\n'
-                        'The default home directory\n{0}\n will be taken '
-                        'instead.'.format(self.pulsed_file_dir))
-        else:
-            homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified '
-                    'in the config for SequenceGeneratorLogic as directory '
-                    'for the pulsed files!\nThe default home directory\n'
-                    '{0}\n'
-                    'will be taken instead.'.format(self.pulsed_file_dir))
-
-        self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
-
-        self.compatible_waveform_format = 'wfm' # choose one of 'wfm', 'wfmx' or 'fpga'
-        self.compatible_sequence_format = 'seq' # choose one of 'seq' or 'seqx'
-
         self.connected = False
         self.sample_rate = 25e9
 
         # Deactivate all channels at first:
-        ch = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
-              'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
-              'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
-        self.active_channel = ch
+        self.channel_states = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
+                               'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
+                               'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
 
         # for each analog channel one value
-        self.amplitude_list = {'a_ch1': 1, 'a_ch2': 1, 'a_ch3': 1}
-        self.offset_list = {'a_ch1': 0, 'a_ch2': 0, 'a_ch3': 0}
+        self.amplitude_dict = {'a_ch1': 1.0, 'a_ch2': 1.0, 'a_ch3': 1.0}
+        self.offset_dict = {'a_ch1': 0.0, 'a_ch2': 0.0, 'a_ch3': 0.0}
 
         # for each digital channel one value
-        self.digital_high_list = {'d_ch1': 5, 'd_ch2': 5, 'd_ch3': 5, 'd_ch4': 5,
-                                  'd_ch5': 5, 'd_ch6': 5, 'd_ch7': 5, 'd_ch8': 5}
-        self.digital_low_list = {'d_ch1': 0, 'd_ch2': 0, 'd_ch3': 0, 'd_ch4': 0,
-                                 'd_ch5': 0, 'd_ch6': 0, 'd_ch7': 0, 'd_ch8': 0}
+        self.digital_high_dict = {'d_ch1': 5.0, 'd_ch2': 5.0, 'd_ch3': 5.0, 'd_ch4': 5.0,
+                                  'd_ch5': 5.0, 'd_ch6': 5.0, 'd_ch7': 5.0, 'd_ch8': 5.0}
+        self.digital_low_dict = {'d_ch1': 0.0, 'd_ch2': 0.0, 'd_ch3': 0.0, 'd_ch4': 0.0,
+                                 'd_ch5': 0.0, 'd_ch6': 0.0, 'd_ch7': 0.0, 'd_ch8': 0.0}
 
-        self.uploaded_assets_list = []
-        self.uploaded_files_list = []
-        self.current_loaded_asset = ''
-        self.is_output_enabled = True
+        self.waveform_set = set()
+        self.sequence_dict = dict()
 
-        # settings for remote access on the AWG PC
-        self.asset_directory = 'waves'
+        self.current_loaded_assets = dict()
+
         self.use_sequencer = True
         self.interleave = False
 
@@ -108,10 +77,21 @@ class PulserDummy(Base, PulserInterface):
         """
         self.connected = True
 
+        self.channel_states = {'a_ch1': False, 'a_ch2': False, 'a_ch3': False,
+                               'd_ch1': False, 'd_ch2': False, 'd_ch3': False, 'd_ch4': False,
+                               'd_ch5': False, 'd_ch6': False, 'd_ch7': False, 'd_ch8': False}
+
+        if self.activation_config is None:
+            self.activation_config = self.get_constraints().activation_config['config0']
+        elif self.activation_config not in self.get_constraints().activation_config.values():
+            self.activation_config = self.get_constraints().activation_config['config0']
+
+        for chnl in self.activation_config:
+            self.channel_states[chnl] = True
+
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
-
         self.connected = False
 
     def get_constraints(self):
@@ -135,18 +115,14 @@ class PulserDummy(Base, PulserInterface):
 
         PulserConstraints.activation_config differs, since it contain the channel
         configuration/activation information of the form:
-            {<descriptor_str>: <channel_list>,
-             <descriptor_str>: <channel_list>,
+            {<descriptor_str>: <channel_set>,
+             <descriptor_str>: <channel_set>,
              ...}
 
         If the constraints cannot be set in the pulsing hardware (e.g. because it might have no
         sequence mode) just leave it out so that the default is used (only zeros).
         """
         constraints = PulserConstraints()
-
-        # The file formats are hardware specific.
-        constraints.waveform_format = [self.compatible_waveform_format]
-        constraints.sequence_format = [self.compatible_sequence_format]
 
         if self.interleave:
             constraints.sample_rate.min = 12.0e9
@@ -179,10 +155,10 @@ class PulserDummy(Base, PulserInterface):
         constraints.d_ch_high.step = 0.01
         constraints.d_ch_high.default = 5.0
 
-        constraints.sampled_file_length.min = 80
-        constraints.sampled_file_length.max = 64800000
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 80
+        constraints.waveform_length.min = 80
+        constraints.waveform_length.max = 64800000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 80
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -205,42 +181,35 @@ class PulserDummy(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
 
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = ['A', 'B', 'C', 'D']
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['config0'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_config['config1'] = ['a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['config0'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['config1'] = {'a_ch2', 'd_ch1', 'd_ch2', 'a_ch3', 'd_ch3', 'd_ch4'}
         # Usage of channel 1 only:
-        activation_config['config2'] = ['a_ch2', 'd_ch1', 'd_ch2']
+        activation_config['config2'] = {'a_ch2', 'd_ch1', 'd_ch2'}
         # Usage of channel 2 only:
-        activation_config['config3'] = ['a_ch3', 'd_ch3', 'd_ch4']
+        activation_config['config3'] = {'a_ch3', 'd_ch3', 'd_ch4'}
         # Usage of Interleave mode:
-        activation_config['config4'] = ['a_ch1', 'd_ch1', 'd_ch2']
+        activation_config['config4'] = {'a_ch1', 'd_ch1', 'd_ch2'}
         # Usage of only digital channels:
-        activation_config['config5'] = ['d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
-                                        'd_ch7', 'd_ch8']
+        activation_config['config5'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6',
+                                        'd_ch7', 'd_ch8'}
         # Usage of only one analog channel:
-        activation_config['config6'] = ['a_ch1']
-        activation_config['config7'] = ['a_ch2']
-        activation_config['config8'] = ['a_ch3']
+        activation_config['config6'] = {'a_ch1'}
+        activation_config['config7'] = {'a_ch2'}
+        activation_config['config8'] = {'a_ch3'}
         # Usage of only the analog channels:
-        activation_config['config9'] = ['a_ch2', 'a_ch3']
+        activation_config['config9'] = {'a_ch2', 'a_ch3'}
         constraints.activation_config = activation_config
 
         return constraints
@@ -250,119 +219,299 @@ class PulserDummy(Base, PulserInterface):
 
         @return int: error code (0:stopped, -1:error, 1:running)
         """
-        self.current_status = 1
-        self.log.info('PulserDummy: Switch on the Output.')
-        return self.current_status
+        if self.current_status == 0:
+            self.current_status = 1
+            self.log.info('PulserDummy: Switch on the Output.')
+            time.sleep(1)
+            return 0
+        else:
+            return -1
 
     def pulser_off(self):
         """ Switches the pulsing device off.
 
         @return int: error code (0:stopped, -1:error, 1:running)
         """
-        self.current_status = 0
-        self.log.info('PulserDummy: Switch off the Output.')
-        return self.current_status
-
-    def direct_write_ensemble(self, ensemble_name, analog_samples, digital_samples):
-        """
-
-        @param ensemble_name:
-        @param analog_samples:
-        @param digital_samples:
-        @return:
-        """
-        filename = ensemble_name + '.' + self.compatible_waveform_format
-        if filename not in self.uploaded_files_list:
-            self.uploaded_files_list.append(filename)
-        if ensemble_name not in self.uploaded_assets_list:
-            self.uploaded_assets_list.append(ensemble_name)
-        self.log.info('Ensemble "{0}" directly written on dummy pulser.'.format(ensemble_name))
+        if self.current_status == 1:
+            self.current_status = 0
+            self.log.info('PulserDummy: Switch off the Output.')
         return 0
 
-    def direct_write_sequence(self, sequence_name, sequence_params):
+    def write_waveform(self, name, analog_samples, digital_samples, is_first_chunk, is_last_chunk,
+                       total_number_of_samples):
         """
+        Write a new waveform or append samples to an already existing waveform on the device memory.
+        The flags is_first_chunk and is_last_chunk can be used as indicator if a new waveform should
+        be created or if the write process to a waveform should be terminated.
 
-        @param sequence_name:
-        @param sequence_params:
-        @return:
+        NOTE: All sample arrays in analog_samples and digital_samples must be of equal length!
+
+        @param str name: the name of the waveform to be created/append to
+        @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
+                                    values are 1D numpy arrays of type float32 containing the
+                                    voltage samples.
+        @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
+                                     values are 1D numpy arrays of type bool containing the marker
+                                     states.
+        @param bool is_first_chunk: Flag indicating if it is the first chunk to write.
+                                    If True this method will create a new empty wavveform.
+                                    If False the samples are appended to the existing waveform.
+        @param bool is_last_chunk:  Flag indicating if it is the last chunk to write.
+                                    Some devices may need to know when to close the appending wfm.
+        @param int total_number_of_samples: The number of sample points for the entire waveform
+                                            (not only the currently written chunk)
+
+        @return (int, list): Number of samples written (-1 indicates failed process) and list of
+                             created waveform names
         """
-        filename = sequence_name + '.' + self.compatible_sequence_format
-        if filename not in self.uploaded_files_list:
-            self.uploaded_files_list.append(filename)
-        if sequence_name not in self.uploaded_assets_list:
-            self.uploaded_assets_list.append(sequence_name)
-        self.log.info('Sequence "{0}" directly written on dummy pulser.'.format(sequence_name))
-        return 0
+        waveforms = list()
 
-    def upload_asset(self, asset_name=None):
-        """ Upload an already hardware conform file to the device.
-            Does NOT load it into channels.
+        # Sanity checks
+        if len(analog_samples) > 0:
+            number_of_samples = len(analog_samples[list(analog_samples)[0]])
+        elif len(digital_samples) > 0:
+            number_of_samples = len(digital_samples[list(digital_samples)[0]])
+        else:
+            self.log.error('No analog or digital samples passed to write_waveform method in dummy '
+                           'pulser.')
+            return -1, waveforms
 
-        @param name: string, name of the ensemble/seqeunce to be uploaded
+        for chnl, samples in analog_samples.items():
+            if len(samples) != number_of_samples:
+                self.log.error('Unequal length of sample arrays for different channels in dummy '
+                               'pulser.')
+                return -1, waveforms
+        for chnl, samples in digital_samples.items():
+            if len(samples) != number_of_samples:
+                self.log.error('Unequal length of sample arrays for different channels in dummy '
+                               'pulser.')
+                return -1, waveforms
 
-        @return int: error code (0:OK, -1:error)
+        # Determine if only digital samples are active. In that case each channel will get a
+        # waveform. Otherwise only the analog channels will have a waveform with digital channel
+        # samples included (as it is the case in Tektronix and Keysight AWGs).
+        # Simulate a 1Gbit/s transfer speed. Assume each analog waveform sample is 5 bytes large
+        # (4 byte float and 1 byte marker bitmask). Assume each digital waveform sample is 1 byte.
+        if len(analog_samples) > 0:
+            for chnl in analog_samples:
+                waveforms.append(name + chnl[1:])
+                time.sleep(number_of_samples * 5 * 8 / 1024 ** 3)
+        else:
+            for chnl in digital_samples:
+                waveforms.append(name + chnl[1:])
+                time.sleep(number_of_samples * 8 / 1024 ** 3)
 
-        If nothing is passed, method will be skipped.
+        self.waveform_set.update(waveforms)
+
+        self.log.info('Waveforms with nametag "{0}" directly written on dummy pulser.'.format(name))
+        return number_of_samples, waveforms
+
+    def write_sequence(self, name, sequence_parameter_list):
         """
-        if asset_name is None:
-            self.log.warning('No asset name provided for upload!\nCorrect that!\nCommand will be '
-                             'ignored.')
-            return -1
+        Write a new sequence on the device memory.
 
-        saved_files = self._get_filenames_on_host()
+        @param name: str, the name of the waveform to be created/append to
+        @param sequence_parameter_list: list, contains the parameters for each sequence step and
+                                        the according waveform names.
 
-        for filename in saved_files:
-            if filename not in self.uploaded_files_list:
-                if (asset_name+'.seq') in filename:
-                    self.uploaded_files_list.append(filename)
-                if (asset_name+'.seqx') in filename:
-                    self.uploaded_files_list.append(filename)
-                elif fnmatch(filename, asset_name+'_ch?.wfm'):
-                    self.uploaded_files_list.append(filename)
-                elif fnmatch(filename, asset_name+'_ch?.wfmx'):
-                    self.uploaded_files_list.append(filename)
-                elif fnmatch(filename, asset_name+'.mat'):
-                    self.uploaded_files_list.append(filename)
-
-        if asset_name not in self.uploaded_assets_list:
-            self.uploaded_assets_list.append(asset_name)
-        return 0
-
-    def load_asset(self, asset_name, load_dict=None):
-        """ Loads a sequence or waveform to the specified channel of the pulsing
-            device.
-
-        @param str asset_name: The name of the asset to be loaded
-
-        @param dict load_dict:  a dictionary with keys being one of the
-                                available channel numbers and items being the
-                                name of the already sampled
-                                waveform/sequence files.
-                                Examples:   {1: rabi_Ch1, 2: rabi_Ch2}
-                                            {1: rabi_Ch2, 2: rabi_Ch1}
-                                This parameter is optional. If none is given
-                                then the channel association is invoked from
-                                the sequence generation,
-                                i.e. the filename appendix (_Ch1, _Ch2 etc.)
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
+        @return: int, number of sequence steps written (-1 indicates failed process)
         """
-        if load_dict is None:
-            load_dict = {}
-        if asset_name in self.uploaded_assets_list:
-            self.current_loaded_asset = asset_name
-        return 0
+        # Check if all waveforms are present on virtual device memory
+        for waveform_tuple, param_dict in sequence_parameter_list:
+            for waveform in waveform_tuple:
+                if waveform not in self.waveform_set:
+                    self.log.error('Failed to create sequence "{0}" due to waveform "{1}" not '
+                                   'present in device memory.'.format(name, waveform))
+                    return -1
 
-    def get_loaded_asset(self):
-        """ Retrieve the currently loaded asset name of the device.
+        if name in self.sequence_dict:
+            del self.sequence_dict[name]
 
-        @return str: Name of the current asset, that can be either a filename
-                     a waveform, a sequence ect.
+        self.sequence_dict[name] = len(sequence_parameter_list[0][0])
+        time.sleep(1)
+
+        self.log.info('Sequence with name "{0}" directly written on dummy pulser.'.format(name))
+        return len(sequence_parameter_list)
+
+    def get_waveform_names(self):
+        """ Retrieve the names of all uploaded waveforms on the device.
+
+        @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return self.current_loaded_asset
+        return list(self.waveform_set)
+
+    def get_sequence_names(self):
+        """ Retrieve the names of all uploaded sequence on the device.
+
+        @return list: List of all uploaded sequence name strings in the device workspace.
+        """
+        return list(self.sequence_dict)
+
+    def delete_waveform(self, waveform_name):
+        """ Delete the waveform with name "waveform_name" from the device memory.
+
+        @param str waveform_name: The name of the waveform to be deleted
+                                  Optionally a list of waveform names can be passed.
+
+        @return list: a list of deleted waveform names.
+        """
+        if isinstance(waveform_name, str):
+            waveform_name = [waveform_name]
+
+        deleted_waveforms = list()
+        for waveform in waveform_name:
+            if waveform in self.waveform_set:
+                self.waveform_set.remove(waveform)
+                deleted_waveforms.append(waveform)
+
+        return deleted_waveforms
+
+    def delete_sequence(self, sequence_name):
+        """ Delete the sequence with name "sequence_name" from the device memory.
+
+        @param str sequence_name: The name of the sequence to be deleted
+                                  Optionally a list of sequence names can be passed.
+
+        @return list: a list of deleted sequence names.
+        """
+        if isinstance(sequence_name, str):
+            sequence_name = [sequence_name]
+
+        deleted_sequences = list()
+        for sequence in sequence_name:
+            if sequence in self.sequence_dict:
+                del self.sequence_dict[sequence]
+                deleted_sequences.append(sequence)
+
+        return deleted_sequences
+
+    def load_waveform(self, load_dict):
+        """ Loads a waveform to the specified channel of the pulsing device.
+        For devices that have a workspace (i.e. AWG) this will load the waveform from the device
+        workspace into the channel.
+        For a device without mass memory this will make the waveform/pattern that has been
+        previously written with self.write_waveform ready to play.
+
+        @param load_dict:  dict|list, a dictionary with keys being one of the available channel
+                                      index and values being the name of the already written
+                                      waveform to load into the channel.
+                                      Examples:   {1: rabi_ch1, 2: rabi_ch2} or
+                                                  {1: rabi_ch2, 2: rabi_ch1}
+                                      If just a list of waveform names if given, the channel
+                                      association will be invoked from the channel
+                                      suffix '_ch1', '_ch2' etc.
+
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel, string describing the asset
+                             type ('waveform' or 'sequence')
+        """
+        if isinstance(load_dict, list):
+            new_dict = dict()
+            for waveform in load_dict:
+                channel = int(waveform.rsplit('_ch', 1)[1])
+                new_dict[channel] = waveform
+            load_dict = new_dict
+
+        # Determine if the device is purely digital and get all active channels
+        analog_channels = [chnl for chnl in self.activation_config if chnl.startswith('a')]
+        digital_channels = [chnl for chnl in self.activation_config if chnl.startswith('d')]
+        pure_digital = len(analog_channels) == 0
+
+        # Check if waveforms are present in virtual dummy device memory and specified channels are
+        # active. Create new load dict.
+        new_loaded_assets = dict()
+        for channel, waveform in load_dict.items():
+            if waveform not in self.waveform_set:
+                self.log.error('Loading failed. Waveform "{0}" not found on device memory.'
+                               ''.format(waveform))
+                return self.current_loaded_assets
+            if pure_digital:
+                if 'd_ch{0:d}'.format(channel) not in digital_channels:
+                    self.log.error('Loading failed. Digital channel {0:d} not active.'
+                                   ''.format(channel))
+                    return self.current_loaded_assets
+            else:
+                if 'a_ch{0:d}'.format(channel) not in analog_channels:
+                    self.log.error('Loading failed. Analog channel {0:d} not active.'
+                                   ''.format(channel))
+                    return self.current_loaded_assets
+            new_loaded_assets[channel] = waveform
+        self.current_loaded_assets = new_loaded_assets
+        return self.get_loaded_assets()
+
+    def load_sequence(self, sequence_name):
+        """ Loads a sequence to the channels of the device in order to be ready for playback.
+        For devices that have a workspace (i.e. AWG) this will load the sequence from the device
+        workspace into the channels.
+
+        @param sequence_name:  str, name of the sequence to load
+
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel, string describing the asset
+                             type ('waveform' or 'sequence')
+        """
+        if sequence_name not in self.sequence_dict:
+            self.log.error('Sequence loading failed. No sequence with name "{0}" found on device '
+                           'memory.'.format(sequence_name))
+            return self.get_loaded_assets()
+
+        # Determine if the device is purely digital and get all active channels
+        analog_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('a'))
+        digital_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('d'))
+        pure_digital = len(analog_channels) == 0
+
+        if pure_digital and len(digital_channels) != self.sequence_dict[sequence_name]:
+            self.log.error('Sequence loading failed. Number of active digital channels ({0:d}) does'
+                           ' not match the number of tracks in the sequence ({1:d}).'
+                           ''.format(len(digital_channels), self.sequence_dict[sequence_name]))
+            return self.get_loaded_assets()
+        if not pure_digital and len(analog_channels) != self.sequence_dict[sequence_name]:
+            self.log.error('Sequence loading failed. Number of active analog channels ({0:d}) does'
+                           ' not match the number of tracks in the sequence ({1:d}).'
+                           ''.format(len(analog_channels), self.sequence_dict[sequence_name]))
+            return self.get_loaded_assets()
+
+        new_loaded_assets = dict()
+        if pure_digital:
+            for track_index, chnl in enumerate(digital_channels):
+                chnl_num = int(chnl.split('ch')[1])
+                new_loaded_assets[chnl_num] = '{0}_{1:d}'.format(sequence_name, track_index)
+        else:
+            for track_index, chnl in enumerate(analog_channels):
+                chnl_num = int(chnl.split('ch')[1])
+                new_loaded_assets[chnl_num] = '{0}_{1:d}'.format(sequence_name, track_index)
+
+        self.current_loaded_assets = new_loaded_assets
+        return self.get_loaded_assets()
+
+    def get_loaded_assets(self):
+        """
+        Retrieve the currently loaded asset names for each active channel of the device.
+        The returned dictionary will have the channel numbers as keys.
+        In case of loaded waveforms the dictionary values will be the waveform names.
+        In case of a loaded sequence the values will be the sequence name appended by a suffix
+        representing the track loaded to the respective channel (i.e. '<sequence_name>_1').
+
+        @return (dict, str): Dictionary with keys being the channel number and values being the
+                             respective asset loaded into the channel,
+                             string describing the asset type ('waveform' or 'sequence')
+        """
+        # Determine if it's a waveform or a sequence
+        asset_type = None
+        for asset_name in self.current_loaded_assets.values():
+            if 'ch' in asset_name.rsplit('_', 1)[1]:
+                current_type = 'waveform'
+            else:
+                current_type = 'sequence'
+
+            if asset_type is None or asset_type == current_type:
+                asset_type = current_type
+            else:
+                self.log.error('Unable to determine loaded asset type. Mixed naming convention '
+                               'assets loaded (waveform and sequence tracks).')
+                return dict(), ''
+
+        return self.current_loaded_assets, asset_type
 
     def clear_all(self):
         """ Clears all loaded waveform from the pulse generators RAM.
@@ -372,8 +521,10 @@ class PulserDummy(Base, PulserInterface):
         Unused for digital pulse generators without storage capability
         (PulseBlaster, FPGA).
         """
-        self.current_loaded_asset = ''
-        return
+        self.current_loaded_assets = dict()
+        self.waveform_set = set()
+        self.sequence_dict = dict()
+        return 0
 
     def get_status(self):
         """ Retrieves the status of the pulsing hardware
@@ -389,7 +540,6 @@ class PulserDummy(Base, PulserInterface):
         status_dic[1] = 'Device is active and running.'
         # All the other status messages should have higher integer values
         # then 1.
-
         return self.current_status, status_dic
 
     def get_sample_rate(self):
@@ -414,8 +564,13 @@ class PulserDummy(Base, PulserInterface):
               for obtaining the actual set value and use that information for
               further processing.
         """
-
-        self.sample_rate = sample_rate
+        constraint = self.get_constraints().sample_rate
+        if sample_rate > constraint.max:
+            self.sample_rate = constraint.max
+        elif sample_rate < constraint.min:
+            self.sample_rate = constraint.min
+        else:
+            self.sample_rate = sample_rate
         return self.sample_rate
 
     def get_analog_level(self, amplitude=None, offset=None):
@@ -459,23 +614,23 @@ class PulserDummy(Base, PulserInterface):
         if offset is None:
             offset = []
 
-        ampl = {}
-        off = {}
+        ampl = dict()
+        off = dict()
 
-        if (amplitude == []) and (offset == []):
+        if not amplitude and not offset:
 
-            for a_ch in self.amplitude_list:
-                ampl[a_ch] = self.amplitude_list[a_ch]
+            for a_ch, pp_amp in self.amplitude_dict.items():
+                ampl[a_ch] = pp_amp
 
-            for a_ch in self.offset_list:
-                off[a_ch] = self.offset_list[a_ch]
+            for a_ch, offset in self.offset_dict.items():
+                off[a_ch] = offset
 
         else:
             for a_ch in amplitude:
-                ampl[a_ch] = self.amplitude_list[a_ch]
+                ampl[a_ch] = self.amplitude_dict[a_ch]
 
             for a_ch in offset:
-                off[a_ch] = self.offset_list[a_ch]
+                off[a_ch] = self.offset_dict[a_ch]
 
         return ampl, off
 
@@ -509,15 +664,15 @@ class PulserDummy(Base, PulserInterface):
         (amplitude, offset) and (value high, value low)!
         """
         if amplitude is None:
-            amplitude = {}
+            amplitude = dict()
         if offset is None:
-            offset = {}
+            offset = dict()
 
-        for a_ch in amplitude:
-            self.amplitude_list[a_ch] = amplitude[a_ch]
+        for a_ch, amp in amplitude.items():
+            self.amplitude_dict[a_ch] = amp
 
-        for a_ch in offset:
-            self.offset_list[a_ch] = offset[a_ch]
+        for a_ch, off in offset.items():
+            self.offset_dict[a_ch] = off
 
         return self.get_analog_level(amplitude=list(amplitude), offset=list(offset))
 
@@ -561,23 +716,16 @@ class PulserDummy(Base, PulserInterface):
         if high is None:
             high = []
 
-        low_val = {}
-        high_val = {}
-
-        if (low == []) and (high == []):
-
-            for d_ch in self.digital_low_list:
-                low_val[d_ch] = self.digital_low_list[d_ch]
-
-            for d_ch in self.digital_high_list:
-                high_val[d_ch] = self.digital_high_list[d_ch]
-
+        if not low and not high:
+            low_val = self.digital_low_dict
+            high_val = self.digital_high_dict
         else:
+            low_val = dict()
+            high_val = dict()
             for d_ch in low:
-                low_val[d_ch] = self.digital_low_list[d_ch]
-
+                low_val[d_ch] = self.digital_low_dict[d_ch]
             for d_ch in high:
-                high_val[d_ch] = self.digital_high_list[d_ch]
+                high_val[d_ch] = self.digital_high_dict[d_ch]
 
         return low_val, high_val
 
@@ -609,15 +757,15 @@ class PulserDummy(Base, PulserInterface):
         (amplitude, offset) and (value high, value low)!
         """
         if low is None:
-            low = {}
+            low = dict()
         if high is None:
-            high = {}
+            high = dict()
 
-        for d_ch in low:
-            self.digital_low_list[d_ch] = low[d_ch]
+        for d_ch, low_voltage in low.items():
+            self.digital_low_dict[d_ch] = low_voltage
 
-        for d_ch in high:
-            self.digital_high_list[d_ch] = high[d_ch]
+        for d_ch, high_voltage in high.items():
+            self.digital_high_dict[d_ch] = high_voltage
 
         return self.get_digital_level(low=list(low), high=list(high))
 
@@ -643,129 +791,58 @@ class PulserDummy(Base, PulserInterface):
 
         active_ch = {}
 
-        if ch == []:
-            active_ch = self.active_channel
+        if not ch:
+            active_ch = self.channel_states
 
         else:
             for channel in ch:
-                active_ch[channel] = self.active_channel[channel]
+                active_ch[channel] = self.channel_states[channel]
 
         return active_ch
 
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
-        @param dict ch: dictionary with keys being the analog or digital
-                          string generic names for the channels with items being
-                          a boolean value.current_loaded_asset
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return dict: with the actual set values for active channels for analog
-                      and digital values.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        If nothing is passed then the command will return an empty dict.
+        If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
+        digital channel 1. All other available channels will remain unchanged.
         """
         if ch is None:
             ch = {}
+        old_activation = self.channel_states.copy()
         for channel in ch:
-            self.active_channel[channel] = ch[channel]
+            self.channel_states[channel] = ch[channel]
+
+        active_channel_set = {chnl for chnl, is_active in self.channel_states.items() if is_active}
+        if active_channel_set not in self.get_constraints().activation_config.values():
+            self.log.error('Channel activation to be set not found in constraints.\n'
+                           'Channel activation unchanged.')
+            self.channel_states = old_activation
+        else:
+            self.activation_config = active_channel_set
 
         return self.get_active_channels(ch=list(ch))
-
-    def get_uploaded_asset_names(self):
-        """ Retrieve the names of all uploaded assets on the device.
-
-        @return list: List of all uploaded asset name strings in the current
-                      device directory. This is no list of the file names.
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
-        """
-        return self.uploaded_assets_list
-
-    def get_saved_asset_names(self):
-        """ Retrieve the names of all sampled and saved assets on the host PC.
-        This is no list of the file names.
-
-        @return list: List of all saved asset name strings in the current
-                      directory of the host PC.
-        """
-
-        # list of all files in the waveform directory ending with .mat or .WFMX
-        file_list = self._get_filenames_on_host()
-
-        # exclude the channel specifier for multiple analog channels and create return list
-        saved_assets = []
-        for name in file_list:
-            if fnmatch(name, '*_ch?.wfmx') or fnmatch(name, '*_ch?.wfm') or fnmatch(name, '*.seq') or fnmatch(name, '*.seqx'):
-                asset_name = name.rsplit('_', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-            elif fnmatch(name, '*.mat'):
-                asset_name = name.rsplit('.', 1)[0]
-                if asset_name not in saved_assets:
-                    saved_assets.append(asset_name)
-        return saved_assets
-
-    def delete_asset(self, asset_name):
-        """ Delete all files associated with an asset with the passed asset_name from the device memory.
-
-        @param str asset_name: The name of the asset to be deleted
-                               Optionally a list of asset names can be passed.
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without sequence storage capability
-        (PulseBlaster, FPGA).
-        """
-        if asset_name in self.uploaded_assets_list:
-            self.uploaded_assets_list.remove(asset_name)
-            if asset_name == self.current_loaded_asset:
-                self.clear_all()
-
-        files_to_delete = []
-        for filename in self.uploaded_files_list:
-            if fnmatch(filename, asset_name+'.mat') or fnmatch(filename, asset_name+'_ch?.wfmx') or fnmatch(filename, asset_name+'_ch?.wfm' or fnmatch(filename, asset_name+'_ch?.seq') or fnmatch(filename, asset_name+'_ch?.seqx')):
-                files_to_delete.append(filename)
-
-        for filename in files_to_delete:
-            self.uploaded_files_list.remove(filename)
-        return 0
-
-    def set_asset_dir_on_device(self, dir_path):
-        """ Change the directory where the assets are stored on the device.
-
-        @param string dir_path: The target directory
-
-        @return int: error code (0:OK, -1:error)
-
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
-        """
-        self.asset_directory = dir_path
-        return 0
-
-    def get_asset_dir_on_device(self):
-        """ Ask for the directory where the hardware conform files are stored on
-            the device.
-
-        @return string: The current file directory
-
-        Unused for digital pulse generators without changeable file structure
-        (PulseBlaster, FPGA).
-        """
-        return self.asset_directory
 
     def get_interleave(self):
         """ Check whether Interleave is ON or OFF in AWG.
@@ -794,7 +871,7 @@ class PulserDummy(Base, PulserInterface):
         self.interleave = state
         return self.get_interleave()
 
-    def tell(self, command):
+    def write(self, command):
         """ Sends a command string to the device.
 
         @param string command: string containing the command
@@ -803,11 +880,10 @@ class PulserDummy(Base, PulserInterface):
         """
 
         self.log.info('It is so nice that you talk to me and told me "{0}"; '
-                'as a dummy it is very dull out here! :) '.format(command))
-
+                      'as a dummy it is very dull out here! :) '.format(command))
         return 0
 
-    def ask(self, question):
+    def query(self, question):
         """ Asks the device a 'question' and receive and return an answer from it.
 
         @param string question: string containing the command
@@ -815,9 +891,8 @@ class PulserDummy(Base, PulserInterface):
         @return string: the answer of the device to the 'question' in a string
         """
 
-        self.log.info('Dude, I\'m a dummy! Your question \'{0}\' is way to '
-                    'complicated for me :D !'.format(question))
-
+        self.log.info('Dude, I\'m a dummy! Your question \'{0}\' is way too '
+                      'complicated for me :D !'.format(question))
         return 'I am a dummy!'
 
     def reset(self):
@@ -825,8 +900,9 @@ class PulserDummy(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.info('Dummy cannot be reseted!')
-
+        self.__init__()
+        self.connected = True
+        self.log.info('Dummy reset!')
         return 0
 
     def has_sequence_mode(self):
@@ -835,66 +911,3 @@ class PulserDummy(Base, PulserInterface):
         @return: bool, True for yes, False for no.
         """
         return True
-
-    def _get_dir_for_name(self, name):
-        """ Get the path to the pulsed sub-directory 'name'.
-
-        @param name: string, name of the folder
-        @return: string, absolute path to the directory with folder 'name'.
-        """
-
-        path = os.path.join(self.pulsed_file_dir, name)
-        if not os.path.exists(path):
-            os.makedirs(os.path.abspath(path))
-
-        return os.path.abspath(path)
-
-    def _get_filenames_on_host(self):
-        """ Get the full filenames of all assets saved on the host PC.
-
-        @return: list, The full filenames of all assets saved on the host PC.
-        """
-        filename_list = [f for f in os.listdir(self.host_waveform_directory) if (f.endswith('.wfmx') or f.endswith('.mat') or f.endswith('.wfm') or f.endswith('.seq') or f.endswith('.seqx'))]
-        return filename_list
-
-    def _get_num_a_ch(self):
-        """ Retrieve the number of available analog channels.
-
-        @return int: number of analog channels.
-        """
-        config = self.get_constraints().activation_config
-
-        all_a_ch = []
-        for conf in config:
-
-            # extract all analog channels from the config
-            curr_ach = [entry for entry in config[conf] if 'a_ch' in entry]
-
-            # append all new analog channels to a temporary array
-            for a_ch in curr_ach:
-                if a_ch not in all_a_ch:
-                    all_a_ch.append(a_ch)
-
-        # count the number of entries in that array
-        return len(all_a_ch)
-
-    def _get_num_d_ch(self):
-        """ Retrieve the number of available digital channels.
-
-        @return int: number of digital channels.
-        """
-        config = self.get_constraints().activation_config
-
-        all_d_ch = []
-        for conf in config:
-
-            # extract all digital channels from the config
-            curr_d_ch = [entry for entry in config[conf] if 'd_ch' in entry]
-
-            # append all new analog channels to a temporary array
-            for d_ch in curr_d_ch:
-                if d_ch not in all_d_ch:
-                    all_d_ch.append(d_ch)
-
-        # count the number of entries in that array
-        return len(all_d_ch)
