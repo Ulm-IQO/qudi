@@ -29,6 +29,14 @@ import RPi.GPIO as GPIO
 
 class PiPWM(Base, ProcessControlInterface):
     """ Hardware module for Raspberry Pi-based PWM controller.
+
+    Example config for copy-paste:
+
+    pi_pwm:
+        module.Class: 'pi_pwm.PiPWM'
+        channel: 0
+        frequency: 100 # in Hz
+
     """
 
     _modclass = 'ProcessControlInterface'
