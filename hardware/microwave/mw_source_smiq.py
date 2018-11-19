@@ -134,7 +134,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         elif self.model == 'SMIQ04B':
             limits.max_frequency = 4.4e9
         elif self.model == 'SMIQ06B':
-            pass
+            limits.max_power = 16
         elif self.model == 'SMIQ06ATE':
             pass
         else:
