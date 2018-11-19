@@ -24,16 +24,25 @@ from core.module import Base, ConfigOption
 import visa
 
 class CTC100(Base):
-    """
-    This module implements communication with CTC100 temperature controllers or clones/licensed devices.
+    """ This module implements communication with CTC100 temperature controllers
+    or clones/licensed devices.
 
-    This module is untested and very likely broken.
+    ATTENTION: This module is untested and very likely broken.
+
+    Example config for copy-paste:
+
+    tempcontroller_ctc100:
+        module.Class: 'CTC100_temperature.CTC100'
+        interface: 'ASRL1::INSTR'
+        fitlogic: 'fitlogic' # name of the fitlogic module, see default config
+
     """
+
     _modclass = 'ctc100'
     _modtype = 'hardware'
 
     # config options
-    _interface = ConfigOption('interface', missing='error')
+    _interface = ConfigOption('interface', default='ASRL1::INSTR', missing='error')
 
     def on_activate(self):
         """ Activate modeule

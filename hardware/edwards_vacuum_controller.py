@@ -25,18 +25,24 @@ from core.module import Base, ConfigOption
 import visa
 
 class EdwardsVacuumController(Base):
-    """
-    This module implements communication with Edwards turbopump and
-    vacuum PIC.
+    """ This module implements communication with Edwards turbopump and vacuum
+    PIC.
 
+    ATTENTION: This module is not complete or functional.
 
-    This module is not complete or functional.
+    Example config for copy-paste:
+
+    vacuum_control_edwards:
+        module.Class: 'edwards_vacuum_controller.EdwardsVacuumController'
+        interface: 'ASRL1::INSTR'
+
     """
+
     _modclass = 'edwards_pump'
     _modtype = 'hardware'
 
     # config options
-    _interface = ConfigOption('interface', missing='error')
+    _interface = ConfigOption('interface', default='ASRL1::INSTR', missing='error')
 
     # IDs for communication
     PRIORITY = {

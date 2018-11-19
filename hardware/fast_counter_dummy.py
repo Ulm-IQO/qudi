@@ -30,8 +30,15 @@ from interface.fast_counter_interface import FastCounterInterface
 
 
 class FastCounterDummy(Base, FastCounterInterface):
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ Implementation of the FastCounter interface methods for a dummy usage.
+
+    Example config for copy-paste:
+
+    fastcounter_dummy:
+        module.Class: 'fast_counter_dummy.FastCounterDummy'
+        gated: False
+        #load_trace: None # path to the saved dummy trace
+
     """
     _modclass = 'fastcounterinterface'
     _modtype = 'hardware'
