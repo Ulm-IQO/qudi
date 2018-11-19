@@ -90,7 +90,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                         for old boards it might be even 7. This corresponds to
                         a minimal instruction length of
                             (1/clock_frequency)*min_instr_len
-        _channel_delays: Specify the delay of some channels to correct it automatically
+        channel_delays: Specify the delay of some channels to correct it automatically
                          by this module. For example :
                           channel_delays:
                                 '0': 200-9
@@ -932,7 +932,24 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     def _correct_sequence_for_delays(self, sequence):
         """ Take a sequence and modify it to take into account delays
 
+        For example the sequence
+        [{'active_channels': [0], 'length': 50e-09},
+        {'active_channels': [], 'length': 1500e-09},
+        {'active_channels': [2], 'length': 500-09},
+        {'active_channels': [], 'length': 1500e-09}]
+
+        will be converted, for a delay of 200 ns on channel 0 and 500 ns on channel 2, to :
+        [{'active_channels': [], 'length': 1050e-09},
+        {'active_channels': [2], 'length': 500-09},
+        {'active_channels': [], 'length': 1800e-09}
+        {'active_channels': [0], 'length': 50e-09},
+        {'active_channels': [], 'length': 150e-09}]
+
+        In this example, the pulse on channel 2 is sent sooner and the pulse on channel 0
+        is sent at the end to affect the system at t=0
+
         @param sequence : the theoretical sequence to correct
+
         @return corrected_sequence : the sequence taking the delays into account
         """
         # If no delay is specified, skip the whole process
