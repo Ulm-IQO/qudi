@@ -87,7 +87,7 @@ correspond to standard C/C++ data types as follows:
 
 
 class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
-    """Hardware class to control the Picoharp 300 from PicoQuant.
+    """ Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
     Tested Version: Alex S.
