@@ -34,12 +34,20 @@ from collections import OrderedDict
 
 class NationalInstrumentsPulser(Base, PulserInterface):
     """ Pulse generator using NI-DAQmx
+
+    Example config for copy-paste:
+
+    ni_pulser:
+        module.Class: 'national_instruments_pulser.NationalInstrumentsPulser'
+        device: 'Dev0'
+        #pulsed_file_dir: 'C:\\Software\\qudi_pulsed_files' # optional, path
+
     """
 
     _modtype = 'PulserInterface'
     _modclass = 'hardware'
 
-    self.device = ConfigOption('device', 'Dev0', missing='warn')
+    device = ConfigOption('device', default='Dev0', missing='warn')
 
     def on_activate(self):
         """ Activate module
