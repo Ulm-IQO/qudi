@@ -45,6 +45,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         gpib_address: 'GPIB0::28::INSTR'
         gpib_timeout: 20
         gpib_baud_rate: 460800  # optional
+        frequency_min: 3e6  # optional
+        frequency_max: 3e6  # optional
+        power_min: -100  # optional
+        power_max: 13  # optional
     ```
     """
 
@@ -143,13 +147,13 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self.log.warning('Model string unknown, hardware limits may be wrong.')
 
         # check config options for stricter limitations
-        if self._config_freq_max is not None and self._config_freq_max < limits.max_frequency:
+        if self._config_freq_max is not None and float(self._config_freq_max) < limits.max_frequency:
             limits.max_frequency = float(self._config_freq_max)
-        if self._config_freq_min is not None and self._config_freq_min < limits.min_frequency:
+        if self._config_freq_min is not None and float(self._config_freq_min) > limits.min_frequency:
             limits.min_frequency = float(self._config_freq_min)
-        if self._config_power_max is not None and self._config_power_max < limits.max_power:
+        if self._config_power_max is not None and float(self._config_power_max) < limits.max_power:
             limits.max_power = float(self._config_power_max)
-        if self._config_power_min is not None and self._config_power_min < limits.min_power:
+        if self._config_power_min is not None and float(self._config_power_min) > limits.min_power:
             limits.min_power = float(self._config_power_min)
 
         limits.list_maxstep = limits.max_frequency
