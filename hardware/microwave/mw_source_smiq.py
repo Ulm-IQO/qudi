@@ -53,6 +53,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
     _gpib_baud_rate = ConfigOption('gpib_baud_rate', None)
+    _config_freq_min = ConfigOption('frequency_min', None)
+    _config_freq_max = ConfigOption('frequency_max', None)
+    _config_power_min = ConfigOption('power_min', None)
+    _config_power_max = ConfigOption('power_max', None)
 
     # Indicate how fast frequencies within a list or sweep mode can be changed:
     _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
@@ -115,11 +119,9 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         limits.max_power = 10
 
         limits.list_minstep = 0.1
-        limits.list_maxstep = 6.4e9
         limits.list_maxentries = 4000
 
         limits.sweep_minstep = 0.1
-        limits.sweep_maxstep = 6.4e9
         limits.sweep_maxentries = 10001
 
         if self.model == 'SMIQ02B':
@@ -139,6 +141,17 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             pass
         else:
             self.log.warning('Model string unknown, hardware limits may be wrong.')
+
+        # check config options for stricter limitations
+        if self._config_freq_max is not None and self._config_freq_max < limits.max_frequency:
+            limits.max_frequency = float(self._config_freq_max)
+        if self._config_freq_min is not None and self._config_freq_min < limits.min_frequency:
+            limits.min_frequency = float(self._config_freq_min)
+        if self._config_power_max is not None and self._config_power_max < limits.max_power:
+            limits.max_power = float(self._config_power_max)
+        if self._config_power_min is not None and self._config_power_min < limits.min_power:
+            limits.min_power = float(self._config_power_min)
+
         limits.list_maxstep = limits.max_frequency
         limits.sweep_maxstep = limits.max_frequency
         return limits
