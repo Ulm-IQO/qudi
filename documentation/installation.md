@@ -21,7 +21,7 @@ installed at the same time, and just switch from one to another in a command ter
 This tool also ease the installation as you can create an environment for Qudi with all the modules needed by importing 
 them from the ``.yml`` file in the ``tool`` folder.
 
-It is highly recommended you use this option. If however you want to go mannual, you can find more information 
+It is highly recommended you use this option. If however you want to go manual, you can find more information 
 [here](@ref manual-package-installation)
 
 #### Git vs Download
@@ -54,7 +54,7 @@ If you intend to use Qudi, it is recommended to setup Pycharm on your machine.
 1. Get Git for Windows from https://git-for-windows.github.io/ 
 and TortoiseGIT from https://tortoisegit.org/ and install it.
 
-2. Get the Anaconda Python 3.x distribution from https://www.continuum.io/downloads .
+2. Get the Anaconda Python 3.x distribution from https://www.anaconda.com/download/ .
 Choose Install for all users and register Python in the system.
 
 3. Get PyCharm from https://www.jetbrains.com/pycharm/download and install it.
