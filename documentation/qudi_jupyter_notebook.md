@@ -12,7 +12,7 @@
   entry or an equvalent configuration in the `global` section:
 
 ~~~~~~~~~~~~~
-  remote_server:
+  module_server:
     - address: 'localhost'
     - port: 12345
 ~~~~~~~~~~~~~
