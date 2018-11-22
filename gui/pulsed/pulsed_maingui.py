@@ -349,7 +349,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
 
         self._pa.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.measurement_timer_changed)
-        self._pa.ana_param_delta_CheckBox.toggled.connect(self.pulsedmasterlogic().sigUseDeltaForAlternatingChanged)
+        self._pa.ana_param_delta_CheckBox.toggled.connect(self.pulsedmasterlogic().set_use_delta_for_alternating)
         self._pa.ana_param_errorbars_CheckBox.toggled.connect(self.toggle_error_bars)
         self._pa.second_plot_ComboBox.currentIndexChanged[str].connect(self.second_plot_changed)
         return

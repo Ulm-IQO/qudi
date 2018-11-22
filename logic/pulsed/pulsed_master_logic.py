@@ -478,6 +478,17 @@ class PulsedMasterLogic(GenericLogic):
             self.sigAlternativeDataTypeChanged.emit(alt_data_type)
         return
 
+    @QtCore.Slot(bool)
+    def set_use_delta_for_alternating(self, use_delta):
+        """
+
+        @param use_delta:
+        @return:
+        """
+        if isinstance(use_delta, bool):
+            self.sigUseDeltaForAlternatingChanged.emit(use_delta)
+        return
+
     @QtCore.Slot()
     def manually_pull_data(self):
         """
