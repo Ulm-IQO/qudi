@@ -117,7 +117,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
 	* Improved pulsed measurement textfile and plot layout for saved data
 	* When an alternating measurement is running the CheckBox "show Delta" can be used to analyze 
-	  the absolute difference of the alternating data sets
+	  the difference of the alternating data sets
     
 
 Config changes:
