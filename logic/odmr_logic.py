@@ -65,6 +65,7 @@ class ODMRLogic(GenericLogic):
     run_time = StatusVar('run_time', 60)
     number_of_lines = StatusVar('number_of_lines', 50)
     fc = StatusVar('fits', None)
+    lines_to_average = StatusVar('lines_to_average', 0)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -226,6 +227,33 @@ class ODMRLogic(GenericLogic):
         update_dict = {'trigger_pol': self.mw_trigger_pol}
         self.sigParameterUpdated.emit(update_dict)
         return self.mw_trigger_pol
+
+    def set_average_length(self, lines_to_average):
+        """
+        Sets the number of lines to average for the sum of the data
+
+        @param int lines_to_average: desired number of lines to average (0 means all)
+
+        @return int: actually set lines to average
+        """
+        self.lines_to_average = int(lines_to_average)
+
+        if self.lines_to_average <= 0:
+            self.odmr_plot_y = np.mean(
+                self.odmr_raw_data[:max(1, self.elapsed_sweeps), :, :],
+                axis=0,
+                dtype=np.float64
+            )
+        else:
+            self.odmr_plot_y = np.mean(
+                self.odmr_raw_data[:max(1, min(self.lines_to_average, self.elapsed_sweeps)), :, :],
+                axis=0,
+                dtype=np.float64
+            )
+
+        self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
+        self.sigParameterUpdated.emit({'average_length': self.lines_to_average})
+        return self.lines_to_average
 
     def set_clock_frequency(self, clock_frequency):
         """
@@ -617,12 +645,6 @@ class ODMRLogic(GenericLogic):
                 self.sigNextLine.emit()
                 return
 
-            # Add new count data to mean signal
-            if self._clearOdmrData:
-                self.odmr_plot_y[:, :] = 0
-            self.odmr_plot_y = (self.elapsed_sweeps * self.odmr_plot_y + new_counts) / (
-                self.elapsed_sweeps + 1)
-
             # Add new count data to raw_data array and append if array is too small
             if self._clearOdmrData:
                 self.odmr_raw_data[:, :, :] = 0
@@ -642,6 +664,23 @@ class ODMRLogic(GenericLogic):
             self.odmr_raw_data = np.roll(self.odmr_raw_data, 1, axis=0)
 
             self.odmr_raw_data[0] = new_counts
+
+            # Add new count data to mean signal
+            if self._clearOdmrData:
+                self.odmr_plot_y[:, :] = 0
+
+            if self.lines_to_average <= 0:
+                self.odmr_plot_y = np.mean(
+                    self.odmr_raw_data[:max(1, self.elapsed_sweeps), :, :],
+                    axis=0,
+                    dtype=np.float64
+                )
+            else:
+                self.odmr_plot_y = np.mean(
+                    self.odmr_raw_data[:max(1, min(self.lines_to_average, self.elapsed_sweeps)), :, :],
+                    axis=0,
+                    dtype=np.float64
+                )
 
             # Set plot slice of matrix
             self.odmr_plot_xy = self.odmr_raw_data[:self.number_of_lines, :, :]
