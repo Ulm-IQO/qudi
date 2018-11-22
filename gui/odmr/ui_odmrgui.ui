@@ -241,7 +241,6 @@
    <addaction name="menu_View"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
@@ -604,6 +603,29 @@
         </size>
        </property>
       </spacer>
+     </item>
+     <item row="0" column="5">
+      <widget class="QLabel" name="average_label">
+       <property name="text">
+        <string>Lines to average</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="6">
+      <widget class="QSpinBox" name="average_level_SpinBox">
+       <property name="minimum">
+        <number>0</number>
+       </property>
+       <property name="maximum">
+        <number>1000</number>
+       </property>
+       <property name="singleStep">
+        <number>1</number>
+       </property>
+       <property name="value">
+        <number>0</number>
+       </property>
+      </widget>
      </item>
     </layout>
    </widget>
