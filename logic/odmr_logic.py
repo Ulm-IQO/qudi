@@ -252,6 +252,7 @@ class ODMRLogic(GenericLogic):
             )
 
         self.sigOdmrPlotsUpdated.emit(self.odmr_plot_x, self.odmr_plot_y, self.odmr_plot_xy)
+        self.sigParameterUpdated.emit({'average_length': self.lines_to_average})
         return self.lines_to_average
 
     def set_clock_frequency(self, clock_frequency):

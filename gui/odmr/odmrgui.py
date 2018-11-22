@@ -272,7 +272,8 @@ class ODMRGui(GUIBase):
         self.sigClockFreqChanged.connect(self._odmr_logic.set_clock_frequency,
                                          QtCore.Qt.QueuedConnection)
         self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
-        self.sigAverageLinesChanged.connect(self._odmr_logic.set_average_length, QtCore.Qt.QueuedConnection)
+        self.sigAverageLinesChanged.connect(self._odmr_logic.set_average_length,
+                                            QtCore.Qt.QueuedConnection)
 
         # Update signals coming from logic:
         self._odmr_logic.sigParameterUpdated.connect(self.update_parameter,
@@ -688,6 +689,12 @@ class ODMRGui(GUIBase):
             self._mw.cw_power_DoubleSpinBox.blockSignals(True)
             self._mw.cw_power_DoubleSpinBox.setValue(param)
             self._mw.cw_power_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('average_length')
+        if param is not None:
+            self._mw.average_level_SpinBox.blockSignals(True)
+            self._mw.average_level_SpinBox.setValue(param)
+            self._mw.average_level_SpinBox.blockSignals(False)
         return
 
     ############################################################################
