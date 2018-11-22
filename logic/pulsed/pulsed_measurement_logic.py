@@ -72,6 +72,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # Pulsed measurement settings
     _invoke_settings_from_sequence = StatusVar(default=False)
+    _use_delta_for_alternating = StatusVar(default=False)
     _number_of_lasers = StatusVar(default=50)
     _controlled_variable = StatusVar(default=list(range(50)))
     _alternating = StatusVar(default=False)
@@ -107,6 +108,7 @@ class PulsedMeasurementLogic(GenericLogic):
     sigMeasurementSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
+    sigUseDeltaForAlternatingUpdated = QtCore.Signal(bool)
     # Internal signals
     sigStartTimer = QtCore.Signal()
     sigStopTimer = QtCore.Signal()
@@ -565,6 +567,17 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @property
+    def use_delta_for_alternating(self):
+        return bool(self._use_delta_for_alternating)
+
+    @use_delta_for_alternating.setter
+    def use_delta_for_alternating(self, use_delta):
+        if isinstance(use_delta, bool):
+            with self._threadlock:
+                self._use_delta_for_alternating = bool(use_delta)
+        return
+
+    @property
     def alternative_data_type(self):
         return str(self._alternative_data_type)
 
@@ -600,6 +613,14 @@ class PulsedMeasurementLogic(GenericLogic):
     def extraction_settings(self, settings_dict):
         if isinstance(settings_dict, dict):
             self.set_extraction_settings(settings_dict)
+        return
+
+    @QtCore.Slot(bool)
+    def set_use_delta_for_alternating(self, use_delta):
+        if isinstance(use_delta, bool):
+            with self._threadlock:
+                self._use_delta_for_alternating = bool(use_delta)
+
         return
 
     @QtCore.Slot(dict)
@@ -1084,10 +1105,25 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # order data according to alternating flag
                 if self._alternating:
-                    self.signal_data[1] = tmp_signal[::2]
-                    self.signal_data[2] = tmp_signal[1::2]
-                    self.measurement_error[1] = tmp_error[::2]
-                    self.measurement_error[2] = tmp_error[1::2]
+                    if self._use_delta_for_alternating:
+                        if len(self.signal_data) > 2:
+                            self.signal_data = np.resize(self.signal_data,
+                                                         (2, self.signal_data.shape[1]))
+                            self.measurement_error = np.resize(self.measurement_error,
+                                                               (2, self.measurement_error.shape[1]))
+                        self.signal_data[1] = np.abs(tmp_signal[::2] - tmp_signal[1::2])
+                        self.measurement_error[1] = np.sqrt(
+                            np.square(tmp_error[::2]) + np.square(tmp_error[1::2]))
+                    else:
+                        if len(self.signal_data) < 3:
+                            self.signal_data = np.resize(self.signal_data,
+                                                         (3, self.signal_data.shape[1]))
+                            self.measurement_error = np.resize(self.measurement_error,
+                                                               (3, self.measurement_error.shape[1]))
+                        self.signal_data[1] = tmp_signal[::2]
+                        self.signal_data[2] = tmp_signal[1::2]
+                        self.measurement_error[1] = tmp_error[::2]
+                        self.measurement_error[2] = tmp_error[1::2]
                 else:
                     self.signal_data[1] = tmp_signal
                     self.measurement_error[1] = tmp_error
@@ -1154,7 +1190,7 @@ class PulsedMeasurementLogic(GenericLogic):
         Initializing the signal, error, laser and raw data arrays.
         """
         # Determine signal array dimensions
-        signal_dim = 3 if self._alternating else 2
+        signal_dim = 3 if (self._alternating and not self._use_delta_for_alternating) else 2
 
         self.signal_data = np.zeros((signal_dim, len(self._controlled_variable)), dtype=float)
         self.signal_data[0] = self._controlled_variable
@@ -1237,7 +1273,7 @@ class PulsedMeasurementLogic(GenericLogic):
         header_str += '\tSignal'
         if self._data_units[1]:
             header_str += '({0})'.format(self._data_units[1])
-        if self._alternating:
+        if self._alternating and not self._use_delta_for_alternating:
             header_str += '\tSignal2'
             if self._data_units[1]:
                 header_str += '({0})'.format(self._data_units[1])
@@ -1245,7 +1281,7 @@ class PulsedMeasurementLogic(GenericLogic):
             header_str += '\tError'
             if self._data_units[1]:
                 header_str += '({0})'.format(self._data_units[1])
-            if self._alternating:
+            if self._alternating and not self._use_delta_for_alternating:
                 header_str += '\tError2'
                 if self._data_units[1]:
                     header_str += '({0})'.format(self._data_units[1])
@@ -1294,7 +1330,7 @@ class PulsedMeasurementLogic(GenericLogic):
                          ecolor=colors[1], capsize=3, capthick=0.9,
                          elinewidth=1.2, label='data trace 1')
 
-            if self._alternating:
+            if self._alternating and not self._use_delta_for_alternating:
                 ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
                              yerr=self.measurement_error[2], fmt='-D',
                              linestyle=':', linewidth=0.5, color=colors[3],
@@ -1304,7 +1340,7 @@ class PulsedMeasurementLogic(GenericLogic):
             ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
                      linestyle=':', linewidth=0.5, label='data trace 1')
 
-            if self._alternating:
+            if self._alternating and not self._use_delta_for_alternating:
                 ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
                          color=colors[3], linestyle=':', linewidth=0.5,
                          label='data trace 2')
@@ -1463,10 +1499,13 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Performing transformations on the measurement data (e.g. fourier transform).
         """
-        if self._alternative_data_type == 'Delta' and len(self.signal_data) == 3:
-            self.signal_alt_data = np.empty((2, self.signal_data.shape[1]), dtype=float)
-            self.signal_alt_data[0] = self.signal_data[0]
-            self.signal_alt_data[1] = self.signal_data[1] - self.signal_data[2]
+        if self._alternative_data_type == 'Delta':
+            if len(self.signal_data) == 3:
+                self.signal_alt_data = np.empty((2, self.signal_data.shape[1]), dtype=float)
+                self.signal_alt_data[0] = self.signal_data[0]
+                self.signal_alt_data[1] = self.signal_data[1] - self.signal_data[2]
+            else:
+                self.signal_alt_data = self.signal_data
         elif self._alternative_data_type == 'FFT' and self.signal_data.shape[1] >= 2:
             fft_x, fft_y = units.compute_ft(x_val=self.signal_data[0],
                                             y_val=self.signal_data[1],

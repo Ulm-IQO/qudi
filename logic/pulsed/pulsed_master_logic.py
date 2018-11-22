@@ -67,6 +67,7 @@ class PulsedMasterLogic(GenericLogic):
     sigTimerIntervalChanged = QtCore.Signal(float)
     sigAlternativeDataTypeChanged = QtCore.Signal(str)
     sigManuallyPullData = QtCore.Signal()
+    sigUseDeltaForAlternatingChanged = QtCore.Signal(bool)
 
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
@@ -80,6 +81,7 @@ class PulsedMasterLogic(GenericLogic):
     sigMeasurementSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
+    sigUseDeltaForAlternatingUpdated = QtCore.Signal(bool)
 
     # SequenceGeneratorLogic control signals
     sigSavePulseBlock = QtCore.Signal(object)
@@ -163,6 +165,8 @@ class PulsedMasterLogic(GenericLogic):
             self.pulsedmeasurementlogic().set_alternative_data_type, QtCore.Qt.QueuedConnection)
         self.sigManuallyPullData.connect(
             self.pulsedmeasurementlogic().manually_pull_data, QtCore.Qt.QueuedConnection)
+        self.sigUseDeltaForAlternatingChanged.connect(
+            self.pulsedmeasurementlogic().set_use_delta_for_alternating, QtCore.Qt.QueuedConnection)
 
         # Connect signals coming from PulsedMeasurementLogic
         self.pulsedmeasurementlogic().sigMeasurementDataUpdated.connect(
@@ -187,6 +191,8 @@ class PulsedMasterLogic(GenericLogic):
             self.sigAnalysisSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.connect(
             self.sigExtractionSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigUseDeltaForAlternatingUpdated.connect(
+            self.sigUseDeltaForAlternatingUpdated, QtCore.Qt.QueuedConnection)
 
         # Connect signals controlling SequenceGeneratorLogic
         self.sigSavePulseBlock.connect(
@@ -263,6 +269,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigTimerIntervalChanged.disconnect()
         self.sigAlternativeDataTypeChanged.disconnect()
         self.sigManuallyPullData.disconnect()
+        self.sigUseDeltaForAlternatingChanged.disconnect()
         # Disconnect signals coming from PulsedMeasurementLogic
         self.pulsedmeasurementlogic().sigMeasurementDataUpdated.disconnect()
         self.pulsedmeasurementlogic().sigTimerUpdated.disconnect()
@@ -275,6 +282,7 @@ class PulsedMasterLogic(GenericLogic):
         self.pulsedmeasurementlogic().sigMeasurementSettingsUpdated.disconnect()
         self.pulsedmeasurementlogic().sigAnalysisSettingsUpdated.disconnect()
         self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigUseDeltaForAlternatingUpdated.disconnect()
 
         # Disconnect signals controlling SequenceGeneratorLogic
         self.sigSavePulseBlock.disconnect()
@@ -371,6 +379,10 @@ class PulsedMasterLogic(GenericLogic):
     @property
     def alternative_data_type(self):
         return self.pulsedmeasurementlogic().alternative_data_type
+
+    @property
+    def use_delta_for_alternating(self):
+        return self.pulsedmeasurementlogic().use_delta_for_alternating
 
     @property
     def fit_container(self):

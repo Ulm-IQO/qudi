@@ -349,6 +349,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.connect(self.fast_counter_settings_changed)
 
         self._pa.time_param_ana_periode_DoubleSpinBox.editingFinished.connect(self.measurement_timer_changed)
+        self._pa.ana_param_delta_CheckBox.toggled.connect(self.pulsedmasterlogic().sigUseDeltaForAlternatingChanged)
         self._pa.ana_param_errorbars_CheckBox.toggled.connect(self.toggle_error_bars)
         self._pa.second_plot_ComboBox.currentIndexChanged[str].connect(self.second_plot_changed)
         return
@@ -386,6 +387,7 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.connect(self.measurement_settings_updated)
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.connect(self.analysis_settings_updated)
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.connect(self.extraction_settings_updated)
+        self.pulsedmasterlogic().sigUseDeltaForAlternatingUpdated.connect(self.use_delta_for_alternating_updated)
 
         self.pulsedmasterlogic().sigBlockDictUpdated.connect(self.update_block_dict)
         self.pulsedmasterlogic().sigEnsembleDictUpdated.connect(self.update_ensemble_dict)
@@ -498,6 +500,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_fc_bins_ComboBox.currentIndexChanged.disconnect()
 
         self._pa.time_param_ana_periode_DoubleSpinBox.editingFinished.disconnect()
+        self._pa.ana_param_delta_CheckBox.toggled.disconnect()
         self._pa.ana_param_errorbars_CheckBox.toggled.disconnect()
         self._pa.second_plot_ComboBox.currentIndexChanged[str].disconnect()
         return
@@ -542,6 +545,7 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().sigMeasurementSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigAnalysisSettingsUpdated.disconnect()
         self.pulsedmasterlogic().sigExtractionSettingsUpdated.disconnect()
+        self.pulsedmasterlogic().sigUseDeltaForAlternatingUpdated.disconnect()
 
         self.pulsedmasterlogic().sigBlockDictUpdated.disconnect()
         self.pulsedmasterlogic().sigEnsembleDictUpdated.disconnect()
@@ -2177,8 +2181,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_errorbars_CheckBox.blockSignals(True)
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
         self._pa.ana_param_errorbars_CheckBox.blockSignals(False)
+        self._pa.ana_param_delta_CheckBox.blockSignals(True)
+        self._pa.ana_param_delta_CheckBox.setChecked(
+            self.pulsedmasterlogic().use_delta_for_alternating)
+        self._pa.ana_param_delta_CheckBox.blockSignals(False)
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
-        self._pa.ana_param_delta_CheckBox.setEnabled(False)  # FIXME: non-functional CheckBox
 
         # Update measurement, microwave and fast counter settings from logic
         self.measurement_settings_updated(self.pulsedmasterlogic().measurement_settings)
@@ -2222,6 +2229,14 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ext_control_mw_freq_DoubleSpinBox.blockSignals(False)
         self._pa.ext_control_mw_power_DoubleSpinBox.blockSignals(False)
         self._pa.ana_param_fc_bins_ComboBox.blockSignals(False)
+        return
+
+    @QtCore.Slot(bool)
+    def use_delta_for_alternating_updated(self, use_delta):
+        if isinstance(use_delta, bool):
+            self._pa.ana_param_delta_CheckBox.blockSignals(True)
+            self._pa.ana_param_delta_CheckBox.setChecked(use_delta)
+            self._pa.ana_param_delta_CheckBox.blockSignals(False)
         return
 
     @QtCore.Slot()
