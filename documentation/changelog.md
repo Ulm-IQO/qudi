@@ -24,6 +24,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Microwave interface passes trigger timing to microwave source, needs hardware module adjustments for not-in-tree modules
 * Bug fixes and support for SMD12 laser controller
 * For SMIQs added config options to additionally limit frequency and power. Added constraint for SMQ06B model.
+* Added live OMDR functionality to only calculate the average signal over a limited amount of scanned lines
 * New hardware file for Microwave source - Anritsu MG3691C has been added.
 * New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * New hardware file for AWG - Keysight M3202A 1GS/s 4-channel PXIe AWG
