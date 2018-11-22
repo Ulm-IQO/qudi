@@ -238,7 +238,7 @@ class ODMRLogic(GenericLogic):
         """
         self.lines_to_average = int(lines_to_average)
 
-        if self.lines_to_average == 0:
+        if self.lines_to_average <= 0:
             self.odmr_plot_y = np.mean(
                 self.odmr_raw_data[:max(1, self.elapsed_sweeps), :, :],
                 axis=0,
@@ -668,7 +668,7 @@ class ODMRLogic(GenericLogic):
             if self._clearOdmrData:
                 self.odmr_plot_y[:, :] = 0
 
-            if self.lines_to_average == 0:
+            if self.lines_to_average <= 0:
                 self.odmr_plot_y = np.mean(
                     self.odmr_raw_data[:max(1, self.elapsed_sweeps), :, :],
                     axis=0,
