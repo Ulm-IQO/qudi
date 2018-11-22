@@ -87,7 +87,7 @@ class SlowGatedNICard(NationalInstrumentsXSeries):
     _modtype = 'SlowGatedNICard'
     _modclass = 'hardware'
 
-    _photon_sources = ConfigOption('photon_sources', default=['/Dev1/PFI8'], missing='error')
+    _photon_sources = ConfigOption('photon_sources', missing='error')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.

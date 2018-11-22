@@ -42,7 +42,7 @@ class EdwardsVacuumController(Base):
     _modtype = 'hardware'
 
     # config options
-    _interface = ConfigOption('interface', default='ASRL1::INSTR', missing='error')
+    _interface = ConfigOption('interface', missing='error')
 
     # IDs for communication
     PRIORITY = {
