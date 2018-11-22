@@ -617,10 +617,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @QtCore.Slot(bool)
     def set_use_delta_for_alternating(self, use_delta):
+        """
+
+        @param use_delta:
+        @return:
+        """
         if isinstance(use_delta, bool):
             with self._threadlock:
                 self._use_delta_for_alternating = bool(use_delta)
-
+            self.sigUseDeltaForAlternatingUpdated.emit(self._use_delta_for_alternating)
+            self.manually_pull_data()
         return
 
     @QtCore.Slot(dict)
@@ -959,7 +965,7 @@ class PulsedMeasurementLogic(GenericLogic):
     def manually_pull_data(self):
         """ Analyse and display the data
         """
-        if self.module_state() == 'locked':
+        if self.module_state() == 'locked' and not self.__is_paused:
             self._pulsed_analysis_loop()
         return
 
@@ -1084,7 +1090,7 @@ class PulsedMeasurementLogic(GenericLogic):
             calculates fluorescence signal and creates plots.
         """
         with self._threadlock:
-            if self.module_state() == 'locked':
+            if self.module_state() == 'locked' and not self.__is_paused:
                 # Update elapsed time
                 self.__elapsed_time = time.time() - self.__start_time
 
