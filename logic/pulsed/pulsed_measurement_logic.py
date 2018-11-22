@@ -227,6 +227,15 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     @property
     def fast_counter_settings(self):
+        """
+        Property holding a dictionary containing all fast counter related parameters.
+        So far we have
+            - bin_width: The width in seconds for one timebin of the photon counter
+            - record_length: The record length of the counter in seconds.
+                             For gated counting devices this is the time for one gate.
+            - number_of_gates: The total number of gates configured. Unused for continuous counting.
+            - is_gated: A boolean flag indicating gated or continuous counting
+        """
         settings_dict = dict()
         settings_dict['bin_width'] = float(self.__fast_counter_binwidth)
         settings_dict['record_length'] = float(self.__fast_counter_record_length)
@@ -307,6 +316,7 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(bool)
     def toggle_fast_counter(self, switch_on):
         """
+        Helper method and Qt signal slot to toggle the fast counter on/off.
         """
         if not isinstance(switch_on, bool):
             return -1
@@ -318,14 +328,16 @@ class PulsedMeasurementLogic(GenericLogic):
         return err
 
     def fast_counter_pause(self):
-        """Switching off the fast counter
+        """
+        Switching off the fast counter
 
         @return int: error code (0:OK, -1:error)
         """
         return self.fastcounter().pause_measure()
 
     def fast_counter_continue(self):
-        """Switching off the fast counter
+        """
+        Switching off the fast counter
 
         @return int: error code (0:OK, -1:error)
         """
@@ -334,6 +346,7 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(bool)
     def fast_counter_pause_continue(self, continue_counter):
         """
+        Helper method and Qt signal slot to toggle fast counter pause/continue.
         """
         if not isinstance(continue_counter, bool):
             return -1
@@ -350,6 +363,14 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     @property
     def ext_microwave_settings(self):
+        """
+        Property holding a dictionary containing all external CW microwave related parameters.
+        (NOT direct waveform generation)
+        So far we have
+            - power: The CW microwave power to use (in dBm)
+            - frequency: The CW microwave frequency to use
+            - use_ext_microwave: Flag indicating if an external CW microwave source is being used.
+        """
         settings_dict = dict()
         settings_dict['power'] = float(self.__microwave_power)
         settings_dict['frequency'] = float(self.__microwave_freq)
@@ -484,8 +505,8 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Switch the pulse generator on or off.
 
-        :param switch_on: bool, turn the pulse generator on (True) or off (False)
-        :return int: error code (0: OK, -1: error)
+        @param switch_on: bool, turn the pulse generator on (True) or off (False)
+        @return int: error code (0: OK, -1: error)
         """
         if not isinstance(switch_on, bool):
             return -1
@@ -502,6 +523,20 @@ class PulsedMeasurementLogic(GenericLogic):
     ############################################################################
     @property
     def measurement_settings(self):
+        """
+        Property holding a dictionary containing all measurement related parameters.
+        So far we have
+            - invoke_settings: Flag indicating if the measurement settings should be invoked from
+                               the predefined pulse sequence loaded.
+            - controlled_variable: The x-axis values of the pulsed measurement data
+            - number_of_lasers: Total number of lasers expected in the timetrace
+                                (including laser pulses to ignore later on)
+            - laser_ignore_list: List containing the laser indices to ignore in the analysis
+            - alternating: Flag indicating if it is an alternating measurement so every odd/even
+                           data index belongs in a separate data row
+            - units: Tuple of length 2 containing the unit for x- and y-axis as str
+            - labels: Tuple of length 2 containing the label for x- and y-axis as str
+        """
         settings_dict = dict()
         settings_dict['invoke_settings'] = bool(self._invoke_settings_from_sequence)
         settings_dict['controlled_variable'] = np.array(self._controlled_variable,
@@ -546,6 +581,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def sampling_information(self):
+        """
+        Property holding a dictionary containing all discretization/sampling details corresponding
+        to the currently loaded waveform/sequence.
+        """
         return self._sampling_information
 
     @sampling_information.setter
@@ -558,6 +597,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def timer_interval(self):
+        """
+        Property representing the time interval in seconds for the measurement analysis loop
+        """
         return float(self.__timer_interval)
 
     @timer_interval.setter
@@ -568,6 +610,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def use_delta_for_alternating(self):
+        """
+        Property representing a flag to indicate if an alternating measurement should be evaluated
+        as two separate data sets or as difference.
+        """
         return bool(self._use_delta_for_alternating)
 
     @use_delta_for_alternating.setter
@@ -579,6 +625,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @property
     def alternative_data_type(self):
+        """
+        Property representing the optional alternative data plot type. Can be disabled by value
+        None.
+        """
         return str(self._alternative_data_type)
 
     @alternative_data_type.setter
@@ -618,9 +668,9 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(bool)
     def set_use_delta_for_alternating(self, use_delta):
         """
+        Qt slot for setting the use_delta_for_alternating property.
 
-        @param use_delta:
-        @return:
+        @param bool use_delta: Set to "True" for evaluating alternating measurements as difference.
         """
         if isinstance(use_delta, bool):
             with self._threadlock:
@@ -744,7 +794,7 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(bool, str)
     def toggle_pulsed_measurement(self, start, stash_raw_data_tag=''):
         """
-        Convenience method to start/stop measurement
+        Convenience method to start/stop measurement.
 
         @param bool start: Start the measurement (True) or stop the measurement (False)
         """
@@ -819,7 +869,10 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(str)
     def stop_pulsed_measurement(self, stash_raw_data_tag=''):
         """
-        Stop the measurement
+        Stop the measurement and optionally stash the raw data gathered so far with a string key.
+
+        @param str stash_raw_data_tag: If this string is not empty, stores the raw data upon
+                                       stopping the measurement using this string as key.
         """
         # Get raw data and analyze it a last time just before stopping the measurement.
         try:
@@ -941,9 +994,9 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(str)
     def set_alternative_data_type(self, alt_data_type):
         """
+        Qt slot to enable/disable the alternative data computation and set the type.
 
-        @param alt_data_type:
-        @return:
+        @param str alt_data_type: The alternative data plot type descriptor.
         """
         with self._threadlock:
             if alt_data_type == 'Delta' and not self._alternating:
@@ -963,7 +1016,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
     @QtCore.Slot()
     def manually_pull_data(self):
-        """ Analyse and display the data
+        """
+        Analyse and display the data immediately bypassing the timed analysis loop.
         """
         if self.module_state() == 'locked' and not self.__is_paused:
             self._pulsed_analysis_loop()
@@ -1003,6 +1057,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def _apply_invoked_settings(self):
         """
+        Helper method used to try applying the measurement_settings from the information given in a
+        loaded predefined pulse sequence.
         """
         if not isinstance(self._measurement_information, dict) or not self._measurement_information:
             self.log.warning('Can\'t invoke measurement settings from sequence information '
@@ -1066,6 +1122,9 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def _measurement_settings_sanity_check(self):
+        """
+        Helper method to perform sanity checks on the currently set measurement settings.
+        """
         number_of_analyzed_lasers = self._number_of_lasers - len(self._laser_ignore_list)
         if len(self._controlled_variable) < 1:
             self.log.error('Tried to set empty controlled variables array. This can not work.')
@@ -1086,8 +1145,10 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def _pulsed_analysis_loop(self):
-        """ Acquires laser pulses from fast counter,
-            calculates fluorescence signal and creates plots.
+        """
+        Acquires raw time trace data from the fast counter. Extracts laser pulse time traces from
+        the raw time trace. Analyzes the extracted laser traces and calculates a fluorescence
+        signal from it. Also calculates measurement error data.
         """
         with self._threadlock:
             if self.module_state() == 'locked' and not self.__is_paused:
@@ -1144,6 +1205,9 @@ class PulsedMeasurementLogic(GenericLogic):
             return
 
     def _extract_laser_pulses(self):
+        """
+        Helper method to extract the laser pulse time traces from the raw time trace.
+        """
         # Get counter raw data (including recalled raw data from previous measurement)
         self.raw_data = self._get_raw_data()
 
@@ -1153,6 +1217,12 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     def _analyze_laser_pulses(self):
+        """
+        Helper method to analyze the laser pulse time traces and calculate a signal as well as
+        error margins.
+
+        @return (numpy.ndarrray, numpy.ndarrray): The calculated measurement signal and error
+        """
         # analyze pulses and get data points for signal array. Also check if extraction
         # worked (non-zero array returned).
         if self.laser_data.any():
@@ -1167,7 +1237,8 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
-        :return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
+
+        @return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
         """
         # get raw data from fast counter
         fc_data = netobtain(self.fastcounter().get_data_trace())
@@ -1219,9 +1290,6 @@ class PulsedMeasurementLogic(GenericLogic):
         self.sigMeasurementDataUpdated.emit()
         return
 
-    # FIXME: Revise everything below
-
-    ############################################################################
     @QtCore.Slot(str, bool)
     def save_measurement_data(self, tag=None, with_error=True):
         """
@@ -1533,6 +1601,3 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
             self.signal_alt_data[0] = self.signal_data[0]
         return
-
-
-
