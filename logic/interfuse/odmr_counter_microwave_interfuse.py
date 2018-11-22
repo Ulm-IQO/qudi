@@ -266,14 +266,15 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         """
         return self._mw_device.reset_sweeppos()
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param timing: estimated time between triggers
 
         @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
         """
-        return self._mw_device.set_ext_trigger(pol=pol)
+        return self._mw_device.set_ext_trigger(pol=pol, timing=timing)
 
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
