@@ -2233,6 +2233,12 @@ class PulsedMeasurementGui(GUIBase):
 
     @QtCore.Slot(bool)
     def use_delta_for_alternating_updated(self, use_delta):
+        """
+        Updates the "show Delta" CheckBox in the analysis tab upon a change of the corresponding
+        flag in logic.
+
+        @param bool use_delta: Set to "True" to evaluate alternating measurements as difference.
+        """
         if isinstance(use_delta, bool):
             self._pa.ana_param_delta_CheckBox.blockSignals(True)
             self._pa.ana_param_delta_CheckBox.setChecked(use_delta)
