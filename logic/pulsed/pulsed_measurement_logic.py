@@ -1117,7 +1117,7 @@ class PulsedMeasurementLogic(GenericLogic):
                                                          (2, self.signal_data.shape[1]))
                             self.measurement_error = np.resize(self.measurement_error,
                                                                (2, self.measurement_error.shape[1]))
-                        self.signal_data[1] = np.abs(tmp_signal[::2] - tmp_signal[1::2])
+                        self.signal_data[1] = tmp_signal[::2] - tmp_signal[1::2]
                         self.measurement_error[1] = np.sqrt(
                             np.square(tmp_error[::2]) + np.square(tmp_error[1::2]))
                     else:
