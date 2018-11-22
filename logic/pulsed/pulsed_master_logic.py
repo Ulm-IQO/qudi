@@ -647,6 +647,10 @@ class PulsedMasterLogic(GenericLogic):
         if still_busy:
             self.log.error('Can not clear pulse generator. Sampling/Loading still in progress.')
         else:
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not clear pulse generator while it is still running. '
+                                 'Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigClearPulseGenerator.emit()
         return
 
@@ -711,6 +715,10 @@ class PulsedMasterLogic(GenericLogic):
                            'PulseBlockEnsemble "{0}" not loaded!'.format(ensemble_name))
         else:
             self.status_dict['loading_busy'] = True
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not load new asset into pulse generator while it is still '
+                                 'running. Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigLoadBlockEnsemble.emit(ensemble_name)
         return
 
@@ -721,6 +729,10 @@ class PulsedMasterLogic(GenericLogic):
                            'PulseSequence "{0}" not loaded!'.format(sequence_name))
         else:
             self.status_dict['loading_busy'] = True
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not load new asset into pulse generator while it is still '
+                                 'running. Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigLoadSequence.emit(sequence_name)
         return
 
