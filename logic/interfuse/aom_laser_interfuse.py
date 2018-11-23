@@ -45,7 +45,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
     _modtype = 'interfuse'
 
     # connector to the confocal scanner hardware that has analog output feature
-    _scanner = Connector(interface='ConfocalScannerInterface')
+    scanner = Connector(interface='ConfocalScannerInterface')
 
     # max power the AOM can deliver (in Watt)
     _max_power = ConfigOption('max_power', missing='error')
@@ -59,6 +59,8 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
     def on_activate(self):
         """ Activate module.
         """
+        self._scanner = self.scanner()
+
         calibration_data = np.loadtxt(self._calibration_file)
         power_rel_to_voltage = interp1d(calibration_data[:, 0], calibration_data[:, 1])
         self._power_to_voltage = lambda power: power_rel_to_voltage(power/self._max_power)
@@ -97,7 +99,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
             @return float: actual new power setpoint
         """
         mini, maxi = self.get_power_range()
-        if mini < power < maxi:
+        if mini <= power <= maxi:
             self._set_power(power)
         return self._power
 
