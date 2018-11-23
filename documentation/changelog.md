@@ -117,7 +117,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 	  the ungated trace. For fine-tuning additional delays (for example from AOMs) can be taken 
 	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
 	* Improved pulsed measurement textfile and plot layout for saved data
-    
+    * Added buttons to delete all saved PulseBlock/PulseBlockEnsemble/PulseSequence objects at once.
 
 Config changes:
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
