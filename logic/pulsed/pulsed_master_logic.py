@@ -797,6 +797,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeletePulseBlock.emit(block_name)
         return
 
+    @QtCore.Slot()
+    def delete_all_pulse_blocks(self):
+        """
+        Helper method to delete all pulse blocks at once.
+        """
+        to_delete = tuple(self.saved_pulse_blocks)
+        for block_name in to_delete:
+            self.sigDeletePulseBlock.emit(block_name)
+        return
+
     @QtCore.Slot(str)
     def delete_block_ensemble(self, ensemble_name):
         """
@@ -807,6 +817,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
+    @QtCore.Slot()
+    def delete_all_block_ensembles(self):
+        """
+        Helper method to delete all pulse block ensembles at once.
+        """
+        to_delete = tuple(self.saved_pulse_block_ensembles)
+        for ensemble_name in to_delete:
+            self.sigDeleteBlockEnsemble.emit(ensemble_name)
+        return
+
     @QtCore.Slot(str)
     def delete_sequence(self, sequence_name):
         """
@@ -815,6 +835,16 @@ class PulsedMasterLogic(GenericLogic):
         @return:
         """
         self.sigDeleteSequence.emit(sequence_name)
+        return
+
+    @QtCore.Slot()
+    def delete_all_pulse_sequences(self):
+        """
+        Helper method to delete all pulse sequences at once.
+        """
+        to_delete = tuple(self.saved_pulse_sequences)
+        for sequence_name in to_delete:
+            self.sigDeleteSequence.emit(sequence_name)
         return
 
     @QtCore.Slot(dict)
