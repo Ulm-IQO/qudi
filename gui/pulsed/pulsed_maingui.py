@@ -307,9 +307,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.organizer_clear_PushButton.clicked.connect(self.organizer_clear_clicked)
         self._pg.curr_block_generate_PushButton.clicked.connect(self.editor_generate_block_clicked)
         self._pg.curr_block_del_PushButton.clicked.connect(self.editor_delete_block_clicked)
+        self._pg.curr_block_del_all_PushButton.clicked.connect(self.editor_delete_all_blocks_clicked)
         self._pg.curr_block_load_PushButton.clicked.connect(self.editor_load_block_clicked)
         self._pg.curr_ensemble_generate_PushButton.clicked.connect(self.editor_generate_ensemble_clicked)
         self._pg.curr_ensemble_del_PushButton.clicked.connect(self.editor_delete_ensemble_clicked)
+        self._pg.curr_ensemble_del_all_PushButton.clicked.connect(self.editor_delete_all_ensembles_clicked)
         self._pg.curr_ensemble_load_PushButton.clicked.connect(self.editor_load_ensemble_clicked)
         return
 
@@ -326,6 +328,7 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.sequence_clear_PushButton.clicked.connect(self.sequence_clear_clicked)
         self._sg.curr_sequence_generate_PushButton.clicked.connect(self.editor_generate_sequence_clicked)
         self._sg.curr_sequence_del_PushButton.clicked.connect(self.editor_delete_sequence_clicked)
+        self._sg.curr_sequence_del_all_PushButton.clicked.connect(self.editor_delete_all_sequences_clicked)
         self._sg.curr_sequence_load_PushButton.clicked.connect(self.editor_load_sequence_clicked)
         return
 
@@ -457,9 +460,11 @@ class PulsedMeasurementGui(GUIBase):
         self._pg.organizer_clear_PushButton.clicked.disconnect()
         self._pg.curr_block_generate_PushButton.clicked.disconnect()
         self._pg.curr_block_del_PushButton.clicked.disconnect()
+        self._pg.curr_block_del_all_PushButton.clicked.disconnect()
         self._pg.curr_block_load_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_generate_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_del_PushButton.clicked.disconnect()
+        self._pg.curr_ensemble_del_all_PushButton.clicked.disconnect()
         self._pg.curr_ensemble_load_PushButton.clicked.disconnect()
         return
 
@@ -476,6 +481,7 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.sequence_clear_PushButton.clicked.disconnect()
         self._sg.curr_sequence_generate_PushButton.clicked.disconnect()
         self._sg.curr_sequence_del_PushButton.clicked.disconnect()
+        self._sg.curr_sequence_del_all_PushButton.clicked.disconnect()
         self._sg.curr_sequence_load_PushButton.clicked.disconnect()
         return
 
@@ -1658,6 +1664,19 @@ class PulsedMeasurementGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def editor_delete_all_blocks_clicked(self):
+        # Prompt user and ask for confirmation
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Delete all PulseBlocks?',
+            'Do you really want to delete all saved PulseBlocks?',
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No)
+        if result == QtWidgets.QMessageBox.Yes:
+            self.pulsedmasterlogic().delete_all_pulse_blocks()
+        return
+
+    @QtCore.Slot()
     def editor_load_block_clicked(self):
         name = self._pg.saved_blocks_ComboBox.currentText()
         block = self.pulsedmasterlogic().saved_pulse_blocks[name]
@@ -1696,6 +1715,19 @@ class PulsedMeasurementGui(GUIBase):
     def editor_delete_ensemble_clicked(self):
         name = self._pg.saved_ensembles_ComboBox.currentText()
         self.pulsedmasterlogic().delete_block_ensemble(name)
+        return
+
+    @QtCore.Slot()
+    def editor_delete_all_ensembles_clicked(self):
+        # Prompt user and ask for confirmation
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Delete all PulseBlockEnsembles?',
+            'Do you really want to delete all saved PulseBlockEnsembles?',
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No)
+        if result == QtWidgets.QMessageBox.Yes:
+            self.pulsedmasterlogic().delete_all_block_ensembles()
         return
 
     @QtCore.Slot()
@@ -1996,6 +2028,19 @@ class PulsedMeasurementGui(GUIBase):
     def editor_delete_sequence_clicked(self):
         name = self._sg.saved_sequences_ComboBox.currentText()
         self.pulsedmasterlogic().delete_sequence(name)
+        return
+
+    @QtCore.Slot()
+    def editor_delete_all_sequences_clicked(self):
+        # Prompt user and ask for confirmation
+        result = QtWidgets.QMessageBox.question(
+            self._mw,
+            'Qudi: Delete all PulseSequences?',
+            'Do you really want to delete all saved PulseSequences?',
+            QtWidgets.QMessageBox.Yes,
+            QtWidgets.QMessageBox.No)
+        if result == QtWidgets.QMessageBox.Yes:
+            self.pulsedmasterlogic().delete_all_pulse_sequences()
         return
 
     @QtCore.Slot()
