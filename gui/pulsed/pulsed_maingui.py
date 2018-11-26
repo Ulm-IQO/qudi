@@ -625,10 +625,16 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.pulser_on_off_PushButton.blockSignals(True)
         # set widgets
         if is_running:
+            self._pg.curr_ensemble_del_all_PushButton.setEnabled(False)
+            self._sg.curr_sequence_del_all_PushButton.setEnabled(False)
+            self._mw.clear_device_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setText('Pulser OFF')
             if not self._mw.pulser_on_off_PushButton.isChecked():
                 self._mw.pulser_on_off_PushButton.toggle()
         else:
+            self._pg.curr_ensemble_del_all_PushButton.setEnabled(True)
+            self._sg.curr_sequence_del_all_PushButton.setEnabled(True)
+            self._mw.clear_device_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setText('Pulser ON')
             if self._mw.pulser_on_off_PushButton.isChecked():
                 self._mw.pulser_on_off_PushButton.toggle()
@@ -716,10 +722,13 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ana_param_alternating_CheckBox.setEnabled(False)
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(False)
             self._pg.load_ensemble_PushButton.setEnabled(False)
+            self._pg.curr_ensemble_del_all_PushButton.setEnabled(False)
+            self._sg.curr_sequence_del_all_PushButton.setEnabled(False)
             self._sg.load_sequence_PushButton.setEnabled(False)
             self._mw.pulser_on_off_PushButton.setEnabled(False)
             self._mw.action_continue_pause.setEnabled(True)
             self._mw.action_pull_data.setEnabled(True)
+            self._mw.clear_device_PushButton.setEnabled(False)
             if not self._mw.action_run_stop.isChecked():
                 self._mw.action_run_stop.toggle()
         else:
@@ -737,10 +746,13 @@ class PulsedMeasurementGui(GUIBase):
             self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._pa.ana_param_fc_bins_ComboBox.setEnabled(True)
             self._pg.load_ensemble_PushButton.setEnabled(True)
+            self._pg.curr_ensemble_del_all_PushButton.setEnabled(True)
+            self._sg.curr_sequence_del_all_PushButton.setEnabled(True)
             self._sg.load_sequence_PushButton.setEnabled(True)
             self._mw.pulser_on_off_PushButton.setEnabled(True)
             self._mw.action_continue_pause.setEnabled(False)
             self._mw.action_pull_data.setEnabled(False)
+            self._mw.clear_device_PushButton.setEnabled(True)
             self._pa.ana_param_invoke_settings_CheckBox.setEnabled(True)
             if not self._pa.ana_param_invoke_settings_CheckBox.isChecked():
                 self._pa.ana_param_ignore_first_CheckBox.setEnabled(True)
