@@ -814,7 +814,12 @@ class PulsedMasterLogic(GenericLogic):
         @param ensemble_name:
         @return:
         """
-        self.sigDeleteBlockEnsemble.emit(ensemble_name)
+        if self.status_dict['pulser_running'] and self.loaded_asset[0] == ensemble_name and self.loaded_asset[1] == 'PulseBlockEnsemble':
+            self.log.error('Can not delete PulseBlockEnsemble "{0}" since the corresponding '
+                           'waveform(s) is(are) currently loaded and running.'
+                           ''.format(ensemble_name))
+        else:
+            self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
     @QtCore.Slot()
@@ -822,9 +827,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         Helper method to delete all pulse block ensembles at once.
         """
-        to_delete = tuple(self.saved_pulse_block_ensembles)
-        for ensemble_name in to_delete:
-            self.sigDeleteBlockEnsemble.emit(ensemble_name)
+        if self.status_dict['pulser_running'] or self.status_dict['measurement_running']:
+            self.log.error('Can not delete all PulseBlockEnsembles. Pulse generator is currently '
+                           'running or measurement is in progress.')
+        else:
+            to_delete = tuple(self.saved_pulse_block_ensembles)
+            for ensemble_name in to_delete:
+                self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
     @QtCore.Slot(str)
@@ -834,7 +843,11 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_name:
         @return:
         """
-        self.sigDeleteSequence.emit(sequence_name)
+        if self.status_dict['pulser_running'] and self.loaded_asset[0] == sequence_name and self.loaded_asset[1] == 'PulseSequence':
+            self.log.error('Can not delete PulseSequence "{0}" since the corresponding sequence is '
+                           'currently loaded and running.'.format(sequence_name))
+        else:
+            self.sigDeleteSequence.emit(sequence_name)
         return
 
     @QtCore.Slot()
@@ -842,9 +855,13 @@ class PulsedMasterLogic(GenericLogic):
         """
         Helper method to delete all pulse sequences at once.
         """
-        to_delete = tuple(self.saved_pulse_sequences)
-        for sequence_name in to_delete:
-            self.sigDeleteSequence.emit(sequence_name)
+        if self.status_dict['pulser_running'] or self.status_dict['measurement_running']:
+            self.log.error('Can not delete all PulseSequences. Pulse generator is currently '
+                           'running or measurement is in progress.')
+        else:
+            to_delete = tuple(self.saved_pulse_sequences)
+            for sequence_name in to_delete:
+                self.sigDeleteSequence.emit(sequence_name)
         return
 
     @QtCore.Slot(dict)
