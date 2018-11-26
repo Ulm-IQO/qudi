@@ -98,7 +98,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -144,6 +144,7 @@ class PulsedMeasurementLogic(GenericLogic):
         # for fit:
         self.fc = None  # Fit container
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
+        self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
         return
 
     def on_activate(self):
@@ -163,7 +164,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Fitting
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
-        self.fc.set_units(['s', 'arb.u.'])
+        self.fc.set_units(self._data_units)
 
         # Recall saved status variables
         if 'fits' in self._statusVariables and isinstance(self._statusVariables.get('fits'), dict):
@@ -943,12 +944,15 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    @QtCore.Slot(str, np.ndarray)
-    def do_fit(self, fit_method, data=None):
+    @QtCore.Slot(str, bool)
+    def do_fit(self, fit_method, use_alternative_data=False, data=None):
         """
         Performs the chosen fit on the measured data.
 
         @param str fit_method: name of the fit method to use
+        @param bool use_alternative_data: Flag indicating if the signal data (False) or the
+                                          alternative signal data (True) should be fitted.
+                                          Ignored if data is given as parameter
         @param 2D numpy.ndarray data: the x and y data points for the fit (shape=(2,X))
 
         @return (2D numpy.ndarray, result object): the resulting fit data and the fit result object
@@ -957,7 +961,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc.set_current_fit(fit_method)
 
         if data is None:
-            data = self.signal_data
+            data = self.signal_alt_data if use_alternative_data else self.signal_data
             update_fit_data = True
         else:
             update_fit_data = False
@@ -969,8 +973,14 @@ class PulsedMeasurementLogic(GenericLogic):
         fit_result = self.fc.current_fit_result
 
         if update_fit_data:
-            self.signal_fit_data = fit_data
-            self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result)
+            if use_alternative_data:
+                self.signal_fit_alt_data = fit_data
+                self.sigFitUpdated.emit(fit_name, self.signal_fit_alt_data, fit_result,
+                                        use_alternative_data)
+            else:
+                self.signal_fit_data = fit_data
+                self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result,
+                                        use_alternative_data)
 
         return fit_data, fit_result
 
