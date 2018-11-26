@@ -55,11 +55,14 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
     _calibration_file = ConfigOption('calibration_file', missing='error')
     _power_to_voltage = None
     _power = 0
+    _laser_on = False
 
     def on_activate(self):
         """ Activate module.
         """
         self._scanner = self.scanner()
+        if 'a' not in self._scanner.get_scanner_axes():
+            self.log.error('Scanner does not have an "a" axe configured. Can not use it to control an AOM.')
 
         calibration_data = np.loadtxt(self._calibration_file)
         power_rel_to_voltage = interp1d(calibration_data[:, 0], calibration_data[:, 1])
@@ -100,7 +103,12 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
         """
         mini, maxi = self.get_power_range()
         if mini <= power <= maxi:
-            self._set_power(power)
+            self._power = power
+            if self._laser_on:
+                voltage = self._power_to_voltage(power)
+            else:
+                voltage = self._power_to_voltage(0)
+            self._scanner.scanner_set_position(a=voltage)
         return self._power
 
     def get_current_unit(self):
@@ -168,21 +176,21 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        return LaserState.UNKNOWN
+        return self.set_laser_state(LaserState.ON)
 
     def off(self):
         """ Turn off laser.
 
             @return LaserState: actual laser state
         """
-        return LaserState.UNKNOWN
+        return self.set_laser_state(LaserState.OFF)
 
     def get_laser_state(self):
         """ Get laser state
 
             @return LaserState: actual laser state
         """
-        return LaserState.UNKNOWN
+        return self._laser_on
 
     def set_laser_state(self, state):
         """ Set laser state.
@@ -191,7 +199,8 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        return LaserState.UNKNOWN
+        self._laser_on = state
+        self.set_power(self._power)
 
     def get_shutter_state(self):
         """ Get laser shutter state
@@ -236,14 +245,6 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
             @return str: much laser, very useful
         """
         return ""
-
-    def _set_power(self, power):
-        """ Set power on the hardware
-
-        """
-        self._power = power
-        voltage = self._power_to_voltage(power)
-        self._scanner.scanner_set_position(a=voltage)
 
     def set_max_power(self, maxi):
         """ Function to redefine the max power if the value has changed """
