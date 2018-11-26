@@ -1723,7 +1723,8 @@ class PulsedMeasurementGui(GUIBase):
         result = QtWidgets.QMessageBox.question(
             self._mw,
             'Qudi: Delete all PulseBlockEnsembles?',
-            'Do you really want to delete all saved PulseBlockEnsembles?',
+            'Do you really want to delete all saved PulseBlockEnsembles?\n'
+            'This will also delete all waveforms within the pulse generator memory.',
             QtWidgets.QMessageBox.Yes,
             QtWidgets.QMessageBox.No)
         if result == QtWidgets.QMessageBox.Yes:
@@ -2036,7 +2037,8 @@ class PulsedMeasurementGui(GUIBase):
         result = QtWidgets.QMessageBox.question(
             self._mw,
             'Qudi: Delete all PulseSequences?',
-            'Do you really want to delete all saved PulseSequences?',
+            'Do you really want to delete all saved PulseSequences?\n'
+            'This will also delete all sequences within the pulse generator memory.',
             QtWidgets.QMessageBox.Yes,
             QtWidgets.QMessageBox.No)
         if result == QtWidgets.QMessageBox.Yes:
