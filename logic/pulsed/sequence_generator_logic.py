@@ -716,9 +716,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     block = pickle.load(file)
-            except:
+            except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseBlock "{0}" from file.'
                                ''.format(block_name))
+                os.remove(filepath)
         return block
 
     def _update_blocks_from_file(self):
@@ -818,9 +819,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     ensemble = pickle.load(file)
-            except:
-                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file.'
-                               ''.format(ensemble_name))
+            except pickle.UnpicklingError:
+                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file. '
+                               'Deleting broken file.'.format(ensemble_name))
+                os.remove(filepath)
         return ensemble
 
     def _update_ensembles_from_file(self):
@@ -934,9 +936,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     sequence = pickle.load(file)
-            except:
+            except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                ''.format(sequence_name))
+                os.remove(filepath)
         return sequence
 
     def _update_sequences_from_file(self):
