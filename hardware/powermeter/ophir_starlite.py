@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Dummy implementation for simple data acquisition.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
