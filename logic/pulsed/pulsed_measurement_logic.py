@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
+import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -143,6 +144,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # for fit:
         self.fc = None  # Fit container
+        self.fit_result = None
+        self.alt_fit_result = None
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
         self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
         return
@@ -975,10 +978,12 @@ class PulsedMeasurementLogic(GenericLogic):
         if update_fit_data:
             if use_alternative_data:
                 self.signal_fit_alt_data = fit_data
+                self.fit_result = copy.deepcopy(fit_result)
                 self.sigFitUpdated.emit(fit_name, self.signal_fit_alt_data, fit_result,
                                         use_alternative_data)
             else:
                 self.signal_fit_data = fit_data
+                self.alt_fit_result = copy.deepcopy(fit_result)
                 self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result,
                                         use_alternative_data)
 
@@ -1320,11 +1325,11 @@ class PulsedMeasurementLogic(GenericLogic):
                          label='data trace 2')
 
         # Do not include fit curve if there is no fit calculated.
-        if self.signal_fit_data.size != 0 and np.max(self.signal_fit_data[1]) > 0:
+        if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
             x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
             ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
                      color=colors[2], marker='None', linewidth=1.5,
-                     label='fit: {0}'.format(self.fc.current_fit))
+                     label='fit')
 
             # add then the fit result to the plot:
 
@@ -1337,8 +1342,8 @@ class PulsedMeasurementLogic(GenericLogic):
             entries_per_col = 24
 
             # create the formatted fit text:
-            if hasattr(self.fc.current_fit_result, 'result_str_dict'):
-                fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
+            if hasattr(self.fit_result, 'result_str_dict'):
+                fit_res = units.create_formatted_output(self.fit_result.result_str_dict)
             else:
                 self.log.warning('The fit container does not contain any data '
                                  'from the fit! Apply the fit once again.')
@@ -1432,6 +1437,64 @@ class PulsedMeasurementLogic(GenericLogic):
             ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
         else:
             ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+
+        if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+            x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+            ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+                     color=colors[2], marker='None', linewidth=1.5,
+                     label='secondary fit')
+
+            # add then the fit result to the plot:
+
+            # Parameters for the text plot:
+            # The position of the text annotation is controlled with the
+            # relative offset in x direction and the relative length factor
+            # rel_len_fac of the longest entry in one column
+            rel_offset = 0.02
+            rel_len_fac = 0.011
+            entries_per_col = 24
+
+            # create the formatted fit text:
+            if hasattr(self.alt_fit_result, 'result_str_dict'):
+                fit_res = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+            else:
+                self.log.warning('The fit container does not contain any data '
+                                 'from the fit! Apply the fit once again.')
+                fit_res = ''
+            # do reverse processing to get each entry in a list
+            entry_list = fit_res.split('\n')
+            # slice the entry_list in entries_per_col
+            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+            is_first_column = True  # first entry should contain header or \n
+            shift = rel_offset
+
+            for column in chunks:
+                max_length = max(column, key=len)   # get the longest entry
+                column_text = ''
+
+                for entry in column:
+                    column_text += entry + '\n'
+
+                column_text = column_text[:-1]  # remove the last new line
+
+                heading = ''
+                if is_first_column:
+                    heading = 'Fit results:'
+
+                column_text = heading + '\n' + column_text
+
+                ax2.text(1.00 + shift, 0.99, column_text,
+                         verticalalignment='top',
+                         horizontalalignment='left',
+                         transform=ax2.transAxes,
+                         fontsize=12)
+
+                # the shift in position of the text is a linear function
+                # which depends on the longest entry in the column
+                shift += rel_len_fac * len(max_length)
+
+                is_first_column = False
 
         fig.tight_layout()
         ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
