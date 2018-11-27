@@ -23,19 +23,15 @@ import numpy as np
 
 from core.module import Base
 from interface.powermeter_interface import PowermeterInterface
-
+from time import sleep, time
 try:
     import win32com.client
 except:
     pass
-from time import sleep, time
 
 
 class StarLite(Base, PowermeterInterface):
-    """
-
-
-    Device driver for Ophir USB interface adapter
+    """ Device driver for Ophir USB interface adapter
 
 	This class provides access to the OphirUSBI ActiveX interface
 	The ActiveX control is included by early-binding. It is necessary to run the Com - Makepy Utility found in the PythonWinIDE - Tools - Menu
