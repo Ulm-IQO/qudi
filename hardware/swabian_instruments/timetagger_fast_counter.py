@@ -27,6 +27,19 @@ import os
 
 
 class TimeTaggerFastCounter(Base, FastCounterInterface):
+    """ Hardware class to controls a Time Tagger from Swabian Instruments.
+
+    Example config for copy-paste:
+
+    fastcounter_timetagger:
+        module.Class: 'swabian_instruments.timetagger_fast_counter.TimeTaggerFastCounter'
+        timetagger_channel_apd_0: 0
+        timetagger_channel_apd_1: 1
+        timetagger_channel_detect: 2
+        timetagger_channel_sequence: 3
+        timetagger_sum_channels: 4
+
+    """
     _modclass = 'TimeTaggerFastCounter'
     _modtype = 'hardware'
 

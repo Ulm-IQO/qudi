@@ -27,6 +27,20 @@ from interface.process_interface import ProcessInterface
 
 class InfluxDataClient(Base, ProcessInterface):
     """ Retrieve live data from InfluxDB as if the measurement device was connected directly.
+
+    Example config for copy-paste:
+
+    influx_data_client:
+        module.Class: 'influx_data_client.InfluxDataClient'
+        user: 'client_user'
+        password: 'client_password'
+        dbname: 'db_name'
+        host: 'localhost'
+        port: 8086
+        dataseries: 'data_series_name'
+        field: 'field_name'
+        criterion: 'criterion_name'
+
     """
 
     _modclass = 'InfluxDataClient'
@@ -36,7 +50,7 @@ class InfluxDataClient(Base, ProcessInterface):
     pw = ConfigOption('password', missing='error')
     dbname = ConfigOption('dbname', missing='error')
     host = ConfigOption('host', missing='error')
-    port = ConfigOption('port', 8086)
+    port = ConfigOption('port', default=8086)
     series = ConfigOption('dataseries', missing='error')
     field = ConfigOption('field', missing='error')
     cr = ConfigOption('criterion', missing='error')
