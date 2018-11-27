@@ -29,6 +29,13 @@ from interface.switch_interface import SwitchInterface
 class FlipMirror(Base, SwitchInterface):
     """ This class is implements communication with the Radiant Dyes flip mirror driver
         through pyVISA.
+
+    Example config for copy-paste:
+
+    flipmirror_switch:
+        module.Class: 'switches.flipmirror.FlipMirror'
+        interface: 'ASRL1::INSTR'
+
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'

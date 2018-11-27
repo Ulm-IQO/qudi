@@ -35,7 +35,16 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveGigatronics(Base, MicrowaveInterface):
-    """ Hardware file for Gigatronics. Tested for the model 2400/2500. """
+    """ Hardware file for Gigatronics. Tested for the model 2400/2500.
+
+    Example config for copy-paste:
+
+    mw_source_gigatronics:
+        module.Class: 'microwave.mw_source_gigatronics.MicrowaveGigatronics'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10
+
+    """
 
     _modclass = 'MicrowaveInterface'
     _modtype = 'hardware'

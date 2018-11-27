@@ -29,6 +29,20 @@ from interface.fast_counter_interface import FastCounterInterface
 
 
 class FastCounterFGAPiP3(Base, FastCounterInterface):
+    """ Qudi module for the an FPGA based FastCounter.
+
+    Example config for copy-paste:
+
+    fpga_pi3:
+        module.Class: 'fpga_fastcounter.fast_counter_fpga_pi3.FastCounterFGAPiP3'
+        fpgacounter_serial: '143400058N'
+        fpgacounter_channel_apd_0: 1
+        fpgacounter_channel_apd_1: 3
+        fpgacounter_channel_detect: 2
+        fpgacounter_channel_sequence: 6
+
+    """
+
     _modclass = 'FastCounterFGAPiP3'
     _modtype = 'hardware'
 

@@ -38,6 +38,13 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     The Frontpanel is basically a C++ interface, where a wrapper was used (SWIG) to access the
     dll library. Be aware that the wrapper is specified for a specific version of python
     (here python 3.4), and it is not guaranteed to be working with other versions.
+
+    Example config for copy-paste:
+
+    fpga_oks6_switch:
+        module.Class: 'switches.ok_fpga.ok_s6_switch.HardwareSwitchFpga'
+        fpga_serial: '143400058N'
+
     """
     _modclass = 'HardwareSwitchFpga'
     _modtype = 'hardware'

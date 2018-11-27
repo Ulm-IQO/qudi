@@ -36,22 +36,36 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWG70K(Base, PulserInterface):
-    """
+    """ A hardware module for the Tektronix AWG70000 series for generating
+        waveforms and sequences thereof.
+
+    Example config for copy-paste:
+
+    pulser_awg70000:
+        module.Class: 'awg.tektronix_awg70k.AWG70k'
+        awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
+        awg_ip_address: '10.42.0.211'
+        timeout: 60
+        # tmp_work_dir: 'C:\\Software\\qudi_pulsed_files' # optional
+        # ftp_root_dir: 'C:\\inetpub\\ftproot' # optional, root directory on AWG device
+        # ftp_login: 'anonymous' # optional, the username for ftp login
+        # ftp_passwd: 'anonymous@' # optional, the password for ftp login
 
     """
     _modclass = 'awg70k'
     _modtype = 'hardware'
 
     # config options
+    _visa_address = ConfigOption(name='awg_visa_address', missing='error')
+    _ip_address = ConfigOption(name='awg_ip_address', missing='error')
+    _visa_timeout = ConfigOption(name='timeout', default=30, missing='nothing')
     _tmp_work_dir = ConfigOption(name='tmp_work_dir',
                                  default=os.path.join(get_home_dir(), 'pulsed_files'),
                                  missing='warn')
-    _visa_address = ConfigOption(name='awg_visa_address', missing='error')
-    _ip_address = ConfigOption(name='awg_ip_address', missing='error')
     _ftp_dir = ConfigOption(name='ftp_root_dir', default='C:\\inetpub\\ftproot', missing='warn')
     _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
-    _visa_timeout = ConfigOption(name='timeout', default=30, missing='nothing')
+
 
     # translation dict from qudi trigger descriptor to device command
     __event_triggers = {'OFF': 'OFF', 'A': 'ATR', 'B': 'BTR', 'INT': 'INT'}
