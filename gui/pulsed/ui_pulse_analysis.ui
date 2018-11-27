@@ -787,23 +787,6 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="label">
-            <property name="text">
-             <string>Show Delta:</string>
-            </property>
-            <property name="alignment">
-             <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="1">
-           <widget class="QCheckBox" name="ana_param_delta_CheckBox">
-            <property name="text">
-             <string/>
-            </property>
-           </widget>
-          </item>
          </layout>
         </item>
        </layout>
@@ -841,7 +824,6 @@
   <tabstop>ext_control_mw_power_DoubleSpinBox</tabstop>
   <tabstop>ana_param_fc_bins_ComboBox</tabstop>
   <tabstop>ana_param_invoke_settings_CheckBox</tabstop>
-  <tabstop>ana_param_delta_CheckBox</tabstop>
   <tabstop>ana_param_errorbars_CheckBox</tabstop>
   <tabstop>second_plot_ComboBox</tabstop>
   <tabstop>ana_param_record_length_DoubleSpinBox</tabstop>

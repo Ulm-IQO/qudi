@@ -2244,7 +2244,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
         self._pa.ana_param_errorbars_CheckBox.blockSignals(False)
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
-        self._pa.ana_param_delta_CheckBox.setEnabled(False)  # FIXME: non-functional CheckBox
 
         # Update measurement, microwave and fast counter settings from logic
         self.measurement_settings_updated(self.pulsedmasterlogic().measurement_settings)
