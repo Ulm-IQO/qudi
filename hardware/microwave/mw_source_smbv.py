@@ -47,13 +47,8 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
     _address = ConfigOption('gpib_address', missing='error')
     _timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 
-    _configured_hardware = ConfigOption('configured_hardware', 'SMBV100A', missing='warn')
-
-    _limits_min_power = ConfigOption('min_power', -145, missing='warn')
-    _limits_max_power = ConfigOption('max_power', 30, missing='warn')
-
-    _limits_min_frequency = ConfigOption('min_frequency', 9e3, missing='warn')
-    _limits_max_frequency = ConfigOption('max_frequency', 6e9, missing='warn')
+    # to limit the power to a lower value that the hardware can provide
+    _max_power = ConfigOption('max_power', None)
 
     # Indicate how fast frequencies within a list or sweep mode can be changed:
     _FREQ_SWITCH_SPEED = 0.003  # Frequency switching speed in s (acc. to specs)
@@ -102,11 +97,17 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         limits = MicrowaveLimits()
         limits.supported_modes = (MicrowaveMode.CW, MicrowaveMode.SWEEP)
 
-        limits.min_power = self._limits_min_power
-        limits.max_power = self._limits_max_power
+        # values for SMBV100A
+        limits.min_power = -145
+        limits.max_power = 30
 
-        limits.min_frequency = self._limits_min_frequency
-        limits.max_frequency = self._limits_max_frequency
+        limits.min_frequency = 9e3
+        limits.max_frequency = 6e9
+
+        if self.model == 'SMB100A':  # TODO set this
+            # limits.max_frequency = 2.2e9
+            # limits.max_power = 13
+            pass
 
         limits.list_minstep = 0.1
         limits.list_maxstep = self._limits_max_frequency - self._limits_min_frequency
@@ -116,8 +117,9 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
         limits.sweep_maxstep = self._limits_max_frequency - self._limits_min_frequency
         limits.sweep_maxentries = 10001
 
-        if self.model != self._configured_hardware:
-            self.log.warning('Model string unknown, hardware limits may be wrong.')
+        # in case a lower maximum is set in config file
+        if self._max_power is not None and self._max_power < limits.max_power:
+            limits.max_power = self._max_power
 
         return limits
 
