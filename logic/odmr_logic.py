@@ -66,6 +66,7 @@ class ODMRLogic(GenericLogic):
     number_of_lines = StatusVar('number_of_lines', 50)
     fc = StatusVar('fits', None)
     lines_to_average = StatusVar('lines_to_average', 0)
+    _oversampling = StatusVar('oversampling', default=10)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -102,6 +103,7 @@ class ODMRLogic(GenericLogic):
         self.mw_start = limits.frequency_in_range(self.mw_start)
         self.mw_stop = limits.frequency_in_range(self.mw_stop)
         self.mw_step = limits.list_step_in_range(self.mw_step)
+        self._odmr_counter.oversampling = self._oversampling
 
         # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
         # theoretically this can be changed, but the current counting scheme will not support that
@@ -273,6 +275,34 @@ class ODMRLogic(GenericLogic):
         update_dict = {'clock_frequency': self.clock_frequency}
         self.sigParameterUpdated.emit(update_dict)
         return self.clock_frequency
+
+    @property
+    def oversampling(self):
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, oversampling):
+        """
+        Sets the frequency of the counter clock
+
+        @param int oversampling: desired oversampling per frequency step
+
+        @return int: actually set clock frequency
+        """
+        # checks if scanner is still running
+        if self.module_state() != 'locked' and isinstance(oversampling, (int, float)):
+            self._oversampling = int(oversampling)
+            self._odmr_counter.oversampling = self._oversampling
+        else:
+            self.log.warning('setter of oversampling failed. Logic is either locked or input value is '
+                             'no integer or float.')
+
+        update_dict = {'oversampling': self._oversampling}
+        self.sigParameterUpdated.emit(update_dict)
+
+    def set_oversampling(self, oversampling):
+        self.oversampling = oversampling
+        return self.oversampling
 
     def set_matrix_line_number(self, number_of_lines):
         """
@@ -638,9 +668,9 @@ class ODMRLogic(GenericLogic):
             self.reset_sweep()
 
             # Acquire count data
-            new_counts = self._odmr_counter.count_odmr(length=self.odmr_plot_x.size)
+            error, new_counts = self._odmr_counter.count_odmr(length=self.odmr_plot_x.size)
 
-            if new_counts[0, 0] == -1:
+            if error:
                 self.stopRequested = True
                 self.sigNextLine.emit()
                 return
