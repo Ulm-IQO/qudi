@@ -67,6 +67,7 @@ class ODMRLogic(GenericLogic):
     fc = StatusVar('fits', None)
     lines_to_average = StatusVar('lines_to_average', 0)
     _oversampling = StatusVar('oversampling', default=10)
+    _lock_in_active = StatusVar('lock_in_active', default=False)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -104,6 +105,7 @@ class ODMRLogic(GenericLogic):
         self.mw_stop = limits.frequency_in_range(self.mw_stop)
         self.mw_step = limits.list_step_in_range(self.mw_step)
         self._odmr_counter.oversampling = self._oversampling
+        self._odmr_counter.lock_in_active = self._lock_in_active
 
         # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
         # theoretically this can be changed, but the current counting scheme will not support that
@@ -286,8 +288,6 @@ class ODMRLogic(GenericLogic):
         Sets the frequency of the counter clock
 
         @param int oversampling: desired oversampling per frequency step
-
-        @return int: actually set clock frequency
         """
         # checks if scanner is still running
         if self.module_state() != 'locked' and isinstance(oversampling, (int, float)):
@@ -303,6 +303,31 @@ class ODMRLogic(GenericLogic):
     def set_oversampling(self, oversampling):
         self.oversampling = oversampling
         return self.oversampling
+
+    @property
+    def lock_in(self):
+        return self._lock_in_active
+
+    @lock_in.setter
+    def lock_in(self, active):
+        """
+        Sets the frequency of the counter clock
+
+        @param bool active: specify if signal should be detected with lock in
+        """
+        # checks if scanner is still running
+        if self.module_state() != 'locked' and isinstance(active, bool):
+            self._lock_in_active = active
+            self._odmr_counter._lock_in_active = self._lock_in_active
+        else:
+            self.log.warning('setter of lock in failed. Logic is either locked or input value is no boolean.')
+
+        update_dict = {'lock_in': self._lock_in_active}
+        self.sigParameterUpdated.emit(update_dict)
+
+    def set_lock_in(self, active):
+        self.lock_in = active
+        return self.lock_in
 
     def set_matrix_line_number(self, number_of_lines):
         """
