@@ -1297,7 +1297,7 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
 
         # Create the figure object
-        if self._alternative_data_type:
+        if self._alternative_data_type and self._alternative_data_type != 'None':
             fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
@@ -1354,7 +1354,6 @@ class PulsedMeasurementLogic(GenericLogic):
             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
             is_first_column = True  # first entry should contain header or \n
-            shift = rel_offset
 
             for column in chunks:
 
@@ -1372,15 +1371,15 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 column_text = heading + '\n' + column_text
 
-                ax1.text(1.00 + shift, 0.99, column_text,
+                ax1.text(1.00 + rel_offset, 0.99, column_text,
                          verticalalignment='top',
                          horizontalalignment='left',
                          transform=ax1.transAxes,
                          fontsize=12)
 
-                # the shift in position of the text is a linear function
+                # the rel_offset in position of the text is a linear function
                 # which depends on the longest entry in the column
-                shift += rel_len_fac * len(max_length)
+                rel_offset += rel_len_fac * len(max_length)
 
                 is_first_column = False
 
@@ -1430,71 +1429,69 @@ class PulsedMeasurementLogic(GenericLogic):
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
-        #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
+            if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+                x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+                ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+                         color=colors[2], marker='None', linewidth=1.5,
+                         label='secondary fit')
+
+                # add then the fit result to the plot:
+
+                # Parameters for the text plot:
+                # The position of the text annotation is controlled with the
+                # relative offset in x direction and the relative length factor
+                # rel_len_fac of the longest entry in one column
+                rel_offset = 0.02
+                rel_len_fac = 0.011
+                entries_per_col = 24
+
+                # create the formatted fit text:
+                if hasattr(self.alt_fit_result, 'result_str_dict'):
+                    fit_res = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+                else:
+                    self.log.warning('The fit container does not contain any data '
+                                     'from the fit! Apply the fit once again.')
+                    fit_res = ''
+                # do reverse processing to get each entry in a list
+                entry_list = fit_res.split('\n')
+                # slice the entry_list in entries_per_col
+                chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+                is_first_column = True  # first entry should contain header or \n
+
+                for column in chunks:
+                    max_length = max(column, key=len)   # get the longest entry
+                    column_text = ''
+
+                    for entry in column:
+                        column_text += entry + '\n'
+
+                    column_text = column_text[:-1]  # remove the last new line
+
+                    heading = ''
+                    if is_first_column:
+                        heading = 'Fit results:'
+
+                    column_text = heading + '\n' + column_text
+
+                    ax2.text(1.00 + rel_offset, 0.99, column_text,
+                             verticalalignment='top',
+                             horizontalalignment='left',
+                             transform=ax2.transAxes,
+                             fontsize=12)
+
+                    # the rel_offset in position of the text is a linear function
+                    # which depends on the longest entry in the column
+                    rel_offset += rel_len_fac * len(max_length)
+
+                    is_first_column = False
+
         ax1.set_xlabel(
             '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
         if self._data_units[1]:
             ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
         else:
             ax1.set_ylabel('{0}'.format(self._data_labels[1]))
-
-        if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
-            x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
-            ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
-                     color=colors[2], marker='None', linewidth=1.5,
-                     label='secondary fit')
-
-            # add then the fit result to the plot:
-
-            # Parameters for the text plot:
-            # The position of the text annotation is controlled with the
-            # relative offset in x direction and the relative length factor
-            # rel_len_fac of the longest entry in one column
-            rel_offset = 0.02
-            rel_len_fac = 0.011
-            entries_per_col = 24
-
-            # create the formatted fit text:
-            if hasattr(self.alt_fit_result, 'result_str_dict'):
-                fit_res = units.create_formatted_output(self.alt_fit_result.result_str_dict)
-            else:
-                self.log.warning('The fit container does not contain any data '
-                                 'from the fit! Apply the fit once again.')
-                fit_res = ''
-            # do reverse processing to get each entry in a list
-            entry_list = fit_res.split('\n')
-            # slice the entry_list in entries_per_col
-            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-            is_first_column = True  # first entry should contain header or \n
-            shift = rel_offset
-
-            for column in chunks:
-                max_length = max(column, key=len)   # get the longest entry
-                column_text = ''
-
-                for entry in column:
-                    column_text += entry + '\n'
-
-                column_text = column_text[:-1]  # remove the last new line
-
-                heading = ''
-                if is_first_column:
-                    heading = 'Fit results:'
-
-                column_text = heading + '\n' + column_text
-
-                ax2.text(1.00 + shift, 0.99, column_text,
-                         verticalalignment='top',
-                         horizontalalignment='left',
-                         transform=ax2.transAxes,
-                         fontsize=12)
-
-                # the shift in position of the text is a linear function
-                # which depends on the longest entry in the column
-                shift += rel_len_fac * len(max_length)
-
-                is_first_column = False
 
         fig.tight_layout()
         ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
