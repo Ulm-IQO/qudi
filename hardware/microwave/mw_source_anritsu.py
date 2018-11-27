@@ -35,9 +35,17 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu(Base, MicrowaveInterface):
-    """
-    Hardware control file for Anritsu Devices.
+    """ Hardware control file for Anritsu Devices.
+
     Tested for the model MG37022A with Option 4.
+
+    Example config for copy-paste:
+
+    mw_source_anritsu:
+        module.Class: 'microwave.mw_source_anritsu.MicrowaveAnritsu'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10 # in seconds
+
     """
 
     _modclass = 'MicrowaveAnritsu'
