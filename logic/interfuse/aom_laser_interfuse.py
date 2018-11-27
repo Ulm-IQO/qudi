@@ -55,7 +55,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
     _calibration_file = ConfigOption('calibration_file', missing='error')
     _power_to_voltage = None
     _power = 0
-    _laser_on = False
+    _laser_on = LaserState.OFF
 
     def on_activate(self):
         """ Activate module.
@@ -104,7 +104,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
         mini, maxi = self.get_power_range()
         if mini <= power <= maxi:
             self._power = power
-            if self._laser_on:
+            if self._laser_on == LaserState.ON:
                 voltage = self._power_to_voltage(power)
             else:
                 voltage = self._power_to_voltage(0)
