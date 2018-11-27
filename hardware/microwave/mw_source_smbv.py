@@ -108,11 +108,11 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
             limits.max_frequency = 3.2e9
 
         limits.list_minstep = 0.1
-        limits.list_maxstep = self._limits_max_frequency - self._limits_min_frequency
+        limits.list_maxstep = limits.max_frequency - limits.min_frequency
         limits.list_maxentries = 1
 
         limits.sweep_minstep = 0.1
-        limits.sweep_maxstep = self._limits_max_frequency - self._limits_min_frequency
+        limits.sweep_maxstep = limits.max_frequency - limits.min_frequency
         limits.sweep_maxentries = 10001
 
         # in case a lower maximum is set in config file
