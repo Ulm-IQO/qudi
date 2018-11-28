@@ -30,14 +30,18 @@ except ImportError:
     raise ImportError('ThorlabsPM100 module not found. Please install it by typing command "pip install ThorlabsPM100"')
 
 
-class PM100(Base, SimpleDataInterface):
+class PM100D(Base, SimpleDataInterface):
     """ Hardware module for Thorlabs PM100D powermeter.
+
+    Example config :
+    powermeter:
+        module.Class: 'powermeter.PM100D.PM100D'
+        address: 'USB0::0x1313::0x8078::P0013645::INSTR'
 
     This module needs the ThorlabsPM100 package from PyPi, this package is not included in the environment
     To add install it, type :
     pip install ThorlabsPM100
     in the Anaconda prompt after aving activated qudi environment
-
     """
     _modclass = 'powermeter'
     _modtype = 'hardware'
