@@ -614,7 +614,7 @@ class ODMRGui(GUIBase):
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
         self._sd.oversampling_SpinBox.setValue(self._odmr_logic.oversampling)
-        self._sd.lock_in_CheckBox.setChecked(self._odmr_logic.oversampling)
+        self._sd.lock_in_CheckBox.setChecked(self._odmr_logic.lock_in)
         return
 
     def do_fit(self):

@@ -318,7 +318,7 @@ class ODMRLogic(GenericLogic):
         # checks if scanner is still running
         if self.module_state() != 'locked' and isinstance(active, bool):
             self._lock_in_active = active
-            self._odmr_counter._lock_in_active = self._lock_in_active
+            self._odmr_counter.lock_in_active = self._lock_in_active
         else:
             self.log.warning('setter of lock in failed. Logic is either locked or input value is no boolean.')
 
