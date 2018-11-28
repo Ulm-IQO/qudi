@@ -108,7 +108,11 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
                 voltage = self._power_to_voltage(power)
             else:
                 voltage = self._power_to_voltage(0)
-            self._scanner.scanner_set_position(a=voltage)
+            if self._scanner.module_state() == 'locked':
+                self.log.error('Output device of the voltage for the AOM is locked, cannot set voltage.')
+            else:
+                if self._scanner.scanner_set_position(a=voltage) < 0:
+                    self.log.error('Could not set the voltage for the AOM because the scanner failed.')
         return self._power
 
     def get_current_unit(self):
