@@ -211,7 +211,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
 
             @return ShutterState: actual laser shutter state
         """
-        return ShutterState.UNKNOWN
+        return ShutterState.NOSHUTTER
 
     def set_shutter_state(self, state):
         """ Set laser shutter state.
@@ -220,7 +220,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
 
             @return ShutterState: actual laser shutter state
         """
-        return ShutterState.UNKNOWN
+        return ShutterState.NOSHUTTER
 
     def get_temperatures(self):
         """ Get all available temperatures.
