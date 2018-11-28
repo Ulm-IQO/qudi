@@ -54,7 +54,7 @@ class PulsedMasterLogic(GenericLogic):
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     # PulsedMeasurementLogic control signals
-    sigDoFit = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal(str, bool)
     sigToggleMeasurement = QtCore.Signal(bool, str)
     sigToggleMeasurementPause = QtCore.Signal(bool)
     sigTogglePulser = QtCore.Signal(bool)
@@ -71,7 +71,7 @@ class PulsedMasterLogic(GenericLogic):
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -550,24 +550,26 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    def do_fit(self, fit_function):
+    @QtCore.Slot(str, bool)
+    def do_fit(self, fit_function, use_alternative_data=False):
         """
 
-        @param fit_function:
+        @param str fit_function:
+        @param bool use_alternative_data:
         """
-        if isinstance(fit_function, str):
+        if isinstance(fit_function, str) and isinstance(use_alternative_data, bool):
             self.status_dict['fitting_busy'] = True
-            self.sigDoFit.emit(fit_function)
+            self.sigDoFit.emit(fit_function, use_alternative_data)
         return
 
-    @QtCore.Slot(str, np.ndarray, object)
-    def fit_updated(self, fit_name, fit_data, fit_result):
+    @QtCore.Slot(str, np.ndarray, object, bool)
+    def fit_updated(self, fit_name, fit_data, fit_result, use_alternative_data):
         """
 
         @return:
         """
         self.status_dict['fitting_busy'] = False
-        self.sigFitUpdated.emit(fit_name, fit_data, fit_result)
+        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
         return
 
     def save_measurement_data(self, tag, with_error):
