@@ -1566,7 +1566,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return -1
 
         if len(self._scanner_ai_channels) > 0 and self._scanner_analog_daq_task is None:
-            self.log.error('No analog is running, cannot do ODMR without one.')
+            self.log.error('No analog task is running, cannot do ODMR without one.')
             return -1
 
         self._odmr_length = length
@@ -1671,17 +1671,17 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if len(self._scanner_counter_daq_tasks) < 1:
             self.log.error(
                 'No counter is running, cannot scan an ODMR line without one.')
-            return np.array([-1.])
+            return True, np.array([-1.])
 
         if len(self._scanner_ai_channels) > 0 and self._scanner_analog_daq_task is None:
-            self.log.error('No analog is running, cannot do ODMR without one.')
-            return np.array([-1.])
+            self.log.error('No analog task is running, cannot do ODMR without one.')
+            return True, np.array([-1.])
 
         # check if length setup is correct, if not, adjust.
-        if self._odmr_pulser_daq_task:
-            self.set_odmr_length(length * self._oversampling * 2)
-        else:
-            self.set_odmr_length(length)
+        odmr_length_to_set = length * self._oversampling * 2 if self._odmr_pulser_daq_task else length
+        if self.set_odmr_length(odmr_length_to_set) < 0:
+            self.log.error('An error arose while setting the odmr lenth to {}.'.format(odmr_length_to_set))
+            return True, np.array([-1.])
 
         try:
             # start the scanner counting task that acquires counts synchroneously
@@ -1690,7 +1690,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 daq.DAQmxStartTask(self._scanner_analog_daq_task)
         except:
             self.log.exception('Cannot start ODMR counter.')
-            return np.array([-1.])
+            return True, np.array([-1.])
 
         try:
             if self._odmr_pulser_daq_task:
@@ -1711,7 +1711,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 daq.DAQmxStartTask(self._odmr_pulser_daq_task)
         except:
             self.log.exception('Cannot start ODMR pulser.')
-            return np.array([-1.])
+            return True, np.array([-1.])
 
         try:
             daq.DAQmxStartTask(self._scanner_clock_daq_task)
@@ -1769,8 +1769,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     None
                 )
 
-                print(analog_read_samples.value, self._odmr_length, self._odmr_analog_data)
-
             # stop the counter task
             daq.DAQmxStopTask(self._scanner_counter_daq_tasks[0])
             if len(self._scanner_ai_channels) > 0:
@@ -1808,6 +1806,22 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                                                    (-1, self._oversampling)),
                                         axis=1
                                         )
+                if len(self._scanner_ai_channels) > 0:
+                    for i, analog_data in enumerate(self._odmr_analog_data):
+                        self._differential_data = np.zeros((self._oversampling*length, ), dtype=np.float64)
+
+                        print('analog channel', i, analog_read_samples.value, self._odmr_length, len(self._differential_data))
+                        self._differential_data += analog_data[1:-1:2]
+                        self._differential_data -= analog_data[:-1:2]
+                        self._differential_data = np.divide(self._differential_data, analog_data[:-1:2],
+                                                            np.zeros_like(self._differential_data),
+                                                            where=analog_data[:-1:2] != 0)
+
+                        all_data[i+1] = np.median(np.reshape(self._differential_data,
+                                                             (-1, self._oversampling)),
+                                                  axis=1
+                                                  )
+
             else:
                 all_data[0] = np.array(self._real_data * self._scanner_clock_frequency, np.float64)
                 if len(self._scanner_ai_channels) > 0:
