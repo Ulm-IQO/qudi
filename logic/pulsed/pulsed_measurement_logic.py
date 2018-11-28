@@ -1401,7 +1401,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 ft_label = 'FT of data trace 1'
             else:
                 if self._data_units[0]:
-                    x_axis_ft_label = '{0} ({1})'.format(self._data_labels[0], self._data_units[0])
+                    x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+                                                            self._data_units[0])
                 else:
                     x_axis_ft_label = '{0}'.format(self._data_labels[0])
                 if self._data_units[1]:
@@ -1409,7 +1410,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 else:
                     y_axis_ft_label = '{0}'.format(self._data_labels[1])
 
-                ft_label = ''
+                ft_label = '{0} of data traces'.format(self._alternative_data_type)
 
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
