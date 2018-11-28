@@ -101,7 +101,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         self._scanner_analog_daq_task = None
         self._odmr_pulser_daq_task = None
         self._oversampling = self._default_oversampling
-        self._lock_in_active = True
+        self._lock_in_active = False
 
         # handle all the parameters given by the config
         self._current_position = np.zeros(len(self._scanner_ao_channels))
@@ -1654,6 +1654,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self.log.error('lock_in_active has to be boolean.')
         else:
             self._lock_in_active = val
+            if self._lock_in_active:
+                self.log.warn('You just switched the ODMR counter to Lock-In-mode. \n'
+                              'Please make sure you connected all triggers correctly:\n'
+                              '  {0:s}/line0 is the microwave trigger channel\n'
+                              '  {0:s}/line1 is the switching channel for the lock in\n'
+                              ''.format(self._pulse_out_channel))
 
     def count_odmr(self, length=100):
         """ Sweeps the microwave and returns the counts on that sweep.
