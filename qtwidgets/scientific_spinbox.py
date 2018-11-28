@@ -230,7 +230,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
-        self._assumed_unit_prefix = None # To assume one prefix at unit
+        self._assumed_unit_prefix = None  # To assume one prefix. This is only used if no prefix would be out of range
         self._is_valid = True  # A flag property to check if the current value is valid.
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
@@ -329,7 +329,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         if value is False:
             return
         value, in_range = self.check_range(value)
-
+        # if the value is out of range, then only use assumed unit prefix
+        if not in_range and self._assumed_unit_prefix is not None:
+            value = self.valueFromText(text, use_assumed_unit_prefix=True)
+            value, in_range = self.check_range(value)
         # save old value to be able to restore it later on
         if self.__cached_value is None:
             self.__cached_value = self.__value
@@ -754,7 +757,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         return self.validator.fixup(text)
 
-    def valueFromText(self, text):
+    def valueFromText(self, text, use_assumed_unit_prefix=False):
         """
         This method is responsible for converting a string displayed in the SpinBox into a Decimal.
 
@@ -783,7 +786,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         si_prefix = group_dict['si']
         if si_prefix is None:
             si_prefix = ''
-        if si_prefix == '' and self._assumed_unit_prefix is not None:
+        if si_prefix == '' and use_assumed_unit_prefix and self._assumed_unit_prefix is not None:
             si_prefix = self._assumed_unit_prefix
         si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
