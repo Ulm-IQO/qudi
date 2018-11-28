@@ -31,35 +31,45 @@ except ImportError:
 
 
 class PM100(Base, SimpleDataInterface):
-    """ Hardware module for Thorlabs PM100 powermeter
+    """ Hardware module for Thorlabs PM100D powermeter.
+
+    This module needs the ThorlabsPM100 package from PyPi, this package is not included in the environment
+    To add install it, type :
+    pip install ThorlabsPM100
+    in the Anaconda prompt after aving activated qudi environment
 
     """
     _modclass = 'powermeter'
     _modtype = 'hardware'
 
     _address = ConfigOption('address', missing='error')
-    _timeout = ConfigOption('address', 1)
+    _timeout = ConfigOption('timeout', 1)
     _power_meter = None
 
     def on_activate(self):
+        """ Startup the module """
 
         rm = visa.ResourceManager()
         try:
-            self._inst = rm.open_resource(self._address, timeout=self._timeout, term_chars='\n')
+            self._inst = rm.open_resource(self._address, timeout=self._timeout)
         except:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
         self._power_meter = ThorlabsPM100(inst=self._inst)
 
     def on_deactivate(self):
+        """ Stops the module """
         self._inst.close()
 
     def getData(self):
-        return [self.get_power()]
+        """ SimpleDataInterface function to get the power from the powermeter """
+        return np.array([self.get_power()])
 
     def getChannels(self):
+        """ SimpleDataInterface function to know how many data channel the device has, here 1. """
         return 1
 
     def get_power(self):
+        """ Return the power read from the ThorlabsPM100 package """
         return self._power_meter.read
 
