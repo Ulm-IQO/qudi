@@ -972,22 +972,19 @@ class PulsedMeasurementLogic(GenericLogic):
         x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
 
         fit_data = np.array([x_fit, y_fit])
-        fit_name = self.fc.current_fit
-        fit_result = self.fc.current_fit_result
 
         if update_fit_data:
             if use_alternative_data:
                 self.signal_fit_alt_data = fit_data
-                self.fit_result = copy.deepcopy(fit_result)
-                self.sigFitUpdated.emit(fit_name, self.signal_fit_alt_data, fit_result,
-                                        use_alternative_data)
+                self.alt_fit_result = copy.deepcopy(self.fc.current_fit_result)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
+                                        self.alt_fit_result, use_alternative_data)
             else:
                 self.signal_fit_data = fit_data
-                self.alt_fit_result = copy.deepcopy(fit_result)
-                self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result,
+                self.fit_result = copy.deepcopy(self.fc.current_fit_result)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_data, self.fit_result,
                                         use_alternative_data)
-
-        return fit_data, fit_result
+        return fit_data, self.fc.current_fit_result
 
     def _apply_invoked_settings(self):
         """
@@ -1343,13 +1340,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # create the formatted fit text:
             if hasattr(self.fit_result, 'result_str_dict'):
-                fit_res = units.create_formatted_output(self.fit_result.result_str_dict)
+                result_str = units.create_formatted_output(self.fit_result.result_str_dict)
             else:
-                self.log.warning('The fit container does not contain any data '
-                                 'from the fit! Apply the fit once again.')
-                fit_res = ''
+                result_str = ''
             # do reverse processing to get each entry in a list
-            entry_list = fit_res.split('\n')
+            entry_list = result_str.split('\n')
             # slice the entry_list in entries_per_col
             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
@@ -1447,13 +1442,11 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # create the formatted fit text:
                 if hasattr(self.alt_fit_result, 'result_str_dict'):
-                    fit_res = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+                    result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
                 else:
-                    self.log.warning('The fit container does not contain any data '
-                                     'from the fit! Apply the fit once again.')
-                    fit_res = ''
+                    result_str = ''
                 # do reverse processing to get each entry in a list
-                entry_list = fit_res.split('\n')
+                entry_list = result_str.split('\n')
                 # slice the entry_list in entries_per_col
                 chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
