@@ -756,7 +756,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.module_state.lock()
 
                 # Clear previous fits
-                self.fc.clear_result()
+                self.do_fit('No Fit', False)
+                self.do_fit('No Fit', True)
 
                 # initialize data arrays
                 self._initialize_data_arrays()
@@ -923,6 +924,8 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         with self._threadlock:
+            if alt_data_type != self.alternative_data_type:
+                self.do_fit('No Fit', True)
             if alt_data_type == 'Delta' and not self._alternating:
                 if self._alternative_data_type == 'Delta':
                     self._alternative_data_type = None
