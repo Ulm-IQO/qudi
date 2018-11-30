@@ -36,9 +36,17 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAgilent(Base, MicrowaveInterface):
-    """ This is the Interface class to define the controls for the simple
-        microwave hardware.
-        The hardware file was tested using the model N9310A.
+    """ Hardware control file for Agilent Devices.
+
+    The hardware file was tested using the model N9310A.
+
+    Example config for copy-paste:
+
+    mw_source_agilent:
+        module.Class: 'microwave.mw_source_agilent.MicrowaveAgilent'
+        usb_address: USB0::10::INSTR
+        usb_timeout: 100 # in seconds
+
     """
 
     _modclass = 'MicrowaveAgilent'

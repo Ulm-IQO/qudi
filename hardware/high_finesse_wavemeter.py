@@ -76,12 +76,21 @@ class HardwarePull(QtCore.QObject):
 
 
 class HighFinesseWavemeter(Base,WavemeterInterface):
+    """ Hardware class to controls a High Finesse Wavemeter.
+
+    Example config for copy-paste:
+
+    high_finesse_wavemeter:
+        module.Class: 'high_finesse_wavemeter.HighFinesseWavemeter'
+        measurement_timing: 10.0 # in seconds
+
+    """
 
     _modclass = 'HighFinesseWavemeter'
     _modtype = 'hardware'
 
     # config options
-    _measurement_timing = ConfigOption('measurement_timing', 10.)
+    _measurement_timing = ConfigOption('measurement_timing', default=10.)
 
     # signals
     sig_handle_timer = QtCore.Signal(bool)

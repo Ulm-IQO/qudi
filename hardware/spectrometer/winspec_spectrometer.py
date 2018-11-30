@@ -41,6 +41,12 @@ import comtypes.gen.WINX32Lib as WinSpecLib
 
 class WinSpec32(Base, SpectrometerInterface):
     """ Hardware module for reading spectra from the WinSpec32 spectrometer software.
+
+    Example config for copy-paste:
+
+    spectrometer_dummy:
+        module.Class: 'spectrometer.winspec_spectrometer.WinSpec32'
+
     """
 
     def on_activate(self):
