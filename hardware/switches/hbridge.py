@@ -28,6 +28,13 @@ from interface.switch_interface import SwitchInterface
 
 class HBridge(Base, SwitchInterface):
     """ Methods to control slow laser switching devices.
+
+    Example config for copy-paste:
+
+    flipmirror_switch:
+        module.Class: 'switches.hbridge.HBridge'
+        interface: 'ASRL1::INSTR'
+
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'

@@ -716,9 +716,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     block = pickle.load(file)
-            except:
+            except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseBlock "{0}" from file.'
                                ''.format(block_name))
+                os.remove(filepath)
         return block
 
     def _update_blocks_from_file(self):
@@ -818,9 +819,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     ensemble = pickle.load(file)
-            except:
-                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file.'
-                               ''.format(ensemble_name))
+            except pickle.UnpicklingError:
+                self.log.error('Failed to de-serialize PulseBlockEnsemble "{0}" from file. '
+                               'Deleting broken file.'.format(ensemble_name))
+                os.remove(filepath)
         return ensemble
 
     def _update_ensembles_from_file(self):
@@ -934,9 +936,10 @@ class SequenceGeneratorLogic(GenericLogic):
             try:
                 with open(filepath, 'rb') as file:
                     sequence = pickle.load(file)
-            except:
+            except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                ''.format(sequence_name))
+                os.remove(filepath)
         return sequence
 
     def _update_sequences_from_file(self):
@@ -1033,66 +1036,29 @@ class SequenceGeneratorLogic(GenericLogic):
     # ---------------------------------------------------------------------------
     def get_ensemble_info(self, ensemble):
         """
-        This helper method will analyze a PulseBlockEnsemble and return information like length in
-        seconds and bins (with currently set sampling rate), number of laser pulses (with currently
-        selected laser/gate channel)
+        This helper method is just there for backwards compatibility. Essentially it will call the
+        method "analyze_block_ensemble".
+
+        Will return information like length in seconds and bins (with currently set sampling rate)
+        as well as number of laser pulses (with currently selected laser/gate channel)
 
         @param PulseBlockEnsemble ensemble: The PulseBlockEnsemble instance to analyze
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
-        # variables to keep track of the current timeframe and number of laser/gate pulses
-        ensemble_length_s = 0.0
-        ensemble_length_bins = 0
-        number_of_lasers = 0
-        # memorize the channel state of the previous element.
-        tmp_digital_high = False
+        # Return if the ensemble is empty
+        if len(ensemble) == 0:
+            return 0.0, 0, 0
 
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
             'gate_channel'] else self.generation_parameters['laser_channel']
 
-        # check for active channels in last block and take the laser_channel state of the very last
-        # element as initial state for the tmp_digital_high. Return if the ensemble is empty
-        if len(ensemble.block_list) > 0:
-            block = self.get_block(ensemble.block_list[-1][0])
-            digital_channels = block.digital_channels
-            analog_channels = block.analog_channels
-            channel_set = analog_channels.union(digital_channels)
-            if laser_channel in channel_set:
-                if laser_channel.startswith('a'):
-                    tmp_digital_high = type(
-                        block.element_list[-1].pulse_function[laser_channel]).__name__ != 'Idle'
-                else:
-                    tmp_digital_high = block.element_list[-1].digital_high[laser_channel]
-        else:
-            return ensemble_length_s, ensemble_length_bins, number_of_lasers
-
-        # Loop over all blocks in the ensemble
-        for block_name, reps in ensemble.block_list:
-            block = self.get_block(block_name)
-            # Iterate over all repetitions of the current block
-            for rep_no in range(reps + 1):
-                # ideal end time for the sequence up until this point in sec
-                ensemble_length_s += block.init_length_s + rep_no * block.increment_s
-                if laser_channel in channel_set:
-                    # Iterate over the Block_Elements inside the current block
-                    for block_element in block.element_list:
-                        # save bin position if transition from low to high has occured in
-                        # laser channel
-                        if laser_channel.startswith('a'):
-                            is_high = type(
-                                block_element.pulse_function[laser_channel]).__name__ != 'Idle'
-                        else:
-                            is_high = block_element.digital_high[laser_channel]
-
-                        if is_high and not tmp_digital_high:
-                            number_of_lasers += 1
-                        tmp_digital_high = is_high
-
-        # Nearest possible match including the discretization in bins
-        ensemble_length_bins = int(np.rint(ensemble_length_s * self.__sample_rate))
-        return ensemble_length_s, ensemble_length_bins, number_of_lasers
+        info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+        ens_bins = info_dict['number_of_samples']
+        ens_length = ens_bins / self.__sample_rate
+        ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
         """
@@ -1103,6 +1069,11 @@ class SequenceGeneratorLogic(GenericLogic):
         @param PulseSequence sequence: The PulseSequence instance to analyze
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
         length_bins = 0
         length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
@@ -1113,7 +1084,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 length_s = np.inf
                 number_of_lasers = -1
                 break
-            ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
+            info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+            ens_bins = info_dict['number_of_samples']
+            ens_length = ens_bins / self.__sample_rate
+            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
@@ -1266,6 +1240,11 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
         # Determine channel activation
         digital_channels = set()
         analog_channels = set()
@@ -1285,7 +1264,10 @@ class SequenceGeneratorLogic(GenericLogic):
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
         for seq_step in sequence:
             ensemble = self.get_ensemble(seq_step.ensemble)
-            ens_length, ens_bins, ens_lasers = self.get_ensemble_info(ensemble=ensemble)
+            info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+            ens_bins = info_dict['number_of_samples']
+            ens_length = ens_bins / self.__sample_rate
+            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)

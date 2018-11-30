@@ -34,8 +34,21 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWG7k(Base, PulserInterface):
-    """ A hardware module for the Tektronix AWG7000 series for generating waveforms and
-        sequences thereof.
+    """ A hardware module for the Tektronix AWG7000 series for generating
+        waveforms and sequences thereof.
+
+    Example config for copy-paste:
+
+    pulser_awg7000:
+        module.Class: 'awg.tektronix_awg7k.AWG7k'
+        awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
+        awg_ip_address: '10.42.0.211'
+        timeout: 60
+        # tmp_work_dir: 'C:\\Software\\qudi_pulsed_files' # optional
+        # ftp_root_dir: 'C:\\inetpub\\ftproot' # optional, root directory on AWG device
+        # ftp_login: 'anonymous' # optional, the username for ftp login
+        # ftp_passwd: 'anonymous@' # optional, the password for ftp login
+
     """
 
     _modclass = 'awg7k'
@@ -50,7 +63,6 @@ class AWG7k(Base, PulserInterface):
     _ftp_dir = ConfigOption(name='ftp_root_dir', default='C:\\inetpub\\ftproot', missing='warn')
     _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
-    _default_sample_rate = ConfigOption(name='default_sample_rate', default=None, missing='warn')
     _visa_timeout = ConfigOption(name='timeout', default=30, missing='nothing')
 
     def __init__(self, config, **kwargs):

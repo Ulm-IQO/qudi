@@ -36,26 +36,67 @@ from .national_instruments_x_series import NationalInstrumentsXSeries
 
 class SlowGatedNICard(NationalInstrumentsXSeries):
     """ Enable the usage of the gated counter in the slow counter interface.
-    Overwrite in this new class therefore the appropriate methods. """
+    Overwrite in this new class therefore the appropriate methods.
+
+    Example config for copy-paste:
+
+    slowgated_ni:
+        module.Class: 'gated_ni_card.SlowGatedNICard'
+        photon_sources:
+            - '/Dev1/PFI8'
+        #    - '/Dev1/PFI9'
+        clock_channel: '/Dev1/Ctr0'
+        default_clock_frequency: 100 # optional, in Hz
+        counter_channels:
+            - '/Dev1/Ctr1'
+        counter_ai_channels:
+            - '/Dev1/AI0'
+        default_scanner_clock_frequency: 100 # optional, in Hz
+        scanner_clock_channel: '/Dev1/Ctr2'
+        pixel_clock_channel: '/Dev1/PFI6'
+        scanner_ao_channels:
+            - '/Dev1/AO0'
+            - '/Dev1/AO1'
+            - '/Dev1/AO2'
+            - '/Dev1/AO3'
+        scanner_ai_channels:
+            - '/Dev1/AI1'
+        scanner_counter_channels:
+            - '/Dev1/Ctr3'
+        scanner_voltage_ranges:
+            - [-10, 10]
+            - [-10, 10]
+            - [-10, 10]
+            - [-10, 10]
+        scanner_position_ranges:
+            - [0e-6, 200e-6]
+            - [0e-6, 200e-6]
+            - [-100e-6, 100e-6]
+            - [-10, 10]
+
+        odmr_trigger_channel: '/Dev1/PFI7'
+
+        gate_in_channel: '/Dev1/PFI9'
+        default_samples_number: 50
+        max_counts: 3e7
+        read_write_timeout: 10
+        counting_edge_rising: True
+
+    """
 
     _modtype = 'SlowGatedNICard'
     _modclass = 'hardware'
+
+    _photon_sources = ConfigOption('photon_sources', missing='error')
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
         """
         self._gated_counter_daq_task = None
         self._counter_channels = []
-        self._counter_channel = '/NIDAQ/Ctr0'
+        self._counter_channel = '/Dev1/Ctr0'
 
-        config = self.getConfiguration()
-
-        if 'photon_source' in config.keys():
-            self._photon_source = config['photon_source']
-        else:
-            self.log.error(
-                'No parameter "photon_source" configured.\n'
-                'Assign to that parameter an appropriated channel from your NI Card!')
+        self._ph_source = self._photon_sources[0]
 
     def get_constraints(self):
         """ Get hardware limits of NI device.

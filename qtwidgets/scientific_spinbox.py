@@ -231,6 +231,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self.__cached_value = None  # a temporary variable for restore functionality
         self._dynamic_stepping = True
         self._dynamic_precision = True
+        self._assumed_unit_prefix = None  # To assume one prefix. This is only used if no prefix would be out of range
         self._is_valid = True  # A flag property to check if the current value is valid.
         self.validator = FloatValidator()
         self.lineEdit().textEdited.connect(self.update_value)
@@ -279,6 +280,27 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         self._dynamic_precision = use_dynamic_precision
 
     @property
+    def assumed_unit_prefix(self):
+        """
+        This property can fix a default unit prefix that is used for text input.
+
+        @return: None or prefix string
+        """
+        return self._assumed_unit_prefix
+
+    @assumed_unit_prefix.setter
+    def assumed_unit_prefix(self, unit_prefix):
+        """
+        This property can fix a default unit prefix that is used for text input.
+
+        @param unit_prefix: None or unit prefix in the dictionary
+        """
+        if unit_prefix is None or unit_prefix in self._unit_prefix_dict:
+            self._assumed_unit_prefix = unit_prefix
+        if unit_prefix == 'u':  # in case of encoding problems
+            self._assumed_unit_prefix = 'µ'
+
+    @property
     def is_valid(self):
         """
         This property is a flag indicating if the currently available value is valid.
@@ -308,7 +330,10 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         if value is False:
             return
         value, in_range = self.check_range(value)
-
+        # if the value is out of range, then only use assumed unit prefix
+        if not in_range and self._assumed_unit_prefix is not None:
+            value = self.valueFromText(text, use_assumed_unit_prefix=True)
+            value, in_range = self.check_range(value)
         # save old value to be able to restore it later on
         if self.__cached_value is None:
             self.__cached_value = self.__value
@@ -733,7 +758,7 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         """
         return self.validator.fixup(text)
 
-    def valueFromText(self, text):
+    def valueFromText(self, text, use_assumed_unit_prefix=False):
         """
         This method is responsible for converting a string displayed in the SpinBox into a Decimal.
 
@@ -762,6 +787,8 @@ class ScienDSpinBox(QtWidgets.QAbstractSpinBox):
         si_prefix = group_dict['si']
         if si_prefix is None:
             si_prefix = ''
+        if si_prefix == '' and use_assumed_unit_prefix and self._assumed_unit_prefix is not None:
+            si_prefix = self._assumed_unit_prefix
         si_scale = self._unit_prefix_dict[si_prefix.replace('u', 'µ')]
 
         if group_dict['sign'] is not None:

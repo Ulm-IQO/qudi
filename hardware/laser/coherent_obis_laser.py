@@ -31,12 +31,12 @@ class OBISLaser(Base, SimpleLaserInterface):
 
     """ Implements the Coherent OBIS laser.
 
-    Example configuration:
-    ```
-    # obis:
-    #     module.Class: 'SimpleLaserInterface.OBISLaser'
-    #     com_port: 'COM3'
-    ```
+    Example config for copy-paste:
+
+    obis_laser:
+        module.Class: 'laser.coherent_obis_laser.OBISLaser'
+        com_port: 'COM3'
+
     """
 
     _modclass = 'laser'

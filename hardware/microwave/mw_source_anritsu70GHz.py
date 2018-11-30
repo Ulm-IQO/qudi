@@ -36,6 +36,14 @@ from interface.microwave_interface import TriggerEdge
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     """ Hardware control file for Anritsu 70GHz Devices.
         Tested for the model MG3696B.
+
+    Example config for copy-paste:
+
+    mw_source_anritsu70ghz:
+        module.Class: 'microwave.mw_source_anritsu70GHz.MicrowaveAnritsu70GHz'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10 # in seconds
+
     """
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
