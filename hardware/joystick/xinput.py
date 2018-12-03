@@ -111,8 +111,8 @@ class JoystickXInput(Base, JoystickInterface):
         value_buttons = state.wButtons
 
         return {'axis': {
-            'left_vertical': state.sThumbLX / scales_maximum['joystick'],
-            'left_horizontal': state.sThumbLY / scales_maximum['joystick'],
+            'left_vertical': state.sThumbLY / scales_maximum['joystick'],
+            'left_horizontal': state.sThumbLX / scales_maximum['joystick'],
             'right_vertical': state.sThumbRY / scales_maximum['joystick'],
             'right_horizontal': state.sThumbRX / scales_maximum['joystick'],
             'left_trigger': state.bLeftTrigger / scales_maximum['trigger'],
