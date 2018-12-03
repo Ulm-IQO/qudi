@@ -450,29 +450,17 @@ class ODMRLogic(GenericLogic):
 
         @return str, bool: active mode ['cw', 'list', 'sweep'], is_running
         """
+
         limits = self.get_hw_constraints()
+        param_dict = {}
+
         if self.mw_scanmode == MicrowaveMode.LIST:
             if np.abs(self.mw_stop - self.mw_start) / self.mw_step >= limits.list_maxentries:
                 self.log.warning('Number of frequency steps too large for microwave device. '
                                  'Lowering resolution to fit the maximum length.')
                 self.mw_step = np.abs(self.mw_stop - self.mw_start) / (limits.list_maxentries - 1)
                 self.sigParameterUpdated.emit({'mw_step': self.mw_step})
-        elif self.mw_scanmode == MicrowaveMode.SWEEP:
-            if np.abs(self.mw_stop - self.mw_start) / self.mw_step >= limits.sweep_maxentries:
-                self.log.warning('Number of frequency steps too large for microwave device. '
-                                 'Lowering resolution to fit the maximum length.')
-                self.mw_step = np.abs(self.mw_stop - self.mw_start) / (limits.list_maxentries - 1)
-                self.sigParameterUpdated.emit({'mw_step': self.mw_step})
 
-        if self.mw_scanmode == MicrowaveMode.SWEEP:
-
-            sweep_return = self._mw_device.set_sweep(
-                self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power)
-            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power, mode = sweep_return
-
-            param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
-                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
-        else:
             # adjust the end frequency in order to have an integer multiple of step size
             # The master module (i.e. GUI) will be notified about the changed end frequency
             num_steps = int(np.rint((self.mw_stop - self.mw_start) / self.mw_step))
@@ -483,8 +471,27 @@ class ODMRLogic(GenericLogic):
             self.mw_start = freq_list[0]
             self.mw_stop = freq_list[-1]
             self.mw_step = (self.mw_stop - self.mw_start) / (len(freq_list) - 1)
+
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
+
+        elif self.mw_scanmode == MicrowaveMode.SWEEP:
+            if np.abs(self.mw_stop - self.mw_start) / self.mw_step >= limits.sweep_maxentries:
+                self.log.warning('Number of frequency steps too large for microwave device. '
+                                 'Lowering resolution to fit the maximum length.')
+                self.mw_step = np.abs(self.mw_stop - self.mw_start) / (limits.list_maxentries - 1)
+                self.sigParameterUpdated.emit({'mw_step': self.mw_step})
+
+            sweep_return = self._mw_device.set_sweep(
+                self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power)
+            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power, mode = sweep_return
+
+            param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
+                          'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
+
+        else:
+            self.log.error('Scanmode not supported. Please select SWEEP or LIST.')
+
         self.sigParameterUpdated.emit(param_dict)
 
         if mode != 'list' and mode != 'sweep':
