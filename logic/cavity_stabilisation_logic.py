@@ -569,12 +569,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         # if user wants to acquired maximal voltage resolution on output set resolution to maximal
         #  possible for this scan.
         if self._use_maximal_resolution:
-            minV = min(self._start_voltage, self._end_voltage)
-            maxV = max(self._start_voltage, self._end_voltage)
-            self._scan_resolution = self.calculate_resolution(
-                self._feedback_device.get_analogue_resolution(), [minV, maxV])
-            if self._scan_resolution == -1:
-                self.log.error("Calculated scan resolution not possible")
+            if self._set_scan_resolution_maximal() == -1:
                 return -1
 
         # generate voltage ramp
@@ -654,13 +649,11 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         voltage_range = self.axis_class[self.control_axis].output_voltage_range
         # check if given voltages are allowed:
-        if not in_range(start_voltage, self.axis_class[self.control_axis].output_voltage_range[0],
-                        self.axis_class[self.control_axis].output_voltage_range[1]):
+        if not in_range(start_voltage, voltage_range[0], voltage_range[1]):
             self.log.error("The given start voltage %s is not within the possible output voltages %s", start_voltage,
-                           voltage_range)
+                            voltage_range)
             return [-11]
-        elif not in_range(start_voltage, self.axis_class[self.control_axis].output_voltage_range[0],
-                          self.axis_class[self.control_axis].output_voltage_range[1]):
+        elif not in_range(end_voltage, voltage_range[0], voltage_range[1]):
             self.log.error("The given end voltage %s is not within the possible output voltages %s", end_voltage,
                            voltage_range)
             return [-11]
@@ -822,6 +815,18 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         self.sigCavityScanPlotUpdated.emit(self._image_data[0], self._image_data[1], self._image_data[2])
         self.signal_scan_next_line.emit()
+
+    def _set_scan_resolution_maximal(self):
+        minV = min(self._start_voltage, self._end_voltage)
+        maxV = max(self._start_voltage, self._end_voltage)
+        self._scan_resolution = self.calculate_resolution(
+            self._feedback_device.get_analogue_resolution(), [minV, maxV])
+        if self._scan_resolution == -1:
+            self.log.error("Calculated scan resolution not possible")
+            return -1
+        else:
+            return 0
+
 
     def _initialise_data_matrix(self):
         """ Initializing the cavity scan plot. """
