@@ -1300,24 +1300,17 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def sort_counted_data(self, counts):
         self.stepping_raw_data[self._step_counter] = counts[0]
         self.stepping_raw_data_back[self._step_counter] = np.flipud(counts[1])
+        if self.map_scan_position or self._ai_counter:
+            forward = np.split(counts[2], 2 * self.map_scan_position + self._ai_scanner)
+            backward = np.split(counts[3], 2 * self.map_scan_position + self._ai_scanner)
         if self.map_scan_position:
-            self._scan_pos_voltages[self._step_counter, :, 0] = counts[2][:self._steps_scan_first_line]
-            self._scan_pos_voltages[self._step_counter, :, 1] = \
-                counts[2][self._steps_scan_first_line:self._steps_scan_first_line * 2]
-            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(
-                counts[3][:self._steps_scan_first_line])
-            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(
-                counts[3][self._steps_scan_first_line:self._steps_scan_first_line * 2])
+            self._scan_pos_voltages[self._step_counter, :, 0] = forward[0]
+            self._scan_pos_voltages[self._step_counter, :, 1] = forward[1]
+            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(backward[0])
+            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(backward[1])
         if self._ai_scanner:
-            if self.map_scan_position:
-                self._ai_counter_voltages[self._step_counter] = \
-                    counts[2][self._steps_scan_first_line * 2:self._steps_scan_first_line * 3]
-                self._ai_counter_voltages_back[self._step_counter] = \
-                    np.flipud(counts[3][self._steps_scan_first_line * 2:self._steps_scan_first_line * 3])
-            else:
-                self._ai_counter_voltages[self._step_counter] = counts[2]
-                self._ai_counter_voltages_back[self._step_counter] = np.flipud(
-                    counts[3])
+            self._ai_counter_voltages[self._step_counter] = forward[-1]
+            self._ai_counter_voltages_back[self._step_counter] = np.flipud(backward[-1])
 
     def go_to_start_position(self):
         # check starting position of fast scan direction
