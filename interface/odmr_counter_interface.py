@@ -29,6 +29,10 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
     _modtype = 'ODMRCounterInterface'
     _modclass = 'interface'
 
+    _pulse_out_channel = 'dummy'
+    _lock_in_active = False
+    _oversampling = 10
+
     @abc.abstractmethod
     def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
@@ -103,3 +107,31 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
         @return list(str): channels recorded during ODMR measurement
         """
         pass
+
+    @property
+    def oversampling(self):
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, val):
+        if not isinstance(val, (int, float)):
+            self.log.error('oversampling has to be int of float.')
+        else:
+            self._oversampling = int(val)
+
+    @property
+    def lock_in_active(self):
+        return self._lock_in_active
+
+    @lock_in_active.setter
+    def lock_in_active(self, val):
+        if not isinstance(val, bool):
+            self.log.error('lock_in_active has to be boolean.')
+        else:
+            self._lock_in_active = val
+            if self._lock_in_active:
+                self.log.warn('You just switched the ODMR counter to Lock-In-mode. \n'
+                              'Please make sure you connected all triggers correctly:\n'
+                              '  {0:s}/line0 is the microwave trigger channel\n'
+                              '  {0:s}/line1 is the switching channel for the lock in\n'
+                              ''.format(self._pulse_out_channel))

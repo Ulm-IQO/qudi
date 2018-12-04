@@ -1795,7 +1795,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             if self._odmr_pulser_daq_task:
                 self._differential_data = np.zeros((self._oversampling*length, ), dtype=np.float64)
 
-                print('digital', n_read_samples.value, len(self._real_data), len(self._differential_data))
                 self._differential_data += self._real_data[1::2]
                 self._differential_data -= self._real_data[::2]
                 self._differential_data = np.divide(self._differential_data, self._real_data[::2],
@@ -1810,7 +1809,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     for i, analog_data in enumerate(self._odmr_analog_data):
                         self._differential_data = np.zeros((self._oversampling*length, ), dtype=np.float64)
 
-                        print('analog channel', i, analog_read_samples.value, self._odmr_length, len(self._differential_data))
                         self._differential_data += analog_data[1:-1:2]
                         self._differential_data -= analog_data[:-1:2]
                         self._differential_data = np.divide(self._differential_data, analog_data[:-1:2],
@@ -2170,7 +2168,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             daq.DAQmxStartTask(self.digital_out_task)
             daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
                                         self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
-                                        np.array(self.digital_data), self.digital_read, None);
+                                        np.array(self.digital_data), self.digital_read, None)
 
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)
