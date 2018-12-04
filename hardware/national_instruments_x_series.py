@@ -68,7 +68,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         'default_scanner_clock_frequency', 100, missing='info')
     _scanner_clock_channel = ConfigOption('scanner_clock_channel', missing='warn')
     _finite_clock_frequency = ConfigOption('finite_clock_frequency', 100, missing='warn')
-    _analogue_input_clock_frequency = ConfigOption('analogue_input_clock_frequency', 100, missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _scanner_ao_channels = ConfigOption('scanner_ao_channels', missing='error')
     _scanner_ai_channels = ConfigOption('scanner_ai_channels', [], missing='info')
@@ -2253,7 +2252,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self._finite_clock_frequency = clock_frequency
 
         # use the correct clock channel in this method
-        # Todo: this has tio be done like in new clock normally .
+        # Todo: this has to be done like in new clock normally .
         # The way it is done here is just so it works with confocal
         if clock_channel is None:
             clock_channel = self._scanner_clock_channel
@@ -2407,6 +2406,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self._scanner_clock_daq_task = None
         else:
             return retval
+
 
     # ================ End FiniteCounterInterface Commands =======================
 
@@ -2770,10 +2770,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         # around the set_up_clock. However if a clock might already be configured for a different
         # task, this might not be a problem for the programmer, so he can call the function
         # anyway but set set_up to False and the function does nothing.
-        if clock_frequency is None:
-            clock_frequency = self._analogue_input_clock_frequency
-        else:
-            self._analogue_input_clock_frequency = clock_frequency
         if not set_up:
             # this exists, so that one can "set up" the clock that is used in parallel in the
             # code but not in reality and serves readability in the logic code
@@ -2878,10 +2874,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         # Fixme: this timeout might really hurt for cavity stabilisation. make optional
         # *1.1 to have an extra (10%) short waiting time.
-        if samples != 1:
-            timeout = (samples * 1.1) / self._analogue_input_clock_frequency
-        else:
-            timeout = -1
+        # if samples != 1:
+        #    timeout = (samples * 1.1) / self._clock_frequency_new[analogue_channels[0]]
+        # else:
+        #    timeout = -1
         # Count data will be written here
         _analogue_count_data = np.zeros(samples * len(analogue_channels), dtype=np.float64)
         # Number of samples which were read will be stored here
@@ -3211,10 +3207,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         # around the set_up_clock. However if a clock might already be configured for a different
         # task, this might not be a problem for the programmer, so he can call the function
         # anyway but set set_up to False and the function does nothing.
-        if clock_frequency is None:
-            clock_frequency = self._analogue_output_clock_frequency
-        else:
-            self._analogue_output_clock_frequency = clock_frequency
         if not set_up:
             # this exists, so that one can "set up" the clock that is used in parallel in the
             # code but not in reality and serves readability in the logic code
@@ -3249,13 +3241,14 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # use this channel as clock
                 self._clock_channel_new[analogue_channel] + 'InternalOutput',
                 # Maximum expected clock frequency
-                self._analogue_output_clock_frequency,
+                self._clock_frequency_new[analogue_channel],
                 # Generate sample on falling edge
                 daq.DAQmx_Val_Falling,
                 # generate finite number of samples
                 daq.DAQmx_Val_FiniteSamps,
                 # number of samples to generate
                 length)
+
             daq.DAQmxCfgImplicitTiming(
                 # define task
                 self._clock_daq_task_new[analogue_channel],
@@ -3294,7 +3287,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             daq.DAQmxStopTask(self._clock_daq_task_new[analogue_channel])
             daq.DAQmxStartTask(self._clock_daq_task_new[analogue_channel])
-            time_out = 1. / self._analogue_output_clock_frequency
+            time_out = 1. / self._clock_frequency_new[analogue_channel]
             # wait for the scanner clock to finish
             daq.DAQmxWaitUntilTaskDone(
                 # define task
