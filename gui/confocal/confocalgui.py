@@ -198,6 +198,8 @@ class ConfocalGui(GUIBase):
     image_y_padding = ConfigOption('image_y_padding', 0.02)
     image_z_padding = ConfigOption('image_z_padding', 0.02)
 
+    default_meter_prefix = ConfigOption('default_meter_prefix', None)  # assume the unit prefix of position spinbox
+
     # status var
     adjust_cursor_roi = StatusVar(default=True)
     slider_small_step = StatusVar(default=10e-9)    # initial value in meter
@@ -481,6 +483,18 @@ class ConfocalGui(GUIBase):
         self._mw.y_max_InputWidget.setValue(self._scanning_logic.image_y_range[1])
         self._mw.z_min_InputWidget.setValue(self._scanning_logic.image_z_range[0])
         self._mw.z_max_InputWidget.setValue(self._scanning_logic.image_z_range[1])
+
+        if self.default_meter_prefix:
+            self._mw.x_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_current_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+
+            self._mw.x_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.x_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.y_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_min_InputWidget.assumed_unit_prefix = self.default_meter_prefix
+            self._mw.z_max_InputWidget.assumed_unit_prefix = self.default_meter_prefix
 
         # Handle slider movements by user:
         self._mw.x_SliderWidget.sliderMoved.connect(self.update_from_slider_x)

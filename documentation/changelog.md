@@ -36,6 +36,8 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Correct the low level implementation for the PulseBlasterESR-PRO.
 * Implement the pulser interface for PulseBlasterESR-PRO devices.
 * Implement the switch interface for PulseBlasterESR-PRO devices.
+* Add possibility to set instruction delays in the config for PulseBlasterESR-PRO sequence generation.
+* Add a copy-paste config option to the docstrings of all current qudi hardware modules.
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
     * Bug fix for waveform generation larger than ~2 GSamples
@@ -120,6 +122,9 @@ This can be used to specify the axis labels for the measurement (excluding units
 	  into account. This method speeds up laser extractions from ungated timetraced by a lot.
 	* Improved pulsed measurement textfile and plot layout for saved data
     * Added buttons to delete all saved PulseBlock/PulseBlockEnsemble/PulseSequence objects at once.
+    * Introduced separate fit tools for each of the two plots in the pulsed analysis tab
+    * Automatically clears fit data when changing the alternative plot type or starting a new 
+      measurement.
 
 Config changes:
 * **All** pulsed related logic module paths need to be changed because they have been moved in the logic
