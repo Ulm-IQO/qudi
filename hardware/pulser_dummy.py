@@ -33,6 +33,12 @@ class PulserDummy(Base, PulserInterface):
     Be careful in adjusting the method names in that class, since some of them
     are also connected to the mwsourceinterface (to give the AWG the possibility
     to act like a microwave source).
+
+    Example config for copy-paste:
+
+    pulser_dummy:
+        module.Class: 'pulser_dummy.PulserDummy'
+
     """
     _modclass = 'PulserDummy'
     _modtype = 'hardware'

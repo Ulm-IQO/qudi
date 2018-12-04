@@ -36,7 +36,16 @@ import hardware.swabian_instruments.pulse_streamer_pb2 as pulse_streamer_pb2
 import dill
 
 class PulseStreamer(Base, PulserInterface):
-    """Methods to control PulseStreamer.
+    """ Methods to control PulseStreamer.
+
+    Example config for copy-paste:
+
+    pulse_streamer:
+        module.Class: 'swabian_instruments.pulse_streamer.PulseStreamer'
+        pulsestreamer_ip: '192.168.1.100'
+        laser_channel: 0
+        uw_x_channel: 2
+
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
