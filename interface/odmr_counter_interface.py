@@ -80,7 +80,7 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
 
         @param int length: length of microwave sweep in pixel
 
-        @return float[]: the photon counts per second
+        @return (bool, float[]): tuple: was there an error, the photon counts per second
         """
         pass
 

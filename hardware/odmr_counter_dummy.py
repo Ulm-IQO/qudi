@@ -25,6 +25,7 @@ import time
 from core.module import Base, Connector, ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
+
 class ODMRCounterDummy(Base, ODMRCounterInterface):
     """This is the Dummy hardware class that simulates the controls for a simple ODMR.
     """
@@ -151,7 +152,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         time.sleep(self._odmr_length*1./self._clock_frequency)
 
         self.module_state.unlock()
-        return ret
+        return False, ret
 
 
     def close_odmr(self):
