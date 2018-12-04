@@ -403,7 +403,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
             else:
                 self.log.error(
                     "Current mode of controller {} not in list of modes{}".format(
-                        mode_line[-1]._attocube_modes))
+                        mode_line[-1], self._attocube_modes))
                 return -1
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
