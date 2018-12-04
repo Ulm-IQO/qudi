@@ -1128,22 +1128,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # check axis
         if main_axis in self.axis_class.keys():
             if second_axis in self.axis_class.keys():
-                if self.map_scan_position:
-                    if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
-                        self.log.error("Starting the counter failed")
-                        return [-1], []
-                elif self._ai_scanner:
-                    if 0 > self._position_feedback_device.start_ai_counter_reader(self._ai_counter):
-                        self.log.error("Starting the counter failed")
-                        return [-1], []
-                else:
-                    if self._counting_device.start_finite_counter() < 0:
-                        self.log.error("Starting the counter failed")
-                        return [-1], []
                 if self._stepping_device.move_attocube(main_axis, True, True, steps=steps - 1) < 0:
                     self.log.error("moving of attocube failed")
                     # Todo: repair return values
                     return [-1], []
+                if self._counting_device.start_finite_counter(start_clock=True) < 0:
+                    self.log.error("Starting the counter failed")
+                    return [-1], []
+                if self.map_scan_position:
+                    if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._first_scan_axis,
+                                                                                        start_clock=False):
+                        self.log.error("Starting the counter failed")
+                        return [-1], []
+                if self._ai_scanner:
+                    if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_counter,
+                                                                                        start_clock=False):
+                        self.log.error("Starting the analogue input counter failed")
+                        return [-1], []
 
                 # move on line up
                 # if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
@@ -1228,22 +1229,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     def step_back_line(self, main_axis, second_axis, steps):
         # redo this now (not forever) in the other direction
-        if self.map_scan_position:
-            if 0 > self._position_feedback_device.start_ai_counter_reader(self._first_scan_axis):
-                self.log.error("Starting the counter failed")
-                return [-1], []
-        elif self._ai_scanner:
-            if 0 > self._position_feedback_device.start_ai_counter_reader(self._ai_counter):
-                self.log.error("Starting the counter failed")
-                return [-1], []
-        else:
-            if self._counting_device.start_finite_counter() < 0:
-                self.log.error("Starting the counter failed")
-                return [-1], []
-
         if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
             self.log.error("moving of attocube failed")
             return [-1], []
+        if self._counting_device.start_finite_counter(start_clock=True) < 0:
+            self.log.error("Starting the counter failed")
+            return [-1], []
+        if self.map_scan_position:
+            if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._first_scan_axis,
+                                                                                start_clock=False):
+                self.log.error("Starting the counter failed")
+                return [-1], []
+        if self._ai_scanner:
+            if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_counter,
+                                                                                start_clock=False):
+                self.log.error("Starting the analogue input counter failed")
+                return [-1], []
+
 
         time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
         result_back = self._counting_device.get_finite_counts()

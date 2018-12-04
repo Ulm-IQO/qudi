@@ -90,8 +90,10 @@ class FiniteCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def start_finite_counter(self):
-        """Starts the preconfigured counter task
+    def start_finite_counter(self, start_clock):
+        """Start the preconfigured counter task
+        @param  bool start_clock: default value false, bool that defines if clock for the task is
+                                started as well
 
         @return int: error code (0:OK, -1:error)
         """

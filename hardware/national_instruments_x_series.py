@@ -113,6 +113,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         self._scanner_analog_daq_task = None
 
         self._analogue_input_samples = {}
+        self._analogue_input_started = False
         self._analogue_output_clock_frequency = self._default_scanner_clock_frequency
         self._clock_daq_task_new = {}
         self._clock_frequency_new = {}
@@ -2284,8 +2285,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         else:
             return retval
 
-    def start_finite_counter(self):
+    def start_finite_counter(self, start_clock=False):
         """Start the preconfigured counter task
+        @param  bool start_clock: default value false, bool that defines if clock for the task is
+                                started as well
 
         @return int: error code (0:OK, -1:error)
         """
@@ -2299,16 +2302,18 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                            'counters. \n Then re-setup the finite counter. ', len(self._scanner_counter_daq_tasks))
             return -1
 
-        try:
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
-        except:
-            self.log.warning('Error while stopping scanner clock counting')
+        if start_clock:
+            try:
+                daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            except:
+                self.log.warning('Error while stopping scanner clock counting')
 
-        try:
-            daq.DAQmxStartTask(self._scanner_clock_daq_task)
-        except:
-            self.log.error('Error while starting up finite counter clock')
-            return -1
+            try:
+                daq.DAQmxStartTask(self._scanner_clock_daq_task)
+            except:
+                self.log.error('Error while starting up finite counter clock')
+                return -1
+
         for task in self._scanner_counter_daq_tasks:
             try:
                 daq.DAQmxStartTask(task)
@@ -2406,7 +2411,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self._scanner_clock_daq_task = None
         else:
             return retval
-
 
     # ================ End FiniteCounterInterface Commands =======================
 
@@ -2791,10 +2795,14 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
+        if self._analogue_input_started:
+            return 0
+
         if type(analogue_channel) != str:
             self.log.error("analogue channel needs to be passed as a string. A different "
                            "variable type (%s) was used", type(analogue_channel))
             return -1
+
         if analogue_channel in self._analogue_input_daq_tasks:
             if start_clock:
                 try:  # Stop clock
@@ -2811,6 +2819,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             except:
                 self.log.exception('Error while starting up analogue voltage reader.')
                 return -1
+            self._analogue_input_started = True
             return 0
 
         else:
@@ -2874,10 +2883,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         # Fixme: this timeout might really hurt for cavity stabilisation. make optional
         # *1.1 to have an extra (10%) short waiting time.
-        # if samples != 1:
-        #    timeout = (samples * 1.1) / self._clock_frequency_new[analogue_channels[0]]
-        # else:
-        #    timeout = -1
+        if samples != 1:
+            timeout = (samples * 1.1) / self._clock_frequency_new[analogue_channels[0]]
+        else:
+            timeout = -1
         # Count data will be written here
         _analogue_count_data = np.zeros(samples * len(analogue_channels), dtype=np.float64)
         # Number of samples which were read will be stored here
@@ -2890,7 +2899,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # wait till all finite counts are acquired then return
                 -1,
                 # maximal timeout for the read process
-                -1,
+                timeout,
                 # defines that first all samples from one channel are returned and then
                 # all from the next and so on
                 daq.DAQmx_Val_GroupByChannel,
@@ -2931,6 +2940,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self.log.exception('Error while stopping analogue reader for channel {'
                                    '}.'.format(analogue_channel))
                 return -1
+            self._analogue_input_started = False
             return 0
 
         else:
@@ -2981,6 +2991,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 for key in key_list:
                     self._analogue_input_daq_tasks[key] = task
                 return -1
+            self._analogue_input_started = False
             return 0
         else:
             self.log.error(
@@ -3005,34 +3016,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         """"Returns the resolution of the analog input of the NIDAQ in bits
         @return int: input bit resolution """
         return self._analogue_resolution
-
-    def start_ai_counter_reader(self, analogue_channel):
-        """Starts task of reading analogue voltage and finite counts synchronised.
-
-        @param  string analogue_channel: the representative name of the analogue channel for
-                                        which the task is created
-        @return int: error code (0:OK, -1:error)
-        """
-        if type(analogue_channel) != str:
-            self.log.error("analogue channel needs to be passed as a string. A different "
-                           "variable type (%s) was used", type(analogue_channel))
-            return -1
-        if analogue_channel in self._analogue_input_daq_tasks:
-            if 0 > self.start_finite_counter():
-                return -1
-            # As self.start_finite_counter starts the clock, which is the same for analog input and finite counter
-            # the analogue clock was started. Therefore the clock status can be changed
-            # Fixme: Should this (next) not be done before the clock is started?
-            try:
-                daq.DAQmxStartTask(self._analogue_input_daq_tasks[analogue_channel])
-            except:
-                self.log.exception('Error while starting up analogue voltage reader and counter.')
-                return -1
-            return 0
-        self.log.error(
-            'Cannot start analogue voltage reader since it is not configured!\n'
-            'Run the or set_up_analogue_voltage_reader_scanner routine first.')
-        return -1
 
     # =============================== End AnalogReaderInterface Commands  =======================
 
