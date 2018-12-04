@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
+import copy
 import time
 import datetime
 import matplotlib.pyplot as plt
@@ -98,7 +99,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -143,7 +144,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # for fit:
         self.fc = None  # Fit container
+        self.fit_result = None
+        self.alt_fit_result = None
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
+        self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
         return
 
     def on_activate(self):
@@ -163,7 +167,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Fitting
         self.fc = self.fitlogic().make_fit_container('pulsed', '1d')
-        self.fc.set_units(['s', 'arb.u.'])
+        self.fc.set_units(self._data_units)
 
         # Recall saved status variables
         if 'fits' in self._statusVariables and isinstance(self._statusVariables.get('fits'), dict):
@@ -752,7 +756,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.module_state.lock()
 
                 # Clear previous fits
-                self.fc.clear_result()
+                self.do_fit('No Fit', False)
+                self.do_fit('No Fit', True)
 
                 # initialize data arrays
                 self._initialize_data_arrays()
@@ -919,6 +924,8 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         with self._threadlock:
+            if alt_data_type != self.alternative_data_type:
+                self.do_fit('No Fit', True)
             if alt_data_type == 'Delta' and not self._alternating:
                 if self._alternative_data_type == 'Delta':
                     self._alternative_data_type = None
@@ -943,12 +950,15 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    @QtCore.Slot(str, np.ndarray)
-    def do_fit(self, fit_method, data=None):
+    @QtCore.Slot(str, bool)
+    def do_fit(self, fit_method, use_alternative_data=False, data=None):
         """
         Performs the chosen fit on the measured data.
 
         @param str fit_method: name of the fit method to use
+        @param bool use_alternative_data: Flag indicating if the signal data (False) or the
+                                          alternative signal data (True) should be fitted.
+                                          Ignored if data is given as parameter
         @param 2D numpy.ndarray data: the x and y data points for the fit (shape=(2,X))
 
         @return (2D numpy.ndarray, result object): the resulting fit data and the fit result object
@@ -957,7 +967,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc.set_current_fit(fit_method)
 
         if data is None:
-            data = self.signal_data
+            data = self.signal_alt_data if use_alternative_data else self.signal_data
             update_fit_data = True
         else:
             update_fit_data = False
@@ -965,14 +975,19 @@ class PulsedMeasurementLogic(GenericLogic):
         x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
 
         fit_data = np.array([x_fit, y_fit])
-        fit_name = self.fc.current_fit
-        fit_result = self.fc.current_fit_result
 
         if update_fit_data:
-            self.signal_fit_data = fit_data
-            self.sigFitUpdated.emit(fit_name, self.signal_fit_data, fit_result)
-
-        return fit_data, fit_result
+            if use_alternative_data:
+                self.signal_fit_alt_data = fit_data
+                self.alt_fit_result = copy.deepcopy(self.fc.current_fit_result)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
+                                        self.alt_fit_result, use_alternative_data)
+            else:
+                self.signal_fit_data = fit_data
+                self.fit_result = copy.deepcopy(self.fc.current_fit_result)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_data, self.fit_result,
+                                        use_alternative_data)
+        return fit_data, self.fc.current_fit_result
 
     def _apply_invoked_settings(self):
         """
@@ -1282,7 +1297,7 @@ class PulsedMeasurementLogic(GenericLogic):
         x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
 
         # Create the figure object
-        if self._alternative_data_type:
+        if self._alternative_data_type and self._alternative_data_type != 'None':
             fig, (ax1, ax2) = plt.subplots(2, 1)
         else:
             fig, ax1 = plt.subplots()
@@ -1310,11 +1325,11 @@ class PulsedMeasurementLogic(GenericLogic):
                          label='data trace 2')
 
         # Do not include fit curve if there is no fit calculated.
-        if self.signal_fit_data.size != 0 and np.max(self.signal_fit_data[1]) > 0:
+        if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
             x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
             ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
                      color=colors[2], marker='None', linewidth=1.5,
-                     label='fit: {0}'.format(self.fc.current_fit))
+                     label='fit')
 
             # add then the fit result to the plot:
 
@@ -1327,19 +1342,16 @@ class PulsedMeasurementLogic(GenericLogic):
             entries_per_col = 24
 
             # create the formatted fit text:
-            if hasattr(self.fc.current_fit_result, 'result_str_dict'):
-                fit_res = units.create_formatted_output(self.fc.current_fit_result.result_str_dict)
+            if hasattr(self.fit_result, 'result_str_dict'):
+                result_str = units.create_formatted_output(self.fit_result.result_str_dict)
             else:
-                self.log.warning('The fit container does not contain any data '
-                                 'from the fit! Apply the fit once again.')
-                fit_res = ''
+                result_str = ''
             # do reverse processing to get each entry in a list
-            entry_list = fit_res.split('\n')
+            entry_list = result_str.split('\n')
             # slice the entry_list in entries_per_col
             chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
             is_first_column = True  # first entry should contain header or \n
-            shift = rel_offset
 
             for column in chunks:
 
@@ -1357,15 +1369,15 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 column_text = heading + '\n' + column_text
 
-                ax1.text(1.00 + shift, 0.99, column_text,
+                ax1.text(1.00 + rel_offset, 0.99, column_text,
                          verticalalignment='top',
                          horizontalalignment='left',
                          transform=ax1.transAxes,
                          fontsize=12)
 
-                # the shift in position of the text is a linear function
+                # the rel_offset in position of the text is a linear function
                 # which depends on the longest entry in the column
-                shift += rel_len_fac * len(max_length)
+                rel_offset += rel_len_fac * len(max_length)
 
                 is_first_column = False
 
@@ -1392,7 +1404,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 ft_label = 'FT of data trace 1'
             else:
                 if self._data_units[0]:
-                    x_axis_ft_label = '{0} ({1})'.format(self._data_labels[0], self._data_units[0])
+                    x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+                                                            self._data_units[0])
                 else:
                     x_axis_ft_label = '{0}'.format(self._data_labels[0])
                 if self._data_units[1]:
@@ -1400,7 +1413,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 else:
                     y_axis_ft_label = '{0}'.format(self._data_labels[1])
 
-                ft_label = ''
+                ft_label = '{0} of data traces'.format(self._alternative_data_type)
 
             ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
                      linestyle=':', linewidth=0.5, color=colors[0],
@@ -1415,7 +1428,61 @@ class PulsedMeasurementLogic(GenericLogic):
             ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
                        mode="expand", borderaxespad=0.)
 
-        #FIXME: no fit plot for the alternating graph, use for that graph colors[5]
+            if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+                x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+                ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+                         color=colors[2], marker='None', linewidth=1.5,
+                         label='secondary fit')
+
+                # add then the fit result to the plot:
+
+                # Parameters for the text plot:
+                # The position of the text annotation is controlled with the
+                # relative offset in x direction and the relative length factor
+                # rel_len_fac of the longest entry in one column
+                rel_offset = 0.02
+                rel_len_fac = 0.011
+                entries_per_col = 24
+
+                # create the formatted fit text:
+                if hasattr(self.alt_fit_result, 'result_str_dict'):
+                    result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+                else:
+                    result_str = ''
+                # do reverse processing to get each entry in a list
+                entry_list = result_str.split('\n')
+                # slice the entry_list in entries_per_col
+                chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+                is_first_column = True  # first entry should contain header or \n
+
+                for column in chunks:
+                    max_length = max(column, key=len)   # get the longest entry
+                    column_text = ''
+
+                    for entry in column:
+                        column_text += entry + '\n'
+
+                    column_text = column_text[:-1]  # remove the last new line
+
+                    heading = ''
+                    if is_first_column:
+                        heading = 'Fit results:'
+
+                    column_text = heading + '\n' + column_text
+
+                    ax2.text(1.00 + rel_offset, 0.99, column_text,
+                             verticalalignment='top',
+                             horizontalalignment='left',
+                             transform=ax2.transAxes,
+                             fontsize=12)
+
+                    # the rel_offset in position of the text is a linear function
+                    # which depends on the longest entry in the column
+                    rel_offset += rel_len_fac * len(max_length)
+
+                    is_first_column = False
+
         ax1.set_xlabel(
             '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
         if self._data_units[1]:

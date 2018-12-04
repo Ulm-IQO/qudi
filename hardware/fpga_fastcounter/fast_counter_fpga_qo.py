@@ -45,7 +45,24 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         (SWIG) to access the dll library. Be aware that the wrapper is specified
         for a specific version of python (here python 3.4), and it is not
         guaranteed to be working with other versions.
+
+    Example config for copy-paste:
+
+    fpga_qo:
+        module.Class: 'fpga_fastcounter.fast_counter_fpga_qo.FastCounterFPGAQO'
+        fpgacounter_serial: '143400058N'
+        fpga_type: 'XEM6310_LX150'
+        #threshV_ch1: 0.5   # optional, threshold voltage for detection
+        #threshV_ch2: 0.5   # optional, threshold voltage for detection
+        #threshV_ch3: 0.5   # optional, threshold voltage for detection
+        #threshV_ch4: 0.5   # optional, threshold voltage for detection
+        #threshV_ch5: 0.5   # optional, threshold voltage for detection
+        #threshV_ch6: 0.5   # optional, threshold voltage for detection
+        #threshV_ch7: 0.5   # optional, threshold voltage for detection
+        #threshV_ch8: 0.5   # optional, threshold voltage for detection
+
     """
+
     _modclass = 'FastCounterFPGAQO'
     _modtype = 'hardware'
 

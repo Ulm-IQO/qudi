@@ -30,12 +30,28 @@ import re
 
 
 class Magnet(Base, MagnetInterface):
-    """Magnet positioning software for superconducting magnet.
+    """ Magnet positioning software for superconducting magnet.
+
     Enables precise positioning of the magnetic field in spherical coordinates
     with the angle theta, phi and the radius rho.
     The superconducting magnet has three coils, one in x, y and z direction respectively.
     The current through these coils is used to compute theta, phi and rho.
     The alignment can be done manually as well as automatically via fluorescence alignment.
+
+    Example config for copy-paste:
+
+    sc_magnet:
+        module.Class: 'sc_magnet.magnet.Magnet'
+        magnet_port: 3000
+        magnet_IP_address_x: 192.168.0.12
+        magnet_IP_address_y: 192.168.0.13
+        magnet_IP_address_z: 192.168.0.14
+        magnet_waitingtime: 0.01 # in seconds
+        magnet_x_constr: 1.0
+        magnet_y_constr: 2.0
+        magnet_z_constr: 3.0
+        magnet_rho_constr: 1.2
+
     """
 
     _modtype = 'Magnet'

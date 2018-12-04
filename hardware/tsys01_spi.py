@@ -31,13 +31,22 @@ import time
 
 class TSYS01SPI(Base, ProcessInterface):
     """ Measurement Systems TSYS01 temperature sensor.
+
+    Example config for copy-paste:
+
+    temp_tsys:
+        module.Class: 'tsys01_spi.TSYS01SPI'
+        bus: 0
+        device: 0
+
     """
+
     _modclass = 'TSYS01'
     _modtype = 'hardware'
 
     # config opts
-    bus = ConfigOption('bus', 0, missing='warn')
-    device = ConfigOption('device', 0, missing='warn')
+    bus = ConfigOption('bus', default=0, missing='warn')
+    device = ConfigOption('device', default=0, missing='warn')
 
     # commands to chip (constants)
     READ_ADC  = 0x00

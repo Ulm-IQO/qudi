@@ -34,18 +34,37 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWG5002C(Base, PulserInterface):
-    """ Unstable and in construction, Alex Stark    """
+    """ A hardware module for the Tektronix AWG5000 series for generating
+        waveforms and sequences thereof.
+
+    Unstable and in construction, Alexander Stark
+
+    Example config for copy-paste:
+
+    pulser_awg5000:
+        module.Class: 'awg.tektronix_awg5002c.AWG5002C'
+        awg_ip_address: '10.42.0.211'
+        awg_port: 3000 # the port number as integer
+        timeout: 20
+        # tmp_work_dir: 'C:\\Software\\qudi_pulsed_files' # optional
+        # ftp_root_dir: 'C:\\inetpub\\ftproot' # optional, root directory on AWG device
+        # ftp_login: 'anonymous' # optional, the username for ftp login
+        # ftp_passwd: 'anonymous@' # optional, the password for ftp login
+        # default_sample_rate: 600.0e6 # optional, the default sampling rate
+    """
 
     _modclass = 'awg5002c'
     _modtype = 'hardware'
 
     # config options
-    ip_address = ConfigOption('awg_IP_address', missing='error')
+    ip_address = ConfigOption('awg_ip_address', missing='error')
     port = ConfigOption('awg_port', missing='error')
     _timeout = ConfigOption('timeout', 10, missing='warn')
+    _tmp_work_dir = ConfigOption('tmp_work_dir', missing='warn') # default path will be assigned in activation
     ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', missing='warn')
     user = ConfigOption('ftp_login', 'anonymous', missing='warn')
     passwd = ConfigOption('ftp_passwd', 'anonymous@', missing='warn')
+    default_sample_rate = ConfigOption('default_sample_rate', missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -91,26 +110,26 @@ class AWG5002C(Base, PulserInterface):
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
 
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
+        if 'tmp_work_dir' in config.keys():
+            self._tmp_work_dir = config['tmp_work_dir']
 
-            if not os.path.exists(self.pulsed_file_dir):
+            if not os.path.exists(self._tmp_work_dir):
 
                 homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self._tmp_work_dir = os.path.join(homedir, 'pulsed_files')
                 self.log.warning('The directory defined in parameter '
-                    '"pulsed_file_dir" in the config for '
+                    '"tmp_work_dir" in the config for '
                     'SequenceGeneratorLogic class does not exist!\n'
                     'The default home directory\n{0}\n will be taken '
-                    'instead.'.format(self.pulsed_file_dir))
+                    'instead.'.format(self._tmp_work_dir))
         else:
             homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified '
+            self._tmp_work_dir = os.path.join(homedir, 'pulsed_files')
+            self.log.warning('No parameter "tmp_work_dir" was specified '
                     'in the config for SequenceGeneratorLogic as directory '
                     'for the pulsed files!\n'
                     'The default home directory\n{0}\n'
-                    'will be taken instead.'.format(self.pulsed_file_dir))
+                    'will be taken instead.'.format(self._tmp_work_dir))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
         self.awg_model = self._get_model_ID()[1]
@@ -1219,7 +1238,7 @@ class AWG5002C(Base, PulserInterface):
         @return: str, absolute path to the directory with folder 'name'.
         """
 
-        path = os.path.join(self.pulsed_file_dir, name)
+        path = os.path.join(self._tmp_work_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 

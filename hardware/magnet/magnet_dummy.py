@@ -35,8 +35,14 @@ class MagnetAxisDummy:
 
 
 class MagnetDummy(Base, MagnetInterface):
-    """This is the Interface class to define the controls for the simple
-    magnet hardware.
+    """ This is the Interface class to define the controls for the simple
+        magnet hardware.
+
+    Example config for copy-paste:
+
+    magnet_dummy:
+        module.Class: 'magnet.magnet_dummy.MagnetDummy'
+
     """
 
     _modtype = 'MagnetDummy'

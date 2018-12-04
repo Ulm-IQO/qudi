@@ -283,6 +283,7 @@ class PulsedMeasurementGui(GUIBase):
 
         # Connect signals used in fit settings dialog
         self._fsd.sigFitsUpdated.connect(self._pa.fit_param_fit_func_ComboBox.setFitFunctions)
+        self._fsd.sigFitsUpdated.connect(self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions)
         return
 
     def _connect_pulse_generator_tab_signals(self):
@@ -335,6 +336,7 @@ class PulsedMeasurementGui(GUIBase):
     def _connect_analysis_tab_signals(self):
         # Connect pulse analysis tab signals
         self._pa.fit_param_PushButton.clicked.connect(self.fit_clicked)
+        self._pa.alt_fit_param_PushButton.clicked.connect(self.fit_clicked)
 
         self._pa.ext_control_use_mw_CheckBox.stateChanged.connect(self.microwave_settings_changed)
         self._pa.ext_control_mw_freq_DoubleSpinBox.editingFinished.connect(self.microwave_settings_changed)
@@ -488,6 +490,7 @@ class PulsedMeasurementGui(GUIBase):
     def _disconnect_analysis_tab_signals(self):
         # Connect pulse analysis tab signals
         self._pa.fit_param_PushButton.clicked.disconnect()
+        self._pa.alt_fit_param_PushButton.clicked.disconnect()
         self._pa.ext_control_use_mw_CheckBox.stateChanged.disconnect()
         self._pa.ext_control_mw_freq_DoubleSpinBox.editingFinished.disconnect()
         self._pa.ext_control_mw_power_DoubleSpinBox.editingFinished.disconnect()
@@ -2211,16 +2214,30 @@ class PulsedMeasurementGui(GUIBase):
                                                         pen=palette.c5)
 
         # Configure the second pulse analysis plot display:
-        self.second_plot_image = pg.PlotDataItem(np.arange(10), np.zeros(10), pen=palette.c1)
-        self.second_plot_image2 = pg.PlotDataItem(pen=palette.c4)
+        self.second_plot_image = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
+                                            style=QtCore.Qt.DotLine,
+                                            symbol='o',
+                                            symbolPen=palette.c1,
+                                            symbolBrush=palette.c1,
+                                            symbolSize=7)
+        self.second_plot_image2 = pg.PlotDataItem(pen=pg.mkPen(palette.c4, style=QtCore.Qt.DotLine),
+                                             style=QtCore.Qt.DotLine,
+                                             symbol='o',
+                                             symbolPen=palette.c4,
+                                             symbolBrush=palette.c4,
+                                             symbolSize=7)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        # Configure the fit of the data in the secondary pulse analysis display:
+        self.second_fit_image = pg.PlotDataItem(pen=palette.c3)
+        self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
 
         # Fit settings dialog
         self._fsd = FitSettingsDialog(self.pulsedmasterlogic().fit_container)
         self._fsd.applySettings()
         self._pa.fit_param_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
+        self._pa.fit_param_alt_fit_func_ComboBox.setFitFunctions(self._fsd.currentFits)
 
         # set boundaries
         self._pa.ana_param_num_laser_pulse_SpinBox.setMinimum(1)
@@ -2237,7 +2254,6 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ana_param_errorbars_CheckBox.setChecked(self._ana_param_errorbars)
         self._pa.ana_param_errorbars_CheckBox.blockSignals(False)
         self.second_plot_changed(self.pulsedmasterlogic().alternative_data_type)
-        self._pa.ana_param_delta_CheckBox.setEnabled(False)  # FIXME: non-functional CheckBox
 
         # Update measurement, microwave and fast counter settings from logic
         self.measurement_settings_updated(self.pulsedmasterlogic().measurement_settings)
@@ -2341,23 +2357,26 @@ class PulsedMeasurementGui(GUIBase):
     @QtCore.Slot()
     def fit_clicked(self):
         """Fits the current data"""
-        current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
-        self.pulsedmasterlogic().do_fit(current_fit_method)
+        if self.sender().objectName().startswith('alt_fit_param'):
+            current_fit_method = self._pa.fit_param_alt_fit_func_ComboBox.getCurrentFit()[0]
+            use_alt_data = True
+        else:
+            current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
+            use_alt_data = False
+        self.pulsedmasterlogic().do_fit(current_fit_method, use_alt_data)
         return
 
-    @QtCore.Slot(str, np.ndarray, object)
-    def fit_data_updated(self, fit_method, fit_data, result):
+    @QtCore.Slot(str, np.ndarray, object, bool)
+    def fit_data_updated(self, fit_method, fit_data, result, use_alternative_data):
         """
 
-        @param fit_method:
-        @param fit_data:
-        @param result:
+        @param str fit_method:
+        @param numpy.ndarray fit_data:
+        @param object result:
+        @param bool use_alternative_data:
         @return:
         """
-        # block signals
-        self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
-        # set widgets
-        self._pa.fit_param_results_TextBrowser.clear()
+        # Get formatted result string
         if fit_method == 'No Fit':
             formatted_fitresult = 'No Fit'
         else:
@@ -2365,17 +2384,35 @@ class PulsedMeasurementGui(GUIBase):
                 formatted_fitresult = units.create_formatted_output(result.result_str_dict)
             except:
                 formatted_fitresult = 'This fit does not return formatted results'
-        self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
 
-        self.fit_image.setData(x=fit_data[0], y=fit_data[1])
-        if fit_method == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
-            self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
-        elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
-            self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
-        if fit_method:
-            self._pa.fit_param_fit_func_ComboBox.setCurrentFit(fit_method)
-        # unblock signals
-        self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
+        # block signals.
+        # Clear text widget and show formatted result string.
+        # Update plot and fit function selection ComboBox.
+        # Unblock signals.
+        if use_alternative_data:
+            self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(True)
+            self._pa.alt_fit_param_results_TextBrowser.clear()
+            self._pa.alt_fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
+            if fit_method:
+                self._pa.fit_param_alt_fit_func_ComboBox.setCurrentFit(fit_method)
+            self.second_fit_image.setData(x=fit_data[0], y=fit_data[1])
+            if fit_method == 'No Fit' and self.second_fit_image in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.removeItem(self.second_fit_image)
+            elif fit_method != 'No Fit' and self.second_fit_image not in self._pa.pulse_analysis_second_PlotWidget.items():
+                self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
+            self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(False)
+        else:
+            self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
+            self._pa.fit_param_results_TextBrowser.clear()
+            self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
+            if fit_method:
+                self._pa.fit_param_fit_func_ComboBox.setCurrentFit(fit_method)
+            self.fit_image.setData(x=fit_data[0], y=fit_data[1])
+            if fit_method == 'No Fit' and self.fit_image in self._pa.pulse_analysis_PlotWidget.items():
+                self._pa.pulse_analysis_PlotWidget.removeItem(self.fit_image)
+            elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
+                self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
+            self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
         return
 
     @QtCore.Slot()
