@@ -47,7 +47,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
     _pulse_out_channel = 'dummy'
     _lock_in_active = False
     _oversampling = 10
-
+    _odmr_length = 100
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -76,7 +76,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         return self._sc_device.set_up_clock(clock_frequency=clock_frequency,
                                                    clock_channel=clock_channel)
 
-
     def set_up_odmr(self, counter_channel=None, photon_source=None,
                     clock_channel=None, odmr_trigger_channel=None):
         """ Configures the actual counter with a given clock.
@@ -98,7 +97,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
                                                 clock_channel=clock_channel,
                                                 counter_buffer=None)
 
-
     def set_odmr_length(self, length=100):
         """Set up the trigger sequence for the ODMR and the triggered microwave.
 
@@ -108,7 +106,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         """
         self._odmr_length = length
         return 0
-
 
     def count_odmr(self, length = 100):
         """ Sweeps the microwave and returns the counts on that sweep.
@@ -124,7 +121,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
             self.trigger()
             counts[:, i] = self._sc_device.get_counter(samples=1)[0]
         self.trigger()
-        return counts
+        return False, counts
 
     def close_odmr(self):
         """ Close the odmr and clean up afterwards.
@@ -152,7 +149,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
     def trigger(self):
 
         return self._mw_device.trigger()
-
 
     def off(self):
         """
