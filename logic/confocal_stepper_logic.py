@@ -395,28 +395,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Initialise for scan_image
         self._step_counter = 0
         self._get_scan_axes()
-        self.stepping_raw_data = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
-        self.stepping_raw_data_back = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
+
         self._start_position = []
         self.map_scan_position = True
-        self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
-        self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
-        self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
-        self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
+
         # For position smoothing
         self._gaussian_smoothing_parameter = 20  # This is used for position feedback smoothing
 
         if self._ai_counter != None:
             if self._ai_counter in self._counting_device._analogue_input_channels:
                 self._ai_scanner = True
-                self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
-                self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
             else:
                 self._ai_scanner = False
         else:
             self._ai_scanner = False
+
+        # initalise data arrays for stepper
+        self._initalize_data_arrays_stepper()
 
         self.initialize_image()
         self._lines_correct_z = 5
@@ -622,8 +617,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         step_range = self.axis_class[axis_name].step_range
         if not in_range(voltage, voltage_range[0], voltage_range[1]):
             self.log.warning(
-                "The voltage (%s) you are trying to convert lies without the physical range of your axis (%s)",
-                voltage, voltage_range)
+                "The voltage (%s) you are trying to convert lies without the physical range (%s) of your axis (%s)",
+                voltage, voltage_range, axis_name)
 
         v_range = voltage_range[1] - voltage_range[0]
         s_range = step_range[1] - step_range[0]
@@ -760,14 +755,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # Check the parameters of the stepper device
-        freq_status = self.axis_class[self._first_scan_axis]._check_freq()
-        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
-        if freq_status < 0 or amp_status < 0:
-            self.module_state.unlock()
-            return -1
-        freq_status = self.axis_class[self._second_scan_axis]._check_freq()
-        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
-        if freq_status < 0 or amp_status < 0:
+        if self.check_axis_stepper() == -1:
             self.module_state.unlock()
             return -1
 
@@ -787,35 +775,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.module_state.unlock()
             return -1
 
-        # check axis status
-        if self.axis_class[self._first_scan_axis].mode != "stepping":
-            axis_status1 = self.axis_class[self._first_scan_axis].set_mode_stepping()
-        else:
-            axis_status1 = self.axis_class[self._first_scan_axis]._check_mode()
-        if self.axis_class[self._second_scan_axis].mode != "stepping":
-            axis_status2 = self.axis_class[self._second_scan_axis].set_mode_stepping()
-        else:
-            axis_status2 = self.axis_class[self._second_scan_axis]._check_mode()
-        # Todo: This is a dirty fix!!!
-        if self.axis_class["z"].mode != "stepping":
-            axis_status3 = self.axis_class["z"].set_mode_stepping()
-        else:
-            axis_status3 = self.axis_class["z"]._check_mode()
-        if axis_status1 < 0 or axis_status2 < 0 or axis_status3 < 0:
-            # Todo: is this really sensible here?
-            self.axis_class[self._first_scan_axis].set_mode_ground()
-            self.axis_class[self._second_scan_axis].set_mode_ground()
-            # self.module_state.unlock()
-            # self.kill_counter()
-            return -1
-        # self._stepping_device.module_state.lock()
-        self.stepping_raw_data = np.zeros(
-            (self._steps_scan_second_line, self._steps_scan_first_line))
-        self.stepping_raw_data_back = np.zeros(
-            (self._steps_scan_second_line, self._steps_scan_first_line))
-
         # save starting positions
         self._feedback_axis = []
+        self._start_position = []
         if self.axis_class[self._first_scan_axis].closed_loop:
             self._start_position.append(self.get_position([self._first_scan_axis])[0])
             self._feedback_axis.append(self._first_scan_axis)
@@ -828,9 +790,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
-                # initialise arrays
-                self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
-                self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
                 # initialise position scan
                 # Todo: This is a little dirty and should not be done this way here. Fixme!
                 if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
@@ -849,8 +808,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # if AI is chosen for counts set this up.
         if self._ai_scanner:
-            self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
-            self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
             if 0 > self._counting_device.add_clock_task_to_channel("Scanner_clock",
                                                                    [self._ai_counter]):
                 self.stopRequested = True
@@ -862,6 +819,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
                         self._steps_scan_first_line, self._ai_counter):
                     self.stopRequested = True
+
+        self._initalize_data_arrays_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
 
@@ -1480,6 +1439,25 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.full_image_smoothed = image_raw
         self.full_image_back_smoothed = image_raw_back
 
+    def _initalize_data_arrays_stepper(self):
+        """
+        Initialises all numpy data arrays for the current stepper settings
+        """
+        self.stepping_raw_data = np.zeros(
+            (self._steps_scan_first_line, self._steps_scan_first_line))
+        self.stepping_raw_data_back = np.zeros(
+            (self._steps_scan_first_line, self._steps_scan_first_line))
+        if self.map_scan_position:
+            if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
+                self._second_scan_axis].closed_loop:
+                self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+                self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+        self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
+        self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
+
+        if self._ai_scanner:
+            self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+            self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
     def update_image_data(self):
         """Updates the images data
         """
@@ -1810,8 +1788,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
             # Create image plot
             cfimage2 = ax2.tripcolor(np.ndarray.flatten(xdata), np.ndarray.flatten(ydata), np.ndarray.flatten(zdata),
-                                  cmap=plt.get_cmap('inferno')  # reference the right place in qd
-                                  )
+                                     cmap=plt.get_cmap('inferno')  # reference the right place in qd
+                                     )
 
             ax2.set_aspect(1)
             ax2.set_xlabel(self._first_scan_axis + ' mm ')
