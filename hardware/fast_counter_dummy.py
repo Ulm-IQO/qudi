@@ -27,6 +27,7 @@ import numpy as np
 from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
+from interface.fast_counter_interface import FastCounterConstraints
 
 
 class FastCounterDummy(Base, FastCounterInterface):
@@ -103,11 +104,16 @@ class FastCounterDummy(Base, FastCounterInterface):
         ALL THE PRESENT KEYS OF THE CONSTRAINTS DICT MUST BE ASSIGNED!
         """
 
-        constraints = dict()
+        constraints = FastCounterConstraints()
+        constraints.hardware_binwidth_list = [1/950e6, 2/950e6, 4/950e6, 8/950e6]
+        constraints.is_gated = self._gated
+        constraints.continuous_measurement = True
 
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seonds use the get_binwidth method.
-        constraints['hardware_binwidth_list'] = [1/950e6, 2/950e6, 4/950e6, 8/950e6]
+        # constraints['hardware_binwidth_list'] = [1/950e6, 2/950e6, 4/950e6, 8/950e6]
+
+
 
         return constraints
 

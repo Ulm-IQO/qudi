@@ -181,7 +181,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         pass
 
 
-class FastCounterConstrains:
+class FastCounterConstraints:
     def __init__(self):
         self.hardware_binwidth_list = list()
         # the minimal and maximal count length for the device (for gated

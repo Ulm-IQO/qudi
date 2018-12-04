@@ -172,7 +172,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__finite_meas_timer = QtCore.QTimer()
         self.__finite_meas_timer.setSingleShot(False)
         self.__finite_meas_timer.setInterval(0)
-        self.__finite_meas_timer.timeout.connect(self._pulsed_analysis_loop,
+        self.__finite_meas_timer.timeout.connect(self._finite_meas_loop,
                                                  QtCore.Qt.QueuedConnection)
 
 
@@ -794,7 +794,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.pulse_generator_on()
 
                 fc_constraints = self.fastcounter().get_constraints()
-                if fc_constraints.continuous_measurement:
+                if not fc_constraints.continuous_measurement:
                     self.sigStartFiniteTimer.emit()
 
                 # initialize analysis_timer
@@ -857,7 +857,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stop the finite timer if in use
                 fc_constraints = self.fastcounter().get_constraints()
-                if fc_constraints.continuous_measurement:
+                if not fc_constraints.continuous_measurement:
                     self.sigStopFiniteTimer.emit()
 
                 # Turn off fast counter
@@ -906,7 +906,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # pausing the finite timer if in use
                 fc_constraints = self.fastcounter().get_constraints()
-                if fc_constraints.continuous_measurement:
+                if not fc_constraints.continuous_measurement:
                     self.sigStopFiniteTimer.emit()
 
                 self.fast_counter_pause()
@@ -941,7 +941,7 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.sigStartTimer.emit()
 
                 fc_constraints = self.fastcounter().get_constraints()
-                if fc_constraints.continuous_measurement:
+                if not fc_constraints.continuous_measurement:
                     self.sigStartFiniteTimer.emit()
 
                 # Set measurement paused flag
