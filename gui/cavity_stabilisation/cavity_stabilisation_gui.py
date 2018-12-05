@@ -97,8 +97,7 @@ class CavityStabilisationGui(GUIBase):
         *.ui file and configures the event handling between the modules.
 
         """
-
-        self._cavity_stabilisation_logic = self.get_connector('cavity_stabilisation_logic')
+        self._cavity_stabilisation_logic = self.cavity_stabilisation_logic()
 
 
         # GUI element:
@@ -347,7 +346,7 @@ class CavityStabilisationGui(GUIBase):
         maxV = max(self._cavity_stabilisation_logic._start_voltage, self._cavity_stabilisation_logic._end_voltage)
         maximal_scan_resolution = self._cavity_stabilisation_logic.calculate_resolution(16, [minV, maxV])
         if resolution < maximal_scan_resolution:
-            self.log.warn("Maximum scan resolution of scanning device exeeded! Set scan resolution to maximum value.")
+            self.log.warn("Maximum scan resolution of scanning device exceeded! Set scan resolution to maximum value.")
             self._cavity_stabilisation_logic._scan_resolution = maximal_scan_resolution
             self._mw.scan_resolution_spinBox.setValue(maximal_scan_resolution)
         else:
