@@ -44,13 +44,13 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
     slowcounter = Connector(interface='SlowCounterInterface')
     microwave = Connector(interface='MicrowaveInterface')
 
-    _pulse_out_channel = 'dummy'
-    _lock_in_active = False
-    _oversampling = 10
-    _odmr_length = 100
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self._pulse_out_channel = 'dummy'
+        self._lock_in_active = False
+        self._oversampling = 10
+        self._odmr_length = 100
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
