@@ -43,7 +43,7 @@ dictionary containing a variety of information about the to-be-sampled waveform/
 Refer to the documentation in `SequenceGeneratorLogic` to learn more about this dictionary.
 If you want to analyze the currently created `PulseBlockEnsemble`/`PulseSequence` within the 
 generate method, you need to explicitly save the corresponding `PulseBlocks` 
-(and `PulseBlockEnsembles`) beforehand by calling `save_block` and `save_sequence`.
+(and `PulseBlockEnsembles`) beforehand by calling `save_block` and `save_ensemble`.
 So getting sampling information about the soon-to-be waveform in a generate method could look like:
 ```
 # Save blocks needed for the PulseBlockEnsemble
