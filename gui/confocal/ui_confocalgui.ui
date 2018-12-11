@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1261</width>
+    <width>1342</width>
     <height>1362</height>
    </rect>
   </property>
@@ -27,8 +27,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1261</width>
-     <height>21</height>
+     <width>1342</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -1462,6 +1462,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="actionFocus_on_cursor"/>
    <addaction name="action_zoom"/>
    <addaction name="action_full_range_xy"/>
    <addaction name="action_full_range_z"/>
@@ -2299,6 +2300,11 @@
    </property>
    <property name="shortcut">
     <string>Shift+C</string>
+   </property>
+  </action>
+  <action name="actionFocus_on_cursor">
+   <property name="text">
+    <string>Focus on cursor</string>
    </property>
   </action>
  </widget>

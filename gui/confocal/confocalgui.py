@@ -657,6 +657,8 @@ class ConfocalGui(GUIBase):
 
         # Configure and connect the zoom actions with the desired buttons and
         # functions if
+        self._mw.actionFocus_on_cursor.triggered.connect(self.focus_cursor)
+        
         self._mw.action_full_range_xy.triggered.connect(self.set_full_scan_range_xy)
         self._mw.action_full_range_z.triggered.connect(self.set_full_scan_range_z)
 
@@ -2263,4 +2265,40 @@ class ConfocalGui(GUIBase):
         """
         if tag == 'logic':
             self.disable_scan_actions()
+            
+    def focus_cursor(self):
+        """Focus the range on the current position of the cursor
+        """
+        h_size = self._scanning_logic.image_x_range[1] - self._scanning_logic.image_x_range[0]
+        v_size = self._scanning_logic.image_y_range[1] - self._scanning_logic.image_y_range[0]
+        z_size = self._scanning_logic.image_z_range[1] - self._scanning_logic.image_z_range[0]
+        x_pos = self._scanning_logic._current_x
+        y_pos = self._scanning_logic._current_y
+        z_pos = self._scanning_logic._current_z
+        
+        self._scanning_logic.image_x_range = [x_pos - h_size/2.0, x_pos + h_size/2.0]
+        self._scanning_logic.image_y_range = [y_pos - v_size/2.0, y_pos + v_size/2.0]
+        self._scanning_logic.image_z_range = [z_pos - z_size/2.0, z_pos + z_size/2.0]
+        
+        self.update_scan_range_inputs()
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
