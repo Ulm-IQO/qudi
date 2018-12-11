@@ -49,15 +49,14 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
     _number_of_channels = ConfigOption('number_of_channels', 2, missing='warn')
 
-    _pulse_out_channel = 'dummy'
-    _lock_in_active = False
-    _oversampling = 10
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
+        self._pulse_out_channel = 'dummy'
+        self._lock_in_active = False
+        self._oversampling = 10
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
