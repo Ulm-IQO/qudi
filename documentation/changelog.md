@@ -26,7 +26,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 * For SMIQs added config options to additionally limit frequency and power. Added constraint for SMQ06B model.
 * Added live OMDR functionality to only calculate the average signal over a limited amount of scanned lines
 * New hardware file for Microwave source - Anritsu MG3691C with SCPI commands has been added.
-* **Potential Config Change:** Hardware file for mw_source_anritsu70GHz.py with class MicrowaveAnritsu70GHz was changed to file mw_source_anritsu_MG369x.py with class MicrowaveAnritsuMG369x to make it universal. Also hardware constraints are set per model.
+* **Config Change:** Hardware file for mw_source_anritsu70GHz.py with class MicrowaveAnritsu70GHz was changed to file mw_source_anritsu_MG369x.py with class MicrowaveAnritsuMG369x to make it universal. Also hardware constraints are set per model.
 * Lock-In functionality was added to the ODMR counter and implemented for the NI-Card. All other hardware and interfuse with ODMRCounterInterface were updated.
 * New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * New hardware file for AWG - Keysight M3202A 1GS/s 4-channel PXIe AWG

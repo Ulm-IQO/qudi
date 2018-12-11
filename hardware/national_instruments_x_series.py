@@ -33,11 +33,6 @@ from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
-# Define the python callback function
-def _DoneCallback_py(taskHandle, status, callbackData):
-    print("Status", status.value)
-    return 0  # The function should return an integer
-
 class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
     """ A National Instruments device that can count and control microvave generators.
 
@@ -1575,13 +1570,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             if self._lock_in_active:
                 ptask = daq.TaskHandle()
                 daq.DAQmxCreateTask('ODMRPulser', daq.byref(ptask))
-                daq.DAQmxCreateDOChan(ptask, self._pulse_out_channel, "ODMRPulserChannel", daq.DAQmx_Val_ChanForAllLines)
-
-                # Convert the python function to a C function callback
-                # The name is defined in DAQmxTypes
-                DoneCallback = daq.DAQmxDoneEventCallbackPtr(_DoneCallback_py)
-
-                daq.DAQmxRegisterDoneEvent(ptask, 0, DoneCallback, None)
+                daq.DAQmxCreateDOChan(ptask, self._pulse_out_channel+'/line0:1', "ODMRPulserChannel", daq.DAQmx_Val_ChanForAllLines)
 
                 self._odmr_pulser_daq_task = ptask
 
@@ -1729,7 +1718,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return True, np.array([-1.])
 
         try:
-            # start the scanner counting task that acquires counts synchroneously
+            # start the scanner counting task that acquires counts synchronously
             daq.DAQmxStartTask(self._scanner_counter_daq_tasks[0])
             if len(self._scanner_ai_channels) > 0:
                 daq.DAQmxStartTask(self._scanner_analog_daq_task)
@@ -1739,6 +1728,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         try:
             if self._odmr_pulser_daq_task:
+                # The pulse pattern is an alternating 0 and 1 on the switching channel (line0),
+                # while the first half of the whole microwave pulse is 1 and the other half is 0.
+                # This way the beginning of the microwave has a rising edge.
                 pulse_pattern = np.zeros(self._oversampling*2, dtype=np.uint32)
                 pulse_pattern[:self._oversampling:2] = 3
                 pulse_pattern[1:self._oversampling:2] = 1
