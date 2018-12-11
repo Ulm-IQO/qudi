@@ -123,7 +123,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
-    _default_oversampling = ConfigOption('oversampling', 10)
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
@@ -140,7 +139,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         self._gated_counter_daq_task = None
         self._scanner_analog_daq_task = None
         self._odmr_pulser_daq_task = None
-        self._oversampling = self._default_oversampling
+        self._oversampling = 0
         self._lock_in_active = False
 
         # handle all the parameters given by the config
