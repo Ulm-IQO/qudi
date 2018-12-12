@@ -30,7 +30,7 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseBlockElement
 from logic.pulsed.pulse_objects import PulseObjectGenerator
 from logic.pulsed.sampling_functions import SamplingFunctions
 
@@ -1395,6 +1395,32 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # get important parameters from the ensemble
         ensemble_info = self.analyze_block_ensemble(ensemble)
+
+        # Make sure the length of the channel is a multiple of the step size.
+        # This is done by appending an idle block
+        self.log.debug('length: {0}, mod {1}'.format(ensemble_info['number_of_samples'], ensemble_info['number_of_samples'] % self.pulse_generator_constraints.waveform_length.step))
+        if ensemble_info['number_of_samples'] % self.pulse_generator_constraints.waveform_length.step != 0:
+            self.log.warn('Length {0} does not fulfil step constraint {1}.'.format(
+                ensemble_info['number_of_samples'],
+                self.pulse_generator_constraints.waveform_length.step)
+            )
+            extension = self.pulse_generator_constraints.waveform_length.step \
+                        - ensemble_info['number_of_samples'] % self.pulse_generator_constraints.waveform_length.step
+            pb_element = self._pog._get_idle_element(length=extension/self.__sample_rate, increment=0)
+            idle_extension = PulseBlock('idle_extension', element_list=[pb_element])
+            ensemble.append((idle_extension.name, 0))
+
+            self.save_block(idle_extension)
+            ensemble.sampling_information = dict()
+            self.save_ensemble(ensemble)
+
+            # get important parameters from the ensemble
+            ensemble_info = self.analyze_block_ensemble(ensemble)
+            self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(ensemble.name,
+                                                                                       ensemble_info[
+                                                                                           'number_of_samples'],
+                                                                                       extension)
+                          )
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
