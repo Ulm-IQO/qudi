@@ -651,11 +651,11 @@ class ConfocalLogic(GenericLogic):
         @return int: error code (0:OK, -1:error)
         """
         # Changes the respective value
-        if x is not None:
+        if x is not None and self.x_range[0] <= x <= self.x_range[1]:
             self._current_x = x
-        if y is not None:
+        if y is not None and self.y_range[0] <= y <= self.y_range[1]:
             self._current_y = y
-        if z is not None:
+        if z is not None and self.z_range[0] <= z <= self.z_range[1]:
             self._current_z = z
         if a is not None:
             self._current_a = a

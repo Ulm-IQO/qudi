@@ -39,6 +39,7 @@ class JoystickLogic(GenericLogic):
     _hardware = None
 
     _max_fps = ConfigOption('max_fps', 100)
+    _axis_threshold = ConfigOption('axis_threshold', 0.05)  # a smaller axis position will not trigger an event
     _fps = _max_fps
 
     # signals - this can not be created in a loop because Qt wants them declared like this
@@ -62,6 +63,21 @@ class JoystickLogic(GenericLogic):
 
     signal_middle_left_pushed = QtCore.Signal()
     signal_middle_right_pushed = QtCore.Signal()
+
+    signal_left_vertical = QtCore.Signal()
+    signal_left_horizontal = QtCore.Signal()
+    signal_right_vertical = QtCore.Signal()
+    signal_right_horizontal = QtCore.Signal()
+    signal_left_trigger = QtCore.Signal()
+    signal_right_trigger = QtCore.Signal()
+
+    # Action may be applied only if the axis is at a maximum
+    signal_left_vertical_max = QtCore.Signal()
+    signal_left_horizontal_max = QtCore.Signal()
+    signal_right_vertical_max = QtCore.Signal()
+    signal_right_horizontal_max = QtCore.Signal()
+    signal_left_trigger_max = QtCore.Signal()
+    signal_right_trigger_max = QtCore.Signal()
 
     timer = None
     enabled = False
@@ -139,7 +155,10 @@ class JoystickLogic(GenericLogic):
         for axis in self._axis_list:
             if state['axis'][axis] != old_state['axis'][axis]:
                 changed = True
-                pass
+            if abs(state['axis'][axis]) > self._axis_threshold:
+                getattr(self, 'signal_{}'.format(axis)).emit()
+            if abs(state['axis'][axis]) >= 1:
+                getattr(self, 'signal_{}_max'.format(axis)).emit()
 
         if changed:
             self.sig_controller_changed.emit()
