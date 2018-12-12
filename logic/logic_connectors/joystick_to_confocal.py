@@ -30,6 +30,8 @@ class JoystickToConfocal(GenericLogic):
     """ This logic module get events from joystick logic and interact with confocal logic based on theses events
 
     This module needs joystick_logic to function
+
+    To prevent accidentally changing things, is module only act if 'button_interlock' is pushed.
     """
     _modclass = 'joysticklogicconfocal'
     _modtype = 'logic'
