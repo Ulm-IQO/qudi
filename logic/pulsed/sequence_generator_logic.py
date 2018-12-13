@@ -1410,7 +1410,8 @@ class SequenceGeneratorLogic(GenericLogic):
             # TODO: take care of rounding errors!
             extension_samples = granularity - ensemble_info['number_of_samples'] % granularity
             target_total_samples = ensemble_info['number_of_samples'] + extension_samples
-            extension_seconds = (target_total_samples / self.__sample_rate) - ensemble_info['ideal_length']
+            extension_seconds = (target_total_samples / self.__sample_rate) - ensemble_info[
+                'ideal_length']
 
             pb_element = PulseBlockElement(
                 init_length_s=extension_seconds,
@@ -1423,13 +1424,19 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.measurement_information = temp_measurement_info
 
             self.save_block(idle_extension)
-            # ensemble.sampling_information = dict()
             self.save_ensemble(ensemble)
 
             # get important parameters from the ensemble
             ensemble_info = self.analyze_block_ensemble(ensemble)
-            self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
-                ensemble.name, ensemble_info['number_of_samples'], extension_samples))
+            if ensemble_info['number_of_samples'] != target_total_samples:
+                self.log.error('Expanding the PulseBlockEnsemble to match the waveform granularity '
+                               'has failed.\nTarget number of samples was {0:d}.\nfinal number of '
+                               'samples is {1:d}.\nThis is probably due to a rounding error in '
+                               'SequenceGeneratorLogic.sample_pulse_block_ensemble.'
+                               ''.format(target_total_samples, ensemble_info['number_of_samples']))
+            else:
+                self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
+                    ensemble.name, ensemble_info['number_of_samples'], extension_samples))
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
