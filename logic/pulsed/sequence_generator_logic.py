@@ -1211,6 +1211,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['digital_channels'] = digital_channels
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
+        return_dict['ideal_length'] = current_end_time
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1400,23 +1401,22 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Make sure the length of the channel is a multiple of the step size.
         # This is done by appending an idle block
-        self.log.debug('length: {0}, mod {1}'.format(ensemble_info['number_of_samples'], ensemble_info[
-            'number_of_samples'] % self.pulse_generator_constraints.waveform_length.step))
-        if ensemble_info['number_of_samples'] % self.pulse_generator_constraints.waveform_length.step != 0:
+        granularity = self.pulse_generator_constraints.waveform_length.step
+        self.log.debug('length: {0}, mod {1}'.format(
+            ensemble_info['number_of_samples'], ensemble_info['number_of_samples'] % granularity))
+        if ensemble_info['number_of_samples'] % granularity != 0:
             self.log.warn('Length {0} does not fulfil step constraint {1}.'.format(
-                ensemble_info['number_of_samples'],
-                self.pulse_generator_constraints.waveform_length.step)
-            )
+                ensemble_info['number_of_samples'], granularity))
             # TODO: take care of rounding errors!
-            extension = self.pulse_generator_constraints.waveform_length.step \
-                        - ensemble_info['number_of_samples'] % self.pulse_generator_constraints.waveform_length.step
+            extension_samples = granularity - ensemble_info['number_of_samples'] % granularity
+            target_total_samples = ensemble_info['number_of_samples'] + extension_samples
+            extension_seconds = (target_total_samples / self.__sample_rate) - ensemble_info['ideal_length']
 
             pb_element = PulseBlockElement(
-                init_length_s=extension / self.__sample_rate,
+                init_length_s=extension_seconds,
                 increment_s=0,
                 pulse_function={chnl: SamplingFunctions.Idle() for chnl in self.analog_channels},
-                digital_high={chnl: False for chnl in self.digital_channels}
-            )
+                digital_high={chnl: False for chnl in self.digital_channels})
             idle_extension = PulseBlock('idle_extension', element_list=[pb_element])
             temp_measurement_info = copy.deepcopy(ensemble.measurement_information)
             ensemble.append((idle_extension.name, 0))
@@ -1428,11 +1428,8 @@ class SequenceGeneratorLogic(GenericLogic):
 
             # get important parameters from the ensemble
             ensemble_info = self.analyze_block_ensemble(ensemble)
-            self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(ensemble.name,
-                                                                                       ensemble_info[
-                                                                                           'number_of_samples'],
-                                                                                       extension)
-                          )
+            self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
+                ensemble.name, ensemble_info['number_of_samples'], extension_samples))
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
