@@ -339,7 +339,7 @@ class SaveLogic(GenericLogic):
                 except:
                     self.log.error('Casting data array of type "{0}" into numpy.ndarray failed. '
                                    'Could not save data.'.format(type(data[keyname])))
-                    return -1
+                    return ''
 
             # determine dimensions
             if data[keyname].ndim < 3:
@@ -357,7 +357,7 @@ class SaveLogic(GenericLogic):
                     max_row_num += 1
             else:
                 self.log.error('Found data array with dimension >2. Unable to save data.')
-                return -1
+                return ''
 
             # determine array data types
             if len(arr_dtype) > 0:
@@ -370,7 +370,7 @@ class SaveLogic(GenericLogic):
             self.log.error('Passed data dictionary contains 1D AND 2D arrays. This is not allowed. '
                            'Either fit all data arrays into a single 2D array or pass multiple 1D '
                            'arrays only. Saving data failed!')
-            return -1
+            return ''
 
         # try to trace back the functioncall to the class which was calling it.
         try:
@@ -407,7 +407,7 @@ class SaveLogic(GenericLogic):
             self.log.error('Length of list of format specifiers and number of data items differs. '
                            'Saving not possible. Please pass exactly as many format specifiers as '
                            'data arrays.')
-            return -1
+            return ''
 
         # Create header string for the file
         header = 'Saved Data from the class {0} on {1}.\n' \
@@ -549,6 +549,7 @@ class SaveLogic(GenericLogic):
             plt.close(plotfig)
             self.log.debug('Time needed to save data: {0:.2f}s'.format(time.time()-start_time))
             #----------------------------------------------------------------------------------
+        return os.path.join(filepath, filename)
 
     def save_array_as_text(self, data, filename, filepath='', fmt='%.15e', header='',
                            delimiter='\t', comments='#', append=False):

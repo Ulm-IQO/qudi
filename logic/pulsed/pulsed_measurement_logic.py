@@ -23,9 +23,10 @@ from qtpy import QtCore
 from collections import OrderedDict
 import numpy as np
 import copy
+import os
 import time
 import datetime
-import matplotlib.pyplot as plt
+import tools.pygnuplot.pygnuplot as plt
 
 from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
@@ -1281,225 +1282,249 @@ class PulsedMeasurementLogic(GenericLogic):
         parameters['extraction parameters'] = self.extraction_settings
         parameters['fast counter settings'] = self.fast_counter_settings
 
+        # Save data file
+        data_file = self.savelogic().save_data(data, timestamp=timestamp, parameters=parameters,
+                                               fmt='%.15e', filepath=filepath, filelabel=filelabel,
+                                               filetype='text', delimiter='\t')
+
         # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(self.savelogic().mpl_qd_style)
-
-        # extract the possible colors from the colorscheme:
-        prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
-        colors = {}
-        for i, color_setting in enumerate(prop_cycle):
-            colors[i] = color_setting['color']
-
+        data_file = str(data_file).replace('\\', '/')
+        fig = plt.Figure(datafile=data_file, use_default_style=False, timeout=30)
         # scale the x_axis for plotting
         max_val = np.max(self.signal_data[0])
         scaled_float = units.ScaledFloat(max_val)
         counts_prefix = scaled_float.scale
         x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
 
-        # Create the figure object
-        if self._alternative_data_type and self._alternative_data_type != 'None':
-            fig, (ax1, ax2) = plt.subplots(2, 1)
-        else:
-            fig, ax1 = plt.subplots()
-
-        if with_error:
-            ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
-                         yerr=self.measurement_error[1], fmt='-o',
-                         linestyle=':', linewidth=0.5, color=colors[0],
-                         ecolor=colors[1], capsize=3, capthick=0.9,
-                         elinewidth=1.2, label='data trace 1')
-
-            if self._alternating:
-                ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
-                             yerr=self.measurement_error[2], fmt='-D',
-                             linestyle=':', linewidth=0.5, color=colors[3],
-                             ecolor=colors[4],  capsize=3, capthick=0.7,
-                             elinewidth=1.2, label='data trace 2')
-        else:
-            ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
-                     linestyle=':', linewidth=0.5, label='data trace 1')
-
-            if self._alternating:
-                ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
-                         color=colors[3], linestyle=':', linewidth=0.5,
-                         label='data trace 2')
-
-        # Do not include fit curve if there is no fit calculated.
-        if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
-            x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
-            ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
-                     color=colors[2], marker='None', linewidth=1.5,
-                     label='fit')
-
-            # add then the fit result to the plot:
-
-            # Parameters for the text plot:
-            # The position of the text annotation is controlled with the
-            # relative offset in x direction and the relative length factor
-            # rel_len_fac of the longest entry in one column
-            rel_offset = 0.02
-            rel_len_fac = 0.011
-            entries_per_col = 24
-
-            # create the formatted fit text:
-            if hasattr(self.fit_result, 'result_str_dict'):
-                result_str = units.create_formatted_output(self.fit_result.result_str_dict)
-            else:
-                result_str = ''
-            # do reverse processing to get each entry in a list
-            entry_list = result_str.split('\n')
-            # slice the entry_list in entries_per_col
-            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-            is_first_column = True  # first entry should contain header or \n
-
-            for column in chunks:
-
-                max_length = max(column, key=len)   # get the longest entry
-                column_text = ''
-
-                for entry in column:
-                    column_text += entry + '\n'
-
-                column_text = column_text[:-1]  # remove the last new line
-
-                heading = ''
-                if is_first_column:
-                    heading = 'Fit results:'
-
-                column_text = heading + '\n' + column_text
-
-                ax1.text(1.00 + rel_offset, 0.99, column_text,
-                         verticalalignment='top',
-                         horizontalalignment='left',
-                         transform=ax1.transAxes,
-                         fontsize=12)
-
-                # the rel_offset in position of the text is a linear function
-                # which depends on the longest entry in the column
-                rel_offset += rel_len_fac * len(max_length)
-
-                is_first_column = False
-
-        # handle the save of the alternative data plot
-        if self._alternative_data_type and self._alternative_data_type != 'None':
-
-            # scale the x_axis for plotting
-            max_val = np.max(self.signal_alt_data[0])
-            scaled_float = units.ScaledFloat(max_val)
-            x_axis_prefix = scaled_float.scale
-            x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
-
-            # since no ft units are provided, make a small work around:
-            if self._alternative_data_type == 'FFT':
-                if self._data_units[0] == 's':
-                    inverse_cont_var = 'Hz'
-                elif self._data_units[0] == 'Hz':
-                    inverse_cont_var = 's'
-                else:
-                    inverse_cont_var = '(1/{0})'.format(self._data_units[0])
-                x_axis_ft_label = 'FT {0} ({1}{2})'.format(
-                    self._data_labels[0], x_axis_prefix, inverse_cont_var)
-                y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
-                ft_label = 'FT of data trace 1'
-            else:
-                if self._data_units[0]:
-                    x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
-                                                            self._data_units[0])
-                else:
-                    x_axis_ft_label = '{0}'.format(self._data_labels[0])
-                if self._data_units[1]:
-                    y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
-                else:
-                    y_axis_ft_label = '{0}'.format(self._data_labels[1])
-
-                ft_label = '{0} of data traces'.format(self._alternative_data_type)
-
-            ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0],
-                     label=ft_label)
-            if self._alternating and len(self.signal_alt_data) > 2:
-                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
-                         linestyle=':', linewidth=0.5, color=colors[3],
-                         label=ft_label.replace('1', '2'))
-
-            ax2.set_xlabel(x_axis_ft_label)
-            ax2.set_ylabel(y_axis_ft_label)
-            ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
-                       mode="expand", borderaxespad=0.)
-
-            if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
-                x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
-                ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
-                         color=colors[2], marker='None', linewidth=1.5,
-                         label='secondary fit')
-
-                # add then the fit result to the plot:
-
-                # Parameters for the text plot:
-                # The position of the text annotation is controlled with the
-                # relative offset in x direction and the relative length factor
-                # rel_len_fac of the longest entry in one column
-                rel_offset = 0.02
-                rel_len_fac = 0.011
-                entries_per_col = 24
-
-                # create the formatted fit text:
-                if hasattr(self.alt_fit_result, 'result_str_dict'):
-                    result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
-                else:
-                    result_str = ''
-                # do reverse processing to get each entry in a list
-                entry_list = result_str.split('\n')
-                # slice the entry_list in entries_per_col
-                chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-                is_first_column = True  # first entry should contain header or \n
-
-                for column in chunks:
-                    max_length = max(column, key=len)   # get the longest entry
-                    column_text = ''
-
-                    for entry in column:
-                        column_text += entry + '\n'
-
-                    column_text = column_text[:-1]  # remove the last new line
-
-                    heading = ''
-                    if is_first_column:
-                        heading = 'Fit results:'
-
-                    column_text = heading + '\n' + column_text
-
-                    ax2.text(1.00 + rel_offset, 0.99, column_text,
-                             verticalalignment='top',
-                             horizontalalignment='left',
-                             transform=ax2.transAxes,
-                             fontsize=12)
-
-                    # the rel_offset in position of the text is a linear function
-                    # which depends on the longest entry in the column
-                    rel_offset += rel_len_fac * len(max_length)
-
-                    is_first_column = False
-
-        ax1.set_xlabel(
-            '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        # Set axis labels
+        fig.xlabel = '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0])
         if self._data_units[1]:
-            ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+            fig.ylabel = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
         else:
-            ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+            fig.ylabel = '{0}'.format(self._data_labels[1])
 
-        fig.tight_layout()
-        ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
-                   mode="expand", borderaxespad=0.)
-        # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        # Set axis ranges
+        add_x_tail = np.abs(self.signal_data[0].max() - self.signal_data[0].min()) * 0.05
+        if add_x_tail == 0:
+            add_x_tail = 1
+        add_y_tail = np.abs(self.signal_data[1].max() - self.signal_data[1].min()) * 0.05
+        if add_y_tail == 0:
+            add_y_tail = 1
+        # fig.xrange = (self.signal_data[0].min() - add_x_tail, self.signal_data[0].max() + add_x_tail)
+        # fig.yrange = (self.signal_data[1].min() - add_y_tail,
+        #               self.signal_data[1].max() + add_y_tail)
+
+        # Plot image
+        if with_error:
+            fig.plot_xy(xdata_ind=0, ydata_ind=1, yerror_ind=len(self.signal_data))
+        else:
+            fig.plot_xy(xdata_ind=0, ydata_ind=1)
+        fig.save_figure(filename='test', filetype='png')
+
+        # # Create the figure object
+        # if self._alternative_data_type and self._alternative_data_type != 'None':
+        #     fig, (ax1, ax2) = plt.subplots(2, 1)
+        # else:
+        #     fig, ax1 = plt.subplots()
+        #
+        # if with_error:
+        #     ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
+        #                  yerr=self.measurement_error[1], fmt='-o',
+        #                  linestyle=':', linewidth=0.5, color=colors[0],
+        #                  ecolor=colors[1], capsize=3, capthick=0.9,
+        #                  elinewidth=1.2, label='data trace 1')
+        #
+        #     if self._alternating:
+        #         ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
+        #                      yerr=self.measurement_error[2], fmt='-D',
+        #                      linestyle=':', linewidth=0.5, color=colors[3],
+        #                      ecolor=colors[4],  capsize=3, capthick=0.7,
+        #                      elinewidth=1.2, label='data trace 2')
+        # else:
+        #     ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
+        #              linestyle=':', linewidth=0.5, label='data trace 1')
+        #
+        #     if self._alternating:
+        #         ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
+        #                  color=colors[3], linestyle=':', linewidth=0.5,
+        #                  label='data trace 2')
+        #
+        # # Do not include fit curve if there is no fit calculated.
+        # if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
+        #     x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
+        #     ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
+        #              color=colors[2], marker='None', linewidth=1.5,
+        #              label='fit')
+        #
+        #     # add then the fit result to the plot:
+        #
+        #     # Parameters for the text plot:
+        #     # The position of the text annotation is controlled with the
+        #     # relative offset in x direction and the relative length factor
+        #     # rel_len_fac of the longest entry in one column
+        #     rel_offset = 0.02
+        #     rel_len_fac = 0.011
+        #     entries_per_col = 24
+        #
+        #     # create the formatted fit text:
+        #     if hasattr(self.fit_result, 'result_str_dict'):
+        #         result_str = units.create_formatted_output(self.fit_result.result_str_dict)
+        #     else:
+        #         result_str = ''
+        #     # do reverse processing to get each entry in a list
+        #     entry_list = result_str.split('\n')
+        #     # slice the entry_list in entries_per_col
+        #     chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+        #
+        #     is_first_column = True  # first entry should contain header or \n
+        #
+        #     for column in chunks:
+        #
+        #         max_length = max(column, key=len)   # get the longest entry
+        #         column_text = ''
+        #
+        #         for entry in column:
+        #             column_text += entry + '\n'
+        #
+        #         column_text = column_text[:-1]  # remove the last new line
+        #
+        #         heading = ''
+        #         if is_first_column:
+        #             heading = 'Fit results:'
+        #
+        #         column_text = heading + '\n' + column_text
+        #
+        #         ax1.text(1.00 + rel_offset, 0.99, column_text,
+        #                  verticalalignment='top',
+        #                  horizontalalignment='left',
+        #                  transform=ax1.transAxes,
+        #                  fontsize=12)
+        #
+        #         # the rel_offset in position of the text is a linear function
+        #         # which depends on the longest entry in the column
+        #         rel_offset += rel_len_fac * len(max_length)
+        #
+        #         is_first_column = False
+        #
+        # # handle the save of the alternative data plot
+        # if self._alternative_data_type and self._alternative_data_type != 'None':
+        #
+        #     # scale the x_axis for plotting
+        #     max_val = np.max(self.signal_alt_data[0])
+        #     scaled_float = units.ScaledFloat(max_val)
+        #     x_axis_prefix = scaled_float.scale
+        #     x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
+        #
+        #     # since no ft units are provided, make a small work around:
+        #     if self._alternative_data_type == 'FFT':
+        #         if self._data_units[0] == 's':
+        #             inverse_cont_var = 'Hz'
+        #         elif self._data_units[0] == 'Hz':
+        #             inverse_cont_var = 's'
+        #         else:
+        #             inverse_cont_var = '(1/{0})'.format(self._data_units[0])
+        #         x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+        #             self._data_labels[0], x_axis_prefix, inverse_cont_var)
+        #         y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
+        #         ft_label = 'FT of data trace 1'
+        #     else:
+        #         if self._data_units[0]:
+        #             x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+        #                                                     self._data_units[0])
+        #         else:
+        #             x_axis_ft_label = '{0}'.format(self._data_labels[0])
+        #         if self._data_units[1]:
+        #             y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+        #         else:
+        #             y_axis_ft_label = '{0}'.format(self._data_labels[1])
+        #
+        #         ft_label = '{0} of data traces'.format(self._alternative_data_type)
+        #
+        #     ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
+        #              linestyle=':', linewidth=0.5, color=colors[0],
+        #              label=ft_label)
+        #     if self._alternating and len(self.signal_alt_data) > 2:
+        #         ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+        #                  linestyle=':', linewidth=0.5, color=colors[3],
+        #                  label=ft_label.replace('1', '2'))
+        #
+        #     ax2.set_xlabel(x_axis_ft_label)
+        #     ax2.set_ylabel(y_axis_ft_label)
+        #     ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        #                mode="expand", borderaxespad=0.)
+        #
+        #     if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+        #         x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+        #         ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+        #                  color=colors[2], marker='None', linewidth=1.5,
+        #                  label='secondary fit')
+        #
+        #         # add then the fit result to the plot:
+        #
+        #         # Parameters for the text plot:
+        #         # The position of the text annotation is controlled with the
+        #         # relative offset in x direction and the relative length factor
+        #         # rel_len_fac of the longest entry in one column
+        #         rel_offset = 0.02
+        #         rel_len_fac = 0.011
+        #         entries_per_col = 24
+        #
+        #         # create the formatted fit text:
+        #         if hasattr(self.alt_fit_result, 'result_str_dict'):
+        #             result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+        #         else:
+        #             result_str = ''
+        #         # do reverse processing to get each entry in a list
+        #         entry_list = result_str.split('\n')
+        #         # slice the entry_list in entries_per_col
+        #         chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+        #
+        #         is_first_column = True  # first entry should contain header or \n
+        #
+        #         for column in chunks:
+        #             max_length = max(column, key=len)   # get the longest entry
+        #             column_text = ''
+        #
+        #             for entry in column:
+        #                 column_text += entry + '\n'
+        #
+        #             column_text = column_text[:-1]  # remove the last new line
+        #
+        #             heading = ''
+        #             if is_first_column:
+        #                 heading = 'Fit results:'
+        #
+        #             column_text = heading + '\n' + column_text
+        #
+        #             ax2.text(1.00 + rel_offset, 0.99, column_text,
+        #                      verticalalignment='top',
+        #                      horizontalalignment='left',
+        #                      transform=ax2.transAxes,
+        #                      fontsize=12)
+        #
+        #             # the rel_offset in position of the text is a linear function
+        #             # which depends on the longest entry in the column
+        #             rel_offset += rel_len_fac * len(max_length)
+        #
+        #             is_first_column = False
+        #
+        # ax1.set_xlabel(
+        #     '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+        # if self._data_units[1]:
+        #     ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+        # else:
+        #     ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+        #
+        # fig.tight_layout()
+        # ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
         #            mode="expand", borderaxespad=0.)
-
-        self.savelogic().save_data(data, timestamp=timestamp,
-                                   parameters=parameters, fmt='%.15e',
-                                   filepath=filepath, filelabel=filelabel, filetype='text',
-                                   delimiter='\t', plotfig=fig)
+        # # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+        # #            mode="expand", borderaxespad=0.)
+        #
+        # self.savelogic().save_data(data, timestamp=timestamp,
+        #                            parameters=parameters, fmt='%.15e',
+        #                            filepath=filepath, filelabel=filelabel, filetype='text',
+        #                            delimiter='\t', plotfig=fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####
