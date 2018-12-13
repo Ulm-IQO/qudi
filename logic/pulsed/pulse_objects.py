@@ -983,8 +983,28 @@ class PredefinedGeneratorBase:
         return self.__sequencegeneratorlogic.log
 
     @property
+    def analyze_block_ensemble(self):
+        return self.__sequencegeneratorlogic.analyze_block_ensemble
+
+    @property
+    def analyze_sequence(self):
+        return self.__sequencegeneratorlogic.analyze_sequence
+
+    @property
     def pulse_generator_settings(self):
         return self.__sequencegeneratorlogic.pulse_generator_settings
+
+    @property
+    def save_block(self):
+        return self.__sequencegeneratorlogic.save_block
+
+    @property
+    def save_ensemble(self):
+        return self.__sequencegeneratorlogic.save_ensemble
+
+    @property
+    def save_sequence(self):
+        return self.__sequencegeneratorlogic.save_sequence
 
     @property
     def generation_parameters(self):

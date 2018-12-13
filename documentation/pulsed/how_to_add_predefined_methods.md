@@ -35,8 +35,31 @@ laser_channel etc.)
 * `rabi_period` (the rabi period of the spin to manipulate in seconds)
 * `sample_rate` (the sampling rate of the hardware device)
 
+There are also properties providing easy access to helpful `SequenceGeneratorLogic` methods.
+For more advanced generation methods you may need preliminary information about the 
+waveform/sequence that will be produced from the generate method with the current settings. 
+Therefore you can use `analyze_block_ensemble` and `analyze_sequence`. Both return a large 
+dictionary containing a variety of information about the to-be-sampled waveform/sequence. 
+Refer to the documentation in `SequenceGeneratorLogic` to learn more about this dictionary.
+If you want to analyze the currently created `PulseBlockEnsemble`/`PulseSequence` within the 
+generate method, you need to explicitly save the corresponding `PulseBlocks` 
+(and `PulseBlockEnsembles`) beforehand by calling `save_block` and `save_ensemble`.
+So getting sampling information about the soon-to-be waveform in a generate method could look like:
+```
+# Save blocks needed for the PulseBlockEnsemble
+for block in created_blocks:
+    self.save_block(block)
+    
+# Get the waveform information corresponding to the PulseBlockEnsemble
+information_dict = self.analyze_block_ensemble(ensemble=created_ensembles[0])
+
+# Get e.g. the number of samples
+print(information_dict['number_of_samples'])
+```
+
 If you need access to another attribute of the logic module simply add it as property to 
-`PredefinedGeneratorBase` but make sure to protect it properly against changes to the logic module.
+`PredefinedGeneratorBase` or your derived class but make sure to protect it properly against 
+changes to the logic module.
 
 The base class also provides commonly used helper methods to reduce code duplication in the actual 
 generate methods. If you think a helper method of general interest is missing feel free to add it to
