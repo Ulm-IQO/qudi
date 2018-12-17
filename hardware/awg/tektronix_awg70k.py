@@ -173,12 +173,12 @@ class AWG70K(Base, PulserInterface):
         constraints.a_ch_amplitude.max = 0.5
         constraints.a_ch_amplitude.step = 0.0001
         constraints.a_ch_amplitude.default = 0.5
-        # FIXME: Enter the proper digital channel low constraints:
+
         constraints.d_ch_low.min = -1.4
         constraints.d_ch_low.max = 0.9
         constraints.d_ch_low.step = 0.1e-3
         constraints.d_ch_low.default = 0.0
-        # FIXME: Enter the proper digital channel high constraints:
+
         constraints.d_ch_high.min = -0.9
         constraints.d_ch_high.max = 1.4
         constraints.d_ch_high.step = 0.1e-3
@@ -188,8 +188,12 @@ class AWG70K(Base, PulserInterface):
 
         constraints.waveform_length.min = self.__min_waveform_length
         constraints.waveform_length.max = self.__max_waveform_length
-        constraints.waveform_length.step = 1
-        constraints.waveform_length.default = 1
+        if self.awg_model == 'AWG70002A':
+            constraints.waveform_length.step = 1
+            constraints.waveform_length.default = 1
+        elif self.awg_model == 'AWG70001A':
+            constraints.waveform_length.step = 2
+            constraints.waveform_length.default = 2
 
         # FIXME: Check the proper number for your device
         constraints.waveform_num.min = 1
