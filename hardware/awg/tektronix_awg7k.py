@@ -224,12 +224,12 @@ class AWG7k(Base, PulserInterface):
         constraints.d_ch_high.default = 1.4
 
         constraints.waveform_length.min = 1
-        constraints.waveform_length.step = 1
+        constraints.waveform_length.step = 4
         constraints.waveform_length.default = 80
         if '01' in self.installed_options:
             constraints.waveform_length.max = 64800000
         else:
-            constraints.waveform_length.max = 32000000
+            constraints.waveform_length.max = 32400000
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
