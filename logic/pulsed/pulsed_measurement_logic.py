@@ -1267,6 +1267,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 header_str += '\tError2'
                 if self._data_units[1]:
                     header_str += '({0})'.format(self._data_units[1])
+
         data = OrderedDict()
         if with_error:
             data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
@@ -1290,7 +1291,6 @@ class PulsedMeasurementLogic(GenericLogic):
                                                filetype='text', delimiter='\t')
 
         # Prepare the figure to save as a "data thumbnail"
-        data_file = str(data_file).replace('\\', '/')
         fig = plt.Figure(datafile=data_file, use_default_style=False, timeout=30)
         # scale the x_axis for plotting
         max_val = np.max(self.signal_data[0])
@@ -1306,22 +1306,30 @@ class PulsedMeasurementLogic(GenericLogic):
             fig.ylabel = '{0}'.format(self._data_labels[1])
 
         # Set axis ranges
-        add_x_tail = np.abs(self.signal_data[0].max() - self.signal_data[0].min()) * 0.05
+        add_x_tail = np.abs(x_axis_scaled.max() - x_axis_scaled.min()) * 0.05
         if add_x_tail == 0:
             add_x_tail = 1
         add_y_tail = np.abs(self.signal_data[1].max() - self.signal_data[1].min()) * 0.05
         if add_y_tail == 0:
             add_y_tail = 1
-        # fig.xrange = (self.signal_data[0].min() - add_x_tail, self.signal_data[0].max() + add_x_tail)
-        # fig.yrange = (self.signal_data[1].min() - add_y_tail,
-        #               self.signal_data[1].max() + add_y_tail)
+        fig.xrange = (x_axis_scaled.min() - add_x_tail, x_axis_scaled.max() + add_x_tail)
+        fig.yrange = (self.signal_data[1].min() - add_y_tail,
+                      self.signal_data[1].max() + add_y_tail)
 
         # Plot image
         if with_error:
-            fig.plot_xy(xdata_ind=0, ydata_ind=1, yerror_ind=len(self.signal_data))
+            fig.plot_xy(xdata_ind=0, ydata_ind=1, yerror_ind=len(self.signal_data),
+                        xscale=1 / scaled_float.scale_val, label='Data trace 1')
+            if len(self.signal_data) > 2:
+                fig.plot_xy(xdata_ind=0, ydata_ind=2, yerror_ind=len(self.signal_data)+1,
+                            xscale=1 / scaled_float.scale_val, label='Data trace 2')
         else:
-            fig.plot_xy(xdata_ind=0, ydata_ind=1)
-        fig.save_figure(filename='test', filetype='png')
+            fig.plot_xy(xdata_ind=0, ydata_ind=1, xscale=1 / scaled_float.scale_val,
+                        label='Data trace 1')
+            if len(self.signal_data) > 2:
+                fig.plot_xy(xdata_ind=0, ydata_ind=2, xscale=1 / scaled_float.scale_val,
+                            label='Data trace 2')
+        fig.save_figure(filename=os.path.split(data_file)[1].rsplit('.')[0], filetype='png')
 
         # # Create the figure object
         # if self._alternative_data_type and self._alternative_data_type != 'None':
