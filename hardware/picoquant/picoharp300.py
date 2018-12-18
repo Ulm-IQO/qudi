@@ -87,15 +87,23 @@ correspond to standard C/C++ data types as follows:
 
 
 class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
-    """Hardware class to control the Picoharp 300 from PicoQuant.
+    """ Hardware class to control the Picoharp 300 from PicoQuant.
 
     This class is written according to the Programming Library Version 3.0
-    STABLE AND TESTED VERSION: Alex S.
+    Tested Version: Alex S.
+
+    Example config for copy-paste:
+
+    fastcounter_picoharp300:
+        module.Class: 'picoquant.picoharp300.PicoHarp300'
+        deviceID: 0 # a device index from 0 to 7.
+        mode: 0 # 0: histogram mode, 2: T2 mode, 3: T3 mode
+        
     """
     _modclass = 'PicoHarp300'
     _modtype = 'hardware'
 
-    _deviceID = ConfigOption('deviceID', 0, missing='warn')
+    _deviceID = ConfigOption('deviceID', 0, missing='warn') # a device index from 0 to 7.
     _mode = ConfigOption('mode', 0, missing='warn')
 
     sigReadoutPicoharp = QtCore.Signal()
@@ -186,8 +194,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         return errorcode
 
     def _set_constants(self):
-        """Set the constants (max and min values) for the Picoharp300 device.
-        These setting are taken from phdefin.h"""
+        """ Set the constants (max and min values) for the Picoharp300 device.
+        These setting are taken from phdefin.h """
 
         self.MODE_HIST = 0
         self.MODE_T2 = 2
@@ -225,7 +233,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     def check(self, func_val):
         """ Check routine for the received error codes.
 
-        @param func_val int: return error code of the called function.
+        @param int func_val: return error code of the called function.
 
         @return int: pass the error code further so that other functions have
                      the possibility to use it.
@@ -312,7 +320,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
     def close_connection(self):
         """Close the connection to the device.
 
-        @param int deviceID: a divice index from 0 to 7.
+        @param int deviceID: a device index from 0 to 7.
         """
         self.connected_to_device = False
         self.check(self._dll.PH_CloseDevice(self._deviceID))

@@ -985,8 +985,8 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         # Remove ensembles from list that are not there anymore
         rows_to_remove = list()
-        for row, (ensemble_name, params) in enumerate(self._pulse_sequence):
-            if ensemble_name not in ensembles:
+        for row, seq_step in enumerate(self._pulse_sequence):
+            if seq_step.ensemble not in ensembles:
                 rows_to_remove.append(row)
         for row in reversed(rows_to_remove):
             self.removeRows(row, 1)
@@ -1024,21 +1024,21 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             return None
 
         if role == self.repetitionsRole:
-            return self._pulse_sequence[index.row()][1].get('repetitions')
+            return self._pulse_sequence[index.row()].repetitions
         elif role == self.ensembleNameRole:
-            return self._pulse_sequence[index.row()][0]
+            return self._pulse_sequence[index.row()].ensemble
         elif role == self.goToRole:
-            return self._pulse_sequence[index.row()][1].get('go_to')
+            return self._pulse_sequence[index.row()].go_to
         elif role == self.eventJumpToRole:
-            return self._pulse_sequence[index.row()][1].get('event_jump_to')
+            return self._pulse_sequence[index.row()].event_jump_to
         elif role == self.eventTriggerRole:
-            return self._pulse_sequence[index.row()][1].get('event_trigger')
+            return self._pulse_sequence[index.row()].event_trigger
         elif role == self.waitForRole:
-            return self._pulse_sequence[index.row()][1].get('wait_for')
+            return self._pulse_sequence[index.row()].wait_for
         elif role == self.flagTriggerRole:
-            return self._pulse_sequence[index.row()][1].get('flag_trigger')
+            return self._pulse_sequence[index.row()].flag_trigger
         elif role == self.flagHighRole:
-            return self._pulse_sequence[index.row()][1].get('flag_high')
+            return self._pulse_sequence[index.row()].flag_high
         else:
             return None
 
@@ -1046,25 +1046,24 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         """
         """
         if role == self.ensembleNameRole and isinstance(data, str):
-            params = self._pulse_sequence[index.row()][1]
-            self._pulse_sequence[index.row()] = (data, params)
+            self._pulse_sequence[index.row()].ensemble = data
         elif role == self.repetitionsRole and isinstance(data, int):
-            self._pulse_sequence[index.row()][1]['repetitions'] = data
+            self._pulse_sequence[index.row()].repetitions = data
         elif role == self.goToRole and isinstance(data, int):
-            self._pulse_sequence[index.row()][1]['go_to'] = data
+            self._pulse_sequence[index.row()].go_to = data
         elif role == self.eventJumpToRole and isinstance(data, int):
-            self._pulse_sequence[index.row()][1]['event_jump_to'] = data
+            self._pulse_sequence[index.row()].event_jump_to = data
         elif role == self.eventTriggerRole and isinstance(data, str):
-            self._pulse_sequence[index.row()][1]['event_trigger'] = data
+            self._pulse_sequence[index.row()].event_trigger = data
         elif role == self.waitForRole and isinstance(data, str):
-            self._pulse_sequence[index.row()][1]['wait_for'] = data
+            self._pulse_sequence[index.row()].wait_for = data
         elif role == self.flagTriggerRole and isinstance(data, str):
-            self._pulse_sequence[index.row()][1]['flag_trigger'] = data
+            self._pulse_sequence[index.row()].flag_trigger = data
         elif role == self.flagHighRole and isinstance(data, str):
-            self._pulse_sequence[index.row()][1]['flag_high'] = data
+            self._pulse_sequence[index.row()].flag_high = data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
-            self._pulse_sequence = copy.deepcopy(data)
-            self._pulse_sequence.name = 'EDITOR CONTAINER'
+            self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
+            self._pulse_sequence.extend(data.ensemble_list)
         return
 
     def headerData(self, section, orientation, role):
@@ -1164,13 +1163,16 @@ class SequenceEditor(QtWidgets.QTableView):
                                                               self.model().ensembleNameRole,
                                                               QtCore.QSize(100, 50)))
         # Set item delegate (SpinBoxes) for repetition column
-        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 1, 'min': -1},
+        self.setItemDelegateForColumn(1, SpinBoxItemDelegate(self, {'init_val': 1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().repetitionsRole))
         # Set item delegate (SpinBoxes) for go_to column
-        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+        self.setItemDelegateForColumn(2, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().goToRole))
         # Set item delegate (SpinBoxes) for event_jump_to column
-        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1},
+        self.setItemDelegateForColumn(3, SpinBoxItemDelegate(self, {'init_val': -1, 'min': -1,
+                                                                    'max': 2 ** 31 - 1},
                                                              self.model().eventJumpToRole))
         # Set item delegate (ComboBox) for event_trigger column
         self.setItemDelegateForColumn(4, ComboBoxItemDelegate(self, ['OFF'],
@@ -1318,9 +1320,7 @@ class SequenceEditor(QtWidgets.QTableView):
         @return: object, an instance of PulseSequence
         """
         data_container = self.model().data(QtCore.QModelIndex(), self.model().sequenceRole)
-        sequence_copy = copy.deepcopy(data_container)
-        sequence_copy.name = ''
-        sequence_copy.refresh_parameters()
+        sequence_copy = PulseSequence('', ensemble_list=data_container.ensemble_list)
         return sequence_copy
 
     def load_sequence(self, pulse_sequence):

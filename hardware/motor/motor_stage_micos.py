@@ -29,8 +29,61 @@ from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
 class MotorStageMicos(Base, MotorInterface):
-    """unstable: Jochen Scheuer.
-    Hardware class to define the controls for the Micos stage of PI.
+    """ Hardware class to define the controls for the Micos stage of PI.
+
+    unstable: Jochen Scheuer.
+
+    Example config for copy-paste:
+
+    motorstage_micos:
+        module.Class: 'motor.motor_stage_micos.MotorStageMicos'
+        com_port_xy: 'COM4'
+        baud_rate_xy: 57600
+        timeout_xy: 1000
+        term_char_xy: '\n'
+        com_port_zphi: 'COM2'
+        baud_rate_zphi: 57600
+        timeout_zphi: 1000
+        term_char_zphi: '\n'
+
+        first_axis_label: 'x'
+        second_axis_label: 'y'
+        third_axis_label: 'z'
+        fourth_axis_label: 'phi'
+        first_axis_ID: '0'
+        second_axis_ID: '1'
+        third_axis_ID: '0'
+        fourth_axis_ID: '1'
+
+        first_min: -0.1 # in m
+        first_max: 0.1 # in m
+        second_min: -0.1 # in m
+        second_max: 0.1 # in m
+        third_min: -0.1 # in m
+        third_max: 0.1 # in m
+        fourth_min: -0.1 # in m
+        fourth_max: 0.1 # in m
+
+        first_axis_step: 1e-7 # in m
+        second_axis_step: 1e-7 # in m
+        third_axis_step: 1e-7 # in m
+        fourth_axis_step: 1e-7 # in m
+
+        vel_first_min: 1e-5 # in m/s
+        vel_first_max: 5e-2 # in m/s
+        vel_second_min: 1e-5 # in m/s
+        vel_second_max: 5e-2 # in m/s
+        vel_third_min: 1e-5 # in m/s
+        vel_third_max: 5e-2 # in m/s
+        vel_fourth_min: 1e-5 # in m/s
+        vel_fourth_max: 5e-2 # in m/s
+
+        vel_first_axis_step: 1e-5 # in m/s
+        vel_second_axis_step: 1e-5 # in m/s
+        vel_third_axis_step: 1e-5 # in m/s
+        vel_fourth_axis_step: 1e-5 # in m/s
+
+
     """
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'

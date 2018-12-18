@@ -90,6 +90,14 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                         for old boards it might be even 7. This corresponds to
                         a minimal instruction length of
                             (1/clock_frequency)*min_instr_len
+        channel_delays: Specify the delay of some channels to correct it automatically
+                         by this module. For example :
+                          channel_delays:
+                                '0': 200-9
+                                '2': 500-9
+                         tell the card the line 0 and 2 have a delay of 200 ns and 500 ns respectively
+                         so that the pulse are emitted sooner relatively to other channels.
+                         The first line is 0 and the last is 20.
     """
 
     _modclass = 'PulseBlasterESRPRO'
@@ -105,6 +113,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
     _debug_mode = ConfigOption('debug_mode', default=False)
 
     _use_smart_pulse_creation = ConfigOption('use_smart_pulse_creation', default=False)
+
+    _channel_delays = ConfigOption('channel_delays', default=[])
 
     # the library pointer is saved here
     _lib = None
@@ -216,7 +226,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         # For pulser interface:
         self._current_pb_waveform_name = ''
-        self._current_pb_waveform = {'active_channels': [], 'length': self.LEN_MIN}
+        self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
+        self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
 
 
         # check at first the config option, whether a correct library was found
@@ -918,6 +929,119 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             div -= 1
         return 1, number
 
+    def _correct_sequence_for_delays(self, sequence):
+        """ Take a sequence and modify it to take into account delays
+
+        For example the sequence
+        [{'active_channels': [0], 'length': 50e-09},
+        {'active_channels': [], 'length': 1500e-09},
+        {'active_channels': [2], 'length': 500-09},
+        {'active_channels': [], 'length': 1500e-09}]
+
+        will be converted, for a delay of 200 ns on channel 0 and 500 ns on channel 2, to :
+        [{'active_channels': [], 'length': 1050e-09},
+        {'active_channels': [2], 'length': 500-09},
+        {'active_channels': [], 'length': 1800e-09}
+        {'active_channels': [0], 'length': 50e-09},
+        {'active_channels': [], 'length': 150e-09}]
+
+        In this example, the pulse on channel 2 is sent sooner and the pulse on channel 0
+        is sent at the end to affect the system at t=0
+
+        @param sequence : the theoretical sequence to correct
+
+        @return corrected_sequence : the sequence taking the delays into account
+        """
+        # If no delay is specified, skip the whole process
+        if len(self._channel_delays) == 0:
+            return sequence
+
+        # construct a table with delay of each channel
+        delays = np.zeros(21)
+        for entry in self._channel_delays:
+            delays[int(entry)] = self._channel_delays[entry]
+
+        # First let's construct the array that encode the pulses as :
+        # {'channel': single channel, 'direction': toggle direction, 'time': time of event}
+        # the event based approach misses the always on channels
+        last_state = set(sequence[-1]['active_channels'])
+        always_on = set(sequence[-1]['active_channels'])
+        time = 0
+        events = []
+        for pulse in sequence[:]:
+            new_state = set(pulse['active_channels'])
+            always_on &= new_state
+            toggle_on = new_state - last_state
+            toggle_off = last_state - new_state
+            for channel in toggle_on:
+                events.append({'channel': channel, 'direction': True, 'time': time})
+            for channel in toggle_off:
+                events.append({'channel': channel, 'direction': False, 'time': time})
+            time += pulse['length']
+            last_state = new_state
+        total_time = time
+
+        # Let's move the events around the cycle
+        for event in events:
+            event['time'] -= delays[event['channel']]
+            event['time'] %= total_time
+
+        # Sort the array by event time
+        events = sorted(events, key=lambda x: x['time'])
+
+        # iterate over every change to find the state at the end, to have it at the beginning
+        last_state = set()
+        for event in events:
+            if event['direction']:
+                last_state |= set([event['channel']])
+            else:
+                last_state -= set([event['channel']])
+
+        # Let's construct back the sequence
+        corrected_sequence = []
+        time = 0
+        state = last_state
+        for event in events:
+            duration = event['time'] - time
+            # add the pulse between last event an this event (so use the last state)
+            corrected_sequence.append({'active_channels': list(state | always_on), 'length': duration})
+            if event['direction']:
+                state |= set([event['channel']])
+            else:
+                state -= set([event['channel']])
+            time += duration
+
+        # We need to add the last pulse manually
+        corrected_sequence.append({'active_channels': list(state | always_on), 'length': total_time-time})
+
+        # Let's treat the short pulses we created
+        delta_time = 0
+        for pulse in corrected_sequence:
+            if pulse['length'] == 0 or pulse['length'] < self.GRAN_MIN/1e3:  # is zero with rounding error
+                corrected_sequence.remove(pulse)
+            elif pulse['length'] < self.GRAN_MIN/2:
+                corrected_sequence.remove(pulse)
+                self.log.info("Delay correction of the pulse blaster has created a pulse too short."
+                              "The pulse is {0} ns with a minimum of {1} ns in th state {2}."
+                               "Pulses shorter than half the minimum are dropped.".format(
+                    pulse['length']*1e9, self.GRAN_MIN*1e9, pulse['active_channels']
+                ))
+                delta_time -= pulse['length']
+            elif self.GRAN_MIN/2 <= pulse['length'] < self.GRAN_MIN:
+                self.log.info("Delay correction of the pulse blaster has created a pulse too short."
+                          "The pulse is {0} ns with a minimum of {1} ns in th state {2}."
+                          "This pulse has been rounded to {1} ns.".format(
+                    pulse['length'] * 1e9, self.GRAN_MIN * 1e9, pulse['active_channels']
+                ))
+                delta_time += self.GRAN_MIN - pulse['length']
+                pulse['length'] = self.GRAN_MIN
+        if delta_time > 0:
+            self.log.warning("Delay correction has induced an overtime of {0} ns. The total length is now"
+                                " {1} s. This may need to be accounted in the acquisition.".format(
+                delta_time*1e9, total_time+delta_time))
+
+        return corrected_sequence
+
     # =========================================================================
     # A bit higher methods for using the card as switch
     # =========================================================================
@@ -1340,8 +1464,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         self._currently_loaded_waveform = ''
         self._current_pb_waveform_name = ''
-        self._current_pb_waveform = {'active_channels': [],
-                                     'length': self.LEN_MIN}
+        self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
+        self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
         return 0
 
     def get_status(self):
@@ -1654,8 +1778,8 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                 return -1, list()
 
             else:
-                self._current_pb_waveform ={'active_channels': [],
-                                            'length': self.LEN_MIN}
+                self._current_pb_waveform_theoretical = [{'active_channels': [], 'length': self.LEN_MIN}]
+                self._current_pb_waveform = [{'active_channels': [], 'length': self.LEN_MIN}]
                 self._current_pb_waveform_name = ''
                 return 0, list()
 
@@ -1670,7 +1794,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         self._current_activation_config = chan
 
         if is_first_chunk:
-            self._current_pb_waveform = self._convert_sample_to_pb_sequence(digital_samples)
+            self._current_pb_waveform_theoretical = self._convert_sample_to_pb_sequence(digital_samples)
 
             self._current_pb_waveform_name = name
 
@@ -1680,15 +1804,16 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
             # check if last of existing waveform is the same as the first one of
             # the coming one, then combine them,
-            if self._current_pb_waveform[-1]['active_channels'] == pb_waveform_temp[0]['active_channels']:
-                self._current_pb_waveform[-1]['length'] += pb_waveform_temp[0]['length']
+            if self._current_pb_waveform_theoretical[-1]['active_channels'] == pb_waveform_temp[0]['active_channels']:
+                self._current_pb_waveform_theoretical[-1]['length'] += pb_waveform_temp[0]['length']
                 pb_waveform_temp.pop(0)
 
-            self._current_pb_waveform.extend(pb_waveform_temp)
+            self._current_pb_waveform_theoretical.extend(pb_waveform_temp)
 
         # convert at first the separate waveforms for each channel to a matrix
 
         if is_last_chunk:
+            self._current_pb_waveform = self._correct_sequence_for_delays(self._current_pb_waveform_theoretical)
             self.write_pulse_form(self._current_pb_waveform)
             self.log.debug('Waveform written in PulseBlaster with name "{0}" '
                            'and a total length of {1} sequence '

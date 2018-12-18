@@ -29,8 +29,13 @@ from interface.switch_interface import SwitchInterface
 
 
 class OkFpgaTtlSwitch(Base, SwitchInterface):
+    """ Methods to control TTL switch running on OK FPGA.
 
-    """Methods to control TTL switch running on OK FPGA.
+    Example config for copy-paste:
+
+    fpga_ok_switch:
+        module.Class: 'switches.ok_fpga.ok_fpga_switch.OkFpgaTtlSwitch'
+
     """
     _modclass = 'switchinterface'
     _modtype = 'hardware'

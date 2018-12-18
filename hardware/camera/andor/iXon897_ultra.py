@@ -98,21 +98,32 @@ ERROR_DICT = {
 }
 
 class IxonUltra(Base, CameraInterface):
-    """
-    Hardware class for Andors Ixon Ultra 897
+    """ Hardware class for Andors Ixon Ultra 897
+
+    Example config for copy-paste:
+
+    andor_ultra_camera:
+        module.Class: 'camera.andor.iXon897_ultra.IxonUltra'
+        dll_location: 'C:\\camera\\andor.dll' # path to library file
+        default_exposure: 1.0
+        default_read_mode: 'IMAGE'
+        default_temperature: -70
+        default_cooler_on: True
+        default_acquisition_mode: 'SINGLE_SCAN'
+        default_trigger_mode: 'INTERNAL'
+
     """
 
     _modtype = 'camera'
     _modclass = 'hardware'
 
+    _dll_location = ConfigOption('dll_location', missing='error')
     _default_exposure = ConfigOption('default_exposure', 1.0)
     _default_read_mode = ConfigOption('default_read_mode', 'IMAGE')
     _default_temperature = ConfigOption('default_temperature', -70)
     _default_cooler_on = ConfigOption('default_cooler_on', True)
     _default_acquisition_mode = ConfigOption('default_acquisition_mode', 'SINGLE_SCAN')
     _default_trigger_mode = ConfigOption('default_trigger_mode', 'INTERNAL')
-    _dll_location = ConfigOption('dll_location', missing='error')
-
 
     _exposure = _default_exposure
     _temperature = _default_temperature

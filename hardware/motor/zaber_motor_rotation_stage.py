@@ -31,6 +31,28 @@ class MotorRotationZaber(Base, MotorInterface):
     """unstable: Christoph Müller, Simon Schmitt
     This is the Interface class to define the controls for the simple
     microwave hardware.
+
+    Example config for copy-paste:
+
+    motorstage_zaber:
+        module.Class: 'motor.zaber_motor_rotation_stage.MotorRotationZaber'
+        com_port_zaber: 'ASRL1::INSTR'
+        zaber_baud_rate: 9600
+        zaber_timeout: 1000
+        zaber_term_char: '\n'
+
+        zaber_axis_label: 'phi'
+        zaber_angle_min: -1e5 # in degrees
+        zaber_angle_max: 1e5 # in degrees
+        zaber_angle_step: 1e-5 # in degrees
+
+        zaber_velocity_min: 1e-3 # in degrees/s
+        zaber_velocity_max: 10 # in degrees/s
+        zaber_velocity_step: -1e-3 # in degrees/s
+
+        zaber_micro_step_size: 234.375e-6
+        zaber_speed_conversion: 9.375
+
     """
     _modclass = 'MotorRotation'
     _modtype = 'hardware'

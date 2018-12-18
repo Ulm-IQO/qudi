@@ -32,8 +32,14 @@ from core.module import Base, ConfigOption
 
 
 class DTG5334(Base, PulserInterface):
-    """
-        Tektronix DTG 5334
+    """ Tektronix DTG 5334
+
+    Example config for copy-paste:
+
+    pulser_dtg:
+        module.Class: 'dtg.dtg5334.DTG5334'
+        visa_address: 'GPIB0::12::INSTR'
+
     """
     _modclass = 'dtg5334'
     _modtype = 'hardware'

@@ -34,14 +34,59 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
 class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInterface, ODMRCounterInterface):
-    """ stable: Kay Jahnke, Alexander Stark
-
-    A National Instruments device that can count and control microvave generators.
+    """ A National Instruments device that can count and control microvave generators.
 
     !!!!!! NI USB 63XX, NI PCIe 63XX and NI PXIe 63XX DEVICES ONLY !!!!!!
 
     See [National Instruments X Series Documentation](@ref nidaq-x-series) for details.
-  """
+
+    stable: Kay Jahnke, Alexander Stark
+
+    Example config for copy-paste:
+
+    nicard_6343:
+        module.Class: 'national_instruments_x_series.NationalInstrumentsXSeries'
+        photon_sources:
+            - '/Dev1/PFI8'
+        #    - '/Dev1/PFI9'
+        clock_channel: '/Dev1/Ctr0'
+        default_clock_frequency: 100 # optional, in Hz
+        counter_channels:
+            - '/Dev1/Ctr1'
+        counter_ai_channels:
+            - '/Dev1/AI0'
+        default_scanner_clock_frequency: 100 # optional, in Hz
+        scanner_clock_channel: '/Dev1/Ctr2'
+        pixel_clock_channel: '/Dev1/PFI6'
+        scanner_ao_channels:
+            - '/Dev1/AO0'
+            - '/Dev1/AO1'
+            - '/Dev1/AO2'
+            - '/Dev1/AO3'
+        scanner_ai_channels:
+            - '/Dev1/AI1'
+        scanner_counter_channels:
+            - '/Dev1/Ctr3'
+        scanner_voltage_ranges:
+            - [-10, 10]
+            - [-10, 10]
+            - [-10, 10]
+            - [-10, 10]
+        scanner_position_ranges:
+            - [0e-6, 200e-6]
+            - [0e-6, 200e-6]
+            - [-100e-6, 100e-6]
+            - [-10, 10]
+
+        odmr_trigger_channel: '/Dev1/PFI7'
+
+        gate_in_channel: '/Dev1/PFI9'
+        default_samples_number: 50
+        max_counts: 3e7
+        read_write_timeout: 10
+        counting_edge_rising: True
+
+    """
 
     _modtype = 'NICard'
     _modclass = 'hardware'
@@ -73,10 +118,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     # number of readout samples, mainly used for gated counter
     _default_samples_number = ConfigOption('default_samples_number', 50, missing='info')
     # used as a default for expected maximum counts
-    _max_counts = ConfigOption('max_counts', 3e7)
+    _max_counts = ConfigOption('max_counts', default=3e7)
     # timeout for the Read or/and write process in s
-    _RWTimeout = ConfigOption('read_write_timeout', 10)
-    _counting_edge_rising = ConfigOption('counting_edge_rising', True)
+    _RWTimeout = ConfigOption('read_write_timeout', default=10)
+    _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
 
     def on_activate(self):
         """ Starts up the NI Card at activation.

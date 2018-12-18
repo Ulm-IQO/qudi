@@ -54,7 +54,7 @@ class PulsedMasterLogic(GenericLogic):
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     # PulsedMeasurementLogic control signals
-    sigDoFit = QtCore.Signal(str)
+    sigDoFit = QtCore.Signal(str, bool)
     sigToggleMeasurement = QtCore.Signal(bool, str)
     sigToggleMeasurementPause = QtCore.Signal(bool)
     sigTogglePulser = QtCore.Signal(bool)
@@ -71,7 +71,7 @@ class PulsedMasterLogic(GenericLogic):
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -550,24 +550,26 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    def do_fit(self, fit_function):
+    @QtCore.Slot(str, bool)
+    def do_fit(self, fit_function, use_alternative_data=False):
         """
 
-        @param fit_function:
+        @param str fit_function:
+        @param bool use_alternative_data:
         """
-        if isinstance(fit_function, str):
+        if isinstance(fit_function, str) and isinstance(use_alternative_data, bool):
             self.status_dict['fitting_busy'] = True
-            self.sigDoFit.emit(fit_function)
+            self.sigDoFit.emit(fit_function, use_alternative_data)
         return
 
-    @QtCore.Slot(str, np.ndarray, object)
-    def fit_updated(self, fit_name, fit_data, fit_result):
+    @QtCore.Slot(str, np.ndarray, object, bool)
+    def fit_updated(self, fit_name, fit_data, fit_result, use_alternative_data):
         """
 
         @return:
         """
         self.status_dict['fitting_busy'] = False
-        self.sigFitUpdated.emit(fit_name, fit_data, fit_result)
+        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
         return
 
     def save_measurement_data(self, tag, with_error):
@@ -646,7 +648,13 @@ class PulsedMasterLogic(GenericLogic):
                                    'sampload_busy']
         if still_busy:
             self.log.error('Can not clear pulse generator. Sampling/Loading still in progress.')
+        elif self.status_dict['measurement_running']:
+            self.log.error('Can not clear pulse generator. Measurement is still running.')
         else:
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not clear pulse generator while it is still running. '
+                                 'Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigClearPulseGenerator.emit()
         return
 
@@ -709,8 +717,17 @@ class PulsedMasterLogic(GenericLogic):
         if self.status_dict['loading_busy']:
             self.log.error('Loading of a different asset already in progress.\n'
                            'PulseBlockEnsemble "{0}" not loaded!'.format(ensemble_name))
+            self.loaded_asset_updated(*self.loaded_asset)
+        elif self.status_dict['measurement_running']:
+            self.log.error('Loading of ensemble not possible while measurement is running.\n'
+                           'PulseBlockEnsemble "{0}" not loaded!'.format(ensemble_name))
+            self.loaded_asset_updated(*self.loaded_asset)
         else:
             self.status_dict['loading_busy'] = True
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not load new asset into pulse generator while it is still '
+                                 'running. Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigLoadBlockEnsemble.emit(ensemble_name)
         return
 
@@ -719,8 +736,17 @@ class PulsedMasterLogic(GenericLogic):
         if self.status_dict['loading_busy']:
             self.log.error('Loading of a different asset already in progress.\n'
                            'PulseSequence "{0}" not loaded!'.format(sequence_name))
+            self.loaded_asset_updated(*self.loaded_asset)
+        elif self.status_dict['measurement_running']:
+            self.log.error('Loading of sequence not possible while measurement is running.\n'
+                           'PulseSequence "{0}" not loaded!'.format(sequence_name))
+            self.loaded_asset_updated(*self.loaded_asset)
         else:
             self.status_dict['loading_busy'] = True
+            if self.status_dict['pulser_running']:
+                self.log.warning('Can not load new asset into pulse generator while it is still '
+                                 'running. Turned off.')
+                self.pulsedmeasurementlogic().pulse_generator_off()
             self.sigLoadSequence.emit(sequence_name)
         return
 
@@ -797,6 +823,16 @@ class PulsedMasterLogic(GenericLogic):
         self.sigDeletePulseBlock.emit(block_name)
         return
 
+    @QtCore.Slot()
+    def delete_all_pulse_blocks(self):
+        """
+        Helper method to delete all pulse blocks at once.
+        """
+        to_delete = tuple(self.saved_pulse_blocks)
+        for block_name in to_delete:
+            self.sigDeletePulseBlock.emit(block_name)
+        return
+
     @QtCore.Slot(str)
     def delete_block_ensemble(self, ensemble_name):
         """
@@ -804,7 +840,26 @@ class PulsedMasterLogic(GenericLogic):
         @param ensemble_name:
         @return:
         """
-        self.sigDeleteBlockEnsemble.emit(ensemble_name)
+        if self.status_dict['pulser_running'] and self.loaded_asset[0] == ensemble_name and self.loaded_asset[1] == 'PulseBlockEnsemble':
+            self.log.error('Can not delete PulseBlockEnsemble "{0}" since the corresponding '
+                           'waveform(s) is(are) currently loaded and running.'
+                           ''.format(ensemble_name))
+        else:
+            self.sigDeleteBlockEnsemble.emit(ensemble_name)
+        return
+
+    @QtCore.Slot()
+    def delete_all_block_ensembles(self):
+        """
+        Helper method to delete all pulse block ensembles at once.
+        """
+        if self.status_dict['pulser_running'] or self.status_dict['measurement_running']:
+            self.log.error('Can not delete all PulseBlockEnsembles. Pulse generator is currently '
+                           'running or measurement is in progress.')
+        else:
+            to_delete = tuple(self.saved_pulse_block_ensembles)
+            for ensemble_name in to_delete:
+                self.sigDeleteBlockEnsemble.emit(ensemble_name)
         return
 
     @QtCore.Slot(str)
@@ -814,7 +869,25 @@ class PulsedMasterLogic(GenericLogic):
         @param sequence_name:
         @return:
         """
-        self.sigDeleteSequence.emit(sequence_name)
+        if self.status_dict['pulser_running'] and self.loaded_asset[0] == sequence_name and self.loaded_asset[1] == 'PulseSequence':
+            self.log.error('Can not delete PulseSequence "{0}" since the corresponding sequence is '
+                           'currently loaded and running.'.format(sequence_name))
+        else:
+            self.sigDeleteSequence.emit(sequence_name)
+        return
+
+    @QtCore.Slot()
+    def delete_all_pulse_sequences(self):
+        """
+        Helper method to delete all pulse sequences at once.
+        """
+        if self.status_dict['pulser_running'] or self.status_dict['measurement_running']:
+            self.log.error('Can not delete all PulseSequences. Pulse generator is currently '
+                           'running or measurement is in progress.')
+        else:
+            to_delete = tuple(self.saved_pulse_sequences)
+            for sequence_name in to_delete:
+                self.sigDeleteSequence.emit(sequence_name)
         return
 
     @QtCore.Slot(dict)

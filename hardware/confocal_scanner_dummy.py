@@ -27,10 +27,17 @@ from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
 class ConfocalScannerDummy(Base, ConfocalScannerInterface):
+    """ Dummy confocal scanner. Produces a picture with several gaussian spots.
 
-    """ Dummy confocal scanner.
-        Produces a picture with several gaussian spots.
+    Example config for copy-paste:
+
+    confocal_scanner_dummy:
+        module.Class: 'confocal_scanner_dummy.ConfocalScannerDummy'
+        clock_frequency: 100 # in Hz
+        fitlogic: 'fitlogic' # name of the fitlogic module, see default config
+
     """
+
     _modclass = 'ConfocalScannerDummy'
     _modtype = 'hardware'
 
