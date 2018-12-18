@@ -944,7 +944,7 @@ class AcLineTriggerExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for oscilloscopes supporting AC line triggering
     """
-    class trigger(metaclass=abc.ABCMeta):
+    class trigger:
         class ac_line(metaclass=abc.ABCMeta):
             @property
             @abc.abstractmethod

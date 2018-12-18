@@ -30,7 +30,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from interface import scope_ivi_interface
+from interface.ivi import scope_interface as scope_ivi_interface
 from ..python_ivi_base import PythonIviBase
 from .._ivi_core import Namespace
 
