@@ -41,8 +41,6 @@ class Scope(SomeBaseClass):
             self.root.send_command('channel{0}:offset {1}'.format(self.index, value))
 """
 
-import interface.scope_ivi_interface as scope_interface
-
 
 class Namespace:
     def __init__(self, cls):
@@ -117,13 +115,13 @@ class Namespace:
 
 
 
-class Test:
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._channel_count = 3
-
-    @Namespace.repeat('_channel_count')
-    class channels:
-        @property
-        def test(self):
-            return 100
+# class Test:
+#     def __init__(self, **kwargs):
+#         super().__init__(**kwargs)
+#         self._channel_count = 3
+#
+#     @Namespace.repeat('_channel_count')
+#     class channels:
+#         @property
+#         def test(self):
+#             return 100
