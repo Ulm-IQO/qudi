@@ -55,8 +55,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
         """
         self.driver.close()
 
-    @Namespace
-    class utility(QObject, metaclass=QtInterfaceMetaclass):
+    class utility(QObject, InherentCapabilitiesInterface.utility, metaclass=QtInterfaceMetaclass):
         def error_query(self):
             """
             Queries the instrument and returns instrument specific error information.
@@ -122,7 +121,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             return self.root.driver.utility.self_test()
 
-    class driver_operation(QObject, metaclass=QtInterfaceMetaclass):
+    class driver_operation(QObject, InherentCapabilitiesInterface.driver_operation, metaclass=QtInterfaceMetaclass):
         query_instrument_status_changed = Signal(bool)
         range_check_changed = Signal(bool)
         simulate_changed = Signal(bool)
@@ -275,7 +274,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             self.root.driver.driver_operation.simulate = value
             self.simulate_changed.emit(value)
 
-    class identity(QObject, metaclass=QtInterfaceMetaclass):
+    class identity(QObject, InherentCapabilitiesInterface.identity, metaclass=QtInterfaceMetaclass):
         @property
         def group_capabilities(self):
             """
@@ -284,7 +283,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             Returns a list that identifies the class capability groups that the IVI specific driver implements. The
             items in the list are capability group names that the IVI class specifications define.
             """
-            return self.root.driver.identity.group_capability
+            return self.root.driver.identity.group_capabilities.split(',')
 
         @property
         def specification_major_version(self):
@@ -481,7 +480,6 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
     def _channel_count(self):
         return self.driver.channel_count
 
-    @Namespace.repeat('_channel_count')
     class channels(QObject,
                    scope_ivi_interface.ScopeIviInterface.channels,
                    metaclass=QtInterfaceMetaclass):
@@ -724,8 +722,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
                 any(any(math.isnan(b) for b in a) for a in waveform)
                 """
                 return self.root.driver.channels[self.parent_namespace.index].measurement.read_waveform()
-    
-    @Namespace
+
     class measurement(QObject,
                       scope_ivi_interface.ScopeIviInterface.measurement,
                       metaclass=QtInterfaceMetaclass):
@@ -787,7 +784,6 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             return self.root.driver.measurement.initiate()
 
-    @Namespace
     class trigger(QObject,
                   scope_ivi_interface.ScopeIviInterface.trigger,
                   metaclass=QtInterfaceMetaclass):
@@ -1830,7 +1826,7 @@ class MinMaxWaveformExtension(scope_ivi_interface.MinMaxWaveformExtensionInterfa
                     self.parent_namespace.index].measurement.read_waveform_min_max()
 
 
-class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
+class PythonIviScope(PythonIviBase, _Scope):
     """
     Module for accessing oscilloscopes via PythonIVI library.
 
@@ -1879,6 +1875,18 @@ class PythonIviScope(PythonIviBase, scope_ivi_interface.ScopeIviInterface):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # dynamic class generator
+        class IviUtility(_Scope.utility):
+            pass
+        self.utility = Namespace(IviUtility)
+
+        class IviDriverOperation(_Scope.driver_operation):
+            pass
+        self.driver_operation = Namespace(IviDriverOperation)
+
+        class IviIdentity(_Scope.identity):
+            pass
+        self.identity = Namespace(IviIdentity)
+
         class IviAcquisitionMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.Interpolation in driver_capabilities:
