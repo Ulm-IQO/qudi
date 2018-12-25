@@ -55,6 +55,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
         """
         self.driver.close()
 
+    @Namespace
     class utility(QObject, InherentCapabilitiesInterface.utility, metaclass=QtInterfaceMetaclass):
         def error_query(self):
             """
@@ -121,6 +122,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             return self.root.driver.utility.self_test()
 
+    @Namespace
     class driver_operation(QObject, InherentCapabilitiesInterface.driver_operation, metaclass=QtInterfaceMetaclass):
         query_instrument_status_changed = Signal(bool)
         range_check_changed = Signal(bool)
@@ -274,6 +276,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             self.root.driver.driver_operation.simulate = value
             self.simulate_changed.emit(value)
 
+    @Namespace
     class identity(QObject, InherentCapabilitiesInterface.identity, metaclass=QtInterfaceMetaclass):
         @property
         def group_capabilities(self):
@@ -1875,18 +1878,6 @@ class PythonIviScope(PythonIviBase, _Scope):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # dynamic class generator
-        class IviUtility(_Scope.utility):
-            pass
-        self.utility = Namespace(IviUtility)
-
-        class IviDriverOperation(_Scope.driver_operation):
-            pass
-        self.driver_operation = Namespace(IviDriverOperation)
-
-        class IviIdentity(_Scope.identity):
-            pass
-        self.identity = Namespace(IviIdentity)
-
         class IviAcquisitionMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.scope.Interpolation in driver_capabilities:

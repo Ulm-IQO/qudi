@@ -61,6 +61,7 @@ class _FGen(fgen_ivi_interface.FGenIviInterface):
         """
         self.driver.close()
 
+    @Namespace
     class utility(QObject, InherentCapabilitiesInterface.utility, metaclass=QtInterfaceMetaclass):
         def error_query(self):
             """
@@ -127,6 +128,7 @@ class _FGen(fgen_ivi_interface.FGenIviInterface):
             """
             return self.root.driver.utility.self_test()
 
+    @Namespace
     class driver_operation(QObject, InherentCapabilitiesInterface.driver_operation, metaclass=QtInterfaceMetaclass):
         query_instrument_status_changed = Signal(bool)
         range_check_changed = Signal(bool)
@@ -280,6 +282,7 @@ class _FGen(fgen_ivi_interface.FGenIviInterface):
             self.root.driver.driver_operation.simulate = value
             self.simulate_changed.emit(value)
 
+    @Namespace
     class identity(QObject, InherentCapabilitiesInterface.identity, metaclass=QtInterfaceMetaclass):
         @property
         def group_capabilities(self):
@@ -2533,18 +2536,6 @@ class PythonIviFGen(PythonIviBase, _FGen):
         driver_capabilities = inspect.getmro(type(self.driver))
 
         # dynamic class generator
-        class IviUtility(_FGen.utility):
-            pass
-        self.utility = Namespace(IviUtility)
-
-        class IviDriverOperation(_FGen.driver_operation):
-            pass
-        self.driver_operation = Namespace(IviDriverOperation)
-
-        class IviIdentity(_FGen.identity):
-            pass
-        self.identity = Namespace(IviIdentity)
-
         class IviOutputArbitraryWaveformMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
                 if ivi.fgen.ArbChannelWfm in driver_capabilities:
