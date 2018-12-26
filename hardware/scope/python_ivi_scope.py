@@ -488,7 +488,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
                    metaclass=QtInterfaceMetaclass):
         enabled_changed = Signal(bool)
         input_impedance_changed = Signal(int)
-        input_frequency_max_changed = Signal(float)
+        input_frequency_maximum_changed = Signal(float)
         probe_attenuation_changed = Signal(float)
         coupling_changed = Signal(str)
         offset_changed = Signal(float)
@@ -537,7 +537,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             self.input_impedance_changed.emit(value)
 
         @property
-        def input_frequency_max(self):
+        def input_frequency_maximum(self):
             """
             Specifies the maximum frequency for the input signal you want the
             instrument to accommodate without attenuating it by more than 3dB. If the
@@ -548,10 +548,10 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             return self.root.driver.channels[self.index].input_frequency_max
 
-        @input_frequency_max.setter
-        def input_frequency_max(self, value):
+        @input_frequency_maximum.setter
+        def input_frequency_maximum(self, value):
             self.root.driver.channels[self.index].input_frequency_max = value
-            self.input_frequency_max_changed.emit(value)
+            self.input_frequency_maximum_changed.emit(value)
 
         @property
         def probe_attenuation(self):
