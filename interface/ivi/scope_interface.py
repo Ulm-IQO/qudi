@@ -21,6 +21,224 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import abc
 from core.util.interfaces import InterfaceMetaclass
+from enum import Enum
+
+
+# region Enums
+class AcquisitionType(Enum):
+    """
+    Specifies the acquisition type.
+    """
+    NORMAL = 0  # Configures the oscilloscope to acquire one sample for each point in the waveform record. The
+                # oscilloscope uses real-time or equivalent time sampling.
+    HIGH_RESOLUTION = 1  # Configures the oscilloscope to oversample the input signal. The oscilloscope calculates the
+                         # average value that corresponds to each position in the waveform record. The oscilloscope uses
+                         # only real-time sampling.
+    AVERAGE = 2  # Configures the oscilloscope to acquire multiple waveforms and calculate the average value for each
+                 # point in the waveform record. The end-user specifies the number of waveforms to acquire with the
+                 # Number of Averages attribute. The oscilloscope uses real-time or equivalent time sampling.
+    PEAK_DETECT = 3  # Sets the oscilloscope to the peak-detect acquisition mode. The oscilloscope oversamples the
+                     # input signal and keeps the minimum and maximum values that correspond to each position in the
+                     # waveform record. The oscilloscope uses only realtime sampling.
+    ENVELOPE = 4  # Sets the oscilloscope to the envelope acquisition mode. The oscilloscope acquires multiple waveforms
+                  # and keeps the minimum and maximum voltages it acquires for each point in the waveform record. The
+                  # end-user specifies the number of waveforms the oscilloscope acquires with the Number of Envelopes
+                  # attribute. The oscilloscope can use real-time or equivalent-time sampling.
+
+
+class VerticalCoupling(Enum):
+    """
+    Defines possible values for vertical coupling.
+    """
+    AC = 0   # AC coupling
+    DC = 1   # DC coupling
+    GND = 2  # GND coupling
+
+
+class TriggerCoupling(Enum):
+    """
+    Specifies possible values for trigger coupling.
+
+    Specifies whether a rising or a falling edge triggers the oscilloscope. This attribute affects instrument operation
+    only when the Trigger Type attribute is set to Edge Trigger.
+    """
+    AC = 0  # The oscilloscope AC couples the trigger signal.
+    DC = 1  # The oscilloscope DC couples the trigger signal.
+    HF_REJECT = 2  # The oscilloscope filters out the high frequencies from the trigger signal.
+    LF_REJECT = 3  # The oscilloscope filters out the low frequencies from the trigger signal.
+    NOISE_REJECT = 4  # The oscilloscope filters out the noise from the trigger signal.
+
+
+class TriggerSlope(Enum):
+    """
+    Specifies the trigger slope.
+    """
+    POSITIVE = 1  #  A positive (rising) edge passing through the trigger level triggers the oscilloscope.
+    NEGATIVE = 0  #  A negative (falling) edge passing through the trigger level triggers the oscilloscope.
+
+
+class TriggerType(Enum):
+    """
+    Specifies the event that triggers the oscilloscope.
+    """
+    EDGE = 0  # Configures the oscilloscope for edge triggering. An edge trigger occurs when the trigger signal
+              # specified with the Trigger Source attribute passes the voltage threshold specified with the
+              # Trigger Level attribute and has the slope specified with the Trigger Slope attribute.
+    WIDTH = 1  # Configures the oscilloscope for width triggering. Use the IviScopeWidthTrigger extension
+               # attributes and functions to configure the trigger.
+    RUNT = 2  # Configures the oscilloscope for runt triggering. Use the IviScopeRuntTrigger extension attributes and
+              # functions to configure the trigger
+    GLITCH = 3  # Configures the oscilloscope for glitch triggering. Use the IviScopeGlitchTrigger extension attributes
+                # and functions to configure the trigger.
+    TV = 4  # Configures the oscilloscope for triggering on TV signals. Use the IviScopeTVTrigger extension attributes
+            # and functions to configure the trigger.
+    IMMEDIATE = 5  # Configures the oscilloscope for immediate triggering. The oscilloscope does not wait for trigger
+                   # of any kind upon initialization.
+    ACLINE = 6  # Configures the oscilloscope for AC Line triggering. Use the IviScopeACLineTrigger extension
+                # attributes and functions to configure the trigger.
+
+
+class Interpolation(Enum):
+    """
+    Specifies the interpolation method
+
+    Interpolation method the oscilloscope uses when it cannot resolve a voltage for every point in the waveform record.
+    """
+    NONE = 0  # The oscilloscope does not interpolate points in the waveform. Instead, the driver sets every element
+              # in the waveform record for which the oscilloscope cannot receive a value to an IEEE-defined NaN
+              # (Not-a-Number) value. Use the Is Waveform Element Invalid function to determine if the waveform record
+              # element is invalid.
+    SINEXOVERX = 1  # The oscilloscope uses a sin(x)/x calculation to interpolate a value when it cannot resolve a
+                    # voltage in the waveform record.
+    LINEAR = 2  # The oscilloscope uses a linear approximation to interpolate a value when it cannot resolve a voltage
+                # in the waveform record.
+
+
+class TVTriggerEvent(Enum):
+    """
+    Specifies the event on which the oscilloscope using the TV trigger triggers.
+    """
+    FIELD1 = 0  # Sets the oscilloscope to trigger on field 1 of the video signal.
+    FIELD2 = 1  # Sets the oscilloscope to trigger on field 2 of the video signal.
+    ANYFIELD = 2  # Sets the oscilloscope to trigger on any field.
+    ANYLINE = 3  # Sets the oscilloscope to trigger on any line.
+    LINENUMBER = 4  # Sets the oscilloscope to trigger on a specific line number you specify with the TV Trigger
+                    # Line Number attribute.
+
+
+class TVTriggerPolarity(Enum):
+    """
+    Specifies the polarity of the TV signal.
+    """
+    POSITIVE = 0  # Configures the oscilloscope to trigger on a positive video sync pulse.
+    NEGATIVE = 1  # Configures the oscilloscope to trigger on a negative video sync pulse.
+
+
+class TVSignalFormat(Enum):
+    """
+    Specifies the format of TV signal on which the oscilloscope triggers.
+    """
+    NTSC = 0  # Configures the oscilloscope to trigger on the NTSC signal format.
+    PAL = 1  # Configures the oscilloscope to trigger on the PAL signal format.
+    SECAM = 2  # Configures the oscilloscope to trigger on the SECAM signal format.
+
+
+class Polarity(Enum):
+    """
+    Specifies the polarity of the signal that triggers the oscilloscope.
+    """
+    POSITIVE = 0
+    NEGATIVE = 1
+    EITHER = 2
+
+
+class GlitchCondition(Enum):
+    """
+    Specifies the glitch condition.
+    """
+    LESS_THAN = 0  # The oscilloscope triggers when the pulse width is less than the value you specify with the
+                   # Glitch Width attribute.
+    GREATER_THAN = 1  # The oscilloscope triggers when the pulse width is greater than the value you specify with the
+                      # Glitch Width attribute
+
+
+class WidthCondition(Enum):
+    """
+    Specifies whether a pulse that is within or outside the high and low thresholds triggers the oscilloscope.
+    """
+    WITHIN = 0  # Configures the oscilloscope to trigger on pulses that have a width that is less than the high
+                # threshold and greater than the low threshold. The end-user specifies the high and low thresholds with
+                # the Width High Threshold and Width Low Threshold attributes.
+    OUTSIDE = 1  # Configures the oscilloscope to trigger on pulses that have a width that is either greater than the
+                 # high threshold or less than a low threshold. The end-user specifies the high and low thresholds with
+                 # the Width High Threshold and Width Low Threshold attributes.
+
+
+class ACLineSlope(Enum):
+    """
+    Specifies the slope of the zero crossing upon which the scope triggers.
+    """
+    POSITIVE = 0  # Configures the oscilloscope to trigger on positive slope zero crossings of the network
+                  # supply voltage.
+    NEGATIVE = 1  # Configures the oscilloscope to trigger on negative slope zero crossings of the network
+                  # supply voltage.
+    EITHER = 2  # Configures the oscilloscope to trigger on either positive or negative slope zero crossings of the
+                # network supply voltage.
+
+
+class SampleMode(Enum):
+    """
+    Sample mode the oscilloscope.
+    """
+    REAL_TIME = 0  # Indicates that the oscilloscope is using real-time sampling.
+    EQUIVALENT_TIME = 1  # Indicates that the oscilloscope is using equivalent time sampling.
+
+
+class TriggerModifier(Enum):
+    """
+     The trigger modifier determines the oscilloscope's behavior in the absence of the configured trigger
+    """
+    NONE = 0  # The oscilloscope waits until the trigger the end-user specifies occurs.
+    AUTO = 1  # The oscilloscope automatically triggers if the configured trigger does not occur within the
+              # oscilloscope's timeout period.
+    AUTO_LEVEL = 2  # The oscilloscope adjusts the trigger level if the trigger the end-user specifies does not occur
+
+
+class MeasurementFunction(Enum):
+    """
+    MeasurementFunction parameter of WaveformMeasurementExtension
+    """
+    RISE_TIME = 0
+    FALL_TIME = 1
+    FREQUENCY = 2
+    PERIOD = 3
+    VOLTAGE_RMS = 4
+    VOLTAGE_PEAK_TO_PEAK = 5
+    VOLTAGE_MAX = 6
+    VOLTAGE_MIN = 7
+    VOLTAGE_HIGH = 8
+    VOLTAGE_LOW = 9
+    VOLTAGE_AVERAGE = 10
+    WIDTH_NEGATIVE = 11
+    WIDTH_POSITIVE = 12
+    DUTY_CYCLE_NEGATIVE = 13
+    DUTY_CYCLE_POSITIVE = 14
+    AMPLITUDE = 15
+    VOLTAGE_CYCLE_RMS = 16
+    VOLTAGE_CYCLE_AVERAGE = 17
+    OVERSHOOT = 18
+    PRESHOOT = 19
+
+
+class AcquisitionStatus(Enum):
+    """
+    Status of the acquisition
+    """
+    COMPLETE = 0  # The oscilloscope has completed the acquisition.
+    IN_PROGRESS = 1  # The oscilloscope is still acquiring data.
+    UNKNOWN = 2  # The oscilloscope cannot determine the status of the acquisition.
+
+# endregion
 
 
 class ScopeIviInterface(metaclass=InterfaceMetaclass):
@@ -61,12 +279,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             """
             Specifies how the oscilloscope acquires data and fills the waveform record.
 
-            Values:
-            * 'normal'
-            * 'high_resolution'
-            * 'average'
-            * 'peak_detect'
-            * 'envelope'
+            See also: AcquisitionType
             """
             pass
 
@@ -384,10 +597,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             If the driver cannot determine whether the acquisition is complete or not,
             it returns the Acquisition Status Unknown value.
 
-            Values:
-            * 'compete'
-            * 'in_progress'
-            * 'unknown'
+            See also: AcquisitionStatus
             """
             pass
 
@@ -432,13 +642,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             """
             Specifies how the oscilloscope couples the trigger source.
 
-            Values:
-
-            * 'ac'
-            * 'dc'
-            * 'lf_reject'
-            * 'hf_reject'
-            * 'noise_reject'
+            See also: TriggerCoupling
             """
             pass
 
@@ -515,15 +719,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             """
             Specifies the event that triggers the oscilloscope.
 
-            Values:
-
-            * 'edge'
-            * 'tv'
-            * 'runt'
-            * 'glitch'
-            * 'width'
-            * 'immediate'
-            * 'ac_line'
+            See also: TriggerType
             """
             pass
 
@@ -563,9 +759,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
                 This attribute affects instrument operation only when the Trigger Type
                 attribute is set to Edge Trigger.
 
-                Values:
-                 * 'positive'
-                 * 'negative'
+                See also: TriggerSlope
                 """
                 pass
 
@@ -610,10 +804,7 @@ class InterpolationExtensionInterface(metaclass=abc.ABCMeta):
             Specifies the interpolation method the oscilloscope uses when it cannot
             resolve a voltage for every point in the waveform record.
 
-            Values:
-            * 'none'
-            * 'sinex'
-            * 'linear'
+            See also: Interpolation
             """
             pass
 
@@ -635,12 +826,7 @@ class TVTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the event on which the oscilloscope triggers.
 
-                Values:
-                * 'field1'
-                * 'field2'
-                * 'any_field'
-                * 'any_line'
-                * 'line_number'
+                See also: TVTriggerEvent
                 """
                 pass
 
@@ -671,9 +857,7 @@ class TVTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the polarity of the TV signal.
 
-                Values:
-                * 'positive'
-                * 'negative'
+                See also: TVTriggerPolarity
                 """
                 pass
 
@@ -687,10 +871,7 @@ class TVTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the format of TV signal on which the oscilloscope triggers.
 
-                Values:
-                * 'ntsc'
-                * 'pal'
-                * 'secam'
+                See also: TVSignalFormat
                 """
                 pass
 
@@ -749,10 +930,7 @@ class RuntTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the polarity of the runt that triggers the oscilloscope.
 
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
                 pass
 
@@ -790,9 +968,7 @@ class GlitchTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 glitch trigger happens when the oscilloscope detects a pulse with a
                 width less than or greater than the width value.
 
-                Values:
-                * 'greater_than'
-                * 'less_than'
+                See also: GlitchCondition
                 """
                 pass
 
@@ -806,10 +982,7 @@ class GlitchTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the polarity of the glitch that triggers the oscilloscope.
 
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
                 pass
 
@@ -866,9 +1039,7 @@ class WidthTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 low thresholds with the Width High Threshold and Width Low Threshold
                 attributes.
 
-                Values:
-                * 'within'
-                * 'outside'
+                See also: WidthCondition
                 """
                 pass
 
@@ -906,10 +1077,7 @@ class WidthTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the polarity of the pulse that triggers the oscilloscope.
 
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
                 pass
 
@@ -952,10 +1120,7 @@ class AcLineTriggerExtensionInterface(metaclass=abc.ABCMeta):
                 """
                 Specifies the slope of the zero crossing upon which the scope triggers.
 
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: ACLineSlope
                 """
                 pass
 
@@ -1069,27 +1234,7 @@ class WaveformMeasurementExtensionInterface(metaclass=abc.ABCMeta):
                 interaction with the instrument. Call the Error Query function at the
                 conclusion of the sequence to check the instrument status.
 
-                Values for measurement_function:
-                * 'rise_time'
-                * 'fall_time'
-                * 'frequency'
-                * 'period'
-                * 'voltage_rms'
-                * 'voltage_peak_to_peak'
-                * 'voltage_max'
-                * 'voltage_min'
-                * 'voltage_high'
-                * 'voltage_low'
-                * 'voltage_average'
-                * 'width_negative'
-                * 'width_positive'
-                * 'duty_cycle_negative'
-                * 'duty_cycle_positive'
-                * 'amplitude'
-                * 'voltage_cycle_rms'
-                * 'voltage_cycle_average'
-                * 'overshoot'
-                * 'preshoot'
+                See also: MeasurementFunction
                 """
                 pass
 
@@ -1337,9 +1482,7 @@ class SampleModeExtensionInterface(metaclass=abc.ABCMeta):
             """
             Returns the sample mode the oscilloscope is currently using.
 
-            Values:
-            * 'real_time'
-            * 'equivalent_time'
+            See also: SampleMode.
             """
             pass
 
@@ -1361,10 +1504,7 @@ class TriggerModifierExtensionInterface(metaclass=abc.ABCMeta):
             Specifies the trigger modifier. The trigger modifier determines the
             oscilloscope's behavior in the absence of the configured trigger.
 
-            Values:
-            * 'none'
-            * 'auto'
-            * 'auto_level'
+            See also: TriggerModifier
             """
             pass
 
