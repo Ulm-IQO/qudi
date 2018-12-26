@@ -178,7 +178,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
 
         @property
         @abc.abstractmethod
-        def input_frequency_max(self):
+        def input_frequency_maximum(self):
             """
             Specifies the maximum frequency for the input signal you want the
             instrument to accommodate without attenuating it by more than 3dB. If the
@@ -189,8 +189,8 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
-        @input_frequency_max.setter
-        def input_frequency_max(self, value):
+        @input_frequency_maximum.setter
+        def input_frequency_maximum(self, value):
             pass
 
         @property
@@ -274,7 +274,7 @@ class ScopeIviInterface(metaclass=InterfaceMetaclass):
             pass
 
         @abc.abstractmethod
-        def configure_characteristics(self, input_impedance, input_frequency_max):
+        def configure_characteristics(self, input_impedance, input_frequency_maximum):
             """
             This function configures the attributes that control the electrical
             characteristics of the channel. These attributes are the input impedance
