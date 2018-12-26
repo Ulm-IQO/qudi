@@ -423,7 +423,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
         """
 
         start_time_changed = Signal(float)
-        type_changed = Signal(str)
+        type_changed = Signal(scope_ivi_interface.AcquisitionType)
         number_of_points_minimum_changed = Signal(int)
         time_per_record_changed = Signal(float)
 
@@ -438,11 +438,21 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
 
         @property
         def type(self):
-            return self.root.driver.acquisition.type
+            mapper = {'normal': scope_ivi_interface.AcquisitionType.NORMAL,
+                      'high_resolution': scope_ivi_interface.AcquisitionType.HIGH_RESOLUTION,
+                      'average': scope_ivi_interface.AcquisitionType.AVERAGE,
+                      'peak_detect': scope_ivi_interface.AcquisitionType.PEAK_DETECT,
+                      'envelope': scope_ivi_interface.AcquisitionType.ENVELOPE}
+            return mapper[self.root.driver.acquisition.type]
 
         @type.setter
         def type(self, value):
-            self.root.driver.acquisition.type = value
+            mapper = {scope_ivi_interface.AcquisitionType.NORMAL: 'normal',
+                      scope_ivi_interface.AcquisitionType.HIGH_RESOLUTION: 'high_resolution',
+                      scope_ivi_interface.AcquisitionType.AVERAGE: 'average',
+                      scope_ivi_interface.AcquisitionType.PEAK_DETECT: 'peak_detect',
+                      scope_ivi_interface.AcquisitionType.ENVELOPE: 'envelope'}
+            self.root.driver.acquisition.type = mapper[value]
             self.type_changed.emit(value)
 
         @property
@@ -490,7 +500,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
         input_impedance_changed = Signal(int)
         input_frequency_maximum_changed = Signal(float)
         probe_attenuation_changed = Signal(float)
-        coupling_changed = Signal(str)
+        coupling_changed = Signal(scope_ivi_interface.VerticalCoupling)
         offset_changed = Signal(float)
         range_changed = Signal(float)
 
@@ -579,17 +589,20 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             Specifies how the oscilloscope couples the input signal for the channel.
 
-            Values:
-
-            * 'ac'
-            * 'dc'
-            * 'gnd'
+            See also: VerticalCoupling
             """
-            return self.root.driver.channels[self.index].coupling
+            value = self.root.driver.channels[self.index].coupling
+            mapper = {'ac': scope_ivi_interface.VerticalCoupling.AC,
+                      'dc': scope_ivi_interface.VerticalCoupling.DC,
+                      'gnd': scope_ivi_interface.VerticalCoupling.GND}
+            return mapper[value]
 
         @coupling.setter
         def coupling(self, value):
-            self.root.driver.channels[self.index].coupling = value
+            mapper = {scope_ivi_interface.VerticalCoupling.AC: 'ac',
+                      scope_ivi_interface.VerticalCoupling.DC: 'dc',
+                      scope_ivi_interface.VerticalCoupling.GND: 'gnd'}
+            self.root.driver.channels[self.index].coupling = mapper[value]
             self.coupling_changed.emit(value)
 
         @property
@@ -748,12 +761,12 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             If the driver cannot determine whether the acquisition is complete or not,
             it returns the Acquisition Status Unknown value.
     
-            Values:
-            * 'compete'
-            * 'in_progress'
-            * 'unknown'
+            See also: AcquisitionStatus
             """
-            return self.root.driver.measurement.status
+            mapper = {'complete': scope_ivi_interface.AcquisitionStatus.COMPLETE,
+                      'in_progress': scope_ivi_interface.AcquisitionStatus.IN_PROGRESS,
+                      'unknown': scope_ivi_interface.AcquisitionStatus.UNKNOWN}
+            return mapper[self.root.driver.measurement.status]
     
         def abort(self):
             """
@@ -793,7 +806,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
         """
         IVI Methods for Trigger
         """
-        coupling_changed = Signal(str)
+        coupling_changed = Signal(scope_ivi_interface.TriggerCoupling)
         holdoff_changed = Signal(float)
         level_changed = Signal(float)
         source_changed = Signal(str)
@@ -804,19 +817,24 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             Specifies how the oscilloscope couples the trigger source.
     
-            Values:
-    
-            * 'ac'
-            * 'dc'
-            * 'lf_reject'
-            * 'hf_reject'
-            * 'noise_reject'
+            See also: TriggerCoupling
             """
-            return self.root.driver.trigger.coupling
+            value = self.root.driver.trigger.coupling
+            mapper = {'ac': scope_ivi_interface.TriggerCoupling.AC,
+                      'dc': scope_ivi_interface.TriggerCoupling.DC,
+                      'lf_reject': scope_ivi_interface.TriggerCoupling.LF_REJECT,
+                      'hf_reject': scope_ivi_interface.TriggerCoupling.HF_REJECT,
+                      'noise_reject': scope_ivi_interface.TriggerCoupling.NOISE_REJECT}
+            return mapper[value]
     
         @coupling.setter
         def coupling(self, value):
-            self.root.driver.trigger.coupling = value
+            mapper = {scope_ivi_interface.TriggerCoupling.AC: 'ac',
+                      scope_ivi_interface.TriggerCoupling.DC: 'dc',
+                      scope_ivi_interface.TriggerCoupling.HF_REJECT: 'hf_reject',
+                      scope_ivi_interface.TriggerCoupling.LF_REJECT: 'lf_reject',
+                      scope_ivi_interface.TriggerCoupling.NOISE_REJECT: 'noise_reject'}
+            self.root.driver.trigger.coupling = mapper[value]
             self.coupling_changed.emit(value)
     
         @property
@@ -891,21 +909,27 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             Specifies the event that triggers the oscilloscope.
     
-            Values:
-    
-            * 'edge'
-            * 'tv'
-            * 'runt'
-            * 'glitch'
-            * 'width'
-            * 'immediate'
-            * 'ac_line'
+            See also: TriggerType
             """
-            return self.root.driver.trigger.type
+            mapper = {'edge': scope_ivi_interface.TriggerType.EDGE,
+                      'tv': scope_ivi_interface.TriggerType.TV,
+                      'runt': scope_ivi_interface.TriggerType.RUNT,
+                      'glitch': scope_ivi_interface.TriggerType.GLITCH,
+                      'width': scope_ivi_interface.TriggerType.WIDTH,
+                      'immediate': scope_ivi_interface.TriggerType.IMMEDIATE,
+                      'ac_line': scope_ivi_interface.TriggerType.ACLINE}
+            return mapper[self.root.driver.trigger.type]
     
         @type.setter
         def type(self, value):
-            self.root.driver.trigger.type = value
+            mapper = {scope_ivi_interface.TriggerType.EDGE: 'edge',
+                      scope_ivi_interface.TriggerType.TV: 'tv',
+                      scope_ivi_interface.TriggerType.RUNT: 'runt',
+                      scope_ivi_interface.TriggerType.GLITCH: 'glitch',
+                      scope_ivi_interface.TriggerType.WIDTH: 'width',
+                      scope_ivi_interface.TriggerType.IMMEDIATE: 'immediate',
+                      scope_ivi_interface.TriggerType.ACLINE: 'ac_line'}
+            self.root.driver.trigger.type = mapper[value]
             self.type_changed.emit(value)
     
         def configure(self, trigger_type, holdoff):
@@ -934,7 +958,7 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
             """
             IVI methods for Edge triggering
             """
-            slope_changed = Signal(str)
+            slope_changed = Signal(scope_ivi_interface.TriggerSlope)
 
             @property
             def slope(self):
@@ -944,15 +968,17 @@ class _Scope(InherentCapabilitiesInterface, scope_ivi_interface.ScopeIviInterfac
                 This attribute affects instrument operation only when the Trigger Type
                 attribute is set to Edge Trigger.
 
-                Values:
-                 * 'positive'
-                 * 'negative'
+                See also: TriggerSlope
                 """
-                return self.root.driver.trigger.edge.slope
+                mapper = {'positive': scope_ivi_interface.TriggerSlope.POSITIVE,
+                          'negative': scope_ivi_interface.TriggerSlope.NEGATIVE}
+                return mapper[self.root.driver.trigger.edge.slope]
 
             @slope.setter
             def slope(self, value):
-                self.root.driver.trigger.slope = value
+                mapper = {scope_ivi_interface.TriggerSlope.POSITIVE: 'positive',
+                          scope_ivi_interface.TriggerSlope.NEGATIVE: 'negative'}
+                self.root.driver.trigger.slope = mapper[value]
                 self.slope_changed.emit(value)
 
             def configure(self, source, level, slope):
@@ -988,16 +1014,24 @@ class InterpolationExtension(scope_ivi_interface.InterpolationExtensionInterface
             Specifies the interpolation method the oscilloscope uses when it cannot
             resolve a voltage for every point in the waveform record.
 
+            See also: Interpolation
+
             Values:
             * 'none'
             * 'sinex'
             * 'linear'
             """
-            return self.root.driver.acquisition.interpolation
+            mapper = {'none': scope_ivi_interface.Interpolation.NONE,
+                      'sinex': scope_ivi_interface.Interpolation.SINEXOVERX,
+                      'linear': scope_ivi_interface.Interpolation.LINEAR}
+            return mapper[self.root.driver.acquisition.interpolation]
 
         @interpolation.setter
         def interpolation(self, value):
-            self.root.driver.acquisition.interpolation = value
+            mapper = {scope_ivi_interface.Interpolation.NONE: 'none',
+                      scope_ivi_interface.Interpolation.SINEXOVERX: 'sinex',
+                      scope_ivi_interface.Interpolation.LINEAR: 'linear'}
+            self.root.driver.acquisition.interpolation = mapper[value]
             self.interpolation_changed.emit(value)
 
 
@@ -1010,9 +1044,9 @@ class TVTriggerExtension(scope_ivi_interface.TVTriggerExtensionInterface):
         class tv(QObject,
                  scope_ivi_interface.TVTriggerExtensionInterface.trigger.tv,
                  metaclass=QtInterfaceMetaclass):
-            trigger_event_changed = Signal(str)
+            trigger_event_changed = Signal(scope_ivi_interface.TVTriggerEvent)
             line_number_changed = Signal(int)
-            polarity_changed = Signal(str)
+            polarity_changed = Signal(scope_ivi_interface.TVTriggerPolarity)
             signal_format_changed = Signal(str)
         
             @property
@@ -1020,19 +1054,22 @@ class TVTriggerExtension(scope_ivi_interface.TVTriggerExtensionInterface):
                 """
                 Specifies the event on which the oscilloscope triggers.
         
-                Values:
-                * 'field1'
-                * 'field2'
-                * 'any_field'
-                * 'any_line'
-                * 'line_number'
+                See also: TVTriggerEvent
                 """
-                return self.root.driver.trigger.tv.trigger_event
+                mapper = {'field1': scope_ivi_interface.TVTriggerEvent.FIELD1,
+                          'field2': scope_ivi_interface.TVTriggerEvent.FIELD2,
+                          'any_field': scope_ivi_interface.TVTriggerEvent.ANYFIELD,
+                          'line_number': scope_ivi_interface.TVTriggerEvent.LINENUMBER}
+                return mapper[self.root.driver.trigger.tv.trigger_event]
         
             @trigger_event.setter
             def trigger_event(self, value):
-                self.root.driver.trigger.tv.trigger_event = value
-                self.trigger_event_changed.emit(self.root.driver.trigger.tv.trigger_event)
+                mapper = {scope_ivi_interface.TVTriggerEvent.FIELD1: 'field1',
+                          scope_ivi_interface.TVTriggerEvent.FIELD2: 'field2',
+                          scope_ivi_interface.TVTriggerEvent.ANYFIELD: 'any_field',
+                          scope_ivi_interface.TVTriggerEvent.LINENUMBER: 'line_number'}
+                self.root.driver.trigger.tv.trigger_event = mapper[value]
+                self.trigger_event_changed.emit(value)
         
             @property
             def line_number(self):
@@ -1056,32 +1093,37 @@ class TVTriggerExtension(scope_ivi_interface.TVTriggerExtensionInterface):
                 """
                 Specifies the polarity of the TV signal.
         
-                Values:
-                * 'positive'
-                * 'negative'
+                See also: TVTriggerPolarity
                 """
-                return self.root.driver.trigger.tv.polarity
+                mapper = {'positive': scope_ivi_interface.TVTriggerPolarity.POSITIVE,
+                          'negative': scope_ivi_interface.TVTriggerPolarity.NEGATIVE}
+                return mapper[self.root.driver.trigger.tv.polarity]
         
             @polarity.setter
             def polarity(self, value):
-                self.root.driver.trigger.tv.polarity = value
-                self.polarity_changed.emit(self.root.driver.trigger.tv.polarity)
+                mapper = {scope_ivi_interface.TVTriggerPolarity.POSITIVE: 'positive',
+                          scope_ivi_interface.TVTriggerPolarity.NEGATIVE: 'negative'}
+                self.root.driver.trigger.tv.polarity = mapper[value]
+                self.polarity_changed.emit(value)
         
             @property
             def signal_format(self):
                 """
                 Specifies the format of TV signal on which the oscilloscope triggers.
         
-                Values:
-                * 'ntsc'
-                * 'pal'
-                * 'secam'
+                See also: TVSignalFormat
                 """
-                return self.root.driver.trigger.tv.signal_format
+                mapper = {'ntsc': scope_ivi_interface.TVSignalFormat.NTSC,
+                          'pal': scope_ivi_interface.TVSignalFormat.PAL,
+                          'secam': scope_ivi_interface.TVSignalFormat.SECAM}
+                return mapper[self.root.driver.trigger.tv.signal_format]
         
             @signal_format.setter
             def signal_format(self, value):
-                self.root.driver.trigger.tv.signal_format = value
+                mapper = {scope_ivi_interface.TVSignalFormat.NTSC: 'ntsc',
+                          scope_ivi_interface.TVSignalFormat.PAL: 'pal',
+                          scope_ivi_interface.TVSignalFormat.SECAM: 'secam'}
+                self.root.driver.trigger.tv.signal_format = mapper[value]
                 self.signal_format_changed.emit(self.root.driver.trigger.tv.signal_format)
         
             def configure(self, source, signal_format, event, polarity):
@@ -1107,7 +1149,7 @@ class RuntTriggerExtension(scope_ivi_interface.RuntTriggerExtensionInterface):
                    metaclass=QtInterfaceMetaclass):
             threshold_high_changed = Signal(float)
             threshold_low_changed = Signal(float)
-            polarity_changed = Signal(str)
+            polarity_changed = Signal(scope_ivi_interface.Polarity)
         
             @property
             def threshold_high(self):
@@ -1140,17 +1182,20 @@ class RuntTriggerExtension(scope_ivi_interface.RuntTriggerExtensionInterface):
                 """
                 Specifies the polarity of the runt that triggers the oscilloscope.
         
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
-                return self.root.driver.trigger.runt.polarity
+                mapper = {'positive': scope_ivi_interface.Polarity.POSITIVE,
+                          'negative': scope_ivi_interface.Polarity.NEGATIVE,
+                          'either': scope_ivi_interface.Polarity.EITHER}
+                return mapper[self.root.driver.trigger.runt.polarity]
         
             @polarity.setter
             def polarity(self, value):
-                self.root.driver.trigger.runt.polarity = value
-                self.polarity_changed.emit(self.root.driver.trigger.runt.polarity)
+                mapper = {scope_ivi_interface.Polarity.POSITIVE: 'positive',
+                          scope_ivi_interface.Polarity.NEGATIVE: 'negative',
+                          scope_ivi_interface.Polarity.EITHER: 'either'}
+                self.root.driver.trigger.runt.polarity = mapper[value]
+                self.polarity_changed.emit(value)
         
             def configure(self, source, threshold_low, threshold_high, polarity):
                 """
@@ -1179,10 +1224,10 @@ class WidthTriggerExtension:
         class width(QObject,
                     scope_ivi_interface.WidthTriggerExtensionInterface.trigger.width,
                     metaclass=QtInterfaceMetaclass):
-            condition_changed = Signal(str)
+            condition_changed = Signal(scope_ivi_interface.WidthCondition)
             threshold_high_changed = Signal(float)
             threshold_low_changed = Signal(float)
-            polarity_changed = Signal(str)
+            polarity_changed = Signal(scope_ivi_interface.Polarity)
         
             @property
             def condition(self):
@@ -1192,16 +1237,18 @@ class WidthTriggerExtension:
                 low thresholds with the Width High Threshold and Width Low Threshold
                 attributes.
         
-                Values:
-                * 'within'
-                * 'outside'
+                See also: WidthCondition
                 """
-                return self.root.driver.trigger.width.condition
+                mapper = {'within': scope_ivi_interface.WidthCondition.WITHIN,
+                          'outside': scope_ivi_interface.WidthCondition.OUTSIDE}
+                return mapper[self.root.driver.trigger.width.condition]
         
             @condition.setter
             def condition(self, value):
-                self.root.driver.trigger.width.condition = value
-                self.condition_changed.emit(self.root.driver.trigger.width.condition)
+                mapper = {scope_ivi_interface.WidthCondition.WITHIN: 'within',
+                          scope_ivi_interface.WidthCondition.OUTSIDE: 'outside'}
+                self.root.driver.trigger.width.condition = mapper[value]
+                self.condition_changed.emit(value)
         
             @property
             def threshold_high(self):
@@ -1232,17 +1279,20 @@ class WidthTriggerExtension:
                 """
                 Specifies the polarity of the pulse that triggers the oscilloscope.
         
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
-                return self.root.driver.trigger.width.polarity
+                mapper = {'positive': scope_ivi_interface.Polarity.POSITIVE,
+                          'negative': scope_ivi_interface.Polarity.NEGATIVE,
+                          'either': scope_ivi_interface.Polarity.EITHER}
+                return mapper[self.root.driver.trigger.width.polarity]
         
             @polarity.setter
             def polarity(self, value):
-                self.root.driver.trigger.width.polarity = value
-                self.polarity_changed.emit(self.root.driver.trigger.width.polarity)
+                mapper = {scope_ivi_interface.Polarity.POSITIVE: 'positive',
+                          scope_ivi_interface.Polarity.NEGATIVE: 'negative',
+                          scope_ivi_interface.Polarity.EITHER: 'either'}
+                self.root.driver.trigger.width.polarity = mapper[value]
+                self.polarity_changed.emit(value)
         
             def configure(self, source, level, threshold_low, threshold_high, polarity, condition):
                 """
@@ -1280,8 +1330,8 @@ class GlitchTriggerExtension(scope_ivi_interface.GlitchTriggerExtensionInterface
         class glitch(QObject,
                      scope_ivi_interface.GlitchTriggerExtensionInterface.trigger.glitch,
                      metaclass=QtInterfaceMetaclass):
-            condition_changed = Signal(str)
-            polarity_changed = Signal(str)
+            condition_changed = Signal(scope_ivi_interface.GlitchCondition)
+            polarity_changed = Signal(scope_ivi_interface.Polarity)
             width_changed = Signal(float)
         
             @property
@@ -1291,33 +1341,38 @@ class GlitchTriggerExtension(scope_ivi_interface.GlitchTriggerExtensionInterface
                 glitch trigger happens when the oscilloscope detects a pulse with a
                 width less than or greater than the width value.
         
-                Values:
-                * 'greater_than'
-                * 'less_than'
+                See also: GlitchCondition
                 """
-                return self.root.driver.trigger.glitch.condition
+                mapper = {'greater_than': scope_ivi_interface.GlitchCondition.GREATER_THAN,
+                          'less_than': scope_ivi_interface.GlitchCondition.LESS_THAN}
+                return mapper[self.root.driver.trigger.glitch.condition]
         
             @condition.setter
             def condition(self, value):
-                self.root.driver.trigger.glitch.condition = value
-                self.condition_changed.emit(self.root.driver.trigger.glitch.condition)
+                mapper = {scope_ivi_interface.GlitchCondition.GREATER_THAN: 'greater_than',
+                          scope_ivi_interface.GlitchCondition.LESS_THAN: 'less_than'}
+                self.root.driver.trigger.glitch.condition = mapper[value]
+                self.condition_changed.emit(value)
         
             @property
             def polarity(self):
                 """
                 Specifies the polarity of the glitch that triggers the oscilloscope.
         
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: Polarity
                 """
-                return self.root.driver.trigger.glitch.polarity
+                mapper = {'positive': scope_ivi_interface.Polarity.POSITIVE,
+                          'negative': scope_ivi_interface.Polarity.NEGATIVE,
+                          'either': scope_ivi_interface.Polarity.EITHER}
+                return mapper[self.root.driver.trigger.glitch.polarity]
         
             @polarity.setter
             def polarity(self, value):
-                self.root.driver.trigger.glitch.polarity = value
-                self.polarity_changed.emit(self.root.driver.trigger.glitch.polarity)
+                mapper = {scope_ivi_interface.Polarity.POSITIVE: 'positive',
+                          scope_ivi_interface.Polarity.NEGATIVE: 'negative',
+                          scope_ivi_interface.Polarity.EITHER: 'either'}
+                self.root.driver.trigger.glitch.polarity = mapper[value]
+                self.polarity_changed.emit(value)
         
             @property
             def width(self):
@@ -1361,24 +1416,27 @@ class AcLineTriggerExtension(scope_ivi_interface.AcLineTriggerExtensionInterface
         class ac_line(QObject,
                       scope_ivi_interface.AcLineTriggerExtensionInterface.trigger.ac_line,
                       metaclass=QtInterfaceMetaclass):
-            slope_changed = Signal(str)
+            slope_changed = Signal(scope_ivi_interface.ACLineSlope)
         
             @property
             def slope(self):
                 """
                 Specifies the slope of the zero crossing upon which the scope triggers.
         
-                Values:
-                * 'positive'
-                * 'negative'
-                * 'either'
+                See also: ACLineSlope
                 """
-                return self.root.driver.trigger.ac_line.slope
+                mapper = {'positive': scope_ivi_interface.ACLineSlope.POSITIVE,
+                          'negative': scope_ivi_interface.ACLineSlope.NEGATIVE,
+                          'either': scope_ivi_interface.ACLineSlope.EITHER}
+                return mapper[self.root.driver.trigger.ac_line.slope]
         
             @slope.setter
             def slope(self, value):
-                self.root.driver.trigger.ac_line.slope = value
-                self.slope_changed.emit(self.root.driver.trigger.ac_line.slope)
+                mapper = {scope_ivi_interface.ACLineSlope.POSITIVE: 'positive',
+                          scope_ivi_interface.ACLineSlope.NEGATIVE: 'negative',
+                          scope_ivi_interface.ACLineSlope.EITHER: 'either'}
+                self.root.driver.trigger.ac_line.slope = mapper[value]
+                self.slope_changed.emit(value)
 
 
 class ProbeAutoSenseExtension(scope_ivi_interface.ProbeAutoSenseExtensionInterface):
@@ -1468,23 +1526,25 @@ class SampleModeExtension(scope_ivi_interface.SampleModeExtensionInterface):
     Extension IVI methods for oscilloscopes supporting equivalent and real time acquisition
     """
     class acquisition(scope_ivi_interface.SampleModeExtensionInterface.acquisition):
-        sample_mode_changed = Signal(str)
+        sample_mode_changed = Signal(scope_ivi_interface.SampleMode)
     
         @property
         def sample_mode(self):
             """
             Returns the sample mode the oscilloscope is currently using.
     
-            Values:
-            * 'real_time'
-            * 'equivalent_time'
+            See also: SampleMode
             """
-            return self.root.driver.acquisition.sample_mode
+            mapper = {'real_time': scope_ivi_interface.SampleMode.REAL_TIME,
+                      'equivalent_time': scope_ivi_interface.SampleMode.EQUIVALENT_TIME}
+            return mapper[self.root.driver.acquisition.sample_mode]
     
         @sample_mode.setter
         def sample_mode(self, value):
-            self.root.driver.acquisition.sample_mode = value
-            self.sample_mode_changed.emit(self.root.driver.acquisition.sample_mode)
+            mapper = {scope_ivi_interface.SampleMode.REAL_TIME: 'real_time',
+                      scope_ivi_interface.SampleMode.EQUIVALENT_TIME: 'equivalent_time'}
+            self.root.driver.acquisition.sample_mode = mapper[value]
+            self.sample_mode_changed.emit(value)
 
 
 class TriggerModifierExtension(scope_ivi_interface.TriggerModifierExtensionInterface):
@@ -1493,7 +1553,7 @@ class TriggerModifierExtension(scope_ivi_interface.TriggerModifierExtensionInter
     the absence of a trigger
     """
     class trigger(scope_ivi_interface.TriggerModifierExtensionInterface.trigger):
-        modifier_changed = Signal(str)
+        modifier_changed = Signal(scope_ivi_interface.TriggerModifier)
     
         @property
         def modifier(self):
@@ -1501,17 +1561,20 @@ class TriggerModifierExtension(scope_ivi_interface.TriggerModifierExtensionInter
             Specifies the trigger modifier. The trigger modifier determines the
             oscilloscope's behavior in the absence of the configured trigger.
     
-            Values:
-            * 'none'
-            * 'auto'
-            * 'auto_level'
+            See also: TriggerModifier
             """
-            return self.root.driver.trigger.modifier
+            mapper = {'none': scope_ivi_interface.TriggerModifier.NONE,
+                      'auto': scope_ivi_interface.TriggerModifier.AUTO,
+                      'auto_level': scope_ivi_interface.TriggerModifier.AUTO_LEVEL}
+            return mapper[self.root.driver.trigger.modifier]
     
         @modifier.setter
         def modifier(self, value):
-            self.root.driver.trigger.modifier = value
-            self.modifier_changed.emit(self.root.driver.trigger.modifier)
+            mapper = {scope_ivi_interface.TriggerModifier.NONE: 'none',
+                      scope_ivi_interface.TriggerModifier.AUTO: 'auto',
+                      scope_ivi_interface.TriggerModifier.AUTO_LEVEL: 'auto_level'}
+            self.root.driver.trigger.modifier = mapper[value]
+            self.modifier_changed.emit(value)
 
 
 class AutoSetupExtension(scope_ivi_interface.AutoSetupExtensionInterface):
@@ -1642,30 +1705,30 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
                 interaction with the instrument. Call the Error Query function at the
                 conclusion of the sequence to check the instrument status.
         
-                Values for measurement_function:
-                * 'rise_time'
-                * 'fall_time'
-                * 'frequency'
-                * 'period'
-                * 'voltage_rms'
-                * 'voltage_peak_to_peak'
-                * 'voltage_max'
-                * 'voltage_min'
-                * 'voltage_high'
-                * 'voltage_low'
-                * 'voltage_average'
-                * 'width_negative'
-                * 'width_positive'
-                * 'duty_cycle_negative'
-                * 'duty_cycle_positive'
-                * 'amplitude'
-                * 'voltage_cycle_rms'
-                * 'voltage_cycle_average'
-                * 'overshoot'
-                * 'preshoot'
+                See also: MeasurementFunction
                 """
-                return self.root.driver.channels[
-                    self.parent_namespace.index].measurement.fetch_waveform_measurement(measurement_function)
+                mapper = {scope_ivi_interface.MeasurementFunction.RISE_TIME: 'rise_time',
+                          scope_ivi_interface.MeasurementFunction.FALL_TIME: 'fall_time',
+                          scope_ivi_interface.MeasurementFunction.FREQUENCY: 'frequency',
+                          scope_ivi_interface.MeasurementFunction.PERIOD: 'period',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_RMS: 'voltage_rms',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_PEAK_TO_PEAK: 'voltage_peak_to_peak',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_MAX: 'voltage_max',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_MIN: 'voltage_min',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_HIGH: 'voltage_high',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_LOW: 'voltage_low',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_AVERAGE: 'voltage_average',
+                          scope_ivi_interface.MeasurementFunction.WIDTH_NEGATIVE: 'width_negative',
+                          scope_ivi_interface.MeasurementFunction.WIDTH_POSITIVE: 'width_positive',
+                          scope_ivi_interface.MeasurementFunction.DUTY_CYCLE_NEGATIVE: 'duty_cycle_negative',
+                          scope_ivi_interface.MeasurementFunction.DUTY_CYCLE_POSITIVE: 'duty_cycle_positive',
+                          scope_ivi_interface.MeasurementFunction.AMPLITUDE: 'amplitude',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_CYCLE_RMS: 'voltage_cycle_rms',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_CYCLE_AVERAGE: 'voltage_cycle_average',
+                          scope_ivi_interface.MeasurementFunction.OVERSHOOT: 'overshoot',
+                          scope_ivi_interface.MeasurementFunction.PRESHOOT: 'preshoot'}
+                return self.root.driver.channels[self.parent_namespace.index].measurement.fetch_waveform_measurement(
+                    mapper[measurement_function])
         
             def read_waveform_measurement(self, measurement_function, maximum_time):
                 """
@@ -1696,9 +1759,31 @@ class WaveformMeasurementExtension(scope_ivi_interface.WaveformMeasurementExtens
                 * Measurement High Reference
                 * Measurement Low Reference
                 * Measurement Mid Reference
+
+                See also: MeasurementFunction
                 """
+                mapper = {scope_ivi_interface.MeasurementFunction.RISE_TIME: 'rise_time',
+                          scope_ivi_interface.MeasurementFunction.FALL_TIME: 'fall_time',
+                          scope_ivi_interface.MeasurementFunction.FREQUENCY: 'frequency',
+                          scope_ivi_interface.MeasurementFunction.PERIOD: 'period',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_RMS: 'voltage_rms',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_PEAK_TO_PEAK: 'voltage_peak_to_peak',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_MAX: 'voltage_max',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_MIN: 'voltage_min',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_HIGH: 'voltage_high',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_LOW: 'voltage_low',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_AVERAGE: 'voltage_average',
+                          scope_ivi_interface.MeasurementFunction.WIDTH_NEGATIVE: 'width_negative',
+                          scope_ivi_interface.MeasurementFunction.WIDTH_POSITIVE: 'width_positive',
+                          scope_ivi_interface.MeasurementFunction.DUTY_CYCLE_NEGATIVE: 'duty_cycle_negative',
+                          scope_ivi_interface.MeasurementFunction.DUTY_CYCLE_POSITIVE: 'duty_cycle_positive',
+                          scope_ivi_interface.MeasurementFunction.AMPLITUDE: 'amplitude',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_CYCLE_RMS: 'voltage_cycle_rms',
+                          scope_ivi_interface.MeasurementFunction.VOLTAGE_CYCLE_AVERAGE: 'voltage_cycle_average',
+                          scope_ivi_interface.MeasurementFunction.OVERSHOOT: 'overshoot',
+                          scope_ivi_interface.MeasurementFunction.PRESHOOT: 'preshoot'}
                 return self.root.driver.channels[
-                    self.parent_namespace.index].measurement.read_waveform_measurement(measurement_function,
+                    self.parent_namespace.index].measurement.read_waveform_measurement(mapper[measurement_function],
                                                                                        maximum_time)
 
 
