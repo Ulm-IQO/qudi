@@ -53,14 +53,14 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         """
         pass
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Process value, here temperature.
 
             @return float: process value
         """
         return self.temperature
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Process unit, here kelvin.
 
             @return float: process unit

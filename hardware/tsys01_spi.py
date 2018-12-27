@@ -154,7 +154,7 @@ class TSYS01SPI(Base, ProcessInterface):
         """
         return 273.15 + self.temperatureCelsius(adcValue)
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Read ADC and return emperature in Kelvin.
 
             @return float: current temperature in Kelvin
@@ -163,7 +163,7 @@ class TSYS01SPI(Base, ProcessInterface):
             self.startADC()
             return self.temperatureKelvin(self.readADC())
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Return Process unit, here Kelvin.
 
             @return tuple(str, str): short and text form of process unit

@@ -100,7 +100,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
              The D term is NOT low-pass filtered.
              This function should be called once every TS seconds.
         """
-        self.pv = self._process.getProcessValue()
+        self.pv = self._process.get_process_value()
 
         if self.countdown > 0:
             self.countdown -= 1
