@@ -39,5 +39,5 @@ class ProcessInterface(metaclass=InterfaceMetaclass):
 
     @abc.abstractmethod
     def get_process_unit(self):
-        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
+        """ Return the unit that the value is measured in as a tuple of ('abreviation', 'full unit name') """
         pass
