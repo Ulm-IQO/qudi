@@ -297,6 +297,12 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         """
         return self.pv
 
+    def get_process_unit(self):
+        """ Return the unit that the value is measured in as a tuple of ('abbreviation', 'full unit name')
+
+        """
+        return self._process.get_process_unit()
+
     def get_extra(self):
         """ Extra information about the controller state.
 

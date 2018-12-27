@@ -88,6 +88,10 @@ class PIDControllerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_process_unit(self):
+        pass
+
+    @abc.abstractmethod
     def get_control_value(self):
         pass
 
