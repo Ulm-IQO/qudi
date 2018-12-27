@@ -96,5 +96,9 @@ class PIDControllerInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_control_unit(self):
+        pass
+
+    @abc.abstractmethod
     def get_extra(self):
         pass
