@@ -224,6 +224,14 @@ class FastCounterDummy(Base, FastCounterInterface):
         time.sleep(0.5)
         return self._count_data
 
+    def get_current_sweeps(self):
+        """ Get the current number of sweeps
+
+        @return int: current number of sweeps
+
+        Let's not return 0 because some logic might be dividing by this """
+        return 1
+
     def get_frequency(self):
         freq = 950.
         time.sleep(0.5)
