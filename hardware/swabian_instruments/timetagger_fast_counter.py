@@ -234,3 +234,11 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         """ Returns the width of a single timebin in the timetrace in seconds. """
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
+
+    def get_current_sweeps(self):
+        """ Get the current number of sweeps
+
+        @return int: current number of sweeps
+
+        Let's not return 0 because some logic might be dividing by this """
+        return 1

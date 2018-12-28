@@ -163,3 +163,10 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
             returnarray[gate_index, timebin_index]
         """
         pass
+
+    @abc.abstractmethod
+    def get_current_sweeps(self):
+        """ Get the current number of sweeps
+
+        @return int: current number of sweeps"""
+        pass
