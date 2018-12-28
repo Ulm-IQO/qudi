@@ -124,7 +124,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer = None
         self.__start_time = 0
         self.__elapsed_time = 0
-        self.__elapsed_sweeps = 0  # FIXME: unused
+        self.__elapsed_sweeps = 0
 
         # threading
         self._threadlock = Mutex()
@@ -821,9 +821,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                    #              'later point.'.format(stash_raw_data_tag))
-                    self._saved_data[stash_raw_data_tag] = {'raw': self.raw_data.copy()}
+                    self._saved_data[stash_raw_data_tag] = {'raw': self.raw_data.copy(),
+                                                            'sweeps': self.__elapsed_sweeps}
                 self._current_saved_data_tag = None
 
                 # Set measurement paused flag
@@ -1145,16 +1144,18 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         # get raw data from fast counter
         fc_data = netobtain(self.fastcounter().get_data_trace())
+        sweeps = self.fastcounter().get_current_sweeps()
 
         # add old raw data from previous measurements if necessary
         if self._saved_data.get(self._current_saved_data_tag) is not None:
-            self.log.info('Found old saved raw data with tag "{0}".'
-                          ''.format(self._current_saved_data_tag))
+            # self.log.info('Found old saved raw data with tag "{0}".'
+            #               ''.format(self._current_saved_data_tag))
+            sweeps += self._saved_data[self._current_saved_data_tag]['sweeps']
             if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
                 fc_data = self._saved_data[self._current_saved_data_tag]['raw']
-            elif self._saved_data[self._current_saved_data_tag].shape == fc_data.shape:
+            elif self._saved_data[self._current_saved_data_tag]['raw'].shape == fc_data.shape:
                 self.log.debug('Recalled raw data has the same shape as current data.')
                 fc_data = self._saved_data[self._current_saved_data_tag]['raw'] + fc_data
             else:
@@ -1164,7 +1165,7 @@ class PulsedMeasurementLogic(GenericLogic):
             self.log.warning('Only zeros received from fast counter!')
             fc_data = np.zeros(fc_data.shape, dtype='int64')
         self.raw_data = fc_data
-
+        self.__elapsed_sweeps = sweeps
 
     def _initialize_data_arrays(self):
         """
