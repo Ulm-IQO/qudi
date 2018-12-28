@@ -155,6 +155,8 @@ class SaveLogic(GenericLogic):
         'savefig.dpi': '180'
         }
 
+    _additional_parameters = {}
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -420,6 +422,8 @@ class SaveLogic(GenericLogic):
         if parameters is not None:
             # check whether the format for the parameters have a dict type:
             if isinstance(parameters, dict):
+                if isinstance(self._additional_parameters, dict):
+                    parameters = {**self._additional_parameters, **parameters}
                 for entry, param in parameters.items():
                     if isinstance(param, float):
                         header += '{0}: {1:.16e}\n'.format(entry, param)
@@ -634,3 +638,11 @@ class SaveLogic(GenericLogic):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         return dir_path
+
+    def get_additional_parameters(self):
+        """ Method that return the additional parameters dictionary securely """
+        return self._additional_parameters.copy()
+
+    def update_additional_parameters(self, **new_pairs):
+        """ Method to update one or multiple additional parameters """
+        self._additional_parameters = {**self._additional_parameters, **new_pairs}
