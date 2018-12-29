@@ -1,6 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the specan interface.
+This file contains the implementation of the pythonIvi interface for scopes.
+
+The main class is ::PyIviScope::
+
+Example configuration
+
+hardware:
+    n9000a:
+        module.Class: 'scope.pyivi_specan.PyIviSpecan'
+        uri: 'TCPIP::192.168.1.1::INSTR'
+
+
+Optional parameter:
+        flavour: either 'IVI-COM' or 'IVI-C', two of the interfaces IVI supports. Default: IVI-COM.
+        simulate: boolean
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,195 +31,73 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
-
-FIXME:
-- initiate, acquisition status and abort are part of acquisition but should be part of traces
-- disable_all_markers
-
 """
 
+
+from interface.ivi import specan_interface as specan_ivi_interface
+from .._pyivi_base import PyIviBase
+from .._pyivi_base import QtInterfaceMetaclass
+from .._ivi_core import Namespace
+
 import abc
-from core.util.interfaces import InterfaceMetaclass
-from enum import Enum
-
-# region Constants
-
-MAX_TIME_IMMEDIATE = 0  # do not wait
-MAX_TIME_INDEFINITE = 0xFFFFFFFF  # wait indefinitely
-
-# endregion
-# region Enums
+from qtpy.QtCore import QObject
+from qtpy.QtCore import Signal
+from comtypes.safearray import safearray_as_ndarray
+import numpy
 
 
-class AmplitudeUnits(Enum):
-    """
-    Specifies the amplitude units for input, output and display amplitude.
-    """
-    DBM = 0  # Sets the spectrum analyzer to measure in decibels relative to 1 milliwatt
-    DBMV = 1  # Sets the spectrum analyzer to measure in decibels relative to 1 millivolt
-    DBUV = 2  # Sets the spectrum analyzer to measure in decibels relative to 1 microvolt
-    VOLT = 3  # Sets the spectrum analyzer to measure in volts
-    WATT = 4  # Sets the spectrum analyzer to measure in watts
-
-
-class DetectorType(Enum):
-    """
-    Specifies detector types.
-    """
-    AUTO_PEAK = 0  # Allows the detector to capture better readings by using both positive and negative peak values
-                   # when noise is present.
-    AVERAGE = 1  # Average value of samples taken within the bin for a dedicated point on the display.
-    MAXIMUM_PEAK = 2  # Obtains the maximum video signal between the last display point and the present display point.
-    MINIMUM_PEAK = 3  # Obtains the minimum video signal between the last display point and the present display point.
-    SAMPLE = 4  # Pick one point within a bin.
-    RMS = 5  # RMS value of samples taken within the bin for a dedicated point on the display
-
-
-class TraceType(Enum):
-    """
-    Specifies trace types.
-    """
-    CLEAR_WRITE = 0  # Sets the spectrum analyzer to clear previous sweep data off the display before performing a
-                     # sweep. Subsequent sweeps may or may not clear the display first, but the data array at the end
-                     # of the sweep is entirely new.
-    MAXIMUM_HOLD = 1  # Sets the spectrum analyzer to keep the data from either the previous data or the new sweep
-                      # data, which ever is higher.
-    MINIMUM_HOLD = 2  # Sets the spectrum analyzer to keep the data from either the previous data or the new sweep
-                      # data, which ever is lower
-    VIDEO_AVERAGE = 3  # Sets the spectrum analyzer to maintain a running average of the swept data.
-    VIEW = 4  # Disables acquisition into this trace but displays the existing trace data.
-    STORE = 5  # Disables acquisition and disables the display of the existing trace data.
-
-
-class VerticalScale(Enum):
-    """
-    Specifies the vertical scale
-    """
-    LINEAR = 0  # Specifies the vertical scale in linear units.
-    LOGARITHMIC = 1  # Specifies the vertical scale in logarithmic units.
-
-
-class AcquisitionStatus(Enum):
-    """
-    Specifies acquisitions stati
-    """
-    COMPLETE = 1  # The spectrum analyzer has completed the acquisition.
-    IN_PROGRESS = 0  # The spectrum analyzer is still acquiring data.
-    UNKNOWN = 2  # The spectrum analyzer cannot determine the status of the acquisition.
-
-
-class MarkerSearch(Enum):
-    """
-    Specifies what signal the marker search should look for.
-    """
-    HIGHEST = 0  # Sets marker search for the highest amplitude.
-    MINIMUM = 1  # Sets marker search for the minimum amplitude.
-    NEXT_PEAK = 2  # Sets marker search for the next highest peak.
-    NEXT_PEAK_LEFT = 3  # Sets marker search for the next peak left of the marker position.
-    NEXT_PEAK_RIGHT = 4  # Sets marker search for the next peak right of the marker position
-
-
-class TriggerSource(Enum):
-    """
-    Specifies the source of the trigger signal that causes the analyzer to leave the Wait-For-Trigger state.
-    """
-    EXTERNAL = 0  # The spectrum analyzer waits until it receives a trigger on the external trigger connector.
-    IMMEDIATE = 1  # The spectrum analyzer does not wait for a trigger of any kind.
-    SOFTWARE = 2  # The spectrum analyzer waits until the Send Software Trigger function executes. For more information,
-                  # refer to Section 2, Software Triggering Capability of the Standard Cross-Class Capabilities
-                  # Specification.
-    AC_LINE = 3  # The spectrum analyzer waits until it receives a trigger on the AC line.
-    VIDEO = 4  # The spectrum analyzer waits until it receives a video level.
-
-
-class Slope(Enum):
-    """
-    Specifies the possible slopes for triggers.
-    """
-    POSITIVE = 0  # Specifies positive slope.
-    NEGATIVE = 1  # Specifies negative slope.
-
-
-class MarkerType(Enum):
-    """
-    Specifies marker types.
-    """
-    NORMAL = 0  # Regular marker used to make absolute measurements.
-    DELTA = 1   # Marker used in conjunction with the reference marker to make relative measurements.
-
-# endregion
-#region Exceptions
-
-class TriggerNotSoftwareException(Exception):
-    """
-    Raised if trigger source is not set to software trigger.
+class _Specan(specan_ivi_interface.SpecAnIviInterface):
     """
 
-
-class MarkerNotEnabledException(Exception):
     """
-    Raised if the driver tries to perform an operation on the marker and it is not enabled.
-    """
+    @Namespace
+    class level(QObject, specan_ivi_interface.SpecAnIviInterface.level, metaclass=QtInterfaceMetaclass):
+        amplitude_units_changed = Signal(specan_ivi_interface.AmplitudeUnits)
+        attenuation_changed = Signal(float)
+        attenuation_auto_changed = Signal(bool)
+        input_impedance_changed = Signal(int)
+        reference_changed = Signal(float)
+        reference_offset_changed = Signal(float)
 
-
-class NotDeltaMarkerException(Exception):
-    """
-    Raised if the marker type is not delta.
-
-    This exception is used when the driver tries to perform a delta marker operation on the marker, but the marker
-    is not a delta marker.
-    """
-
-
-# endregion
-# region Basic Interface
-
-
-class SpecAnIviInterface(metaclass=InterfaceMetaclass):
-    """
-    Interface for spectrum analyzer driver implementation following the IVI specification.
-    """
-    class level:
         @property
-        @abc.abstractmethod
         def amplitude_units(self):
             """
             Specifies the amplitude units for input, output and display amplitude.
             """
-            pass
+            return specan_ivi_interface.AmplitudeUnits(self.root.driver.level.amplitude_units - 1)
 
         @amplitude_units.setter
         def amplitude_units(self, value):
-            pass
+            self.root.driver.level.amplitude_units = value.value + 1
+            self.amplitude_units_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def attenuation(self):
             """
             Specifies the input attenuation (in positive dB).
             """
-            pass
+            return self.root.driver.level.attenuation
 
         @attenuation.setter
         def attenuation(self, value):
-            pass
+            self.root.driver.level.attenuation = value
+            self.attenuation_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def attenuation_auto(self):
             """
             Selects attenuation automatically.
 
             If set to True, attenuation is automatically selected. If set to False, attenuation is manually selected.
             """
-            pass
+            return self.root.driver.level.attenuation_auto
 
         @attenuation_auto.setter
         def attenuation_auto(self, value):
-            pass
+            self.root.driver.level.attenuation_auto = value
+            self.attenuation_auto_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def input_impedance(self):
             """
             Specifies the value of input impedance.
@@ -213,28 +105,28 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Specifies the value of input impedance, in ohms, expected at the active input port. This is typically
             50 ohms or 75 ohms.
             """
-            pass
+            return self.root.driver.level.input_impedance
 
         @input_impedance.setter
         def input_impedance(self, value):
-            pass
+            self.root.driver.level.input_impedance = value
+            self.input_impedance_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def reference(self):
             """
             The calibrated vertical position of the captured data used as a reference for amplitude measurements. This
             is typically set to a value slightly higher than the highest expected signal level. The units are
             determined by the Amplitude Units attribute.
             """
-            pass
+            return self.root.driver.level.reference
 
         @reference.setter
         def reference(self, value):
-            pass
+            self.root.driver.level.reference = value
+            self.reference_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def reference_offset(self):
             """
             Specifies an offset for the Reference Level attribute.
@@ -242,13 +134,13 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             This value is used to adjust the reference level for external signal gain or loss. A positive value
             corresponds to a gain while a negative number corresponds to a loss. The value is in dB.
             """
-            pass
+            return self.root.driver.level.reference_offset
 
         @reference_offset.setter
         def reference_offset(self, value):
-            pass
+            self.root.driver.level.reference_offset = value
+            self.reference_offset_changed.emit(value)
 
-        @abc.abstractmethod
         def configure(self, amplitude_units, input_impedance, reference_level, reference_level_offset, attenuation):
             """
 
@@ -268,11 +160,21 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
                                 or double, Specifies the attenuation level. The driver uses this value to set the
                                            Attenuation attribute. See the attribute description for more details.
             """
-            pass
+            self.root.driver.level.configure(amplitude_units,
+                                             input_impedance,
+                                             reference_level,
+                                             reference_level_offset,
+                                             attenuation)
 
-    class acquisition:
+    @Namespace
+    class acquisition(QObject, specan_ivi_interface.SpecAnIviInterface.acquisition, metaclass=QtInterfaceMetaclass):
+        detector_type_changed = Signal(specan_ivi_interface.DetectorType)
+        detector_type_auto_changed = Signal(bool)
+        number_of_sweeps_changed = Signal(int)
+        sweep_mode_continuous_changed = Signal(bool)
+        vertical_scale_changed = Signal(specan_ivi_interface.VerticalScale)
+
         @property
-        @abc.abstractmethod
         def detector_type(self):
             """
             Specifies the detector type.
@@ -280,14 +182,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Specifies the detection method used to capture and process the signal. This governs the data acquisition
             for a particular sweep, but does not have any control over how multiple sweeps are processed.
             """
-            pass
+            return specan_ivi_interface.DetectorType(self.root.driver.sc.detector_type - 1)
 
         @detector_type.setter
         def detector_type(self, value):
-            pass
+            self.root.driver.sc.detector_type = value.value + 1
+            self.detector_type_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def detector_type_auto(self):
             """
             Select detector type automatically.
@@ -296,53 +198,53 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Detector Type is not defined by the specification when the Detector Type Auto is set to True. If set to
             False, the detector type is manually selected.
             """
-            pass
+            return self.root.driver.acquisition.detector_type_auto
 
         @detector_type_auto.setter
         def detector_type_auto(self, value):
-            pass
+            self.root.driver.acquisition.detector_type_auto = value
+            self.detector_type_auto_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def number_of_sweeps(self):
             """
             This attribute defines the number of sweeps.
 
             This attribute value has no effect if the Trace Type attribute is set to the value Clear Write.
             """
-            pass
+            return self.root.driver.sc.number_of_sweeps
 
         @number_of_sweeps.setter
         def number_of_sweeps(self, value):
-            pass
+            self.root.driver.sc.number_of_sweeps = value
+            self.number_of_sweeps_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def sweep_mode_continuous(self):
             """
             Is the sweep mode continuous?
 
             If set to True, the sweep mode is continuous If set to False, the sweep mode is not continuous.
             """
-            pass
+            return self.root.driver.acquisition.sweep_mode_continuous
 
         @sweep_mode_continuous.setter
         def sweep_mode_continuous(self, value):
-            pass
+            self.root.driver.acquisition.sweep_mode_continuous = value
+            self.sweep_mode_continuous_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def vertical_scale(self):
             """
             Specifies the vertical scale of the measurement hardware (use of log amplifiers versus linear amplifiers).
             """
-            pass
+            return specan_ivi_interface.VerticalScale(self.root.driver.acquisition.vertical_scale - 1)
 
         @vertical_scale.setter
         def vertical_scale(self, value):
-            pass
+            self.root.driver.acquisition.vertical_scale = value.value + 1
+            self.vertical_scale_changed.emit(value)
 
-        @abc.abstractmethod
         def abort(self):
             """
             Aborts a running measurement.
@@ -350,16 +252,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             This function aborts a previously initiated measurement and returns the spectrum analyzer to the idle
             state. This function does not check instrument status.
             """
-            pass
+            self.root.driver.session.traces.Abort()
 
-        @abc.abstractmethod
         def status(self):
             """
             This function determines and returns the status of an acquisition.
             """
-            pass
+            return specan_ivi_interface.AcquisitionStatus(self.root.driver.session.traces.AcqusitionStatus())
 
-        @abc.abstractmethod
         def configure(self, sweep_mode_continuous, number_of_sweeps, detector_type_auto, detector_type,
                       vertical_scale):
             """
@@ -378,9 +278,11 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             :param vertical_scale: Specifies the vertical scale. The driver uses this value to set the Vertical Scale
                                    attribute. See the attribute description for more details.
             """
-            pass
+            self.root.driver.acquisition.configure(sweep_mode_continuous,
+                                                   number_of_sweeps,
+                                                   detector_type_auto,
+                                                   detector_type.value+1)
 
-        @abc.abstractmethod
         def initiate(self):
             """
             This function initiates an acquisition.
@@ -390,11 +292,15 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             This function does not check the instrument status. The user calls the Acquisition Status function to
             determine when the acquisition is complete.
             """
-            pass
+            self.root.driver.session.traces.Initiate()
 
-    class frequency:
+    @Namespace
+    class frequency(QObject, specan_ivi_interface.SpecAnIviInterface.frequency, metaclass=QtInterfaceMetaclass):
+        start_changed = Signal(float)
+        stop_changed = Signal(float)
+        offset_changed = Signal(float)
+
         @property
-        @abc.abstractmethod
         def start(self):
             """
             Start frequency.
@@ -403,14 +309,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Stop attribute to define the frequency domain. If the Frequency Start attribute value is equal to the
             Frequency Stop attribute value then the spectrum analyzer's horizontal attributes are in time-domain.
             """
-            pass
+            return self.root.driver.sc.frequency_start
 
         @start.setter
         def start(self, value):
-            pass
+            self.root.driver.sc.frequency_start = value
+            self.start_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def stop(self):
             """
             Stop frequency.
@@ -419,14 +325,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Start attribute to define the frequency domain. If the Frequency Start attribute value is equal to the
             Frequency Stop attribute value then the spectrum analyzer's horizontal attributes are in time-domain.
             """
-            pass
+            return self.root.driver.sc.frequency_stop
 
         @stop.setter
         def stop(self, value):
-            pass
+            self.root.driver.sc.frequency_stop = value
+            self.stop_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def offset(self):
             """
             Frequency offset.
@@ -441,13 +347,13 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Frequency Stop = Actual Stop Frequency + Frequency Offset
             Marker Position = Actual Marker Frequency + Frequency Offset
             """
-            pass
+            return self.root.driver.frequency.offset
 
         @offset.setter
         def offset(self, value):
-            pass
+            self.root.driver.frequency.offset = value
+            self.offset_changed.emit(value)
 
-        @abc.abstractmethod
         def configure_center_span(self, center_frequency, span):
             """
             This function configures the frequency range defining the center frequency and the frequency span. If the
@@ -462,9 +368,10 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             :param center_frequency: Specifies the center frequency of the frequency sweep. The units are Hertz.
             :param span: Specifies the frequency span of the frequency sweep. The units are Hertz.
             """
-            pass
+            self.root.driver.frequency.configure_center_span(center_frequency, span)
+            self.start_changed.emit(self.start)
+            self.stop_changed.emit(self.stop)
 
-        @abc.abstractmethod
         def configure_start_stop(self, start_frequency, stop_frequency):
             """
             This function configures the frequency range defining its start frequency and its stop frequency. If the
@@ -478,12 +385,22 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
                                    value to set the Frequency Stop attribute. See the attribute description for more
                                    details.
             """
-            pass
+            self.root.driver.frequency.configure_start_stop(start_frequency, stop_frequency)
+            self.start_changed.emit(self.start)
+            self.stop_changed.emit(self.stop)
 
+    @Namespace
+    class sweep_coupling(QObject,
+                         specan_ivi_interface.SpecAnIviInterface.sweep_coupling,
+                         metaclass=QtInterfaceMetaclass):
+        resolution_bandwidth_changed = Signal(float)
+        resolution_bandwidth_auto_changed = Signal(bool)
+        sweep_time_changed = Signal(float)
+        sweep_time_auto_changed = Signal(bool)
+        video_bandwidth_changed = Signal(float)
+        video_bandwidth_auto_changed = Signal(bool)
 
-    class sweep_coupling:
         @property
-        @abc.abstractmethod
         def resolution_bandwidth(self):
             """
             Specifies the resolution bandwidth.
@@ -491,14 +408,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Specifies the width of the IF filter in Hertz. For more information see Section 4.1.1, Sweep Coupling
             Overview.
             """
-            pass
+            return self.root.driver.sc.resolution_bandwidth
 
         @resolution_bandwidth.setter
         def resolution_bandwidth(self, value):
-            pass
+            self.root.driver.sc.resolution_bandwidth = value
+            self.resolution_bandwidth_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def resolution_bandwidth_auto(self):
             """
             Select resolution bandwidth automatically.
@@ -506,14 +423,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             If set to True, the resolution bandwidth is automatically selected. If set to False, the resolution
             bandwidth is manually selected.
             """
-            pass
+            return self.root.driver.sweep_coupling.resolution_bandwidth_auto
 
         @resolution_bandwidth_auto.setter
         def resolution_bandwidth_auto(self, value):
-            pass
+            self.root.driver.sweep_coupling.resolution_bandwidth_auto = value
+            self.resolution_bandwidth_auto_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def sweep_time(self):
             """
             Specifies the sweep time.
@@ -521,14 +438,14 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             Specifies the length of time to sweep from the left edge to the right edge of the current domain.
             The units are seconds.
             """
-            pass
+            return self.root.driver.sc.sweep_time
 
         @sweep_time.setter
         def sweep_time(self, value):
-            pass
+            self.root.driver.sc.sweep_time = value
+            self.sweep_time_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def sweep_time_auto(self):
             """
             Select sweep time automatically.
@@ -536,26 +453,26 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             If set to True, the sweep time is automatically selected If set to False, the sweep time is manually
             selected.
             """
-            pass
+            return self.root.driver.sweep_coupling.sweep_time_auto
 
         @sweep_time_auto.setter
         def sweep_time_auto(self, value):
-            pass
+            self.root.driver.sweep_coupling.sweep_time_auto = value
+            self.sweep_time_auto_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def video_bandwidth(self):
             """
             Specifies the video bandwidth of the post-detection filter in Hertz.
             """
-            pass
+            return self.root.driver.sweep_coupling.video_bandwidth
 
         @video_bandwidth.setter
         def video_bandwidth(self, value):
-            pass
+            self.root.driver.sweep_coupling.video_bandwidth = value
+            self.video_bandwidth_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def video_bandwidth_auto(self):
             """
             Select video bandwidth automatically.
@@ -563,13 +480,13 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             If set to True, the video bandwidth is automatically selected. If set to False, the video bandwidth is
             manually selected.
             """
-            pass
+            return self.root.driver.sweep_coupling.video_bandwidth_auto
 
         @video_bandwidth_auto.setter
         def video_bandwidth_auto(self, value):
-            pass
+            self.root.driver.sweep_coupling.video_bandwidth_auto = value
+            self.video_bandwidth_auto_changed.emit(value)
 
-        @abc.abstractmethod
         def configure(self, resolution_bandwidth, video_bandwidth, sweep_time):
             """
             This function configures the coupling and sweeping attributes. For additional sweep coupling information
@@ -596,14 +513,38 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
                                          Sweep Time attribute and disables auto coupling. See the attribute description
                                          for more details.
             """
-            pass
+            resolution_bandwidth_auto = False
+            video_bandwidth_auto = False
+            sweep_time_auto = False
+            if resolution_bandwidth == True:
+                resolution_bandwidth_auto = True
+                resolution_bandwidth = 0
+            if video_bandwidth == True:
+                video_bandwidth_auto = True
+                video_bandwidth = 0
+            if sweep_time == True:
+                sweep_time_auto = True
+                sweep_time = 0
+
+            self.root.driver.sweep_coupling.configure(resolution_bandwidth_auto,
+                                                      resolution_bandwidth,
+                                                      video_bandwidth_auto,
+                                                      video_bandwidth,
+                                                      sweep_time_auto,
+                                                      sweep_time)
+
+            self.resolution_bandwidth_auto_changed.emit(resolution_bandwidth_auto)
+            self.resolution_bandwidth_changed.emit(resolution_bandwidth)
+            self.video_bandwidth_auto_changed.emit(video_bandwidth_auto)
+            self.video_bandwidth_changed.emit(video_bandwidth)
+            self.sweep_time_auto_changed.emit(sweep_time_auto)
+            self.sweep_time_changed.emit(sweep_time)
 
     class traces:
         """
         Repeated capability.
         """
         @property
-        @abc.abstractmethod
         def name(self):
             """
             Name of trace.
@@ -612,21 +553,22 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             corresponds to the index that the user specifies. If the driver defines a qualified trace name, this
             property returns the qualified name.
             """
-            pass
+            self.root.driver.sc.trace_idx = self.index + 1
+            return self.root.driver.sc.trace_name
 
         @property
-        @abc.abstractmethod
         def type(self):
             """
             Specifies the representation of the acquired data.
             """
-            pass
+            self.root.driver.sc.trace_idx = self.index + 1
+            return specan_ivi_interface.TraceType(self.root.driver.sc.tr_type - 1)
 
         @type.setter
         def type(self, value):
-            pass
+            self.root.driver.sc.trace_idx = self.index + 1
+            self.root.driver.sc.tr_type = value.value + 1
 
-        @abc.abstractmethod
         def fetch_y(self):
             """
             Fetches y values from last measurement.
@@ -648,9 +590,10 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
 
             :return: (numpy array of frequencies, numpy array of amplitude values)
             """
-            pass
+            self.root.driver.sc.trace_idx = self.index + 1
+            with safearray_as_ndarray:
+                return self.root.driver.sc.fetch()
 
-        @abc.abstractmethod
         def read_y(self, maximum_time):
             """
             Read y values after initiating an acquisition.
@@ -671,19 +614,30 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
                                  otherwise: time the functions waits before raising a timeout error in seconds.
             :return: (numpy array of frequencies, numpy array of amplitude values)
             """
-            pass
-
+            self.root.driver.sc.trace_idx = self.index + 1
+            with safearray_as_ndarray:
+                y_trace = self.root.driver.traces[self.name].read_y(maximum_time)
+            if self.root.frequency.start == self.root.frequency.stop:
+                x_start = 0
+                x_stop = self.root.sweep_coupling.sweep_time
+            else:
+                x_start = self.root.frequency.start
+                x_stop = self.root.frequency.stop
+            size = self.root.driver.traces[self.root.driver.trace_name].size
+            x_trace = numpy.linspace(x_start, x_stop, size, True)
+            return x_trace, y_trace
 
 # endregion
 # region Extensions
 
 
-class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
+class MultitraceExtension(specan_ivi_interface.MultitraceExtensionInterface):
     """
     Extension IVI methods for spectrum analyzers supporting simple mathematical operations on traces
     """
-    class trace_math(metaclass=abc.ABCMeta):
-        @abc.abstractmethod
+    class trace_math(QObject,
+                     specan_ivi_interface.MultitraceExtensionInterface.trace_math,
+                     metaclass=QtInterfaceMetaclass):
         def add(self, dest_trace, trace1, trace2):
             """
             Adds two traces.
@@ -698,9 +652,8 @@ class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
             :param trace2: Specifies the name of the second trace operand.
             :return:
             """
-            pass
+            self.root.driver.traces.math.add(dest_trace, trace1, trace2)
 
-        @abc.abstractmethod
         def copy(self, dest_trace, src_trace):
             """
             Copies a trace.
@@ -712,9 +665,8 @@ class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
             :param src_trace: Specifies the name of the trace to be copied.
             :return:
             """
-            pass
+            self.root.driver.traces.math.copy(dest_trace, src_trace)
 
-        @abc.abstractmethod
         def exchange(self, trace1, trace2):
             """
             Exchanges two traces.
@@ -725,9 +677,8 @@ class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
             :param trace2: Specifies the name of the second trace to be exchanged.
             :return:
             """
-            pass
+            self.root.driver.traces.math.exchange(trace1, trace2)
 
-        @abc.abstractmethod
         def subtract(self, dest_trace, trace1, trace2):
             """
             Subtracts two traces.
@@ -742,22 +693,28 @@ class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
             :param trace2: Specifies the name of the second trace operand.
             :return:
             """
-            pass
+            self.root.driver.traces.math.subtract(dest_trace, trace1, trace2)
 
 
-class MarkerExtensionInterface(metaclass=abc.ABCMeta):
+class MarkerExtension(specan_ivi_interface.MarkerExtensionInterface):
     """
     The IviSpecAnMarker extension group supports spectrum analyzers that have markers. Markers are applied
     to traces and used for a wide range of operations. Some operations are simple, such as reading an
     amplitude value at an X-axis position, while others operations are complex, such as signal tracking.
     """
 
-    class markers(metaclass=abc.ABCMeta):
+    class markers(specan_ivi_interface.MarkerExtensionInterface.markers):
         """
         Contains all marker functions. Repeated namespace.
         """
+        enabled_changed = Signal(bool)
+        position_changed = Signal(float)
+        threshold_changed = Signal(float)
+        trace_changed = Signal(str)
+        peak_excursion_changed = Signal(float)
+        signal_track_enabled_changed = Signal(bool)
+
         @property
-        @abc.abstractmethod
         def amplitude(self):
             """
             Marker amplitude.
@@ -767,25 +724,33 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
             set to False, any attempt to read this attribute returns the Marker Not Enabled error.
             :return: Query Marker
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.amplitude
 
         @property
-        @abc.abstractmethod
         def enabled(self):
             """
             Marker enabled.
 
             If set to True, the  marker is enabled. When False, the marker is disabled.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.enabled
 
         @enabled.setter
         def enabled(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.enabled = value
+            self.enabled_changed.emit(value)
 
-        class frequency_counter(metaclass=abc.ABCMeta):
+        @Namespace
+        class frequency_counter(QObject,
+                                specan_ivi_interface.MarkerExtensionInterface.markers.frequency_counter,
+                                metaclass=QtInterfaceMetaclass):
+            enabled_changed = Signal(bool)
+            resolution_changed = Signal(float)
+
             @property
-            @abc.abstractmethod
             def enabled(self):
                 """
                 Frequency counter enabled.
@@ -794,14 +759,16 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
                 the marker frequency counter is enabled. If set to False, the marker frequency counter is disabled. This
                 attribute returns the Marker Not Enabled error if the Marker Enabled attribute is set to False..
                 """
-                pass
+                self.root.driver.marker.active_marker = self.parent_namespace.name
+                return self.root.driver.marker.frequency_counter.enabled
 
             @enabled.setter
             def enabled(self, value):
-                pass
+                self.root.driver.marker.active_marker = self.parent_namespace.name
+                self.root.driver.marker.frequency_counter.enabled = value
+                self.enabled_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def resolution(self):
                 """
                 Frequency counter resolution.
@@ -809,13 +776,15 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
                 Specifies the resolution of the frequency counter in Hertz. The measurement gate time is the reciprocal
                 of the specified resolution.
                 """
-                pass
+                self.root.driver.marker.active_marker = self.parent_namespace.name
+                return self.root.driver.marker.frequency_counter.resolution
 
             @resolution.setter
             def resolution(self, value):
-                pass
+                self.root.driver.marker.active_marker = self.parent_namespace.name
+                self.root.driver.marker.frequency_counter.resolution = value
+                self.resolution_changed.emit(value)
 
-            @abc.abstractmethod
             def configure(self, enabled, resolution):
                 """
                 This function sets the marker frequency counter resolution and enables or disables the marker frequency
@@ -829,17 +798,19 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
                                    Resolution attribute. See the attribute description for more details.
                 :return:
                 """
+                self.root.driver.marker.active_marker = self.parent_namespace.name
+                self.root.driver.marker.frequency_counter.configure(enabled, resolution)
+                self.enabled_changed.emit(enabled)
+                self.resolution_changed.emit(resolution)
 
         @property
-        @abc.abstractmethod
         def name(self):
             """
             This property returns the marker identifier.
             """
-            pass
+            return self.root.driver.marker.name(self.index + 1)
 
         @property
-        @abc.abstractmethod
         def position(self):
             """
             Marker position.
@@ -848,51 +819,59 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
             which the analyzer is operating, frequency or time-domain). This attribute returns the Marker Not
             Enabled error if the marker is not enabled.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.position
 
         @position.setter
         def position(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.position = value
+            self.position_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def threshold(self):
             """
             Specifies the lower limit of the search domain vertical range for the Marker Search function.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.threshold
 
         @threshold.setter
         def threshold(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.threshold = value
+            self.threshold_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def trace(self):
             """
             Specifies the Trace for the marker.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.trace
 
         @trace.setter
         def trace(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.trace = value
+            self.trace_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def peak_excursion(self):
             """
             Specifies the minimum amplitude variation of the signal in dB that the Marker Search function can
             identify as a peak.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.peak_excursion
 
         @peak_excursion.setter
         def peak_excursion(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.peak_excursion = value
+            self.peak_excursion_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def signal_track_enabled(self):
             """
             Track the signal.
@@ -906,13 +885,15 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
             Note: Signal tracking can only be enabled on one marker at any given time. The driver is responsible for
             enforcing this policy
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.signal_track_enabled
 
         @signal_track_enabled.setter
         def signal_track_enabled(self, value):
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.signal_track_enabled = value
+            self.signal_track_enabled_changed.emit(value)
 
-        @abc.abstractmethod
         def configure_enabled(self, enabled, trace):
             """
             This function enables the marker on the specified Trace.
@@ -923,9 +904,11 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
                           See the attribute description for more details.
             :return:
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.configure_enabled(enabled, trace)
+            self.enabled_changed.emit(enabled)
+            self.trace_changed.emit(trace)
 
-        @abc.abstractmethod
         def configure_search(self, peak_excursion, marker_threshold):
             """
             This function configures the Peak Excursion and Marker Threshold attribute values.
@@ -938,9 +921,11 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
                                      more details.
             :return:
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.configure_search(peak_excursion, marker_threshold)
+            self.peak_excursion_changed.emit(peak_excursion)
+            self.threshold_changed.emit(marker_threshold)
 
-        @abc.abstractmethod
         def search(self, search_type):
             """
             This function specifies the type of marker search and performs the search. This function returns the Marker
@@ -948,78 +933,84 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
 
             :param search_type: Specifies the type of marker search.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.search(search_type.value + 1)
 
-        @abc.abstractmethod
         def query(self):
             """
             This function returns the horizontal position and the amplitude level of the marker.
 
             :return: set (marker position, marker amplitude)
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return set(self.root.driver.marker.query())
 
-    @abc.abstractmethod
     def disable_all_markers(self):
         """
         This function disables all markers.
         """
-        pass
+        self.root.driver.marker.disable_all()
 
 
-class TriggerExtensionInterface(metaclass=abc.ABCMeta):
+class TriggerExtension(specan_ivi_interface.TriggerExtensionInterface):
     """
     This extension group specifies the source of the trigger signal that causes the analyzer to leave the
     Wait-For-Trigger state.
     """
-    class trigger:
+    class trigger(specan_ivi_interface.TriggerExtensionInterface.trigger):
+        source_changed = Signal(specan_ivi_interface.TriggerSource)
+
         @property
-        @abc.abstractmethod
         def source(self):
             """
             Specifies the source of the trigger signal that causes the analyzer to leave the Wait-For-Trigger state.
             """
-            pass
+            return specan_ivi_interface.TriggerSource(self.root.driver.trigger.source - 1)
 
         @source.setter
         def source(self, value):
-            pass
+            self.root.driver.trigger.source = value.value + 1
+            self.source_changed.emit(value)
 
 
-class ExternalTriggerExtensionInterface(metaclass=abc.ABCMeta):
+class ExternalTriggerExtension(specan_ivi_interface.ExternalTriggerExtensionInterface):
     """
     This extension group specifies the external trigger level and external trigger slope when the Trigger Source
     Attribute is set to external, which causes the analyzer to leave the Wait-For-Trigger state.
     """
     class trigger:
-        class external(metaclass=abc.ABCMeta):
+        class external(QObject,
+                       specan_ivi_interface.ExternalTriggerExtensionInterface.trigger.external,
+                       metaclass=QtInterfaceMetaclass):
+            level_changed = Signal(float)
+            slope_changed = Signal(specan_ivi_interface.Slope)
+
             @property
-            @abc.abstractmethod
             def level(self):
                 """
                 Specifies the level, in Volts, that the external trigger signal shall reach to trigger the acquisition.
                 """
-                pass
+                return self.root.driver.trigger.external.level
 
             @level.setter
             def level(self, value):
-                pass
+                self.root.driver.trigger.external.level = value
+                self.level_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def slope(self):
                 """
                 Specifies which slope of the external trigger signal triggers the acquisition.
 
                 See also: Slope.
                 """
-                pass
+                return specan_ivi_interface.Slope(self.root.driver.trigger.external.slope - 1)
 
             @slope.setter
             def slope(self, value):
-                pass
+                self.root.driver.trigger.external.slope = value.value + 1
+                self.slope_changed.emit(value)
 
-            @abc.abstractmethod
             def configure(self, level, slope):
                 """
                 This function specifies at which level and slope of the external trigger signal, acquisition is
@@ -1033,17 +1024,18 @@ class ExternalTriggerExtensionInterface(metaclass=abc.ABCMeta):
                               description for more details.
                 :return:
                 """
-                pass
+                self.root.driver.trigger.external.configure(level, slope)
+                self.level_changed.emit(level)
+                self.slope_changed.emit(slope)
 
 
-class SoftwareTriggerExtensionInterface(metaclass=abc.ABCMeta):
+class SoftwareTriggerExtension(specan_ivi_interface.SoftwareTriggerExtensionInterface):
     """
     The IviSpecAnSoftwareTrigger Extension Group supports spectrum analyzers that can acquire traces based
     on a software trigger signal. The user can send a software trigger to cause signal output to occur.
 
     This extension affects instrument behavior when the Trigger Source attribute is set to Software.
     """
-    @abc.abstractmethod
     def send_software_trigger(self):
         """
         Sends a software trigger to the instrument.
@@ -1069,45 +1061,49 @@ class SoftwareTriggerExtensionInterface(metaclass=abc.ABCMeta):
 
         :return: TriggerNotSoftwareException if trigger source is not set to software.
         """
-        pass
+        raise Exception('FIXME: Not implemented.')
 
 
-class VideoTriggerExtensionInterface(metaclass=abc.ABCMeta):
+class VideoTriggerExtension(specan_ivi_interface.VideoTriggerExtensionInterface):
     """
     This extension group specifies the video trigger level and video trigger slope when the Trigger Source
     attribute is set to Video, which causes the analyzer to leave the Wait-For-Trigger state.
     """
     class trigger:
-        class video(metaclass=abc.ABCMeta):
+        class video(QObject,
+                    specan_ivi_interface.VideoTriggerExtensionInterface.trigger.video,
+                    metaclass=QtInterfaceMetaclass):
+            level_changed = Signal(float)
+            slope_changed = Signal(specan_ivi_interface.Slope)
+
             @property
-            @abc.abstractmethod
             def level(self):
                 """
                 Specifies the level that the video signal shall reach to trigger the acquisition.
 
                 The units are specified by the Amplitude Units attribute.
                 """
-                pass
+                return self.root.driver.trigger.video.level
 
             @level.setter
             def level(self, value):
-                pass
+                self.root.driver.trigger.video.level = value
+                self.level_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def slope(self):
                 """
                 Specifies which slope of the video signal triggers the acquisition.
 
                 Possible values: Slope Enum.
                 """
-                pass
+                return specan_ivi_interface.Slope(self.root.driver.trigger.video.slope - 1)
 
             @slope.setter
             def slope(self, value):
-                pass
+                self.root.driver.trigger.video.slope = value.value + 1
+                self.slope_changed.emit(value)
 
-            @abc.abstractmethod
             def configure(self, level, slope):
                 """
                 This function specifies at which level and slope of the video trigger signal, acquisition is
@@ -1121,24 +1117,28 @@ class VideoTriggerExtensionInterface(metaclass=abc.ABCMeta):
                               description for more details.
                 :return:
                 """
-                pass
+                self.root.driver.trigger.video.configure(level, slope.value - 1)
+                self.level_changed.emit(level)
+                self.slope_changed.emit(slope)
 
 
-class DisplayExtensionInterface(metaclass=abc.ABCMeta):
+class DisplayExtension(specan_ivi_interface.DisplayExtensionInterface):
     """
     The IviSpecAnDisplay extension group controls the display related attributes.
     """
-    class display(metaclass=abc.ABCMeta):
+    class display(QObject,
+                  specan_ivi_interface.DisplayExtensionInterface.display,
+                  metaclass=QtInterfaceMetaclass):
+        units_per_division_changed = Signal(float)
+
         @property
-        @abc.abstractmethod
         def number_of_divisions(self):
             """
             Specifies the number of vertical screen divisions.
             """
-            pass
+            return self.root.driver.display.number_of_divisions
 
         @property
-        @abc.abstractmethod
         def units_per_division(self):
             """
             Specifies the number of vertical units in one screen division.
@@ -1146,30 +1146,31 @@ class DisplayExtensionInterface(metaclass=abc.ABCMeta):
             This attribute is typically used in conjunction with the Reference Level attribute to set the vertical
             range of the spectrum analyzer.
             """
-            pass
+            return self.root.driver.display.units_per_division
 
         @units_per_division.setter
         def units_per_division(self, value):
-            pass
+            self.root.driver.display.units_per_division = value
+            self.units_per_division_changed.emit(value)
 
 
-class MarkerTypeExtensionInterface(metaclass=abc.ABCMeta):
+class MarkerTypeExtension(specan_ivi_interface.MarkerTypeExtensionInterface):
     """
     The IviSpecAnMarkerType extension group provides support for analyzers that have multiple marker types.
     """
-    class markers(metaclass=abc.ABCMeta):
+    class markers(specan_ivi_interface.MarkerTypeExtensionInterface.markers):
         @property
-        @abc.abstractmethod
         def type(self):
             """
             Specifies the marker type of the marker.
 
             See also: MarkerType
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            return specan_ivi_interface.MarkerType(self.root.driver.marker.type - 1)
 
 
-class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
+class DeltaMarkerExtension(specan_ivi_interface.DeltaMarkerExtensionInterface):
     """
     The IviSpecAnDeltaMarker extension group provides delta-marker capabilities.
 
@@ -1177,9 +1178,10 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
     as a normal marker except that its position and amplitude are relative to a fixed reference point. This
     reference point is defined when the marker is converted from a normal marker to a delta marker.
     """
-    class markers(metaclass=abc.ABCMeta):
+    class markers(specan_ivi_interface.DeltaMarkerExtensionInterface.markers):
+        type_changed = Signal(specan_ivi_interface.MarkerType)
+
         @property
-        @abc.abstractmethod
         def reference_amplitude(self):
             """
             Amplitude of the reference marker.
@@ -1189,10 +1191,13 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
 
             If the Marker Type attribute is not Delta, this property raises the NotDeltaMarkerException.
             """
-            pass
+            if self.type != specan_ivi_interface.MarkerType.DELTA:
+                raise specan_ivi_interface.NotDeltaMarkerException('The marker {0} is not a delta marker.'.format(
+                    self.name))
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.reference_amplitude
 
         @property
-        @abc.abstractmethod
         def reference_position(self):
             """
             Position of the reference marker.
@@ -1202,9 +1207,12 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
 
             If the Marker Type attribute is not Delta, this property raises the NotDeltaMarkerException.
             """
-            pass
+            if self.type != specan_ivi_interface.MarkerType.DELTA:
+                raise specan_ivi_interface.NotDeltaMarkerException('The marker {0} is not a delta marker.'.format(
+                    self.name))
+            self.root.driver.marker.active_marker = self.name
+            return self.root.driver.marker.reference_position
 
-        @abc.abstractmethod
         def make_delta(self, value):
             """
             This function specifies whether the active marker is a delta marker.
@@ -1221,10 +1229,11 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
             normal state and are no longer relative to the Reference Marker Amplitude and Reference Marker Position
             attributes.
             """
-            pass
+            self.root.driver.marker.active_marker = self.name
+            self.root.driver.marker.make_delta(value)
+            self.type_changed.emit(self.type)
 
         @property
-        @abc.abstractmethod
         def query_reference(self):
             """
             This function returns the amplitude and position of the reference marker. If the Marker Type attribute is
@@ -1232,10 +1241,14 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
 
             :return: set of reference position and amplitude
             """
-            pass
+            if self.type != specan_ivi_interface.MarkerType.DELTA:
+                raise specan_ivi_interface.NotDeltaMarkerException('The marker {0} is not a delta marker.'.format(
+                    self.name))
+            self.root.driver.marker.active_marker = self.name
+            return set(self.root.driver.marker.query_reference())
 
 
-class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
+class ExternalMixerExtension(specan_ivi_interface.ExternalMixerExtensionInterface):
     """
     The IviSpecAnExternalMixer extension group provides support for external mixers.
 
@@ -1264,58 +1277,64 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
         fLO,max upper frequency limit of LO
     The following sections describe the mixer configuration and the conversion loss table configuration.
     """
-    class external_mixer(metaclass=abc.ABCMeta):
+    class external_mixer(QObject,
+                         specan_ivi_interface.ExternalMixerExtensionInterface.external_mixer,
+                         metaclass=QtInterfaceMetaclass):
+        enabled_changed = Signal(bool)
+        average_conversion_loss_changed = Signal(float)
+        harmonic_changed = Signal(float)
+        number_of_ports_changed = Signal(int)
+
         @property
-        @abc.abstractmethod
         def enabled(self):
             """
             Enables external mixer.
 
             If set to True, the external mixer is enabled. If set to False, the external mixer is disabled.
             """
-            pass
+            return self.root.driver.external_mixer.enabled
 
         @enabled.setter
         def enabled(self, value):
-            pass
+            self.root.driver.external_mixer.enabled = value
+            self.enabled_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def average_conversion_loss(self):
             """
             Specifies the average conversion loss.
             """
-            pass
+            return self.root.driver.external_mixer.average_conversion_loss
 
         @average_conversion_loss.setter
         def average_conversion_loss(self, value):
-            pass
+            self.root.driver.external_mixer.average_conversion_loss = value
+            self.average_conversion_loss_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def harmonic(self):
             """
             Specifies the order n of the harmonic used for conversion.
             """
-            pass
+            return self.root.driver.external_mixer.harmonic
 
         @harmonic.setter
         def harmonic(self, value):
-            pass
+            self.root.driver.external_mixer.harmonic = value
+            self.harmonic_changed.emit(value)
 
         @property
-        @abc.abstractmethod
         def number_of_ports(self):
             """
             Specifies the number of mixer ports.
             """
-            pass
+            return self.root.driver.external_mixer.number_of_ports
 
         @number_of_ports.setter
         def number_of_ports(self, value):
-            pass
+            self.root.driver.external_mixer.number_of_ports = value
+            self.number_of_ports_changed.emit(value)
 
-        @abc.abstractmethod
         def configure(self, harmonic, average_conversion_loss):
             """
             This function specifies the mixer harmonic and average conversion loss.
@@ -1327,23 +1346,30 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
                                             description for more details.
             :return:
             """
-            pass
+            self.root.driver.external_mixer.configure(harmonic, average_conversion_loss)
+            self.harmonic_changed.emit(harmonic)
+            self.average_conversion_loss_changed.emit(average_conversion_loss)
 
-        class bias(metaclass=abc.ABCMeta):
+        class bias(QObject,
+                   specan_ivi_interface.ExternalMixerExtensionInterface.external_mixer.bias,
+                   metaclass=QtInterfaceMetaclass):
+            level_changed = Signal(float)
+            enabled_changed = Signal(bool)
+            limit_changed = Signal(float)
+
             @property
-            @abc.abstractmethod
             def level(self):
                 """
                 Specifies the bias current in Amps.
                 """
-                pass
+                return self.root.driver.external_mixer.bias.level
 
             @level.setter
             def level(self, value):
-                pass
+                self.root.driver.external_mixer.bias.level = value
+                self.level_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def enabled(self):
                 """
                 Bias enabled.
@@ -1351,27 +1377,27 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
                 If set to True, the external mixer bias is enabled. If set to False, the external mixer bias
                 is disabled.
                 """
-                pass
+                return self.root.driver.external_mixer.bias.enabled
 
             @enabled.setter
             def enabled(self, value):
-                pass
+                self.root.driver.external_mixer.bias.enabled = value
+                self.enabled_changed.emit(value)
 
             @property
-            @abc.abstractmethod
             def limit(self):
                 """
                 Bias current limit.
 
                 Specifies the bias current limit in Amps.
                 """
-                pass
+                return self.root.driver.external_mixer.bias.limit
 
             @limit.setter
             def limit(self, value):
-                pass
+                self.root.driver.external_mixer.bias.limit = value
+                self.limit_changed.emit(value)
 
-            @abc.abstractmethod
             def configure(self, bias, bias_limit):
                 """
                 Configures external mixer bias.
@@ -1384,11 +1410,16 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
                                    Mixer Bias Limit attribute. See the attribute description for more details.
                 :return:
                 """
-                pass
+                self.root.driver.external_mixer.bias.configure(bias, bias_limit)
+                self.level_changed.emit(bias)
+                self.limit_changed.emit(bias_limit)
 
-        class conversion_loss_table(metaclass=abc.ABCMeta):
+        class conversion_loss_table(QObject,
+                                    specan_ivi_interface.ExternalMixerExtensionInterface.external_mixer.conversion_loss_table,
+                                    metaclass=QtInterfaceMetaclass):
+            enabled_changed = Signal(bool)
+
             @property
-            @abc.abstractmethod
             def enabled(self):
                 """
                 Conversion loss table enabled.
@@ -1396,13 +1427,13 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
                 If set to True, the conversion loss table is enabled. If set to False, the conversion loss table is
                 disabled.
                 """
-                pass
+                return self.root.driver.external_mixer.conversion_loss_table.enabled
 
             @enabled.setter
             def enabled(self, value):
-                pass
+                self.root.driver.external_mixer.conversion_loss_table.enabled = value
+                self.enabled_changed.emit(value)
 
-            @abc.abstractmethod
             def configure(self, frequency, conversion_loss):
                 """
                 Configures conversion loss table.
@@ -1414,10 +1445,10 @@ class ExternalMixerExtensionInterface(metaclass=abc.ABCMeta):
                 :param conversion_loss: array. Specifies the conversion loss values for the pairs.
                 :return:
                 """
-                pass
+                self.root.driver.external_mixer.conversion_loss_table.configure(frequency, conversion_loss)
 
 
-class PreselectorExtensionInterface(metaclass=abc.ABCMeta):
+class PreselectorExtension(specan_ivi_interface.PreselectorExtensionInterface):
     """
     The IviSpecAnPreselector extension controls preselectors.
 
@@ -1425,8 +1456,9 @@ class PreselectorExtensionInterface(metaclass=abc.ABCMeta):
     increasing dynamic range of an analyzer.  Preselectors are often separate instruments, but they are instruments that
     only work with spectrum analyzers. Some analyzers have internal preselectors.
     """
-    class preselector(metaclass=abc.ABCMeta):
-        @abc.abstractmethod
+    class preselector(QObject,
+                      specan_ivi_interface.PreselectorExtensionInterface.preselector,
+                      metaclass=QtInterfaceMetaclass):
         def peak(self):
             """
             Adjusts the preselector.
@@ -1434,6 +1466,99 @@ class PreselectorExtensionInterface(metaclass=abc.ABCMeta):
             This function adjusts the preselector to obtain the maximum readings for the current start and stop
             frequency. This function may affect the marker configuration.
             """
-            pass
+            return self.root.driver.preselector.peak()
 
 # endregion
+
+
+class PyIviSpecAn(PyIviBase, _Specan):
+    """
+        Module for accessing arbitrary waveform / function generators via PythonIVI library.
+
+        Config options:
+        - driver : str module.class name of driver within the python IVI library
+                       e.g. 'ivi.tektronix.tektronixAWG5000.tektronixAWG5002c'
+        - uri : str unique remote identifier used to connect to instrument.
+                    e.g. 'TCPIP::192.168.1.1::INSTR'
+        """
+
+    def __getattribute__(self, name):
+        """
+        this enables getting data from dynamic descriptors
+
+        :param name: name of attribute
+        :return: the attribute
+        """
+        value = object.__getattribute__(self, name)
+        if hasattr(value, '__get__'):
+            value = value.__get__(self, self.__class__)
+        return value
+
+    def __setattr__(self, name, value):
+        """
+        this enables setting data from dynamic descriptors
+
+        :param name: name of attribute
+        :param value: value
+        :return:
+        """
+        try:
+            obj = object.__getattribute__(self, name)
+        except AttributeError:
+            pass
+        else:
+            if hasattr(obj, '__set__'):
+                return obj.__set__(self, value)
+        return object.__setattr__(self, name, value)
+
+    def on_activate(self):
+        """
+        Event handler called when module is activated.
+        """
+        super().on_activate()  # connects to instrument
+
+        # find all base classes of driver
+        driver_capabilities = self.driver.identity.group_capabilities.split(',')
+
+        # dynamic class generator
+        self.traces = Namespace.repeat(len(self.driver.traces))(_Specan.traces)
+
+        if 'IviSpecAnMultitrace' in driver_capabilities:
+            self.trace_math = Namespace(MultitraceExtension.trace_math)
+
+        if 'IviSpecAnMarker' in driver_capabilities:
+            class IviMarkersMetaclass(QtInterfaceMetaclass):
+                def __new__(mcs, name, bases, attrs):
+                    if 'IviSpecAnMarkerType' in driver_capabilities:
+                        bases += (MarkerTypeExtension.markers, )
+                    if 'IviSpecAnDeltaMarker' in driver_capabilities:
+                        bases += (DeltaMarkerExtension.markers, )
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviMarkers(QObject, MarkerExtension.markers, metaclass=IviMarkersMetaclass):
+                pass
+            self.markers = Namespace.repeat(self.driver.marker.count)(IviMarkers)
+
+        class IviTriggerMetaclass(QtInterfaceMetaclass):
+            def __new__(mcs, name, bases, attrs):
+                if 'IviSpecAnTrigger' in driver_capabilities:
+                    bases += (TriggerExtension.trigger, )
+                if 'IviSpecAnExternalTrigger' in driver_capabilities:
+                    bases += (ExternalTriggerExtension.trigger, )
+                if 'IviSpecAnVideoTrigger' in driver_capabilities:
+                    bases += (VideoTriggerExtension.trigger, )
+                return super().__new__(mcs, name, bases, attrs)
+
+        class IviTrigger(QObject, metaclass=IviTriggerMetaclass):
+            external = Namespace(ExternalTriggerExtension.trigger.external)
+
+        self.trigger = Namespace(IviTrigger)
+
+        if 'IviSpecAnDisplay' in driver_capabilities:
+            self.display = Namespace(DisplayExtension.display)
+
+        if 'IviSpecAnExternalMixer' in driver_capabilities:
+            self.external_mixer = Namespace(ExternalMixerExtension.external_mixer)
+
+        if 'IviSpecAnPreselector' in driver_capabilities:
+            self.preselector = Namespace(PreselectorExtension.preselector)
