@@ -1044,32 +1044,33 @@ class SoftwareTriggerExtension(specan_ivi_interface.SoftwareTriggerExtensionInte
 
     This extension affects instrument behavior when the Trigger Source attribute is set to Software.
     """
-    def send_software_trigger(self):
-        """
-        Sends a software trigger to the instrument.
+    class traces(specan_ivi_interface.SoftwareTriggerExtensionInterface.traces):
+        def send_software_trigger(self):
+            """
+            Sends a software trigger to the instrument.
 
-        This function sends a software-generated trigger to the instrument. It is only applicable for instruments using
-        interfaces or protocols which support an explicit trigger function. For example, with GPIB this function could
-        send a group execute trigger to the instrument. Other implementations might send a *TRG command.
+            This function sends a software-generated trigger to the instrument. It is only applicable for instruments using
+            interfaces or protocols which support an explicit trigger function. For example, with GPIB this function could
+            send a group execute trigger to the instrument. Other implementations might send a *TRG command.
 
-        Since instruments interpret a software-generated trigger in a wide variety of ways, the precise response of the
-        instrument to this trigger is not defined. Note that SCPI details a possible implementation.
+            Since instruments interpret a software-generated trigger in a wide variety of ways, the precise response of the
+            instrument to this trigger is not defined. Note that SCPI details a possible implementation.
 
-        This function should not use resources which are potentially shared by other devices (for example, the VXI
-        trigger lines). Use of such shared resources may have undesirable effects on other devices.
+            This function should not use resources which are potentially shared by other devices (for example, the VXI
+            trigger lines). Use of such shared resources may have undesirable effects on other devices.
 
-        This function should not check the instrument status. Typically, the end-user calls this function only in a
-        sequence of calls to other low-level driver functions. The sequence performs one operation. The end-user uses
-        the low-level functions to optimize one or more aspects of interaction with the instrument. To check the
-        instrument status, call the appropriate error query function at the conclusion of the sequence.
+            This function should not check the instrument status. Typically, the end-user calls this function only in a
+            sequence of calls to other low-level driver functions. The sequence performs one operation. The end-user uses
+            the low-level functions to optimize one or more aspects of interaction with the instrument. To check the
+            instrument status, call the appropriate error query function at the conclusion of the sequence.
 
-        The trigger source attribute must accept Software Trigger as a valid setting for this function to work. If the
-        trigger source is not set to Software Trigger, this function does nothing and returns the error Trigger Not
-        Software
+            The trigger source attribute must accept Software Trigger as a valid setting for this function to work. If the
+            trigger source is not set to Software Trigger, this function does nothing and returns the error Trigger Not
+            Software
 
-        :return: TriggerNotSoftwareException if trigger source is not set to software.
-        """
-        raise Exception('FIXME: Not implemented.')
+            :return: TriggerNotSoftwareException if trigger source is not set to software.
+            """
+            self.root.driver.session.traces.SendSoftwareTrigger()
 
 
 class VideoTriggerExtension(specan_ivi_interface.VideoTriggerExtensionInterface):
@@ -1533,6 +1534,8 @@ class PyIviSpecAn(PyIviBase, _Specan):
             def __new__(mcs, name, bases, attrs):
                 if 'IviSpecAnMultitrace' in driver_capabilities:
                     bases += (MultitraceExtension.traces, )
+                if 'IviSpecAnSoftwareTrigger' in driver_capabilities:
+                    bases += (SoftwareTriggerExtension.traces,)
                 return super().__new__(mcs, name, bases, attrs)
 
         class IviTraces(list, _Specan.traces, metaclass=IviTracesMetaclass):
@@ -1583,9 +1586,6 @@ class PyIviSpecAn(PyIviBase, _Specan):
             external = Namespace(ExternalTriggerExtension.trigger.external)
 
         self.trigger = Namespace(IviTrigger)
-
-        if 'IviSpecAnSoftwareTrigger' in driver_capabilities:
-            self.send_software_trigger = SoftwareTriggerExtension.send_software_trigger
 
         if 'IviSpecAnDisplay' in driver_capabilities:
             self.display = Namespace(DisplayExtension.display)

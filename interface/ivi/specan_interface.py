@@ -1043,33 +1043,34 @@ class SoftwareTriggerExtensionInterface(metaclass=abc.ABCMeta):
 
     This extension affects instrument behavior when the Trigger Source attribute is set to Software.
     """
-    @abc.abstractmethod
-    def send_software_trigger(self):
-        """
-        Sends a software trigger to the instrument.
+    class traces(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def send_software_trigger(self):
+            """
+            Sends a software trigger to the instrument.
 
-        This function sends a software-generated trigger to the instrument. It is only applicable for instruments using
-        interfaces or protocols which support an explicit trigger function. For example, with GPIB this function could
-        send a group execute trigger to the instrument. Other implementations might send a *TRG command.
+            This function sends a software-generated trigger to the instrument. It is only applicable for instruments using
+            interfaces or protocols which support an explicit trigger function. For example, with GPIB this function could
+            send a group execute trigger to the instrument. Other implementations might send a *TRG command.
 
-        Since instruments interpret a software-generated trigger in a wide variety of ways, the precise response of the
-        instrument to this trigger is not defined. Note that SCPI details a possible implementation.
+            Since instruments interpret a software-generated trigger in a wide variety of ways, the precise response of the
+            instrument to this trigger is not defined. Note that SCPI details a possible implementation.
 
-        This function should not use resources which are potentially shared by other devices (for example, the VXI
-        trigger lines). Use of such shared resources may have undesirable effects on other devices.
+            This function should not use resources which are potentially shared by other devices (for example, the VXI
+            trigger lines). Use of such shared resources may have undesirable effects on other devices.
 
-        This function should not check the instrument status. Typically, the end-user calls this function only in a
-        sequence of calls to other low-level driver functions. The sequence performs one operation. The end-user uses
-        the low-level functions to optimize one or more aspects of interaction with the instrument. To check the
-        instrument status, call the appropriate error query function at the conclusion of the sequence.
+            This function should not check the instrument status. Typically, the end-user calls this function only in a
+            sequence of calls to other low-level driver functions. The sequence performs one operation. The end-user uses
+            the low-level functions to optimize one or more aspects of interaction with the instrument. To check the
+            instrument status, call the appropriate error query function at the conclusion of the sequence.
 
-        The trigger source attribute must accept Software Trigger as a valid setting for this function to work. If the
-        trigger source is not set to Software Trigger, this function does nothing and returns the error Trigger Not
-        Software
+            The trigger source attribute must accept Software Trigger as a valid setting for this function to work. If the
+            trigger source is not set to Software Trigger, this function does nothing and returns the error Trigger Not
+            Software
 
-        :return: TriggerNotSoftwareException if trigger source is not set to software.
-        """
-        pass
+            :return: TriggerNotSoftwareException if trigger source is not set to software.
+            """
+            pass
 
 
 class VideoTriggerExtensionInterface(metaclass=abc.ABCMeta):
