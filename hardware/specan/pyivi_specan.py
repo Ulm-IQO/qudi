@@ -245,21 +245,6 @@ class _Specan(specan_ivi_interface.SpecAnIviInterface):
             self.root.driver.acquisition.vertical_scale = value.value + 1
             self.vertical_scale_changed.emit(value)
 
-        def abort(self):
-            """
-            Aborts a running measurement.
-
-            This function aborts a previously initiated measurement and returns the spectrum analyzer to the idle
-            state. This function does not check instrument status.
-            """
-            self.root.driver.session.traces.Abort()
-
-        def status(self):
-            """
-            This function determines and returns the status of an acquisition.
-            """
-            return specan_ivi_interface.AcquisitionStatus(self.root.driver.session.traces.AcqusitionStatus())
-
         def configure(self, sweep_mode_continuous, number_of_sweeps, detector_type_auto, detector_type,
                       vertical_scale):
             """
@@ -282,17 +267,6 @@ class _Specan(specan_ivi_interface.SpecAnIviInterface):
                                                    number_of_sweeps,
                                                    detector_type_auto,
                                                    detector_type.value+1)
-
-        def initiate(self):
-            """
-            This function initiates an acquisition.
-
-            After calling this function, the spectrum analyzer leaves the idle state.
-
-            This function does not check the instrument status. The user calls the Acquisition Status function to
-            determine when the acquisition is complete.
-            """
-            self.root.driver.session.traces.Initiate()
 
     @Namespace
     class frequency(QObject, specan_ivi_interface.SpecAnIviInterface.frequency, metaclass=QtInterfaceMetaclass):
@@ -540,9 +514,9 @@ class _Specan(specan_ivi_interface.SpecAnIviInterface):
             self.sweep_time_auto_changed.emit(sweep_time_auto)
             self.sweep_time_changed.emit(sweep_time)
 
-    class traces:
+    class trace(specan_ivi_interface.SpecAnIviInterface.trace):
         """
-        Repeated capability.
+        Repeated capability, attribute name traces.
         """
         @property
         def name(self):
@@ -627,6 +601,34 @@ class _Specan(specan_ivi_interface.SpecAnIviInterface):
             x_trace = numpy.linspace(x_start, x_stop, size, True)
             return x_trace, y_trace
 
+    class traces(specan_ivi_interface.SpecAnIviInterface.traces):
+        def initiate(self):
+            """
+            This function initiates an acquisition.
+
+            After calling this function, the spectrum analyzer leaves the idle state.
+
+            This function does not check the instrument status. The user calls the Acquisition Status function to
+            determine when the acquisition is complete.
+            """
+            self.root.driver.session.traces.Initiate()
+
+        def abort(self):
+            """
+            Aborts a running measurement.
+
+            This function aborts a previously initiated measurement and returns the spectrum analyzer to the idle
+            state. This function does not check instrument status.
+            """
+            self.root.driver.session.traces.Abort()
+
+        def acquisition_status(self):
+            """
+            This function determines and returns the status of an acquisition.
+            """
+            return specan_ivi_interface.AcquisitionStatus(self.root.driver.session.traces.AcquisitionStatus())
+
+
 # endregion
 # region Extensions
 
@@ -635,65 +637,70 @@ class MultitraceExtension(specan_ivi_interface.MultitraceExtensionInterface):
     """
     Extension IVI methods for spectrum analyzers supporting simple mathematical operations on traces
     """
-    class trace_math(QObject,
-                     specan_ivi_interface.MultitraceExtensionInterface.trace_math,
-                     metaclass=QtInterfaceMetaclass):
-        def add(self, dest_trace, trace1, trace2):
+    class traces:
+        @Namespace
+        class math(QObject,
+                   specan_ivi_interface.MultitraceExtensionInterface.traces.math,
+                   metaclass=QtInterfaceMetaclass):
             """
-            Adds two traces.
-
-            This function modifies a trace to be the point by point sum of two other traces. Any data in the destination
-            trace is deleted.
-
-            DestinationTrace = Trace1 + Trace2
-
-            :param dest_trace: Specifies the name of the result
-            :param trace1: Specifies the name of first trace operand.
-            :param trace2: Specifies the name of the second trace operand.
-            :return:
+            The math namespace is supposed to be implemented as traces.math and not as repeated capability.
             """
-            self.root.driver.traces.math.add(dest_trace, trace1, trace2)
+            def add(self, dest_trace, trace1, trace2):
+                """
+                Adds two traces.
 
-        def copy(self, dest_trace, src_trace):
-            """
-            Copies a trace.
+                This function modifies a trace to be the point by point sum of two other traces. Any data in the
+                destination trace is deleted.
 
-            This function copies the data array from one trace into another trace. Any data in the Destination Trace is
-            deleted.
+                DestinationTrace = Trace1 + Trace2
 
-            :param dest_trace: Specifies the name of the trace into which the array is copied.
-            :param src_trace: Specifies the name of the trace to be copied.
-            :return:
-            """
-            self.root.driver.traces.math.copy(dest_trace, src_trace)
+                :param dest_trace: Specifies the name of the result
+                :param trace1: Specifies the name of first trace operand.
+                :param trace2: Specifies the name of the second trace operand.
+                :return:
+                """
+                self.root.driver.traces.math.add(dest_trace, trace1, trace2)
 
-        def exchange(self, trace1, trace2):
-            """
-            Exchanges two traces.
+            def copy(self, dest_trace, src_trace):
+                """
+                Copies a trace.
 
-            This function exchanges the data arrays of two traces.
+                This function copies the data array from one trace into another trace. Any data in the Destination
+                Trace is deleted.
 
-            :param trace1: Specifies the name of the first trace to be exchanged.
-            :param trace2: Specifies the name of the second trace to be exchanged.
-            :return:
-            """
-            self.root.driver.traces.math.exchange(trace1, trace2)
+                :param dest_trace: Specifies the name of the trace into which the array is copied.
+                :param src_trace: Specifies the name of the trace to be copied.
+                :return:
+                """
+                self.root.driver.traces.math.copy(dest_trace, src_trace)
 
-        def subtract(self, dest_trace, trace1, trace2):
-            """
-            Subtracts two traces.
+            def exchange(self, trace1, trace2):
+                """
+                Exchanges two traces.
 
-            This function modifies a trace to be the point by point difference of two other traces. Any data in the
-            destination trace is deleted.
+                This function exchanges the data arrays of two traces.
 
-            DestinationTrace = Trace1 - Trace2
+                :param trace1: Specifies the name of the first trace to be exchanged.
+                :param trace2: Specifies the name of the second trace to be exchanged.
+                :return:
+                """
+                self.root.driver.traces.math.exchange(trace1, trace2)
 
-            :param dest_trace: Specifies the name of the result
-            :param trace1: Specifies the name of first trace operand.
-            :param trace2: Specifies the name of the second trace operand.
-            :return:
-            """
-            self.root.driver.traces.math.subtract(dest_trace, trace1, trace2)
+            def subtract(self, dest_trace, trace1, trace2):
+                """
+                Subtracts two traces.
+
+                This function modifies a trace to be the point by point difference of two other traces. Any data in the
+                destination trace is deleted.
+
+                DestinationTrace = Trace1 - Trace2
+
+                :param dest_trace: Specifies the name of the result
+                :param trace1: Specifies the name of first trace operand.
+                :param trace2: Specifies the name of the second trace operand.
+                :return:
+                """
+                self.root.driver.traces.math.subtract(dest_trace, trace1, trace2)
 
 
 class MarkerExtension(specan_ivi_interface.MarkerExtensionInterface):
@@ -703,7 +710,7 @@ class MarkerExtension(specan_ivi_interface.MarkerExtensionInterface):
     amplitude value at an X-axis position, while others operations are complex, such as signal tracking.
     """
 
-    class markers(specan_ivi_interface.MarkerExtensionInterface.markers):
+    class marker(specan_ivi_interface.MarkerExtensionInterface.marker):
         """
         Contains all marker functions. Repeated namespace.
         """
@@ -745,7 +752,7 @@ class MarkerExtension(specan_ivi_interface.MarkerExtensionInterface):
 
         @Namespace
         class frequency_counter(QObject,
-                                specan_ivi_interface.MarkerExtensionInterface.markers.frequency_counter,
+                                specan_ivi_interface.MarkerExtensionInterface.marker.frequency_counter,
                                 metaclass=QtInterfaceMetaclass):
             enabled_changed = Signal(bool)
             resolution_changed = Signal(float)
@@ -945,11 +952,12 @@ class MarkerExtension(specan_ivi_interface.MarkerExtensionInterface):
             self.root.driver.marker.active_marker = self.name
             return set(self.root.driver.marker.query())
 
-    def disable_all_markers(self):
-        """
-        This function disables all markers.
-        """
-        self.root.driver.marker.disable_all()
+    class markers(specan_ivi_interface.MarkerExtensionInterface.markers):
+        def disable_all(self):
+            """
+            This function disables all markers.
+            """
+            self.root.driver.marker.disable_all()
 
 
 class TriggerExtension(specan_ivi_interface.TriggerExtensionInterface):
@@ -1158,7 +1166,7 @@ class MarkerTypeExtension(specan_ivi_interface.MarkerTypeExtensionInterface):
     """
     The IviSpecAnMarkerType extension group provides support for analyzers that have multiple marker types.
     """
-    class markers(specan_ivi_interface.MarkerTypeExtensionInterface.markers):
+    class marker(specan_ivi_interface.MarkerTypeExtensionInterface.marker):
         @property
         def type(self):
             """
@@ -1178,7 +1186,7 @@ class DeltaMarkerExtension(specan_ivi_interface.DeltaMarkerExtensionInterface):
     as a normal marker except that its position and amplitude are relative to a fixed reference point. This
     reference point is defined when the marker is converted from a normal marker to a delta marker.
     """
-    class markers(specan_ivi_interface.DeltaMarkerExtensionInterface.markers):
+    class marker(specan_ivi_interface.DeltaMarkerExtensionInterface.marker):
         type_changed = Signal(specan_ivi_interface.MarkerType)
 
         @property
@@ -1521,23 +1529,45 @@ class PyIviSpecAn(PyIviBase, _Specan):
         driver_capabilities = self.driver.identity.group_capabilities.split(',')
 
         # dynamic class generator
-        self.traces = Namespace.repeat(len(self.driver.traces))(_Specan.traces)
+        class IviTracesMetaclass(QtInterfaceMetaclass):
+            def __new__(mcs, name, bases, attrs):
+                if 'IviSpecAnMultitrace' in driver_capabilities:
+                    bases += (MultitraceExtension.traces, )
+                return super().__new__(mcs, name, bases, attrs)
 
-        if 'IviSpecAnMultitrace' in driver_capabilities:
-            self.trace_math = Namespace(MultitraceExtension.trace_math)
+        class IviTraces(list, _Specan.traces, metaclass=IviTracesMetaclass):
+            def __init__(self, parent):
+                super().__init__()
+                self.parent_namespace = parent
+                self.root = parent
+
+        self.traces = Namespace.repeat(len(self.driver.traces), IviTraces(self))(_Specan.trace)
 
         if 'IviSpecAnMarker' in driver_capabilities:
-            class IviMarkersMetaclass(QtInterfaceMetaclass):
+            class IviMarkerMetaclass(QtInterfaceMetaclass):
                 def __new__(mcs, name, bases, attrs):
                     if 'IviSpecAnMarkerType' in driver_capabilities:
-                        bases += (MarkerTypeExtension.markers, )
+                        bases += (MarkerTypeExtension.marker, )
                     if 'IviSpecAnDeltaMarker' in driver_capabilities:
-                        bases += (DeltaMarkerExtension.markers, )
+                        bases += (DeltaMarkerExtension.marker, )
                     return super().__new__(mcs, name, bases, attrs)
 
-            class IviMarkers(QObject, MarkerExtension.markers, metaclass=IviMarkersMetaclass):
+            class IviMarker(QObject, MarkerExtension.marker, metaclass=IviMarkerMetaclass):
                 pass
-            self.markers = Namespace.repeat(self.driver.marker.count)(IviMarkers)
+
+            class IviMarkersMetaclass(QtInterfaceMetaclass):
+                def __new__(mcs, name, bases, attrs):
+                    if 'IviSpecAnMarker' in driver_capabilities:
+                        bases += (MarkerExtension.markers, )
+                    return super().__new__(mcs, name, bases, attrs)
+
+            class IviMarkers(list, metaclass=IviMarkersMetaclass):
+                def __init__(self, parent):
+                    super().__init__()
+                    self.parent_namespace = parent
+                    self.root = parent
+
+            self.markers = Namespace.repeat(self.driver.marker.count, IviMarkers(self))(IviMarker)
 
         class IviTriggerMetaclass(QtInterfaceMetaclass):
             def __new__(mcs, name, bases, attrs):
@@ -1553,6 +1583,9 @@ class PyIviSpecAn(PyIviBase, _Specan):
             external = Namespace(ExternalTriggerExtension.trigger.external)
 
         self.trigger = Namespace(IviTrigger)
+
+        if 'IviSpecAnSoftwareTrigger' in driver_capabilities:
+            self.send_software_trigger = SoftwareTriggerExtension.send_software_trigger
 
         if 'IviSpecAnDisplay' in driver_capabilities:
             self.display = Namespace(DisplayExtension.display)

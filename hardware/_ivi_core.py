@@ -96,16 +96,18 @@ class Namespace:
         return namespace
 
     @classmethod
-    def repeat(cls, count):
+    def repeat(cls, count, container=None):
         """
         Decorator used for IVI repeated capabilities.
 
         :param count: how often the capability shall be repeated.
+        :param container:
         """
         class NamespaceRepeat:
             def __init__(self, cls):
                 self.cls = cls
                 self.count = count
+                self.container = container
 
             def __get__(self, instance, owner):
                 if not instance:
@@ -136,11 +138,16 @@ class Namespace:
                     raise Exception('Invalid value for count: {0}.'.format(self.count))
 
                 # create instances
-                namespaces = [self.cls() for ii in range(self.count)]
-                for ii in range(len(namespaces)):
-                    namespaces[ii].parent_namespace = instance
-                    namespaces[ii].root = root
-                    namespaces[ii].index = ii
+                if self.container is None:
+                    namespaces = []
+                else:
+                    namespaces = self.container
+                for ii in range(self.count):
+                    obj = self.cls()
+                    obj.parent_namespace = instance
+                    obj.root = root
+                    obj.index = ii
+                    namespaces.append(obj)
                 setattr(instance, name, namespaces)
                 return namespaces
 

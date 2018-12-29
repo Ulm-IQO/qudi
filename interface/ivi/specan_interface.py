@@ -20,7 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 FIXME:
 - initiate, acquisition status and abort are part of acquisition but should be part of traces
-- disable_all_markers
 
 """
 
@@ -343,23 +342,6 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             pass
 
         @abc.abstractmethod
-        def abort(self):
-            """
-            Aborts a running measurement.
-
-            This function aborts a previously initiated measurement and returns the spectrum analyzer to the idle
-            state. This function does not check instrument status.
-            """
-            pass
-
-        @abc.abstractmethod
-        def status(self):
-            """
-            This function determines and returns the status of an acquisition.
-            """
-            pass
-
-        @abc.abstractmethod
         def configure(self, sweep_mode_continuous, number_of_sweeps, detector_type_auto, detector_type,
                       vertical_scale):
             """
@@ -377,18 +359,6 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
                                   details.
             :param vertical_scale: Specifies the vertical scale. The driver uses this value to set the Vertical Scale
                                    attribute. See the attribute description for more details.
-            """
-            pass
-
-        @abc.abstractmethod
-        def initiate(self):
-            """
-            This function initiates an acquisition.
-
-            After calling this function, the spectrum analyzer leaves the idle state.
-
-            This function does not check the instrument status. The user calls the Acquisition Status function to
-            determine when the acquisition is complete.
             """
             pass
 
@@ -598,9 +568,9 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
-    class traces:
+    class trace:
         """
-        Repeated capability.
+        Repeated capability, attribute name traces.
         """
         @property
         @abc.abstractmethod
@@ -673,6 +643,35 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
+    class traces(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def initiate(self):
+            """
+            This function initiates an acquisition.
+
+            After calling this function, the spectrum analyzer leaves the idle state.
+
+            This function does not check the instrument status. The user calls the Acquisition Status function to
+            determine when the acquisition is complete.
+            """
+            pass
+
+        @abc.abstractmethod
+        def abort(self):
+            """
+            Aborts a running measurement.
+
+            This function aborts a previously initiated measurement and returns the spectrum analyzer to the idle
+            state. This function does not check instrument status.
+            """
+            pass
+
+        @abc.abstractmethod
+        def acquisition_status(self):
+            """
+            This function determines and returns the status of an acquisition.
+            """
+            pass
 
 # endregion
 # region Extensions
@@ -682,67 +681,71 @@ class MultitraceExtensionInterface(metaclass=abc.ABCMeta):
     """
     Extension IVI methods for spectrum analyzers supporting simple mathematical operations on traces
     """
-    class trace_math(metaclass=abc.ABCMeta):
-        @abc.abstractmethod
-        def add(self, dest_trace, trace1, trace2):
+    class traces:
+        class math(metaclass=abc.ABCMeta):
             """
-            Adds two traces.
-
-            This function modifies a trace to be the point by point sum of two other traces. Any data in the destination
-            trace is deleted.
-
-            DestinationTrace = Trace1 + Trace2
-
-            :param dest_trace: Specifies the name of the result
-            :param trace1: Specifies the name of first trace operand.
-            :param trace2: Specifies the name of the second trace operand.
-            :return:
+            The math namespace is supposed to be implemented as traces.math and not as repeated capability.
             """
-            pass
+            @abc.abstractmethod
+            def add(self, dest_trace, trace1, trace2):
+                """
+                Adds two traces.
 
-        @abc.abstractmethod
-        def copy(self, dest_trace, src_trace):
-            """
-            Copies a trace.
+                This function modifies a trace to be the point by point sum of two other traces. Any data in the
+                destination trace is deleted.
 
-            This function copies the data array from one trace into another trace. Any data in the Destination Trace is
-            deleted.
+                DestinationTrace = Trace1 + Trace2
 
-            :param dest_trace: Specifies the name of the trace into which the array is copied.
-            :param src_trace: Specifies the name of the trace to be copied.
-            :return:
-            """
-            pass
+                :param dest_trace: Specifies the name of the result
+                :param trace1: Specifies the name of first trace operand.
+                :param trace2: Specifies the name of the second trace operand.
+                :return:
+                """
+                pass
 
-        @abc.abstractmethod
-        def exchange(self, trace1, trace2):
-            """
-            Exchanges two traces.
+            @abc.abstractmethod
+            def copy(self, dest_trace, src_trace):
+                """
+                Copies a trace.
 
-            This function exchanges the data arrays of two traces.
+                This function copies the data array from one trace into another trace. Any data in the Destination
+                Trace is deleted.
 
-            :param trace1: Specifies the name of the first trace to be exchanged.
-            :param trace2: Specifies the name of the second trace to be exchanged.
-            :return:
-            """
-            pass
+                :param dest_trace: Specifies the name of the trace into which the array is copied.
+                :param src_trace: Specifies the name of the trace to be copied.
+                :return:
+                """
+                pass
 
-        @abc.abstractmethod
-        def subtract(self, dest_trace, trace1, trace2):
-            """
-            Subtracts two traces.
+            @abc.abstractmethod
+            def exchange(self, trace1, trace2):
+                """
+                Exchanges two traces.
 
-            This function modifies a trace to be the point by point difference of two other traces. Any data in the
-            destination trace is deleted.
+                This function exchanges the data arrays of two traces.
 
-            DestinationTrace = Trace1 - Trace2
+                :param trace1: Specifies the name of the first trace to be exchanged.
+                :param trace2: Specifies the name of the second trace to be exchanged.
+                :return:
+                """
+                pass
 
-            :param dest_trace: Specifies the name of the result
-            :param trace1: Specifies the name of first trace operand.
-            :param trace2: Specifies the name of the second trace operand.
-            :return:
-            """
-            pass
+            @abc.abstractmethod
+            def subtract(self, dest_trace, trace1, trace2):
+                """
+                Subtracts two traces.
+
+                This function modifies a trace to be the point by point difference of two other traces. Any data in the
+                destination trace is deleted.
+
+                DestinationTrace = Trace1 - Trace2
+
+                :param dest_trace: Specifies the name of the result
+                :param trace1: Specifies the name of first trace operand.
+                :param trace2: Specifies the name of the second trace operand.
+                :return:
+                """
+                pass
 
 
 class MarkerExtensionInterface(metaclass=abc.ABCMeta):
@@ -752,9 +755,9 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
     amplitude value at an X-axis position, while others operations are complex, such as signal tracking.
     """
 
-    class markers(metaclass=abc.ABCMeta):
+    class marker(metaclass=abc.ABCMeta):
         """
-        Contains all marker functions. Repeated namespace.
+        Contains all marker functions. Repeated namespace whose name is markers
         """
         @property
         @abc.abstractmethod
@@ -959,12 +962,13 @@ class MarkerExtensionInterface(metaclass=abc.ABCMeta):
             """
             pass
 
-    @abc.abstractmethod
-    def disable_all_markers(self):
-        """
-        This function disables all markers.
-        """
-        pass
+    class markers(metaclass=abc.ABCMeta):
+        @abc.abstractmethod
+        def disable_all(self):
+            """
+            This function disables all markers.
+            """
+            pass
 
 
 class TriggerExtensionInterface(metaclass=abc.ABCMeta):
@@ -1157,7 +1161,7 @@ class MarkerTypeExtensionInterface(metaclass=abc.ABCMeta):
     """
     The IviSpecAnMarkerType extension group provides support for analyzers that have multiple marker types.
     """
-    class markers(metaclass=abc.ABCMeta):
+    class marker(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def type(self):
@@ -1177,7 +1181,7 @@ class DeltaMarkerExtensionInterface(metaclass=abc.ABCMeta):
     as a normal marker except that its position and amplitude are relative to a fixed reference point. This
     reference point is defined when the marker is converted from a normal marker to a delta marker.
     """
-    class markers(metaclass=abc.ABCMeta):
+    class marker(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def reference_amplitude(self):
