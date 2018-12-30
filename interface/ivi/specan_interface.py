@@ -634,7 +634,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             :param maximum_time: MAX_TIME_IMMEDIATE: The function returns immediately. If no valid measurement value
                                                      exists, the function raises an error.
                                  MAX_TIME_INDEFINITE: The function waits indefinitely for the measurement to complete.
-                                 otherwise: time the functions waits before raising a timeout error in seconds.
+                                 otherwise: time the functions waits before raising a timeout error in milliseconds.
             :return: (numpy array of frequencies, numpy array of amplitude values)
             """
             pass

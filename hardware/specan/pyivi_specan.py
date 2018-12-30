@@ -585,19 +585,19 @@ class _Specan(specan_ivi_interface.SpecAnIviInterface):
             :param maximum_time: MAX_TIME_IMMEDIATE: The function returns immediately. If no valid measurement value
                                                      exists, the function raises an error.
                                  MAX_TIME_INDEFINITE: The function waits indefinitely for the measurement to complete.
-                                 otherwise: time the functions waits before raising a timeout error in seconds.
+                                 otherwise: time the functions waits before raising a timeout error in milliseconds.
             :return: (numpy array of frequencies, numpy array of amplitude values)
             """
             self.root.driver.sc.trace_idx = self.index + 1
             with safearray_as_ndarray:
-                y_trace = self.root.driver.traces[self.name].read_y(maximum_time)
+                y_trace = self.root.driver.traces[self.name].read_y(int(maximum_time))
             if self.root.frequency.start == self.root.frequency.stop:
                 x_start = 0
                 x_stop = self.root.sweep_coupling.sweep_time
             else:
                 x_start = self.root.frequency.start
                 x_stop = self.root.frequency.stop
-            size = self.root.driver.traces[self.root.driver.trace_name].size
+            size = self.root.driver.traces[self.root.driver.sc.trace_name].size
             x_trace = numpy.linspace(x_start, x_stop, size, True)
             return x_trace, y_trace
 
