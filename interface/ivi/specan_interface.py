@@ -160,7 +160,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
     """
     Interface for spectrum analyzer driver implementation following the IVI specification.
     """
-    class level:
+    class level(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def amplitude_units(self):
@@ -265,7 +265,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
-    class acquisition:
+    class acquisition(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def detector_type(self):
@@ -358,7 +358,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
-    class frequency:
+    class frequency(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def start(self):
@@ -447,7 +447,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             pass
 
 
-    class sweep_coupling:
+    class sweep_coupling(metaclass=abc.ABCMeta):
         @property
         @abc.abstractmethod
         def resolution_bandwidth(self):
@@ -564,7 +564,7 @@ class SpecAnIviInterface(metaclass=InterfaceMetaclass):
             """
             pass
 
-    class trace:
+    class trace(metaclass=abc.ABCMeta):
         """
         Repeated capability, attribute name traces.
         """
