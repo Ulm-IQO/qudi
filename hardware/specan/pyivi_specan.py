@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the implementation of the pythonIvi interface for scopes.
+This file contains a wrapper for pyivi for spectrum analyzers using the IVI interface.
 
-The main class is ::PyIviScope::
+The main class is ::PyIviSpecAn::
 
 Example configuration
 
 hardware:
     n9000a:
-        module.Class: 'scope.pyivi_specan.PyIviSpecan'
+        module.Class: 'scope.pyivi_specan.PyIviSpecAn'
         uri: 'TCPIP::192.168.1.1::INSTR'
 
 
 Optional parameter:
+        model: str: Model of the spectrum analyzer. Default: determine using VISA.
         flavour: either 'IVI-COM' or 'IVI-C', two of the interfaces IVI supports. Default: IVI-COM.
         simulate: boolean
 
