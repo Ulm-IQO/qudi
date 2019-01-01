@@ -50,7 +50,7 @@ class SweepPointsExtension(SweepPointsExtensionInterface):
 
 class PyIviSpecAnKeysightN90X0(pyivi_specan.PyIviSpecAn):
     """
-    Hardware drkver for Keysight N90X0 spectrum analyzers.
+    Hardware driver for Keysight N90X0 spectrum analyzers.
 
     The driver is based on the IVI-COM driver provided by Keysight but it implements further functionality
     not covered by the IVI specifications. We directly use VISA and SCPI commands for it.
@@ -77,7 +77,7 @@ class PyIviSpecAnKeysightN90X0(pyivi_specan.PyIviSpecAn):
             pass
 
         self.sweep_coupling = Namespace(N9000SweepCoupling)
-        del self.sweep_couplingcached
+        del self.__sweep_coupling_cached__
 
     def on_deactivate(self):
         self.driver_visa.close()
