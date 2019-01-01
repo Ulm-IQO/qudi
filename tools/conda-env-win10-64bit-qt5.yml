@@ -82,7 +82,7 @@ dependencies:
   - terminado=0.8.1=py36_1
   - testpath=0.3.1=py36h2698cfe_0
   - tk=8.6.7=hcb92d03_3
-  - tornado=5.0.2=py36_0
+  - tornado=4.5.3=py36_0
   - traitlets=4.3.2=py36h096827d_0
   - vc=14=h0510ff6_3
   - vs2015_runtime=14.0.25123=3
