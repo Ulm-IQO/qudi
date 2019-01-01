@@ -78,7 +78,7 @@ class Namespace:
         if not instance:
             return self.cls
 
-        name = self.cls.__name__ + 'cached'
+        name = '__{0}_cached__'.format(self.cls.__name__)
 
         # if we are already cached, use this version
         if name in instance.__dict__:
@@ -111,7 +111,7 @@ class Namespace:
                 if not instance:
                     return self.cls
 
-                name = self.cls.__name__ + 'cached'
+                name = '__{0}_cached__'.format(self.cls.__name__)
 
                 # if we are already cached, use this version
                 if name in instance.__dict__:
