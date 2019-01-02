@@ -416,8 +416,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._initalize_data_arrays_stepper()
 
         self.initialize_image()
-        self._lines_correct_z = 5
-        self._z_direction_correction = True
+
+        # Tilt correction
+        self._lines_correct_3rd_axis = 5
+        self._3rd_direction_correction = True
+        self.correct_third_axis_for_tilt = False
         self._save_positions = True
         # Step values definitions
 
@@ -1141,8 +1144,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # do z position correction
         # Todo: This is still very crude
-        if self._step_counter % self._lines_correct_z == 0:
-            self._stepping_device.move_attocube("z", True, self._z_direction_correction, steps=1)
+        if self.correct_third_axis_for_tilt:
+            if self._step_counter % self._lines_correct_3rd_axis == 0:
+                self._stepping_device.move_attocube("z", True, self._3rd_direction_correction, steps=1)
         self._step_counter += 1
 
         # check if at end of scan
