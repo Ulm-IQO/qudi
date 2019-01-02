@@ -48,8 +48,14 @@ class LFImageMode(Enum):
 class Lightfield(Base, SpectrometerInterface):
     """ Control Princeton Instruments Lightfield from Qudi.
 
-        This hardware module needs a brave soul fluent in C# and Python,
-        as it can only do one thing right now: crash Lightfield.
+    This hardware module needs a brave soul fluent in C# and Python,
+    as it can only do one thing right now: crash Lightfield.
+
+    Example config for copy-paste:
+
+    lightfield_spectrometer:
+        module.Class: 'spectrometer.lightfield_spectrometer.Lightfield'
+
     """
 
     def on_activate(self):
@@ -110,29 +116,23 @@ class Lightfield(Base, SpectrometerInterface):
         self.lastframe = list()
 
     def on_deactivate(self):
-        """ Deactivate module.
+        """ Deactivate module. """
 
-            @param e object: fysom state transition information
-
-            This method needs to get rid of all the stuff fron the activation.
-        """
         if hasattr(self, 'au'):
             del self.au
 
 # Callbacks
     def settingChangedCallback(self, sender, args):
-        """ Lightfieldsettings changed.
-        """
+        """ Lightfieldsettings changed. """
         pass
 
     def exitHandler(self, sender, args):
-        """ Something went wrong, clean up.
-        """
+        """ Something went wrong, clean up. """
         del self.au
 
     def frameCallback(self, sender, args):
-        """ A frame/spectrum was recorded.
-        """
+        """ A frame/spectrum was recorded. """
+
         print(sender)
         print(args)
         dataSet = args.ImageDataSet
@@ -147,8 +147,7 @@ class Lightfield(Base, SpectrometerInterface):
         self.lastframe = list(arr)
 
     def setAcquisitionComplete(self, sender, args):
-        """ A frame/spectrum was recorded
-        """
+        """ A frame/spectrum was recorded. """
         pass
 
 # other stuff

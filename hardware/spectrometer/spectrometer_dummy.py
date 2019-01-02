@@ -31,7 +31,14 @@ import numpy as np
 class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
     """ Dummy spectrometer module.
 
-        Shows a silicon vacancy spectrum at liquid helium temperatures.
+    Shows a silicon vacancy spectrum at liquid helium temperatures.
+
+    Example config for copy-paste:
+
+    spectrometer_dummy:
+        module.Class: 'spectrometer.spectrometer_dummy.SpectrometerInterfaceDummy'
+        fitlogic: 'fitlogic' # name of the fitlogic module, see default config
+
     """
 
     fitlogic = Connector(interface='FitLogic')

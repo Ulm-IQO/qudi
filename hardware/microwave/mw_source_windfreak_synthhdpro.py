@@ -30,8 +30,16 @@ import time
 
 
 class MicrowaveSynthHDPro(Base, MicrowaveInterface):
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ Hardware class to controls a SynthHD Pro.
+
+    Example config for copy-paste:
+
+    mw_source_synthhd:
+        module.Class: 'microwave.mw_source_windfreak_synthhdpro.MicrowaveSynthHDPro'
+        serial_port: 'COM3'
+        serial_timeout: 10 # in seconds
+        output_channel: 0 # either 0 or 1
+
     """
     _modclass = 'MicrowaveSynthHDPro'
     _modtype = 'mwsource'

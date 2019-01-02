@@ -31,7 +31,16 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 class MicrowaveSRSSG(Base, MicrowaveInterface):
-    """ Hardware control class to controls SRS SG390 devices.  """
+    """ Hardware control class to controls SRS SG390 devices.
+
+    Example config for copy-paste:
+
+    mw_source_srssg:
+        module.Class: 'microwave.mw_source_srssg.MicrowaveSRSSG'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10
+
+    """
 
     _modclass = 'MicrowaveSRSSG'
     _modtype = 'hardware'

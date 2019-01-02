@@ -35,12 +35,20 @@ from interface.microwave_interface import TriggerEdge
 
 
 class MicrowaveAnritsu(Base, MicrowaveInterface):
-    """
-    Hardware control file for Anritsu Devices.
+    """ Hardware control file for Anritsu Devices.
+
     Tested for the model MG3691C with OPTION 2.
     cw and list modes are tested.
     Important: Trigger for frequency sweep is totally independent with most trigger syntax.
             In addition, it has to be Aux I/O pin connection.
+
+    Example config for copy-paste:
+
+    mw_source_anritsu_mg3691c:
+        module.Class: 'microwave.mw_source_anritsu_mg3691.MicrowaveAnritsu'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10 # in seconds
+
     """
 
     _modclass = 'MicrowaveAnritsu'

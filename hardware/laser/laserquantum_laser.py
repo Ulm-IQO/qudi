@@ -39,9 +39,16 @@ class PSUTypes(Enum):
 
 
 class LaserQuantumLaser(Base, SimpleLaserInterface):
-    """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    """ Qudi module to communicate with the Edwards turbopump and vacuum equipment.
+
+    Example config for copy-paste:
+
+    laserquantum_laser:
+        module.Class: 'laser.laserquantum_laser.LaserQuantumLaser'
+        interface: 'ASRL1::INSTR'
+        maxpower: 0.250 # in Watt
+        psu: 'SMD6000'
+
     """
     _modclass = 'lqlaser'
     _modtype = 'hardware'
