@@ -71,6 +71,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     savelogic = Connector(interface='SaveLogic')
     confocalcounter = Connector(interface='FiniteCounterInterface')
     analoguereader = Connector(interface='AnalogueReaderInterface')
+    analogueoutput = Connector(interface='AnalogueOutputInterface')
 
     # status vars
     max_history_length = StatusVar(default=10)
@@ -370,6 +371,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._stepping_device = self.confocalstepper1()
         self._counting_device = self.confocalcounter()
         self._position_feedback_device = self.analoguereader()
+        self._analogue_output_device = self.analogueoutput()
         self._save_logic = self.savelogic()
 
         # Initialises hardware values
@@ -410,7 +412,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         else:
             self._ai_scanner = False
 
-        # initalise data arrays for stepper
+        # initialize data arrays for stepper
         self._initalize_data_arrays_stepper()
 
         self.initialize_image()
