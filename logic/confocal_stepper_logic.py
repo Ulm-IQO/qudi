@@ -1196,8 +1196,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # Todo: Check if there is a better way than this to adjust for the fact that a stepping
                 # direction change is necessary for the last count. Maybe different method arrangement
                 # sensible
-                time.sleep(
-                    steps / self.axis_class[main_axis].step_freq)  # wait till stepping finished for readout
+                # time.sleep(
+                #    steps / self.axis_class[main_axis].step_freq)  # wait till stepping finished for readout
                 result = self._counting_device.get_finite_counts()
                 if self.map_scan_position and self._ai_scanner:
                     analog_result = self._position_feedback_device.get_analogue_voltage_reader(
@@ -1289,7 +1289,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return [-1], []
 
 
-        time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
+        # time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
         result_back = self._counting_device.get_finite_counts()
         if self.map_scan_position and self._ai_scanner:
             analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
