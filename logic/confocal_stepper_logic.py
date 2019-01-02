@@ -1521,27 +1521,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.image_raw[line_counter, :, 3] = self._ai_counter_voltages[line_counter]
             self.image_raw_back[line_counter, :, 3] = self._ai_counter_voltages_back[line_counter]
 
-    def save_data(self, colorscale_range=None, percentile_range=None):
-        """ Save the current confocal xy data to file.
-
-        Two files are created.  The first is the imagedata, which has a text-matrix of count values
-        corresponding to the pixel matrix of the image.  Only count-values are saved here.
-
-        The second file saves the full raw data with x, y, z, and counts at every pixel.
-
-        A figure is also saved.
-
-        @param: list colorscale_range (optional) The range [min, max] of the display colour scale
-                    (for the figure)
-
-        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
-        """
-        filepath = self._save_logic.get_path_for_module('ConfocalStepper')
-        timestamp = datetime.datetime.now()
+    def generate_save_parameters(self):
         # Prepare the meta data parameters (common to both saved files):
         parameters = OrderedDict()
 
         self._get_scan_axes()
+
         parameters['First Axis'] = self._first_scan_axis
         parameters['First Axis Steps'] = self._steps_scan_first_line
         parameters['First Axis Frequency'] = self.axis_class[self._first_scan_axis].step_freq
@@ -1558,10 +1543,32 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo self._step_freq and self.step_amplitude should be named in a similar fashion
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
-        if self._z_direction_correction:
-            parameters["Z correction up (attocube axis)"] = self._lines_correct_z
+        if self._3rd_direction_correction:
+            parameters["Z correction up (attocube axis)"] = self._lines_correct_3rd_axis
         else:
-            parameters["z correftion down (attocube axis"] = self._lines_correct_z
+            parameters["z correction down (attocube axis"] = self._lines_correct_3rd_axis
+
+        return parameters
+
+    def save_data(self, colorscale_range=None, percentile_range=None):
+        """ Save the current confocal xy data to file.
+
+        Two files are created.  The first is the imagedata, which has a text-matrix of count values
+        corresponding to the pixel matrix of the image.  Only count-values are saved here.
+
+        The second file saves the full raw data with x, y, z, and counts at every pixel.
+
+        A figure is also saved.
+
+        @param: list colorscale_range (optional) The range [min, max] of the display colour scale
+                    (for the figure)
+
+        @param: list percentile_range (optional) The percentile range [min, max] of the color scale
+        """
+        filepath = self.filepath
+        timestamp = datetime.datetime.now()
+
+        parameters = self.generate_save_parameters()
 
         # prepare the full raw data in an OrderedDict:
         data = OrderedDict()
@@ -1571,7 +1578,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             data['y position (mm)'] = self.full_image[:, :, 1].flatten()
             data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
             data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
-            full_data = self.full_image  # else it will be none to reduce domputiation time = drawing time
+            full_data = self.full_image  # else it will be none to reduce computiation time = drawing time
             full_data_back = self.full_image_back
         else:
             data['x step'] = self.image_raw[:, :, 0].flatten()
@@ -1820,13 +1827,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             xdata = full_data[:, :, 0]
             ydata = full_data[:, :, 1]
             zdata = full_data[:, :, 2 + ch]
+
+            cbar_range = [np.min(zdata), np.max(zdata)]
             # Create figure
             fig2, ax2 = plt.subplots()
-
             # Create image plot
             cfimage2 = ax2.tripcolor(np.ndarray.flatten(xdata), np.ndarray.flatten(ydata), np.ndarray.flatten(zdata),
-                                     cmap=plt.get_cmap('inferno')  # reference the right place in qd
-                                     )
+                                     cmap=plt.get_cmap('inferno'),  # reference the right place in qd,
+                                     vmin=cbar_range[0],
+                                     vmax=cbar_range[1])
 
             ax2.set_aspect(1)
             ax2.set_xlabel(self._first_scan_axis + ' mm ')
