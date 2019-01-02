@@ -40,11 +40,11 @@ class SweepPointsExtension(SweepPointsExtensionInterface):
             """
             Specifies the number of measured points in each sweep.
             """
-            return int(self.root.driver_visa.query('TOI:SWE:POIN?'))
+            return int(self.root.driver_visa.query('SWEEP:POINTS?'))
 
         @sweep_points.setter
         def sweep_points(self, value):
-            self.root.driver_visa.write('TOI:SWE:POIN {0:d}'.format(value))
+            self.root.driver_visa.write('SWEEP:POINTS {0:d}'.format(value))
             self.sweep_points_changed.emit(value)
 
 
