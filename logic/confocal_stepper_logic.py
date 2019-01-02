@@ -689,6 +689,42 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
     ################################# Stepper Scan Methods #######################################
 
+    def check_axis_stepper(self):
+        # Check the parameters of the stepper device
+        freq_status = self.axis_class[self._first_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
+        if freq_status < 0 or amp_status < 0:
+            self.module_state.unlock()
+            return -1
+        freq_status = self.axis_class[self._second_scan_axis]._check_freq()
+        amp_status = self.axis_class[self._second_scan_axis]._check_amplitude()
+        if freq_status < 0 or amp_status < 0:
+            return -1
+
+        # check axis status
+        if self.axis_class[self._first_scan_axis].mode != "stepping":
+            axis_status1 = self.axis_class[self._first_scan_axis].set_mode_stepping()
+        else:
+            axis_status1 = self.axis_class[self._first_scan_axis]._check_mode()
+        if self.axis_class[self._second_scan_axis].mode != "stepping":
+            axis_status2 = self.axis_class[self._second_scan_axis].set_mode_stepping()
+        else:
+            axis_status2 = self.axis_class[self._second_scan_axis]._check_mode()
+        # Todo: This is a dirty fix!!!
+        if self.axis_class["z"].mode != "stepping":
+            axis_status3 = self.axis_class["z"].set_mode_stepping()
+        else:
+            axis_status3 = self.axis_class["z"]._check_mode()
+        if axis_status1 < 0 or axis_status2 < 0 or axis_status3 < 0:
+            # Todo: is this really sensible here?
+            self.axis_class[self._first_scan_axis].set_mode_ground()
+            self.axis_class[self._second_scan_axis].set_mode_ground()
+            # self.module_state.unlock()
+            # self.kill_counter()
+            return -1
+
+        return 0
+
     def set_scan_axes(self, scan_axes):
         """"Sets the step scan axes for the stepper to the given direction
 
@@ -1441,9 +1477,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         Initialises all numpy data arrays for the current stepper settings
         """
         self.stepping_raw_data = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
+            (self._steps_scan_second_line, self._steps_scan_first_line))
         self.stepping_raw_data_back = np.zeros(
-            (self._steps_scan_first_line, self._steps_scan_first_line))
+            (self._steps_scan_second_line, self._steps_scan_first_line))
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
