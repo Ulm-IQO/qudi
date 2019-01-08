@@ -306,9 +306,9 @@ def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
         self.log.warning('The 1D lorentzian fit did not work. Error '
                          'message: {0}\n'.format(result.message))
 
@@ -459,9 +459,9 @@ def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_par
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
         self.log.error('The double lorentzian fit did not '
                      'work: {0}'.format(result.message))
 
@@ -847,7 +847,7 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
 
 
 def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
-                            add_params=None):
+                            add_params=None, **kwargs):
     """ Perform a triple lorentzian fit
 
     @param numpy.array x_axis: 1D axis values
@@ -871,9 +871,9 @@ def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
         self.log.error('The triple lorentzian fit did not '
                        'work: {0}'.format(result.message))
 
