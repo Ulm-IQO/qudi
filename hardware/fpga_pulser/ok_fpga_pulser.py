@@ -30,7 +30,7 @@ from collections import OrderedDict
 
 
 class OkFpgaPulser(Base, PulserInterface):
-    """Methods to control Pulse Generator running on OK FPGA.
+    """ Methods to control Pulse Generator running on OK FPGA.
 
     Chan   PIN
     ----------
