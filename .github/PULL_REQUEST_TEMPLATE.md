@@ -27,6 +27,7 @@
 - [ ] I have documented my changes in the changelog (`documentation/changelog.md`)
 - [ ] My change requires a change to the documentation.
 - [ ] I have updated the documentation accordingly.
+- [ ] I have added/updated for the module the config example in the docstring of the class accordingly.
 - [ ] I have checked that the change does not contain obvious errors (syntax, indentation, mutable default values).
 - [ ] I have tested my changes using 'Load all modules' on the default dummy configuration with my changes included.
 - [ ] All changed Jupyter notebooks have been stripped of their output cells.

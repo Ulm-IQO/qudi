@@ -42,7 +42,16 @@ class OkFpgaPulser(Base, PulserInterface):
     Ch6    B8
     Ch7    D9
     Ch8    C9
+
+    Example config for copy-paste:
+
+    fpga_pulser_ok:
+        module.Class: 'fpga_fastcounter.fast_pulser_qo.OkFpgaPulser'
+        fpga_serial: '143400058N'
+        fpga_type: 'XEM6310_LX150'
+
     """
+
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
 

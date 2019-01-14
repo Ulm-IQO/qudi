@@ -32,6 +32,44 @@ class MotorStagePI(Base, MotorInterface):
     """unstable: Christoph Müller, Simon Schmitt
     This is the Interface class to define the controls for the simple
     microwave hardware.
+
+    Example config for copy-paste:
+
+    motorstage_pi:
+        module.Class: 'motor.motor_stage_pi.MotorStagePI'
+        com_port_pi_xyz: 'ASRL1::INSTR'
+        pi_xyz_baud_rate: 9600
+        pi_xyz_timeout: 1000
+        pi_xyz_term_char: '\n'
+        pi_first_axis_label: 'x'
+        pi_second_axis_label: 'y'
+        pi_third_axis_label: 'z'
+        pi_first_axis_ID: '1'
+        pi_second_axis_ID: '2'
+        pi_third_axis_ID: '3'
+
+        pi_first_min: -0.1 # in m
+        pi_first_max: 0.1 # in m
+        pi_second_min: -0.1 # in m
+        pi_second_max: 0.1 # in m
+        pi_third_min: -0.1 # in m
+        pi_third_max: 0.1 # in m
+
+        pi_first_axis_step: 1e-7 # in m
+        pi_second_axis_step: 1e-7 # in m
+        pi_third_axis_step: 1e-7 # in m
+
+        vel_first_min: 1e-5 # in m/s
+        vel_first_max: 5e-2 # in m/s
+        vel_second_min: 1e-5 # in m/s
+        vel_second_max: 5e-2 # in m/s
+        vel_third_min: 1e-5 # in m/s
+        vel_third_max: 5e-2 # in m/s
+
+        vel_first_axis_step: 1e-5 # in m/s
+        vel_second_axis_step: 1e-5 # in m/s
+        vel_third_axis_step: 1e-5 # in m/s
+
     """
     _modclass = 'MotorStagePI'
     _modtype = 'hardware'

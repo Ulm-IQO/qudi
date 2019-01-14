@@ -160,11 +160,21 @@ class BOARDSETTING(ctypes.Structure):
                 ('timepreset',  ctypes.c_double), ]
 
 class FastComtec(Base, FastCounterInterface):
-    """
+    """ Hardware Class for the FastComtec Card.
+
     stable: Jochen Scheuer, Simon Schmitt
 
-    Hardware Class for the FastComtec Card.
+    Example config for copy-paste:
+
+    fastcomtec_mcs6:
+        module.Class: 'fastcomtec.fastcomtecmcs6.FastComtec'
+        gated: False
+        trigger_safety: 400e-9
+        aom_delay: 390e-9
+        minimal_binwidth: 0.2e-9
+
     """
+
     _modclass = 'FastComtec'
     _modtype = 'hardware'
     gated = ConfigOption('gated', False, missing='warn')
@@ -538,7 +548,7 @@ class FastComtec(Base, FastCounterInterface):
             cycles = 1
         if length_bins *  cycles < constraints['max_bins']:
             # Smallest increment is 64 bins. Since it is better if the range is too short than too long, round down
-            length_bins = int(64 * int(length_bins / 64))
+            length_bins = int(64 * int(np.ceil(length_bins / 64)))
             cmd = 'RANGE={0}'.format(int(length_bins))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             #cmd = 'roimax={0}'.format(int(length_bins))
@@ -671,6 +681,15 @@ class FastComtec(Base, FastCounterInterface):
 
         return mode, preset
 
+    def get_preset_mode(self):
+        """ Gets the preset
+       @return int mode: current preset
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        prena = bsetting.prena
+        return prena
+
 
     def set_preset(self, preset):
         """ Sets the preset/
@@ -707,7 +726,9 @@ class FastComtec(Base, FastCounterInterface):
         self.set_cycles(1)
         # Turn on or off sequential cycle mode
         if mode:
-            cmd = 'sweepmode={0}'.format(hex(1978500))
+            #cmd = 'sweepmode={0}'.format(hex(1978500))
+            #cmd = 'sweepmode={0}'.format(hex(1974404))
+            cmd = 'sweepmode={0}'.format(hex(35528836))
         else:
             cmd = 'sweepmode={0}'.format(hex(1978496))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
@@ -718,6 +739,15 @@ class FastComtec(Base, FastCounterInterface):
             self.set_cycles(cycles)
 
         return mode, cycles
+
+    def get_cycle_mode(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        sweepmode = bsetting.sweepmode
+        return sweepmode
 
     def set_cycles(self, cycles):
         """ Sets the cycles

@@ -30,8 +30,17 @@ from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
 
 class TimeTaggerCounter(Base, SlowCounterInterface):
+    """ Using the TimeTagger as a slow counter.
 
-    """ Using the TimeTagger as a counter."""
+    Example config for copy-paste:
+
+    timetagger_slowcounter:
+        module.Class: 'timetagger_counter.TimeTaggerCounter'
+        timetagger_channel_apd_0: 0
+        timetagger_channel_apd_1: 1
+        timetagger_sum_channels: 2
+
+    """
 
     _modtype = 'TTCounter'
     _modclass = 'hardware'

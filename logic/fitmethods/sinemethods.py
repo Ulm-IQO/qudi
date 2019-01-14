@@ -693,7 +693,7 @@ def estimate_sine_cosine(self, x_axis, data, params):
 
     error, params = self.estimate_sine(x_axis=x_axis, data=data, params=params)
 
-    params['phase'].set(value=np.pi/2)
+    params['phase'].set(value=np.pi/2, vary=False)
 
     return error, params
 

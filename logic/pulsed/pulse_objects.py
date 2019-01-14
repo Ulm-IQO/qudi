@@ -983,8 +983,28 @@ class PredefinedGeneratorBase:
         return self.__sequencegeneratorlogic.log
 
     @property
+    def analyze_block_ensemble(self):
+        return self.__sequencegeneratorlogic.analyze_block_ensemble
+
+    @property
+    def analyze_sequence(self):
+        return self.__sequencegeneratorlogic.analyze_sequence
+
+    @property
     def pulse_generator_settings(self):
         return self.__sequencegeneratorlogic.pulse_generator_settings
+
+    @property
+    def save_block(self):
+        return self.__sequencegeneratorlogic.save_block
+
+    @property
+    def save_ensemble(self):
+        return self.__sequencegeneratorlogic.save_ensemble
+
+    @property
+    def save_sequence(self):
+        return self.__sequencegeneratorlogic.save_sequence
 
     @property
     def generation_parameters(self):
@@ -1158,7 +1178,7 @@ class PredefinedGeneratorBase:
         """
 
         """
-        return self._get_trigger_element(length=50e-9, increment=0, channels=self.sync_channel)
+        return self._get_trigger_element(length=20e-9, increment=0, channels=self.sync_channel)
 
     def _get_mw_element(self, length, increment, amp=None, freq=None, phase=None):
         """
@@ -1223,7 +1243,7 @@ class PredefinedGeneratorBase:
                     frequency=freqs[0],
                     phase=phases[0])
             elif sine_number == 2:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.DoubleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     frequency_1=freqs[0],
@@ -1231,7 +1251,7 @@ class PredefinedGeneratorBase:
                     phase_1=phases[0],
                     phase_2=phases[1])
             else:
-                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSin(
+                mw_element.pulse_function[self.microwave_channel] = SamplingFunctions.TripleSinSum(
                     amplitude_1=amps[0],
                     amplitude_2=amps[1],
                     amplitude_3=amps[2],
@@ -1282,7 +1302,7 @@ class PredefinedGeneratorBase:
 
     def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
                                   laser_ignore_list=list(), controlled_variable=[0, 1], units=('s', ''),
-                                  labels=('Tau', 'Signal') ,number_of_lasers=None, counting_length=None):
+                                  labels=('Tau', 'Signal'), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
         block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
@@ -1460,7 +1480,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         @return bool: True if obj is a valid generator class, False otherwise
         """
         if inspect.isclass(obj):
-            return PredefinedGeneratorBase in obj.__bases__ and len(obj.__bases__) == 1
+            return PredefinedGeneratorBase in inspect.getmro(obj) #and len(obj.__bases__) == 1
         return False
 
 
