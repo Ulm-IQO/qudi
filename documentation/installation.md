@@ -21,7 +21,7 @@ installed at the same time, and just switch from one to another in a command ter
 This tool also ease the installation as you can create an environment for Qudi with all the modules needed by importing 
 them from the ``.yml`` file in the ``tool`` folder.
 
-It is highly recommended you use this option. If however you want to go manual, you can find more information 
+It is highly recommended you use this option. If however you want to go manual, you can find more information
 [here](@ref manual-package-installation)
 
 #### Git vs Download
