@@ -113,7 +113,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
-    _pulse_out_channel = ConfigOption('pulse_out_channel', 'Dev2/port0', missing='warn')
+    _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
+    _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
 
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
@@ -1569,7 +1570,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             if self._lock_in_active:
                 ptask = daq.TaskHandle()
                 daq.DAQmxCreateTask('ODMRPulser', daq.byref(ptask))
-                daq.DAQmxCreateDOChan(ptask, self._pulse_out_channel+'/line0:1', "ODMRPulserChannel", daq.DAQmx_Val_ChanForAllLines)
+                daq.DAQmxCreateDOChan(
+                    ptask,
+                    '{0:s}, {1:s}'.format(self._odmr_trigger_line, self._odmr_switch_line),
+                    "ODMRPulserChannel",
+                    daq.DAQmx_Val_ChanForAllLines)
 
                 self._odmr_pulser_daq_task = ptask
 
@@ -1594,7 +1599,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        if len(self._scanner_counter_daq_tasks) < 1:
+        if len(self._scanner_counter_channels) > 0 and len(self._scanner_counter_daq_tasks) < 1:
             self.log.error('No counter is running, cannot do ODMR without one.')
             return -1
 
@@ -1690,9 +1695,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             if self._lock_in_active:
                 self.log.warn('You just switched the ODMR counter to Lock-In-mode. \n'
                               'Please make sure you connected all triggers correctly:\n'
-                              '  {0:s}/line0 is the microwave trigger channel\n'
-                              '  {0:s}/line1 is the switching channel for the lock in\n'
-                              ''.format(self._pulse_out_channel))
+                              '  {0:s} is the microwave trigger channel\n'
+                              '  {1:s} is the switching channel for the lock in\n'
+                              ''.format(self._odmr_trigger_line, self._odmr_switch_line))
 
     def count_odmr(self, length=100):
         """ Sweeps the microwave and returns the counts on that sweep.
