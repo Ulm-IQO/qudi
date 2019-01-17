@@ -1460,6 +1460,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
+
         return self.set_up_clock(
             clock_frequency=clock_frequency,
             clock_channel=clock_channel,
@@ -1567,7 +1568,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             # otherwise, it will be low until task starts, and MW will receive wrong pulses.
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
 
-            if self._lock_in_active:
+            if self.lock_in_active:
                 ptask = daq.TaskHandle()
                 daq.DAQmxCreateTask('ODMRPulser', daq.byref(ptask))
                 daq.DAQmxCreateDOChan(
@@ -1716,7 +1717,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return True, np.array([-1.])
 
         # check if length setup is correct, if not, adjust.
-        odmr_length_to_set = length * self._oversampling * 2 if self._odmr_pulser_daq_task else length
+        odmr_length_to_set = length * self.oversampling * 2 if self._odmr_pulser_daq_task else length
         if self.set_odmr_length(odmr_length_to_set) < 0:
             self.log.error('An error arose while setting the odmr lenth to {}.'.format(odmr_length_to_set))
             return True, np.array([-1.])
@@ -1735,11 +1736,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # The pulse pattern is an alternating 0 and 1 on the switching channel (line0),
                 # while the first half of the whole microwave pulse is 1 and the other half is 0.
                 # This way the beginning of the microwave has a rising edge.
-                pulse_pattern = np.zeros(self._oversampling*2, dtype=np.uint32)
-                pulse_pattern[:self._oversampling:2] = 3
-                pulse_pattern[1:self._oversampling:2] = 1
-                pulse_pattern[self._oversampling:-1:2] = 2
-                pulse_pattern[self._oversampling+1:-1:2] = 0
+                pulse_pattern = np.zeros(self.oversampling * 2, dtype=np.uint32)
+                pulse_pattern[:self.oversampling:2] = 3
+                pulse_pattern[1:self.oversampling:2] = 1
+                pulse_pattern[self.oversampling:-1:2] = 2
+                pulse_pattern[self.oversampling+1:-1:2] = 0
                 daq.DAQmxWriteDigitalU32(self._odmr_pulser_daq_task,
                                          len(pulse_pattern),
                                          0,
@@ -1834,7 +1835,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self._real_data += self._odmr_data[:-1:2]
 
             if self._odmr_pulser_daq_task:
-                self._differential_data = np.zeros((self._oversampling*length, ), dtype=np.float64)
+                self._differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
 
                 self._differential_data += self._real_data[1::2]
                 self._differential_data -= self._real_data[::2]
@@ -1843,12 +1844,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                                                     where=self._real_data[::2] != 0)
 
                 all_data[0] = np.median(np.reshape(self._differential_data,
-                                                   (-1, self._oversampling)),
+                                                   (-1, self.oversampling)),
                                         axis=1
                                         )
                 if len(self._scanner_ai_channels) > 0:
                     for i, analog_data in enumerate(self._odmr_analog_data):
-                        self._differential_data = np.zeros((self._oversampling*length, ), dtype=np.float64)
+                        self._differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
 
                         self._differential_data += analog_data[1:-1:2]
                         self._differential_data -= analog_data[:-1:2]
@@ -1857,7 +1858,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                                                             where=analog_data[:-1:2] != 0)
 
                         all_data[i+1] = np.median(np.reshape(self._differential_data,
-                                                             (-1, self._oversampling)),
+                                                             (-1, self.oversampling)),
                                                   axis=1
                                                   )
 
