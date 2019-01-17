@@ -223,6 +223,9 @@ class ODMRLogic(GenericLogic):
 
         @return object: actually set trigger polarity returned from hardware
         """
+        if self._lock_in_active:
+            frequency = frequency / self._oversampling
+
         if self.module_state() != 'locked':
             self.mw_trigger_pol, triggertime = self._mw_device.set_ext_trigger(trigger_pol, 1/frequency)
         else:
