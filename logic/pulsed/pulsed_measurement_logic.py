@@ -1205,6 +1205,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_laser_pulses: select whether extracted lasers should be saved
+        @param bool save_pulsed_measurement: select whether final measurement should be saved
+        @param bool save_figure: select whether png and pdf should be saved
 
         @return str: filepath where data were saved
         """

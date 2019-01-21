@@ -283,6 +283,7 @@ class CounterLogic(GenericLogic):
 
         @param bool to_file: indicate, whether data have to be saved to file
         @param str postfix: an additional tag, which will be added to the filename upon save
+        @param bool save_figure: select whether png and pdf should be saved
 
         @return dict parameters: Dictionary which contains the saving parameters
         """
