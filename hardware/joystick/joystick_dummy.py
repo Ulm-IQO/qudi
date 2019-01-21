@@ -38,6 +38,16 @@ class JoystickDummy(Base, JoystickInterface):
 
     _connected = ConfigOption('connected', True)
 
+    def on_activate(self):
+        """ Initialisation performed during activation of the module.
+        """
+        pass
+
+    def on_deactivate(self):
+        """ Perform required deactivation.
+        """
+        pass
+
     def get_name(self):
         """ Retrieve an identifier the GUI can print
 
