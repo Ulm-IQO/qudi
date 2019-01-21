@@ -200,6 +200,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # recalled saved raw data dict key
         self._current_saved_data_tag = None
+        self._current_saved_elapsed_time = 0.
 
         # Connect internal signals
         self.sigStartTimer.connect(self.__analysis_timer.start, QtCore.Qt.QueuedConnection)
@@ -345,6 +346,14 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             err = self.fast_counter_pause()
         return err
+
+    @property
+    def elapsed_sweeps(self):
+        return self.__elapsed_sweeps
+
+    @property
+    def elapsed_time(self):
+        return self.__elapsed_time
     ############################################################################
 
     ############################################################################
@@ -769,8 +778,10 @@ class PulsedMeasurementLogic(GenericLogic):
                     self._current_saved_data_tag = stashed_raw_data_tag
                     self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
                                   ''.format(stashed_raw_data_tag))
+                    self._current_saved_elapsed_time = self._saved_data[stashed_raw_data_tag]['time']
                 else:
                     self._current_saved_data_tag = None
+                    self._current_saved_elapsed_time = 0.
 
                 # start microwave source
                 if self.__use_ext_microwave:
@@ -822,7 +833,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 # stash raw data if requested
                 if stash_raw_data_tag:
                     self._saved_data[stash_raw_data_tag] = {'raw': self.raw_data.copy(),
-                                                            'sweeps': self.__elapsed_sweeps}
+                                                            'sweeps': self.__elapsed_sweeps,
+                                                            'time': self.__elapsed_time}
                 self._current_saved_data_tag = None
 
                 # Set measurement paused flag
@@ -1081,7 +1093,7 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.__start_time
+                self.__elapsed_time = time.time() - self.__start_time + self._current_saved_elapsed_time
 
                 self._extract_laser_pulses()
 
