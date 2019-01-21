@@ -33,7 +33,14 @@ class MotorAxisDummy:
 
 
 class MotorDummy(Base, MotorInterface):
-    """ This is the dummy class to simulate a motorized stage. """
+    """ This is the dummy class to simulate a motorized stage.
+
+    Example config for copy-paste:
+
+    motor_dummy:
+        module.Class: 'motor.motor_dummy.MotorDummy'
+
+    """
 
     _modclass = 'MotorDummy'
     _modtype = 'hardware'

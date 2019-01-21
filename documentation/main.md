@@ -7,12 +7,13 @@
 
 * Setup
     * [Installation](@ref installation)
-    * [Required packages](@ref required-python-packages)
+    * [Manual installation of Qudi Development Environment](@ref manual-package-installation)
     * [Jupyter Notebook integration](@ref jupyterkernel)
     * [Get Markdown Plugin for documentation](@ref write-markdown)
     * [Build the documentation](@ref build-docs)
 
 * Qudi programming and design concepts
+   * [How to participate](@ref participate)
    * [Programming style](@ref programming-style)
    * [Interfuses](@ref how_to_interfuses)
    * [Extensions](@ref extensions)
@@ -34,6 +35,11 @@
 * Logic documentation
     * [Task Usage](@ref task-usage)
     * [Fitting](@ref fit_logic)
+    * Custom Pulsed Measurement Extensions:
+        * [Writing Pulse Analysis Methods](@ref pulse_analysis_methods)
+        * [Writing Pulse Extraction Methods](@ref pulse_extraction_methods)
+        * [Writing Predefined Measurements](@ref predefined_generate_methods)
+        * [Writing Analog Waveform Primitives](@ref sampling_functions)
 
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)

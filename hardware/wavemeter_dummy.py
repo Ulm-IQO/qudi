@@ -30,8 +30,7 @@ from core.util.mutex import Mutex
 
 
 class HardwarePull(QtCore.QObject):
-
-    """Helper class for running the hardware communication in a separate
+    """ Helper class for running the hardware communication in a separate
     thread.
     """
 
@@ -45,7 +44,7 @@ class HardwarePull(QtCore.QObject):
         """ Threaded method that can be called by a signal from outside to start
             the timer.
 
-        @param bool state: (True) starts timer, (False) stops it.
+        @param bool state_change: (True) starts timer, (False) stops it.
         """
 
         if state_change:
@@ -57,8 +56,7 @@ class HardwarePull(QtCore.QObject):
                 self.timer.stop()
 
     def _measure_thread(self):
-        """ The threaded method querying the data from the wavemeter.
-        """
+        """ The threaded method querying the data from the wavemeter. """
 
         range_step = 0.1
 
@@ -70,7 +68,15 @@ class HardwarePull(QtCore.QObject):
 
 
 class WavemeterDummy(Base, WavemeterInterface):
+    """ Dummy hardware class to simulate the controls for a wavemeter.
 
+    Example config for copy-paste:
+
+    temp_tsys:
+        module.Class: 'wavemeter_dummy.WavemeterDummy'
+        measurement_timing: 10.0
+
+    """
     _modclass = 'WavemeterDummy'
     _modtype = 'hardware'
 

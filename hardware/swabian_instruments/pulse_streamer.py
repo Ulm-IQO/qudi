@@ -36,7 +36,16 @@ import hardware.swabian_instruments.pulse_streamer_pb2 as pulse_streamer_pb2
 import dill
 
 class PulseStreamer(Base, PulserInterface):
-    """Methods to control PulseStreamer.
+    """ Methods to control PulseStreamer.
+
+    Example config for copy-paste:
+
+    pulse_streamer:
+        module.Class: 'swabian_instruments.pulse_streamer.PulseStreamer'
+        pulsestreamer_ip: '192.168.1.100'
+        laser_channel: 0
+        uw_x_channel: 2
+
     """
     _modclass = 'pulserinterface'
     _modtype = 'hardware'
@@ -135,10 +144,10 @@ class PulseStreamer(Base, PulserInterface):
 
         # sample file length max is not well-defined for PulseStreamer, which collates sequential identical pulses into
         # one. Total number of not-sequentially-identical pulses which can be stored: 1 M.
-        constraints.sampled_file_length.min = 1
-        constraints.sampled_file_length.max = 134217728
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 1
+        constraints.waveform_length.min = 1
+        constraints.waveform_length.max = 134217728
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 1
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic

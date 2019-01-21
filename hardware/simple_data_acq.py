@@ -27,7 +27,16 @@ from interface.simple_data_interface import SimpleDataInterface
 
 class SimpleAcq(Base, SimpleDataInterface):
     """ Read human readable numbers from serial port.
+
+    Example config for copy-paste:
+
+    simple_data_acq:
+        module.Class: 'simple_data_acq.SimpleAcq'
+        interface: 'ASRL1::INSTR'
+        baudrate: 115200
+
     """
+
     _modclass = 'simple'
     _modtype = 'hardware'
 

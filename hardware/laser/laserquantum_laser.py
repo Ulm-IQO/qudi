@@ -39,9 +39,16 @@ class PSUTypes(Enum):
 
 
 class LaserQuantumLaser(Base, SimpleLaserInterface):
-    """
-    This module implements communication with the Edwards turbopump and
-    vacuum equipment.
+    """ Qudi module to communicate with the Edwards turbopump and vacuum equipment.
+
+    Example config for copy-paste:
+
+    laserquantum_laser:
+        module.Class: 'laser.laserquantum_laser.LaserQuantumLaser'
+        interface: 'ASRL1::INSTR'
+        maxpower: 0.250 # in Watt
+        psu: 'SMD6000'
+
     """
     _modclass = 'lqlaser'
     _modtype = 'hardware'
@@ -70,7 +77,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         try:
             self.rm = visa.ResourceManager()
-            rate = 9600 if self.psu == PSUTypes.SMD6000 else 19200
+            rate = 9600 if self.psu in (PSUTypes.SMD6000, PSUTypes.SMD12) else 19200
             self.inst = self.rm.open_resource(
                 interface,
                 baud_rate=rate,
@@ -96,7 +103,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.FPU:
             return [ControlMode.MIXED]
-        elif self.psu == PSUTypes.SMD6000:
+        elif self.psu in (PSUTypes.SMD6000, PSUTypes.SMD12):
             return [ControlMode.POWER]
         else:
             return [ControlMode.POWER, ControlMode.CURRENT]
@@ -108,7 +115,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
-        elif self.psu == PSUTypes.SMD6000:
+        elif self.psu in (PSUTypes.SMD6000, PSUTypes.SMD12):
             return ControlMode.POWER
         else:
             return ControlMode[self.inst.query('CONTROL?')]
@@ -121,7 +128,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         """
         if self.psu == PSUTypes.FPU:
             return ControlMode.MIXED
-        elif self.psu == PSUTypes.SMD6000:
+        elif self.psu in (PSUTypes.SMD6000, PSUTypes.SMD12):
             return ControlMode.POWER
         else:
             if mode == ControlMode.POWER:
@@ -217,9 +224,9 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
         @return float: laser current setpoint
         """
-        if self.psu == PSUTypes.MPC3000 or self.psu == PSUTypes.MPC6000:
+        if self.psu in (PSUTypes.MPC3000, PSUTypes.MPC6000):
             return float(self.inst.query('SETCURRENT1?').split('%')[0])
-        elif self.psu == PSUTypes.SMD6000:
+        elif self.psu in(PSUTypes.SMD6000, PSUTypes.SMD12):
             return float(self.inst.query('CURRENT?').split('%')[0])
         else:
             return float(self.inst.query('SETCURRENT?').split('%')[0])
@@ -306,7 +313,7 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
 
             @return str: text on power supply display
         """
-        if self.psu == PSUTypes.SMD12 or self.psu == PSUTypes.SMD6000:
+        if self.psu in(PSUTypes.SMD12, PSUTypes.SMD600):
             return ''
         else:
             return self.inst.query('STATUSLCD?')

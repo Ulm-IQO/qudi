@@ -30,7 +30,7 @@
 @echo off
 
 :: BatchGotAdmin
-:-------------------------------------
+:: -------------------------------------
 REM  --> Check for permissions
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
 
@@ -52,7 +52,48 @@ if '%errorlevel%' NEQ '0' (
 :gotAdmin
     pushd "%CD%"
     CD /D "%~dp0"
-:--------------------------------------
-conda env remove --yes --name qudi
-conda env create -f "%~dp0\conda-env-win8-qt5.yml"
+REM --------------------------------------
+
+REM Run locally a powershell script to be able to catch the interrupt from the 
+REM exception if an environment is not present.
+
+powershell.exe "Try {conda env remove --yes --name qudi} Catch {return 'No conda environment with name <qudi> is present'}" 
+
+echo Initiating installation of conda environment with name 'qudi'...
+
+REM Get the processor architecture, 32bit or 64bit
+reg Query "HKLM\Hardware\Description\System\CentralProcessor\0" | find /i "x86" > NUL && set OS=32BIT || set OS=64BIT
+
+REM Get the windows version
+for /f "tokens=4-5 delims=. " %%i in ('ver') do set VERSION=%%i.%%j
+
+REM Get which environment to install for a specific windows version.
+
+if "%version%" == "6.1" (
+    if %OS% == 32BIT ( 
+        echo Detected: Windows 7, 32bit 
+        powershell.exe "conda env create -f '%~dp0\conda-env-win7-32bit-qt5.yml' "
+    ) else ( 
+        echo Detected: Windows 7, 64bit 
+        powershell.exe "conda env create -f '%~dp0\conda-env-win7-64bit-qt5.yml' "
+    ) 
+)
+        
+if "%version%" == "6.2" (
+    echo Detected: Windows 8, %OS%
+        powershell.exe "conda env create -f '%~dp0\conda-env-win8-qt5.yml' "
+    )
+
+if "%version%" == "6.3" (
+    echo Detected: Windows 8.1, %OS%
+        powershell.exe "conda env create -f '%~dp0\conda-env-win8-qt5.yml' "
+    )
+
+if "%version%" == "10.0" (
+    echo Detected: Windows 10, %OS%
+        powershell.exe "conda env create -f '%~dp0\conda-env-win10-64bit-qt5.yml' "
+    )
+
+
+echo Installation procedure for conda environment 'qudi' finished.
 pause

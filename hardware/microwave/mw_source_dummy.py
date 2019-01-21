@@ -31,8 +31,13 @@ import time
 
 
 class MicrowaveDummy(Base, MicrowaveInterface):
-    """This is the Interface class to define the controls for the simple
-    microwave hardware.
+    """ A dummy class to emulate a microwave source.
+
+    Example config for copy-paste:
+
+    mw_source_dummy:
+        module.Class: 'microwave.mw_source_dummy.MicrowaveDummy'
+
     """
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
@@ -252,16 +257,17 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         return 0
 
-    def set_ext_trigger(self, pol):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param float timing: estimated time between triggers
 
         @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
         """
         self.log.info('MicrowaveDummy>ext_trigger set')
         self.current_trig_pol = pol
-        return self.current_trig_pol
+        return self.current_trig_pol, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

@@ -35,8 +35,15 @@ class Models(Enum):
 
 
 class MillenniaeVLaser(Base, SimpleLaserInterface):
-    """
-    Spectra Physics Millennia diode pumped solid state laser
+    """ Spectra Physics Millennia diode pumped solid state laser.
+
+    Example config for copy-paste:
+
+    millennia_laser:
+        module.Class: 'laser.millennia_ev_laser.MillenniaeVLaser'
+        interface: 'ASRL1::INSTR'
+        maxpower: 25 # in Watt
+
     """
     _modclass = 'millenniaevlaser'
     _modtype = 'hardware'

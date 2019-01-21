@@ -36,6 +36,14 @@ from interface.microwave_interface import TriggerEdge
 class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
     """ Hardware control file for Anritsu 70GHz Devices.
         Tested for the model MG3696B.
+
+    Example config for copy-paste:
+
+    mw_source_anritsu70ghz:
+        module.Class: 'microwave.mw_source_anritsu70GHz.MicrowaveAnritsu70GHz'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10 # in seconds
+
     """
     _modclass = 'MicrowaveAanritsu70GHz'
     _modtype = 'hardware'
@@ -324,14 +332,16 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         """
         return -1
 
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param float timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
-        return TriggerEdge.RISING
+        return TriggerEdge.RISING, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

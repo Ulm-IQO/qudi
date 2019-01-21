@@ -31,7 +31,16 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 class MicrowaveSRSSG(Base, MicrowaveInterface):
-    """ Hardware control class to controls SRS SG390 devices.  """
+    """ Hardware control class to controls SRS SG390 devices.
+
+    Example config for copy-paste:
+
+    mw_source_srssg:
+        module.Class: 'microwave.mw_source_srssg.MicrowaveSRSSG'
+        gpib_address: 'GPIB0::12::INSTR'
+        gpib_timeout: 10
+
+    """
 
     _modclass = 'MicrowaveSRSSG'
     _modtype = 'hardware'
@@ -378,19 +387,20 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self.log.error('This was never tested!')
         return self.reset_listpos()
 
-
-    def set_ext_trigger(self, pol=TriggerEdge.RISING):
+    def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
+        @param float timing: estimated time between triggers
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or
                         falling edge)
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing
         """
 
         self.log.warning('No external trigger channel can be set in this '
                          'hardware. Method will be skipped.')
-        return 0
+        return pol, timing
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

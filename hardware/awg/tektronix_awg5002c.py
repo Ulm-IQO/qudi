@@ -34,18 +34,37 @@ from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
 class AWG5002C(Base, PulserInterface):
-    """ Unstable and in construction, Alex Stark    """
+    """ A hardware module for the Tektronix AWG5000 series for generating
+        waveforms and sequences thereof.
+
+    Unstable and in construction, Alexander Stark
+
+    Example config for copy-paste:
+
+    pulser_awg5000:
+        module.Class: 'awg.tektronix_awg5002c.AWG5002C'
+        awg_ip_address: '10.42.0.211'
+        awg_port: 3000 # the port number as integer
+        timeout: 20
+        # tmp_work_dir: 'C:\\Software\\qudi_pulsed_files' # optional
+        # ftp_root_dir: 'C:\\inetpub\\ftproot' # optional, root directory on AWG device
+        # ftp_login: 'anonymous' # optional, the username for ftp login
+        # ftp_passwd: 'anonymous@' # optional, the password for ftp login
+        # default_sample_rate: 600.0e6 # optional, the default sampling rate
+    """
 
     _modclass = 'awg5002c'
     _modtype = 'hardware'
 
     # config options
-    ip_address = ConfigOption('awg_IP_address', missing='error')
+    ip_address = ConfigOption('awg_ip_address', missing='error')
     port = ConfigOption('awg_port', missing='error')
     _timeout = ConfigOption('timeout', 10, missing='warn')
+    _tmp_work_dir = ConfigOption('tmp_work_dir', missing='warn') # default path will be assigned in activation
     ftp_root_directory = ConfigOption('ftp_root_dir', 'C:\\inetpub\\ftproot', missing='warn')
     user = ConfigOption('ftp_login', 'anonymous', missing='warn')
     passwd = ConfigOption('ftp_passwd', 'anonymous@', missing='warn')
+    default_sample_rate = ConfigOption('default_sample_rate', missing='warn')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -91,26 +110,26 @@ class AWG5002C(Base, PulserInterface):
         # settings for remote access on the AWG PC
         self.asset_directory = '\\waves'
 
-        if 'pulsed_file_dir' in config.keys():
-            self.pulsed_file_dir = config['pulsed_file_dir']
+        if 'tmp_work_dir' in config.keys():
+            self._tmp_work_dir = config['tmp_work_dir']
 
-            if not os.path.exists(self.pulsed_file_dir):
+            if not os.path.exists(self._tmp_work_dir):
 
                 homedir = get_home_dir()
-                self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+                self._tmp_work_dir = os.path.join(homedir, 'pulsed_files')
                 self.log.warning('The directory defined in parameter '
-                    '"pulsed_file_dir" in the config for '
+                    '"tmp_work_dir" in the config for '
                     'SequenceGeneratorLogic class does not exist!\n'
                     'The default home directory\n{0}\n will be taken '
-                    'instead.'.format(self.pulsed_file_dir))
+                    'instead.'.format(self._tmp_work_dir))
         else:
             homedir = get_home_dir()
-            self.pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
-            self.log.warning('No parameter "pulsed_file_dir" was specified '
+            self._tmp_work_dir = os.path.join(homedir, 'pulsed_files')
+            self.log.warning('No parameter "tmp_work_dir" was specified '
                     'in the config for SequenceGeneratorLogic as directory '
                     'for the pulsed files!\n'
                     'The default home directory\n{0}\n'
-                    'will be taken instead.'.format(self.pulsed_file_dir))
+                    'will be taken instead.'.format(self._tmp_work_dir))
 
         self.host_waveform_directory = self._get_dir_for_name('sampled_hardware_files')
         self.awg_model = self._get_model_ID()[1]
@@ -188,10 +207,10 @@ class AWG5002C(Base, PulserInterface):
         constraints.d_ch_high.step = 0.01
         constraints.d_ch_high.default = 2.7
 
-        constraints.sampled_file_length.min = 1
-        constraints.sampled_file_length.max = 32400000
-        constraints.sampled_file_length.step = 1
-        constraints.sampled_file_length.default = 1
+        constraints.waveform_length.min = 1
+        constraints.waveform_length.max = 32400000
+        constraints.waveform_length.step = 1
+        constraints.waveform_length.default = 1
 
         constraints.waveform_num.min = 1
         constraints.waveform_num.max = 32000
@@ -215,20 +234,13 @@ class AWG5002C(Base, PulserInterface):
         constraints.repetitions.default = 0
 
         # ToDo: Check how many external triggers are available
-        constraints.trigger_in.min = 0
-        constraints.trigger_in.max = 2
-        constraints.trigger_in.step = 1
-        constraints.trigger_in.default = 0
+        constraints.event_triggers = ['A', 'B']
+        constraints.flags = list()
 
-        constraints.event_jump_to.min = 0
-        constraints.event_jump_to.max = 8000
-        constraints.event_jump_to.step = 1
-        constraints.event_jump_to.default = 0
-
-        constraints.go_to.min = 0
-        constraints.go_to.max = 8000
-        constraints.go_to.step = 1
-        constraints.go_to.default = 0
+        constraints.sequence_steps.min = 0
+        constraints.sequence_steps.max = 8000
+        constraints.sequence_steps.step = 1
+        constraints.sequence_steps.default = 0
 
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
@@ -433,8 +445,8 @@ class AWG5002C(Base, PulserInterface):
                              description for all the possible status variables
                              of the pulse generator hardware.
                 0 indicates that the instrument has stopped.
-                1 indicates that the instrument is waiting for trigger.
-                2 indicates that the instrument is running.
+                1 indicates that the instrument is running.
+                2 indicates that the instrument is waiting for trigger.
                -1 indicates that the request of the status for AWG has failed.
         """
 
@@ -849,28 +861,32 @@ class AWG5002C(Base, PulserInterface):
         return active_ch
 
     def set_active_channels(self, ch=None):
-        """ Set the active channels for the pulse generator hardware.
+        """
+        Set the active/inactive channels for the pulse generator hardware.
+        The state of ALL available analog and digital channels will be returned
+        (True: active, False: inactive).
+        The actually set and returned channel activation must be part of the available
+        activation_configs in the constraints.
+        You can also activate/deactivate subsets of available channels but the resulting
+        activation_config must still be valid according to the constraints.
+        If the resulting set of active channels can not be found in the available
+        activation_configs, the channel states must remain unchanged.
 
-        @param dict ch: dictionary with keys being the analog or digital
-                          string generic names for the channels with items being
-                          a boolean value.
+        @param dict ch: dictionary with keys being the analog or digital string generic names for
+                        the channels (i.e. 'd_ch1', 'a_ch2') with items being a boolean value.
+                        True: Activate channel, False: Deactivate channel
 
-        @return dict: with the actual set values for active channels for analog
-                      and digital values.
+        @return dict: with the actual set values for ALL active analog and digital channels
 
-        If nothing is passed then the command will return an empty dict.
+        If nothing is passed then the command will simply return the unchanged current state.
 
-        Note: After setting the active channels of the device, retrieve them
-              again for obtaining the actual set value(s) and use that
-              information for further processing.
+        Note: After setting the active channels of the device, use the returned dict for further
+              processing.
 
         Example for possible input:
             ch={'a_ch2': True, 'd_ch1': False, 'd_ch3': True, 'd_ch4': True}
         to activate analog channel 2 digital channel 3 and 4 and to deactivate
-        digital channel 1.
-
-        The hardware itself has to handle, whether separate channel activation
-        is possible.
+        digital channel 1. All other available channels will remain unchanged.
 
         AWG5000 Series instruments support only 14-bit resolution. Therefore
         this command will have no effect on the DAC for these instruments. On
@@ -1222,7 +1238,7 @@ class AWG5002C(Base, PulserInterface):
         @return: str, absolute path to the directory with folder 'name'.
         """
 
-        path = os.path.join(self.pulsed_file_dir, name)
+        path = os.path.join(self._tmp_work_dir, name)
         if not os.path.exists(path):
             os.makedirs(os.path.abspath(path))
 
