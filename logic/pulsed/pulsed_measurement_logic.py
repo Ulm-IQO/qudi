@@ -141,6 +141,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Paused measurement flag
         self.__is_paused = False
+        self._time_of_pause = None
+        self._elapsed_pause = 0
 
         # for fit:
         self.fc = None  # Fit container
@@ -793,6 +795,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
+                self._elapsed_pause = 0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
                                           self.__elapsed_sweeps,
                                           self.__timer_interval)
@@ -839,6 +842,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
+                self._elapsed_pause = 0
 
                 self.module_state.unlock()
                 self.sigMeasurementStatusUpdated.emit(False, False)
@@ -876,6 +880,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = True
+                self._time_of_pause = time.time()
 
                 self.sigMeasurementStatusUpdated.emit(True, True)
             else:
@@ -901,6 +906,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
+                self._elapsed_pause = time.time() - self._time_of_pause
 
                 self.sigMeasurementStatusUpdated.emit(True, False)
             else:
@@ -1093,7 +1099,8 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.__start_time + self._current_saved_elapsed_time
+                self.__elapsed_time = time.time() - self.__start_time + self._current_saved_elapsed_time \
+                                      - self._elapsed_pause
 
                 self._extract_laser_pulses()
 
