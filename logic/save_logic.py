@@ -646,3 +646,8 @@ class SaveLogic(GenericLogic):
     def update_additional_parameters(self, **new_pairs):
         """ Method to update one or multiple additional parameters """
         self._additional_parameters = {**self._additional_parameters, **new_pairs}
+
+    def remove_additional_parameter(self, key):
+        """ remove a parameter from additional parameters """
+        self._additional_parameters.pop(key, None)
+
