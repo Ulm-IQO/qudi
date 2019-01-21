@@ -35,6 +35,11 @@ from interface.joystick_interface import JoystickInterface
 class JoystickXInput(Base, JoystickInterface):
     """
     Main class of the module
+
+    Example configuration :
+        joystick_hardware:
+        module.Class: 'joystick.xinput.JoystickXInput'
+
     """
 
     _modtype = 'joystick'

@@ -30,6 +30,13 @@ class JoystickLogic(GenericLogic):
     """ This logic module get data from a hardware controller and emit signals based on input
 
     This module should be between the hardware and other logic modules
+
+    Example configuration :
+        joystick_logic:
+        module.Class: 'joystick_logic.JoystickLogic'
+        max_fps: 100
+        connect:
+            hardware: dummy_joystick
     """
     _modclass = 'joysticklogic'
     _modtype = 'logic'

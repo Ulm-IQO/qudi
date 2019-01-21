@@ -32,6 +32,13 @@ class JoystickToConfocal(GenericLogic):
     This module needs joystick_logic to function
 
     To prevent accidentally changing things, is module only act if 'button_interlock' is pushed.
+
+    Example configuration :
+        connector_joystick_confocal:
+        module.Class: 'logic_connectors.joystick_to_confocal.JoystickToConfocal'
+        connect:
+            joystick_logic: joystick_logic
+            confocal: scanner
     """
     _modclass = 'joysticklogicconfocal'
     _modtype = 'logic'

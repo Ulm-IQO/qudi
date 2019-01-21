@@ -30,6 +30,9 @@ from interface.joystick_interface import JoystickInterface
 class JoystickDummy(Base, JoystickInterface):
     """ Dummy hardware for joystick interface
 
+    Example configuration :
+        dummy_joystick:
+        module.Class: 'joystick.joystick_dummy.JoystickDummy'
 
     """
 
