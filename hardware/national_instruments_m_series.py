@@ -35,7 +35,7 @@ from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.analog_control_interface import AnalogControlInterface
 
 from interface.fast_counter_interface import FastCounterInterface
-from interface.fast_counter_interface import FastCounterConstrains
+from interface.fast_counter_interface import FastCounterConstraints
 
 import multiprocessing as mp
 from random import randint
@@ -226,7 +226,7 @@ class NI6229Card(Base, SlowCounterInterface, ConfocalScannerInterface,
 
         # Test for FastCounterInterface, add just the contraints to the present
         # ones.
-        fc_constraints = FastCounterConstrains()
+        fc_constraints = FastCounterConstraints()
 
         constraints.hardware_binwidth_list = [12.5e-9]
         constraints.count_length = fc_constraints.count_length
