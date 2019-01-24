@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
 * Added command line argument --logdir to specify the path to the logging directory
