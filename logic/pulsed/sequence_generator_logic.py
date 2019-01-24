@@ -523,7 +523,7 @@ class SequenceGeneratorLogic(GenericLogic):
         if current_config in avail_configs.values():
             # Read config found in constraints
             config_name = list(avail_configs)[list(avail_configs.values()).index(current_config)]
-            self.__activation_config = (config_name, current_config)
+            self.__activation_config = (config_name, {''}.union(current_config))
         else:
             # Set first valid config if read config is not valid.
             config_to_set = list(avail_configs.items())[0]
@@ -566,7 +566,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 channel_state[chnl] = False
         set_state = self.pulsegenerator().set_active_channels(channel_state)
         set_config = set([chnl for chnl in set_state if set_state[chnl]])
-        return set_config
+        return {''}.union(set_config)
 
     ############################################################################
     # Waveform/Sequence generation control methods and properties
@@ -628,7 +628,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                      'Will add it but this could lead to unwanted effects.'
                                      ''.format(key))
             # Sanity checks
-            if 'laser_channel' in settings_dict:
+            if settings_dict.get('laser_channel'):
                 if settings_dict['laser_channel'] not in self.__activation_config[1]:
                     self.log.error('Unable to set laser channel "{0}".\nChannel to set is not part '
                                    'of the current channel activation config ({1}).'
@@ -1057,9 +1057,15 @@ class SequenceGeneratorLogic(GenericLogic):
             'gate_channel'] else self.generation_parameters['laser_channel']
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+        print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        if len(laser_channel) > 0 and laser_channel[0] == 'd':
+            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        else:
+            self.log.warn('Analog or no Laser channel currently not supported. '
+                          'Given laser_channel: "{0}"'.format(laser_channel))
+            ens_lasers = len(info_dict['laser_bins'][0])
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1089,7 +1095,12 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+            if len(laser_channel) > 0 and laser_channel[0] == 'd':
+                ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+            else:
+                self.log.warn('Analog or no Laser channel currently not supported. '
+                              'Given laser_channel: "{0}"'.format(laser_channel))
+                ens_lasers = len(info_dict['laser_bins'][0])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
@@ -1145,6 +1156,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # dicts containing the bins where the digital channels are rising/falling
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
+        laser_bins = list()
 
         # Array to store the length in bins for all elements including repetitions in the order
         # they are occuring in the waveform later on. (Must be int64 or it will overflow eventually)
@@ -1188,6 +1200,9 @@ class SequenceGeneratorLogic(GenericLogic):
                     # append current element length in discrete bins to temporary array
                     tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
 
+                    if element.laser_on:
+                        laser_bins.append([current_start_bin, current_end_bin])
+
                     # advance bin offset for next element
                     current_start_bin = current_end_bin
                     # increment element counter
@@ -1201,6 +1216,8 @@ class SequenceGeneratorLogic(GenericLogic):
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype='int64')
             digital_falling_bins[chnl] = np.array(digital_falling_bins[chnl], dtype='int64')
 
+        laser_bins = np.array(laser_bins, dtype='int64')
+
         return_dict = dict()
         return_dict['number_of_samples'] = np.sum(elements_length_bins)
         return_dict['number_of_elements'] = len(elements_length_bins)
@@ -1212,6 +1229,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return_dict['ideal_length'] = current_end_time
+        return_dict['laser_bins'] = laser_bins
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1267,7 +1285,7 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+            # ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
