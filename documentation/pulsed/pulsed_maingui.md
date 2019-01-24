@@ -45,6 +45,8 @@ Note that the following suffices exist:
 
 (they are corresponding to the known SI suffices).
 
+If the laser channel is selected to be none or an analogue channel, it is necessary to mark the laser blocks. In the Gui this is done by clicking the checkbox in the laser channel column. This sets the laser_on state of this PulseBlockElement to True. For normal digital laser channels, the respective digital channel has to be checked.
+
 ## Idea of Pulsed Main GUI interaction with PulsedMeasurementLogic and SequenceGeneratorLogic
 
 make access via get and set functions.
