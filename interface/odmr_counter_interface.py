@@ -76,7 +76,7 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
 
         @param int length: length of microwave sweep in pixel
 
-        @return float[]: the photon counts per second
+        @return (bool, float[]): tuple: was there an error, the photon counts per second
         """
         pass
 
@@ -102,4 +102,24 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
 
         @return list(str): channels recorded during ODMR measurement
         """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def oversampling(self):
+        pass
+
+    @oversampling.setter
+    @abc.abstractmethod
+    def oversampling(self, val):
+        pass
+
+    @property
+    @abc.abstractmethod
+    def lock_in_active(self):
+        pass
+
+    @lock_in_active.setter
+    @abc.abstractmethod
+    def lock_in_active(self, val):
         pass
