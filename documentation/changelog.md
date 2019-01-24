@@ -39,6 +39,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Add a copy-paste config option to the docstrings of all current qudi hardware modules.
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
+    * It is now possible to select no or analogue laser channels. In this case, the relevant block element gets marked as laser.
     * Bug fix for waveform generation larger than ~2 GSamples
     * Added chirp function to available analog shapes in pulsed measurements
     * Tab order in pulsed measurement GUI is now more useful
