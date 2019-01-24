@@ -1386,6 +1386,7 @@ class PulsedMeasurementGui(GUIBase):
             # Update channel ComboBoxes
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
+            self._pg.gen_laserchannel_ComboBox.addItem('')
             self._pg.gen_laserchannel_ComboBox.addItems(digital_channels)
             self._pg.gen_laserchannel_ComboBox.addItems(analog_channels)
             if former_laser_channel in settings_dict['activation_config'][1]:

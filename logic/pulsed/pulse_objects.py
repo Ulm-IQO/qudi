@@ -40,7 +40,7 @@ class PulseBlockElement(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None):
+    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None, laser_on=False):
         """
         The constructor for a Pulse_Block_Element needs to have:
 
@@ -58,10 +58,13 @@ class PulseBlockElement(object):
                                   low (False) or high (True).
                                   For 3 digital channel it may look like:
                                   {'d_ch1': True, 'd_ch2': False, 'd_ch5': False}
+        @param bool laser_on: boolean indicating if the laser is on during this block.
+                              This is required for laser channels, that are not digital channels.
         """
         # FIXME: Sanity checks need to be implemented here
         self.init_length_s = init_length_s
         self.increment_s = increment_s
+        self.laser_on = laser_on
         if pulse_function is None:
             self.pulse_function = OrderedDict()
         else:
@@ -73,12 +76,12 @@ class PulseBlockElement(object):
 
         # determine set of used digital and analog channels
         self.analog_channels = set(self.pulse_function)
-        self.digital_channels = set(self.digital_high)
+        self.digital_channels = {''}.union(set(self.digital_high))
         self.channel_set = self.analog_channels.union(self.digital_channels)
 
     def __repr__(self):
-        repr_str = 'PulseBlockElement(init_length_s={0}, increment_s={1}, pulse_function='.format(
-            self.init_length_s, self.increment_s)
+        repr_str = 'PulseBlockElement(init_length_s={0}, increment_s={1}, laser_on={2}, pulse_function='.format(
+            self.init_length_s, self.increment_s, self.laser_on)
         repr_str += '{'
         for ind, (channel, sampling_func) in enumerate(self.pulse_function.items()):
             repr_str += '\'{0}\': {1}'.format(channel, 'SamplingFunctions.' + repr(sampling_func))
@@ -90,9 +93,10 @@ class PulseBlockElement(object):
 
     def __str__(self):
         pulse_func_dict = {chnl: type(func).__name__ for chnl, func in self.pulse_function.items()}
-        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\t' \
-                     'analog channels: {2}\n\tdigital channels: {3}'.format(self.init_length_s,
+        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2],' \
+                     'analog channels: {3}\n\tdigital channels: {4}'.format(self.init_length_s,
                                                                             self.increment_s,
+                                                                            self.laser_on,
                                                                             pulse_func_dict,
                                                                             dict(self.digital_high))
         return return_str
@@ -104,7 +108,7 @@ class PulseBlockElement(object):
             return True
         if self.channel_set != other.channel_set:
             return False
-        if (self.init_length_s, self.increment_s) != (other.init_length_s, other.increment_s):
+        if (self.init_length_s, self.increment_s, self.laser_on) != (other.init_length_s, other.increment_s, other.laser_on):
             return False
         if set(self.digital_high.items()) != set(other.digital_high.items()):
             return False
@@ -117,6 +121,7 @@ class PulseBlockElement(object):
         dict_repr = dict()
         dict_repr['init_length_s'] = self.init_length_s
         dict_repr['increment_s'] = self.increment_s
+        dict_repr['laser_on'] = self.laser_on
         dict_repr['digital_high'] = self.digital_high
         dict_repr['pulse_function'] = dict()
         for chnl, func in self.pulse_function.items():
@@ -1116,7 +1121,7 @@ class PredefinedGeneratorBase:
         for channel in channels:
             if channel.startswith('d'):
                 digital_high[channel] = True
-            else:
+            elif channel.startswith('a'):
                 pulse_function[channel] = SamplingFunctions.DC(voltage=self.analog_trigger_voltage)
 
         # return trigger element
@@ -1134,9 +1139,11 @@ class PredefinedGeneratorBase:
 
         @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
         """
-        return self._get_trigger_element(length=length,
-                                         increment=increment,
-                                         channels=self.laser_channel)
+        laser_element = self._get_trigger_element(length=length,
+                                                  increment=increment,
+                                                  channels=self.laser_channel)
+        laser_element.laser_on = True
+        return laser_element
 
     def _get_laser_gate_element(self, length, increment):
         """
@@ -1146,7 +1153,7 @@ class PredefinedGeneratorBase:
         if self.gate_channel:
             if self.gate_channel.startswith('d'):
                 laser_gate_element.digital_high[self.gate_channel] = True
-            else:
+            elif self.gate_channel.startswith('a'):
                 laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
                     voltage=self.analog_trigger_voltage)
         return laser_gate_element
