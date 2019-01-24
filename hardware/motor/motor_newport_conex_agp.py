@@ -146,7 +146,7 @@ class MotorNewportConexAGP(Base, MotorInterface):
         if len(err) > 0 and err[0] != '@':
             self.write_value('TB', err[0])
             err_str = self.read()
-            self.log.error('Motor Error {0}'.format(err_str.decode('ascii')))
+            self.log.error('Motor Error {0}'.format(err_str))
             return True, err_str
         return False, ''
 
@@ -301,3 +301,9 @@ class MotorNewportConexAGP(Base, MotorInterface):
             return {self._axis_label: self._velocity}
 
         return {}
+
+    def reset(self):
+        """ Reset the controller.
+            Afterwards, moving to the home position with calibrate() is necessary.
+        """
+        self.write('RS')
