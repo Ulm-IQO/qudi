@@ -23,7 +23,7 @@ import copy
 
 from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
-from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate
+from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate, FlagStatesItemDelegate
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
@@ -944,6 +944,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         # list containing available ensemble names
         self.available_block_ensembles = None
 
+        # set of available flag
+        self.available_flags = None
+
         # The actual model data container.
         self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
         # The default ensemble name for sequence steps
@@ -997,6 +1000,23 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         return 0
 
+    def set_available_flags(self, flag_set):
+        """
+
+        @param set flag_set: List of strings describing the available pulse generator flag output
+                               channels.
+        """
+        if not isinstance(flag_set, set):
+            return
+
+        # Do nothing if available flags have not changed
+        if self.available_flags == flag_set:
+            return 0
+
+        self.available_flags = flag_set
+        print('model_available', self.available_flags)
+        return 0
+
     def set_rotating_frame(self, rotating_frame=True):
         """
 
@@ -1036,9 +1056,19 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         elif role == self.waitForRole:
             return self._pulse_sequence[index.row()].wait_for
         elif role == self.flagTriggerRole:
-            return self._pulse_sequence[index.row()].flag_trigger
+            flags = dict.fromkeys(self.available_flags, False)
+            if self._pulse_sequence[index.row()].flag_trigger == 'OFF':
+                return flags
+            for flag, value in self._pulse_sequence[index.row()].flag_trigger.items():
+                flags[flag] = value
+            return flags
         elif role == self.flagHighRole:
-            return self._pulse_sequence[index.row()].flag_high
+            flags = dict.fromkeys(self.available_flags, False)
+            if self._pulse_sequence[index.row()].flag_high == 'OFF':
+                return flags
+            for flag, value in self._pulse_sequence[index.row()].flag_high.items():
+                flags[flag] = value
+            return flags
         else:
             return None
 
@@ -1057,9 +1087,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             self._pulse_sequence[index.row()].event_trigger = data
         elif role == self.waitForRole and isinstance(data, str):
             self._pulse_sequence[index.row()].wait_for = data
-        elif role == self.flagTriggerRole and isinstance(data, str):
+        elif role == self.flagTriggerRole and isinstance(data, dict):
             self._pulse_sequence[index.row()].flag_trigger = data
-        elif role == self.flagHighRole and isinstance(data, str):
+        elif role == self.flagHighRole and isinstance(data, dict):
             self._pulse_sequence[index.row()].flag_high = data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
@@ -1181,11 +1211,9 @@ class SequenceEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, ['OFF'],
                                                               self.model().waitForRole))
         # Set item delegate (ComboBox) for flag_trigger column
-        self.setItemDelegateForColumn(6, ComboBoxItemDelegate(self, ['OFF'],
-                                                              self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.model().flagTriggerRole))
         # Set item delegate (ComboBox) for flag_high column
-        self.setItemDelegateForColumn(7, ComboBoxItemDelegate(self, ['OFF'],
-                                                              self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.model().flagHighRole))
 
         # Set header sizes
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
@@ -1193,9 +1221,15 @@ class SequenceEditor(QtWidgets.QTableView):
         # self.horizontalHeader().setStyleSheet('QHeaderView { font-weight: 400; }')
         self.verticalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
         self.verticalHeader().setDefaultSectionSize(50)
-        for col in range(self.columnCount()):
+
+        # automatically set the width for the non checkbox columns
+        for col in range(self.columnCount()-2):
             width = self.itemDelegateForColumn(col).sizeHint().width()
             self.setColumnWidth(col, width)
+
+        # set width of checkbox columns
+        self.setColumnWidth(6, 90)
+        self.setColumnWidth(7, 90)
         return
 
     def set_available_block_ensembles(self, ensembles):
@@ -1237,21 +1271,27 @@ class SequenceEditor(QtWidgets.QTableView):
                                                               self.model().waitForRole))
         return
 
-    def set_available_flags(self, flag_list):
+    def set_available_flags(self, flag_set):
         """
 
         @param list flag_list: List of strings describing the available pulse generator flag output
                                channels.
         """
-        if not isinstance(flag_list, list):
+        if not isinstance(flag_set, set):
             return
-        flag_list.insert(0, 'OFF')
+
         # Set item delegate (ComboBox) for event_trigger column
-        self.setItemDelegateForColumn(6, ComboBoxItemDelegate(self, flag_list,
-                                                              self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, None)
         # Set item delegate (ComboBox) for wait_for column
-        self.setItemDelegateForColumn(7, ComboBoxItemDelegate(self, flag_list,
-                                                              self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, None)
+
+        print('Editor', flag_set)
+        self.model().set_available_flags(flag_set)
+
+        # Set item delegate (ComboBox) for event_trigger column
+        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.model().flagTriggerRole))
+        # Set item delegate (ComboBox) for wait_for column
+        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.model().flagHighRole))
         return
 
     def rowCount(self):
