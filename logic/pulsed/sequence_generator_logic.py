@@ -129,6 +129,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
         # Dict keys are digital channel descriptors
         self.__interleave = False  # Flag to indicate use of interleave
+        # Set of available flags
+        self.__flags = set()
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
@@ -246,6 +248,7 @@ class SequenceGeneratorLogic(GenericLogic):
         settings_dict['analog_levels'] = tuple(self.__analog_levels)
         settings_dict['digital_levels'] = tuple(self.__digital_levels)
         settings_dict['interleave'] = bool(self.__interleave)
+        settings_dict['flags'] = set(self.__flags)
         return settings_dict
 
     @pulse_generator_settings.setter
@@ -548,6 +551,9 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Read interleave flag from device
         self.__interleave = self.pulsegenerator().get_interleave()
+
+        # Read available flags from device
+        self.__flags = set(self.pulsegenerator().get_constraints().flags)
 
         # Notify new settings to listening module
         self.set_pulse_generator_settings()
