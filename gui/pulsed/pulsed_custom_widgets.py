@@ -203,3 +203,62 @@ class AnalogParametersWidget(QtGui.QWidget):
     #         widget = self._ach_widgets[param]['widget']
     #         if self._parameters[param]['type'] in [int, float]:
     #             widget.selectNumber()  # that is specific for the ScientificSpinBox
+
+
+class FlagChannelsWidget(QtGui.QWidget):
+    """
+    """
+    stateChanged = QtCore.Signal()
+
+    def __init__(self, parent=None, flag_channels=None):
+        super().__init__(parent)
+
+        if flag_channels is None:
+            self._flag_channels = list()
+        else:
+            self._flag_channels = flag_channels
+
+        self._flag_checkboxes = OrderedDict()
+        self._box_width = 20
+        self._width_hint = self._box_width * len(self._flag_channels)
+
+        main_layout = QtGui.QHBoxLayout()
+        for flag in self._flag_channels:
+            # Create QLabel and QCheckBox for each digital channel
+            label = QtGui.QLabel(flag)
+            label.setFixedWidth(self._box_width)
+            label.setAlignment(QtCore.Qt.AlignCenter)
+            widget = QtGui.QCheckBox()
+            widget.setFixedWidth(self._box_width)
+            widget.setChecked(False)
+            self._flag_checkboxes[flag] = {'label': label, 'widget': widget}
+
+            # Forward editingFinished signal of child widget
+            widget.stateChanged.connect(self.stateChanged)
+
+            # Arrange CheckBoxes and Labels in a layout
+            v_layout = QtGui.QVBoxLayout()
+            v_layout.addWidget(label)
+            v_layout.addWidget(widget)
+            v_layout.setAlignment(label, QtCore.Qt.AlignHCenter)
+            v_layout.setAlignment(widget, QtCore.Qt.AlignHCenter)
+            main_layout.addLayout(v_layout)
+        main_layout.addStretch(1)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        self.setLayout(main_layout)
+
+    def data(self):
+        flag_states = OrderedDict()
+        for flag in self._flag_channels:
+            flag_states[flag] = self._flag_checkboxes[flag]['widget'].isChecked()
+        return flag_states
+
+    def setData(self, data):
+        for flag in data:
+            self._flag_checkboxes[flag]['widget'].setChecked(data[flag])
+        self.stateChanged.emit()
+        return
+
+    def sizeHint(self):
+        return QtCore.QSize(self._width_hint, 50)
