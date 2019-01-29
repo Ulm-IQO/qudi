@@ -645,6 +645,11 @@ class SequenceStep(dict):
         for key, default_value in self.__default_parameters.items():
             if key not in self:
                 self[key] = default_value
+
+        if not (isinstance(self.flag_trigger, dict) or self.flag_trigger == 'OFF'):
+            raise KeyError('"flag_trigger" is only allowed to be either a dict or "OFF".')
+        if not (isinstance(self.flag_high, dict) or self.flag_high == 'OFF'):
+            raise KeyError('"flag_high" is only allowed to be either a dict or "OFF".')
         return
 
     def __setitem__(self, key, value):
