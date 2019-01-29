@@ -1467,7 +1467,6 @@ class PulsedMeasurementGui(GUIBase):
         if 'interleave' in settings_dict:
             self._pgs.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
         if 'flags' in settings_dict:
-            print('Gui update', settings_dict['flags'])
             self._sg.sequence_editor.set_available_flags(settings_dict['flags'])
 
         # unblock signals
@@ -1973,7 +1972,6 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.curr_sequence_length_DSpinBox.setRange(0, np.inf)
         pulser_constr = self.pulsedmasterlogic().pulse_generator_constraints
         self._sg.sequence_editor.set_available_triggers(pulser_constr.event_triggers)
-        print('Gui activate', pulser_constr.flags)
         self._sg.sequence_editor.set_available_flags(set(pulser_constr.flags))
         return
 
