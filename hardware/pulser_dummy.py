@@ -336,8 +336,8 @@ class PulserDummy(Base, PulserInterface):
 
         # Fill in sequence information
         for step, (wfm_tuple, seq_step) in enumerate(sequence_parameter_list, 1):
-            self.log.info('flag_trigger: {}'.format(seq_step.flag_trigger))
-            self.log.info('flag_high: {}'.format(seq_step.flag_high))
+            self.log.debug('flag_trigger: {}'.format(seq_step.flag_trigger))
+            self.log.debug('flag_high: {}'.format(seq_step.flag_high))
 
         self.sequence_dict[name] = len(sequence_parameter_list[0][0])
         time.sleep(1)

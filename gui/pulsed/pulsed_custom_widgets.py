@@ -218,7 +218,7 @@ class FlagChannelsWidget(QtGui.QWidget):
         else:
             self._flag_channels = flag_channels
 
-        self._flag_checkboxes = OrderedDict()
+        self._flag_checkboxes = dict()
         self._box_width = 20
         self._width_hint = self._box_width * len(self._flag_channels)
 
@@ -249,7 +249,7 @@ class FlagChannelsWidget(QtGui.QWidget):
         self.setLayout(main_layout)
 
     def data(self):
-        flag_states = OrderedDict()
+        flag_states = dict()
         for flag in self._flag_channels:
             flag_states[flag] = self._flag_checkboxes[flag]['widget'].isChecked()
         return flag_states
@@ -261,4 +261,4 @@ class FlagChannelsWidget(QtGui.QWidget):
         return
 
     def sizeHint(self):
-        return QtCore.QSize(self._width_hint, 50)
+        return QtCore.QSize(max(75, self._width_hint), 50)

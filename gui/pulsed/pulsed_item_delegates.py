@@ -677,8 +677,8 @@ class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
-        widget = FlagChannelsWidget(None, list(index.data(self._access_role)))
+    def sizeHint(self, flag_set):
+        widget = FlagChannelsWidget(None, flag_set)
         return widget.sizeHint()
 
     def setEditorData(self, editor, index):

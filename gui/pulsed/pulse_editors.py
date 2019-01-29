@@ -1014,7 +1014,6 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             return 0
 
         self.available_flags = flag_set
-        print('model_available', self.available_flags)
         return 0
 
     def set_rotating_frame(self, rotating_frame=True):
@@ -1285,13 +1284,16 @@ class SequenceEditor(QtWidgets.QTableView):
         # Set item delegate (ComboBox) for wait_for column
         self.setItemDelegateForColumn(7, None)
 
-        print('Editor', flag_set)
         self.model().set_available_flags(flag_set)
 
-        # Set item delegate (ComboBox) for event_trigger column
+        # Set item delegate (FlagStates) for flagTrigger column
         self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.model().flagTriggerRole))
-        # Set item delegate (ComboBox) for wait_for column
+        # Set item delegate (FlagStates) for flagHigh column
         self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.model().flagHighRole))
+
+        # set width of checkbox columns
+        self.setColumnWidth(6, self.itemDelegateForColumn(6).sizeHint(self.model().available_flags).width())
+        self.setColumnWidth(7, self.itemDelegateForColumn(7).sizeHint(self.model().available_flags).width())
         return
 
     def rowCount(self):
