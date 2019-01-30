@@ -216,7 +216,7 @@ class FlagChannelsWidget(QtGui.QWidget):
         if flag_channels is None:
             self._flag_channels = list()
         else:
-            self._flag_channels = flag_channels
+            self._flag_channels = list(flag_channels)
 
         self._flag_checkboxes = dict()
         self._box_width = 20
@@ -256,6 +256,9 @@ class FlagChannelsWidget(QtGui.QWidget):
 
     def setData(self, data):
         for flag in data:
+            if flag not in self._flag_checkboxes:
+                raise KeyError('The flag you are trying to set ({0}) '
+                               'is not among the available flags ({1}).'.format(flag, self._flag_checkboxes.keys()))
             self._flag_checkboxes[flag]['widget'].setChecked(data[flag])
         self.stateChanged.emit()
         return
