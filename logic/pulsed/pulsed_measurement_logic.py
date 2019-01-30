@@ -136,8 +136,8 @@ class PulsedMeasurementLogic(GenericLogic):
         self.laser_data = np.zeros((10, 20), dtype='int64')
         self.raw_data = np.zeros((10, 20), dtype='int64')
 
-        self._saved_data = OrderedDict()  # temporary saved raw data
-        self._current_saved_data_tag = None  # the currently recalled raw data dict key
+        self._saved_raw_data = OrderedDict()  # temporary saved raw data
+        self._recalled_raw_data_tag = None  # the currently recalled raw data dict key
 
         # Paused measurement flag
         self.__is_paused = False
@@ -201,7 +201,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self._initialize_data_arrays()
 
         # recalled saved raw data dict key
-        self._current_saved_data_tag = None
+        self._recalled_raw_data_tag = None
         self._current_saved_elapsed_time = 0.
 
         # Connect internal signals
@@ -776,13 +776,13 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._initialize_data_arrays()
 
                 # recall stashed raw data
-                if stashed_raw_data_tag in self._saved_data:
-                    self._current_saved_data_tag = stashed_raw_data_tag
+                if stashed_raw_data_tag in self._saved_raw_data:
+                    self._recalled_raw_data_tag = stashed_raw_data_tag
                     self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
                                   ''.format(stashed_raw_data_tag))
-                    self._current_saved_elapsed_time = self._saved_data[stashed_raw_data_tag]['time']
+                    self._current_saved_elapsed_time = self._saved_raw_data[stashed_raw_data_tag]['time']
                 else:
-                    self._current_saved_data_tag = None
+                    self._recalled_raw_data_tag = None
                     self._current_saved_elapsed_time = 0.
 
                 # start microwave source
@@ -835,10 +835,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    self._saved_data[stash_raw_data_tag] = {'raw': self.raw_data.copy(),
+                    self._saved_raw_data[stash_raw_data_tag] = {'raw': self.raw_data.copy(),
                                                             'sweeps': self.__elapsed_sweeps,
                                                             'time': self.__elapsed_time}
-                self._current_saved_data_tag = None
+                self._recalled_raw_data_tag = None
 
                 # Set measurement paused flag
                 self.__is_paused = False
@@ -1166,17 +1166,17 @@ class PulsedMeasurementLogic(GenericLogic):
         sweeps = self.fastcounter().get_current_sweeps()
 
         # add old raw data from previous measurements if necessary
-        if self._saved_data.get(self._current_saved_data_tag) is not None:
+        if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
             # self.log.info('Found old saved raw data with tag "{0}".'
-            #               ''.format(self._current_saved_data_tag))
-            sweeps += self._saved_data[self._current_saved_data_tag]['sweeps']
+            #               ''.format(self._recalled_raw_data_tag))
+            sweeps += self._saved_raw_data[self._recalled_raw_data_tag]['sweeps']
             if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
-                fc_data = self._saved_data[self._current_saved_data_tag]['raw']
-            elif self._saved_data[self._current_saved_data_tag]['raw'].shape == fc_data.shape:
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]['raw']
+            elif self._saved_raw_data[self._recalled_raw_data_tag]['raw'].shape == fc_data.shape:
                 self.log.debug('Recalled raw data has the same shape as current data.')
-                fc_data = self._saved_data[self._current_saved_data_tag]['raw'] + fc_data
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]['raw'] + fc_data
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'
                                  '\nDid NOT add recalled raw data to current time trace.')
