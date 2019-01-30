@@ -1067,9 +1067,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             self._pulse_sequence[index.row()].event_trigger = data
         elif role == self.waitForRole and isinstance(data, str):
             self._pulse_sequence[index.row()].wait_for = data
-        elif role == self.flagTriggerRole and isinstance(data, dict):
+        elif role == self.flagTriggerRole and (isinstance(data, dict) or data == 'OFF'):
             self._pulse_sequence[index.row()].flag_trigger = data
-        elif role == self.flagHighRole and isinstance(data, dict):
+        elif role == self.flagHighRole and (isinstance(data, dict) or data == 'OFF'):
             self._pulse_sequence[index.row()].flag_high = data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
@@ -1194,9 +1194,9 @@ class SequenceEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, ['OFF'],
                                                               self.model().waitForRole))
         # Set item delegate (ComboBox) for flag_trigger column
-        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
         # Set item delegate (ComboBox) for flag_high column
-        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
 
         # Set header sizes
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
@@ -1206,7 +1206,7 @@ class SequenceEditor(QtWidgets.QTableView):
         self.verticalHeader().setDefaultSectionSize(50)
 
         # automatically set the width for the columns
-        for col in range(self.columnCount()-2):
+        for col in range(self.columnCount()):
             width = self.itemDelegateForColumn(col).sizeHint().width()
             self.setColumnWidth(col, width)
         return
