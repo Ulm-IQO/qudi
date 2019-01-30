@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* splitting up the huge hardware file of the ni card as preparation to reworking the scanner interface 
 * Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
