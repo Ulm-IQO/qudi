@@ -906,7 +906,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
-                self._elapsed_pause = time.time() - self._time_of_pause
+                self._elapsed_pause += time.time() - self._time_of_pause
 
                 self.sigMeasurementStatusUpdated.emit(True, False)
             else:
