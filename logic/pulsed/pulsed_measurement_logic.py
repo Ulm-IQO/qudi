@@ -1138,7 +1138,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def _extract_laser_pulses(self):
         # Get counter raw data (including recalled raw data from previous measurement)
-        self._fetch_raw_data()
+        self._get_raw_data()
 
         # extract laser pulses from raw data
         return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
@@ -1156,10 +1156,11 @@ class PulsedMeasurementLogic(GenericLogic):
             tmp_error = np.zeros(self.laser_data.shape[0])
         return tmp_signal, tmp_error
 
-    def _fetch_raw_data(self):
+    def _get_raw_data(self):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
+        :return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
         """
         # get raw data from fast counter
         fc_data = netobtain(self.fastcounter().get_data_trace())
@@ -1185,6 +1186,7 @@ class PulsedMeasurementLogic(GenericLogic):
             fc_data = np.zeros(fc_data.shape, dtype='int64')
         self.raw_data = fc_data
         self.__elapsed_sweeps = sweeps
+        return fc_data
 
     def _initialize_data_arrays(self):
         """
