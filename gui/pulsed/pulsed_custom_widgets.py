@@ -216,7 +216,7 @@ class FlagChannelsWidget(QtGui.QWidget):
         if flag_channels is None:
             self._flag_channels = list()
         else:
-            self._flag_channels = list(flag_channels)
+            self._flag_channels = sorted(flag_channels)
 
         self._flag_checkboxes = dict()
         self._box_width = 20
