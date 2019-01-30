@@ -317,6 +317,14 @@ class PulsedMasterLogic(GenericLogic):
         return self.pulsedmeasurementlogic().fast_counter_settings
 
     @property
+    def elapsed_sweeps(self):
+        return self.pulsedmeasurementlogic().elapsed_sweeps
+
+    @property
+    def elapsed_time(self):
+        return self.pulsedmeasurementlogic().elapsed_time
+
+    @property
     def ext_microwave_constraints(self):
         return self.pulsedmeasurementlogic().ext_microwave_constraints
 
