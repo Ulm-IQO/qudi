@@ -33,6 +33,7 @@ from collections import OrderedDict
 from core.module import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
@@ -645,7 +646,10 @@ class SaveLogic(GenericLogic):
 
     def update_additional_parameters(self, **new_pairs):
         """ Method to update one or multiple additional parameters """
-        self._additional_parameters = {**self._additional_parameters, **new_pairs}
+        dic = {}
+        for key in new_pairs.keys():
+            dic[key] = netobtain(new_pairs[key])
+        self._additional_parameters = {**self._additional_parameters, **dic}
 
     def remove_additional_parameter(self, key):
         """ remove a parameter from additional parameters """
