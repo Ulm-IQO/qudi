@@ -513,6 +513,7 @@ class MagnetGui(GUIBase):
         self._ms.ButtonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_magnet_settings)
 
         self.keep_former_magnet_settings()
+        return
 
 
 
@@ -1765,18 +1766,18 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(False)
         return time
 
-def get_ref_curr_pos_ScienDSpinBox(self, label):
-    """ Get the reference to the double spin box for the passed label. """
-
-    dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
-    dspinbox_ref = getattr(self._mw, dspinbox_name)
-    return dspinbox_ref
-
-
-def get_ref_move_rel_ScienDSpinBox(self, label):
-    """ Get the reference to the double spin box for the passed label. """
-
-    dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
-    dspinbox_ref = getattr(self._mw, dspinbox_name)
-    return dspinbox_ref
+    # def get_ref_curr_pos_ScienDSpinBox(self, label):
+    #     """ Get the reference to the double spin box for the passed label. """
+    #
+    #     dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
+    #     dspinbox_ref = getattr(self._mw, dspinbox_name)
+    #     return dspinbox_ref
+    #
+    #
+    # def get_ref_move_rel_ScienDSpinBox(self, label):
+    #     """ Get the reference to the double spin box for the passed label. """
+    #
+    #     dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
+    #     dspinbox_ref = getattr(self._mw, dspinbox_name)
+    #     return dspinbox_ref
 

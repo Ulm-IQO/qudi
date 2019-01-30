@@ -216,6 +216,8 @@ def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_par
                                     'error': result.params['offset'].stderr,
                                     'unit': units[1]}                               #offset
 
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
+
     result.result_str_dict = result_str_dict
 
     return result
@@ -340,6 +342,8 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
     result_str_dict['Beta'] = {'value': result.params['beta'].value,
                                     'error': result.params['beta'].stderr,
                                     'unit': ''}                               #Beta (exponent of exponential exponent)
+
+    result_str_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
 
     result.result_str_dict = result_str_dict
 

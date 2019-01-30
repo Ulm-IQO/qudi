@@ -64,7 +64,7 @@ class PulsedMeasurementLogic(GenericLogic):
     __use_ext_microwave = StatusVar(default=False)
 
     # fast counter settings
-    __fast_counter_record_length = StatusVar(default=3.0e-6)
+    __fast_counter_record_length = StatusVar(default=1.0e-6)
     __fast_counter_binwidth = StatusVar(default=1.0e-9)
     __fast_counter_gates = StatusVar(default=0)
 

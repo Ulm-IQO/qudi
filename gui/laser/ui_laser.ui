@@ -162,7 +162,7 @@
      <x>0</x>
      <y>0</y>
      <width>730</width>
-     <height>30</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -240,9 +240,12 @@
       </widget>
      </item>
      <item row="4" column="0">
-      <widget class="ScienDSpinBox" name="setValueDoubleSpinBox">
+      <widget class="QDoubleSpinBox" name="setValueDoubleSpinBox">
        <property name="suffix">
         <string>W</string>
+       </property>
+       <property name="decimals">
+        <number>5</number>
        </property>
       </widget>
      </item>
@@ -331,13 +334,6 @@
    </property>
   </action>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>ScienDSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections>
   <connection>

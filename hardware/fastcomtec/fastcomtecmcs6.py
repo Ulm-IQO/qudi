@@ -430,6 +430,14 @@ class FastComtec(Base, FastCounterInterface):
         self.change_sweep_mode(gated)
         return self.gated
 
+    def get_gated(self):
+        """ Change the gated status of the fast counter.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        return self.gated
+
 
     def get_data_testfile(self):
         ''' Load data test file '''
@@ -548,7 +556,7 @@ class FastComtec(Base, FastCounterInterface):
             cycles = 1
         if length_bins *  cycles < constraints['max_bins']:
             # Smallest increment is 64 bins. Since it is better if the range is too short than too long, round down
-            length_bins = int(64 * int(np.ceil(length_bins / 64)))
+            length_bins = int(64 * int(length_bins / 64))
             cmd = 'RANGE={0}'.format(int(length_bins))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             #cmd = 'roimax={0}'.format(int(length_bins))
@@ -650,7 +658,8 @@ class FastComtec(Base, FastCounterInterface):
         """
 
         # Reduce length to prevent crashes
-        #self.set_length(1440)
+        if self.get_length() > 3000:
+            self.set_length(64)
         if gated:
             self.set_cycle_mode(mode=True, cycles=cycles)
             self.set_preset_mode(mode=16, preset=preset)
@@ -723,19 +732,22 @@ class FastComtec(Base, FastCounterInterface):
         # First set cycles to 1 to prevent crashes
         if cycles == None:
             cycles_old = self.get_cycles()
-        self.set_cycles(1)
+        #self.set_cycles(1)
         # Turn on or off sequential cycle mode
         if mode:
+            if not self.get_cycle_mode() == 35528836:
             #cmd = 'sweepmode={0}'.format(hex(1978500))
             #cmd = 'sweepmode={0}'.format(hex(1974404))
-            cmd = 'sweepmode={0}'.format(hex(35528836))
+                cmd = 'sweepmode={0}'.format(hex(35528836))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         else:
-            cmd = 'sweepmode={0}'.format(hex(1978496))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            if not self.get_cycle_mode() == 1978496:
+                cmd = 'sweepmode={0}'.format(hex(1978496))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
-        if cycles == None:
-            self.set_cycles(cycles_old)
-        else:
+        if not cycles == None:
+            #self.set_cycles(cycles_old)
+        #else:
             self.set_cycles(cycles)
 
         return mode, cycles

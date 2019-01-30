@@ -23,6 +23,7 @@ import numpy as np
 from scipy import ndimage
 
 from logic.pulsed.pulse_extractor import PulseExtractorBase
+from scipy.signal import argrelextrema
 
 
 class BasicPulseExtractor(PulseExtractorBase):
@@ -380,6 +381,103 @@ class BasicPulseExtractor(PulseExtractorBase):
                                                        laser_start_bins[ii] + delay_bins + safety_bins + max_laser_length)]
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
+
+        return return_dict
+
+    def gated_conv_deriv2(self, count_data, conv_std_dev = 20):
+        """
+        Detects the rising flanks in the gated timetrace data and extracts just two laser pulses.
+
+        @param numpy.ndarray count_data:    2D array, the raw timetrace data from a gated fast counter,
+                                            dimensions: 0: gate number, 1: time bin
+
+        @return dict:   The extracted laser pulses of the timetrace as well as the indices for rising
+                        and falling flanks.
+        """
+
+        # sum up all gated timetraces to ease flank detection
+        timetrace_sum = np.sum(count_data, 0)
+
+
+        # apply gaussian filter to remove noise and compute the gradient of the timetrace sum
+        conv = ndimage.filters.gaussian_filter1d(timetrace_sum.astype(float), conv_std_dev)
+        conv_deriv = np.gradient(conv)
+        #conv_deriv = pulseextractionlogic._convolve_derive(timetrace_sum.astype(float), 1.0)
+
+
+        # get indices of rising and falling flank
+        rising_ind = argrelextrema(conv_deriv, np.greater)[0][0]
+        falling_ind = argrelextrema(conv_deriv, np.less)[0][0]
+        rising_ind2 = argrelextrema(conv_deriv, np.greater)[0][1]
+        falling_ind2 = argrelextrema(conv_deriv, np.less)[0][1]
+
+        # If gaussian smoothing or derivative failed, the returned array only
+        # contains zeros. Check for that and return also only zeros to indicate a
+        # failed pulse extraction.
+        if len(conv_deriv.nonzero()[0]) == 0:
+            laser_arr = np.zeros(count_data.shape, dtype=int)
+        else:
+            # slice the data array to cut off anything but laser pulses
+            laser_arr = count_data[:, rising_ind:falling_ind]
+            laser_arr2 = count_data[:, rising_ind2:falling_ind2]
+
+        # Create return dictionary
+        return_dict = dict()
+        return_dict['laser_counts_arr'] = laser_arr.astype(int)
+        return_dict['laser_counts_arr2'] = laser_arr2.astype(int)
+        return_dict['laser_indices_rising'] = rising_ind
+        return_dict['laser_indices_falling'] = falling_ind
+        return_dict['laser_indices_rising2'] = rising_ind2
+        return_dict['laser_indices_falling2'] = falling_ind2
+
+        return return_dict
+
+
+    def ungated_conv_deriv2(self, count_data, conv_std_dev = 20):
+        """
+        Detects the rising flanks in the gated timetrace data and extracts just two laser pulses.
+
+        @param numpy.ndarray count_data:    2D array, the raw timetrace data from a gated fast counter,
+                                            dimensions: 0: gate number, 1: time bin
+
+        @return dict:   The extracted laser pulses of the timetrace as well as the indices for rising
+                        and falling flanks.
+        """
+
+        # sum up all gated timetraces to ease flank detection
+        timetrace_sum = np.sum(count_data, 0)
+
+
+        # apply gaussian filter to remove noise and compute the gradient of the timetrace sum
+        conv = ndimage.filters.gaussian_filter1d(timetrace_sum.astype(float), conv_std_dev)
+        conv_deriv = np.gradient(conv)
+        #conv_deriv = pulseextractionlogic._convolve_derive(timetrace_sum.astype(float), 1.0)
+
+
+        # get indices of rising and falling flank
+        rising_ind = argrelextrema(conv_deriv, np.greater)[0][0]
+        falling_ind = argrelextrema(conv_deriv, np.less)[0][0]
+        rising_ind2 = argrelextrema(conv_deriv, np.greater)[0][1]
+        falling_ind2 = argrelextrema(conv_deriv, np.less)[0][1]
+
+        # If gaussian smoothing or derivative failed, the returned array only
+        # contains zeros. Check for that and return also only zeros to indicate a
+        # failed pulse extraction.
+        if len(conv_deriv.nonzero()[0]) == 0:
+            laser_arr = np.zeros(count_data.shape, dtype=int)
+        else:
+            # slice the data array to cut off anything but laser pulses
+            laser_arr = count_data[:, rising_ind:falling_ind]
+            laser_arr2 = count_data[:, rising_ind2:falling_ind2]
+
+        # Create return dictionary
+        return_dict = dict()
+        return_dict['laser_counts_arr'] = laser_arr.astype(int)
+        return_dict['laser_counts_arr2'] = laser_arr2.astype(int)
+        return_dict['laser_indices_rising'] = rising_ind
+        return_dict['laser_indices_falling'] = falling_ind
+        return_dict['laser_indices_rising2'] = rising_ind2
+        return_dict['laser_indices_falling2'] = falling_ind2
 
         return return_dict
 

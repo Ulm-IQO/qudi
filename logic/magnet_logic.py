@@ -663,12 +663,10 @@ class MagnetLogic(GenericLogic):
         # in order to display the rectangles in the 2d plot in the gui such that the
         # measurement position is in the center of the rectangle.
         # data axis0:
-        data_axis0 = np.linspace(axis0_start-axis0_step/2, axis0_start+(num_points_axis0-0.5)*axis0_step,
-                                 num_points_axis0)
+        data_axis0 = np.linspace(axis0_start, axis0_start+(num_points_axis0-1)*axis0_step, num_points_axis0)
 
         # data axis1:
-        data_axis1 = np.linspace(axis1_start-axis1_step/2, axis1_start+(num_points_axis1-0.5)*axis1_step,
-                                 num_points_axis1)
+        data_axis1 = np.linspace(axis1_start, axis1_start+(num_points_axis1-1)*axis1_step, num_points_axis1)
 
         return matrix, data_axis0, data_axis1
 

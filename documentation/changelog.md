@@ -122,7 +122,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 	* Improved pulsed measurement textfile and plot layout for saved data
     * Added buttons to delete all saved PulseBlock/PulseBlockEnsemble/PulseSequence objects at once.
     * Introduced separate fit tools for each of the two plots in the pulsed analysis tab
-    * Automatically clears fit data when changing the alternative plot type or starting a new 
+    * Automatically clears fit data when changing the alternative plot type or starting a new
       measurement.
 
 Config changes:

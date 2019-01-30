@@ -2852,17 +2852,18 @@ class PulsedMeasurementGui(GUIBase):
         settings_dict = dict()
         settings_dict['method'] = self._pe.extract_param_method_comboBox.currentText()
         # Check if the method has been changed
-        if settings_dict['method'] == self.pulsedmasterlogic().extraction_settings['method']:
-            for label, widget in self._extraction_param_widgets:
-                param_name = widget.objectName()[14:]
-                if hasattr(widget, 'isChecked'):
-                    settings_dict[param_name] = widget.isChecked()
-                elif hasattr(widget, 'value'):
-                    settings_dict[param_name] = widget.value()
-                elif hasattr(widget, 'text'):
-                    settings_dict[param_name] = widget.text()
-        else:
-            self._delete_extraction_param_widgets()
+        if self._extraction_param_widgets is not None:
+            if settings_dict['method'] == self.pulsedmasterlogic().extraction_settings['method']:
+                for label, widget in self._extraction_param_widgets:
+                    param_name = widget.objectName()[14:]
+                    if hasattr(widget, 'isChecked'):
+                        settings_dict[param_name] = widget.isChecked()
+                    elif hasattr(widget, 'value'):
+                        settings_dict[param_name] = widget.value()
+                    elif hasattr(widget, 'text'):
+                        settings_dict[param_name] = widget.text()
+            else:
+                self._delete_extraction_param_widgets()
 
         self.pulsedmasterlogic().set_extraction_settings(settings_dict)
         return
@@ -2910,22 +2911,23 @@ class PulsedMeasurementGui(GUIBase):
 
         @return:
         """
-        for index in reversed(range(len(self._extraction_param_widgets))):
-            label = self._extraction_param_widgets[index][0]
-            widget = self._extraction_param_widgets[index][1]
-            # Disconnect signals
-            if hasattr(widget, 'setChecked'):
-                widget.stateChanged.disconnect()
-            else:
-                widget.editingFinished.disconnect()
-            # Remove label and widget from layout
-            self._pe.extraction_param_gridLayout.removeWidget(label)
-            self._pe.extraction_param_gridLayout.removeWidget(widget)
-            # Stage label and widget for deletion
-            label.deleteLater()
-            widget.deleteLater()
-            del self._extraction_param_widgets[index]
-        self._extraction_param_widgets = None
+        if self._extraction_param_widgets is not None:
+            for index in reversed(range(len(self._extraction_param_widgets))):
+                label = self._extraction_param_widgets[index][0]
+                widget = self._extraction_param_widgets[index][1]
+                # Disconnect signals
+                if hasattr(widget, 'setChecked'):
+                    widget.stateChanged.disconnect()
+                else:
+                    widget.editingFinished.disconnect()
+                # Remove label and widget from layout
+                self._pe.extraction_param_gridLayout.removeWidget(label)
+                self._pe.extraction_param_gridLayout.removeWidget(widget)
+                # Stage label and widget for deletion
+                label.deleteLater()
+                widget.deleteLater()
+                del self._extraction_param_widgets[index]
+            self._extraction_param_widgets = None
         return
 
     def _create_extraction_param_widgets(self, extraction_settings):

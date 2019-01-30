@@ -255,7 +255,7 @@ class LaserGUI(GUIBase):
             '{0:6.3f} {1}'.format(
                 self._laser_logic.laser_current,
                 self._laser_logic.laser_current_unit))
-        self._mw.powerLabel.setText('{0:6.3f} W'.format(self._laser_logic.laser_power))
+        self._mw.powerLabel.setText('{0:6.3f} mW'.format(self._laser_logic.laser_power*1e3))
         self._mw.extraLabel.setText(self._laser_logic.laser_extra)
         self.updateButtonsEnabled()
         for name, curve in self.curves.items():
@@ -264,10 +264,12 @@ class LaserGUI(GUIBase):
     @QtCore.Slot()
     def updateFromSpinBox(self):
         """ The user has changed the spinbox, update all other values from that. """
-        self._mw.setValueVerticalSlider.setValue(self._mw.setValueDoubleSpinBox.value())
         cur = self._mw.currentRadioButton.isChecked() and self._mw.currentRadioButton.isEnabled()
         pwr = self._mw.powerRadioButton.isChecked() and  self._mw.powerRadioButton.isEnabled()
         if pwr and not cur:
+            lpr = self._laser_logic.laser_power_range
+            self._mw.setValueVerticalSlider.setValue(100*(self._mw.setValueDoubleSpinBox.value()-lpr[0])/
+                                                     (lpr[1] - lpr[0]))
             self.sigPower.emit(self._mw.setValueDoubleSpinBox.value())
         elif cur and not pwr:
             self.sigCurrent.emit(self._mw.setValueDoubleSpinBox.value())
