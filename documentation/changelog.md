@@ -37,6 +37,7 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Implement the switch interface for PulseBlasterESR-PRO devices.
 * Add possibility to set instruction delays in the config for PulseBlasterESR-PRO sequence generation.
 * Add a copy-paste config option to the docstrings of all current qudi hardware modules.
+* Add save logic features to add additional parameters saved with each data file
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
     * Bug fix for waveform generation larger than ~2 GSamples
