@@ -63,6 +63,8 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         # The default PulseBlockElement
         self.__default_element = PulseBlockElement()
 
+        self._laser_channel_is_digital = True
+
         # Create header strings
         self._create_header_data()
 
@@ -131,7 +133,10 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             if column < 2:
                 width = 90
             elif column == 2:
-                width = 50
+                if not self._laser_channel_is_digital:
+                    width = 50
+                else:
+                    width = 0
             elif column == 3 and has_digital:
                 width = 30 * len(self.digital_channels)
             else:
@@ -150,6 +155,17 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             return width
         else:
             return -1
+
+    def set_laser_channel_is_digital(self, laser_channel_is_digital):
+        self._laser_channel_is_digital = bool(laser_channel_is_digital)
+
+        # The fact that the widths are stored in the model saves a huge amount of computational
+        # time when resizing columns due to item changes.
+        self._col_widths = self._get_column_widths()
+        # Notify the QTableView about a change in column widths
+        self._notify_column_width()
+
+        return self._laser_channel_is_digital
 
     def set_activation_config(self, activation_config):
         """
@@ -492,6 +508,9 @@ class BlockEditor(QtWidgets.QTableView):
                 AnalogParametersItemDelegate(
                     self, [self.model().analogFunctionRole, self.model().analogParameterRole]))
         return
+
+    def set_laser_channel_is_digital(self, laser_channel_is_digital):
+        return self.model().set_laser_channel_is_digital(laser_channel_is_digital)
 
     def set_activation_config(self, activation_config):
         """
