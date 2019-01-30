@@ -358,12 +358,17 @@ class BasicPulseExtractor(PulseExtractorBase):
         sample_rate = self.sampling_information['pulse_generator_settings']['sample_rate']
         # get the fastcounter binwidth
         fc_binwidth = self.fast_counter_settings['bin_width']
-        # get laser rising bins
-        laser_start_bins = self.sampling_information['digital_rising_bins'][laser_channel]
+        if laser_channel.startswith('d'):
+            # get laser rising bins
+            laser_start_bins = self.sampling_information['digital_rising_bins'][laser_channel]
+            # get laser falling bins
+            laser_end_bins = self.sampling_information['digital_falling_bins'][laser_channel]
+        else:
+            # get laser bins
+            laser_start_bins, laser_end_bins = self.sampling_information['laser_bins']
+
         # convert to bins of fastcounter
         laser_start_bins = (laser_start_bins / sample_rate / fc_binwidth).astype(int)
-        # get laser falling bins
-        laser_end_bins = self.sampling_information['digital_falling_bins'][laser_channel]
         # convert to bins of fastcounter
         laser_end_bins = (laser_end_bins / sample_rate / fc_binwidth).astype(int)
         # convert to fastcounter bins

@@ -1063,7 +1063,7 @@ class SequenceGeneratorLogic(GenericLogic):
         if len(laser_channel) > 0 and laser_channel[0] == 'd':
             ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
         else:
-            self.log.warn('Analog or no Laser channel currently not supported. '
+            self.log.debug('Analog or no laser channel used. '
                           'Given laser_channel: "{0}"'.format(laser_channel))
             ens_lasers = len(info_dict['laser_bins'][0])
         return ens_length, ens_bins, ens_lasers
@@ -1098,7 +1098,7 @@ class SequenceGeneratorLogic(GenericLogic):
             if len(laser_channel) > 0 and laser_channel[0] == 'd':
                 ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             else:
-                self.log.warn('Analog or no Laser channel currently not supported. '
+                self.log.debug('Analog or no Laser channel used. '
                               'Given laser_channel: "{0}"'.format(laser_channel))
                 ens_lasers = len(info_dict['laser_bins'][0])
             length_bins += ens_bins
