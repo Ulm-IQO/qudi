@@ -1392,6 +1392,7 @@ class PulsedMeasurementGui(GUIBase):
             if former_laser_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+                self._pg.block_editor.set_laser_channel_is_digital(former_laser_channel.startswith('d'))
 
             former_sync_channel = self._pg.gen_syncchannel_ComboBox.currentText()
             self._pg.gen_syncchannel_ComboBox.clear()
@@ -1518,6 +1519,8 @@ class PulsedMeasurementGui(GUIBase):
                     settings_dict[param_name] = widget.text()
 
         self.pulsedmasterlogic().set_generation_parameters(settings_dict)
+
+        self._pg.block_editor.set_laser_channel_is_digital(settings_dict['laser_channel'].startswith('d'))
         return
 
     @QtCore.Slot(dict)
@@ -1535,6 +1538,7 @@ class PulsedMeasurementGui(GUIBase):
         if 'laser_channel' in settings_dict:
             index = self._pg.gen_laserchannel_ComboBox.findText(settings_dict['laser_channel'])
             self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+            self._pg.block_editor.set_laser_channel_is_digital(settings_dict['laser_channel'].startswith('d'))
         if 'sync_channel' in settings_dict:
             index = self._pg.gen_syncchannel_ComboBox.findText(settings_dict['sync_channel'])
             self._pg.gen_syncchannel_ComboBox.setCurrentIndex(index)
