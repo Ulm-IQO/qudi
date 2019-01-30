@@ -240,5 +240,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
         @return int: current number of sweeps
 
-        Let's not return 0 because some logic might be dividing by this """
-        return 1
+        return -1 if not supported/implemented
+        """
+        return -1
