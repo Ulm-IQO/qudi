@@ -639,10 +639,11 @@ class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
     """
     editingFinished = QtCore.Signal()
 
-    def __init__(self, parent, data_access_role=QtCore.Qt.DisplayRole):
+    def __init__(self, parent, available_flags, data_access_role=QtCore.Qt.DisplayRole):
 
         super().__init__(parent)
         self._access_role = data_access_role
+        self._available_flags = available_flags
         return
 
     def createEditor(self, parent, option, index):
@@ -665,7 +666,7 @@ class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
-        editor = FlagChannelsWidget(parent, list(index.data(self._access_role)))
+        editor = FlagChannelsWidget(parent, self._available_flags)
         editor.setData(index.data(self._access_role))
         editor.stateChanged.connect(self.commitAndCloseEditor)
         return editor
@@ -677,8 +678,8 @@ class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, flag_set):
-        widget = FlagChannelsWidget(None, flag_set)
+    def sizeHint(self):
+        widget = FlagChannelsWidget(None, self._available_flags)
         return widget.sizeHint()
 
     def setEditorData(self, editor, index):
@@ -719,7 +720,7 @@ class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = FlagChannelsWidget(None, list(index.data(self._access_role)))
+        widget = FlagChannelsWidget(None, self._available_flags)
         widget.setData(index.data(self._access_role))
         widget.render(painter)
         painter.restore()
