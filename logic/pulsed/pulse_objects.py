@@ -608,8 +608,8 @@ class SequenceStep(dict):
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
                             'wait_for': 'OFF',
-                            'flag_trigger': dict(),
-                            'flag_high': dict()}
+                            'flag_trigger': list(),
+                            'flag_high': list()}
 
     def __init__(self, *args, **kwargs):
         if len(args) > 2:
@@ -646,10 +646,10 @@ class SequenceStep(dict):
             if key not in self:
                 self[key] = default_value
 
-        if not isinstance(self.flag_trigger, dict):
-            raise KeyError('"flag_trigger" is only allowed to be a dict.')
-        if not isinstance(self.flag_high, dict):
-            raise KeyError('"flag_high" is only allowed to be a dict.')
+        if not isinstance(self.flag_trigger, list):
+            raise KeyError('"flag_trigger" is only allowed to be a list.')
+        if not isinstance(self.flag_high, list):
+            raise KeyError('"flag_high" is only allowed to be a list.')
         return
 
     def __setitem__(self, key, value):
@@ -706,16 +706,14 @@ class PulseSequence(object):
                                           'wait_for': The trigger input to wait for before playing
                                                       this sequence step. Set to 'OFF' (default)
                                                       in order to play the current step immediately.
-                                          'flag_trigger': Dictionary containing booleans as values
-                                                          and flag names as keys indicating what
-                                                          flags to trigger when this sequence
-                                                          step starts playing. Empty dict (default)
-                                                          for no flag trigger.
-                                          'flag_high': Dictionary containing booleans as values
-                                                       and flag names as keys indicating what
-                                                       flags to set to high when this sequence
-                                                       step starts playing. Empty dict (default)
-                                                       for all flags low (or triggered; see above).
+                                          'flag_trigger': List containing the flags (str) to
+                                                          trigger when this sequence step starts
+                                                          playing. Empty list (default) for no flag
+                                                          trigger.
+                                          'flag_high': List containing the flags (str) to set to
+                                                       high when this sequence step is playing. All
+                                                       others will be low (or triggered; see above).
+                                                       Empty list (default) for all flags low.
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:

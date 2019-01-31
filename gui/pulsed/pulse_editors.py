@@ -1028,9 +1028,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             # remove old flags
             for flag in removed_flags:
                 if flag in seq_step.flag_trigger:
-                    del seq_step.flag_trigger[flag]
+                    seq_step.flag_trigger.remove(flag)
                 if flag in seq_step.flag_high:
-                    del seq_step.flag_high[flag]
+                    seq_step.flag_high.remove(flag)
         return 0
 
     def set_rotating_frame(self, rotating_frame=True):
@@ -1072,9 +1072,15 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         elif role == self.waitForRole:
             return self._pulse_sequence[index.row()].wait_for
         elif role == self.flagTriggerRole:
-            return self._pulse_sequence[index.row()].flag_trigger.copy()
+            data = {flag: False for flag in self.available_flags}
+            for flag in self._pulse_sequence[index.row()].flag_trigger:
+                data[flag] = True
+            return data
         elif role == self.flagHighRole:
-            return self._pulse_sequence[index.row()].flag_high.copy()
+            data = {flag: False for flag in self.available_flags}
+            for flag in self._pulse_sequence[index.row()].flag_high:
+                data[flag] = True
+            return data
         else:
             return None
 
@@ -1094,15 +1100,11 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         elif role == self.waitForRole and isinstance(data, str):
             self._pulse_sequence[index.row()].wait_for = data
         elif role == self.flagTriggerRole and isinstance(data, dict):
-            if not any(data.values()):
-                self._pulse_sequence[index.row()].flag_trigger = dict()
-            else:
-                self._pulse_sequence[index.row()].flag_trigger = data.copy()
+            list_data = [flag for flag, value in data.items() if value]
+            self._pulse_sequence[index.row()].flag_trigger = list_data
         elif role == self.flagHighRole and isinstance(data, dict):
-            if not any(data.values()):
-                self._pulse_sequence[index.row()].flag_high = dict()
-            else:
-                self._pulse_sequence[index.row()].flag_high = data.copy()
+            list_data = [flag for flag, value in data.items() if value]
+            self._pulse_sequence[index.row()].flag_high = list_data
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
             self._pulse_sequence.extend(data.ensemble_list)
