@@ -23,8 +23,8 @@ import copy
 
 from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
-from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate#, FlagStatesItemDelegate
-from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
+from gui.pulsed.pulsed_item_delegates import MultipleCheckboxItemDelegate, CheckBoxItemDelegate
+from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, AnalogParametersItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
 from logic.pulsed.sampling_functions import SamplingFunctions
@@ -214,7 +214,9 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         if role == self.incrementRole:
             return self._pulse_block[index.row()].increment_s
         if role == self.digitalStateRole:
-            return self._pulse_block[index.row()].digital_high
+            data = self._pulse_block[index.row()].digital_high
+            data = {chnl.split('_', 1)[1]: value for chnl, value in data.items()}
+            return data
         if role == self.analogFunctionRole:
             element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
@@ -268,6 +270,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
                                              digital_high=old_elem.digital_high)
                 self._pulse_block[index.row()] = new_elem
         elif role == self.digitalStateRole and isinstance(data, dict):
+            data = {'d_' + chnl: value for chnl, value in data.items()}
             old_elem = self._pulse_block[index.row()]
             if data != old_elem.digital_high:
                 new_elem = PulseBlockElement(init_length_s=old_elem.init_length_s,
@@ -453,8 +456,9 @@ class BlockEditor(QtWidgets.QTableView):
         # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
+            chnl_labels = sorted(chnl.split('_')[1] for chnl in self.model().digital_channels)
             self.setItemDelegateForColumn(
-                2, DigitalStatesItemDelegate(self, self.model().digital_channels, self.model().digitalStateRole))
+                2, MultipleCheckboxItemDelegate(self, chnl_labels, self.model().digitalStateRole))
             offset_index = 3  # to indicate which column comes next.
         else:
             offset_index = 2  # to indicate which column comes next.
@@ -942,9 +946,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         super().__init__()
 
         # set containing available ensemble names
-        self.available_block_ensembles = None
+        self.available_block_ensembles = set()
         # set containing available flag names
-        self.available_flags = None
+        self.available_flags = set()
 
         # The actual model data container.
         self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
@@ -1016,20 +1020,17 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             return 0
 
         # save new set of flags but temporarily remember flags that have been removed/added
-        added_flags = flags - self.available_flags
         removed_flags = self.available_flags - flags
         self.available_flags = flags
 
-        # Remove flags from sequence steps that are not there anymore and add new flags
+        # Remove flags from sequence steps that are not there anymore
         for row, seq_step in enumerate(self._pulse_sequence):
-            # add new flags
-            for flag in added_flags:
-                seq_step.flag_trigger[flag] = False
-                seq_step.flag_high[flag] = False
             # remove old flags
             for flag in removed_flags:
-                del seq_step.flag_trigger[flag]
-                del seq_step.flag_high[flag]
+                if flag in seq_step.flag_trigger:
+                    del seq_step.flag_trigger[flag]
+                if flag in seq_step.flag_high:
+                    del seq_step.flag_high[flag]
         return 0
 
     def set_rotating_frame(self, rotating_frame=True):
@@ -1071,19 +1072,9 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         elif role == self.waitForRole:
             return self._pulse_sequence[index.row()].wait_for
         elif role == self.flagTriggerRole:
-            flags = dict()
-            if self._pulse_sequence[index.row()].flag_trigger == 'OFF':
-                return flags
-            for flag, value in self._pulse_sequence[index.row()].flag_trigger.items():
-                flags[flag] = value
-            return flags
+            return self._pulse_sequence[index.row()].flag_trigger.copy()
         elif role == self.flagHighRole:
-            flags = dict()
-            if self._pulse_sequence[index.row()].flag_high == 'OFF':
-                return flags
-            for flag, value in self._pulse_sequence[index.row()].flag_high.items():
-                flags[flag] = value
-            return flags
+            return self._pulse_sequence[index.row()].flag_high.copy()
         else:
             return None
 
@@ -1102,10 +1093,16 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
             self._pulse_sequence[index.row()].event_trigger = data
         elif role == self.waitForRole and isinstance(data, str):
             self._pulse_sequence[index.row()].wait_for = data
-        elif role == self.flagTriggerRole and (isinstance(data, dict) or data == 'OFF'):
-            self._pulse_sequence[index.row()].flag_trigger = data
-        elif role == self.flagHighRole and (isinstance(data, dict) or data == 'OFF'):
-            self._pulse_sequence[index.row()].flag_high = data
+        elif role == self.flagTriggerRole and isinstance(data, dict):
+            if not any(data.values()):
+                self._pulse_sequence[index.row()].flag_trigger = dict()
+            else:
+                self._pulse_sequence[index.row()].flag_trigger = data.copy()
+        elif role == self.flagHighRole and isinstance(data, dict):
+            if not any(data.values()):
+                self._pulse_sequence[index.row()].flag_high = dict()
+            else:
+                self._pulse_sequence[index.row()].flag_high = data.copy()
         elif role == self.sequenceRole and isinstance(data, PulseSequence):
             self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
             self._pulse_sequence.extend(data.ensemble_list)
@@ -1226,9 +1223,9 @@ class SequenceEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, ['OFF'],
                                                               self.model().waitForRole))
         # Set item delegate (ComboBox) for flag_trigger column
-        self.setItemDelegateForColumn(6, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, MultipleCheckboxItemDelegate(self, None, self.model().flagTriggerRole))
         # Set item delegate (ComboBox) for flag_high column
-        self.setItemDelegateForColumn(7, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, MultipleCheckboxItemDelegate(self, None, self.model().flagHighRole))
 
         # Set header sizes
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
@@ -1291,22 +1288,26 @@ class SequenceEditor(QtWidgets.QTableView):
             return
 
         # Do nothing if available flags have not changed
-        if self.available_flags == flag_set:
+        if self.model().available_flags == flag_set:
             return 0
 
         # Remove delegates
         self.setItemDelegateForColumn(6, None)
         self.setItemDelegateForColumn(7, None)
 
-        # Set item delegate (FlagStates) for flagTrigger column
-        self.setItemDelegateForColumn(6, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
-        # Set item delegate (FlagStates) for flagHigh column
-        self.setItemDelegateForColumn(7, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
+        # Set available flags in model
+        self.model().set_available_flags(flag_set)
 
-        # set width of checkbox columns
+        # Set item delegate (FlagStates) for flagTrigger column
+        self.setItemDelegateForColumn(6, MultipleCheckboxItemDelegate(self, sorted(flag_set),
+                                                                      self.model().flagTriggerRole))
+        # Set item delegate (FlagStates) for flagHigh column
+        self.setItemDelegateForColumn(7, MultipleCheckboxItemDelegate(self, sorted(flag_set),
+                                                                      self.model().flagHighRole))
+
+        # Change column widths
         self.setColumnWidth(6, self.itemDelegateForColumn(6).sizeHint().width())
         self.setColumnWidth(7, self.itemDelegateForColumn(7).sizeHint().width())
-
         return
 
     def rowCount(self):
