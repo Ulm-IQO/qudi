@@ -449,7 +449,11 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         Write a new sequence on the device memory.
 
         @param str name: the name of the waveform to be created/append to
-        @param dict sequence_parameters: dictionary containing the parameters for a sequence
+        @param list sequence_parameters: List containing tuples of length 2. Each tuple represents
+                                         a sequence step. The first entry of the tuple is a list of
+                                         waveform names (str); one for each channel. The second
+                                         tuple element is a SequenceStep instance containing the
+                                         sequencing parameters for this step.
 
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
