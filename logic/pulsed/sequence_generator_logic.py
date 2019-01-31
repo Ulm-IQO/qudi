@@ -979,7 +979,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         sequence[step_no].flag_trigger = [step_params.flag_trigger]
                 elif isinstance(step_params.flag_trigger, dict):
                     sequence[step_no].flag_trigger = [flag for flag, state in
-                                                   step_params.flag_trigger.items() if state]
+                                                      step_params.flag_trigger.items() if state]
                 else:
                     self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                    '"flag_trigger" step parameter is of unknown type'
