@@ -26,32 +26,30 @@ from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from enum import Enum
 
 
-class DigitalChannelsWidget(QtGui.QWidget):
+class MultipleCheckboxWidget(QtGui.QWidget):
     """
     """
     stateChanged = QtCore.Signal()
 
-    def __init__(self, parent=None, digital_channels=None):
+    def __init__(self, parent=None, checkbox_labels=None):
         super().__init__(parent)
 
-        if digital_channels is None:
-            self._digital_channels = list()
-        else:
-            self._digital_channels = digital_channels
+        checkbox_labels = list() if checkbox_labels is None else list(checkbox_labels)
 
-        self._dch_checkboxes = OrderedDict()
-        self._width_hint = 30 * len(self._digital_channels)
+        self._checkboxes = OrderedDict()
+        self._checkbox_width = 30
+        self._width_hint = self._checkbox_width * len(checkbox_labels)
 
         main_layout = QtGui.QHBoxLayout()
-        for chnl in self._digital_channels:
-            # Create QLabel and QCheckBox for each digital channel
-            label = QtGui.QLabel(chnl.rsplit('ch')[1])
-            label.setFixedWidth(30)
+        for box_label in checkbox_labels:
+            # Create QLabel and QCheckBox for each checkbox label given in init
+            label = QtGui.QLabel(box_label)
+            label.setFixedWidth(self._checkbox_width)
             label.setAlignment(QtCore.Qt.AlignCenter)
             widget = QtGui.QCheckBox()
-            widget.setFixedWidth(19)
+            widget.setFixedWidth(self._checkbox_width)
             widget.setChecked(False)
-            self._dch_checkboxes[chnl] = {'label': label, 'widget': widget}
+            self._checkboxes[box_label] = {'label': label, 'widget': widget}
 
             # Forward editingFinished signal of child widget
             widget.stateChanged.connect(self.stateChanged)
@@ -69,14 +67,14 @@ class DigitalChannelsWidget(QtGui.QWidget):
         self.setLayout(main_layout)
 
     def data(self):
-        digital_states = OrderedDict()
-        for chnl in self._digital_channels:
-            digital_states[chnl] = self._dch_checkboxes[chnl]['widget'].isChecked()
-        return digital_states
+        checkbox_states = OrderedDict()
+        for box_label, box_dict in self._checkboxes.items():
+            checkbox_states[box_label] = box_dict['widget'].isChecked()
+        return checkbox_states
 
     def setData(self, data):
-        for chnl in data:
-            self._dch_checkboxes[chnl]['widget'].setChecked(data[chnl])
+        for label, state in data.items():
+            self._checkboxes[label]['widget'].setChecked(state)
         self.stateChanged.emit()
         return
 
@@ -205,63 +203,63 @@ class AnalogParametersWidget(QtGui.QWidget):
     #             widget.selectNumber()  # that is specific for the ScientificSpinBox
 
 
-class FlagChannelsWidget(QtGui.QWidget):
-    """
-    """
-    stateChanged = QtCore.Signal()
-
-    def __init__(self, parent=None, flag_channels=None):
-        super().__init__(parent)
-
-        if flag_channels is None:
-            self._flag_channels = list()
-        else:
-            self._flag_channels = sorted(flag_channels)
-
-        self._flag_checkboxes = dict()
-        self._box_width = 20
-        self._width_hint = self._box_width * len(self._flag_channels)
-
-        main_layout = QtGui.QHBoxLayout()
-        for flag in self._flag_channels:
-            # Create QLabel and QCheckBox for each digital channel
-            label = QtGui.QLabel(flag)
-            label.setFixedWidth(self._box_width)
-            label.setAlignment(QtCore.Qt.AlignCenter)
-            widget = QtGui.QCheckBox()
-            widget.setFixedWidth(self._box_width)
-            widget.setChecked(False)
-            self._flag_checkboxes[flag] = {'label': label, 'widget': widget}
-
-            # Forward editingFinished signal of child widget
-            widget.stateChanged.connect(self.stateChanged)
-
-            # Arrange CheckBoxes and Labels in a layout
-            v_layout = QtGui.QVBoxLayout()
-            v_layout.addWidget(label)
-            v_layout.addWidget(widget)
-            v_layout.setAlignment(label, QtCore.Qt.AlignHCenter)
-            v_layout.setAlignment(widget, QtCore.Qt.AlignHCenter)
-            main_layout.addLayout(v_layout)
-        main_layout.addStretch(1)
-        main_layout.setSpacing(0)
-        main_layout.setContentsMargins(0, 0, 0, 0)
-        self.setLayout(main_layout)
-
-    def data(self):
-        flag_states = dict()
-        for flag in self._flag_channels:
-            flag_states[flag] = self._flag_checkboxes[flag]['widget'].isChecked()
-        return flag_states
-
-    def setData(self, data):
-        for flag in data:
-            if flag not in self._flag_checkboxes:
-                raise KeyError('The flag you are trying to set ({0}) '
-                               'is not among the available flags ({1}).'.format(flag, self._flag_checkboxes.keys()))
-            self._flag_checkboxes[flag]['widget'].setChecked(data[flag])
-        self.stateChanged.emit()
-        return
-
-    def sizeHint(self):
-        return QtCore.QSize(max(75, self._width_hint), 50)
+# class FlagChannelsWidget(QtGui.QWidget):
+#     """
+#     """
+#     stateChanged = QtCore.Signal()
+#
+#     def __init__(self, parent=None, flag_channels=None):
+#         super().__init__(parent)
+#
+#         if flag_channels is None:
+#             self._flag_channels = list()
+#         else:
+#             self._flag_channels = sorted(flag_channels)
+#
+#         self._flag_checkboxes = dict()
+#         self._box_width = 20
+#         self._width_hint = self._box_width * len(self._flag_channels)
+#
+#         main_layout = QtGui.QHBoxLayout()
+#         for flag in self._flag_channels:
+#             # Create QLabel and QCheckBox for each digital channel
+#             label = QtGui.QLabel(flag)
+#             label.setFixedWidth(self._box_width)
+#             label.setAlignment(QtCore.Qt.AlignCenter)
+#             widget = QtGui.QCheckBox()
+#             widget.setFixedWidth(self._box_width)
+#             widget.setChecked(False)
+#             self._flag_checkboxes[flag] = {'label': label, 'widget': widget}
+#
+#             # Forward editingFinished signal of child widget
+#             widget.stateChanged.connect(self.stateChanged)
+#
+#             # Arrange CheckBoxes and Labels in a layout
+#             v_layout = QtGui.QVBoxLayout()
+#             v_layout.addWidget(label)
+#             v_layout.addWidget(widget)
+#             v_layout.setAlignment(label, QtCore.Qt.AlignHCenter)
+#             v_layout.setAlignment(widget, QtCore.Qt.AlignHCenter)
+#             main_layout.addLayout(v_layout)
+#         main_layout.addStretch(1)
+#         main_layout.setSpacing(0)
+#         main_layout.setContentsMargins(0, 0, 0, 0)
+#         self.setLayout(main_layout)
+#
+#     def data(self):
+#         flag_states = dict()
+#         for flag in self._flag_channels:
+#             flag_states[flag] = self._flag_checkboxes[flag]['widget'].isChecked()
+#         return flag_states
+#
+#     def setData(self, data):
+#         for flag in data:
+#             if flag not in self._flag_checkboxes:
+#                 raise KeyError('The flag you are trying to set ({0}) '
+#                                'is not among the available flags ({1}).'.format(flag, self._flag_checkboxes.keys()))
+#             self._flag_checkboxes[flag]['widget'].setChecked(data[flag])
+#         self.stateChanged.emit()
+#         return
+#
+#     def sizeHint(self):
+#         return QtCore.QSize(max(75, self._width_hint), 50)

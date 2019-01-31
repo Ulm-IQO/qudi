@@ -23,7 +23,7 @@ import copy
 
 from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
-from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate, FlagStatesItemDelegate
+from gui.pulsed.pulsed_item_delegates import DigitalStatesItemDelegate, AnalogParametersItemDelegate#, FlagStatesItemDelegate
 from gui.pulsed.pulsed_item_delegates import SpinBoxItemDelegate, CheckBoxItemDelegate
 from logic.pulsed.pulse_objects import PulseBlockElement, PulseBlock, PulseBlockEnsemble
 from logic.pulsed.pulse_objects import PulseSequence
@@ -454,7 +454,7 @@ class BlockEditor(QtWidgets.QTableView):
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
             self.setItemDelegateForColumn(
-                2, DigitalStatesItemDelegate(self, self.model().digitalStateRole))
+                2, DigitalStatesItemDelegate(self, self.model().digital_channels, self.model().digitalStateRole))
             offset_index = 3  # to indicate which column comes next.
         else:
             offset_index = 2  # to indicate which column comes next.
@@ -941,8 +941,10 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
     def __init__(self):
         super().__init__()
 
-        # list containing available ensemble names
+        # set containing available ensemble names
         self.available_block_ensembles = None
+        # set containing available flag names
+        self.available_flags = None
 
         # The actual model data container.
         self._pulse_sequence = PulseSequence('EDITOR CONTAINER')
@@ -995,6 +997,39 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
         if len(self._pulse_sequence) == 0:
             self.insertRows(0, 1)
 
+        return 0
+
+    def set_available_flags(self, flags):
+        """
+
+        @param flags: list|set, list/set containing all available flag names
+        @return: int, error code (>=0: OK, <0: ERR)
+        """
+        # Convert to set
+        if isinstance(flags, (list, dict)):
+            flags = set(flags)
+        elif not isinstance(flags, set):
+            return -1
+
+        # Do nothing if available flags have not changed
+        if self.available_flags == flags:
+            return 0
+
+        # save new set of flags but temporarily remember flags that have been removed/added
+        added_flags = flags - self.available_flags
+        removed_flags = self.available_flags - flags
+        self.available_flags = flags
+
+        # Remove flags from sequence steps that are not there anymore and add new flags
+        for row, seq_step in enumerate(self._pulse_sequence):
+            # add new flags
+            for flag in added_flags:
+                seq_step.flag_trigger[flag] = False
+                seq_step.flag_high[flag] = False
+            # remove old flags
+            for flag in removed_flags:
+                del seq_step.flag_trigger[flag]
+                del seq_step.flag_high[flag]
         return 0
 
     def set_rotating_frame(self, rotating_frame=True):
@@ -1162,9 +1197,6 @@ class SequenceEditor(QtWidgets.QTableView):
         model = SequenceEditorTableModel()
         self.setModel(model)
 
-        # set of available flag
-        self.available_flags = None
-
         # Set item selection and editing behaviour
         self.setEditTriggers(
             QtGui.QAbstractItemView.CurrentChanged | QtGui.QAbstractItemView.SelectedClicked)
@@ -1194,9 +1226,9 @@ class SequenceEditor(QtWidgets.QTableView):
         self.setItemDelegateForColumn(5, ComboBoxItemDelegate(self, ['OFF'],
                                                               self.model().waitForRole))
         # Set item delegate (ComboBox) for flag_trigger column
-        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
         # Set item delegate (ComboBox) for flag_high column
-        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
 
         # Set header sizes
         self.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
@@ -1262,17 +1294,14 @@ class SequenceEditor(QtWidgets.QTableView):
         if self.available_flags == flag_set:
             return 0
 
-        # Set item delegate (ComboBox) for event_trigger column
+        # Remove delegates
         self.setItemDelegateForColumn(6, None)
-        # Set item delegate (ComboBox) for wait_for column
         self.setItemDelegateForColumn(7, None)
 
-        self.available_flags = flag_set
-
         # Set item delegate (FlagStates) for flagTrigger column
-        self.setItemDelegateForColumn(6, FlagStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
+        self.setItemDelegateForColumn(6, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagTriggerRole))
         # Set item delegate (FlagStates) for flagHigh column
-        self.setItemDelegateForColumn(7, FlagStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
+        self.setItemDelegateForColumn(7, DigitalStatesItemDelegate(self, self.available_flags, self.model().flagHighRole))
 
         # set width of checkbox columns
         self.setColumnWidth(6, self.itemDelegateForColumn(6).sizeHint().width())
