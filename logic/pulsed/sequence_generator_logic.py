@@ -954,6 +954,10 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Conversion for backwards compatibility
         if len(sequence) > 0 and not isinstance(sequence[0].flag_high, list):
+            self.log.warning('Loading deprecated PulseSequence instances from disk. '
+                             'Attempting conversion to new format.\nIf you keep getting this '
+                             'message after reloading SequenceGeneratorLogic or restarting qudi, '
+                             'please regenerate the affected PulseSequences.')
             for step_no, step_params in enumerate(sequence):
                 # Try to convert "flag_high" step parameter
                 if isinstance(step_params.flag_high, str):
@@ -986,7 +990,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                    ''.format(sequence_name))
                     os.remove(filepath)
                     return None
-
+            self._save_sequence_to_file(sequence)
         return sequence
 
     def _update_sequences_from_file(self):
