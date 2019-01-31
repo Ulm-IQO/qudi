@@ -1287,9 +1287,11 @@ class PredefinedGeneratorBase:
                                                 phase=phase)
         if self.laser_channel.startswith('d'):
             mw_laser_element.digital_high[self.laser_channel] = True
-        else:
+        elif self.laser_channel.startswith('a'):
             mw_laser_element.pulse_function[self.laser_channel] = SamplingFunctions.DC(
                 voltage=self.analog_trigger_voltage)
+
+        mw_laser_element.laser_on = True
         return mw_laser_element
 
     def _get_readout_element(self):
