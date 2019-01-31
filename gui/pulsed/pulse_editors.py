@@ -215,7 +215,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
             return self._pulse_block[index.row()].increment_s
         if role == self.digitalStateRole:
             data = self._pulse_block[index.row()].digital_high
-            data = {chnl.split('_', 1)[1]: value for chnl, value in data.items()}
+            data = {chnl.split('d_ch', 1)[1]: value for chnl, value in data.items()}
             return data
         if role == self.analogFunctionRole:
             element = self._pulse_block[index.row()]
@@ -270,7 +270,7 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
                                              digital_high=old_elem.digital_high)
                 self._pulse_block[index.row()] = new_elem
         elif role == self.digitalStateRole and isinstance(data, dict):
-            data = {'d_' + chnl: value for chnl, value in data.items()}
+            data = {'d_ch' + chnl: value for chnl, value in data.items()}
             old_elem = self._pulse_block[index.row()]
             if data != old_elem.digital_high:
                 new_elem = PulseBlockElement(init_length_s=old_elem.init_length_s,
@@ -456,7 +456,7 @@ class BlockEditor(QtWidgets.QTableView):
         # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
-            chnl_labels = sorted(chnl.split('_')[1] for chnl in self.model().digital_channels)
+            chnl_labels = sorted(chnl.split('d_ch')[1] for chnl in self.model().digital_channels)
             self.setItemDelegateForColumn(
                 2, MultipleCheckboxItemDelegate(self, chnl_labels, self.model().digitalStateRole))
             offset_index = 3  # to indicate which column comes next.
