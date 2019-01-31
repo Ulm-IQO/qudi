@@ -47,7 +47,7 @@ class MultipleCheckboxWidget(QtGui.QWidget):
             label.setFixedWidth(self._checkbox_width)
             label.setAlignment(QtCore.Qt.AlignCenter)
             widget = QtGui.QCheckBox()
-            widget.setFixedWidth(self._checkbox_width)
+            widget.setFixedWidth(19)
             widget.setChecked(False)
             self._checkboxes[box_label] = {'label': label, 'widget': widget}
 
