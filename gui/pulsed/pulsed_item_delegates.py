@@ -209,7 +209,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         Save the data of the editor to the model.
 
         @param ScienDSpinBox editor: QObject which was created in createEditor function,
-                                                here a ScienDSpinBox.
+                                     here a ScienDSpinBox.
         @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
@@ -448,7 +448,7 @@ class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
         painter.restore()
 
 
-class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
+class MultipleCheckboxItemDelegate(QtGui.QStyledItemDelegate):
     """
     """
     editingFinished = QtCore.Signal()
@@ -480,7 +480,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
-        editor = MultipleCheckboxWidget(parent, list(index.data(self._access_role)))
+        editor = MultipleCheckboxWidget(parent, self._label_list)
         editor.setData(index.data(self._access_role))
         editor.stateChanged.connect(self.commitAndCloseEditor)
         return editor
@@ -534,7 +534,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = MultipleCheckboxWidget(None, list(index.data(self._access_role)))
+        widget = MultipleCheckboxWidget(None, self._label_list)
         widget.setData(index.data(self._access_role))
         widget.render(painter)
         painter.restore()
