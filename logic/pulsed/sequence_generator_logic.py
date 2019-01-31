@@ -957,7 +957,8 @@ class SequenceGeneratorLogic(GenericLogic):
             self.log.warning('Loading deprecated PulseSequence instances from disk. '
                              'Attempting conversion to new format.\nIf you keep getting this '
                              'message after reloading SequenceGeneratorLogic or restarting qudi, '
-                             'please regenerate the affected PulseSequences.')
+                             'please regenerate the affected PulseSequence "{0}".'
+                             ''.format(sequence_name))
             for step_no, step_params in enumerate(sequence):
                 # Try to convert "flag_high" step parameter
                 if isinstance(step_params.flag_high, str):
