@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
-from gui.pulsed.pulsed_custom_widgets import DigitalChannelsWidget, AnalogParametersWidget, FlagChannelsWidget
+from gui.pulsed.pulsed_custom_widgets import MultipleCheckboxWidget, AnalogParametersWidget#, FlagChannelsWidget
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
@@ -453,9 +453,10 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
     """
     editingFinished = QtCore.Signal()
 
-    def __init__(self, parent, data_access_role=QtCore.Qt.DisplayRole):
+    def __init__(self, parent, label_list, data_access_role=QtCore.Qt.DisplayRole):
 
         super().__init__(parent)
+        self._label_list = list() if label_list is None else list(label_list)
         self._access_role = data_access_role
         return
 
@@ -479,7 +480,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
-        editor = DigitalChannelsWidget(parent, list(index.data(self._access_role)))
+        editor = MultipleCheckboxWidget(parent, list(index.data(self._access_role)))
         editor.setData(index.data(self._access_role))
         editor.stateChanged.connect(self.commitAndCloseEditor)
         return editor
@@ -491,16 +492,16 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
-        widget = DigitalChannelsWidget(None, list(index.data(self._access_role)))
+    def sizeHint(self):
+        widget = MultipleCheckboxWidget(None, self._label_list)
         return widget.sizeHint()
 
     def setEditorData(self, editor, index):
         """
         Set the display of the current value of the used editor.
 
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
+        @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+                                              here a MultipleCheckboxWidget.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
         This function converts the passed data to an value, which can be understood by the editor.
@@ -515,8 +516,8 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         """
         Save the data of the editor to the model.
 
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
+        @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+                                              here a MultipleCheckboxWidget.
         @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
@@ -533,7 +534,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = DigitalChannelsWidget(None, list(index.data(self._access_role)))
+        widget = MultipleCheckboxWidget(None, list(index.data(self._access_role)))
         widget.setData(index.data(self._access_role))
         widget.render(painter)
         painter.restore()
@@ -634,93 +635,93 @@ class AnalogParametersItemDelegate(QtGui.QStyledItemDelegate):
         painter.restore()
 
 
-class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
-    """
-    """
-    editingFinished = QtCore.Signal()
-
-    def __init__(self, parent, available_flags, data_access_role=QtCore.Qt.DisplayRole):
-
-        super().__init__(parent)
-        self._access_role = data_access_role
-        self._available_flags = available_flags
-        return
-
-    def createEditor(self, parent, option, index):
-        """
-        Create for the display and interaction with the user an editor.
-
-        @param QtGui.QWidget parent: The parent object, here QTableWidget
-        @param QtGui.QStyleOptionViewItemV4 option: This is a setting option which you can use
-                                                    for style configuration.
-        @param QtCore.QModelIndex index: That index will be passed by the model object of the
-                                         QTableWidget to the delegated object. This index contains
-                                         information about the selected current cell.
-
-        An editor can be in principle any QWidget, which you want to use to display the current
-        (model-)data. Therefore the editor is also a container, which handles the passed entries
-        from the user interface and should save the data in the model object of the QTableWidget.
-
-        Do not save the created editor as a class variable! This consumes a lot of unneeded memory.
-        It is way better to create an editor if it is needed. The inherent function closeEditor()
-        of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
-        needed any longer.
-        """
-        editor = FlagChannelsWidget(parent, self._available_flags)
-        editor.setData(index.data(self._access_role))
-        editor.stateChanged.connect(self.commitAndCloseEditor)
-        return editor
-
-    def commitAndCloseEditor(self):
-        editor = self.sender()
-        self.commitData.emit(editor)
-        # self.closeEditor.emit(editor)
-        self.editingFinished.emit()
-        return
-
-    def sizeHint(self):
-        widget = FlagChannelsWidget(None, self._available_flags)
-        return widget.sizeHint()
-
-    def setEditorData(self, editor, index):
-        """
-        Set the display of the current value of the used editor.
-
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
-        @param QtCore.QModelIndex index: explained in createEditor function.
-
-        This function converts the passed data to an value, which can be understood by the editor.
-        """
-        data = index.data(self._access_role)
-        editor.blockSignals(True)
-        editor.setData(data)
-        editor.blockSignals(False)
-        return
-
-    def setModelData(self, editor, model, index):
-        """
-        Save the data of the editor to the model.
-
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
-        @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
-        @param QtCore.QModelIndex index: explained in createEditor function.
-
-        Before the editor is destroyed the current selection should be saved in the underlying data
-        model. The setModelData() function reads the content of the editor, and writes it to the
-        model. Furthermore here the postprocessing of the data can happen, where the data can be
-        manipulated for the model.
-        """
-        data = editor.data()
-        model.setData(index, data, self._access_role)
-        return
-
-    def paint(self, painter, option, index):
-        painter.save()
-        r = option.rect
-        painter.translate(r.topLeft())
-        widget = FlagChannelsWidget(None, self._available_flags)
-        widget.setData(index.data(self._access_role))
-        widget.render(painter)
-        painter.restore()
+# class FlagStatesItemDelegate(QtGui.QStyledItemDelegate):
+#     """
+#     """
+#     editingFinished = QtCore.Signal()
+#
+#     def __init__(self, parent, available_flags, data_access_role=QtCore.Qt.DisplayRole):
+#
+#         super().__init__(parent)
+#         self._access_role = data_access_role
+#         self._available_flags = available_flags
+#         return
+#
+#     def createEditor(self, parent, option, index):
+#         """
+#         Create for the display and interaction with the user an editor.
+#
+#         @param QtGui.QWidget parent: The parent object, here QTableWidget
+#         @param QtGui.QStyleOptionViewItemV4 option: This is a setting option which you can use
+#                                                     for style configuration.
+#         @param QtCore.QModelIndex index: That index will be passed by the model object of the
+#                                          QTableWidget to the delegated object. This index contains
+#                                          information about the selected current cell.
+#
+#         An editor can be in principle any QWidget, which you want to use to display the current
+#         (model-)data. Therefore the editor is also a container, which handles the passed entries
+#         from the user interface and should save the data in the model object of the QTableWidget.
+#
+#         Do not save the created editor as a class variable! This consumes a lot of unneeded memory.
+#         It is way better to create an editor if it is needed. The inherent function closeEditor()
+#         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
+#         needed any longer.
+#         """
+#         editor = FlagChannelsWidget(parent, self._available_flags)
+#         editor.setData(index.data(self._access_role))
+#         editor.stateChanged.connect(self.commitAndCloseEditor)
+#         return editor
+#
+#     def commitAndCloseEditor(self):
+#         editor = self.sender()
+#         self.commitData.emit(editor)
+#         # self.closeEditor.emit(editor)
+#         self.editingFinished.emit()
+#         return
+#
+#     def sizeHint(self):
+#         widget = FlagChannelsWidget(None, self._available_flags)
+#         return widget.sizeHint()
+#
+#     def setEditorData(self, editor, index):
+#         """
+#         Set the display of the current value of the used editor.
+#
+#         @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+#                                               here a MultipleCheckboxWidget.
+#         @param QtCore.QModelIndex index: explained in createEditor function.
+#
+#         This function converts the passed data to an value, which can be understood by the editor.
+#         """
+#         data = index.data(self._access_role)
+#         editor.blockSignals(True)
+#         editor.setData(data)
+#         editor.blockSignals(False)
+#         return
+#
+#     def setModelData(self, editor, model, index):
+#         """
+#         Save the data of the editor to the model.
+#
+#         @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+#                                               here a MultipleCheckboxWidget.
+#         @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
+#         @param QtCore.QModelIndex index: explained in createEditor function.
+#
+#         Before the editor is destroyed the current selection should be saved in the underlying data
+#         model. The setModelData() function reads the content of the editor, and writes it to the
+#         model. Furthermore here the postprocessing of the data can happen, where the data can be
+#         manipulated for the model.
+#         """
+#         data = editor.data()
+#         model.setData(index, data, self._access_role)
+#         return
+#
+#     def paint(self, painter, option, index):
+#         painter.save()
+#         r = option.rect
+#         painter.translate(r.topLeft())
+#         widget = FlagChannelsWidget(None, self._available_flags)
+#         widget.setData(index.data(self._access_role))
+#         widget.render(painter)
+#         painter.restore()
