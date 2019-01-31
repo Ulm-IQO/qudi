@@ -1057,7 +1057,7 @@ class SequenceGeneratorLogic(GenericLogic):
             'gate_channel'] else self.generation_parameters['laser_channel']
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
-        print(info_dict)
+        # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
         if len(laser_channel) > 0 and laser_channel[0] == 'd':
