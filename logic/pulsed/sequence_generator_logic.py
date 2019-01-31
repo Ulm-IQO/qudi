@@ -1065,7 +1065,7 @@ class SequenceGeneratorLogic(GenericLogic):
         else:
             self.log.debug('Analog or no laser channel used. '
                           'Given laser_channel: "{0}"'.format(laser_channel))
-            ens_lasers = len(info_dict['laser_bins'][0])
+            ens_lasers = len(info_dict['laser_bins'])
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1100,7 +1100,7 @@ class SequenceGeneratorLogic(GenericLogic):
             else:
                 self.log.debug('Analog or no Laser channel used. '
                               'Given laser_channel: "{0}"'.format(laser_channel))
-                ens_lasers = len(info_dict['laser_bins'][0])
+                ens_lasers = len(info_dict['laser_bins'])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
