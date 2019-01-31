@@ -239,25 +239,25 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         if role == self.analogFunctionRole:
             element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl]
         if role == self.analogShapeRole:
             element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return element.pulse_function[analog_chnl].__class__.__name__
         if role == self.analogParameterRole:
             element = self._pulse_block[index.row()]
             if len(self.digital_channels) > 0:
-                col_offset = 3
+                col_offset = 4
             else:
-                col_offset = 2
+                col_offset = 3
             analog_chnl = self.analog_channels[(index.column() - col_offset) // 2]
             return vars(element.pulse_function[analog_chnl])
         if role == self.blockElementRole:
