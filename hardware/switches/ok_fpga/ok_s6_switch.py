@@ -74,7 +74,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         self._fpga = ok.FrontPanel()
 
         # TTL output status of the 8 channels
-        self._switch_status = {chnl: False for chnl in range(1, 9)}
+        self._switch_status = {chnl: False for chnl in range(8)}
 
         self._connected = False
 
@@ -135,7 +135,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         self._fpga.SetWireInValue(0x00, 0x00000000)
         self._fpga.UpdateWireIns()
 
-        self._switch_status = {chnl: False for chnl in range(1, 9)}
+        self._switch_status = {chnl: False for chnl in range(8)}
         self._connected = True
         return 0
 
@@ -233,7 +233,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
                 return
             self._fpga.SetWireInValue(0x00, 0)
             self._fpga.UpdateWireIns()
-            self._switch_status = {chnl: False for chnl in range(1, 9)}
+            self._switch_status = {chnl: False for chnl in range(8)}
         return
 
     def getCalibration(self, switchNumber, state):
