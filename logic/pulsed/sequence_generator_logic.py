@@ -523,7 +523,7 @@ class SequenceGeneratorLogic(GenericLogic):
         if current_config in avail_configs.values():
             # Read config found in constraints
             config_name = list(avail_configs)[list(avail_configs.values()).index(current_config)]
-            self.__activation_config = (config_name, {''}.union(current_config))
+            self.__activation_config = (config_name, current_config)
         else:
             # Set first valid config if read config is not valid.
             config_to_set = list(avail_configs.items())[0]
@@ -566,7 +566,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 channel_state[chnl] = False
         set_state = self.pulsegenerator().set_active_channels(channel_state)
         set_config = set([chnl for chnl in set_state if set_state[chnl]])
-        return {''}.union(set_config)
+        return set_config
 
     ############################################################################
     # Waveform/Sequence generation control methods and properties
