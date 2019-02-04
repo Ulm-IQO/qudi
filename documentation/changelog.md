@@ -4,6 +4,9 @@
 
 Changes/New features:
 
+* Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
+* Newport CONEX-AGP piezo stage motor module.
+* Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
 * Added command line argument --logdir to specify the path to the logging directory
 * Added the keyword "labels" to the "measurement_information" dict container in predefined methods.
@@ -25,7 +28,9 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Bug fixes and support for SMD12 laser controller
 * For SMIQs added config options to additionally limit frequency and power. Added constraint for SMQ06B model.
 * Added live OMDR functionality to only calculate the average signal over a limited amount of scanned lines
-* New hardware file for Microwave source - Anritsu MG3691C has been added.
+* New hardware file for Microwave source - Anritsu MG3691C with SCPI commands has been added.
+* **Config Change:** Hardware file for mw_source_anritsu70GHz.py with class MicrowaveAnritsu70GHz was changed to file mw_source_anritsu_MG369x.py with class MicrowaveAnritsuMG369x to make it universal. Also hardware constraints are set per model.
+* Lock-In functionality was added to the ODMR counter and implemented for the NI-Card. All other hardware and interfuse with ODMRCounterInterface were updated.
 * New hardware file for Microwave source - WindFreak Technologies SynthHDPro 54MHz-13GHz source
 * New hardware file for AWG - Keysight M3202A 1GS/s 4-channel PXIe AWG
 * Add separate conda environments for windows 7 32bit, windows 7 64bit, and windows 10 64bit. 
