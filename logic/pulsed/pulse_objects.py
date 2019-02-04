@@ -608,8 +608,8 @@ class SequenceStep(dict):
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
                             'wait_for': 'OFF',
-                            'flag_trigger': 'OFF',
-                            'flag_high': 'OFF'}
+                            'flag_trigger': list(),
+                            'flag_high': list()}
 
     def __init__(self, *args, **kwargs):
         if len(args) > 2:
@@ -645,6 +645,11 @@ class SequenceStep(dict):
         for key, default_value in self.__default_parameters.items():
             if key not in self:
                 self[key] = default_value
+
+        if not isinstance(self.flag_trigger, list):
+            raise KeyError('"flag_trigger" is only allowed to be a list.')
+        if not isinstance(self.flag_high, list):
+            raise KeyError('"flag_high" is only allowed to be a list.')
         return
 
     def __setitem__(self, key, value):
@@ -701,12 +706,14 @@ class PulseSequence(object):
                                           'wait_for': The trigger input to wait for before playing
                                                       this sequence step. Set to 'OFF' (default)
                                                       in order to play the current step immediately.
-                                          'flag_trigger': The flag to trigger when this sequence
-                                                          step starts playing. Select 'OFF'
-                                                          (default) for no flag trigger.
-                                          'flag_high': The flag to set to high while this step is
-                                                       playing. Select 'OFF' (default) to set all
-                                                       flags to low.
+                                          'flag_trigger': List containing the flags (str) to
+                                                          trigger when this sequence step starts
+                                                          playing. Empty list (default) for no flag
+                                                          trigger.
+                                          'flag_high': List containing the flags (str) to set to
+                                                       high when this sequence step is playing. All
+                                                       others will be low (or triggered; see above).
+                                                       Empty list (default) for all flags low.
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
