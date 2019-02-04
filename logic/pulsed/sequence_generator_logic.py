@@ -24,13 +24,14 @@ import numpy as np
 import os
 import pickle
 import time
+import copy
 
 from qtpy import QtCore
 from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseBlockElement
 from logic.pulsed.pulse_objects import PulseObjectGenerator
 from logic.pulsed.sampling_functions import SamplingFunctions
 
@@ -124,9 +125,9 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__activation_config = ('', set())  # Activation config name and set of active channels
         self.__sample_rate = 0.0  # Sample rate in samples/s
         self.__analog_levels = (dict(), dict())  # Tuple of two dict (<pp_amplitude>, <offset>)
-                                                 # Dict keys are analog channel descriptors
+        # Dict keys are analog channel descriptors
         self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
-                                                  # Dict keys are digital channel descriptors
+        # Dict keys are digital channel descriptors
         self.__interleave = False  # Flag to indicate use of interleave
 
         # A flag indicating if sampling of a sequence is in progress
@@ -693,7 +694,7 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         # Delete from dict
         if name in self.saved_pulse_blocks:
-            del(self._saved_pulse_blocks[name])
+            del (self._saved_pulse_blocks[name])
 
         # Delete from disk
         filepath = os.path.join(self._assets_storage_dir, '{0}.block'.format(name))
@@ -1027,6 +1028,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.save_sequence(sequence)
         self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
         return
+
     # ---------------------------------------------------------------------------
     #                    END sequence/block generation
     # ---------------------------------------------------------------------------
@@ -1204,6 +1206,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['digital_channels'] = digital_channels
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
+        return_dict['ideal_length'] = current_end_time
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1446,6 +1449,45 @@ class SequenceGeneratorLogic(GenericLogic):
         # get important parameters from the ensemble
         ensemble_info = self.analyze_block_ensemble(ensemble)
 
+        # Make sure the length of the channel is a multiple of the step size.
+        # This is done by appending an idle block
+        granularity = self.pulse_generator_constraints.waveform_length.step
+        self.log.debug('length: {0}, mod {1}'.format(
+            ensemble_info['number_of_samples'], ensemble_info['number_of_samples'] % granularity))
+        if ensemble_info['number_of_samples'] % granularity != 0:
+            self.log.warn('Length {0} does not fulfil step constraint {1}.'.format(
+                ensemble_info['number_of_samples'], granularity))
+            # TODO: take care of rounding errors!
+            extension_samples = granularity - ensemble_info['number_of_samples'] % granularity
+            target_total_samples = ensemble_info['number_of_samples'] + extension_samples
+            extension_seconds = (target_total_samples / self.__sample_rate) - ensemble_info[
+                'ideal_length']
+
+            pb_element = PulseBlockElement(
+                init_length_s=extension_seconds,
+                increment_s=0,
+                pulse_function={chnl: SamplingFunctions.Idle() for chnl in self.analog_channels},
+                digital_high={chnl: False for chnl in self.digital_channels})
+            idle_extension = PulseBlock('idle_extension', element_list=[pb_element])
+            temp_measurement_info = copy.deepcopy(ensemble.measurement_information)
+            ensemble.append((idle_extension.name, 0))
+            ensemble.measurement_information = temp_measurement_info
+
+            self.save_block(idle_extension)
+            self.save_ensemble(ensemble)
+
+            # get important parameters from the ensemble
+            ensemble_info = self.analyze_block_ensemble(ensemble)
+            if ensemble_info['number_of_samples'] != target_total_samples:
+                self.log.error('Expanding the PulseBlockEnsemble to match the waveform granularity '
+                               'has failed.\nTarget number of samples was {0:d}.\nfinal number of '
+                               'samples is {1:d}.\nThis is probably due to a rounding error in '
+                               'SequenceGeneratorLogic.sample_pulse_block_ensemble.'
+                               ''.format(target_total_samples, ensemble_info['number_of_samples']))
+            else:
+                self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
+                    ensemble.name, ensemble_info['number_of_samples'], extension_samples))
+
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
         # is 1 byte (np.bool).
@@ -1512,9 +1554,12 @@ class SequenceGeneratorLogic(GenericLogic):
 
                         # Calculate respective part of the sample arrays
                         for chnl in digital_high:
-                            digital_samples[chnl][array_write_index:array_write_index+samples_to_add] = digital_high[chnl]
+                            digital_samples[chnl][array_write_index:array_write_index + samples_to_add] = digital_high[
+                                chnl]
                         for chnl in pulse_function:
-                            analog_samples[chnl][array_write_index:array_write_index+samples_to_add] = pulse_function[chnl].get_samples(time_arr)/self.__analog_levels[0][chnl]
+                            analog_samples[chnl][array_write_index:array_write_index + samples_to_add] = pulse_function[
+                                                                                                             chnl].get_samples(
+                                time_arr) / self.__analog_levels[0][chnl]
 
                         # Free memory
                         if pulse_function:
@@ -1718,7 +1763,8 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
         sequence.sampling_information['waveforms'] = sorted(written_waveforms)
-        sequence.sampling_information['step_parameters'] = sequence_param_dict_list
+        sequence.sampling_information['step_waveform_list'] = [step[0] for step in
+                                                               sequence_param_dict_list]
         self.save_sequence(sequence)
 
         self.log.info('Time needed for sampling and writing PulseSequence {0} to device: {1} sec.'

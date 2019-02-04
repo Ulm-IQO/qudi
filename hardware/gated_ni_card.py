@@ -19,18 +19,8 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-
-import numpy as np
-import re
-
-import PyDAQmx as daq
-
-from core.module import Base, ConfigOption
-from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
-from interface.odmr_counter_interface import ODMRCounterInterface
-from interface.confocal_scanner_interface import ConfocalScannerInterface
 from .national_instruments_x_series import NationalInstrumentsXSeries
 
 
@@ -113,13 +103,20 @@ class SlowGatedNICard(NationalInstrumentsXSeries):
         return constraints
 
     #overwrite the SlowCounterInterface commands of the class NICard:
-    def set_up_clock(self, clock_frequency=None, clock_channel=None):
+    def set_up_clock(self, clock_frequency=None, clock_channel=None, scanner=False, idle=False):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
-                                      the clock
+                                      the clock in Hz
         @param string clock_channel: if defined, this is the physical channel
-                                     of the clock
+                                     of the clock within the NI card.
+        @param bool scanner: if set to True method will set up a clock function
+                             for the scanner, otherwise a clock function for a
+                             counter will be set.
+        @param bool idle: set whether idle situation of the counter (where
+                          counter is doing nothing) is defined as
+                                True  = 'Voltage High/Rising Edge'
+                                False = 'Voltage Low/Falling Edge'
 
         @return int: error code (0:OK, -1:error)
         """
@@ -163,8 +160,13 @@ class SlowGatedNICard(NationalInstrumentsXSeries):
         """
         return self.get_gated_counts(samples=samples)
 
-    def close_counter(self):
-        """ Closes the counter and cleans up afterwards.
+    def close_counter(self, scanner=False):
+        """ Closes the counter or scanner and cleans up afterwards.
+
+        @param bool scanner: specifies if the counter- or scanner- function
+                             will be excecuted to close the device.
+                                True = scanner
+                                False = counter
 
         @return int: error code (0:OK, -1:error)
         """
@@ -172,8 +174,13 @@ class SlowGatedNICard(NationalInstrumentsXSeries):
             return -1
         return self.close_gated_counter()
 
-    def close_clock(self):
+    def close_clock(self, scanner=False):
         """ Closes the clock and cleans up afterwards.
+
+        @param bool scanner: specifies if the counter- or scanner- function
+                             should be used to close the device.
+                                True = scanner
+                                False = counter
 
         @return int: error code (0:OK, -1:error)
         """
