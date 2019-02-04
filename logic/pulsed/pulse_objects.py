@@ -76,7 +76,7 @@ class PulseBlockElement(object):
 
         # determine set of used digital and analog channels
         self.analog_channels = set(self.pulse_function)
-        self.digital_channels = {''}.union(set(self.digital_high))
+        self.digital_channels = set(self.digital_high)
         self.channel_set = self.analog_channels.union(self.digital_channels)
 
     def __repr__(self):
