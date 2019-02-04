@@ -1267,7 +1267,7 @@ class SequenceGeneratorLogic(GenericLogic):
             length_bins[i] = ens_bins * reps
             number_of_elements += info_dict['number_of_elements'] * reps
             number_of_ensembles += reps
-            # ideal_length += info_dict['ideal_length'] * reps
+            ideal_length += info_dict['ideal_length'] * reps
             elements_length_bins.append([seq_step.repetitions, info_dict['elements_length_bins']])
 
             rising_bins = info_dict['digital_rising_bins']
