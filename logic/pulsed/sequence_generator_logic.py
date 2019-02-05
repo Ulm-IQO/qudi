@@ -1102,21 +1102,11 @@ class SequenceGeneratorLogic(GenericLogic):
         if len(ensemble) == 0:
             return 0.0, 0, 0
 
-        # Determine the right laser channel to choose. For gated counting it should be the gate
-        # channel instead of the laser trigger.
-        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
-            'gate_channel'] else self.generation_parameters['laser_channel']
-
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
         # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        if laser_channel and laser_channel.startswith('d'):
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
-        else:
-            self.log.debug('Analog or no laser channel used. Given laser_channel: '
-                           '"{0}"'.format(laser_channel))
-            ens_lasers = len(info_dict['laser_bins'])
+        ens_lasers = len(info_dict['laser_bins'])
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1128,11 +1118,6 @@ class SequenceGeneratorLogic(GenericLogic):
         @param PulseSequence sequence: The PulseSequence instance to analyze
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
-        # Determine the right laser channel to choose. For gated counting it should be the gate
-        # channel instead of the laser trigger.
-        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
-            'gate_channel'] else self.generation_parameters['laser_channel']
-
         length_bins = 0
         length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
@@ -1146,12 +1131,7 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            if laser_channel and laser_channel.startswith('d'):
-                ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
-            else:
-                self.log.debug('Analog or no Laser channel used. Given laser_channel: '
-                               '"{0}"'.format(laser_channel))
-                ens_lasers = len(info_dict['laser_bins'])
+            ens_lasers = len(info_dict['laser_bins'])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
@@ -1187,6 +1167,11 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
         # memorize the channel state of the previous element
         tmp_digital_high = dict()
         # Set of used analog and digital channels
@@ -1251,7 +1236,9 @@ class SequenceGeneratorLogic(GenericLogic):
                     # append current element length in discrete bins to temporary array
                     tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
 
-                    if element.laser_on:
+                    if laser_channel.startswith('d') and element.digital_high[laser_channel]:
+                        laser_bins.append((current_start_bin, current_end_bin))
+                    elif element.laser_on:
                         laser_bins.append((current_start_bin, current_end_bin))
 
                     # advance bin offset for next element
