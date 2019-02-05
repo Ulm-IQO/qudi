@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 from qtpy import QtCore, QtGui, QtWidgets
-from gui.pulsed.pulsed_custom_widgets import DigitalChannelsWidget, AnalogParametersWidget
+from gui.pulsed.pulsed_custom_widgets import MultipleCheckboxWidget, AnalogParametersWidget#, FlagChannelsWidget
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
@@ -209,7 +209,7 @@ class SpinBoxItemDelegate(QtGui.QStyledItemDelegate):
         Save the data of the editor to the model.
 
         @param ScienDSpinBox editor: QObject which was created in createEditor function,
-                                                here a ScienDSpinBox.
+                                     here a ScienDSpinBox.
         @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
@@ -448,14 +448,15 @@ class ComboBoxItemDelegate(QtGui.QStyledItemDelegate):
         painter.restore()
 
 
-class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
+class MultipleCheckboxItemDelegate(QtGui.QStyledItemDelegate):
     """
     """
     editingFinished = QtCore.Signal()
 
-    def __init__(self, parent, data_access_role=QtCore.Qt.DisplayRole):
+    def __init__(self, parent, label_list, data_access_role=QtCore.Qt.DisplayRole):
 
         super().__init__(parent)
+        self._label_list = list() if label_list is None else list(label_list)
         self._access_role = data_access_role
         return
 
@@ -479,7 +480,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         of QStyledItemDelegate takes care of closing and destroying the editor for you, if it is not
         needed any longer.
         """
-        editor = DigitalChannelsWidget(parent, list(index.data(self._access_role)))
+        editor = MultipleCheckboxWidget(parent, self._label_list)
         editor.setData(index.data(self._access_role))
         editor.stateChanged.connect(self.commitAndCloseEditor)
         return editor
@@ -491,16 +492,16 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         self.editingFinished.emit()
         return
 
-    def sizeHint(self, option, index):
-        widget = DigitalChannelsWidget(None, list(index.data(self._access_role)))
+    def sizeHint(self):
+        widget = MultipleCheckboxWidget(None, self._label_list)
         return widget.sizeHint()
 
     def setEditorData(self, editor, index):
         """
         Set the display of the current value of the used editor.
 
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
+        @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+                                              here a MultipleCheckboxWidget.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
         This function converts the passed data to an value, which can be understood by the editor.
@@ -515,8 +516,8 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         """
         Save the data of the editor to the model.
 
-        @param DigitalChannelsWidget editor: QObject which was created in createEditor function,
-                                             here a DigitalChannelsWidget.
+        @param MultipleCheckboxWidget editor: QObject which was created in createEditor function,
+                                              here a MultipleCheckboxWidget.
         @param QtCore.QAbstractTableModel model: That is the object which contains the data model.
         @param QtCore.QModelIndex index: explained in createEditor function.
 
@@ -533,7 +534,7 @@ class DigitalStatesItemDelegate(QtGui.QStyledItemDelegate):
         painter.save()
         r = option.rect
         painter.translate(r.topLeft())
-        widget = DigitalChannelsWidget(None, list(index.data(self._access_role)))
+        widget = MultipleCheckboxWidget(None, self._label_list)
         widget.setData(index.data(self._access_role))
         widget.render(painter)
         painter.restore()
