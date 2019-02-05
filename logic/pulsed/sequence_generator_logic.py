@@ -1259,6 +1259,7 @@ class SequenceGeneratorLogic(GenericLogic):
         laser_bins = list()
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
+
         for i, seq_step in enumerate(sequence):
             ensemble = self.get_ensemble(seq_step.ensemble)
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
@@ -1282,25 +1283,29 @@ class SequenceGeneratorLogic(GenericLogic):
             for channel in digital_channels:
                 num_rising_bins[channel] = len(rising_bins[channel])
                 num_falling_bins[channel] = len(falling_bins[channel])
-                temp_rising_bins[channel] = np.tile(rising_bins[channel], reps)
-                temp_falling_bins[channel] = np.tile(falling_bins[channel], reps)
+
+                if bool(num_rising_bins[channel] + num_falling_bins[channel]):
+                    temp_rising_bins[channel] = np.tile(rising_bins[channel], reps)
+                    temp_falling_bins[channel] = np.tile(falling_bins[channel], reps)
+
+                    for single in range(reps):
+                        temp_rising_bins[channel][single:single+num_rising_bins[channel]] += \
+                            starting_bin + ens_bins * single
+                        temp_falling_bins[channel][single:single+num_falling_bins[channel]] += \
+                            starting_bin + ens_bins * single
+
+                    digital_rising_bins[channel].extend(temp_rising_bins[channel])
+                    digital_falling_bins[channel].extend(temp_falling_bins[channel])
 
             num_laser_bins = len(ens_laser_bins)
-            temp_laser_bins = np.tile(ens_laser_bins, reps)
+            if bool(num_laser_bins):
+                temp_laser_bins = np.tile(ens_laser_bins, reps)
 
-            for single in range(reps):
-                for channel in digital_channels:
-                    temp_rising_bins[channel][single:single+num_rising_bins[channel]] += \
-                        starting_bin + ens_bins * single
-                    temp_falling_bins[channel][single:single+num_falling_bins[channel]] += \
-                        starting_bin + ens_bins * single
+                for single in range(reps):
+                    temp_laser_bins[single:single+num_laser_bins] += starting_bin + ens_bins * single
 
-                temp_laser_bins[single:single+num_laser_bins] += starting_bin + ens_bins * single
+                laser_bins.extend(temp_laser_bins)
 
-            for channel in digital_channels:
-                digital_rising_bins[channel].extend(temp_rising_bins[channel])
-                digital_falling_bins[channel].extend(temp_falling_bins[channel])
-            laser_bins.extend(temp_laser_bins)
             starting_bin += ens_bins * reps
 
         for channel in digital_channels:
@@ -1318,13 +1323,14 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['digital_falling_bins'] = digital_falling_bins
         return_dict['number_of_samples'] = np.sum(length_bins)
         return_dict['number_of_steps'] = len(length_bins)
+        return_dict['number_of_samples_per_ensemble'] = length_bins
         return_dict['number_of_ensembles'] = number_of_ensembles
         return_dict['number_of_elements'] = number_of_elements
         return_dict['elements_length_bins'] = elements_length_bins
         return_dict['ideal_length'] = ideal_length
         return_dict['laser_bins'] = laser_bins
 
-        print(sequence.name)
+        print('====', sequence.name, '====')
         for info in return_dict:
             print(info, return_dict[info])
         return return_dict
