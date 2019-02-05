@@ -31,8 +31,8 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseBlockElement
-from logic.pulsed.pulse_objects import PulseObjectGenerator
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
 
 
@@ -129,6 +129,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
         # Dict keys are digital channel descriptors
         self.__interleave = False  # Flag to indicate use of interleave
+        # Set of available flags
+        self.__flags = set()
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
@@ -246,6 +248,7 @@ class SequenceGeneratorLogic(GenericLogic):
         settings_dict['analog_levels'] = tuple(self.__analog_levels)
         settings_dict['digital_levels'] = tuple(self.__digital_levels)
         settings_dict['interleave'] = bool(self.__interleave)
+        settings_dict['flags'] = set(self.__flags)
         return settings_dict
 
     @pulse_generator_settings.setter
@@ -548,6 +551,9 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # Read interleave flag from device
         self.__interleave = self.pulsegenerator().get_interleave()
+
+        # Read available flags from device
+        self.__flags = set(self.pulsegenerator().get_constraints().flags)
 
         # Notify new settings to listening module
         self.set_pulse_generator_settings()
@@ -931,16 +937,61 @@ class SequenceGeneratorLogic(GenericLogic):
         @param str sequence_name: The name of the PulseSequence instance to de-serialize
         @return PulseSequence: The de-serialized PulseSequence instance
         """
-        sequence = None
         filepath = os.path.join(self._assets_storage_dir, '{0}.sequence'.format(sequence_name))
         if os.path.exists(filepath):
             try:
                 with open(filepath, 'rb') as file:
                     sequence = pickle.load(file)
+                # FIXME: Due to the pickling the dict namespace merging gets lost on the way.
+                # Restored it here but a better way needs to be found.
+                for step in range(len(sequence)):
+                    sequence[step].__dict__ = sequence[step]
             except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                ''.format(sequence_name))
                 os.remove(filepath)
+                return None
+
+        # Conversion for backwards compatibility
+        if len(sequence) > 0 and not isinstance(sequence[0].flag_high, list):
+            self.log.warning('Loading deprecated PulseSequence instances from disk. '
+                             'Attempting conversion to new format.\nIf you keep getting this '
+                             'message after reloading SequenceGeneratorLogic or restarting qudi, '
+                             'please regenerate the affected PulseSequence "{0}".'
+                             ''.format(sequence_name))
+            for step_no, step_params in enumerate(sequence):
+                # Try to convert "flag_high" step parameter
+                if isinstance(step_params.flag_high, str):
+                    if step_params.flag_high.upper() == 'OFF':
+                        sequence[step_no].flag_high = list()
+                    else:
+                        sequence[step_no].flag_high = [step_params.flag_high]
+                elif isinstance(step_params.flag_high, dict):
+                    sequence[step_no].flag_high = [flag for flag, state in
+                                                   step_params.flag_high.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_high" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+
+                # Try to convert "flag_trigger" step parameter
+                if isinstance(step_params.flag_trigger, str):
+                    if step_params.flag_trigger.upper() == 'OFF':
+                        sequence[step_no].flag_trigger = list()
+                    else:
+                        sequence[step_no].flag_trigger = [step_params.flag_trigger]
+                elif isinstance(step_params.flag_trigger, dict):
+                    sequence[step_no].flag_trigger = [flag for flag, state in
+                                                      step_params.flag_trigger.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_trigger" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+            self._save_sequence_to_file(sequence)
         return sequence
 
     def _update_sequences_from_file(self):
