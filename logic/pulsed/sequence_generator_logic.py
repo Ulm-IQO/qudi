@@ -1224,6 +1224,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                 digital_rising_bins[chnl].append(current_start_bin)
                             elif tmp_digital_high[chnl] and not state:
                                 digital_falling_bins[chnl].append(current_start_bin)
+                                if chnl == laser_channel:
+                                    laser_bins.append((digital_rising_bins[chnl][-1], digital_falling_bins[chnl][-1]))
+
                         tmp_digital_high = element.digital_high.copy()
 
                     # Calculate length of the current element with current repetition count in sec
@@ -1236,9 +1239,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     # append current element length in discrete bins to temporary array
                     tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
 
-                    if laser_channel.startswith('d') and element.digital_high[laser_channel]:
-                        laser_bins.append((current_start_bin, current_end_bin))
-                    elif element.laser_on:
+                    if element.laser_on and not laser_channel.startswith('d'):
                         laser_bins.append((current_start_bin, current_end_bin))
 
                     # advance bin offset for next element
