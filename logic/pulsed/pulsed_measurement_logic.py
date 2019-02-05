@@ -1101,11 +1101,19 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # order data according to alternating flag
                 if self._alternating:
+                    if len(self.signal_data[0]) != len(tmp_signal[::2]):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal[::2])))
+                        return
                     self.signal_data[1] = tmp_signal[::2]
                     self.signal_data[2] = tmp_signal[1::2]
                     self.measurement_error[1] = tmp_error[::2]
                     self.measurement_error[2] = tmp_error[1::2]
                 else:
+                    if len(self.signal_data[0]) != len(tmp_signal):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal)))
+                        return
                     self.signal_data[1] = tmp_signal
                     self.measurement_error[1] = tmp_error
 
