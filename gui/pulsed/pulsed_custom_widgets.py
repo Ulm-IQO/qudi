@@ -26,32 +26,30 @@ from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from enum import Enum
 
 
-class DigitalChannelsWidget(QtGui.QWidget):
+class MultipleCheckboxWidget(QtGui.QWidget):
     """
     """
     stateChanged = QtCore.Signal()
 
-    def __init__(self, parent=None, digital_channels=None):
+    def __init__(self, parent=None, checkbox_labels=None):
         super().__init__(parent)
 
-        if digital_channels is None:
-            self._digital_channels = list()
-        else:
-            self._digital_channels = digital_channels
+        checkbox_labels = list() if checkbox_labels is None else list(checkbox_labels)
 
-        self._dch_checkboxes = OrderedDict()
-        self._width_hint = 30 * len(self._digital_channels)
+        self._checkboxes = OrderedDict()
+        self._checkbox_width = 30
+        self._width_hint = self._checkbox_width * len(checkbox_labels)
 
         main_layout = QtGui.QHBoxLayout()
-        for chnl in self._digital_channels:
-            # Create QLabel and QCheckBox for each digital channel
-            label = QtGui.QLabel(chnl.rsplit('ch')[1])
-            label.setFixedWidth(30)
+        for box_label in checkbox_labels:
+            # Create QLabel and QCheckBox for each checkbox label given in init
+            label = QtGui.QLabel(box_label)
+            label.setFixedWidth(self._checkbox_width)
             label.setAlignment(QtCore.Qt.AlignCenter)
             widget = QtGui.QCheckBox()
             widget.setFixedWidth(19)
             widget.setChecked(False)
-            self._dch_checkboxes[chnl] = {'label': label, 'widget': widget}
+            self._checkboxes[box_label] = {'label': label, 'widget': widget}
 
             # Forward editingFinished signal of child widget
             widget.stateChanged.connect(self.stateChanged)
@@ -69,14 +67,14 @@ class DigitalChannelsWidget(QtGui.QWidget):
         self.setLayout(main_layout)
 
     def data(self):
-        digital_states = OrderedDict()
-        for chnl in self._digital_channels:
-            digital_states[chnl] = self._dch_checkboxes[chnl]['widget'].isChecked()
-        return digital_states
+        checkbox_states = OrderedDict()
+        for box_label, box_dict in self._checkboxes.items():
+            checkbox_states[box_label] = box_dict['widget'].isChecked()
+        return checkbox_states
 
     def setData(self, data):
-        for chnl in data:
-            self._dch_checkboxes[chnl]['widget'].setChecked(data[chnl])
+        for label, state in data.items():
+            self._checkboxes[label]['widget'].setChecked(state)
         self.stateChanged.emit()
         return
 
