@@ -1111,11 +1111,11 @@ class SequenceGeneratorLogic(GenericLogic):
         # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        if len(laser_channel) > 0 and laser_channel[0] == 'd':
+        if laser_channel and laser_channel.startswith('d'):
             ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
         else:
-            self.log.debug('Analog or no laser channel used. '
-                          'Given laser_channel: "{0}"'.format(laser_channel))
+            self.log.debug('Analog or no laser channel used. Given laser_channel: '
+                           '"{0}"'.format(laser_channel))
             ens_lasers = len(info_dict['laser_bins'])
         return ens_length, ens_bins, ens_lasers
 
@@ -1146,11 +1146,11 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            if len(laser_channel) > 0 and laser_channel[0] == 'd':
+            if laser_channel and laser_channel.startswith('d'):
                 ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             else:
-                self.log.debug('Analog or no Laser channel used. '
-                              'Given laser_channel: "{0}"'.format(laser_channel))
+                self.log.debug('Analog or no Laser channel used. Given laser_channel: '
+                               '"{0}"'.format(laser_channel))
                 ens_lasers = len(info_dict['laser_bins'])
             length_bins += ens_bins
             if sequence.is_finite:
@@ -1252,7 +1252,7 @@ class SequenceGeneratorLogic(GenericLogic):
                     tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
 
                     if element.laser_on:
-                        laser_bins.append([current_start_bin, current_end_bin])
+                        laser_bins.append((current_start_bin, current_end_bin))
 
                     # advance bin offset for next element
                     current_start_bin = current_end_bin
