@@ -1103,7 +1103,7 @@ class SequenceGeneratorLogic(GenericLogic):
             return 0.0, 0, 0
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
-        # print(info_dict)
+        print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
         ens_lasers = len(info_dict['laser_bins'])
@@ -1236,6 +1236,7 @@ class SequenceGeneratorLogic(GenericLogic):
                             laser_rising_bins.append(current_start_bin)
                         else:
                             laser_falling_bins.append(current_start_bin)
+                        tmp_laser_on = element.laser_on
 
                     # Calculate length of the current element with current repetition count in sec
                     # and add this to the ideal end time for the sequence up until this point.
