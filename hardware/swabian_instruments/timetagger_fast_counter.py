@@ -235,11 +235,3 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
 
-    def get_current_sweeps(self):
-        """ Get the current number of sweeps
-
-        @return int: current number of sweeps
-
-        return -1 if not supported/implemented
-        """
-        return -1

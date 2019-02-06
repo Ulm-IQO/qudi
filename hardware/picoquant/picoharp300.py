@@ -1147,16 +1147,6 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         return self.data_trace
 
-    def get_current_sweeps(self):
-        """ Get the current number of sweeps
-
-        @return int: current number of sweeps
-
-        return -1 if not supported/implemented
-        """
-        return -1
-
-
     # =========================================================================
     #  Test routine for continuous readout
     # =========================================================================

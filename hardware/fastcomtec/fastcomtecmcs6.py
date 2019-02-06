@@ -415,15 +415,6 @@ class FastComtec(Base, FastCounterInterface):
 
         return time_trace
 
-    def get_current_sweeps(self):
-        """ Get the current number of sweeps
-
-        @return int: current number of sweeps
-
-        return -1 if not supported/implemented
-        """
-        return -1
-
 
     # =========================================================================
     #                           Non Interface methods
