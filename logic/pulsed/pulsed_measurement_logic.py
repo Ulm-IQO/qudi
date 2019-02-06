@@ -1157,7 +1157,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
-        :return tuple(numpy.ndarray, info_dict): The count data (1D for ungated, 2D for gated counter) and
+        @return tuple(numpy.ndarray, info_dict): The count data (1D for ungated, 2D for gated counter) and
                                                  info_dict with keys 'elapsed_sweeps' and 'elapsed_time'
         """
         # get raw data from fast counter
@@ -1167,12 +1167,12 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
 
-        if type(info_dict) == dict and 'elapsed_sweeps' in info_dict.keys() and info_dict['elapsed_sweeps'] is not None:
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_sweeps') is not None:
             elapsed_sweeps = info_dict['elapsed_sweeps']
         else:
             elapsed_sweeps = -1
 
-        if type(info_dict) == dict and 'elapsed_time' in info_dict.keys() and info_dict['elapsed_time'] is not None:
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_time') is not None:
             elapsed_time = info_dict['elapsed_time']
         else:
             elapsed_time = time.time() - self.__start_time
