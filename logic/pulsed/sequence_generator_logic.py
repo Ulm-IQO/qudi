@@ -1300,70 +1300,76 @@ class SequenceGeneratorLogic(GenericLogic):
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
 
-        # If the sequence does not contain infinite loop steps, determine the remaining parameters
-        length_bins = np.zeros(len(sequence), dtype='int64')
+        # Current bin offset with respect to the expected real time signal
         starting_bin = 0
-        elements_length_bins = list()
-        number_of_elements = 0
-        number_of_ensembles = 0
-        ideal_length = 0
+
+        # If the sequence does not contain infinite loop steps, determine the remaining parameters
+        step_length_bins = np.zeros(len(sequence), dtype='int64')
+        ideal_step_length = np.zeros(len(sequence), dtype='int64')
+        number_of_step_elements = np.zeros(len(sequence), dtype='int64')
+        step_elements_length_bins = list()
         laser_bins = list()
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
+        ensemble_name_set = set()
 
         for i, seq_step in enumerate(sequence):
+            # Get the PulseBlockEnsemble instance associated with this sequence step
             ensemble = self.get_ensemble(seq_step.ensemble)
+            # Get information about the current PulseBlockEnsemble instance
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
+            # Set tmp helper variables
+            ensemble_name_set.add(ensemble.name)
             reps = seq_step.repetitions + 1
             ens_bins = info_dict['number_of_samples']
-            length_bins[i] = ens_bins * reps
-            number_of_elements += info_dict['number_of_elements'] * reps
-            number_of_ensembles += reps
-            ideal_length += info_dict['ideal_length'] * reps
-            elements_length_bins.append([seq_step.repetitions, info_dict['elements_length_bins']])
+            # Calculate sequence step information
+            step_length_bins[i] = ens_bins * reps
+            number_of_step_elements[i] = info_dict['number_of_elements'] * reps
+            ideal_step_length[i] = info_dict['ideal_length'] * reps
+            step_elements_length_bins.append(
+                [seq_step.repetitions, info_dict['elements_length_bins']])
 
-            rising_bins = info_dict['digital_rising_bins']
-            falling_bins = info_dict['digital_falling_bins']
-            ens_laser_bins = info_dict['laser_bins'] if 'laser_bins' in info_dict else np.zeros(0)
-
-            num_rising_bins = dict()
-            num_falling_bins = dict()
-            temp_rising_bins = dict()
-            temp_falling_bins = dict()
-
+            # Get the digital channel rising/falling bin positions and concatenate them according
+            # to sequence step repetition count considering bin offsets.
+            # This will result in a sequence of rising and falling bins representing the real-time
+            # signal with all repetitions taken into account.
+            # Do that for every digital channel.
             for channel in digital_channels:
-                num_rising_bins[channel] = len(rising_bins[channel])
-                num_falling_bins[channel] = len(falling_bins[channel])
+                arr_size_rise = info_dict['digital_rising_bins'][channel].size
+                arr_size_fall = info_dict['digital_falling_bins'][channel].size
+                if arr_size_rise == 0 and arr_size_fall == 0:
+                    continue
 
-                if bool(num_rising_bins[channel] + num_falling_bins[channel]):
-                    temp_rising_bins[channel] = np.tile(rising_bins[channel], reps)
-                    temp_falling_bins[channel] = np.tile(falling_bins[channel], reps)
+                # Append rising/falling bin arrays for each step to a list in order to merge them
+                # all later on into a single array. This is more efficient than having an
+                # intermediate array.
+                for iteration in range(reps):
+                    bin_offset = iteration * ens_bins + starting_bin
+                    digital_rising_bins[channel].append(
+                        info_dict['digital_rising_bins'][channel] + bin_offset)
+                    digital_falling_bins[channel].append(
+                        info_dict['digital_falling_bins'][channel] + bin_offset)
 
-                    for single in range(reps):
-                        temp_rising_bins[channel][single:single+num_rising_bins[channel]] += \
-                            starting_bin + ens_bins * single
-                        temp_falling_bins[channel][single:single+num_falling_bins[channel]] += \
-                            starting_bin + ens_bins * single
+            # Append laser_bins arrays with bin offsets for each repetition analogous to the
+            # digital channels above.
+            if info_dict['laser_bins'].size > 0:
+                for iteration in range(reps):
+                    laser_bins.append(info_dict['laser_bins'] + starting_bin + ens_bins * iteration)
 
-                    digital_rising_bins[channel].extend(temp_rising_bins[channel])
-                    digital_falling_bins[channel].extend(temp_falling_bins[channel])
-
-            num_laser_bins = len(ens_laser_bins)
-            if bool(num_laser_bins):
-                temp_laser_bins = np.tile(ens_laser_bins, reps)
-
-                for single in range(reps):
-                    temp_laser_bins[single:single+num_laser_bins] += starting_bin + ens_bins * single
-
-                laser_bins.extend(temp_laser_bins)
-
+            # Increment the current starting bin offset for the next sequence step
             starting_bin += ens_bins * reps
 
+        # Concatenate all bin arrays in the respective lists to a single large array.
+        laser_bins = np.concatenate(laser_bins) if laser_bins else np.empty(0, dtype='int64')
         for channel in digital_channels:
-            digital_rising_bins[channel] = np.array(digital_rising_bins[channel], dtype='int64')
-            digital_falling_bins[channel] = np.array(digital_falling_bins[channel], dtype='int64')
-
-        laser_bins = np.array(laser_bins, dtype='int64')
+            if digital_rising_bins[channel]:
+                digital_rising_bins[channel] = np.concatenate(digital_rising_bins[channel])
+            else:
+                digital_rising_bins[channel] = np.empty(0, dtype='int64')
+            if digital_falling_bins[channel]:
+                digital_falling_bins[channel] = np.concatenate(digital_falling_bins[channel])
+            else:
+                digital_falling_bins[channel] = np.empty(0, dtype='int64')
 
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
@@ -1372,18 +1378,20 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return_dict['digital_rising_bins'] = digital_rising_bins
         return_dict['digital_falling_bins'] = digital_falling_bins
-        return_dict['number_of_samples'] = np.sum(length_bins)
-        return_dict['number_of_steps'] = len(length_bins)
-        return_dict['number_of_samples_per_ensemble'] = length_bins
-        return_dict['number_of_ensembles'] = number_of_ensembles
-        return_dict['number_of_elements'] = number_of_elements
-        return_dict['elements_length_bins'] = elements_length_bins
-        return_dict['ideal_length'] = ideal_length
+        return_dict['number_of_steps'] = len(sequence)
+        return_dict['number_of_samples'] = np.sum(step_length_bins)
+        return_dict['number_of_samples_per_step'] = step_length_bins
+        return_dict['number_of_ensembles'] = len(ensemble_name_set)
+        return_dict['ensemble_names'] = ensemble_name_set
+        return_dict['number_of_elements'] = np.sum(number_of_step_elements)
+        return_dict['number_of_elements_per_step'] = number_of_step_elements
+        return_dict['elements_length_bins_per_step'] = step_elements_length_bins
+        return_dict['ideal_length_per_step'] = ideal_step_length
+        return_dict['ideal_length'] = np.sum(ideal_step_length)
         return_dict['laser_bins'] = laser_bins
 
-        print('====', sequence.name, '====')
-        for info in return_dict:
-            print(info, return_dict[info])
+        for info, data in return_dict.items():
+            print(info, data)
         return return_dict
 
     def _sampling_ensemble_sanity_check(self, ensemble):
