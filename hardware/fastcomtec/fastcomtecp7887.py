@@ -315,7 +315,7 @@ class FastComtec(Base, FastCounterInterface):
 
     def get_current_sweeps(self):
         """
-        Returns the current runtime.
+        Returns the current sweeps.
         @return int sweeps: in sweeps
         """
         status = AcqStatus()

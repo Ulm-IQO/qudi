@@ -202,7 +202,6 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # recalled saved raw data dict key
         self._recalled_raw_data_tag = None
-        self._current_saved_elapsed_time = 0.
 
         # Connect internal signals
         self.sigStartTimer.connect(self.__analysis_timer.start, QtCore.Qt.QueuedConnection)
@@ -780,10 +779,8 @@ class PulsedMeasurementLogic(GenericLogic):
                     self._recalled_raw_data_tag = stashed_raw_data_tag
                     self.log.info('Starting pulsed measurement with stashed raw data "{0}".'
                                   ''.format(stashed_raw_data_tag))
-                    self._current_saved_elapsed_time = self._saved_raw_data[stashed_raw_data_tag]['time']
                 else:
                     self._recalled_raw_data_tag = None
-                    self._current_saved_elapsed_time = 0.
 
                 # start microwave source
                 if self.__use_ext_microwave:
@@ -835,14 +832,13 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    self._saved_raw_data[stash_raw_data_tag] = {'raw': self.raw_data.copy(),
-                                                            'sweeps': self.__elapsed_sweeps,
-                                                            'time': self.__elapsed_time}
+                    self._saved_raw_data[stash_raw_data_tag] = (self.raw_data.copy(),
+                                                                {'elapsed_sweeps': self.__elapsed_sweeps,
+                                                                 'elapsed_time': self.__elapsed_time})
                 self._recalled_raw_data_tag = None
 
                 # Set measurement paused flag
                 self.__is_paused = False
-                self._elapsed_pause = 0
 
                 self.module_state.unlock()
                 self.sigMeasurementStatusUpdated.emit(False, False)
@@ -906,7 +902,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
-                self._elapsed_pause += time.time() - self._time_of_pause
+                self.__start_time += time.time() - self._time_of_pause
 
                 self.sigMeasurementStatusUpdated.emit(True, False)
             else:
@@ -1099,8 +1095,6 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.__start_time + self._current_saved_elapsed_time \
-                                      - self._elapsed_pause
 
                 self._extract_laser_pulses()
 
@@ -1138,7 +1132,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def _extract_laser_pulses(self):
         # Get counter raw data (including recalled raw data from previous measurement)
-        self._get_raw_data()
+        fc_data, info_dict = self._get_raw_data()
+        self.raw_data = fc_data
+        self.__elapsed_sweeps = info_dict['elapsed_sweeps']
+        self.__elapsed_time = info_dict['elapsed_time']
 
         # extract laser pulses from raw data
         return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
@@ -1160,33 +1157,47 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
-        :return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
+        :return tuple(numpy.ndarray, info_dict): The count data (1D for ungated, 2D for gated counter) and
+                                                 info_dict with keys 'elapsed_sweeps' and 'elapsed_time'
         """
         # get raw data from fast counter
         fc_data = netobtain(self.fastcounter().get_data_trace())
-        sweeps = self.fastcounter().get_current_sweeps()
+        if type(fc_data) == tuple and len(fc_data) == 2:  # if the hardware implement the new version of the interface
+            fc_data, info_dict = fc_data
+        else:
+            info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+
+        if type(info_dict) == dict and 'elapsed_sweeps' in info_dict.keys() and info_dict['elapsed_sweeps'] is not None:
+            elapsed_sweeps = info_dict['elapsed_sweeps']
+        else:
+            elapsed_sweeps = -1
+
+        if type(info_dict) == dict and 'elapsed_time' in info_dict.keys() and info_dict['elapsed_time'] is not None:
+            elapsed_time = info_dict['elapsed_time']
+        else:
+            elapsed_time = time.time() - self.__start_time
 
         # add old raw data from previous measurements if necessary
         if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
             # self.log.info('Found old saved raw data with tag "{0}".'
             #               ''.format(self._recalled_raw_data_tag))
-            sweeps += self._saved_raw_data[self._recalled_raw_data_tag]['sweeps']
+            elapsed_sweeps += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_sweeps']
+            elapsed_time += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_time']
             if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]['raw']
-            elif self._saved_raw_data[self._recalled_raw_data_tag]['raw'].shape == fc_data.shape:
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0]
+            elif self._saved_raw_data[self._recalled_raw_data_tag][0].shape == fc_data.shape:
                 self.log.debug('Recalled raw data has the same shape as current data.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]['raw'] + fc_data
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0] + fc_data
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'
                                  '\nDid NOT add recalled raw data to current time trace.')
         elif not fc_data.any():
             self.log.warning('Only zeros received from fast counter!')
             fc_data = np.zeros(fc_data.shape, dtype='int64')
-        self.raw_data = fc_data
-        self.__elapsed_sweeps = sweeps
-        return fc_data
+
+        return fc_data, {'elapsed_sweeps': elapsed_sweeps, 'elapsed_time': elapsed_time}
 
     def _initialize_data_arrays(self):
         """
