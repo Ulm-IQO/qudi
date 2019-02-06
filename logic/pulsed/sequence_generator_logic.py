@@ -1305,7 +1305,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
         # If the sequence does not contain infinite loop steps, determine the remaining parameters
         step_length_bins = np.zeros(len(sequence), dtype='int64')
-        ideal_step_length = np.zeros(len(sequence), dtype='int64')
+        ideal_step_length = np.zeros(len(sequence), dtype='float64')
         number_of_step_elements = np.zeros(len(sequence), dtype='int64')
         step_elements_length_bins = list()
         laser_bins = list()
@@ -1314,6 +1314,7 @@ class SequenceGeneratorLogic(GenericLogic):
         ensemble_name_set = set()
 
         for i, seq_step in enumerate(sequence):
+            is_finite = seq_step.repetitions >= 0
             # Get the PulseBlockEnsemble instance associated with this sequence step
             ensemble = self.get_ensemble(seq_step.ensemble)
             # Get information about the current PulseBlockEnsemble instance
@@ -1323,9 +1324,9 @@ class SequenceGeneratorLogic(GenericLogic):
             reps = seq_step.repetitions + 1
             ens_bins = info_dict['number_of_samples']
             # Calculate sequence step information
-            step_length_bins[i] = ens_bins * reps
-            number_of_step_elements[i] = info_dict['number_of_elements'] * reps
-            ideal_step_length[i] = info_dict['ideal_length'] * reps
+            step_length_bins[i] = ens_bins * reps if is_finite else -1
+            number_of_step_elements[i] = info_dict['number_of_elements'] * reps if is_finite else -1
+            ideal_step_length[i] = info_dict['ideal_length'] * reps if is_finite else np.inf
             step_elements_length_bins.append(
                 [seq_step.repetitions, info_dict['elements_length_bins']])
 
@@ -1333,31 +1334,33 @@ class SequenceGeneratorLogic(GenericLogic):
             # to sequence step repetition count considering bin offsets.
             # This will result in a sequence of rising and falling bins representing the real-time
             # signal with all repetitions taken into account.
-            # Do that for every digital channel.
-            for channel in digital_channels:
-                arr_size_rise = info_dict['digital_rising_bins'][channel].size
-                arr_size_fall = info_dict['digital_falling_bins'][channel].size
-                if arr_size_rise == 0 and arr_size_fall == 0:
-                    continue
+            # Do that for every digital channel and only if the sequence is finite
+            if sequence.is_finite:
+                for channel in digital_channels:
+                    arr_size_rise = info_dict['digital_rising_bins'][channel].size
+                    arr_size_fall = info_dict['digital_falling_bins'][channel].size
+                    if arr_size_rise == 0 and arr_size_fall == 0:
+                        continue
 
-                # Append rising/falling bin arrays for each step to a list in order to merge them
-                # all later on into a single array. This is more efficient than having an
-                # intermediate array.
-                for iteration in range(reps):
-                    bin_offset = iteration * ens_bins + starting_bin
-                    digital_rising_bins[channel].append(
-                        info_dict['digital_rising_bins'][channel] + bin_offset)
-                    digital_falling_bins[channel].append(
-                        info_dict['digital_falling_bins'][channel] + bin_offset)
+                    # Append rising/falling bin arrays for each step to a list in order to merge
+                    # them all later on into a single array. This is more efficient than having an
+                    # intermediate array.
+                    for iteration in range(reps):
+                        bin_offset = iteration * ens_bins + starting_bin
+                        digital_rising_bins[channel].append(
+                            info_dict['digital_rising_bins'][channel] + bin_offset)
+                        digital_falling_bins[channel].append(
+                            info_dict['digital_falling_bins'][channel] + bin_offset)
 
-            # Append laser_bins arrays with bin offsets for each repetition analogous to the
-            # digital channels above.
-            if info_dict['laser_bins'].size > 0:
-                for iteration in range(reps):
-                    laser_bins.append(info_dict['laser_bins'] + starting_bin + ens_bins * iteration)
+                # Append laser_bins arrays with bin offsets for each repetition analogous to the
+                # digital channels above.
+                if info_dict['laser_bins'].size > 0:
+                    for iteration in range(reps):
+                        laser_bins.append(
+                            info_dict['laser_bins'] + starting_bin + ens_bins * iteration)
 
-            # Increment the current starting bin offset for the next sequence step
-            starting_bin += ens_bins * reps
+                # Increment the current starting bin offset for the next sequence step
+                starting_bin += ens_bins * reps
 
         # Concatenate all bin arrays in the respective lists to a single large array.
         laser_bins = np.concatenate(laser_bins) if laser_bins else np.empty(0, dtype='int64')
