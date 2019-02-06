@@ -228,8 +228,8 @@ class FastCounterDummy(Base, FastCounterInterface):
 
         # include an artificial waiting time
         time.sleep(0.5)
-        info_dict = {'elapsed_sweeps': 424242, 'elapsed_time': 42}
-        return self._count_data#, info_dict
+        info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+        return self._count_data, info_dict
 
     def get_frequency(self):
         freq = 950.

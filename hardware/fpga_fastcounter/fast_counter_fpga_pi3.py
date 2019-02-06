@@ -214,7 +214,9 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-        return np.array(self.pulsed.getData(), dtype='int64')
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return np.array(self.pulsed.getData(), dtype='int64'), info_dict
 
 
     def get_status(self):

@@ -1144,8 +1144,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             returnarray[gate_index, timebin_index]
         """
 
-
-        return self.data_trace
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return self.data_trace, info_dict
 
     # =========================================================================
     #  Test routine for continuous readout

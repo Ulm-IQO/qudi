@@ -411,7 +411,9 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        return time_trace
+        info_dict = {'elapsed_sweeps': self.get_current_sweeps(),
+                     'elapsed_time': None} 
+        return time_trace, info_dict
 
 
     def get_data_testfile(self):
