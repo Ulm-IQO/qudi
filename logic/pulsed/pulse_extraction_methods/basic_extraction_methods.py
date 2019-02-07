@@ -354,7 +354,7 @@ class BasicPulseExtractor(PulseExtractorBase):
         # get laser rising and falling bins
         laser_bins = self.sampling_information['laser_bins']
         # convert to bins of fastcounter
-        laser_bins = (laser_bins / sample_rate / fc_binwidth).astype('int64')
+        laser_bins = np.rint(laser_bins / sample_rate / fc_binwidth).astype('int64')
         # convert to fastcounter bins
         safety_bins = round(safety / fc_binwidth)
         delay_bins = round(delay / fc_binwidth)
