@@ -191,12 +191,10 @@ class FitLogic(GenericLogic):
             for name, fit in dfits.items():
                 try:
                     fname = fit['fit_function']
-                    new_fit = {}
-                    new_fit['fit_name'] = fname
-                    new_fit['est_name'] = fit['estimator']
-                    new_fit['make_fit'] = self.fit_list[dim][fname]['make_fit']
-                    new_fit['make_model'] = self.fit_list[dim][fname]['make_model']
-                    new_fit['estimator'] = self.fit_list[dim][fname][fit['estimator']]
+                    new_fit = {'fit_name': fname, 'est_name': fit['estimator'],
+                               'make_fit': self.fit_list[dim][fname]['make_fit'],
+                               'make_model': self.fit_list[dim][fname]['make_model'],
+                               'estimator': self.fit_list[dim][fname][fit['estimator']]}
                     try:
                         par = lmfit.parameter.Parameters()
                         par.loads(fit['parameters'])
@@ -224,10 +222,8 @@ class FitLogic(GenericLogic):
             save_fits[dim] = OrderedDict()
             for name, fit in dfits.items():
                 try:
-                    new_fit = {}
-                    new_fit['fit_function'] = fit['fit_name']
-                    new_fit['estimator'] = fit['est_name']
-                    new_fit['parameters'] = fit['parameters'].dumps()
+                    new_fit = {'fit_function': fit['fit_name'], 'estimator': fit['est_name'],
+                               'parameters': fit['parameters'].dumps()}
                     save_fits[dim][name] = new_fit
                 except KeyError:
                     self.log.exception('Error while preparing fit {0} for saving.'.format(name))

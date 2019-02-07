@@ -145,7 +145,7 @@ def import_check():
         try:
             module = importlib.import_module(pkg_name)
         except ImportError:
-            if (optional):
+            if optional:
                 additional_text = 'It is recommended to have this package installed. '
             else:
                 additional_text = ''
@@ -158,7 +158,7 @@ def import_check():
                     additional_text
                     ))
             return 4
-        if (version is not None):
+        if version is not None:
             # get package version number
             try:
                 module_version = module.__version__
@@ -168,7 +168,7 @@ def import_check():
                                    pkg_name))
                 return 0
             # compare version number
-            if (parse_version(module_version) < parse_version(version)):
+            if parse_version(module_version) < parse_version(version):
                 logger.error(
                     'Installed package "{0}" has version {1}, but version '
                     '{2} is required. Upgrade e.g. with \n\n'

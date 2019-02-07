@@ -1668,7 +1668,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         active_ch = {}
 
-        if ch == []:
+        if not ch:
             active_ch = self.channel_states
 
         else:

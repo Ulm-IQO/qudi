@@ -113,20 +113,9 @@ class MotorRotationZaber(Base, MotorInterface):
         """
         constraints = OrderedDict()
 
-        rot = {}
-        rot['label'] = self._axis_label
-        rot['ID'] = None
-        rot['unit'] = '°'
-        rot['ramp'] = None
-        rot['pos_min'] = self._min_angle
-        rot['pos_max'] = self._max_angle
-        rot['pos_step'] = self._min_step
-        rot['vel_min'] = self._min_vel
-        rot['vel_max'] = self._max_vel
-        rot['vel_step'] = self._step_vel
-        rot['acc_min'] = None
-        rot['acc_max'] = None
-        rot['acc_step'] = None
+        rot = {'label': self._axis_label, 'ID': None, 'unit': '°', 'ramp': None, 'pos_min': self._min_angle,
+               'pos_max': self._max_angle, 'pos_step': self._min_step, 'vel_min': self._min_vel,
+               'vel_max': self._max_vel, 'vel_step': self._step_vel, 'acc_min': None, 'acc_max': None, 'acc_step': None}
 
         # assign the parameter container to a name which will identify it
         constraints[rot['label']] = rot

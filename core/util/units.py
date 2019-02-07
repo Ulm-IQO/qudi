@@ -120,7 +120,7 @@ class ScaledFloat(float):
         fmt : str format string
         """
         autoscale = False
-        if (len(fmt) >= 2):
+        if len(fmt) >= 2:
             if fmt[-2] == 'r':
                 autoscale = True
                 fmt = fmt[:-2] + fmt[-1]
@@ -130,9 +130,9 @@ class ScaledFloat(float):
         elif fmt[-1] == 'r':
             autoscale = True
             fmt = fmt[:-1] + 'f'
-        if (autoscale):
+        if autoscale:
             scale = self.scale
-            if (scale == 'u'):
+            if scale == 'u':
                 index = 'micro'
             else:
                 index = scale
@@ -178,7 +178,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
 
 
     """
-    if (fn is None):
+    if fn is None:
         raise Exception('This function requires pyqtgraph.')
 
     output_str = ''
@@ -360,7 +360,7 @@ def get_si_norm(entry):
     val = get_relevant_digit(entry)
     fact = int(val / 3)
     power = int(3 * fact)
-    norm = 10**(power)
+    norm = 10 ** power
 
     return entry / norm, norm
 

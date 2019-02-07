@@ -11,7 +11,7 @@ events and the arguments which will be passed to them.
 
 """
 
-class EventManager():
+class EventManager:
     """Manage a collection of events and a sequence of callbacks for each.
     
     This is attached to :class:`~IPython.core.interactiveshell.InteractiveShell`

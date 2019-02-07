@@ -412,7 +412,7 @@ def estimate_gaussian_peak(self, x_axis, data, params):
 
     # calculate the second moment of the gaussian distribution:
     #   int (x^2 * f(x) dx) :
-    mom2 = np.sum((x_axis)**2 * data_smoothed) / np.sum(data_smoothed)
+    mom2 = np.sum(x_axis ** 2 * data_smoothed) / np.sum(data_smoothed)
 
     # and use the standard formula to obtain the standard deviation:
     #   sigma^2 = int( (x - mean)^2 f(x) dx ) = int (x^2 * f(x) dx) - mean^2

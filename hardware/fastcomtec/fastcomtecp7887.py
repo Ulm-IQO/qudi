@@ -273,7 +273,7 @@ class FastComtec(Base, FastCounterInterface):
         if filename is not None:
             self._change_filename(filename)
 
-        return (self.get_binwidth(), record_length_FastComTech_s, number_of_gates)
+        return self.get_binwidth(), record_length_FastComTech_s, number_of_gates
 
 
 

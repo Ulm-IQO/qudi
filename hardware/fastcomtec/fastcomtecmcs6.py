@@ -288,7 +288,7 @@ class FastComtec(Base, FastCounterInterface):
         self.set_length(no_of_bins)
         self.set_cycles(number_of_gates)
 
-        return (self.get_binwidth(), self.get_length()*self.get_binwidth(), number_of_gates)
+        return self.get_binwidth(), self.get_length() * self.get_binwidth(), number_of_gates
 
     #card if running or halt or stopped ...
     def get_status(self):
@@ -638,7 +638,7 @@ class FastComtec(Base, FastCounterInterface):
         if sequences is not None:
             self.set_sequences(sequences)
 
-        return (self.get_binwidth(), no_of_bins, self.get_cycles(), self.get_preset(), self.get_sequences())
+        return self.get_binwidth(), no_of_bins, self.get_cycles(), self.get_preset(), self.get_sequences()
 
 
 

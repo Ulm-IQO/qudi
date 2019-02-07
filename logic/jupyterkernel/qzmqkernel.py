@@ -472,11 +472,8 @@ class QZMQKernel(QtCore.QObject):
         def jdecode(msg):
             return json.loads(msg.decode('ascii'))
 
-        m = {}
-        m['header']        = jdecode(msg_frames[0])
-        m['parent_header'] = jdecode(msg_frames[1])
-        m['metadata']      = jdecode(msg_frames[2])
-        m['content']       = jdecode(msg_frames[3])
+        m = {'header': jdecode(msg_frames[0]), 'parent_header': jdecode(msg_frames[1]),
+             'metadata': jdecode(msg_frames[2]), 'content': jdecode(msg_frames[3])}
         check_sig = self.sign(msg_frames)
         if check_sig != m_signature:
             raise ValueError("Signatures do not match")

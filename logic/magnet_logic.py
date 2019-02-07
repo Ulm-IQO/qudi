@@ -911,7 +911,7 @@ class MagnetLogic(GenericLogic):
         # increase the index
         self._pathway_index += 1
 
-        if (self._pathway_index) < len(self._pathway):
+        if self._pathway_index < len(self._pathway):
 
             #
             self._do_postmeasurement_proc()
@@ -1598,7 +1598,7 @@ class MagnetLogic(GenericLogic):
         out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
                        (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
 
-        while (np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4):
+        while np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4:
             # Reduce the number of bins if the calculation yields an invalid
             # number
             num_bins = int(num_bins/2)
