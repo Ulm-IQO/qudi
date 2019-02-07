@@ -413,8 +413,9 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        return time_trace
-
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return time_trace, info_dict
 
 
     # =========================================================================
