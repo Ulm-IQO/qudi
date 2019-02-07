@@ -404,12 +404,11 @@ class OptimizerLogic(GenericLogic):
             self.optim_pos_y = self._initial_pos_y
             self.optim_sigma_x = 0.
             self.optim_sigma_y = 0.
-            # hier abbrechen
         else:
             #                @reviewer: Do we need this. With constraints not one of these cases will be possible....
             if abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset and abs(self._initial_pos_x - result_2D_gaus.best_values['center_x']) < self._max_offset:
-                if result_2D_gaus.best_values['center_x'] >= self.x_range[0] and result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
-                    if result_2D_gaus.best_values['center_y'] >= self.y_range[0] and result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
+                if self.x_range[0] <= result_2D_gaus.best_values['center_x'] <= self.x_range[1]:
+                    if self.y_range[0] <= result_2D_gaus.best_values['center_y'] <= self.y_range[1]:
                         self.optim_pos_x = result_2D_gaus.best_values['center_x']
                         self.optim_pos_y = result_2D_gaus.best_values['center_y']
                         self.optim_sigma_x = result_2D_gaus.best_values['sigma_x']
@@ -432,12 +431,11 @@ class OptimizerLogic(GenericLogic):
         # z-fit
         # If subtracting surface, then data can go negative and the gaussian fit offset constraints need to be adjusted
         if self.do_surface_subtraction:
-            adjusted_param = {}
-            adjusted_param['offset'] = {
+            adjusted_param = {'offset': {
                 'value': 1e-12,
                 'min': -self.z_refocus_line[:, self.opt_channel].max(),
                 'max': self.z_refocus_line[:, self.opt_channel].max()
-            }
+            }}
             result = self._fit_logic.make_gausspeaklinearoffset_fit(
                 x_axis=self._zimage_Z_values,
                 data=self.z_refocus_line[:, self.opt_channel],
@@ -468,7 +466,7 @@ class OptimizerLogic(GenericLogic):
             # checks if new pos is too far away
             if abs(self._initial_pos_z - result.best_values['center']) < self._max_offset:
                 # checks if new pos is within the scanner range
-                if result.best_values['center'] >= self.z_range[0] and result.best_values['center'] <= self.z_range[1]:
+                if self.z_range[0] <= result.best_values['center'] <= self.z_range[1]:
                     self.optim_pos_z = result.best_values['center']
                     self.optim_sigma_z = result.best_values['sigma']
                     gauss, params = self._fit_logic.make_gaussianlinearoffset_model()

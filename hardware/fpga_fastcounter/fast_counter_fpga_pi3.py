@@ -156,7 +156,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
             self._channel_detect,
             self._channel_sequence
         )
-        return (bin_width_s, record_length_s, number_of_gates)
+        return bin_width_s, record_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """

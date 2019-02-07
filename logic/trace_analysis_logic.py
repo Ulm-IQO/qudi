@@ -270,7 +270,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         return probability, lost_events
 
-    def analyze_flip_prob3(self, trace, init_threshold=[1, 1], ana_threshold=[1, 1], analyze_mode='full'):
+    def analyze_flip_prob3(self, trace, init_threshold=None, ana_threshold=None, analyze_mode='full'):
         """General method, which analysis how often a value was changed from
            one data point to another in relation to a certain threshold.
         @param np.array trace: 1D trace of data
@@ -285,6 +285,8 @@ class TraceAnalysisLogic(GenericLogic):
                       float lifetime_dark: the lifetime in the dark state in s
                       float lifetime_bright: lifetime in the bright state in s
         """
+        init_threshold = init_threshold if init_threshold is not None else [1, 1]
+        ana_threshold = ana_threshold if ana_threshold is not None else [1, 1]
         no_flip = 0.0
         flip = 0.0
 
@@ -325,7 +327,7 @@ class TraceAnalysisLogic(GenericLogic):
 
         return probability, lost_events
 
-    def analyze_flip_prob4(self, trace, bins=30, init_threshold = [1,1], ana_threshold = [1,1], analyze_mode='full'):
+    def analyze_flip_prob4(self, trace, bins=30, init_threshold = None, ana_threshold = None, analyze_mode='full'):
         """
         Method which calculates the histogram, the fidelity and the flip probability of a time trace.
         :param trace:
@@ -336,6 +338,8 @@ class TraceAnalysisLogic(GenericLogic):
         :return:
         """
 
+        init_threshold = init_threshold if init_threshold is not None else [1, 1]
+        ana_threshold = ana_threshold if ana_threshold is not None else [1, 1]
         self.calculate_histogram(trace, bins)
         axis = self.hist_data[0][:-1] + (self.hist_data[0][1] - self.hist_data[0][0]) / 2.
         data = self.hist_data[1]
@@ -524,10 +528,10 @@ class TraceAnalysisLogic(GenericLogic):
                 index = 0
                 index2 = 0
 
-                while (index < len(digital_trace)):
+                while index < len(digital_trace):
                     occurances.append(0)
                     # start following the consecutive 1s
-                    while (digital_trace[index] == 1):
+                    while digital_trace[index] == 1:
                         occurances[index2] += 1
                         if index == (len(digital_trace) - 1):
                             occurances = np.array(occurances)
@@ -538,7 +542,7 @@ class TraceAnalysisLogic(GenericLogic):
                         index2 += 1
                         occurances.append(0)
                     # start following the consecutive 0s
-                    while (digital_trace[index] == 0):
+                    while digital_trace[index] == 0:
                         occurances[index2] -= 1
                         if index == (len(digital_trace) - 1):
                             occurances = np.array(occurances)
@@ -916,10 +920,10 @@ class TraceAnalysisLogic(GenericLogic):
                 # go through the combined histogram array and the point which
                 # changes the sign. The transition from positive to negative values
                 # will get the threshold:
-                if difference_poissonian[i] < 0 and difference_poissonian[i + 1] >= 0:
+                if difference_poissonian[i] < 0 <= difference_poissonian[i + 1]:
                     trans_index = i
                     break
-                elif difference_poissonian[i] > 0 and difference_poissonian[i + 1] <= 0:
+                elif difference_poissonian[i] > 0 >= difference_poissonian[i + 1]:
                     trans_index = i
                     break
 
@@ -1038,8 +1042,7 @@ class TraceAnalysisLogic(GenericLogic):
                 fidelity = 0
                 threshold_fit = 0
                 param_dict = {}
-                new_dict = {}
-                new_dict['value'] = np.inf
+                new_dict = {'value': np.inf}
                 param_dict['chi_sqr'] = new_dict
 
             return threshold_fit, fidelity, param_dict

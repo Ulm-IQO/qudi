@@ -304,16 +304,15 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         mode = int(mode)    # for safety reasons, convert to integer
         self._mode = mode
 
-        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
-                (mode != self.MODE_T3)):
+        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or (mode != self.MODE_T3)):
             self.log.error('Picoharp: Mode for the device could not be set. '
-                    'It must be {0}=Histogram-Mode, {1}=T2-Mode or '
-                    '{2}=T3-Mode, but a parameter {3} was '
-                    'passed.'.format(
-                        self.MODE_HIST,
-                        self.MODE_T2,
-                        self.MODE_T3,
-                        mode))
+                           'It must be {0}=Histogram-Mode, {1}=T2-Mode or '
+                           '{2}=T3-Mode, but a parameter {3} was '
+                           'passed.'.format(self.MODE_HIST,
+                                            self.MODE_T2,
+                                            self.MODE_T3,
+                                            mode)
+            )
         else:
             self.check(self._dll.PH_Initialize(self._deviceID, mode))
 
@@ -347,7 +346,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                                                     ctypes.byref(partnum), ctypes.byref(version)))
 
         # the .decode() function converts byte objects to string objects
-        return (model.value.decode(), partnum.value.decode(), version.value.decode())
+        return model.value.decode(), partnum.value.decode(), version.value.decode()
 
     def get_serial_number(self):
         """ Retrieve the serial number of the device.
@@ -745,7 +744,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                                          num_counts, ctypes.byref(actual_num_counts)))
 
 
-        return (buffer, actual_num_counts.value)
+        return buffer, actual_num_counts.value
 
     def tttr_set_marker_edges(self, me0, me1, me2, me3):
         """ Set the marker edges
@@ -1184,7 +1183,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         if not self.meas_run:
             with self.threadlock:
                 self.unlock()
-                self.stop_device
+                self.stop_device()
                 return
 
         print('get new data.')
