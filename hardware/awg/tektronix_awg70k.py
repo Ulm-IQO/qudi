@@ -414,7 +414,7 @@ class AWG70K(Base, PulserInterface):
             #     return 0, list()
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
-                time.sleep(0.25)
+                time.sleep(0.05)
 
             # reset the timeout
             #self.awg.timeout = timeout_old

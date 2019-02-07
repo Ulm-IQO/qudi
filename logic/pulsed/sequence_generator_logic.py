@@ -1713,6 +1713,8 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
         sequence.sampling_information['waveforms'] = sorted(written_waveforms)
+        sequence.sampling_information['step_waveform_list'] = [step[0] for step in
+                                                               sequence_param_dict_list]
         sequence.sampling_information['step_parameters'] = sequence_param_dict_list
         self.save_sequence(sequence)
 
