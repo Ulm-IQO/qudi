@@ -740,7 +740,7 @@ class MagnetLogic(GenericLogic):
         self._control_dict = {}
         pos_dict = self.get_pos()
         key_set1 = set(pos_dict.keys())
-        key_set2 = set([self.align_2d_axis1_name, self.align_2d_axis0_name])
+        key_set2 = {self.align_2d_axis1_name, self.align_2d_axis0_name}
         key_complement = key_set1 - key_set2
         self._control_dict = {key : pos_dict[key] for key in key_complement}
 
@@ -1987,16 +1987,16 @@ class MagnetLogic(GenericLogic):
         return self._2D_axis0_data, self._2D_axis1_data
 
 
-    def set_move_rel_para(self,dict):
+    def set_move_rel_para(self, parameters):
         """ Set the move relative parameters according to dict
 
         @params dict: Dictionary with new values
 
         @return dict: Dictionary with new values
         """
-        for axis_label in dict:
-            self.move_rel_dict[axis_label]=dict[axis_label]
-            self.sigMoveRelChanged.emit(dict)
+        for axis_label in parameters:
+            self.move_rel_dict[axis_label]=parameters[axis_label]
+            self.sigMoveRelChanged.emit(parameters)
         return self.move_rel_dict
 
     def get_move_rel_para(self,param_list=None):
@@ -2009,10 +2009,10 @@ class MagnetLogic(GenericLogic):
         if param_list is None:
             return self.move_rel_dict
         else:
-            dict={}
+            return_dict = dict()
             for axis_label in param_list:
-                dict[axis_label] = self.move_rel_dict[axis_label]
-            return dict
+                return_dict[axis_label] = self.move_rel_dict[axis_label]
+            return return_dict
 
     def set_optimize_pos_freq(self, freq):
         """ Set the optimization frequency """
@@ -2033,11 +2033,11 @@ class MagnetLogic(GenericLogic):
         """
         return self._optimize_pos
 
-    def set_fluorescence_integration_time(self,time):
+    def set_fluorescence_integration_time(self, integration_time):
         """ Set the integration time """
-        self._fluorescence_integration_time = time
+        self._fluorescence_integration_time = integration_time
         self.sigFluoIntTimeChanged.emit(self._fluorescence_integration_time)
-        return time
+        return integration_time
 
     def get_fluorescence_integration_time(self):
         """ Get the fluorescence integration time.
@@ -2051,83 +2051,83 @@ class MagnetLogic(GenericLogic):
     #TODO: Check hardware constraints
 
     def set_align_2d_axis0_name(self,axisname):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis0_name=axisname
         self.sig2DAxis0NameChanged.emit(axisname)
         return axisname
 
-    def set_align_2d_axis0_range(self,range):
-        '''Set the specified value '''
-        self.align_2d_axis0_range=range
-        self.sig2DAxis0RangeChanged.emit(range)
-        return range
+    def set_align_2d_axis0_range(self, axis_range):
+        """Set the specified value """
+        self.align_2d_axis0_range = axis_range
+        self.sig2DAxis0RangeChanged.emit(axis_range)
+        return axis_range
 
     def set_align_2d_axis0_step(self,step):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis0_step=step
         self.sig2DAxis0StepChanged.emit(step)
         return step
 
     def set_align_2d_axis0_vel(self,vel):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis0_vel=vel
         self.sig2DAxis0VelChanged.emit(vel)
         return vel
 
     def set_align_2d_axis1_name(self, axisname):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis1_name = axisname
         self.sig2DAxis1NameChanged.emit(axisname)
         return axisname
 
-    def set_align_2d_axis1_range(self, range):
-        '''Set the specified value '''
-        self.align_2d_axis1_range = range
-        self.sig2DAxis1RangeChanged.emit(range)
-        return range
+    def set_align_2d_axis1_range(self, axis_range):
+        """Set the specified value """
+        self.align_2d_axis1_range = axis_range
+        self.sig2DAxis1RangeChanged.emit(axis_range)
+        return axis_range
 
     def set_align_2d_axis1_step(self, step):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis1_step = step
         self.sig2DAxis1StepChanged.emit(step)
         return step
 
     def set_align_2d_axis1_vel(self, vel):
-        '''Set the specified value '''
+        """Set the specified value """
         self._2d_align_axis1_vel = vel
         self.sig2DAxis1VelChanged.emit(vel)
         return vel
 
     def get_align_2d_axis0_name(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_name
 
     def get_align_2d_axis0_range(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_range
 
     def get_align_2d_axis0_step(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_step
 
     def get_align_2d_axis0_vel(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_vel
 
     def get_align_2d_axis1_name(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_name
 
     def get_align_2d_axis1_range(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_range
 
     def get_align_2d_axis1_step(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_step
 
     def get_align_2d_axis1_vel(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_vel
 
 

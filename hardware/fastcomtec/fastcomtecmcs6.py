@@ -433,7 +433,7 @@ class FastComtec(Base, FastCounterInterface):
 
 
     def get_data_testfile(self):
-        ''' Load data test file '''
+        """ Load data test file """
         data = np.loadtxt(os.path.join(get_main_dir(), 'tools', 'FastComTec_demo_timetrace.asc'))
         time.sleep(0.5)
         return data
@@ -713,9 +713,10 @@ class FastComtec(Base, FastCounterInterface):
         @return: just the input
         """
         # First set cycles to 1 to prevent crashes
-        if cycles == None:
-            cycles_old = self.get_cycles()
+
+        cycles_old = self.get_cycles() if cycles is None else cycles
         self.set_cycles(1)
+
         # Turn on or off sequential cycle mode
         if mode:
             cmd = 'sweepmode={0}'.format(hex(1978500))
@@ -723,10 +724,7 @@ class FastComtec(Base, FastCounterInterface):
             cmd = 'sweepmode={0}'.format(hex(1978496))
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
-        if cycles == None:
-            self.set_cycles(cycles_old)
-        else:
-            self.set_cycles(cycles)
+        self.set_cycles(cycles_old)
 
         return mode, cycles
 

@@ -367,9 +367,9 @@ def estimate_lorentzian_dip(self, x_axis, data, params):
     amplitude = data_level.min()
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level,
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
                                             k=smoothing_spline)
-    numerical_integral = function.integral(x_axis[0], x_axis[-1])
+    numerical_integral = fit_function.integral(x_axis[0], x_axis[-1])
 
     x_zero = x_axis[np.argmin(data_smooth)]
 
@@ -557,9 +557,9 @@ def estimate_lorentziandouble_dip(self, x_axis, data, params,
     #                     len(data_level[sigma0_argleft:sigma0_argright]))
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level,
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
                                             k=smoothing_spline)
-    numerical_integral_0 = function.integral(x_axis[sigma0_argleft],
+    numerical_integral_0 = fit_function.integral(x_axis[sigma0_argleft],
                                              x_axis[sigma0_argright])
 
     lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
@@ -748,8 +748,8 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
 
     minimum_level = data_level.min()
     # integral of data:
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-    Integral = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = fit_function.integral(x_axis[0], x_axis[-1])
 
     # assume both peaks contribute to the linewidth, so devive by 2, that makes
     # the peaks narrower
@@ -1007,8 +1007,8 @@ def estimate_lorentziantriple_N14(self, x_axis, data, params):
     # integral of data corresponds to sqrt(2) * Amplitude * Sigma
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    integrated_area = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    integrated_area = fit_function.integral(x_axis[0], x_axis[-1])
 
     # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:

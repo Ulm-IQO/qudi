@@ -69,65 +69,65 @@ class APTMotor:
     error_code = {10000: 'An unknown Server error has occurred. ',
                   10001: 'A Server internal error has occurred. ',
                   10002: 'A Server call has failed. ',
-                  10003: 'An attempt has been made to pass a parameter that is ' \
-                         'invalid or out of range. In the case of motor ' \
-                         'commands, this error may occur when a move is ' \
-                         'requested that exceeds the stage travel or exceeds ' \
+                  10003: 'An attempt has been made to pass a parameter that is '
+                         'invalid or out of range. In the case of motor '
+                         'commands, this error may occur when a move is '
+                         'requested that exceeds the stage travel or exceeds '
                          'the calibration data.',
-                  10004: 'An attempt has been made to save or load control ' \
-                         'parameters to the registry (using the SaveParamSet ' \
-                         'or LoadParamSet methods) when the unit serial number ' \
+                  10004: 'An attempt has been made to save or load control '
+                         'parameters to the registry (using the SaveParamSet '
+                         'or LoadParamSet methods) when the unit serial number '
                          'has not been specified.',
-                  10050: 'An error has occurred whilst accessing the disk. ' \
-                         'Check that the drive is not full, missing or ' \
+                  10050: 'An error has occurred whilst accessing the disk. '
+                         'Check that the drive is not full, missing or '
                          'corrupted.',
-                  10051: 'An error has occurred with the ethernet connections ' \
+                  10051: 'An error has occurred with the ethernet connections '
                          'or the windows sockets. ',
-                  10052: 'An error has occurred whilst accessing the ' \
+                  10052: 'An error has occurred whilst accessing the '
                          'registry. ',
-                  10053: 'An internal memory allocation error or ' \
+                  10053: 'An internal memory allocation error or '
                          'de-allocation error has occurred.',
-                  10054: 'An error has occurred with the COM system. ' \
+                  10054: 'An error has occurred with the COM system. '
                          'Restart the program.',
                   10055: 'An error has occurred with the USB communications.',
-                  10100: 'A serial number has been specified that is unknown ' \
+                  10100: 'A serial number has been specified that is unknown '
                          'to the server.',
-                  10101: 'A duplicate serial number has been detected. ' \
+                  10101: 'A duplicate serial number has been detected. '
                          'Serial numbers are required to be unique.',
                   10102: 'A duplicate device identifier has been detected.',
                   10103: 'An invalid message source has been detected.',
-                  10104: 'A message has been received with an unknown ' \
+                  10104: 'A message has been received with an unknown '
                          'identifier.',
                   10105: 'An unknown hardware identifier has been encountered.',
                   10106: 'An invalid serial number has been detected.',
                   10107: 'An invalid message destination ident has been detected.',
                   10108: 'An invalid index parameter has been passed.',
-                  10109: 'A software call has been made to a control which is ' \
-                         'not currently communicating with any hardware. This ' \
-                         'may be because the control has not been started or ' \
-                         'may be due to an incorrect serial number or missing ' \
+                  10109: 'A software call has been made to a control which is '
+                         'not currently communicating with any hardware. This '
+                         'may be because the control has not been started or '
+                         'may be due to an incorrect serial number or missing '
                          'hardware. ',
-                  10110: 'A notification or response message has been ' \
-                         'received from a hardware unit. This may be indicate ' \
-                         'a hardware fault or that an illegal ' \
+                  10110: 'A notification or response message has been '
+                         'received from a hardware unit. This may be indicate '
+                         'a hardware fault or that an illegal '
                          'command/parameter has been sent to the hardware.',
-                  10111: 'A time out has occurred while waiting for a ' \
-                         'hardware unit to respond. This may be due to ' \
+                  10111: 'A time out has occurred while waiting for a '
+                         'hardware unit to respond. This may be due to '
                          'communications problems or a hardware fault. ',
-                  10112: 'Some functions are applicable only to later ' \
-                         'versions of embedded code. This error is returned ' \
-                         'when a software call is made to a unit with an ' \
+                  10112: 'Some functions are applicable only to later '
+                         'versions of embedded code. This error is returned '
+                         'when a software call is made to a unit with an '
                          'incompatible version of embedded code installed.',
-                  10115: 'Some functions are applicable only to later versions ' \
-                         'of hardware. This error is returned when a software ' \
+                  10115: 'Some functions are applicable only to later versions '
+                         'of hardware. This error is returned when a software '
                          'call is made to an incompatible version of hardware.',
-                  10150: 'The GetStageAxisInfo method has been called when ' \
+                  10150: 'The GetStageAxisInfo method has been called when '
                          'no stage has been assigned. ',
-                  10151: 'An internal error has occurred when using an ' \
+                  10151: 'An internal error has occurred when using an '
                          'encoded stage.',
-                  10152: 'An internal error has occurred when using an ' \
+                  10152: 'An internal error has occurred when using an '
                          'encoded stage. ',
-                  10153: 'A software call applicable only to encoded stages ' \
+                  10153: 'A software call applicable only to encoded stages '
                          'has been made to a non-encoded stage.'}
     # General Error code:
     # PC System:
@@ -143,60 +143,60 @@ class APTMotor:
     # bitwise comparison, which status your device has.  The bit flags are
     # returned in a single 32 bit integer parameter and can provide additional
     # useful status information for client application development.
-    status_code = {1: '0x00000001, 1, forward hardware limit switch is active. ' \
+    status_code = {1: '0x00000001, 1, forward hardware limit switch is active. '
                       'CW hardware limit switch (0 - no contact, 1 - contact).',
-                   2: '0x00000002, 2, reverse hardware limit switch is active. ' \
+                   2: '0x00000002, 2, reverse hardware limit switch is active. '
                       'CCW hardware limit switch (0 - no contact, 1 - contact).',
-                   3: '0x00000004, 3, CW software limit switch (0 - no ' \
-                      'contact, 1 - contact). Not applicable to Part Number ' \
-                      'ODC001 and TDC001 controllers', 4: '0x00000008, 4, CCW software limit switch (0 - no ' \
-                                                          'contact, 1 - contact). Not applicable to Part Number ' \
+                   3: '0x00000004, 3, CW software limit switch (0 - no '
+                      'contact, 1 - contact). Not applicable to Part Number '
+                      'ODC001 and TDC001 controllers', 4: '0x00000008, 4, CCW software limit switch (0 - no '
+                                                          'contact, 1 - contact). Not applicable to Part Number '
                                                           'ODC001 and TDC001 controllers',
-                   5: '0x00000010, 5, in motion, moving forward, Motor shaft ' \
+                   5: '0x00000010, 5, in motion, moving forward, Motor shaft '
                       'moving clockwise (1 - moving, 0 - stationary).',
-                   6: '0x00000020, 6, in motion, moving reverse, Motor shaft ' \
+                   6: '0x00000020, 6, in motion, moving reverse, Motor shaft '
                       'moving counterclockwise (1 - moving, 0 - stationary).',
-                   7: '0x00000040, 7, in motion, jogging forward, Shaft ' \
+                   7: '0x00000040, 7, in motion, jogging forward, Shaft '
                       'jogging clockwise (1 - moving, 0 - stationary).',
-                   8: '0x00000080, 8, in motion, jogging reverse, Shaft ' \
+                   8: '0x00000080, 8, in motion, jogging reverse, Shaft '
                       'jogging counterclockwise (1 - moving, 0 - stationary).',
-                   9: '0x00000100, 9, Motor connected (1 - connected, 0 - ' \
-                      'not connected). Not applicable to Part Number BMS001 ' \
-                      'and BMS002 controllers. Not applicable to Part Number ' \
-                      'ODC001 and TDC001 controllers.', 10: '0x00000200, 10, in motion, homing, Motor homing ' \
+                   9: '0x00000100, 9, Motor connected (1 - connected, 0 - '
+                      'not connected). Not applicable to Part Number BMS001 '
+                      'and BMS002 controllers. Not applicable to Part Number '
+                      'ODC001 and TDC001 controllers.', 10: '0x00000200, 10, in motion, homing, Motor homing '
                                                             '(1 - homing, 0 - not homing).',
-                   11: '0x00000400, 11, homed (homing has been completed)' \
+                   11: '0x00000400, 11, homed (homing has been completed)'
                        '(1 - homed, 0 - not homed).', 12: '0x00000800, 12, For Future Use.',
-                   13: '0x00001000, 13, Trajectory within tracking window ' \
+                   13: '0x00001000, 13, Trajectory within tracking window '
                        '(1 – within window, 0 – not within window).',
-                   14: '0x00002000, 14, settled, Axis within settled window ' \
-                       '(1 – settled within window, 0 – not settled within' \
-                       'window).', 15: '0x00004000, 15, motion error (excessive position ' \
-                                       'error), Axis exceeds position error limit ' \
+                   14: '0x00002000, 14, settled, Axis within settled window '
+                       '(1 – settled within window, 0 – not settled within'
+                       'window).', 15: '0x00004000, 15, motion error (excessive position '
+                                       'error), Axis exceeds position error limit '
                                        '(1 – limit exceeded, 0 – within limit).',
-                   16: '0x00008000, 16, Set when position module instruction ' \
-                       'error exists (1 – instruction error exists, 0 – ' \
-                       'no error).', 17: '0x00010000, 17, Interlock link missing in motor ' \
+                   16: '0x00008000, 16, Set when position module instruction '
+                       'error exists (1 – instruction error exists, 0 – '
+                       'no error).', 17: '0x00010000, 17, Interlock link missing in motor '
                                          'connector (1 – missing, 0 – present).',
-                   18: '0x00020000, 18, Position module over temperature ' \
-                       'warning (1 – over temp, 0 – temp OK).', 19: '0x00040000, 19, Position module bus voltage fault ' \
+                   18: '0x00020000, 18, Position module over temperature '
+                       'warning (1 – over temp, 0 – temp OK).', 19: '0x00040000, 19, Position module bus voltage fault '
                                                                     '(1 – fault exists, 0 – OK).',
-                   20: '0x00080000, 20, Axis commutation error ' \
-                       '(1 – error, 0 – OK).', 21: '0x00100000, 21, Digital input 1 state (1 - ' \
+                   20: '0x00080000, 20, Axis commutation error '
+                       '(1 – error, 0 – OK).', 21: '0x00100000, 21, Digital input 1 state (1 - '
                                                    'logic high, 0 - logic low).',
-                   22: '0x00200000, 22, Digital input 2 state (1 - ' \
-                       'logic high, 0 - logic low).', 23: '0x00400000, 23, Digital input 3 state (1 - ' \
+                   22: '0x00200000, 22, Digital input 2 state (1 - '
+                       'logic high, 0 - logic low).', 23: '0x00400000, 23, Digital input 3 state (1 - '
                                                           'logic high, 0 - logic low).',
-                   24: '0x00800000, 24, Digital input 4 state (1 - ' \
-                       'logic high, 0 - logic low).', 25: '0x01000000, 25, BBD10x Controllers: Axis phase ' \
-                                                          'current limit (1 – current limit exceeded, ' \
-                                                          '0 – below limit). Other Controllers: Digital input 5 ' \
+                   24: '0x00800000, 24, Digital input 4 state (1 - '
+                       'logic high, 0 - logic low).', 25: '0x01000000, 25, BBD10x Controllers: Axis phase '
+                                                          'current limit (1 – current limit exceeded, '
+                                                          '0 – below limit). Other Controllers: Digital input 5 '
                                                           'state (1 - logic high, 0 - logic low).',
-                   26: '0x02000000, 26, Digital input 6 state (1 - logic ' \
+                   26: '0x02000000, 26, Digital input 6 state (1 - logic '
                        'high, 0 - logic low).', 27: '0x04000000, 27, Unspecified, for Future Use.',
                    28: '0x08000000, 28, Unspecified, for Future Use.',
                    29: '0x10000000, 29, Unspecified, for Future Use.',
-                   30: '0x20000000, 30, Active (1 – indicates unit is active, ' \
+                   30: '0x20000000, 30, Active (1 – indicates unit is active, '
                        '0 – not active).', 31: '0x40000000, 31, Unspecified, for Future Use.',
                    32: '0x80000000, Channel enabled (1 – enabled, 0- disabled).'}
     # dict key as bit number =  'hex value, bit number,  description'
@@ -250,21 +250,21 @@ class APTMotor:
         return HWSerialNum
 
     def setSerialNumber(self, SerialNum):
-        '''
+        """
         Sets the Serial Number of the specified index
-        '''
+        """
         if self.verbose:
             print("Serial is", SerialNum)
         self.SerialNum = c_long(SerialNum)
         return self.SerialNum.value
 
     def initializeHardwareDevice(self):
-        '''
+        """
         Initialises the motor.
         You can only get the position of the motor and move the motor after it
         has been initialised. Once initiallised, it will not respond to other
         objects trying to control it, until released.
-        '''
+        """
         if self.verbose:
             print('initializeHardwareDevice serial', self.SerialNum)
         result = self.aptdll.InitHWDevice(self.SerialNum)
@@ -280,7 +280,7 @@ class APTMotor:
     # Interfacing with the motor settings
 
     def getHardwareInformation(self):
-        ''' Get information from the hardware'''
+        """ Get information from the hardware"""
         model = c_buffer(255)
         softwareVersion = c_buffer(255)
         hardwareNotes = c_buffer(255)

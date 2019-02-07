@@ -99,8 +99,8 @@ class TSYS01SPI(Base, ProcessInterface):
             @param int addr: momory address to read
             @return int: 16bit contents of rom at address
         """
-        bytes = self.READ_ROM0 | 0x0F & ( addr << 1)
-        rbuf = self.spi.xfer( [bytes, 0x00, 0x00] )
+        bytes_to_read = self.READ_ROM0 | 0x0F & ( addr << 1)
+        rbuf = self.spi.xfer( [bytes_to_read, 0x00, 0x00] )
         return 2**8*rbuf[1] + rbuf[2]
 
     def readROM(self):
