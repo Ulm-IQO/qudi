@@ -199,7 +199,7 @@
      <x>0</x>
      <y>0</y>
      <width>750</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_File">
@@ -218,7 +218,6 @@
    <addaction name="menu_File"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
    <property name="windowTitle">
     <string>toolBar</string>
