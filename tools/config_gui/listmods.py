@@ -27,6 +27,7 @@ import importlib
 
 from qtpy import QtCore, QtWidgets
 
+
 class Module(QtCore.QObject):
     """ This class represents a Qudi module.
     """

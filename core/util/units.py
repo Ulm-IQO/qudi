@@ -537,14 +537,14 @@ def compute_ft(x_val, y_val, zeropad_num=0, window='none', base_corr=True,
     fft_y = np.abs(np.fft.fft(zeropad_arr))
 
     # Power spectral density (PSD) or just amplitude spectrum of fourier signal:
-    pow = 1.0
+    power_value = 1.0
     if psd:
-        pow = 2.0
+        power_value = 2.0
 
     # The factor 2 accounts for the fact that just the half of the spectrum was
     # taken. The ampl_norm_fact is the normalization factor due to the applied
     # window function (the offset value in the window function):
-    fft_y = ((2/len(y_val)) * fft_y * ampl_norm_fact)**pow
+    fft_y = ((2/len(y_val)) * fft_y * ampl_norm_fact)**power_value
 
     # Due to the sampling theorem you can only identify frequencies at half
     # of the sample rate, therefore the FT contains an almost symmetric

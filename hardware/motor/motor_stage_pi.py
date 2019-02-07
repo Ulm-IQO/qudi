@@ -450,13 +450,13 @@ class MotorStagePI(Base, MotorInterface):
 
 
     def _write_xyz(self,axis,command):
-        '''this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
+        """this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
         @param axis string: name of the axis that should be asked
 
         @param command string: command
 
         @return error code (0:OK, -1:error)
-        '''
+        """
         constraints = self.get_constraints()
         try:
             #self.log.info(constraints[axis]['ID'] + command + '\n')
@@ -468,9 +468,9 @@ class MotorStagePI(Base, MotorInterface):
             return -1
 
     def _read_answer_xyz(self):
-        '''this method reads the answer from the motor!
+        """this method reads the answer from the motor!
         @return answer string: answer of motor
-        '''
+        """
 
         still_reading = True
         answer=''
@@ -482,13 +482,13 @@ class MotorStagePI(Base, MotorInterface):
         return answer
 
     def _ask_xyz(self,axis,question):
-        '''this method combines writing a command and reading the answer
+        """this method combines writing a command and reading the answer
         @param axis string: name of the axis that should be asked
 
         @param command string: command
 
         @return answer string: answer of motor
-        '''
+        """
         constraints = self.get_constraints()
         self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
         answer=self._read_answer_xyz()
@@ -540,12 +540,12 @@ class MotorStagePI(Base, MotorInterface):
 
 
     def _in_movement_xyz(self):
-        '''this method checks if the magnet is still moving and returns
+        """this method checks if the magnet is still moving and returns
         a dictionary which of the axis are moving.
 
         @return: dict param_dict: Dictionary displaying if axis are moving:
         0 for immobile and 1 for moving
-        '''
+        """
         constraints=self.get_constraints()
         param_dict = {}
         for axis_label in constraints:
@@ -555,11 +555,11 @@ class MotorStagePI(Base, MotorInterface):
         return param_dict
 
     def _motor_stopped(self):
-        '''this method checks if the magnet is still moving and returns
+        """this method checks if the magnet is still moving and returns
             False if it is moving and True of it is immobile
 
             @return: bool stopped: False for immobile and True for moving
-                '''
+                """
         param_dict=self._in_movement_xyz()
         stopped=True
         for axis_label in param_dict:

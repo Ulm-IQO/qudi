@@ -159,7 +159,7 @@ qudi_fitting = FitLogic()
 
 
 def N15_testing():
-    """ Test function to implement the estimator for the N15 fit with offset. """
+    """ Test fit_function to implement the estimator for the N15 fit with offset. """
     x_axis = np.linspace(2850, 2860, 101)*1e6
 
     mod,params = qudi_fitting.make_multiplelorentzian_model(no_of_functions=2)
@@ -234,8 +234,8 @@ def N15_testing():
     plt.show()
 
     # integral of data:
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
-    Integral = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=1)
+    Integral = fit_function.integral(x_axis[0], x_axis[-1])
 
     # assume both peaks contribute to the linewidth, so devive by 2:
     sigma = abs(Integral /(np.pi * minimum_level) )/2
@@ -419,8 +419,8 @@ def N14_testing():
     # integral of data corresponds to sqrt(2) * Amplitude * Sigma
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    integrated_area = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    integrated_area = fit_function.integral(x_axis[0], x_axis[-1])
 
     # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:
@@ -1504,9 +1504,9 @@ def double_lorentzdip_testing():
 
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level,
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level,
                                             k=smoothing_spline)
-    numerical_integral_0 = function.integral(x_axis[sigma0_argleft],
+    numerical_integral_0 = fit_function.integral(x_axis[sigma0_argleft],
                                              x_axis[sigma0_argright])
 
     lorentz0_sigma = abs(numerical_integral_0 / (np.pi * lorentz0_amplitude))
@@ -1785,8 +1785,8 @@ def lorentziandip_testing():
 
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    numerical_integral = abs(function.integral(x_axis[0], x_axis[-1]))
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    numerical_integral = abs(fit_function.integral(x_axis[0], x_axis[-1]))
 
     if data_max > abs(data_min):
         qudi_fitting.log.warning('The lorentzian estimator set the peak to the minimal value, if '
@@ -2597,11 +2597,11 @@ def double_poissonian_testing_data():
         print('interpol_factor', interpol_factor, 'len(x_axis)', len(x_axis))
 
     # Create the interpolation function, based on the data:
-    function = InterpolatedUnivariateSpline(x_axis, hist, k=1)
+    fit_function = InterpolatedUnivariateSpline(x_axis, hist, k=1)
     # adjust the x_axis to that:
     x_axis_interpol = np.linspace(x_axis[0],x_axis[-1],len(x_axis)*interpol_factor)
     # create actually the interpolated data:
-    interpol_hist = function(x_axis_interpol)
+    interpol_hist = fit_function(x_axis_interpol)
 
     # Use a gaussian function to convolve with the data, to smooth the
     # datatrace. Then the peak search algorithm performs much better.
