@@ -212,25 +212,60 @@ class MotorStageMicos(Base, MotorInterface):
         """
         constraints = OrderedDict()
 
-        axis0 = {'label': self._first_axis_label, 'ID': self._first_axis_ID, 'unit': 'm', 'ramp': None,
-                 'pos_min': self._min_first, 'pos_max': self._max_first, 'pos_step': self.step_first_axis,
-                 'vel_min': self._vel_min_first, 'vel_max': self._vel_max_first, 'vel_step': self._vel_step_first,
-                 'acc_min': None, 'acc_max': None, 'acc_step': None}
+        axis0 = {'label': self._first_axis_label,
+                 'ID': self._first_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_first,
+                 'pos_max': self._max_first,
+                 'pos_step': self.step_first_axis,
+                 'vel_min': self._vel_min_first,
+                 'vel_max': self._vel_max_first,
+                 'vel_step': self._vel_step_first,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis1 = {'label': self._second_axis_label, 'ID': self._second_axis_ID, 'unit': 'm', 'ramp': None,
-                 'pos_min': self._min_second, 'pos_max': self._max_second, 'pos_step': self.step_second_axis,
-                 'vel_min': self._vel_min_second, 'vel_max': self._vel_max_second, 'vel_step': self._vel_step_second,
-                 'acc_min': None, 'acc_max': None, 'acc_step': None}
+        axis1 = {'label': self._second_axis_label,
+                 'ID': self._second_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_second,
+                 'pos_max': self._max_second,
+                 'pos_step': self.step_second_axis,
+                 'vel_min': self._vel_min_second,
+                 'vel_max': self._vel_max_second,
+                 'vel_step': self._vel_step_second,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis2 = {'label': self._third_axis_label, 'ID': self._third_axis_ID, 'unit': 'm', 'ramp': None,
-                 'pos_min': self._min_third, 'pos_max': self._max_third, 'pos_step': self.step_third_axis,
-                 'vel_min': self._vel_min_third, 'vel_max': self._vel_max_third, 'vel_step': self._vel_step_third,
-                 'acc_min': None, 'acc_max': None, 'acc_step': None}
+        axis2 = {'label': self._third_axis_label,
+                 'ID': self._third_axis_ID,
+                 'unit': 'm', 'ramp': None,
+                 'pos_min': self._min_third,
+                 'pos_max': self._max_third,
+                 'pos_step': self.step_third_axis,
+                 'vel_min': self._vel_min_third,
+                 'vel_max': self._vel_max_third,
+                 'vel_step': self._vel_step_third,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis3 = {'label': self._fourth_axis_label, 'ID': self._fourth_axis_ID, 'unit': 'm', 'ramp': None,
-                 'pos_min': self._min_fourth, 'pos_max': self._max_fourth, 'pos_step': self.step_fourth_axis,
-                 'vel_min': self._vel_min_fourth, 'vel_max': self._vel_max_fourth, 'vel_step': self._vel_step_fourth,
-                 'acc_min': None, 'acc_max': None, 'acc_step': None}
+        axis3 = {'label': self._fourth_axis_label,
+                 'ID': self._fourth_axis_ID,
+                 'unit': 'm', 'ramp': None,
+                 'pos_min': self._min_fourth,
+                 'pos_max': self._max_fourth,
+                 'pos_step': self.step_fourth_axis,
+                 'vel_min': self._vel_min_fourth,
+                 'vel_max': self._vel_max_fourth,
+                 'vel_step': self._vel_step_fourth,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
+
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1

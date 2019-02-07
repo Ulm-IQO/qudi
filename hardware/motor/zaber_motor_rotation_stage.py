@@ -113,14 +113,23 @@ class MotorRotationZaber(Base, MotorInterface):
         """
         constraints = OrderedDict()
 
-        rot = {'label': self._axis_label, 'ID': None, 'unit': '°', 'ramp': None, 'pos_min': self._min_angle,
-               'pos_max': self._max_angle, 'pos_step': self._min_step, 'vel_min': self._min_vel,
-               'vel_max': self._max_vel, 'vel_step': self._step_vel, 'acc_min': None, 'acc_max': None, 'acc_step': None}
+        rot = {'label': self._axis_label,
+               'ID': None,
+               'unit': '°',
+               'ramp': None,
+               'pos_min': self._min_angle,
+               'pos_max': self._max_angle,
+               'pos_step': self._min_step,
+               'vel_min': self._min_vel,
+               'vel_max': self._max_vel,
+               'vel_step': self._step_vel,
+               'acc_min': None,
+               'acc_max': None,
+               'acc_step': None}
 
         # assign the parameter container to a name which will identify it
         constraints[rot['label']] = rot
         return constraints
-
 
     def move_rel(self, param_dict):
         """Moves stage by a given angle (relative movement)
