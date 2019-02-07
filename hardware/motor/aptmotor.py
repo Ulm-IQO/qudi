@@ -50,36 +50,55 @@ class APTMotor:
 
     # all the possible hardware types that are available to be controlled by
     # the apt.dll
-    hwtype_dict = {'BSC001': 11, 'BSC101': 12, 'BSC002': 13, 'BDC101': 14, 'SCC001': 21, 'DCC001': 22, 'ODC001': 24,
-                   'OST001': 25, 'MST601': 26, 'TST001': 29, 'TDC001': 31, 'LTSXXX': 42, 'L490MZ': 43, 'BBD10X': 44}
+    hwtype_dict = {'BSC001': 11,  # 1 Ch benchtop stepper driver
+                   'BSC101': 12,  # 1 Ch benchtop stepper driver
+                   'BSC002': 13,  # 2 Ch benchtop stepper driver
+                   'BDC101': 14,  # 1 Ch benchtop DC servo driver
+                   'SCC001': 21,  # 1 Ch stepper driver card (used within BSC102,103 units)
+                   'DCC001': 22,  # 1 Ch DC servo driver card (used within BDC102,103 units)
+                   'ODC001': 24,  # 1 Ch DC servo driver cube
+                   'OST001': 25,  # 1 Ch stepper driver cube
+                   'MST601': 26,  # 2 Ch modular stepper driver module
+                   'TST001': 29,  # 1 Ch Stepper driver T-Cube
+                   'TDC001': 31,  # 1 Ch DC servo driver T-Cube
+                   'LTSXXX': 42,  # LTS300/LTS150 Long Travel Integrated Driver/Stages
+                   'L490MZ': 43,  # L490MZ Integrated Driver/Labjack
+                   'BBD10X': 44}  # 1/2/3 Ch benchtop brushless DC servo driver
 
     # the error code is also comparable to the APT server documentation.
-    error_code = {10000: 'An unknown Server error has occurred. ', 10001: 'A Server internal error has occurred. ',
-                  10002: 'A Server call has failed. ', 10003: 'An attempt has been made to pass a parameter that is ' \
-                                                              'invalid or out of range. In the case of motor ' \
-                                                              'commands, this error may occur when a move is ' \
-                                                              'requested that exceeds the stage travel or exceeds ' \
-                                                              'the calibration data.',
+    error_code = {10000: 'An unknown Server error has occurred. ',
+                  10001: 'A Server internal error has occurred. ',
+                  10002: 'A Server call has failed. ',
+                  10003: 'An attempt has been made to pass a parameter that is ' \
+                         'invalid or out of range. In the case of motor ' \
+                         'commands, this error may occur when a move is ' \
+                         'requested that exceeds the stage travel or exceeds ' \
+                         'the calibration data.',
                   10004: 'An attempt has been made to save or load control ' \
                          'parameters to the registry (using the SaveParamSet ' \
                          'or LoadParamSet methods) when the unit serial number ' \
-                         'has not been specified.', 10050: 'An error has occurred whilst accessing the disk. ' \
-                                                           'Check that the drive is not full, missing or ' \
-                                                           'corrupted.',
+                         'has not been specified.',
+                  10050: 'An error has occurred whilst accessing the disk. ' \
+                         'Check that the drive is not full, missing or ' \
+                         'corrupted.',
                   10051: 'An error has occurred with the ethernet connections ' \
-                         'or the windows sockets. ', 10052: 'An error has occurred whilst accessing the ' \
-                                                            'registry. ',
+                         'or the windows sockets. ',
+                  10052: 'An error has occurred whilst accessing the ' \
+                         'registry. ',
                   10053: 'An internal memory allocation error or ' \
-                         'de-allocation error has occurred.', 10054: 'An error has occurred with the COM system. ' \
-                                                                     'Restart the program.',
+                         'de-allocation error has occurred.',
+                  10054: 'An error has occurred with the COM system. ' \
+                         'Restart the program.',
                   10055: 'An error has occurred with the USB communications.',
                   10100: 'A serial number has been specified that is unknown ' \
-                         'to the server.', 10101: 'A duplicate serial number has been detected. ' \
-                                                  'Serial numbers are required to be unique.',
+                         'to the server.',
+                  10101: 'A duplicate serial number has been detected. ' \
+                         'Serial numbers are required to be unique.',
                   10102: 'A duplicate device identifier has been detected.',
                   10103: 'An invalid message source has been detected.',
                   10104: 'A message has been received with an unknown ' \
-                         'identifier.', 10105: 'An unknown hardware identifier has been encountered.',
+                         'identifier.',
+                  10105: 'An unknown hardware identifier has been encountered.',
                   10106: 'An invalid serial number has been detected.',
                   10107: 'An invalid message destination ident has been detected.',
                   10108: 'An invalid index parameter has been passed.',
@@ -87,10 +106,11 @@ class APTMotor:
                          'not currently communicating with any hardware. This ' \
                          'may be because the control has not been started or ' \
                          'may be due to an incorrect serial number or missing ' \
-                         'hardware. ', 10110: 'A notification or response message has been ' \
-                                              'received from a hardware unit. This may be indicate ' \
-                                              'a hardware fault or that an illegal ' \
-                                              'command/parameter has been sent to the hardware.',
+                         'hardware. ',
+                  10110: 'A notification or response message has been ' \
+                         'received from a hardware unit. This may be indicate ' \
+                         'a hardware fault or that an illegal ' \
+                         'command/parameter has been sent to the hardware.',
                   10111: 'A time out has occurred while waiting for a ' \
                          'hardware unit to respond. This may be due to ' \
                          'communications problems or a hardware fault. ',
@@ -102,11 +122,13 @@ class APTMotor:
                          'of hardware. This error is returned when a software ' \
                          'call is made to an incompatible version of hardware.',
                   10150: 'The GetStageAxisInfo method has been called when ' \
-                         'no stage has been assigned. ', 10151: 'An internal error has occurred when using an ' \
-                                                                'encoded stage.',
+                         'no stage has been assigned. ',
+                  10151: 'An internal error has occurred when using an ' \
+                         'encoded stage.',
                   10152: 'An internal error has occurred when using an ' \
-                         'encoded stage. ', 10153: 'A software call applicable only to encoded stages ' \
-                                                   'has been made to a non-encoded stage.'}
+                         'encoded stage. ',
+                  10153: 'A software call applicable only to encoded stages ' \
+                         'has been made to a non-encoded stage.'}
     # General Error code:
     # PC System:
 
