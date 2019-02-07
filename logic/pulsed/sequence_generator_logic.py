@@ -1103,7 +1103,7 @@ class SequenceGeneratorLogic(GenericLogic):
             return 0.0, 0, 0
 
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
-        print(info_dict)
+        # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
         ens_lasers = len(info_dict['laser_bins'])
@@ -1135,7 +1135,6 @@ class SequenceGeneratorLogic(GenericLogic):
             number_of_lasers = len(info_dict['laser_bins'])
         else:
             number_of_lasers = -1
-            print(length_s, length_bins, number_of_lasers)
         return length_s, length_bins, number_of_lasers
 
     def analyze_block_ensemble(self, ensemble):
