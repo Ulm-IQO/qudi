@@ -374,9 +374,6 @@ class MagnetGui(GUIBase):
         for axis_label in list(constraints):
             self.get_ref_move_rel_ScienDSpinBox(axis_label).setValue(self._magnet_logic.move_rel_dict[axis_label])
             self.get_ref_move_rel_ScienDSpinBox(axis_label).valueChanged.connect(self.move_rel_para_changed)
-            #print('self.get_ref_move_rel_ScienDSpinBox('+axis_label+').valueChanged.connect(lambda: self.move_rel_changed('+axis_label+'))')
-
-
 
         # General 2d alignment:
         index = self._mw.align_2d_axis0_name_ComboBox.findText(self._magnet_logic.align_2d_axis0_name)

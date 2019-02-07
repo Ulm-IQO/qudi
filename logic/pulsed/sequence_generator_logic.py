@@ -1414,8 +1414,6 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['ideal_length'] = np.sum(ideal_step_length)
         return_dict['laser_bins'] = laser_bins
 
-        for info, data in return_dict.items():
-            print(info, data)
         return return_dict
 
     def _sampling_ensemble_sanity_check(self, ensemble):

@@ -104,7 +104,6 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         if abs(dt) > 10:
             dt = 10*np.sign(dt)
         self.temperature = self.temperature + dt
-        # print(self.temperature, self.pwmpower, heatCapacity)
 
     def metalHeatCapacity(self, T):
         """ Calculate heat capacity of copper at given temperature.
