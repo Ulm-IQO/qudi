@@ -359,12 +359,13 @@ class BasicPulseExtractor(PulseExtractorBase):
         sample_rate = self.sampling_information['pulse_generator_settings']['sample_rate']
         # get the fastcounter binwidth
         fc_binwidth = self.fast_counter_settings['bin_width']
-        # get laser rising bins
-        laser_start_bins = self.sampling_information['digital_rising_bins'][laser_channel]
+        # get laser bins
+        laser_bins = self.sampling_information['laser_bins']
+        laser_start_bins = laser_bins[:, 0]
+        laser_end_bins = laser_bins[:, 1]
+
         # convert to bins of fastcounter
         laser_start_bins = (laser_start_bins / sample_rate / fc_binwidth).astype(int)
-        # get laser falling bins
-        laser_end_bins = self.sampling_information['digital_falling_bins'][laser_channel]
         # convert to bins of fastcounter
         laser_end_bins = (laser_end_bins / sample_rate / fc_binwidth).astype(int)
         # convert to fastcounter bins
@@ -375,7 +376,7 @@ class BasicPulseExtractor(PulseExtractorBase):
         max_laser_length = max(laser_end_bins-laser_start_bins)
         num_col = max_laser_length + 2 * safety_bins
         # compute from laser_start_indices and laser length the respective position of the laser pulses
-        laser_pulses = np.empty((num_rows,num_col))
+        laser_pulses = np.empty((num_rows, num_col))
         for ii in range(num_rows):
             laser_pulses[ii][:] = count_data[np.arange(laser_start_bins[ii] + delay_bins - safety_bins,
                                                        laser_start_bins[ii] + delay_bins + safety_bins + max_laser_length)]

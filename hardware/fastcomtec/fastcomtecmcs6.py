@@ -413,8 +413,11 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        return time_trace
+        runtime, sweeps = self.get_elapsed_time_and_sweeps()
 
+        info_dict = {'elapsed_sweeps': sweeps,
+                     'elapsed_time': runtime}
+        return time_trace, info_dict
 
 
     # =========================================================================
@@ -898,6 +901,14 @@ class FastComtec(Base, FastCounterInterface):
         cmd = 'savempa'
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return filename
+
+    def get_elapsed_time_and_sweeps(self):
+
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        runtime = status.runtime
+        sweeps = status.sweeps
+        return runtime, sweeps
 
 
 

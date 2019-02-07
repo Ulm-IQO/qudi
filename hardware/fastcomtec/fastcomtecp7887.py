@@ -315,7 +315,7 @@ class FastComtec(Base, FastCounterInterface):
 
     def get_current_sweeps(self):
         """
-        Returns the current runtime.
+        Returns the current sweeps.
         @return int sweeps: in sweeps
         """
         status = AcqStatus()
@@ -411,7 +411,9 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        return time_trace
+        info_dict = {'elapsed_sweeps': self.get_current_sweeps(),
+                     'elapsed_time': None}
+        return time_trace, info_dict
 
 
     def get_data_testfile(self):

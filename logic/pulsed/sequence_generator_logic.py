@@ -31,8 +31,8 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from logic.generic_logic import GenericLogic
-from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence, PulseBlockElement
-from logic.pulsed.pulse_objects import PulseObjectGenerator
+from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
 
 
@@ -129,6 +129,8 @@ class SequenceGeneratorLogic(GenericLogic):
         self.__digital_levels = (dict(), dict())  # Tuple of two dict (<low_volt>, <high_volt>)
         # Dict keys are digital channel descriptors
         self.__interleave = False  # Flag to indicate use of interleave
+        # Set of available flags
+        self.__flags = set()
 
         # A flag indicating if sampling of a sequence is in progress
         self.__sequence_generation_in_progress = False
@@ -246,6 +248,7 @@ class SequenceGeneratorLogic(GenericLogic):
         settings_dict['analog_levels'] = tuple(self.__analog_levels)
         settings_dict['digital_levels'] = tuple(self.__digital_levels)
         settings_dict['interleave'] = bool(self.__interleave)
+        settings_dict['flags'] = set(self.__flags)
         return settings_dict
 
     @pulse_generator_settings.setter
@@ -549,6 +552,9 @@ class SequenceGeneratorLogic(GenericLogic):
         # Read interleave flag from device
         self.__interleave = self.pulsegenerator().get_interleave()
 
+        # Read available flags from device
+        self.__flags = set(self.pulsegenerator().get_constraints().flags)
+
         # Notify new settings to listening module
         self.set_pulse_generator_settings()
         return
@@ -628,7 +634,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                      'Will add it but this could lead to unwanted effects.'
                                      ''.format(key))
             # Sanity checks
-            if 'laser_channel' in settings_dict:
+            if settings_dict.get('laser_channel'):
                 if settings_dict['laser_channel'] not in self.__activation_config[1]:
                     self.log.error('Unable to set laser channel "{0}".\nChannel to set is not part '
                                    'of the current channel activation config ({1}).'
@@ -931,16 +937,61 @@ class SequenceGeneratorLogic(GenericLogic):
         @param str sequence_name: The name of the PulseSequence instance to de-serialize
         @return PulseSequence: The de-serialized PulseSequence instance
         """
-        sequence = None
         filepath = os.path.join(self._assets_storage_dir, '{0}.sequence'.format(sequence_name))
         if os.path.exists(filepath):
             try:
                 with open(filepath, 'rb') as file:
                     sequence = pickle.load(file)
+                # FIXME: Due to the pickling the dict namespace merging gets lost on the way.
+                # Restored it here but a better way needs to be found.
+                for step in range(len(sequence)):
+                    sequence[step].__dict__ = sequence[step]
             except pickle.UnpicklingError:
                 self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
                                ''.format(sequence_name))
                 os.remove(filepath)
+                return None
+
+        # Conversion for backwards compatibility
+        if len(sequence) > 0 and not isinstance(sequence[0].flag_high, list):
+            self.log.warning('Loading deprecated PulseSequence instances from disk. '
+                             'Attempting conversion to new format.\nIf you keep getting this '
+                             'message after reloading SequenceGeneratorLogic or restarting qudi, '
+                             'please regenerate the affected PulseSequence "{0}".'
+                             ''.format(sequence_name))
+            for step_no, step_params in enumerate(sequence):
+                # Try to convert "flag_high" step parameter
+                if isinstance(step_params.flag_high, str):
+                    if step_params.flag_high.upper() == 'OFF':
+                        sequence[step_no].flag_high = list()
+                    else:
+                        sequence[step_no].flag_high = [step_params.flag_high]
+                elif isinstance(step_params.flag_high, dict):
+                    sequence[step_no].flag_high = [flag for flag, state in
+                                                   step_params.flag_high.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_high" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+
+                # Try to convert "flag_trigger" step parameter
+                if isinstance(step_params.flag_trigger, str):
+                    if step_params.flag_trigger.upper() == 'OFF':
+                        sequence[step_no].flag_trigger = list()
+                    else:
+                        sequence[step_no].flag_trigger = [step_params.flag_trigger]
+                elif isinstance(step_params.flag_trigger, dict):
+                    sequence[step_no].flag_trigger = [flag for flag, state in
+                                                      step_params.flag_trigger.items() if state]
+                else:
+                    self.log.error('Failed to de-serialize PulseSequence "{0}" from file.'
+                                   '"flag_trigger" step parameter is of unknown type'
+                                   ''.format(sequence_name))
+                    os.remove(filepath)
+                    return None
+            self._save_sequence_to_file(sequence)
         return sequence
 
     def _update_sequences_from_file(self):
@@ -1051,15 +1102,10 @@ class SequenceGeneratorLogic(GenericLogic):
         if len(ensemble) == 0:
             return 0.0, 0, 0
 
-        # Determine the right laser channel to choose. For gated counting it should be the gate
-        # channel instead of the laser trigger.
-        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
-            'gate_channel'] else self.generation_parameters['laser_channel']
-
         info_dict = self.analyze_block_ensemble(ensemble=ensemble)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+        ens_lasers = len(info_dict['laser_bins'])
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1071,11 +1117,6 @@ class SequenceGeneratorLogic(GenericLogic):
         @param PulseSequence sequence: The PulseSequence instance to analyze
         @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
-        # Determine the right laser channel to choose. For gated counting it should be the gate
-        # channel instead of the laser trigger.
-        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
-            'gate_channel'] else self.generation_parameters['laser_channel']
-
         length_bins = 0
         length_s = 0 if sequence.is_finite else np.inf
         number_of_lasers = 0 if sequence.is_finite else -1
@@ -1089,7 +1130,7 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+            ens_lasers = len(info_dict['laser_bins'])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
@@ -1125,26 +1166,37 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
-        # memorize the channel state of the previous element
+        # Determine the right laser channel to choose. For gated counting it should be the gate
+        # channel instead of the laser trigger.
+        laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
+            'gate_channel'] else self.generation_parameters['laser_channel']
+
+        # memorize the digital channel state of the previous element
         tmp_digital_high = dict()
+        # memorize the laser_on flag of the previous element (in case of non-digital laser channel)
+        tmp_laser_on = False
         # Set of used analog and digital channels
         digital_channels = set()
         analog_channels = set()
-        # check for active channels and initialize tmp_digital_high with the state of the very last
-        # element in the ensemble
+        # check for active channels and initialize tmp_digital_high/tmp_laser_on with the state of
+        # the very last element in the ensemble
         if len(ensemble.block_list) > 0:
-            block = self.get_block(ensemble.block_list[0][0])
+            block = self.get_block(ensemble[0][0])
             digital_channels = block.digital_channels
             analog_channels = block.analog_channels
-            block = self.get_block(ensemble.block_list[-1][0])
+            block = self.get_block(ensemble[-1][0])
             if len(block.element_list) > 0:
-                tmp_digital_high = block.element_list[-1].digital_high.copy()
+                tmp_digital_high = block[-1].digital_high.copy()
+                tmp_laser_on = block[-1].laser_on
             else:
                 tmp_digital_high = {chnl: False for chnl in digital_channels}
+                tmp_laser_on = False
 
         # dicts containing the bins where the digital channels are rising/falling
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
+        laser_rising_bins = list()
+        laser_falling_bins = list()
 
         # Array to store the length in bins for all elements including repetitions in the order
         # they are occuring in the waveform later on. (Must be int64 or it will overflow eventually)
@@ -1168,7 +1220,7 @@ class SequenceGeneratorLogic(GenericLogic):
             for rep_no in range(reps + 1):
                 # Iterate over the Block_Elements inside the current block
                 for element in block.element_list:
-                    # save bin position if a transition from low to high or vice versa has occured
+                    # save bin position if a transition from low to high or vice versa has occurred
                     # in a digital channel
                     if tmp_digital_high != element.digital_high:
                         for chnl, state in element.digital_high.items():
@@ -1177,6 +1229,13 @@ class SequenceGeneratorLogic(GenericLogic):
                             elif tmp_digital_high[chnl] and not state:
                                 digital_falling_bins[chnl].append(current_start_bin)
                         tmp_digital_high = element.digital_high.copy()
+
+                    if tmp_laser_on != element.laser_on and not laser_channel.startswith('d'):
+                        if not tmp_laser_on and element.laser_on:
+                            laser_rising_bins.append(current_start_bin)
+                        else:
+                            laser_falling_bins.append(current_start_bin)
+                        tmp_laser_on = element.laser_on
 
                     # Calculate length of the current element with current repetition count in sec
                     # and add this to the ideal end time for the sequence up until this point.
@@ -1196,10 +1255,16 @@ class SequenceGeneratorLogic(GenericLogic):
             # append element lengths (in bins) for this block to array
             elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
 
-        # convert digital rising/falling indices to numpy.ndarrays
+        # convert rising/falling indices to numpy.ndarrays
         for chnl in digital_channels:
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype='int64')
             digital_falling_bins[chnl] = np.array(digital_falling_bins[chnl], dtype='int64')
+        if laser_channel.startswith('d'):
+            laser_bins = np.vstack([digital_rising_bins[laser_channel],
+                                    digital_falling_bins[laser_channel]]).transpose()
+        else:
+            laser_bins = np.array(
+                [laser_rising_bins, laser_falling_bins], dtype='int64').transpose()
 
         return_dict = dict()
         return_dict['number_of_samples'] = np.sum(elements_length_bins)
@@ -1212,6 +1277,7 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return_dict['ideal_length'] = current_end_time
+        return_dict['laser_bins'] = laser_bins
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1267,7 +1333,7 @@ class SequenceGeneratorLogic(GenericLogic):
             info_dict = self.analyze_block_ensemble(ensemble=ensemble)
             ens_bins = info_dict['number_of_samples']
             ens_length = ens_bins / self.__sample_rate
-            ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
+            # ens_lasers = len(info_dict['digital_rising_bins'][laser_channel])
             length_bins += ens_bins
             if sequence.is_finite:
                 length_s += ens_length * (seq_step.repetitions + 1)
@@ -1715,7 +1781,7 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information['waveforms'] = sorted(written_waveforms)
         sequence.sampling_information['step_waveform_list'] = [step[0] for step in
                                                                sequence_param_dict_list]
-        sequence.sampling_information['step_parameters'] = sequence_param_dict_list
+        #sequence.sampling_information['step_parameters'] = sequence_param_dict_list
         self.save_sequence(sequence)
 
         self.log.info('Time needed for sampling and writing PulseSequence {0} to device: {1} sec.'
