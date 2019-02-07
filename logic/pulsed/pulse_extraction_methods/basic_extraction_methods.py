@@ -352,25 +352,23 @@ class BasicPulseExtractor(PulseExtractorBase):
         # get the fastcounter binwidth
         fc_binwidth = self.fast_counter_settings['bin_width']
         # get laser rising and falling bins
-        laser_start_bins = self.sampling_information['laser_bins'][:, 0]
-        laser_end_bins = self.sampling_information['laser_bins'][:, 1]
+        laser_bins = self.sampling_information['laser_bins']
         # convert to bins of fastcounter
-        laser_start_bins = (laser_start_bins / sample_rate / fc_binwidth).astype('int64')
-        laser_end_bins = (laser_end_bins / sample_rate / fc_binwidth).astype('int64')
+        laser_bins = (laser_bins / sample_rate / fc_binwidth).astype('int64')
         # convert to fastcounter bins
         safety_bins = round(safety / fc_binwidth)
         delay_bins = round(delay / fc_binwidth)
         # dimensions of laser pulse array
-        num_rows = len(laser_start_bins)
-        max_laser_length = max(laser_end_bins - laser_start_bins)
+        num_rows = len(laser_bins)
+        max_laser_length = max(laser_bins[:, 1] - laser_bins[:, 0])
         num_col = max_laser_length + 2 * safety_bins
         # compute from laser_start_indices and laser length the respective position of the laser
         # pulses
         laser_pulses = np.empty((num_rows, num_col))
         for ii in range(num_rows):
             laser_pulses[ii][:] = count_data[
-                np.arange(laser_start_bins[ii] + delay_bins - safety_bins,
-                          laser_start_bins[ii] + delay_bins + safety_bins + max_laser_length)]
+                np.arange(laser_bins[ii, 0] + delay_bins - safety_bins,
+                          laser_bins[ii, 0] + delay_bins + safety_bins + max_laser_length)]
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
         return return_dict
