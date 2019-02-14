@@ -546,10 +546,8 @@ class PulserDummy(Base, PulserInterface):
                              description for all the possible status variables
                              of the pulse generator hardware
         """
-        status_dic = {}
-        status_dic[-1] = 'Failed Request or Communication'
-        status_dic[0] = 'Device has stopped, but can receive commands.'
-        status_dic[1] = 'Device is active and running.'
+        status_dic = {-1: 'Failed Request or Communication', 0: 'Device has stopped, but can receive commands.',
+                      1: 'Device is active and running.'}
         # All the other status messages should have higher integer values
         # then 1.
         return self.current_status, status_dic

@@ -58,12 +58,9 @@ class StatusVar:
 
             @param kwargs: Additional or overridden parameters for the constructor of this class
         """
-        newargs = {}
-        newargs['name'] = copy.copy(self.name)
-        newargs['default'] = copy.copy(self.default)
-        newargs['constructor'] = self.constructor_function
-        newargs['representer'] = self.representer_function
-        newargs['var_name'] = copy.copy(self.var_name)
+        newargs = {'name': copy.copy(self.name), 'default': copy.copy(self.default),
+                   'constructor': self.constructor_function, 'representer': self.representer_function,
+                   'var_name': copy.copy(self.var_name)}
         newargs.update(kwargs)
         return StatusVar(**newargs)
 
@@ -133,14 +130,9 @@ class ConfigOption:
 
             @param kwargs: extra arguments or overrides for the constructor of this class
         """
-        newargs = {}
-        newargs['name'] = copy.copy(self.name)
-        newargs['default'] = copy.copy(self.default)
-        newargs['var_name'] = copy.copy(self.var_name)
-        newargs['missing'] = copy.copy(self.missing.name)
-        newargs['constructor'] = self.constructor_function
-        newargs['checker'] = self.checker
-        newargs['converter'] = self.converter
+        newargs = {'name': copy.copy(self.name), 'default': copy.copy(self.default),
+                   'var_name': copy.copy(self.var_name), 'missing': copy.copy(self.missing.name),
+                   'constructor': self.constructor_function, 'checker': self.checker, 'converter': self.converter}
         newargs.update(kwargs)
         return ConfigOption(**newargs)
 
@@ -216,9 +208,7 @@ class Connector:
 
     def copy(self, **kwargs):
         """ Create a new instance of Connector with copied values and update """
-        newargs = {}
-        newargs['name'] = copy.copy(self.name)
-        newargs['interface'] = copy.copy(self.interface)
+        newargs = {'name': copy.copy(self.name), 'interface': copy.copy(self.interface)}
         newargs.update(kwargs)
         return Connector(**newargs)
 

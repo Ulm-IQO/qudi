@@ -99,8 +99,8 @@ class TSYS01SPI(Base, ProcessInterface):
             @param int addr: momory address to read
             @return int: 16bit contents of rom at address
         """
-        bytes = self.READ_ROM0 | 0x0F & ( addr << 1)
-        rbuf = self.spi.xfer( [bytes, 0x00, 0x00] )
+        bytes_to_read = self.READ_ROM0 | 0x0F & ( addr << 1)
+        rbuf = self.spi.xfer( [bytes_to_read, 0x00, 0x00] )
         return 2**8*rbuf[1] + rbuf[2]
 
     def readROM(self):
@@ -143,7 +143,7 @@ class TSYS01SPI(Base, ProcessInterface):
               +  4.0 * self.rom[2] * 10**-16 * adc16**3
               + -2.0 * self.rom[3] * 10**-11 * adc16**2
               +  1.0 * self.rom[4] * 10**-6  * adc16
-              + -1.5 * self.rom[5] * 10**-2 );
+              + -1.5 * self.rom[5] * 10**-2 )
 
     def temperatureKelvin(self, adcValue):
         """ Convert ADC value to Kelvin.
@@ -168,4 +168,4 @@ class TSYS01SPI(Base, ProcessInterface):
 
             @return tuple(str, str): short and text form of process unit
         """
-        return ('K', 'kelvin')
+        return 'K', 'kelvin'

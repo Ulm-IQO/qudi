@@ -40,7 +40,7 @@ SUBMIT_POLICY_MANUAL = 1
 """wait with submitting changes until submit() is called"""
 
 
-class Converter():
+class Converter:
     """
     Class for converting data between display and storage (i.e. widget and
     model).
@@ -76,7 +76,7 @@ class Converter():
         return data
 
 
-class Mapper():
+class Mapper:
     """
     The Mapper connects a Qt widget for displaying and editing certain data
     types with a model property or setter and getter functions. The model can
@@ -354,7 +354,7 @@ class Mapper():
                 value_widget = self._mappings[key][
                     'converter'].widget_to_model(value_widget)
             # accept changes, stop if nothing has changed
-            if (value == value_widget):
+            if value == value_widget:
                 return
 
         # convert value if requested

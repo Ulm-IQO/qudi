@@ -127,7 +127,7 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
 
             @return (float, float): laser current range
         """
-        return (0, 100)
+        return 0, 100
 
     def get_current(self):
         """ Get current laser current

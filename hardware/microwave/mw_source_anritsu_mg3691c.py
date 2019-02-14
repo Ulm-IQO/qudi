@@ -185,7 +185,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             stop = float(self._gpib_connection.query(':LIST:FREQ?').strip('\r\n'))
             self._gpib_connection.write(':LIST:IND 0')
             start = float(self._gpib_connection.query(':LIST:FREQ?').strip('\r\n'))
-            step = (stop - start) / (stop_index)
+            step = (stop - start) / stop_index
             return_val = np.arange(start, stop+step, step)
         return return_val
 
