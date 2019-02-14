@@ -131,8 +131,7 @@ def import_check():
                ('pyqtgraph','pyqtgraph', None),
                ('git','gitpython', None)]
 
-
-    def check_package(pkg_name, repo_name, version, optional=False):
+    def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
         """
         Checks if a package is installed and if so whether it is new enough.
 
@@ -143,9 +142,9 @@ def import_check():
         @return: int, error code either 0 or 4.
         """
         try:
-            module = importlib.import_module(pkg_name)
+            module = importlib.import_module(check_pkg_name)
         except ImportError:
-            if (optional):
+            if optional:
                 additional_text = 'It is recommended to have this package installed. '
             else:
                 additional_text = ''
@@ -153,34 +152,33 @@ def import_check():
                 'No Package "{0}" installed! {2}Perform e.g.\n\n'
                 '    pip install {1}\n\n'
                 'in the console to install the missing package.'.format(
-                    pkg_name,
-                    repo_name,
+                    check_pkg_name,
+                    check_repo_name,
                     additional_text
                     ))
             return 4
-        if (version is not None):
+        if check_version is not None:
             # get package version number
             try:
                 module_version = module.__version__
             except AttributeError:
                 logger.warning('Package "{0}" does not have a __version__ '
                                'attribute. Ignoring version check!'.format(
-                                   pkg_name))
+                                   check_pkg_name))
                 return 0
             # compare version number
-            if (parse_version(module_version) < parse_version(version)):
+            if parse_version(module_version) < parse_version(check_version):
                 logger.error(
                     'Installed package "{0}" has version {1}, but version '
                     '{2} is required. Upgrade e.g. with \n\n'
                     '    pip install --upgrade {3}\n\n'
                     'in the console to upgrade to newest version.'.format(
-                        pkg_name,
+                        check_pkg_name,
                         module_version,
-                        version,
-                        repo_name))
+                        check_version,
+                        check_repo_name))
                 return 4
         return 0
-
 
     err_code = 0
     # check required packages

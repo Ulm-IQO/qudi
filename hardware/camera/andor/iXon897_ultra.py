@@ -576,7 +576,7 @@ class IxonUltra(Base, CameraInterface):
 
         return ERROR_DICT[error_code]
 
-    def _set_frame_transfer(self, bool):
+    def _set_frame_transfer(self, transfer_mode):
         acq_mode = self._acquisition_mode
 
         if (acq_mode == 'SINGLE_SCAN') | (acq_mode == 'KINETIC'):
@@ -584,10 +584,7 @@ class IxonUltra(Base, CameraInterface):
                            'mode \'SINGLE_SCAN\' or \'KINETIC\'.')
             return -1
         else:
-            if bool:
-                rtrn_val = self.dll.SetFrameTransferMode(1)
-            else:
-                rtrn_val = self.dll.SetFrameTransferMode(0)
+            rtrn_val = self.dll.SetFrameTransferMode(transfer_mode)
 
         if ERROR_DICT[rtrn_val] == 'DRV_SUCCESS':
             return 0

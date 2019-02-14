@@ -120,10 +120,10 @@ class QZMQKernel(QtCore.QObject):
         self.engine_id = str(uuid.uuid4())
 
         if config is not None:
-            self.config = config
+            self._config = config
         else:
             logging.info( "Starting simple_kernel with default args...")
-            self.config = {
+            self._config = {
                 'control_port'      : 0,
                 'hb_port'           : 0,
                 'iopub_port'        : 0,
@@ -142,7 +142,7 @@ class QZMQKernel(QtCore.QObject):
         self.signature_schemes = {"hmac-sha256": hashlib.sha256}
         self.auth = hmac.HMAC(
             self.secure_key,
-            digestmod=self.signature_schemes[self.config["signature_scheme"]])
+            digestmod=self.signature_schemes[self._config["signature_scheme"]])
         logging.debug('New Kernel {}'.format(self.engine_id))
 
     @QtCore.Slot()
@@ -150,31 +150,31 @@ class QZMQKernel(QtCore.QObject):
         # Heartbeat:
         self.ctx = zmq.Context()
         self.heartbeat_socket = self.ctx.socket(zmq.REP)
-        self.config["hb_port"] = self.bind(self.heartbeat_socket, self.connection, self.config["hb_port"])
+        self._config["hb_port"] = self.bind(self.heartbeat_socket, self.connection, self._config["hb_port"])
         self.heartbeat_stream = QZMQStream(self.heartbeat_socket)
         # IOPub/Sub:
         # also called SubSocketChannel in IPython sources
         self.iopub_socket = self.ctx.socket(zmq.PUB)
-        self.config["iopub_port"] = self.bind(self.iopub_socket, self.connection, self.config["iopub_port"])
+        self._config["iopub_port"] = self.bind(self.iopub_socket, self.connection, self._config["iopub_port"])
         self.iopub_stream = QZMQStream(self.iopub_socket)
         self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler, QtCore.Qt.QueuedConnection)
         # Control:
         self.control_socket = self.ctx.socket(zmq.ROUTER)
-        self.config["control_port"] = self.bind(self.control_socket, self.connection, self.config["control_port"])
+        self._config["control_port"] = self.bind(self.control_socket, self.connection, self._config["control_port"])
         self.control_stream = QZMQStream(self.control_socket)
         self.control_stream.sigMsgRecvd.connect(self.control_handler, QtCore.Qt.QueuedConnection)
         # Stdin:
         self.stdin_socket = self.ctx.socket(zmq.ROUTER)
-        self.config["stdin_port"] = self.bind(self.stdin_socket, self.connection, self.config["stdin_port"])
+        self._config["stdin_port"] = self.bind(self.stdin_socket, self.connection, self._config["stdin_port"])
         self.stdin_stream = QZMQStream(self.stdin_socket)
         self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler, QtCore.Qt.QueuedConnection)
         # Shell:
         self.shell_socket = self.ctx.socket(zmq.ROUTER)
-        self.config["shell_port"] = self.bind(self.shell_socket, self.connection, self.config["shell_port"])
+        self._config["shell_port"] = self.bind(self.shell_socket, self.connection, self._config["shell_port"])
         self.shell_stream = QZMQStream(self.shell_socket)
         self.shell_stream.sigMsgRecvd.connect(self.shell_handler, QtCore.Qt.QueuedConnection)
 
-        logging.debug("Config: %s" % json.dumps(self.config))
+        logging.debug("Config: %s" % json.dumps(self._config))
 
         self.heartbeat_handler = QZMQHeartbeat(self.heartbeat_stream)
         self.heartbeat_handler.moveToThread(self.hb_thread)
@@ -472,11 +472,8 @@ class QZMQKernel(QtCore.QObject):
         def jdecode(msg):
             return json.loads(msg.decode('ascii'))
 
-        m = {}
-        m['header']        = jdecode(msg_frames[0])
-        m['parent_header'] = jdecode(msg_frames[1])
-        m['metadata']      = jdecode(msg_frames[2])
-        m['content']       = jdecode(msg_frames[3])
+        m = {'header': jdecode(msg_frames[0]), 'parent_header': jdecode(msg_frames[1]),
+             'metadata': jdecode(msg_frames[2]), 'content': jdecode(msg_frames[3])}
         check_sig = self.sign(msg_frames)
         if check_sig != m_signature:
             raise ValueError("Signatures do not match")

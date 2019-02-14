@@ -111,7 +111,7 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
             self.integrated = 0
             self.enable = True
 
-        if (self.enable):
+        if self.enable:
             delta = self.setpoint - self.pv
             self.integrated += delta
             ## Calculate PID controller:
@@ -124,9 +124,9 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
 
             ## limit contol output to maximum permissible limits
             limits = self._control.getControlLimits()
-            if (self.cv > limits[1]):
+            if self.cv > limits[1]:
                 self.cv = limits[1]
-            if (self.cv < limits[0]):
+            if self.cv < limits[0]:
                 self.cv = limits[0]
 
             self.history = np.roll(self.history, -1, axis=1)
@@ -137,9 +137,9 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         else:
             self.cv = self.manualvalue
             limits = self._control.getControlLimits()
-            if (self.cv > limits[1]):
+            if self.cv > limits[1]:
                 self.cv = limits[1]
-            if (self.cv < limits[0]):
+            if self.cv < limits[0]:
                 self.cv = limits[0]
             self.sigNewValue.emit(self.cv)
 
@@ -245,9 +245,9 @@ class SoftPIDController(GenericLogic, PIDControllerInterface):
         """
         self.manualvalue = manualvalue
         limits = self._control.getControlLimits()
-        if (self.manualvalue > limits[1]):
+        if self.manualvalue > limits[1]:
             self.manualvalue = limits[1]
-        if (self.manualvalue < limits[0]):
+        if self.manualvalue < limits[0]:
             self.manualvalue = limits[0]
 
     def get_enabled(self):

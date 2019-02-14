@@ -357,7 +357,7 @@ class FitSettingsComboBox(QtWidgets.QComboBox):
             @return tuple(str, dict): name nad fit dict for current fit
         """
         name = self.currentText()
-        return (name, self.fit_functions[name])
+        return name, self.fit_functions[name]
 
     def setCurrentFit(self, name):
         """ Set current fit by name. 'No Fit' if the name is invalid.

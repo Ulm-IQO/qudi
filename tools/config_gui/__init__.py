@@ -66,7 +66,6 @@ if set_api:
 from qtpy import QtCore
 
 # Make icons work on non-X11 platforms, import a custom theme
-#print('Platform is', sys.platform)
 if sys.platform == 'win32':
     try:
         import ctypes

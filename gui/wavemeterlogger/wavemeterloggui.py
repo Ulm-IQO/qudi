@@ -203,8 +203,8 @@ class WavemeterLogGui(GUIBase):
 
         x_axis = self._wm_logger_logic.histogram_axis
         x_axis_hz = (
-            3.0e17 / (x_axis) 
-            - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
+                3.0e17 / x_axis
+                - 6.0e17 / (self._wm_logger_logic.get_max_wavelength() + self._wm_logger_logic.get_min_wavelength())
             )
 
         plotdata = np.array(self._wm_logger_logic.counts_with_wavelength)

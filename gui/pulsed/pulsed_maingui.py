@@ -1372,10 +1372,10 @@ class PulsedMeasurementGui(GUIBase):
             config_name = settings_dict['activation_config'][0]
             digital_channels = sorted(
                 (ch for ch in settings_dict['activation_config'][1] if ch.startswith('d')),
-                key=lambda chnl: int(chnl.split('ch')[-1]))
+                key=lambda channel: int(channel.split('ch')[-1]))
             analog_channels = sorted(
                 (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')),
-                key=lambda chnl: int(chnl.split('ch')[-1]))
+                key=lambda channel: int(channel.split('ch')[-1]))
             index = self._pgs.gen_activation_config_ComboBox.findText(config_name)
             self._pgs.gen_activation_config_ComboBox.setCurrentIndex(index)
             digital_str = str(digital_channels).strip('[]').replace('\'', '').replace(',', ' |')

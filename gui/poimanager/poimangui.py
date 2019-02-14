@@ -111,7 +111,7 @@ class PoiMark(pg.CircleROI):
 
             if cos_th > 0 and sin_th > 0:
                 my_anchor = (0, 1)
-            elif cos_th > 0 and sin_th < 0:
+            elif cos_th > 0 > sin_th:
                 my_anchor = (0, 0)
             elif cos_th < 0 and sin_th < 0:
                 my_anchor = (1, 0)
