@@ -282,7 +282,7 @@ def make_lorentziantriple_model(self):
 ################################################################################
 
 def make_lorentzian_fit(self, x_axis, data, estimator, units=None,
-                        add_params=None):
+                        add_params=None, **kwargs):
     """ Perform a 1D lorentzian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
