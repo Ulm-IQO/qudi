@@ -297,6 +297,7 @@ class FitContainer(QtCore.QObject):
         self.current_fit = 'No Fit'
         self.current_fit_param = lmfit.parameter.Parameters()
         self.current_fit_result = None
+        self.use_settings = None
         self.units = ['independent variable {0}'.format(i+1) for i in range(self.dim)]
         self.units.append('dependent variable')
 
@@ -354,8 +355,18 @@ class FitContainer(QtCore.QObject):
             self.current_fit = 'No Fit'
         else:
             self.current_fit = current_fit
+            if current_fit != 'No Fit':
+                use_settings = self.fit_list[self.current_fit]['use_settings']
+                self.use_settings = lmfit.parameter.Parameters()
+                # Update the use parameter dictionary
+                for para in use_settings:
+                    if use_settings[para]:
+                        self.use_settings[para]=self.fit_list[self.current_fit]['parameters'][para]
+            else:
+                self.use_settings=None
         self.clear_result()
         self.sigCurrentFit.emit(self.current_fit)
+        return self.current_fit, self.use_settings
 
     def do_fit(self, x_data, y_data):
         """Performs the chosen fit on the measured data.
@@ -395,7 +406,7 @@ class FitContainer(QtCore.QObject):
             'x_axis': x_data,
             'data': y_data,
             'units': self.units,
-            'add_params': None}
+            'add_params': self.use_settings}
 
         result = None
 
