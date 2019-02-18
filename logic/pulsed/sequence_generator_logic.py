@@ -1323,9 +1323,6 @@ class SequenceGeneratorLogic(GenericLogic):
                 block = self.get_block(ensemble[0][0])
                 digital_channels = block.digital_channels
                 analog_channels = block.analog_channels
-                if len(block) > 0:
-                    first_digital_channel_state = block[0].digital_high.copy()
-                    first_laser_on_state = block[0].laser_on
             ensemble = self.get_ensemble(sequence[-1].ensemble)
             if len(ensemble) > 0:
                 block = self.get_block(ensemble[-1][0])
@@ -1346,11 +1343,9 @@ class SequenceGeneratorLogic(GenericLogic):
         digital_rising_bins = {chnl: list() for chnl in digital_channels}
         digital_falling_bins = {chnl: list() for chnl in digital_channels}
         ensemble_name_set = set()
-        prev_step_digital_state = last_digital_channel_state
-        prev_step_laser_on_state = last_laser_on_state
-        step_first_digital_state = dict()
+        # Initialize the last channel state of the first sequence step as last channel state in the
+        # entire sequence.
         step_last_digital_state = last_digital_channel_state
-        step_first_laser_on_state = False
         step_last_laser_on_state = last_laser_on_state
 
         for step_no, seq_step in enumerate(sequence):
@@ -1363,6 +1358,7 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble_name_set.add(ensemble.name)
             reps = seq_step.repetitions + 1
             ens_bins = info_dict['number_of_samples']
+            # Keep track of channel states at sequence step boundaries
             prev_step_digital_state = step_last_digital_state.copy()
             prev_step_laser_on_state = step_last_laser_on_state
             tmp_block = self.get_block(ensemble[0][0])
