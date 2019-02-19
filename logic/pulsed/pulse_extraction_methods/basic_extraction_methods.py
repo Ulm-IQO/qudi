@@ -354,6 +354,20 @@ class BasicPulseExtractor(PulseExtractorBase):
         # get laser rising and falling bins
         laser_rising_bins = self.sampling_information['laser_rising_bins']
         laser_falling_bins = self.sampling_information['laser_falling_bins']
+
+        # Sort out trailing or leading incomplete laser pulse
+        while len(laser_rising_bins) != len(laser_falling_bins):
+            if len(laser_rising_bins) > len(laser_falling_bins):
+                if laser_rising_bins[-1] >= laser_falling_bins[-1]:
+                    laser_rising_bins = laser_rising_bins[:-1]
+                else:
+                    laser_rising_bins = laser_rising_bins[1:]
+            else:
+                if laser_rising_bins[0] >= laser_falling_bins[0]:
+                    laser_falling_bins = laser_falling_bins[1:]
+                else:
+                    laser_falling_bins = laser_falling_bins[:-1]
+
         # convert to bins of fastcounter
         laser_rising_bins = np.rint(laser_rising_bins / sample_rate / fc_binwidth).astype('int64')
         laser_falling_bins = np.rint(laser_falling_bins / sample_rate / fc_binwidth).astype('int64')
