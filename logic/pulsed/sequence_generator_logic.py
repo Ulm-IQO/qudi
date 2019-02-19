@@ -1180,12 +1180,12 @@ class SequenceGeneratorLogic(GenericLogic):
         analog_channels = set()
         # check for active channels and initialize tmp_digital_high/tmp_laser_on with the state of
         # the very last element in the ensemble
-        if len(ensemble.block_list) > 0:
+        if len(ensemble) > 0:
             block = self.get_block(ensemble[0][0])
             digital_channels = block.digital_channels
             analog_channels = block.analog_channels
             block = self.get_block(ensemble[-1][0])
-            if len(block.element_list) > 0:
+            if len(block) > 0:
                 tmp_digital_high = block[-1].digital_high.copy()
                 tmp_laser_on = block[-1].laser_on
             else:
@@ -1199,27 +1199,22 @@ class SequenceGeneratorLogic(GenericLogic):
         laser_falling_bins = list()
 
         # Array to store the length in bins for all elements including repetitions in the order
-        # they are occuring in the waveform later on. (Must be int64 or it will overflow eventually)
-        elements_length_bins = np.empty(0, dtype='int64')
+        # they are occuring in the waveform later on.
+        elements_length_bins = list()
 
         # variables to keep track of the current timeframe
         current_end_time = 0.0
         current_start_bin = 0
 
-        # Loop through all blocks in the ensemble block_list
-        for block_name, reps in ensemble.block_list:
+        # Loop through all blocks in the ensemble
+        for block_name, reps in ensemble:
             # Get the stored PulseBlock instance
             block = self.get_block(block_name)
 
-            # Temporary array to hold the length in bins for all elements in the block (incl. reps)
-            tmp_length_bins = np.zeros((reps + 1) * len(block.element_list), dtype='int64')
-
-            # Iterate over all repetitions of the current block while keeping track of the
-            # current element index
-            unrolled_element_index = 0
+            # Iterate over all repetitions of the current block
             for rep_no in range(reps + 1):
                 # Iterate over the Block_Elements inside the current block
-                for element in block.element_list:
+                for element in block:
                     # save bin position if a transition from low to high or vice versa has occurred
                     # in a digital channel
                     if tmp_digital_high != element.digital_high:
@@ -1230,7 +1225,7 @@ class SequenceGeneratorLogic(GenericLogic):
                                 digital_falling_bins[chnl].append(current_start_bin)
                         tmp_digital_high = element.digital_high.copy()
 
-                    if tmp_laser_on != element.laser_on and not laser_channel.startswith('d'):
+                    if not laser_channel.startswith('d') and tmp_laser_on != element.laser_on:
                         if not tmp_laser_on and element.laser_on:
                             laser_rising_bins.append(current_start_bin)
                         else:
@@ -1245,15 +1240,12 @@ class SequenceGeneratorLogic(GenericLogic):
                     current_end_bin = int(np.rint(current_end_time * self.__sample_rate))
 
                     # append current element length in discrete bins to temporary array
-                    tmp_length_bins[unrolled_element_index] = current_end_bin - current_start_bin
+                    elements_length_bins.append(current_end_bin - current_start_bin)
 
                     # advance bin offset for next element
                     current_start_bin = current_end_bin
-                    # increment element counter
-                    unrolled_element_index += 1
 
-            # append element lengths (in bins) for this block to array
-            elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
+        elements_length_bins = np.array(elements_length_bins, dtype='int64')
 
         # convert rising/falling indices to numpy.ndarrays. Remove duplicates.
         for chnl in digital_channels:
