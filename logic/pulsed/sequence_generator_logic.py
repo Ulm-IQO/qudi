@@ -1106,7 +1106,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # print(info_dict)
         ens_bins = info_dict['number_of_samples']
         ens_length = ens_bins / self.__sample_rate
-        ens_lasers = len(info_dict['laser_bins'])
+        ens_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
         return ens_length, ens_bins, ens_lasers
 
     def get_sequence_info(self, sequence):
@@ -1132,7 +1132,7 @@ class SequenceGeneratorLogic(GenericLogic):
         elif sequence.is_finite:
             self.log.debug('Analog or no laser channel used. '
                            'Given laser_channel: "{0}"'.format(laser_channel))
-            number_of_lasers = len(info_dict['laser_bins'])
+            number_of_lasers = min(len(info_dict['laser_rising_bins']), len(info_dict['laser_falling_bins']))
         else:
             number_of_lasers = -1
         return length_s, length_bins, number_of_lasers
@@ -1255,16 +1255,18 @@ class SequenceGeneratorLogic(GenericLogic):
             # append element lengths (in bins) for this block to array
             elements_length_bins = np.append(elements_length_bins, tmp_length_bins)
 
-        # convert rising/falling indices to numpy.ndarrays
+        # convert rising/falling indices to numpy.ndarrays. Remove duplicates.
         for chnl in digital_channels:
+            digital_rising_bins[chnl] = sorted(set(digital_rising_bins[chnl]))
+            digital_falling_bins[chnl] = sorted(set(digital_falling_bins[chnl]))
             digital_rising_bins[chnl] = np.array(digital_rising_bins[chnl], dtype='int64')
             digital_falling_bins[chnl] = np.array(digital_falling_bins[chnl], dtype='int64')
         if laser_channel.startswith('d'):
-            laser_bins = np.vstack([digital_rising_bins[laser_channel],
-                                    digital_falling_bins[laser_channel]]).transpose()
+            laser_rising_bins = digital_rising_bins[laser_channel]
+            laser_falling_bins = digital_falling_bins[laser_channel]
         else:
-            laser_bins = np.array(
-                [laser_rising_bins, laser_falling_bins], dtype='int64').transpose()
+            laser_rising_bins = np.array(sorted(set(laser_rising_bins)), dtype='int64')
+            laser_falling_bins = np.array(sorted(set(laser_falling_bins)), dtype='int64')
 
         return_dict = dict()
         return_dict['number_of_samples'] = np.sum(elements_length_bins)
@@ -1277,7 +1279,8 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['channel_set'] = analog_channels.union(digital_channels)
         return_dict['generation_parameters'] = self.generation_parameters.copy()
         return_dict['ideal_length'] = current_end_time
-        return_dict['laser_bins'] = laser_bins
+        return_dict['laser_rising_bins'] = laser_rising_bins
+        return_dict['laser_falling_bins'] = laser_falling_bins
         return return_dict
 
     def analyze_sequence(self, sequence):
@@ -1408,8 +1411,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 if laser_channel.startswith('d'):
                     for iteration in range(reps):
                         bin_offset = iteration * ens_bins + starting_bin
-                        rising_bins = info_dict['laser_bins'][:, 0] + bin_offset
-                        falling_bins = info_dict['laser_bins'][:, 1] + bin_offset
+                        rising_bins = info_dict['laser_rising_bins'] + bin_offset
+                        falling_bins = info_dict['laser_falling_bins'] + bin_offset
                         if iteration == 0 and prev_step_laser_on_state != step_last_laser_on_state:
                             if prev_step_laser_on_state and not step_first_laser_on_state:
                                 falling_bins = np.append(bin_offset, falling_bins)
@@ -1429,21 +1432,37 @@ class SequenceGeneratorLogic(GenericLogic):
         # Concatenate all bin arrays in the respective lists to a single large array.
         for channel in digital_channels:
             if digital_rising_bins[channel]:
-                digital_rising_bins[channel] = np.concatenate(digital_rising_bins[channel])
+                digital_rising_bins[channel] = np.unique(np.concatenate(digital_rising_bins[channel]))
             else:
                 digital_rising_bins[channel] = np.empty(0, dtype='int64')
             if digital_falling_bins[channel]:
-                digital_falling_bins[channel] = np.concatenate(digital_falling_bins[channel])
+                digital_falling_bins[channel] = np.unique(np.concatenate(digital_falling_bins[channel]))
             else:
                 digital_falling_bins[channel] = np.empty(0, dtype='int64')
 
         if laser_channel.startswith('d'):
-            laser_bins = np.vstack([digital_rising_bins[laser_channel],
-                                    digital_falling_bins[laser_channel]]).transpose()
+            laser_rising_bins = digital_rising_bins[laser_channel]
+            laser_falling_bins = digital_falling_bins[laser_channel]
         else:
-            laser_rising_bins = np.concatenate(laser_rising_bins) if laser_rising_bins else np.empty(0, dtype='int64')
-            laser_falling_bins = np.concatenate(laser_falling_bins) if laser_falling_bins else np.empty(0, dtype='int64')
-            laser_bins = np.vstack((laser_rising_bins, laser_falling_bins)).transpose()
+            laser_rising_bins = np.unique(np.concatenate(laser_rising_bins)) if laser_rising_bins else np.empty(0, dtype='int64')
+            laser_falling_bins = np.unique(np.concatenate(laser_falling_bins)) if laser_falling_bins else np.empty(0, dtype='int64')
+
+        # Sort out trailing or leading incomplete laser pulse
+        while len(laser_rising_bins) != len(laser_falling_bins):
+            if len(laser_rising_bins) > len(laser_falling_bins):
+                if laser_rising_bins[-1] >= laser_falling_bins[-1]:
+                    laser_rising_bins = laser_rising_bins[:-1]
+                else:
+                    laser_rising_bins = laser_rising_bins[1:]
+            else:
+                if laser_rising_bins[0] >= laser_falling_bins[0]:
+                    laser_falling_bins = laser_falling_bins[1:]
+                else:
+                    laser_falling_bins = laser_falling_bins[:-1]
+            self.log.warning('Incomplete trailing or leading laser pulses detected in sequence '
+                             '"{0}". Removed corresponding unpaired rising/falling flank from '
+                             'laser_rising/falling_bins array.\nThis can happen if the sequence '
+                             'starts and ends with an active laser pulse'.format(sequence.name))
 
         return_dict = dict()
         return_dict['digital_channels'] = digital_channels
@@ -1462,7 +1481,8 @@ class SequenceGeneratorLogic(GenericLogic):
         return_dict['elements_length_bins_per_step'] = step_elements_length_bins
         return_dict['ideal_length_per_step'] = ideal_step_length
         return_dict['ideal_length'] = np.sum(ideal_step_length)
-        return_dict['laser_bins'] = laser_bins
+        return_dict['laser_rising_bins'] = laser_rising_bins
+        return_dict['laser_falling_bins'] = laser_falling_bins
 
         return return_dict
 
