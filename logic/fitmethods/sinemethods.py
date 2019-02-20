@@ -619,8 +619,8 @@ def make_sine_fit(self, x_axis, data, estimator, units=None, add_params=None):
                                     'error': result.params['frequency'].stderr,
                                     'unit': 'Hz' if units[0] == 's' else '1/' + units[0]}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -697,6 +697,27 @@ def estimate_sine_cosine(self, x_axis, data, params):
 
     return error, params
 
+def estimate_sine_360(self, x_axis, data, params):
+    """ Provides an estimator to obtain initial values for cosine fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error, params = self.estimate_sine(x_axis=x_axis, data=data, params=params)
+
+    params['frequency'].set(value=1.0/360.0, vary=False)
+
+    return error, params
+
 ##########################
 # Sine exponential decay #
 ##########################
@@ -766,8 +787,8 @@ def make_sineexponentialdecay_fit(self, x_axis, data, estimator, units=None, add
                                              result.params['amplitude'].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -941,8 +962,8 @@ def make_sinestretchedexponentialdecay_fit(self, x_axis, data, estimator, units=
                                              result.params['amplitude'].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase'] = {'value': result.params['phase'].value,
-                                'error': result.params['phase'].stderr,
+    result_str_dict['Phase'] = {'value': 180/np.pi*result.params['phase'].value,
+                                'error': 180/np.pi*result.params['phase'].stderr,
                                 'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1081,12 +1102,12 @@ def make_sinedouble_fit(self, x_axis, data, estimator, units=None, add_params=No
                                              result.params[amp_string].stderr))*100,
                                    'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1236,12 +1257,12 @@ def make_sinedoublewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1406,12 +1427,12 @@ def make_sinedoublewithtwoexpdecay_fit(self, x_axis, data, estimator, units=None
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
-                                  'error': result.params['e1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['e1_phase'].value,
+                                  'error': 180/np.pi*result.params['e1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
-                                  'error': result.params['e2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['e2_phase'].value,
+                                  'error': 180/np.pi*result.params['e2_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,
@@ -1609,16 +1630,16 @@ def make_sinetriple_fit(self, x_axis, data, estimator, units=None, add_params=No
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
-                                  'error': result.params['s3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['s3_phase'].value,
+                                  'error': 180/np.pi*result.params['s3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Offset'] = {'value': result.params['offset'].value,
@@ -1804,16 +1825,16 @@ def make_sinetriplewithexpdecay_fit(self, x_axis, data, estimator, units=None, a
                                                result.params[amp_string].stderr))*100,
                                      'unit': '%'}
 
-    result_str_dict['Phase 1'] = {'value': result.params['s1_phase'].value,
-                                  'error': result.params['s1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['s1_phase'].value,
+                                  'error': 180/np.pi*result.params['s1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['s2_phase'].value,
-                                  'error': result.params['s2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['s2_phase'].value,
+                                  'error': 180/np.pi*result.params['s2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['s3_phase'].value,
-                                  'error': result.params['s3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['s3_phase'].value,
+                                  'error': 180/np.pi*result.params['s3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime'] = {'value': result.params['lifetime'].value,
@@ -2019,16 +2040,16 @@ def make_sinetriplewiththreeexpdecay_fit(self, x_axis, data, estimator, units=No
                                      'unit': '%'}
 
 
-    result_str_dict['Phase 1'] = {'value': result.params['e1_phase'].value,
-                                  'error': result.params['e1_phase'].stderr,
+    result_str_dict['Phase 1'] = {'value': 180/np.pi*result.params['e1_phase'].value,
+                                  'error': 180/np.pi*result.params['e1_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 2'] = {'value': result.params['e2_phase'].value,
-                                  'error': result.params['e2_phase'].stderr,
+    result_str_dict['Phase 2'] = {'value': 180/np.pi*result.params['e2_phase'].value,
+                                  'error': 180/np.pi*result.params['e2_phase'].stderr,
                                   'unit': 'deg'}
 
-    result_str_dict['Phase 3'] = {'value': result.params['e3_phase'].value,
-                                  'error': result.params['e3_phase'].stderr,
+    result_str_dict['Phase 3'] = {'value': 180/np.pi*result.params['e3_phase'].value,
+                                  'error': 180/np.pi*result.params['e3_phase'].stderr,
                                   'unit': 'deg'}
 
     result_str_dict['Lifetime 1'] = {'value': result.params['e1_lifetime'].value,

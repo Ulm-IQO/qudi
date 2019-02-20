@@ -361,7 +361,7 @@ class FitContainer(QtCore.QObject):
         self.clear_result()
         self.sigCurrentFit.emit(self.current_fit)
 
-    def do_fit(self, x_data, y_data):
+    def do_fit(self, x_data, y_data, add_params=None):
         """Performs the chosen fit on the measured data.
         @param array x_data: optional, 1D np.array or 1D list with the x values.
                              If None is passed then the module x values are
@@ -399,7 +399,7 @@ class FitContainer(QtCore.QObject):
             'x_axis': x_data,
             'data': y_data,
             'units': self.units,
-            'add_params': None}
+            'add_params': add_params}
 
         result = None
 

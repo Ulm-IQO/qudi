@@ -162,8 +162,6 @@ class BOARDSETTING(ctypes.Structure):
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
-    stable: Jochen Scheuer, Simon Schmitt
-
     Example config for copy-paste:
 
     fastcomtec_mcs6:
@@ -416,7 +414,7 @@ class FastComtec(Base, FastCounterInterface):
         runtime, sweeps = self.get_elapsed_time_and_sweeps()
 
         info_dict = {'elapsed_sweeps': sweeps,
-                     'elapsed_time': runtime}
+                     'elapsed_time': None}
         return time_trace, info_dict
 
 

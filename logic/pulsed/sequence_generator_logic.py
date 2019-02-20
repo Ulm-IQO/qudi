@@ -1468,8 +1468,8 @@ class SequenceGeneratorLogic(GenericLogic):
         # Make sure the length of the channel is a multiple of the step size.
         # This is done by appending an idle block
         granularity = self.pulse_generator_constraints.waveform_length.step
-        self.log.debug('length: {0}, mod {1}'.format(
-            ensemble_info['number_of_samples'], ensemble_info['number_of_samples'] % granularity))
+        #self.log.debug('length: {0}, mod {1}'.format(
+        #    ensemble_info['number_of_samples'], ensemble_info['number_of_samples'] % granularity))
         if ensemble_info['number_of_samples'] % granularity != 0:
             self.log.warn('Length {0} does not fulfil step constraint {1}.'.format(
                 ensemble_info['number_of_samples'], granularity))
@@ -1500,9 +1500,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                'samples is {1:d}.\nThis is probably due to a rounding error in '
                                'SequenceGeneratorLogic.sample_pulse_block_ensemble.'
                                ''.format(target_total_samples, ensemble_info['number_of_samples']))
-            else:
-                self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
-                    ensemble.name, ensemble_info['number_of_samples'], extension_samples))
+            #else:
+                #self.log.warn('Extending waveform {0} by {2} bins. New length {1}.'.format(
+                 #   ensemble.name, ensemble_info['number_of_samples'], extension_samples))
 
         # Calculate the byte size per sample.
         # One analog sample per channel is 4 bytes (np.float32) and one digital sample per channel
