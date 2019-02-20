@@ -61,7 +61,6 @@ class MagnetLogic(GenericLogic):
     drastic changes.
 
     ---
-    Alexander Stark, Simon Schmitt
     """
 
 

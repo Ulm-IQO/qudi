@@ -23,6 +23,7 @@ import numpy as np
 from scipy import ndimage
 
 from logic.pulsed.pulse_extractor import PulseExtractorBase
+from scipy.signal import argrelextrema
 
 
 class BasicPulseExtractor(PulseExtractorBase):
