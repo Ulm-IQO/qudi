@@ -729,7 +729,7 @@ class MagnetLogic(GenericLogic):
         self._control_dict = {}
         pos_dict = self.get_pos()
         key_set1 = set(pos_dict.keys())
-        key_set2 = set([self.align_2d_axis1_name, self.align_2d_axis0_name])
+        key_set2 = {self.align_2d_axis1_name, self.align_2d_axis0_name}
         key_complement = key_set1 - key_set2
         self._control_dict = {key : pos_dict[key] for key in key_complement}
 

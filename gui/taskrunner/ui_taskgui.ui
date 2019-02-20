@@ -29,7 +29,7 @@
      <x>0</x>
      <y>0</y>
      <width>730</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuTaskrunner">
@@ -40,7 +40,6 @@
    </widget>
    <addaction name="menuTaskrunner"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QToolBar" name="toolBar">
    <property name="enabled">
     <bool>true</bool>

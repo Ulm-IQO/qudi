@@ -20,11 +20,10 @@
      <x>0</x>
      <y>0</y>
      <width>877</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="dockWidget_2">
    <property name="windowTitle">
     <string>Nuclear Operations Parameter</string>

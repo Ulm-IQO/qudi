@@ -419,8 +419,8 @@ def N14_testing():
     # integral of data corresponds to sqrt(2) * Amplitude * Sigma
 
     smoothing_spline = 1    # must be 1<= smoothing_spline <= 5
-    function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
-    integrated_area = function.integral(x_axis[0], x_axis[-1])
+    fit_function = InterpolatedUnivariateSpline(x_axis, data_level, k=smoothing_spline)
+    integrated_area = fit_function.integral(x_axis[0], x_axis[-1])
 
     # sigma = abs(integrated_area / (minimum_level/np.pi))
     # That is wrong, so commenting out:

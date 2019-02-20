@@ -412,7 +412,7 @@ class FastComtec(Base, FastCounterInterface):
             time_trace = time_trace + self.timetrace_tmp
 
         info_dict = {'elapsed_sweeps': self.get_current_sweeps(),
-                     'elapsed_time': None}
+                     'elapsed_time': None} 
         return time_trace, info_dict
 
 
