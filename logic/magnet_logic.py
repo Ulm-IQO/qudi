@@ -201,7 +201,6 @@ class MagnetLogic(GenericLogic):
 
         self._gc_logic = self.gatedcounterlogic()
         self._ta_logic = self.traceanalysis()
-        # self._odmr_logic = self.odmrlogic()
 
         self._seq_gen_logic = self.sequencegeneratorlogic()
 
@@ -401,7 +400,6 @@ class MagnetLogic(GenericLogic):
                                  to one of the axis.
         """
         self.sigVelChanged.emit()
-        # self._magnet_device.set_velocity(param_dict)
         return param_dict
 
     def _create_1d_pathway(self, axis_name, axis_range, axis_step, axis_vel):
@@ -720,10 +718,6 @@ class MagnetLogic(GenericLogic):
         self._2d_error = []
         self._2d_measured_fields = []
         self._2d_intended_fields = []
-
-        # self.log.debug("contro_dict {0}".format(self._control_dict))
-
-
 
         # save only the position of the axis, which are going to be moved
         # during alignment, the return will be a dict!

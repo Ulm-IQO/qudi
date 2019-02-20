@@ -1078,13 +1078,13 @@ class MagnetGui(GUIBase):
 
         @return dict: Passed move relative parameter
         """
-        dict={}
-        axes=list(self._magnet_logic.get_hardware_constraints())
+        return_dict = dict()
+        axes = list(self._magnet_logic.get_hardware_constraints())
         for axis_label in axes:
             dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
-            dict[axis_label]=dspinbox.value()
-        self._magnet_logic.set_move_rel_para(dict)
-        return dict
+            return_dict[axis_label]=dspinbox.value()
+        self._magnet_logic.set_move_rel_para(return_dict)
+        return return_dict
 
     def align_2d_axis0_name_changed(self):
         """ Pass the current GUI value to the logic
@@ -1100,9 +1100,9 @@ class MagnetGui(GUIBase):
 
         @return float: Passed range
         """
-        range = self._mw.align_2d_axis0_range_DSpinBox.value()
-        self._magnet_logic.set_align_2d_axis0_range(range)
-        return range
+        axis_range = self._mw.align_2d_axis0_range_DSpinBox.value()
+        self._magnet_logic.set_align_2d_axis0_range(axis_range)
+        return axis_range
 
     def align_2d_axis0_step_changed(self):
         """ Pass the current GUI value to the logic
@@ -1136,9 +1136,9 @@ class MagnetGui(GUIBase):
 
         @return float: Passed range
         """
-        range = self._mw.align_2d_axis1_range_DSpinBox.value()
-        self._magnet_logic.set_align_2d_axis1_range(range)
-        return range
+        axis_range = self._mw.align_2d_axis1_range_DSpinBox.value()
+        self._magnet_logic.set_align_2d_axis1_range(axis_range)
+        return axis_range
 
     def align_2d_axis1_step_changed(self):
         """ Pass the current GUI value to the logic
@@ -1459,10 +1459,6 @@ class MagnetGui(GUIBase):
                                                            axis0_array[-1] - axis0_array[0] + step0,
                                                            axis1_array[-1] - axis1_array[0] + step1, ))
 
-        # self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0_array[0],
-        #                                                    axis1_array[0],
-        #                                                    axis0_array[-1]-axis0_array[0],
-        #                                                    axis1_array[-1]-axis1_array[0],))
 
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
@@ -1617,20 +1613,19 @@ class MagnetGui(GUIBase):
 
         return 0
 
-
-    def update_move_rel_para(self,dict):
+    def update_move_rel_para(self, parameters):
         """ The GUT is updated taking dict into account. Thereby no signal is triggered!
 
         @params dictionary: Dictionary containing the values to update
 
         @return dictionary: Dictionary containing the values to update
          """
-        for axis_label in dict:
+        for axis_label in parameters:
             dspinbox = self.get_ref_move_rel_ScienDSpinBox(axis_label)
             dspinbox.blockSignals(True)
-            dspinbox.setValue(dict[axis_label])
+            dspinbox.setValue(parameters[axis_label])
             dspinbox.blockSignals(False)
-        return dict
+        return parameters
 
     def update_roi_from_range(self):
         """
@@ -1656,7 +1651,7 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis0_name_ComboBox.blockSignals(False)
         return axisname
 
-    def update_align_2d_axis0_range(self,range):
+    def update_align_2d_axis0_range(self, axis_range):
         """ The GUT is updated taking range into account. Thereby no signal is triggered!
 
         @params float: Range to update
@@ -1664,11 +1659,11 @@ class MagnetGui(GUIBase):
         @return float: Range to update
          """
         self._mw.align_2d_axis0_range_DSpinBox.blockSignals(True)
-        self._mw.align_2d_axis0_range_DSpinBox.setValue(range)
+        self._mw.align_2d_axis0_range_DSpinBox.setValue(axis_range)
         self._mw.align_2d_axis0_range_DSpinBox.blockSignals(False)
-        return range
+        return axis_range
 
-    def update_align_2d_axis0_step(self,step):
+    def update_align_2d_axis0_step(self, step):
         """ The GUT is updated taking step into account. Thereby no signal is triggered!
 
         @params float: Step to update in m
@@ -1705,7 +1700,7 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis1_name_ComboBox.blockSignals(False)
         return index
 
-    def update_align_2d_axis1_range(self, range):
+    def update_align_2d_axis1_range(self, axis_range):
         """ The GUT is updated taking range into account. Thereby no signal is triggered!
 
         @params float: Range to update
@@ -1713,9 +1708,9 @@ class MagnetGui(GUIBase):
         @return float: Range to update
          """
         self._mw.align_2d_axis1_range_DSpinBox.blockSignals(True)
-        self._mw.align_2d_axis1_range_DSpinBox.setValue(range)
+        self._mw.align_2d_axis1_range_DSpinBox.setValue(axis_range)
         self._mw.align_2d_axis1_range_DSpinBox.blockSignals(False)
-        return range
+        return axis_range
 
     def update_align_2d_axis1_step(self, step):
         """ The GUT is updated taking step into account. Thereby no signal is triggered!
@@ -1766,18 +1761,4 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_fluorescence_integrationtime_DSpinBox.blockSignals(False)
         return time
 
-    # def get_ref_curr_pos_ScienDSpinBox(self, label):
-    #     """ Get the reference to the double spin box for the passed label. """
-    #
-    #     dspinbox_name = 'curr_pos_axis{0}_ScienDSpinBox'.format(label)
-    #     dspinbox_ref = getattr(self._mw, dspinbox_name)
-    #     return dspinbox_ref
-    #
-    #
-    # def get_ref_move_rel_ScienDSpinBox(self, label):
-    #     """ Get the reference to the double spin box for the passed label. """
-    #
-    #     dspinbox_name = 'move_rel_axis_{0}_ScienDSpinBox'.format(label)
-    #     dspinbox_ref = getattr(self._mw, dspinbox_name)
-    #     return dspinbox_ref
 
