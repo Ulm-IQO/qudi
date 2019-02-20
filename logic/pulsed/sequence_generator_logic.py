@@ -1312,6 +1312,9 @@ class SequenceGeneratorLogic(GenericLogic):
         # Determine channel activation and the channel states of the very first and last element
         digital_channels = set()
         analog_channels = set()
+        last_digital_channel_state = {chnl: False for chnl in digital_channels}
+        last_laser_on_state = False
+
         if len(sequence) > 0:
             ensemble = self.get_ensemble(sequence[0].ensemble)
             if len(ensemble) > 0:
@@ -1400,7 +1403,7 @@ class SequenceGeneratorLogic(GenericLogic):
 
                 # Append laser_bins arrays with bin offsets for each repetition analogous to the
                 # digital channels above.
-                if laser_channel.startswith('d'):
+                if not laser_channel.startswith('d'):
                     for iteration in range(reps):
                         bin_offset = iteration * ens_bins + starting_bin
                         rising_bins = info_dict['laser_rising_bins'] + bin_offset
