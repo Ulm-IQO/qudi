@@ -429,11 +429,12 @@ def estimate_lorentzian_peak (self, x_axis, data, params):
 
     return error, params
 
+
 ################################################################################
 #                   Double Lorentzian with offset fitting                      #
 ################################################################################
 
-def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_lorentziandouble_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a 1D double lorentzian dip fit with offset on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -651,36 +652,6 @@ def estimate_lorentziandouble_peak(self, x_axis, data, params,
     return error, params
 
 
-# def make_doublelorentzpeakoffset_fit(self, x_axis, data, add_params=None):
-#     """ Perform a 1D double lorentzian peak fit with offset on the provided data.
-#
-#     @param numpy.array x_axis: 1D axis values
-#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-#     @param Parameters or dict add_params: optional, additional parameters of
-#                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-#                 which will be used instead of the values from the estimator.
-#
-#     @return object model: lmfit.model.ModelFit object, all parameters
-#                           provided about the fitting, like: success,
-#                           initial fitting values, best fitting values, data
-#                           with best fit with given axis,...
-#     """
-#
-#     model, params = self.make_multiplelorentzian_model(no_of_functions=2)
-#     error, params = self.estimate_doublelorentzpeakoffset(x_axis, data, params)
-#
-#     #redefine values of additional parameters
-#     params = self._substitute_params(initial_params=params,
-#                                      update_params=add_params)
-#     try:
-#         result = model.fit(data, x=x_axis, params=params)
-#     except:
-#         result = model.fit(data, x=x_axis, params=params)
-#         self.log.error('The double lorentzian fit did not '
-#                      'work: {0}'.format(result.message))
-#
-#     return result
-
 ############################################################################
 #                               N15 fitting                                #
 ############################################################################
@@ -776,66 +747,6 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
     return error, params
 
 
-# def make_N15_fit(self, x_axis, data, units, add_params=None):
-#     """ Performes a fit where a N15 hyperfine interaction of 3.03 MHz is taken
-#         into account.
-#
-#     @param numpy.array x_axis: 1D axis values
-#     @param numpy.array data: 1D data, should have the same dimension as x_axis.
-#     @param Parameters or dict add_params: optional, additional parameters of
-#                 type lmfit.parameter.Parameters, OrderedDict or dict for the fit
-#                 which will be used instead of the values from the estimator.
-#
-#     @return object model: lmfit.model.ModelFit object, all parameters
-#                           provided about the fitting, like: success,
-#                           initial fitting values, best fitting values, data
-#                           with best fit with given axis,...
-#     """
-#
-#     model, params = self.make_multiplelorentzian_model(no_of_functions=2)
-#     error, params = self.estimate_N15(x_axis, data, params)
-#
-#     params = self._substitute_params(initial_params=params,
-#                                      update_params=add_params)
-#
-#     try:
-#         result = model.fit(data, x=x_axis, params=params)
-#     except:
-#         result = model.fit(data, x=x_axis, params=params)
-#         self.log.error('The N15 fit did not '
-#                      'work: {0}'.format(result.message))
-#
-#     # Write the parameters to allow human-readable output to be generated
-#     param_dict = OrderedDict()
-#
-#     param_dict['Freq. 0'] = {'value': result.params['l0_center'].value,
-#                              'error': result.params['l0_center'].stderr,
-#                              'unit': units[0]}
-#
-#     param_dict['Freq. 1'] = {'value': result.params['l1_center'].value,
-#                              'error': result.params['l1_center'].stderr,
-#                              'unit': units[0]}
-#
-#     param_dict['Contrast 0'] = {'value': abs(result.params['l0_contrast'].value),
-#                                 'error': result.params['l0_contrast'].stderr,
-#                                 'unit': '%'}
-#
-#     param_dict['Contrast 1'] = {'value': abs(result.params['l1_contrast'].value),
-#                                 'error': result.params['l1_contrast'].stderr,
-#                                 'unit': '%'}
-#
-#     param_dict['Linewidth 0'] = {'value': result.params['l0_sigma'].value,
-#                                  'error': result.params['l0_sigma'].stderr,
-#                                  'unit': units[0]}
-#
-#     param_dict['Linewidth 1'] = {'value': result.params['l1_sigma'].value,
-#                                  'error': result.params['l1_sigma'].stderr,
-#                                  'unit': units[0]}
-#
-#     param_dict['chi_sqr'] = {'value': result.chisqr, 'unit': ''}
-#
-#     return result, param_dict
-
 ############################################################################
 #                                                                          #
 #                      Triple Lorentzian fitting                           #
@@ -844,7 +755,6 @@ def estimate_lorentziandouble_N15(self, x_axis, data, params):
 #Todo: check where code breaks
 # Old Method Names:
 # make_N14_fit
-
 
 def make_lorentziantriple_fit(self, x_axis, data, estimator, units=None,
                             add_params=None, **kwargs):
