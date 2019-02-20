@@ -162,8 +162,6 @@ class BOARDSETTING(ctypes.Structure):
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
-    stable: Jochen Scheuer, Simon Schmitt
-
     Example config for copy-paste:
 
     fastcomtec_mcs6:
@@ -413,8 +411,10 @@ class FastComtec(Base, FastCounterInterface):
         if self.gated and self.timetrace_tmp != []:
             time_trace = time_trace + self.timetrace_tmp
 
-        info_dict = {'elapsed_sweeps': None,
-                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        runtime, sweeps = self.get_elapsed_time_and_sweeps()
+
+        info_dict = {'elapsed_sweeps': sweeps,
+                     'elapsed_time': None}
         return time_trace, info_dict
 
 
@@ -429,6 +429,14 @@ class FastComtec(Base, FastCounterInterface):
                       counter (TRUE) or not (FALSE).
         """
         self.change_sweep_mode(gated)
+        return self.gated
+
+    def get_gated(self):
+        """ Change the gated status of the fast counter.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
         return self.gated
 
 
@@ -651,7 +659,8 @@ class FastComtec(Base, FastCounterInterface):
         """
 
         # Reduce length to prevent crashes
-        #self.set_length(1440)
+        if self.get_length() > 3000:
+            self.set_length(64)
         if gated:
             self.set_cycle_mode(mode=True, cycles=cycles)
             self.set_preset_mode(mode=16, preset=preset)
@@ -681,6 +690,15 @@ class FastComtec(Base, FastCounterInterface):
             self.set_preset(preset)
 
         return mode, preset
+
+    def get_preset_mode(self):
+        """ Gets the preset
+       @return int mode: current preset
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        prena = bsetting.prena
+        return prena
 
 
     def set_preset(self, preset):
@@ -713,20 +731,36 @@ class FastComtec(Base, FastCounterInterface):
         @return: just the input
         """
         # First set cycles to 1 to prevent crashes
-
-        cycles_old = self.get_cycles() if cycles is None else cycles
-        self.set_cycles(1)
-
+        if cycles == None:
+            cycles_old = self.get_cycles()
+        #self.set_cycles(1)
         # Turn on or off sequential cycle mode
         if mode:
-            cmd = 'sweepmode={0}'.format(hex(1978500))
+            if not self.get_cycle_mode() == 35528836:
+            #cmd = 'sweepmode={0}'.format(hex(1978500))
+            #cmd = 'sweepmode={0}'.format(hex(1974404))
+                cmd = 'sweepmode={0}'.format(hex(35528836))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         else:
-            cmd = 'sweepmode={0}'.format(hex(1978496))
-        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            if not self.get_cycle_mode() == 1978496:
+                cmd = 'sweepmode={0}'.format(hex(1978496))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
 
-        self.set_cycles(cycles_old)
+        if not cycles == None:
+            #self.set_cycles(cycles_old)
+        #else:
+            self.set_cycles(cycles)
 
         return mode, cycles
+
+    def get_cycle_mode(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = BOARDSETTING()
+        self.dll.GetMCSSetting(ctypes.byref(bsetting), 0)
+        sweepmode = bsetting.sweepmode
+        return sweepmode
 
     def set_cycles(self, cycles):
         """ Sets the cycles
@@ -865,6 +899,14 @@ class FastComtec(Base, FastCounterInterface):
         cmd = 'savempa'
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return filename
+
+    def get_elapsed_time_and_sweeps(self):
+
+        status = AcqStatus()
+        self.dll.GetStatusData(ctypes.byref(status), 0)
+        runtime = status.runtime
+        sweeps = status.sweeps
+        return runtime, sweeps
 
 
 
