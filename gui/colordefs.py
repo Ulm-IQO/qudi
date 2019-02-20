@@ -23,7 +23,7 @@ import numpy as np
 import pyqtgraph as pg
 
 
-class ColorScale():
+class ColorScale:
     """ Custom color scale for use in Qudi.
 
         You need to add two numpy arrays, COLORS and COLORS_INV when subclassing
@@ -1127,7 +1127,7 @@ class ColorScaleViridis(ColorScale):
     COLORS_INV = COLORS[::-1]
 
 
-class QudiPalette():
+class QudiPalette:
     """ Qudi saturated color palette """
 
     blue = pg.mkColor(34, 23, 244)
@@ -1149,7 +1149,7 @@ class QudiPalette():
     c6 = purple
 
 
-class QudiPalettePale():
+class QudiPalettePale:
     """ Qudi desaturated color palette """
 
     blue = pg.mkColor(102, 94, 252)

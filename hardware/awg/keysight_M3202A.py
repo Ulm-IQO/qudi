@@ -716,7 +716,7 @@ class M3202A(Base, PulserInterface):
                 waveform_dataA_C = waveformDataA.ctypes.data_as(c_double_p)
                 length = len(waveformDataA)
             else:
-                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA);
+                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA)
                 length = waveform_dataA_C._length_
 
             if waveformDataB is None:

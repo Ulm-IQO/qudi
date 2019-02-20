@@ -1620,7 +1620,7 @@ IS_GET_HOR_FILTER_STEP      =        0x8001
 IS_DISABLE_HOR_FILTER       =        0
 IS_ENABLE_HOR_FILTER        =        1
 def IS_HOR_FILTER_STEP(_s_):
-    return ((_s_ + 1) << 1)
+    return (_s_ + 1) << 1
 IS_HOR_FILTER_STEP1         =        2
 IS_HOR_FILTER_STEP2         =        4
 IS_HOR_FILTER_STEP3         =        6
@@ -1635,7 +1635,7 @@ IS_GET_VERT_FILTER_STEP    =         0x8001
 IS_DISABLE_VERT_FILTER     =         0
 IS_ENABLE_VERT_FILTER      =         1
 def IS_VERT_FILTER_STEP(_s_):
-    return ((_s_ + 1) << 1)
+    return (_s_ + 1) << 1
 IS_VERT_FILTER_STEP1       =         2
 IS_VERT_FILTER_STEP2       =         4
 IS_VERT_FILTER_STEP3       =         6
@@ -1987,10 +1987,10 @@ DEVSTS_INCLUDED_STARTER_FIRMWARE_INCOMPATIBLE =  0x00000010
 #  the following macro determines the availability of the camera based
 #  on the status flags
 def IS_CAMERA_AVAILABLE(_s_):
-    return ( (((_s_) & FIRMWARE_DOWNLOAD_NOT_SUPPORTED) == 0)
-            and (((_s_) & INTERFACE_SPEED_NOT_SUPPORTED)   == 0)
-            and (((_s_) & INVALID_SENSOR_DETECTED)         == 0)
-            and (((_s_) & AUTHORIZATION_FAILED)            == 0) )
+    return (((_s_ & FIRMWARE_DOWNLOAD_NOT_SUPPORTED) == 0)
+            and ((_s_ & INTERFACE_SPEED_NOT_SUPPORTED) == 0)
+            and ((_s_ & INVALID_SENSOR_DETECTED) == 0)
+            and ((_s_ & AUTHORIZATION_FAILED) == 0))
 
 #  ----------------------------------------------------------------------------
 #  auto feature structs and definitions

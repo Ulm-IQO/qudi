@@ -160,7 +160,7 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
             @return (float, float): range for laser current
         """
         maxcurrent = float(self.inst.query('?DCL'))
-        return (0, maxcurrent)
+        return 0, maxcurrent
 
     def get_current(self):
         """ Get current laser current

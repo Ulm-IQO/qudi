@@ -2186,7 +2186,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     # ======================== Digital channel control ==========================
 
-
     def digital_channel_switch(self, channel_name, mode=True):
         """
         Switches on or off the voltage output (5V) of one of the digital channels, that
@@ -2198,7 +2197,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        if channel_name == None:
+        if channel_name is None:
             self.log.error('No channel for digital output specified')
             return -1
         else:

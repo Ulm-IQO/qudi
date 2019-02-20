@@ -426,11 +426,9 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
         if not isinstance( x_data,(frozenset, list, set, tuple, np.ndarray)):
             self.log.error('Given range of axis is no array type.')
 
-
         parameters=[amplitude,x_zero,sigma,offset]
         for var in parameters:
-            if not isinstance(var,(float,int)):
-                print('error',var)
+            if not isinstance(var, (float, int)):
                 self.log.error('Given range of parameter is no float or int.')
         gaussian = amplitude*np.exp(-(x_data-x_zero)**2/(2*sigma**2))+offset
         return gaussian

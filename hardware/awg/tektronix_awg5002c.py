@@ -450,12 +450,10 @@ class AWG5002C(Base, PulserInterface):
                -1 indicates that the request of the status for AWG has failed.
         """
 
-        status_dic = {}
+        status_dic = {-1: 'Failed Request or Failed Communication with device.',
+                      0: 'Device has stopped, but can receive commands.', 1: 'Device is active and running.',
+                      2: 'Device is active and waiting for trigger.'}
         # the possible status of the AWG have the following meaning:
-        status_dic[-1] = 'Failed Request or Failed Communication with device.'
-        status_dic[0] = 'Device has stopped, but can receive commands.'
-        status_dic[1] = 'Device is active and running.'
-        status_dic[2] = 'Device is active and waiting for trigger.'
 
         # save the status dictionary is a class variable for later access.
         self.status_dic = status_dic
@@ -813,7 +811,7 @@ class AWG5002C(Base, PulserInterface):
 
         active_ch = {}
 
-        if ch ==[]:
+        if not ch:
 
             # because 0 = False and 1 = True
             active_ch['a_ch1'] = bool(int(self.ask('OUTPUT1:STATE?')))
@@ -1171,7 +1169,7 @@ class AWG5002C(Base, PulserInterface):
         synchornous the jump is made after the current waveform is output. The
         default value is asynchornous.
         """
-        if(synchronous):
+        if synchronous:
             self.tell('EVEN:JTIM SYNC\n')
         else:
             self.tell('EVEN:JTIM ASYNC\n')
@@ -1211,7 +1209,7 @@ class AWG5002C(Base, PulserInterface):
         """
 
         message = self.ask('AWGControl:SEQuencer:TYPE?\n')
-        if output_as_int == True:
+        if output_as_int:
             if 'HARD' in message:
                 return 0
             elif 'SOFT' in message:

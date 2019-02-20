@@ -67,6 +67,7 @@ class BuiltinTrap:
         self.auto_builtins = {'exit': HideBuiltin,
                               'quit': HideBuiltin,
                               }
+
     def __enter__(self):
         """ Enter a code segment that should not chane builtins """
         if self._nested_level == 0:

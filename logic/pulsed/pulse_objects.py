@@ -40,6 +40,7 @@ class PulseBlockElement(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
+
     def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None, laser_on=False):
         """
         The constructor for a Pulse_Block_Element needs to have:
@@ -108,7 +109,8 @@ class PulseBlockElement(object):
             return True
         if self.channel_set != other.channel_set:
             return False
-        if (self.init_length_s, self.increment_s, self.laser_on) != (other.init_length_s, other.increment_s, other.laser_on):
+        if (self.init_length_s, self.increment_s, self.laser_on) != (
+                other.init_length_s, other.increment_s, other.laser_on):
             return False
         if set(self.digital_high.items()) != set(other.digital_high.items()):
             return False
@@ -140,6 +142,7 @@ class PulseBlock(object):
     """
     Collection of Pulse_Block_Elements which is called a Pulse_Block.
     """
+
     def __init__(self, name, element_list=None):
         """
         The constructor for a Pulse_Block needs to have:
@@ -288,7 +291,6 @@ class PulseBlock(object):
                                  'same PulseBlock is prohibited.\nPulseBlock creation failed!\n'
                                  'Used channel sets are:\n{0}\n{1}'.format(self.channel_set,
                                                                            elem.channel_set))
-                break
         self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
         self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
@@ -393,6 +395,7 @@ class PulseBlockEnsemble(object):
 
     This object is used as a construction plan to create one sampled file.
     """
+
     def __init__(self, name, block_list=None, rotating_frame=True):
         """
         The constructor for a Pulse_Block_Ensemble needs to have:
@@ -433,7 +436,7 @@ class PulseBlockEnsemble(object):
     def __str__(self):
         return_str = 'PulseBlockEnsemble "{0}"\n\trotating frame: {1}\n\t' \
                      'has been sampled: {2}\n\t<block name>\t<repetitions>\n\t'.format(
-                         self.name, self.rotating_frame, bool(self.sampling_information))
+            self.name, self.rotating_frame, bool(self.sampling_information))
         return_str += '\n\t'.join(('{0}\t{1}'.format(name, reps) for name, reps in self.block_list))
         return return_str
 
@@ -986,6 +989,7 @@ class PredefinedGeneratorBase:
     qudi module (e.g. self.log.error(...)).
     Also provides helper methods to simplify sequence/ensemble generation.
     """
+
     def __init__(self, sequencegeneratorlogic):
         # Keep protected reference to the SequenceGeneratorLogic
         self.__sequencegeneratorlogic = sequencegeneratorlogic
@@ -1317,12 +1321,14 @@ class PredefinedGeneratorBase:
         return created_blocks, block_ensemble
 
     def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
-                                  laser_ignore_list=list(), controlled_variable=[0, 1], units=('s', ''),
+                                  laser_ignore_list=None, controlled_variable=None, units=('s', ''),
                                   labels=('Tau', 'Signal'), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
-        block_ensemble.measurement_information['controlled_variable'] = controlled_variable
+        block_ensemble.measurement_information[
+            'laser_ignore_list'] = laser_ignore_list if laser_ignore_list is not None else list()
+        block_ensemble.measurement_information[
+            'controlled_variable'] = controlled_variable if controlled_variable is not None else [0, 1]
         block_ensemble.measurement_information['units'] = units
         block_ensemble.measurement_information['labels'] = labels
         if number_of_lasers is None:
@@ -1385,6 +1391,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
     """
 
     """
+
     def __init__(self, sequencegeneratorlogic):
         # Initialize base class
         super().__init__(sequencegeneratorlogic)
@@ -1498,6 +1505,3 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         if inspect.isclass(obj):
             return PredefinedGeneratorBase in inspect.getmro(obj) #and len(obj.__bases__) == 1
         return False
-
-
-
