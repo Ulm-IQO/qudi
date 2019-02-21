@@ -86,14 +86,14 @@ class MagnetLogic(GenericLogic):
     curr_2d_pathway_mode = StatusVar('curr_2d_pathway_mode', 'snake-wise')
 
     _checktime = StatusVar('_checktime', 2.5)
-    _1D_axis0_data = StatusVar('_1D_axis0_data', np.zeros(2))
-    _2D_axis0_data = StatusVar('_2D_axis0_data', np.zeros(2))
-    _2D_axis1_data = StatusVar('_2D_axis1_data', np.zeros(2))
-    _3D_axis0_data = StatusVar('_3D_axis0_data', np.zeros(2))
-    _3D_axis1_data = StatusVar('_3D_axis1_data', np.zeros(2))
-    _3D_axis2_data = StatusVar('_3D_axis2_data', np.zeros(2))
+    _1D_axis0_data = StatusVar('_1D_axis0_data', default=np.arange(3))
+    _2D_axis0_data = StatusVar('_2D_axis0_data', default=np.arange(3))
+    _2D_axis1_data = StatusVar('_2D_axis1_data', default=np.arange(2))
+    _3D_axis0_data = StatusVar('_3D_axis0_data', default=np.arange(2))
+    _3D_axis1_data = StatusVar('_3D_axis1_data', default=np.arange(2))
+    _3D_axis2_data = StatusVar('_3D_axis2_data', default=np.arange(2))
 
-    _2D_data_matrix = StatusVar('_2D_data_matrix', np.zeros((2, 2)))
+    _2D_data_matrix = StatusVar('_2D_data_matrix', np.zeros((3, 2)))
     _3D_data_matrix = StatusVar('_3D_data_matrix', np.zeros((2, 2, 2)))
 
     curr_alignment_method = StatusVar('curr_alignment_method', '2d_fluorescence')
