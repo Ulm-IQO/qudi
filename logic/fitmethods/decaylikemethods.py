@@ -171,7 +171,7 @@ def make_decayexponentialstretched_model(self, prefix=None):
 #  single exponential decay with offset  #
 ##########################################
 
-def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Performes a exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -192,9 +192,9 @@ def make_decayexponential_fit(self, x_axis, data, estimator, units=None, add_par
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = exponentialdecay.fit(data, x=x_axis, params=params)
+        result = exponentialdecay.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = exponentialdecay.fit(data, x=x_axis, params=params)
+        result = exponentialdecay.fit(data, x=x_axis, params=params, **kwargs)
         self.log.warning('The exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
 
@@ -291,7 +291,7 @@ def estimate_decayexponential(self, x_axis, data, params):
 #  stretched exponential decay with offset  #
 #############################################
 
-def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Performes a stretched exponential decay with offset fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -314,9 +314,9 @@ def make_decayexponentialstretched_fit(self, x_axis, data, estimator, units=None
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params)
+        result = stret_exp_decay_offset.fit(data, x=x_axis, params=params, **kwargs)
         self.log.warning('The double exponentialdecay with offset fit did not work. '
                        'Message: {}'.format(str(result.message)))
 
