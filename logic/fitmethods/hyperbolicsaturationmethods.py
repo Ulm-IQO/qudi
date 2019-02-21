@@ -80,7 +80,7 @@ def make_hyperbolicsaturation_model(self, prefix=None):
     return complete_model, params
 
 
-def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a fit on the provided data with a fluorescence depending function.
 
     @param numpy.array x_axis: 1D axis values
@@ -106,7 +106,7 @@ def make_hyperbolicsaturation_fit(self, x_axis, data, estimator, units=None, add
         initial_params=params,
         update_params=add_params)
 
-    result = mod_final.fit(data, x=x_axis, params=params)
+    result = mod_final.fit(data, x=x_axis, params=params, **kwargs)
 
     return result
 
