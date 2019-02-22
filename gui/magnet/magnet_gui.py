@@ -213,8 +213,8 @@ class MagnetGui(GUIBase):
         # Set initial position for the crosshair, default is current magnet position
         current_position = self._magnet_logic.get_pos()
         current_2d_array = self._magnet_logic.get_2d_axis_arrays()
-        ini_pos_x_crosshair = current_position[self.magnet_logic.align_2d_axis0_name]
-        ini_pos_y_crosshair = current_position[self.magnet_logic.align_2d_axis1_name]
+        ini_pos_x_crosshair = current_position[self._magnet_logic.align_2d_axis0_name]
+        ini_pos_y_crosshair = current_position[self._magnet_logic.align_2d_axis1_name]
 
         ini_width_crosshair = [(current_2d_array[0][-1]-current_2d_array[0][0])/len(current_2d_array[0]),
                                (current_2d_array[1][-1] - current_2d_array[1][0]) / len(current_2d_array[0])]
@@ -1217,8 +1217,8 @@ class MagnetGui(GUIBase):
             #dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
             #dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
-        self.roi_magnet.setPos([curr_pos[self.magnet_logic.align_2d_axis0_name],
-                                curr_pos[self.magnet_logic.align_2d_axis1_name]])
+        self.roi_magnet.setPos([curr_pos[self._magnet_logic.align_2d_axis0_name],
+                                curr_pos[self._magnet_logic.align_2d_axis1_name]])
         return curr_pos
 
 
