@@ -514,12 +514,18 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @ return list: min and max possible voltage in feedback for given axis"""
         return self._position_feedback_device._ai_voltage_range[axis_name]
 
-    def get_position(self, axes):
-        """Measures the current position of the hardware axes of the stepper
+    def get_position(self, axes, measurement_repetitions=100, clock_freq=1000):
+        """Measures the current position of the hardware axes of the stepper.
+        It needs a free clock of the measurement device.
 
         @ List(str) axes: List of strings for which the hardware positions are to be measured
+        @ int measurement_repetitions: The amount of measurements over which should be taken and averaged over for each
+                                        axis to increase measurement accuracy. Default 1000
+        @ float clock_freq: The frequency with which the multiple measurements to increase accuracy should be acquired.
+                            This should be chosen depending on the eigenfrequencies of the system and the maximal time
+                            allowed for acquisition. Default 1000.
 
-        @ return List : positions the hardware in mm ordered by the axes ordering or error value [-1]
+        @ return List (float) : positions the hardware in mm ordered by the axes ordering or error value [-1]
         """
         # test if hardware has absolute position reading
         if not self.axis_class[axes[0]].closed_loop:
@@ -532,8 +538,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error('An empty list of axes was given.')
             return [-1]
 
+        if self._position_feedback_device.set_up_analogue_voltage_reader_clock(axes[0], clock_frequency=clock_freq) < 0:
+            return [-1]
         # read voltages from resistive read out for position feedback
-        if self._position_feedback_device.set_up_analogue_voltage_reader(axes[0]) < 0:
+        if self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                measurement_repetitions, axes[0]) < 0:
             return [-1]
         try:
             self._position_feedback_device.module_state.lock()
@@ -548,12 +557,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._position_feedback_device.module_state.unlock()
                 self._position_feedback_device.close_analogue_voltage_reader(axes[0])
                 return [-1]
-
+        self._position_feedback_device.start_analogue_voltage_reader(axes[0], True)
         voltage_result = self._position_feedback_device.get_analogue_voltage_reader(axes)
         self._position_feedback_device.module_state.unlock()
         # close position feedback reader
         if 0 > self._position_feedback_device.close_analogue_voltage_reader(axes[0]):
             self.log.error("It was not possible to close the analog voltage reader")
+            return [-1]
+        if 0 > self._position_feedback_device.close_analogue_voltage_reader_clock(axes[0]):
             return [-1]
         if voltage_result[1] == 0:
             self.log.warning("Reading the voltage for position feedback failed")
@@ -561,8 +572,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # convert voltage to position
         position_result = []
+        voltages = np.split(voltage_result[0], len(axes))
         for counter in range(len(axes)):
-            position = self.convert_voltage_to_position(axes[counter], voltage_result[0][counter])
+            average_voltage = np.sum(voltages[counter]) / measurement_repetitions
+            position = self.convert_voltage_to_position(axes[counter], average_voltage)
             position_result.append(position)
             self.axis_class[axes[counter]].absolute_position = position
 
