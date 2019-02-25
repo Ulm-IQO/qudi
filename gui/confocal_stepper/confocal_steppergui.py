@@ -245,17 +245,20 @@ class ConfocalStepperGui(GUIBase):
         self.init_hardware_UI()
         self.init_position_feedback_UI()
         self.init_step_parameters_UI()
+        self.init_3D_step_scan_parameters()
         self.init_tilt_correction_UI()
 
         # Set the state button as ready button as default setting.
         self._mw.action_step_stop.setEnabled(False)
         self._mw.action_step_resume.setEnabled(False)
+        self._mw.action_scan_3D_start.setEnabled(True)
+        self._mw.action_scan_3D_resume.setEnabled(False)
 
         # Connect other signals from the logic with an update of the gui
 
         self._stepper_logic.signal_start_stepping.connect(self.logic_started_stepping)
         self._stepper_logic.signal_continue_stepping.connect(self.logic_continued_stepping)
-        # self._scanning_logic.signal_stop_scanning.connect()
+        self._stepper_logic.signal_start_3D_stepping.connect(self.logic_started_3D_stepping)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
@@ -279,7 +282,16 @@ class ConfocalStepperGui(GUIBase):
             delay=0.1,
             slot=self.step_continued_clicked
         )
-
+        self._step_start_3D_proxy = pg.SignalProxy(
+            self._mw.action_scan_3D_start.triggered,
+            delay=0.1,
+            slot=self.step_start_3D_clicked
+        )
+        self._step_resume_3D_proxy = pg.SignalProxy(
+            self._mw.action_scan_3D_resume.triggered,
+            delay=0.1,
+            slot=self.step_continued_clicked
+        )
         ###################################################################
         #               Icons for the scan actions                        #
         ###################################################################
@@ -600,12 +612,60 @@ class ConfocalStepperGui(GUIBase):
         self._inverted_axes = {"xy": "yx", "xz": "zx", "yz": "zy", "yx": "xy", "zx": "xz", "zy": "yz"}
         self._mw.step_direction_comboBox.activated.connect(self.update_step_direction)
         self._mw.inverted_direction_checkBox.clicked.connect(self.update_step_direction)
+        self._mw._fast_scan_checkBox.clicked.connect(self.update_fast_scan_option)
+        self.update_fast_scan_option()
 
         self._stepper_logic.signal_step_scan_stopped.connect(self.enable_step_actions)
+
+    def init_3D_step_scan_parameters(self):
+
+        # setting default parameters
+        voltage_range_3D = self._stepper_logic.get_analogue_voltage_range()
+        self._mw.startV_3D_spinBox.setRange(voltage_range_3D[0], voltage_range_3D[1])
+        self._mw.startV_3D_spinBox.setValue(self._stepper_logic.start_voltage_3D)
+        self._mw.startV_3D_spinBox.editingFinished.connect(self.start_value_3D_changed, QtCore.Qt.QueuedConnection)
+
+        self._mw.stopV_3D_spinBox.setRange(voltage_range_3D[0], voltage_range_3D[1])
+        self._mw.stopV_3D_spinBox.setValue(self._stepper_logic.end_voltage_3D)
+        self._mw.stopV_3D_spinBox.editingFinished.connect(self.stop_value_3D_changed, QtCore.Qt.QueuedConnection)
+
+        self._mw.scan_resolution_3D_spinBox.setValue(self._stepper_logic.scan_resolution_3D)
+
+        # setting up check box for the maximal scan resolution and cavity mode
+        self._mw.max_scan_resolution_3D_checkBox.toggled.connect(self.toggle_scan_resolution_3D)
+
+        # todo: here it should actually find out the bit resolution of the hardware
+        self._mw.maximal_scan_resolution_3D_DisplayWidget.display(self._stepper_logic.calculate_resolution(
+            16, [self._stepper_logic.start_voltage_3D,
+                 self._stepper_logic.end_voltage_3D]))
+
+        self._mw.scan_resolution_3D_spinBox.valueChanged.connect(self.scan_resolution_3D_changed)
+
+        # setting GUI elements enabled
+        self._mw.startV_3D_spinBox.setEnabled(True)
+        self._mw.stopV_3D_spinBox.setEnabled(True)
+        self._mw.scan_resolution_3D_spinBox.setEnabled(True)
+        # setting up check box for the maximal scan resolution and cavity mode
+        self._mw.max_scan_resolution_3D_checkBox.toggled.connect(self.toggle_scan_resolution_3D)
+
+        # setting up the LCD Displays for the scan speed (V/s) and the maximal scan resolution
+        self._mw.scan_speed_3D_DisplayWidget.display(np.abs(self._stepper_logic.end_voltage_3D -
+                                                            self._stepper_logic.start_voltage_3D) *
+                                                     self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
+        self._mw.maximal_scan_resolution_3D_DisplayWidget.display(self._stepper_logic.calculate_resolution(
+            16, [self._stepper_logic.start_voltage_3D,
+                 self._stepper_logic.end_voltage_3D]))
+        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
+
+        # todo: connect smoothing parameter
 
     def init_tilt_correction_UI(self):
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
+
+        self._mw.thrid_axis_correction_checkBox.stateChanged.connect(self._correct_3rd_axis_changed)
+        self._mw.move_3rd_axis_up_checkBox.stateChanged.connect(self._correction_direction_3rd_axis_changed)
+        self._mw.correct_every_x_lines_tilt_spinBox.valueChanged.connect(self._correction_nth_line_3rd_axis_changed)
 
     def show(self):
         """Make window visible and put it above all other windows. """
@@ -733,6 +793,7 @@ class ConfocalStepperGui(GUIBase):
             self._mw.z_dcin_checkBox.setCheckState(self._stepper_logic.axis_class["z"].get_dc_mode())
         else:
             self._mw.z_dcin_checkBox.setCheckState(False)
+        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     def update_stepper_hardware_values(self):
         self._stepper_logic.axis_class["x"].set_stepper_amplitude(self._mw.x_amplitude_doubleSpinBox.value())
@@ -745,6 +806,7 @@ class ConfocalStepperGui(GUIBase):
         self._stepper_logic.axis_class["x"].set_dc_mode(self._mw.x_dcin_checkBox.checkState())
         self._stepper_logic.axis_class["y"].set_dc_mode(self._mw.y_dcin_checkBox.checkState())
         self._stepper_logic.axis_class["z"].set_dc_mode(self._mw.z_dcin_checkBox.checkState())
+        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     ################## Position Feedback ##################
 
@@ -834,8 +896,9 @@ class ConfocalStepperGui(GUIBase):
 
         # Disable the start scan buttons
         self._mw.action_step_start.setEnabled(False)
-
         self._mw.action_step_resume.setEnabled(False)
+        self._mw.action_scan_3D_start.setEnabled(False)
+        self._mw.action_scan_3D_resume.setEnabled(False)
 
         self._mw.x_piezo_min_InputWidget.setEnabled(False)
         self._mw.x_piezo_max_InputWidget.setEnabled(False)
@@ -850,6 +913,7 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.inverted_direction_checkBox.setEnabled(False)
         self._mw.step_direction_comboBox.setEnabled(False)
+        self._mw._fast_scan_checkBox.setEnabled(False)
 
         # Set the zoom button if it was pressed to unpressed and disable it
         # self._mw.action_zoom.setChecked(False)
@@ -876,6 +940,7 @@ class ConfocalStepperGui(GUIBase):
 
         # Enable the scan buttons
         self._mw.action_step_start.setEnabled(True)
+        self._mw.action_scan_3D_start.setEnabled(True)
         #        self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
@@ -893,6 +958,14 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.inverted_direction_checkBox.setEnabled(True)
         self._mw.step_direction_comboBox.setEnabled(True)
+        self._mw._fast_scan_checkBox.setEnabled(True)
+
+        # 3D step scan parameters:
+        self._mw.startV_3D_spinBox.setEnabled(True)
+        self._mw.stopV_3D_spinBox.setEnabled(True)
+        self._mw.scan_resolution_3D_spinBox.setEnabled(True)
+        self._mw.smoothing_steps_3D_spinBox.setEnabled(True)
+        self._mw.max_scan_resolution_3D_checkBox.setEnabled(True)
 
         # self._mw.action_zoom.setEnabled(True)
 
@@ -921,6 +994,15 @@ class ConfocalStepperGui(GUIBase):
         self._mw.measure_pos_feedback_checkBox.setEnabled(True)
 
         self._currently_stepping = False
+
+    def disable_3D_parameters(self):
+
+        # disable parameters inputs:
+        self._mw.startV_3D_spinBox.setEnabled(False)
+        self._mw.stopV_3D_spinBox.setEnabled(False)
+        self._mw.scan_resolution_3D_spinBox.setEnabled(False)
+        self._mw.smoothing_steps_3D_spinBox.setEnabled(False)
+        self._mw.max_scan_resolution_3D_checkBox.setEnabled(False)
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
@@ -961,6 +1043,20 @@ class ConfocalStepperGui(GUIBase):
         self.disable_step_actions()
         self.update_stepper_hardware_values()
         self._stepper_logic.continue_stepper()  # tag='gui')
+
+    def step_start_3D_clicked(self):
+        """ Manages what happens if the step scan is started. """
+        self._stepper_logic.map_scan_position = self._mw.measure_pos_feedback_checkBox.isChecked()
+        # update axes (both for position feedback and plot display)
+        self._h_axis = self._stepper_logic._scan_axes[0]
+        self._v_axis = self._stepper_logic._scan_axes[1]
+        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+
+        self.disable_step_actions()
+        self.disable_3D_parameters()
+        self.update_stepper_hardware_values()
+        self._stepper_logic._start_3D_step_scan()  # tag='gui')
 
     def menu_settings(self):
         """ This method opens the settings menu. """
@@ -1077,8 +1173,15 @@ class ConfocalStepperGui(GUIBase):
         if self._stepper_logic.module_state() != 'locked':
             self.enable_step_actions()
 
-
     ################## Step Parameters ##################
+    def update_fast_scan_option(self):
+        """ The user changed if he wants to aquire both directions or just the forward one.
+         Adjust all other GUI elements accordingly."""
+        fast_scan = self._mw._fast_scan_checkBox.isChecked()
+        self._stepper_logic._fast_scan = fast_scan
+        if fast_scan:
+            self.update_count_direction(0)
+        self._mw.count_direction_ComboBox.setDisabled(fast_scan)
 
     def update_step_direction(self):
         """ The user changed the step scan direction, adjust all
@@ -1090,6 +1193,7 @@ class ConfocalStepperGui(GUIBase):
             new_axes = self._inverted_axes[new_axes]
         self._stepper_logic._inverted_scan = direction
         self._stepper_logic.set_scan_axes(new_axes)
+        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
 
     def update_from_input_x_piezo(self):
         """ The user changed the number in the x piezo position spin box, adjust all
@@ -1298,6 +1402,80 @@ class ConfocalStepperGui(GUIBase):
         if self._sd.save_purePNG_checkBox.isChecked():
             self.step_image.save(filename + '_raw.png')
 
+    ################## 3DStep Scan Parameters ##################
+    def scan_resolution_3D_changed(self):
+        resolution = self._mw.scan_resolution_3D_spinBox.value()
+        minV = min(self._stepper_logic.start_voltage_3D, self._stepper_logic.end_voltage_3D)
+        maxV = max(self._stepper_logic.start_voltage_3D, self._stepper_logic.end_voltage_3D)
+        maximal_scan_resolution = self._stepper_logic.calculate_resolution(16, [minV, maxV])
+        if resolution < maximal_scan_resolution:
+            self.log.warn("Maximum scan resolution of scanning device exceeded! Set scan resolution to maximum value.")
+            self._stepper_logic.scan_resolution_3D = maximal_scan_resolution
+            self._mw.scan_resolution_3D_spinBox.setValue(maximal_scan_resolution)
+        else:
+            self._stepper_logic.scan_resolution_3D = resolution
+
+    def start_value_3D_changed(self):
+        start = self._mw.startV_3D_spinBox.value()
+        self._stepper_logic.start_voltage_3D = start
+        self.update_scan_speed_3D()
+        self.update_maximal_scan_resolution_3D()
+
+    def stop_value_3D_changed(self):
+        stop = self._mw.stopV_3D_spinBox.value()
+        self._stepper_logic.end_voltage_3D = stop
+        self.update_scan_speed_3D()
+        self.update_maximal_scan_resolution_3D()
+
+    def toggle_scan_resolution_3D(self):
+        if self._mw.max_scan_resolution_3D_checkBox.isChecked():
+            self._stepper_logic._3D_use_maximal_resolution = True
+            self._mw.scan_resolution_3D_spinBox.setEnabled(False)
+        else:
+            self._stepper_logic._3D_use_maximal_resolution = False
+            self._mw.scan_resolution_3D_spinBox.setEnabled(True)
+            self.scan_resolution_3D_changed()
+
+    def update_scan_speed_3D(self):
+        scan_speed = np.abs(self._stepper_logic.end_voltage_3D -
+                            self._stepper_logic.start_voltage_3D) * \
+                     self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq
+        self._mw.scan_speed_3D_DisplayWidget.display(scan_speed)
+        return
+
+    def update_maximal_scan_resolution_3D(self):
+        minV = min(self._stepper_logic.start_voltage_3D, self._stepper_logic.end_voltage_3D)
+        maxV = max(self._stepper_logic.start_voltage_3D, self._stepper_logic.end_voltage_3D)
+        maximal_scan_resolution = self._stepper_logic.calculate_resolution(16, [minV, maxV])
+        self._mw.maximal_scan_resolution_3D_DisplayWidget.display(maximal_scan_resolution)
+        return
+
+    ################## Tilt Correction ##################
+    def _correct_3rd_axis_changed(self):
+        """Change the state of the 3rd axis tilt correction.
+        Sets logic variable true or false, depending on what the user has clicked.
+        """
+        self._stepper_logic.correct_third_axis_for_tilt = self._mw.thrid_axis_correction_checkBox.checkState()
+
+    def _correction_direction_3rd_axis_changed(self):
+        """Change the tilt correction direction of the 3rd axis.
+        Sets logic variable true (move axis up) or false (move axis down), depending on what the user has clicked.
+        """
+        self._stepper_logic._3rd_direction_correction = self._mw.move_3rd_axis_up_checkBox.checkState()
+
+    def _correction_nth_line_3rd_axis_changed(self):
+        """Change the tilt correction direction of the 3rd axis.
+        Sets logic variable true (move axis up) or false (move axis down), depending on what the user has clicked.
+        """
+        value = self._mw.correct_every_x_lines_tilt_spinBox.value()
+        if value == 0:
+            self._stepper_logic.correct_third_axis_for_tilt = False
+            self._mw.correct_every_x_lines_tilt_spinBox.setValue(100)
+            self._mw.thrid_axis_correction_checkBox.setChecked(False)
+            self.log.info("correcting every 0th lines is not possible, so the correction was turned off and the "
+                          "value set to a possible value")
+        self._stepper_logic._lines_correct_3rd_axis = value
+
     ################## Settings ##################
     def switch_hardware(self):
         """ Switches the hardware state. """
@@ -1344,6 +1522,15 @@ class ConfocalStepperGui(GUIBase):
         """
         if tag == 'logic':
             self.disable_step_actions()
+
+    def logic_started_3D_stepping(self, tag):
+        """ Disable icons if a scan was started.
+
+            @param tag str: tag indicating command source
+        """
+        if tag == 'logic':
+            self.disable_step_actions()
+            self.disable_3D_parameters()
 
     ################## ROI ######################
     def update_from_roi(self, roi):
