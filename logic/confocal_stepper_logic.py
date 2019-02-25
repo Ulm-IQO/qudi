@@ -23,7 +23,10 @@ from qtpy import QtCore
 from collections import OrderedDict
 import time
 import datetime
+import math
 import numpy as np
+import os
+# import tables
 import matplotlib.pyplot as plt
 from scipy import ndimage  # For gaussian smoothing of data
 from scipy.stats import norm  # To fit gaussian average to data
@@ -35,6 +38,10 @@ from core.util.mutex import Mutex
 
 # Todo make a confocal stepper History class for this logic as exists in confocal logic. This is needed for restarting and
 # for back and forward movement in images
+
+def round_to_2(x):
+    """Rounds to the second significant figure of a number"""
+    return round(x, -int(math.floor(math.log10(abs(x)))) + 1)
 
 
 # Todo: better threading as it can still kill everything as nidaq is unsedd from to many places in a not error checked way.
@@ -72,6 +79,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     confocalcounter = Connector(interface='FiniteCounterInterface')
     analoguereader = Connector(interface='AnalogueReaderInterface')
     analogueoutput = Connector(interface='AnalogueOutputInterface')
+    cavcontrol = Connector(interface="CavityStabilisationLogic")
 
     # status vars
     max_history_length = StatusVar(default=10)
@@ -83,12 +91,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     # config
     _ai_counter = ConfigOption("AI_counter", None, missing="warn")
 
+    # 3D
+    _ao_channel = ConfigOption("3D_3rd_Axis", None, missing="warn")
+    scan_resolution_3D = ConfigOption('3D_scan_resolution', 1e-6, missing="warn")
+    start_voltage_3D = ConfigOption('3D_start_voltage', 0, missing="warn")
+    end_voltage_3D = ConfigOption('3D_end_voltage', 1, missing="warn")
+    _3D_smoothing_steps = ConfigOption('smoothing_parameter', 0, missing="info")
+
     # Todo: add /check QTCore Signals (not all have functions yet)
     # signals
     signal_start_stepping = QtCore.Signal()
     signal_stop_stepping = QtCore.Signal()
     signal_continue_stepping = QtCore.Signal()
     signal_step_lines_next = QtCore.Signal(bool)
+    signal_start_3D_stepping = QtCore.Signal()
 
     signal_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
@@ -99,8 +115,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     signal_position_changed = QtCore.Signal()
     signal_step_scan_stopped = QtCore.Signal()
 
-    sigImageInitialized = QtCore.Signal()
+    signal_sort_count_data = QtCore.Signal(tuple, int)
+    signal_sort_count_data_3D = QtCore.Signal(tuple, int)
 
+    sigImageInitialized = QtCore.Signal()
+    sig_save_to_npz = QtCore.Signal()
     signal_history_event = QtCore.Signal()
 
     # Todo: For steppers with hardware real-time info like res readout of attocubes clock synchronisation and readout needs to be written
@@ -373,6 +392,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._position_feedback_device = self.analoguereader()
         self._analogue_output_device = self.analogueoutput()
         self._save_logic = self.savelogic()
+        self._cavitycontrol = self.cavcontrol()
 
         # Initialises hardware values
         self.axis = self.get_stepper_axes_use()
@@ -400,6 +420,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self._start_position = []
         self.map_scan_position = True
+        self._fast_scan = False
 
         # For position smoothing
         self._gaussian_smoothing_parameter = 20  # This is used for position feedback smoothing
@@ -422,12 +443,35 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._3rd_direction_correction = True
         self.correct_third_axis_for_tilt = False
         self._save_positions = True
+
+        # Additional parameter initialisation for 3D step scan measurements
+        self._3D_use_maximal_resolution = False
+        self._3D_measurement = False
+        if self._ao_channel != None:
+            if self._ao_channel in self._analogue_output_device._analogue_output_channels:
+                self._ao_output = True
+            else:
+                self._ao_output = False
+        else:
+            self._ao_output = False
+        self.smoothing = True  # defines if smoothing at beginning and end of ramp should be done to protect piezo
+        self.ramp = self._3D_generate_voltage_ramp(self.start_voltage_3D, self.end_voltage_3D)
+        self._ramp_length = len(self.ramp)
+
+        self._current_output_voltage = 0.0
+
+        self._clock_frequency_3D = self.axis_class[self._first_scan_axis].step_freq * self._ramp_length
+        self._initalize_data_arrays_3D_stepper()
+
         # Step values definitions
 
         # Sets connections between signals and functions
         self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
+        self.signal_start_3D_stepping.connect(self._start_3D_step_scan, QtCore.Qt.QueuedConnection)
         self.signal_continue_stepping.connect(self.continue_stepper, QtCore.Qt.QueuedConnection)
+        self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.QueuedConnection)
+        self.signal_sort_count_data_3D.connect(self.sort_3D_count_data, QtCore.Qt.DirectConnection)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -651,21 +695,24 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.map_scan_position:
             self.full_image = np.zeros(
                 (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
-            self.full_image_back = np.zeros(
-                (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
+            if not self._fast_scan:
+                self.full_image_back = np.zeros(
+                    (self._steps_scan_second_line, self._steps_scan_first_line, 3 + self._ai_scanner))
             for i in range(self._steps_scan_first_line):
                 for j in range(self._step_counter):
                     self.full_image[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
                                                                                 self.image_raw[j, i, 0])
                     self.full_image[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
                                                                                 self.image_raw[j, i, 1])
-                    self.full_image_back[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
-                                                                                     self.image_raw_back[j, i, 0])
-                    self.full_image_back[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
-                                                                                     self.image_raw_back[j, i, 1])
+                    if not self._fast_scan:
+                        self.full_image_back[j, i, 0] = self.convert_voltage_to_position(self._first_scan_axis,
+                                                                                         self.image_raw_back[j, i, 0])
+                        self.full_image_back[j, i, 1] = self.convert_voltage_to_position(self._second_scan_axis,
+                                                                                         self.image_raw_back[j, i, 1])
             for n, ch in enumerate(self.get_counter_count_channels()):
                 self.full_image[:, :, 2 + n] = self.image_raw[:, :, 2 + n]
-                self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
+                if not self._fast_scan:
+                    self.full_image_back[:, :, 2 + n] = self.image_raw_back[:, :, 2 + n]
 
     def smooth_out_position_data(self):
         """Smooths out noise of position feedback using gaussian filter and averaging.
@@ -679,8 +726,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         for i in range(self._steps_scan_second_line):
             self.full_image_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
                 self.full_image[i, :, 0], self._gaussian_smoothing_parameter)
-            self.full_image_back_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
-                self.full_image_back[i, :, 0], self._gaussian_smoothing_parameter)
+            if not self._fast_scan:
+                self.full_image_back_smoothed[i, :, 0] = ndimage.filters.gaussian_filter(
+                    self.full_image_back[i, :, 0], self._gaussian_smoothing_parameter)
 
         # second axis smoothing
         # Todo: If possible do gaussian fitting of data, as this is more accurate than mean
@@ -691,19 +739,314 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # the first scan axis
         for i in range(self._steps_scan_second_line):
             average.append(norm.fit(self.full_image[i, :, 1])[0])
-            average_back.append(np.mean(self.full_image_back[i, :, 1]))
+            if not self._fast_scan:
+                average_back.append(np.mean(self.full_image_back[i, :, 1]))
 
         # smooth data out along second axis with gaussian filter
         smoothed_average = ndimage.filters.gaussian_filter(average, self._gaussian_smoothing_parameter)
-        smoothed_average_back = ndimage.filters.gaussian_filter(average_back, self._gaussian_smoothing_parameter)
+        if not self._fast_scan:
+            smoothed_average_back = ndimage.filters.gaussian_filter(average_back, self._gaussian_smoothing_parameter)
 
         # generate new data of second axis along first axis and fill array
         for i in range(self._steps_scan_second_line):
             self.full_image_smoothed[i, :, 1] = ones_array * smoothed_average[i]
-            self.full_image_back_smoothed[i, :, 1] = ones_array * smoothed_average_back[i]
-
+            if not self._fast_scan:
+                self.full_image_back_smoothed[i, :, 1] = ones_array * smoothed_average_back[i]
 
     ################################# Stepper Scan Methods #######################################
+
+    #################### 3D Stepper Scan Methods ####################
+    def _start_3D_step_scan(self):
+        """This starts a scanning procedure that functions like a normal scan but with the additional measurement of a
+        piezo scan during each step of the attocube. For each voltage scan the measured counts and/or AI voltages will
+        be recorded such that the behavior  of the sample in z can be recorded."""
+        # Todo: Do we need a lock for the stepper as well?
+        if not self._ao_output:
+            self.log.error("It is not possible to do a 3D map if the 3rd axis analogue output does not exist.")
+            return -1
+
+        self._step_counter = 0
+        self.module_state.lock()
+
+        if self._get_scan_axes() < 0:
+            return -1
+
+        # Set 3rd axis scan resolution maximal if possible and required
+        if self._3D_use_maximal_resolution:
+            if self._3D_use_maximal_resolution() == -1:
+                return -1
+
+        # generate voltage ramp
+        self.ramp = self._3D_generate_voltage_ramp(self.start_voltage_3D, self.end_voltage_3D)
+        self._ramp_length = len(self.ramp)
+        if self.ramp[0] == -11:
+            self.log.error("Not possible to initialise scanner as ramp was not generated")
+            return 0
+        self.down_ramp = self.ramp[::-1]
+        self._ramp_length = len(self.ramp)
+
+        self._clock_frequency_3D = self.axis_class[self._first_scan_axis].step_freq * self._ramp_length
+
+        # move piezo to desired start position to go easy on piezo
+        self._current_output_voltage = self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage
+        self.change_analogue_output_voltage(self.start_voltage_3D)
+        self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage = self.start_voltage_3D
+        # Check the parameters of the stepper device
+        if self.check_axis_stepper() == -1:
+            self.module_state.unlock()
+            return -1
+
+        # save starting positions
+        self._start_position = []
+        self._feedback_axis = []
+        if self.axis_class[self._first_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._first_scan_axis])[0])
+            self._feedback_axis.append(self._first_scan_axis)
+        if self.axis_class[self._second_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._second_scan_axis])[0])
+            self._feedback_axis.append(self._second_scan_axis)
+        axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
+
+        # initialize counting device
+        clock_status = self._counting_device.set_up_finite_counter_clock(clock_frequency=self._clock_frequency_3D)
+        if clock_status < 0:
+            self.module_state.unlock()
+            return -1
+
+        # Todo: The connection to the GUI amount of samples needs to be made
+        # maybe a value given by the function needs to be implemented here
+        scanner_status = self._counting_device.set_up_finite_counter(self._steps_scan_first_line * self._ramp_length)
+        if scanner_status < 0:
+            # self._counting_device.close_finite_counter_clock()
+            # elf._counting_device.module_state.unlock()
+            self.module_state.unlock()
+            return -1
+
+        # check if scan positions should be saved and if it is possible
+        if self.map_scan_position:
+            if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
+                self._second_scan_axis].closed_loop:
+                # initialise position scan
+                # Todo: This is a little dirty and should not be done this way here. Fixme!
+                if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
+                                                                                [self._first_scan_axis,
+                                                                                 self._second_scan_axis]):
+                    self.stopRequested = True
+                elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                        self._steps_scan_first_line * self._ramp_length, self._first_scan_axis):
+                    self.stopRequested = True
+                else:
+                    if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(
+                            self._first_scan_axis, [self._second_scan_axis]):
+                        self.stopRequested = True
+            else:
+                self.map_scan_position = False
+
+        # if AI is chosen for counts set this up.
+        if self._ai_scanner:
+            if 0 > self._counting_device.add_clock_task_to_channel("Scanner_clock",
+                                                                   [self._ai_counter]):
+                self.stopRequested = True
+            if self.map_scan_position:
+                if 0 > self._counting_device.add_analogue_reader_channel_to_measurement(
+                        self._first_scan_axis, [self._ai_counter]):
+                    self.stopRequested = True
+            else:
+                if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
+                        self._steps_scan_first_line * self._ramp_length, self._ai_counter):
+                    self.stopRequested = True
+
+        if 0 > self._analogue_output_device.set_up_analogue_output([self._ao_channel]):
+            self.log.error("Problems setting up analogue out put for 3D step scan on channel (%s)", self._ao_channel)
+            self.stopRequested = True
+
+        if 0 > self._analogue_output_device.add_clock_task_to_channel("Scanner_clock", [self._ao_channel]):
+            self.log.error("Problems setting up analogue output clock.")
+            self.stopRequested = True
+
+        if 0 > self._analogue_output_device.configure_analogue_timing(self._ao_channel,
+                                                                      self._ramp_length * self._steps_scan_first_line):
+            self.log.error("Not possible to set appropriate timing for analogue scan.")
+            self._output_device.close_analogue_output(self._ao_channel)
+            self.stopRequested = True
+        # Initialize data
+        self._initalize_data_arrays_stepper()
+        self._initalize_data_arrays_3D_stepper()
+        self.initialize_image()
+        self.signal_image_updated.emit()
+
+        self._3D_measurement = True
+        self.generate_file_path()
+        self.signal_step_lines_next.emit(True)
+
+    def _3D_use_maximal_resolution(self):
+        """
+        Sets the 3rd axis scan resolution to maximum and checks if the values to be set are feasible for the
+        given hardwares
+
+        @return int: error code (0:OK, -1:error)        """
+
+        minV = min(self.start_voltage_3D, self.end_voltage_3D)
+        maxV = max(self.start_voltage_3D, self.end_voltage_3D)
+        self.scan_resolution_3D = self.calculate_resolution(
+            self._feedback_device.get_analogue_resolution(), [minV, maxV])
+        if self.scan_resolution_3D == -1:
+            self.log.error("Calculated scan resolution not possible")
+            return -1
+
+        # Todo: Check if scan freq is still resonable.
+        else:
+            return 0
+
+    def calculate_resolution(self, bit_resolution, my_range):
+        """Calculates the resolution in a range for a given bit resolution
+
+         @param str bit_resolution: the bit resolution of the channel
+
+         @param list(float,float) my_range: the minimum and maximum of the range for which the resolution is
+                                to be calculated
+
+         @return float: resolution on the given scale  (-1.0 for error)
+         """
+        if not isinstance(my_range, (frozenset, list, set, tuple, np.ndarray,)):
+            self.log.error('Given range is no array type.')
+            return -1
+
+        precision = ((my_range[1] - my_range[0]) / (
+                2 ** bit_resolution)) * 1.05
+        precision = round_to_2(precision)
+        return precision
+
+    def get_analogue_voltage_range(self):
+        """
+        Get the maximally possible voltage range for the current analogue output axis
+
+        @return List[minimum possible voltage , maximum possible voltage]
+        """
+        return self._analogue_output_device._ao_voltage_range[self._ao_channel]
+
+    def _3D_generate_voltage_ramp(self, start_voltage, end_voltage):
+        """Generate a ramp from start_voltage to end_voltage that
+        satisfies the general step resolution and smoothing_steps parameters.
+        Smoothing_steps=0 means that the ramp is just linear.
+
+        @param float start_voltage: voltage at start of ramp.
+
+        @param float end_voltage: voltage at end of ramp.
+
+        @return  array(float): the calculated voltage ramp
+        """
+
+        voltage_range = self.get_analogue_voltage_range()
+
+        # check if given voltages are allowed:
+        if not in_range(start_voltage, voltage_range[0], voltage_range[1]):
+            self.log.error("The given start voltage %s is not within the possible output voltages %s", start_voltage,
+                           voltage_range)
+            return [-11]
+        elif not in_range(end_voltage, voltage_range[0], voltage_range[1]):
+            self.log.error("The given end voltage %s is not within the possible output voltages %s", end_voltage,
+                           voltage_range)
+            return [-11]
+
+        # It is much easier to calculate the smoothed ramp for just one direction (upwards),
+        # and then to reverse it if a downwards ramp is required.
+        v_min = min(start_voltage, end_voltage)
+        v_max = max(start_voltage, end_voltage)
+
+        if v_min == v_max:
+            ramp = np.array([v_min, v_max])
+
+        else:
+            smoothing_range = self._3D_smoothing_steps + 1
+
+            # Sanity check in case the range is too short
+            # The voltage range covered while accelerating in the smoothing steps
+            v_range_of_accel = sum(n * self.scan_resolution_3D / smoothing_range
+                                   for n in range(0, smoothing_range)
+                                   )
+
+            # Obtain voltage bounds for the linear part of the ramp
+            v_min_linear = v_min + v_range_of_accel
+            v_max_linear = v_max - v_range_of_accel
+
+            # calculate smooth ramp if needed and possible
+            if self.smoothing and v_min_linear < v_max_linear:
+
+                num_of_linear_steps = np.rint((v_max_linear - v_min_linear) / self.scan_resolution_3D)
+                # Calculate voltage step values for smooth acceleration part of ramp
+                smooth_curve = np.array([sum(n * self.scan_resolution_3D / smoothing_range
+                                             for n in range(1, N)
+                                             )
+                                         for N in range(1, smoothing_range)
+                                         ]
+                                        )
+                # generate parts of the smoothed ramp
+                accel_part = v_min + smooth_curve
+                decel_part = v_max - smooth_curve[::-1]
+                # generate linear part of ramp
+                linear_part = np.linspace(v_min_linear, v_max_linear, num_of_linear_steps)
+                # combine different part of ramp
+                ramp = np.hstack((accel_part, linear_part, decel_part))
+            else:
+                num_of_linear_steps = np.rint((v_max - v_min) / self.scan_resolution_3D)
+                ramp = np.linspace(v_min, v_max, num_of_linear_steps)
+                if v_min_linear > v_max_linear and self.smoothing:
+                    # print out info for use
+                    self.log.warning('Voltage ramp too short to apply the '
+                                     'configured smoothing_steps. A simple linear ramp '
+                                     'was created instead.')
+        # Reverse if downwards ramp is required
+        if end_voltage < start_voltage:
+            ramp = ramp[::-1]
+
+        return ramp
+
+    def change_analogue_output_voltage(self, end_voltage):
+        """Sets the analogue voltage for the control axis to desired voltage in a smooth step vice manner
+        """
+
+        v_range = self._analogue_output_device._ao_voltage_range[self._ao_channel]
+        num_of_linear_steps = np.rint(abs((self._current_output_voltage - end_voltage)) / self.scan_resolution_3D)
+        if (num_of_linear_steps == 1):
+            num_of_linear_steps = 2
+        ramp = np.linspace(self._current_output_voltage, end_voltage, num_of_linear_steps)
+        if not in_range(end_voltage, v_range[0], v_range[1]):
+            self.log.error("not possible to go to voltage %s outside of voltage range (%s)", end_voltage, v_range)
+            return -1
+        voltage_difference = abs(self._current_output_voltage - end_voltage)
+        if voltage_difference > self.scan_resolution_3D:
+            # _clock_frequency = self.maximum_clock_frequency
+            _clock_frequency = 10 / self.scan_resolution_3D
+
+            if 0 > self._analogue_output_device.set_up_analogue_output([self._ao_channel]):
+                self.log.error("Setting up analogue output for scanning failed.")
+                return -1
+
+            if 0 > self._analogue_output_device.set_up_analogue_output_clock(self._ao_channel,
+                                                                             clock_frequency=_clock_frequency):
+                # Fixme: I do not think this is necessary. However it should be checked.
+                # self.set_position('scanner')
+                self.log.error("Problems setting up analogue output clock.")
+                self._analogue_output_device.close_analogue_output(self._ao_channel)
+                return -1
+
+            self._analogue_output_device.configure_analogue_timing(self._ao_channel, len(ramp))
+
+            retval3 = self._analogue_output_device.analogue_scan_line(self._ao_channel, ramp)
+            try:
+                retval1 = self._analogue_output_device.close_analogue_output_clock(self._ao_channel)
+                retval2 = self._analogue_output_device.close_analogue_output(self._ao_channel)
+            except:
+                self.log.warn("Closing the Analogue scanner did not work")
+            if retval3 != -1:
+                self._current_output_voltage = end_voltage
+            return min(retval1, retval2, retval3)
+        else:
+            self.log.info("The device was already at required output voltage")
+            return 0
+
+    #################### Standart Step Scan Methods ####################
 
     def check_axis_stepper(self):
         # Check the parameters of the stepper device
@@ -813,6 +1156,17 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.module_state.unlock()
             return -1
 
+        # save starting positions
+        self._feedback_axis = []
+        self._start_position = []
+        if self.axis_class[self._first_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._first_scan_axis])[0])
+            self._feedback_axis.append(self._first_scan_axis)
+        if self.axis_class[self._second_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._second_scan_axis])[0])
+            self._feedback_axis.append(self._second_scan_axis)
+        axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
+
         # initialize counting device
         clock_status = self._counting_device.set_up_finite_counter_clock(
             clock_frequency=self.axis_class[self._first_scan_axis].step_freq)
@@ -828,17 +1182,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # elf._counting_device.module_state.unlock()
             self.module_state.unlock()
             return -1
-
-        # save starting positions
-        self._feedback_axis = []
-        self._start_position = []
-        if self.axis_class[self._first_scan_axis].closed_loop:
-            self._start_position.append(self.get_position([self._first_scan_axis])[0])
-            self._feedback_axis.append(self._first_scan_axis)
-        if self.axis_class[self._second_scan_axis].closed_loop:
-            self._start_position.append(self.get_position([self._second_scan_axis])[0])
-            self._feedback_axis.append(self._second_scan_axis)
-        axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
 
         # check if scan positions should be saved and if it is possible
         if self.map_scan_position:
@@ -877,6 +1220,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._initalize_data_arrays_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
+
+        self._3D_measurement = False
+        self.generate_file_path()
 
         self.signal_step_lines_next.emit(True)
 
@@ -1098,6 +1444,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self.convert_voltage_to_position_for_image()
                 elif self._ai_scanner:
                     self._position_feedback_device.close_analogue_voltage_reader(self._ai_counter)
+
+                if self._3D_measurement:
+                    self._current_output_voltage = self.start_voltage_3D
+                    self._analogue_output_device.close_analogue_output(self._ao_channel)
+                    self.change_analogue_output_voltage(0.0)
+                    self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage = 0.0
                 # it is not necessary to stop the analogue input reader. It is closed after each line scan
                 self.stopRequested = False
                 self.module_state.unlock()
@@ -1117,43 +1469,51 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.log.info("The stepper stepped %s lines", self._step_counter)
 
                 return
-
+        # self.log.info("start stepping,line %s time: %s", self._step_counter,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
         # move and count
         new_counts = self._step_and_count(self._first_scan_axis, self._second_scan_axis, direction,
                                           steps=self._steps_scan_first_line)
-
-        if type(new_counts[0]) == int:
+        # self.log.info("acquired data stepping, line %s, time: %s", self._step_counter,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
+        data_counter = 0
+        if type(new_counts[data_counter]) == int:
             self.stopRequested = True
             self.signal_step_lines_next.emit(direction)
             return
         # check if stepping worked
-        if new_counts[0][0] == -1:
+        if new_counts[data_counter][0] == -1:
             self.stopRequested = True
             self.signal_step_lines_next.emit(direction)
+            data_counter += 1
             return
-        if new_counts[1][0] == -1:
-            self.stopRequested = True
-            self.signal_step_lines_next.emit(direction)
-            return
+        if not self._fast_scan:
+            if new_counts[1][0] == -1:
+                self.stopRequested = True
+                self.signal_step_lines_next.emit(direction)
+                data_counter += 1
+                return
 
         if self.map_scan_position or self._ai_scanner:
-            if new_counts[2][0] == -1:
+            if new_counts[data_counter][0] == -1:
                 self.stopRequested = True
                 self.signal_step_lines_next.emit(direction)
+                data_counter += 1
                 return
-            if new_counts[3][0] == -1:
-                self.stopRequested = True
-                self.signal_step_lines_next.emit(direction)
-                return
+            if not self._fast_scan:
+                if new_counts[data_counter][0] == -1:
+                    self.stopRequested = True
+                    self.signal_step_lines_next.emit(direction)
+                    return
 
         direction = not direction  # invert direction
-        self.sort_counted_data(new_counts)
+        if self._3D_measurement:
+            self.signal_sort_count_data_3D.emit(new_counts, self._step_counter)
+        else:
+            self.signal_sort_count_data.emit(new_counts, self._step_counter)
 
-        self.update_image_data_line(self._step_counter)
-        self.signal_image_updated.emit()
-
-        # if self.axis_class[self._first_scan_axis].closed_loop:
-        #    self.go_to_start_position()
+        if self.axis_class[self._first_scan_axis].closed_loop:
+            self.go_to_start_position()
 
         # do z position correction
         # Todo: This is still very crude
@@ -1166,6 +1526,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._step_counter > self._steps_scan_second_line - 1:
             self.stopRequested = True
             self.log.info("Stepping scan at end position")
+        # self.log.info("new line %s time: %s", self._step_counter, datetime.datetime.now().strftime('%M-%S-%f'))
 
         self.signal_step_lines_next.emit(direction)
 
@@ -1187,7 +1548,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self.log.error("moving of attocube failed")
                     # Todo: repair return values
                     return [-1], []
-                if self._counting_device.start_finite_counter(start_clock=True) < 0:
+                if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
                     self.log.error("Starting the counter failed")
                     return [-1], []
                 if self.map_scan_position:
@@ -1200,6 +1561,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                                                                         start_clock=False):
                         self.log.error("Starting the analogue input counter failed")
                         return [-1], []
+                if self._3D_measurement:
+                    self._analogue_output_device.analogue_scan_line(self._ao_channel, self._output_voltages_array)
 
                 # move on line up
                 # if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
@@ -1209,6 +1572,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # Todo: Check if there is a better way than this to adjust for the fact that a stepping
                 # direction change is necessary for the last count. Maybe different method arrangement
                 # sensible
+                # self.log.info("moved up,line %s time: %s", self._step_counter,
+                #              datetime.datetime.now().strftime('%M-%S-%f'))
                 # time.sleep(
                 #    steps / self.axis_class[main_axis].step_freq)  # wait till stepping finished for readout
                 result = self._counting_device.get_finite_counts()
@@ -1221,7 +1586,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 elif self._ai_scanner:
                     analog_result = self._position_feedback_device.get_analogue_voltage_reader(
                         [self._ai_counter])
-
+                # self.log.info("read data up,line %s time: %s", self._step_counter,
+                #              datetime.datetime.now().strftime('%M-%S-%f'))
                 retval = 0
                 a = self._counting_device.stop_finite_counter()
                 if self.map_scan_position:
@@ -1255,24 +1621,32 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     return retval
                 # else:
                 #   retval = result[0]
-
-                result_back, analog_result_back = self.step_back_line(main_axis, second_axis, steps)
-                if type(result_back[0]) == int:
-                    return [-1], []
-                steps_offset = round(self._off_set_x * steps)
-                if steps_offset > 0:
-                    if self._stepping_device.move_attocube(main_axis, True, self._off_set_direction,
-                                                           steps=steps_offset) < 0:
-                        self.log.error("moving of attocube failed (offset)")
+                if not self._fast_scan:
+                    result_back, analog_result_back = self.step_back_line(main_axis, second_axis, steps)
+                    if type(result_back[0]) == int:
                         return [-1], []
+                    steps_offset = round(self._off_set_x * steps)
+                    if steps_offset > 0:
+                        if self._stepping_device.move_attocube(main_axis, True, self._off_set_direction,
+                                                               steps=steps_offset) < 0:
+                            self.log.error("moving of attocube failed (offset)")
+                            return [-1], []
+                        else:
+                            time.sleep(steps_offset / self.axis_class[self._first_scan_axis].step_freq)
                     else:
-                        time.sleep(steps_offset / self.axis_class[self._first_scan_axis].step_freq)
-                else:
-                    if self._step_counter == 0:
-                        self.log.warning("No offset used.")
+                        if self._step_counter == 0:
+                            self.log.warning("No offset used.")
+                    if self.map_scan_position or self._ai_scanner:
+                        return result[0], result_back[0], analog_result[0], analog_result_back[0]
+                    return result[0], result_back[0]
+                if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
+                    self.log.error("moving of attocube failed")
+                    return [-1], []
+
                 if self.map_scan_position or self._ai_scanner:
-                    return result[0], result_back[0], analog_result[0], analog_result_back[0]
-                return result[0], result_back[0]
+                    return result[0], analog_result[0]
+                else:
+                    return result[0]
             else:
                 self.log.error(
                     "second axis %s in not  an axis %s of the stepper", second_axis, self.axis)
@@ -1287,7 +1661,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
             self.log.error("moving of attocube failed")
             return [-1], []
-        if self._counting_device.start_finite_counter(start_clock=True) < 0:
+        if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
             self.log.error("Starting the counter failed")
             return [-1], []
         if self.map_scan_position:
@@ -1301,8 +1675,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.log.error("Starting the analogue input counter failed")
                 return [-1], []
 
+        if self._3D_measurement:
+            if 0 > self._analogue_output_device.analogue_scan_line(self._ao_channel, self._output_voltages_array[::-1]):
+                self.log.error("Starting the analogue line scan failed")
+                return [-1], []
 
         # time.sleep(steps * 1.7 / self.axis_class[main_axis].step_freq)
+        # self.log.info("moved down,line %s time: %s", self._step_counter,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
         result_back = self._counting_device.get_finite_counts()
         if self.map_scan_position and self._ai_scanner:
             analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
@@ -1313,7 +1693,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         elif self._ai_scanner:
             analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(
                 [self._ai_counter])
-
+        # self.log.info("read data down,line %s time: %s", self._step_counter,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
         # move on line up
         if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
             self.log.error("moving of attocube failed")
@@ -1352,38 +1733,129 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return result_back, analog_result_back
 
-    def sort_counted_data(self, counts):
-        self.stepping_raw_data[self._step_counter] = counts[0]
-        self.stepping_raw_data_back[self._step_counter] = np.flipud(counts[1])
+    def sort_counted_data(self, counts, line):
+        # self.log.info("2D sorting start, line %s, time: %s", line,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
+        data_counter = 0
+        self.stepping_raw_data[line] = counts[data_counter]
+        self.save_to_npy("SPCM", line, counts[data_counter])
+        data_counter += 1
+        if not self._fast_scan:
+            self.save_to_npy("SPCM_back", line, np.flipud(counts[data_counter]))
+            self.stepping_raw_data_back[line] = np.flipud(counts[data_counter])
+            data_counter += 1
+
         if self.map_scan_position or self._ai_counter:
-            forward = np.split(counts[2], 2 * self.map_scan_position + self._ai_scanner)
-            backward = np.split(counts[3], 2 * self.map_scan_position + self._ai_scanner)
+            forward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
+            if not self._fast_scan:
+                backward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
+
+            if self.map_scan_position:
+                self.save_to_npy("scan_pos_voltages", line, forward[0:2])
+                self._scan_pos_voltages[line, :, 0] = forward[0]
+                self._scan_pos_voltages[line, :, 1] = forward[1]
+                if not self._fast_scan:
+                    self.save_to_npy("scan_pos_voltages_back", line, np.flipud(backward[0:2]))
+                    self._scan_pos_voltages_back[line, :, 0] = np.flipud(backward[0])
+                    self._scan_pos_voltages_back[line, :, 1] = np.flipud(backward[1])
+
+            if self._ai_scanner:
+                self.save_to_npy("APD", line, forward[-1])
+                self._ai_counter_voltages[line] = forward[-1]
+                if not self._fast_scan:
+                    self.save_to_npy("APD_back", line, np.flipud(backward[-1]))
+                    self._ai_counter_voltages_back[line] = np.flipud(backward[-1])
+
+        # self.log.info("2D finished sorting, line %s, time: %s", line,
+        #                  datetime.datetime.now().strftime('%M-%S-%f'))
+
+        self.update_image_data_line(line)
+        self.signal_image_updated.emit()
+
+    def sort_3D_count_data(self, counts, line):
+        """Divides the data acquired by a 3D scan into data packages that the program can handle"""
+        # self.log.info("3D  sorting, line %s, time: %s", line,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
+
+        new_counts = []
+        mean_counts = []
+        length_scan = self._steps_scan_first_line
+        name_save_addition = "_3D"
+        data_counter = 0
+        new_counts.append(np.split(counts[data_counter], length_scan))
+        self.save_to_npy("SPCM" + name_save_addition, line, new_counts[data_counter])
+        mean_counts.append(np.mean(new_counts[data_counter], 1))
+        data_counter += 1
+        if not self._fast_scan:
+            new_counts.append(np.split(counts[data_counter], length_scan))
+            self.save_to_npy("SPCM_back" + name_save_addition, line, np.flipud(new_counts[data_counter]))
+            mean_counts.append(np.mean(new_counts[data_counter], 1))
+            data_counter += 1
+
+        forward_split = []
+        backward_split = []
+        if self.map_scan_position or self._ai_counter:
+            forward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
+            data_counter += 1
+            if not self._fast_scan:
+                backward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
+                data_counter += 1
+
+        for i in range(2 * self.map_scan_position + self._ai_scanner):
+            forward_split.append(np.split(forward[i], length_scan))
+            if not self._fast_scan:
+                backward_split.append(np.split(backward[i], length_scan))
+
+        if self.map_scan_position or self._ai_counter:
+            forward_mean_counts = np.mean(forward_split, 2)
+            if not self._fast_scan:
+                backward_mean_counts = np.mean(backward_split, 2)
+            mean_counts.append(forward_mean_counts.flatten())
+            if not self._fast_scan:
+                mean_counts.append(backward_mean_counts.flatten())
+
+        # self.log.info("3D finished sorting, start saving, line %s,  time: %s", line,
+        #              datetime.datetime.now().strftime('%M-%S-%f'))
         if self.map_scan_position:
-            self._scan_pos_voltages[self._step_counter, :, 0] = forward[0]
-            self._scan_pos_voltages[self._step_counter, :, 1] = forward[1]
-            self._scan_pos_voltages_back[self._step_counter, :, 0] = np.flipud(backward[0])
-            self._scan_pos_voltages_back[self._step_counter, :, 1] = np.flipud(backward[1])
+            self.save_to_npy("scan_pos_voltages" + name_save_addition, line, forward_split[0:2])
+            if not self._fast_scan:
+                self.save_to_npy("scan_pos_voltages_back" + name_save_addition, line, np.flip(backward_split[0:2], 1))
+
         if self._ai_scanner:
-            self._ai_counter_voltages[self._step_counter] = forward[-1]
-            self._ai_counter_voltages_back[self._step_counter] = np.flipud(backward[-1])
+            self.save_to_npy("APD" + name_save_addition, line, forward_split[-1])
+            if not self._fast_scan:
+                self.save_to_npy("APD_back" + name_save_addition, line, np.flipud(backward_split[-1]))
+        self.log.info("3D finished saving, line %s,  time: %s", line,
+                      datetime.datetime.now().strftime('%M-%S-%f'))
+        # self.save_to_npy(forward_split)
+        self.sort_counted_data(mean_counts, line)
 
     def go_to_start_position(self):
         # check starting position of fast scan direction
         if self.map_scan_position:
             # Todo: how is the position data saved for the backward direction?
-            new_position = [self.convert_voltage_to_position(self._first_scan_axis,
-                                                             self._scan_pos_voltages_back[
-                                                                 self._step_counter, 0, 0])]
+            if not self._fast_scan:
+                new_position = [self.convert_voltage_to_position(self._first_scan_axis,
+                                                                 self._scan_pos_voltages_back[
+                                                                     self._step_counter, 0, 0])]
+            else:
+                new_position = [self.convert_voltage_to_position(self._first_scan_axis,
+                                                                 self._scan_pos_voltages[
+                                                                     self._step_counter, -1, 0])]
             self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
         else:
-            new_position = self.get_position([self._first_scan_axis])
-            self._end_position_back_3[self._step_counter] = self.get_position(self._feedback_axis)
+            new_position = self.get_position([self._first_scan_axis], 1000, 10000)
+            self._end_position_back[self._step_counter] = self.get_position(self._feedback_axis, 1000, 10000)
 
         # check if end position differs from start position
         if abs(self._start_position[0] - new_position[0]) > self.axis_class[
             self._first_scan_axis].feedback_precision_position:
-            steps_res = int(
-                self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
+            if self._fast_scan:
+                steps_res = int(self._steps_scan_second_line / 10)
+                if steps_res == 0: steps_res = 3
+            else:
+                steps_res = int(
+                    self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
             # steps would be over correcting
             # stop readout for scanning so positions can be optimised
             # Todo: Let user choose offset
@@ -1393,16 +1865,25 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 # elif self._ai_scanner:
                 #    self._position_feedback_device.close_analogue_voltage_reader(self._ai_counter)
                 # go to start position
+                if self._fast_scan:
+                    step_freq = self.axis_class[self._first_scan_axis].step_freq
+                    if step_freq < 300:
+                        self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq * 3)
                 if self.optimize_position(self._first_scan_axis, self._start_position[0], steps_res) < 0:
                     self.stopRequested = True
                     self.log.warning('Optimisation of position failed. Step Scan stopped.')
                     # restart position readout for scanning
                     # the second if ensures that the analogue scanner is  s not started when
                     # the stepping scan is already finished
+                if self._fast_scan:
+                    self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq)
 
                 if self.map_scan_position:
-                    self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
-                        self._steps_scan_first_line, self._first_scan_axis)
+                    steps = self._steps_scan_first_line
+                    if self._3D_measurement:
+                        steps = steps * self._ramp_length
+                    self._position_feedback_device.set_up_analogue_voltage_reader_scanner(steps,
+                                                                                          self._first_scan_axis)
                     self._position_feedback_device.add_analogue_reader_channel_to_measurement(
                         self._first_scan_axis, [self._second_scan_axis])
                     if self._ai_scanner:
@@ -1412,7 +1893,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def measure_end_position_during_scan(self):
         if self.map_scan_position:
             self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
-        position = self.get_position(self._feedback_axis)
+        position = self.get_position(self._feedback_axis, 100, 1000)
         if self.map_scan_position:
             self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
                 self._steps_scan_first_line, self._first_scan_axis)
@@ -1467,27 +1948,31 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         image_raw = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, image_depth))
         image_raw_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, image_depth))
         image_raw[:, :, 2] = self.stepping_raw_data
-        image_raw_back[:, :, 2] = self.stepping_raw_data_back
+        if not self._fast_scan:
+            image_raw_back[:, :, 2] = self.stepping_raw_data_back
         if not self.map_scan_position:
             first_positions = np.linspace(0, self._steps_scan_first_line - 1, self._steps_scan_first_line)
             second_positions = np.linspace(0, self._steps_scan_second_line - 1, self._steps_scan_second_line)
             first_position_array, second_position_array = np.meshgrid(first_positions, second_positions)
             image_raw[:, :, 1] = second_position_array
             image_raw[:, :, 0] = first_position_array
-            image_raw_back[:, :, 1] = second_position_array
-            image_raw_back[:, :, 0] = first_position_array
+            if not self._fast_scan:
+                image_raw_back[:, :, 1] = second_position_array
+                image_raw_back[:, :, 0] = first_position_array
         if self._ai_scanner:
             image_raw[:, :, 3] = self._ai_counter_voltages
-            image_raw_back[:, :, 3] = self._ai_counter_voltages_back
+            if not self._fast_scan:
+                image_raw_back[:, :, 3] = self._ai_counter_voltages_back
 
         self.image_raw = image_raw
-        self.image_raw_back = image_raw_back
         self.full_image = image_raw
-        self.full_image_back = image_raw_back
-
         # for smoothed position feedback image
         self.full_image_smoothed = image_raw
-        self.full_image_back_smoothed = image_raw_back
+
+        if not self._fast_scan:
+            self.image_raw_back = image_raw_back
+            self.full_image_back = image_raw_back
+            self.full_image_back_smoothed = image_raw_back
 
     def _initalize_data_arrays_stepper(self):
         """
@@ -1495,30 +1980,68 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         self.stepping_raw_data = np.zeros(
             (self._steps_scan_second_line, self._steps_scan_first_line))
-        self.stepping_raw_data_back = np.zeros(
-            (self._steps_scan_second_line, self._steps_scan_first_line))
+        if not self._fast_scan:
+            self.stepping_raw_data_back = np.zeros(
+                (self._steps_scan_second_line, self._steps_scan_first_line))
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
                 self._scan_pos_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
-                self._scan_pos_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line, 2))
+                if not self._fast_scan:
+                    self._scan_pos_voltages_back = np.zeros(
+                        (self._steps_scan_second_line, self._steps_scan_first_line, 2))
         self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
         self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
 
         if self._ai_scanner:
             self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
-            self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+            if not self._fast_scan:
+                self._ai_counter_voltages_back = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
+
+    def _initalize_data_arrays_3D_stepper(self):
+        """
+        Initialises all numpy data arrays for the current stepper settings
+        """
+        self._3D_stepping_raw_data = np.zeros(
+            (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
+        if not self._fast_scan:
+            self._3D_stepping_raw_data_back = np.zeros(
+                (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
+        if self.map_scan_position:
+            if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
+                self._second_scan_axis].closed_loop:
+                self._3D_scan_pos_voltages = np.zeros(
+                    (self._steps_scan_second_line, self._steps_scan_first_line, 2, self._ramp_length))
+                if not self._fast_scan:
+                    self._3D_scan_pos_voltages_back = np.zeros(
+                        (self._steps_scan_second_line, self._steps_scan_first_line, 2, self._ramp_length))
+        if self._ai_scanner:
+            self._3D_ai_counter_voltages = np.zeros(
+                (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
+            if not self._fast_scan:
+                self._3D_ai_counter_voltages_back = np.zeros(
+                    (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
+
+        self._output_voltages_array = np.zeros(self._steps_scan_first_line * self._ramp_length)
+        for i in range(0, self._steps_scan_first_line - 1, 2):
+            self._output_voltages_array[self._ramp_length * i:self._ramp_length * i + self._ramp_length] = self.ramp
+            self._output_voltages_array[
+            self._ramp_length + self._ramp_length * i:self._ramp_length * i + 2 * self._ramp_length] = self.ramp[::-1]
+
     def update_image_data(self):
         """Updates the images data
         """
         self.image_raw[:, :, 2] = self.stepping_raw_data
-        self.image_raw_back[:, :, 2] = self.stepping_raw_data
+        if not self._fast_scan:
+            self.image_raw_back[:, :, 2] = self.stepping_raw_data
         if self.map_scan_position:
             self.image_raw[:, :, :2] = self._scan_pos_voltages
-            self.image_raw_back[:, :, :2] = self._scan_pos_voltages_back
+            if not self._fast_scan:
+                self.image_raw_back[:, :, :2] = self._scan_pos_voltages_back
         if self._ai_scanner:
             self.image_raw[:, :, 3] = self._ai_counter_voltages
-            self.image_raw_back[:, :, 3] = self._ai_counter_voltages_back
+            if not self._fast_scan:
+                self.image_raw_back[:, :, 3] = self._ai_counter_voltages_back
 
     def update_image_data_line(self, line_counter):
         """
@@ -1526,13 +2049,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         :param line_counter:
         """
         self.image_raw[line_counter, :, 2] = self.stepping_raw_data[line_counter]
-        self.image_raw_back[line_counter, :, 2] = self.stepping_raw_data_back[line_counter]
+        if not self._fast_scan:
+            self.image_raw_back[line_counter, :, 2] = self.stepping_raw_data_back[line_counter]
         if self.map_scan_position:
             self.image_raw[line_counter, :, :2] = self._scan_pos_voltages[line_counter]
-            self.image_raw_back[line_counter, :, :2] = self._scan_pos_voltages_back[line_counter]
+            if not self._fast_scan:
+                self.image_raw_back[line_counter, :, :2] = self._scan_pos_voltages_back[line_counter]
         if self._ai_scanner:
             self.image_raw[line_counter, :, 3] = self._ai_counter_voltages[line_counter]
-            self.image_raw_back[line_counter, :, 3] = self._ai_counter_voltages_back[line_counter]
+            if not self._fast_scan:
+                self.image_raw_back[line_counter, :, 3] = self._ai_counter_voltages_back[line_counter]
 
     def generate_save_parameters(self):
         # Prepare the meta data parameters (common to both saved files):
@@ -1560,6 +2086,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             parameters["Z correction up (attocube axis)"] = self._lines_correct_3rd_axis
         else:
             parameters["z correction down (attocube axis"] = self._lines_correct_3rd_axis
+        if self._3D_measurement:
+            parameters["Count frequency (Hz)"] = self._clock_frequency_3D
+            parameters["Scan resolution (V/step)"] = self.scan_resolution_3D
+            parameters["Start Voltage Scan (V)"] = self.start_voltage_3D
+            parameters["End Voltage scan (V)"] = self.end_voltage_3D
+            parameters["Points per Ramp"] = self._ramp_length
+            if self.smoothing:
+                parameters["Smoothing Steps"] = self._3D_smoothing_steps
 
         return parameters
 
@@ -1589,25 +2123,29 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self.map_scan_position and self._save_positions:
             data['x position (mm)'] = self.full_image[:, :, 0].flatten()
             data['y position (mm)'] = self.full_image[:, :, 1].flatten()
-            data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
-            data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
             full_data = self.full_image  # else it will be none to reduce computiation time = drawing time
-            full_data_back = self.full_image_back
+            if not self._fast_scan:
+                data_back['x position (mm)'] = self.full_image_back[:, :, 0].flatten()
+                data_back['y position (mm)'] = self.full_image_back[:, :, 1].flatten()
+                full_data_back = self.full_image_back
         else:
             data['x step'] = self.image_raw[:, :, 0].flatten()
             data['y step'] = self.image_raw[:, :, 1].flatten()
-            data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
-            data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
             full_data = None
-            full_data_back = None
+            if not self._fast_scan:
+                data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
+                data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
+                full_data_back = None
 
         for n, ch in enumerate(self.get_counter_count_channels()):
             data['count rate {0} (Hz)'.format(ch)] = self.image_raw[:, :, 2 + n].flatten()
-            data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
+            if not self._fast_scan:
+                data_back['count rate {0} (Hz)'.format(ch)] = self.image_raw_back[:, :, 2 + n].flatten()
 
         if self._ai_scanner:
             data["count rate AI (V)"] = self._ai_counter_voltages.flatten()
-            data_back["count rate AI (V)"] = self._ai_counter_voltages_back.flatten()
+            if not self._fast_scan:
+                data_back["count rate AI (V)"] = self._ai_counter_voltages_back.flatten()
 
         # Save the raw data to file
         filelabel = 'confocal_stepper_data'
@@ -1618,15 +2156,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                    filelabel=filelabel,
                                    fmt='%.6e',
                                    delimiter='\t')
-
-        filelabel = 'confocal_stepper_data_back'
-        self._save_logic.save_data(data_back,
-                                   filepath=filepath,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filelabel=filelabel,
-                                   fmt='%.6e',
-                                   delimiter='\t')
+        if not self._fast_scan:
+            filelabel = 'confocal_stepper_data_back'
+            self._save_logic.save_data(data_back,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=filelabel,
+                                       fmt='%.6e',
+                                       delimiter='\t')
 
         # plot images and save raw data
         axis_list = []
@@ -1681,47 +2219,105 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                            fmt='%.6e',
                                            delimiter='\t',
                                            plotfig=figs[ch][1])
+        if not self._fast_scan:
+            figs = {ch: self.draw_figure(data=self.stepping_raw_data_back,
+                                         full_data=full_data_back,
+                                         cbar_range=colorscale_range,
+                                         percentile_range=percentile_range,
+                                         ch=n)
+                    for n, ch in enumerate(self.get_counter_count_channels())}
 
-        figs = {ch: self.draw_figure(data=self.stepping_raw_data_back,
-                                     full_data=full_data_back,
-                                     cbar_range=colorscale_range,
-                                     percentile_range=percentile_range,
-                                     ch=n)
-                for n, ch in enumerate(self.get_counter_count_channels())}
+            # Save the image data and figure
+            for n, ch in enumerate(self.get_counter_count_channels()):
+                # data for the text-array "image":
+                image_data = OrderedDict()
+                image_data['Confocal pure {}{} scan image data without axis.\n'
+                           'The upper left entry represents the signal at the upper left pixel '
+                           'position.\nA pixel-line in the image corresponds to a row '
+                           'of entries where the Signal is in counts/s:'.format(
+                    self._first_scan_axis, self._second_scan_axis)] = self.stepping_raw_data_back
 
-        # Save the image data and figure
+                filelabel = 'confocal_image_back_{0}'.format(ch.replace('/', ''))
+                self._save_logic.save_data(image_data,
+                                           filepath=filepath,
+                                           timestamp=timestamp,
+                                           parameters=parameters,
+                                           filelabel=filelabel,
+                                           fmt='%.6e',
+                                           delimiter='\t',
+                                           plotfig=figs[ch][n])
+
+                if self.map_scan_position:  # also plot image data for positions of steppers
+                    self._save_logic.save_data(image_data,
+                                               filepath=filepath,
+                                               timestamp=timestamp,
+                                               parameters=parameters,
+                                               filelabel=filelabel + "_position",
+                                               fmt='%.6e',
+                                               delimiter='\t',
+                                               plotfig=figs[ch][n])
+
+        self.log.debug('Confocal Stepper Image saved.')
+        # if self._3D_measurement:
+        #   self._save_3D_measurement(parameters)
+
+        self.signal_data_saved.emit()
+        # Todo Ask if it is possible to write only one save with options for which lines were scanned
+        return
+
+    def _save_3D_measurement(self, parameters):
+        filepath = self._save_logic.get_path_for_module('ConfocalStepper')
+        timestamp = datetime.datetime.now()
+        # Prepare the meta data parameters (common to both saved files):
+        parameters["ao_ramp_length"] = self._ramp_length
+        # prepare the full raw data in an OrderedDict:
+        data = OrderedDict()
+        data_back = OrderedDict()
+        if self.map_scan_position and self._save_positions:
+            data['x position (mm)'] = self._3D_scan_pos_voltages[:, :, 0].flatten()
+            data['y position (mm)'] = self._3D_scan_pos_voltages[:, :, 1].flatten()
+            data_back['y position (mm)'] = self._3D_scan_pos_voltages_back[:, :, 1].flatten()
+            if not self._fast_scan:
+                data_back['x position (mm)'] = self._3D_scan_pos_voltages_back[:, :, 0].flatten()
+                full_data = self.full_image  # else it will be none to reduce computation time = drawing time
+                full_data_back = self.full_image_back
+        else:
+            data['x step'] = self.image_raw[:, :, 0].flatten()
+            data['y step'] = self.image_raw[:, :, 1].flatten()
+            full_data = None
+            if not self._fast_scan:
+                data_back['x step'] = self.image_raw_back[:, :, 0].flatten()
+                data_back['y step'] = self.image_raw_back[:, :, 1].flatten()
+                full_data_back = None
+
         for n, ch in enumerate(self.get_counter_count_channels()):
-            # data for the text-array "image":
-            image_data = OrderedDict()
-            image_data['Confocal pure {}{} scan image data without axis.\n'
-                       'The upper left entry represents the signal at the upper left pixel '
-                       'position.\nA pixel-line in the image corresponds to a row '
-                       'of entries where the Signal is in counts/s:'.format(
-                self._first_scan_axis, self._second_scan_axis)] = self.stepping_raw_data_back
+            data['count rate {0} (Hz)'.format(ch)] = self._3D_stepping_raw_data.flatten()
+            if not self._fast_scan:
+                data_back['count rate {0} (Hz)'.format(ch)] = self._3D_stepping_raw_data_back.flatten()
 
-            filelabel = 'confocal_image_back_{0}'.format(ch.replace('/', ''))
-            self._save_logic.save_data(image_data,
+        if self._ai_scanner:
+            data["count rate AI (V)"] = self._3D_ai_counter_voltages.flatten()
+            if not self._fast_scan:
+                data_back["count rate AI (V)"] = self._3D_ai_counter_voltages_back.flatten()
+
+        # Save the raw data to file
+        filelabel = 'confocal_stepper_data_3D'
+        self._save_logic.save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   fmt='%.6e',
+                                   delimiter='\t')
+        if not self._fast_scan:
+            filelabel = 'confocal_stepper_data_back_3D'
+            self._save_logic.save_data(data_back,
                                        filepath=filepath,
                                        timestamp=timestamp,
                                        parameters=parameters,
                                        filelabel=filelabel,
                                        fmt='%.6e',
-                                       delimiter='\t',
-                                       plotfig=figs[ch][n])
-            if self.map_scan_position:  # also plot image data for positions of steppers
-                self._save_logic.save_data(image_data,
-                                           filepath=filepath,
-                                           timestamp=timestamp,
-                                           parameters=parameters,
-                                           filelabel=filelabel + "_position",
-                                           fmt='%.6e',
-                                           delimiter='\t',
-                                           plotfig=figs[ch][n])
-
-        self.log.debug('Confocal Stepper Image saved.')
-        self.signal_data_saved.emit()
-        # Todo Ask if it is possible to write only one save with options for which lines were scanned
-        return
+                                       delimiter='\t')
 
     def draw_figure(self, data, full_data=None, scan_axis=None, cbar_range=None,
                     percentile_range=None, ch=0, suffix="steps"):  # crosshair_pos=None):
@@ -1836,6 +2432,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # redo for the full image information if is exists
         if full_data is not None:
+
             # Adjust data format
             xdata = full_data[:, :, 0]
             ydata = full_data[:, :, 1]
@@ -1900,6 +2497,36 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # self.signal_draw_figure_completed.emit()
         return fig, None
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
+
+    def generate_file_path(self):
+        timestamp = datetime.datetime.now()
+        if self._3D_measurement:
+            path_addition = "_3D"
+        else:
+            path_addition = ""
+        self.filepath = self._save_logic.get_path_for_module(
+            'ConfocalStepper' + path_addition + "/" + timestamp.strftime('%Y%m%d-%H%M-%S'))
+        self.file_path_raw = self._save_logic.get_path_for_module(self.filepath + "/raw")
+        self.filelabel = "confocal_stepper_data" + path_addition
+        self.filename = "confocal_stepper_data"
+
+    def generate_file_info(self):
+        pass
+
+    def save_to_npy(self, name, line, data):
+        if line < 10:
+            addition = "00"
+        elif line < 100:
+            addition = "0"
+        else:
+            addition = ""
+        np.save(self.file_path_raw + "/" + self.filename + "_" + name + "_line_" + addition + str(line), data)
+
+    def generate_npy_file(self, data):
+        # Todo: this is very crude
+
+        np.save(self.path_name + '/' + self.filename, data)
+        np.save(self.path_name + '/' + self.filename_back, data)
 
     #################################### Tilt correction ########################################
 
