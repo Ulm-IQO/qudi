@@ -32,3 +32,5 @@
 # log files
 *.log
 *.log.*
+/gui/piscan
+/logic/piscan_logic.py
