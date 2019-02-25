@@ -140,33 +140,33 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
         """
         external_ndarray_counter = 0
 
-        def ignore_aliases(self, data):
+        def ignore_aliases(self, ignore_data):
             """
             ignore aliases and anchors
             """
             return True
 
-    def represent_ordereddict(dumper, data):
+    def represent_ordereddict(dumper, dict_data):
         """
         Representer for OrderedDict
         """
         return dumper.represent_mapping(
             yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            data.items())
+            dict_data.items())
 
-    def represent_int(dumper, data):
+    def represent_int(dumper, int_data):
         """
         Representer for numpy int dtypes
         """
-        return dumper.represent_int(numpy.asscalar(data))
+        return dumper.represent_int(numpy.asscalar(int_data))
 
-    def represent_float(dumper, data):
+    def represent_float(dumper, float_data):
         """
         Representer for numpy float dtypes
         """
-        return dumper.represent_float(numpy.asscalar(data))
+        return dumper.represent_float(numpy.asscalar(float_data))
 
-    def represent_ndarray(dumper, data):
+    def represent_ndarray(dumper, array_data):
         """
         Representer for numpy ndarrays
         """
@@ -176,13 +176,13 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
             newpath = '{0}-{1:06}.npz'.format(
                 os.path.join(configdir, filename),
                 dumper.external_ndarray_counter)
-            numpy.savez_compressed(newpath, array=data)
+            numpy.savez_compressed(newpath, array=array_data)
             node = dumper.represent_str(newpath)
             node.tag = '!extndarray'
             dumper.external_ndarray_counter += 1
         except:
             with BytesIO() as f:
-                numpy.savez_compressed(f, array=data)
+                numpy.savez_compressed(f, array=array_data)
                 compressed_string = f.getvalue()
             node = dumper.represent_binary(compressed_string)
             node.tag = '!ndarray'

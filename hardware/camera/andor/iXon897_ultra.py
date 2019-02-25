@@ -40,12 +40,14 @@ class ReadMode(Enum):
     SINGLE_TRACK = 3
     IMAGE = 4
 
+
 class AcquisitionMode(Enum):
     SINGLE_SCAN = 1
     ACCUMULATE = 2
     KINETICS = 3
     FAST_KINETICS = 4
     RUN_TILL_ABORT = 5
+
 
 class TriggerMode(Enum):
     INTERNAL = 0
@@ -54,6 +56,7 @@ class TriggerMode(Enum):
     EXTERNAL_EXPOSURE = 7
     SOFTWARE_TRIGGER = 10
     EXTERNAL_CHARGE_SHIFTING = 12
+
 
 ERROR_DICT = {
     20001: "DRV_ERROR_CODES",
@@ -96,6 +99,7 @@ ERROR_DICT = {
     20991: "DRV_NOT_SUPPORTED",
     20992: "DRV_NOT_AVAILABLE"
 }
+
 
 class IxonUltra(Base, CameraInterface):
     """ Hardware class for Andors Ixon Ultra 897
@@ -401,7 +405,7 @@ class IxonUltra(Base, CameraInterface):
             images.append(img)
         self.log.debug('expected number of images:{0}'.format(length))
         self.log.debug('number of images acquired:{0}'.format(len(images)))
-        return np.array(images).transpose()
+        return False, np.array(images).transpose()
 
     def get_down_time(self):
         return self._exposure
@@ -572,7 +576,7 @@ class IxonUltra(Base, CameraInterface):
 
         return ERROR_DICT[error_code]
 
-    def _set_frame_transfer(self, bool):
+    def _set_frame_transfer(self, transfer_mode):
         acq_mode = self._acquisition_mode
 
         if (acq_mode == 'SINGLE_SCAN') | (acq_mode == 'KINETIC'):
@@ -580,10 +584,7 @@ class IxonUltra(Base, CameraInterface):
                            'mode \'SINGLE_SCAN\' or \'KINETIC\'.')
             return -1
         else:
-            if bool:
-                rtrn_val = self.dll.SetFrameTransferMode(1)
-            else:
-                rtrn_val = self.dll.SetFrameTransferMode(0)
+            rtrn_val = self.dll.SetFrameTransferMode(transfer_mode)
 
         if ERROR_DICT[rtrn_val] == 'DRV_SUCCESS':
             return 0

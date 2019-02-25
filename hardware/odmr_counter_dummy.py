@@ -25,6 +25,7 @@ import time
 from core.module import Base, Connector, ConfigOption
 from interface.odmr_counter_interface import ODMRCounterInterface
 
+
 class ODMRCounterDummy(Base, ODMRCounterInterface):
     """ Dummy hardware class to simulate the controls for a simple ODMR.
 
@@ -53,6 +54,9 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
         self._scanner_counter_daq_task = None
         self._odmr_length = None
+        self._pulse_out_channel = 'dummy'
+        self._lock_in_active = False
+        self._oversampling = 10
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -157,7 +161,7 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         time.sleep(self._odmr_length*1./self._clock_frequency)
 
         self.module_state.unlock()
-        return ret
+        return False, ret
 
 
     def close_odmr(self):
@@ -188,3 +192,27 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
         @return list(str): channels recorded during ODMR measurement
         """
         return ['ch{0:d}'.format(i) for i in range(1, self._number_of_channels + 1)]
+
+    @property
+    def oversampling(self):
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, val):
+        if not isinstance(val, (int, float)):
+            self.log.error('oversampling has to be int of float.')
+        else:
+            self._oversampling = int(val)
+
+    @property
+    def lock_in_active(self):
+        return self._lock_in_active
+
+    @lock_in_active.setter
+    def lock_in_active(self, val):
+        if not isinstance(val, bool):
+            self.log.error('lock_in_active has to be boolean.')
+        else:
+            self._lock_in_active = val
+            if self._lock_in_active:
+                self.log.warn('Lock-In is not implemented')

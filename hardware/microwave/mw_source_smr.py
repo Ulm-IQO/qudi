@@ -212,11 +212,11 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         mode, dummy = self.get_status()
 
         if 'list' in mode:
-            pow_list = self._ask(':LIST:POW?').strip().split(',')
+            power_list = self._ask(':LIST:POW?').strip().split(',')
 
             # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
             #FIXME: Correct that as soon as possible in the interface!!!
-            return np.array([float(pow) for pow in pow_list])
+            return np.array([float(power) for power in power_list])
 
         else:
             return float(self._ask(':POW?'))

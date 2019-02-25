@@ -124,7 +124,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer = None
         self.__start_time = 0
         self.__elapsed_time = 0
-        self.__elapsed_sweeps = 0  # FIXME: unused
+        self.__elapsed_sweeps = 0
 
         # threading
         self._threadlock = Mutex()
@@ -141,6 +141,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Paused measurement flag
         self.__is_paused = False
+        self._time_of_pause = None
+        self._elapsed_pause = 0
 
         # for fit:
         self.fc = None  # Fit container
@@ -345,6 +347,14 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             err = self.fast_counter_pause()
         return err
+
+    @property
+    def elapsed_sweeps(self):
+        return self.__elapsed_sweeps
+
+    @property
+    def elapsed_time(self):
+        return self.__elapsed_time
     ############################################################################
 
     ############################################################################
@@ -782,6 +792,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
+                self._elapsed_pause = 0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
                                           self.__elapsed_sweeps,
                                           self.__timer_interval)
@@ -821,9 +832,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                    #              'later point.'.format(stash_raw_data_tag))
-                    self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
+                    self._saved_raw_data[stash_raw_data_tag] = (self.raw_data.copy(),
+                                                                {'elapsed_sweeps': self.__elapsed_sweeps,
+                                                                 'elapsed_time': self.__elapsed_time})
                 self._recalled_raw_data_tag = None
 
                 # Set measurement paused flag
@@ -865,6 +876,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = True
+                self._time_of_pause = time.time()
 
                 self.sigMeasurementStatusUpdated.emit(True, True)
             else:
@@ -890,6 +902,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
+                self.__start_time += time.time() - self._time_of_pause
 
                 self.sigMeasurementStatusUpdated.emit(True, False)
             else:
@@ -1082,7 +1095,6 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.__start_time
 
                 self._extract_laser_pulses()
 
@@ -1101,11 +1113,19 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # order data according to alternating flag
                 if self._alternating:
+                    if len(self.signal_data[0]) != len(tmp_signal[::2]):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal[::2])))
+                        return
                     self.signal_data[1] = tmp_signal[::2]
                     self.signal_data[2] = tmp_signal[1::2]
                     self.measurement_error[1] = tmp_error[::2]
                     self.measurement_error[2] = tmp_error[1::2]
                 else:
+                    if len(self.signal_data[0]) != len(tmp_signal):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal)))
+                        return
                     self.signal_data[1] = tmp_signal
                     self.measurement_error[1] = tmp_error
 
@@ -1120,7 +1140,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def _extract_laser_pulses(self):
         # Get counter raw data (including recalled raw data from previous measurement)
-        self.raw_data = self._get_raw_data()
+        fc_data, info_dict = self._get_raw_data()
+        self.raw_data = fc_data
+        self.__elapsed_sweeps = info_dict['elapsed_sweeps']
+        self.__elapsed_time = info_dict['elapsed_time']
 
         # extract laser pulses from raw data
         return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
@@ -1142,29 +1165,47 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
-        :return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
+        @return tuple(numpy.ndarray, info_dict): The count data (1D for ungated, 2D for gated counter) and
+                                                 info_dict with keys 'elapsed_sweeps' and 'elapsed_time'
         """
         # get raw data from fast counter
         fc_data = netobtain(self.fastcounter().get_data_trace())
+        if type(fc_data) == tuple and len(fc_data) == 2:  # if the hardware implement the new version of the interface
+            fc_data, info_dict = fc_data
+        else:
+            info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_sweeps') is not None:
+            elapsed_sweeps = info_dict['elapsed_sweeps']
+        else:
+            elapsed_sweeps = -1
+
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_time') is not None:
+            elapsed_time = info_dict['elapsed_time']
+        else:
+            elapsed_time = time.time() - self.__start_time
 
         # add old raw data from previous measurements if necessary
         if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
-            self.log.info('Found old saved raw data with tag "{0}".'
-                          ''.format(self._recalled_raw_data_tag))
+            # self.log.info('Found old saved raw data with tag "{0}".'
+            #               ''.format(self._recalled_raw_data_tag))
+            elapsed_sweeps += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_sweeps']
+            elapsed_time += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_time']
             if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]
-            elif self._saved_raw_data[self._recalled_raw_data_tag].shape == fc_data.shape:
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0]
+            elif self._saved_raw_data[self._recalled_raw_data_tag][0].shape == fc_data.shape:
                 self.log.debug('Recalled raw data has the same shape as current data.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag] + fc_data
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0] + fc_data
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'
                                  '\nDid NOT add recalled raw data to current time trace.')
         elif not fc_data.any():
             self.log.warning('Only zeros received from fast counter!')
             fc_data = np.zeros(fc_data.shape, dtype='int64')
-        return fc_data
+
+        return fc_data, {'elapsed_sweeps': elapsed_sweeps, 'elapsed_time': elapsed_time}
 
     def _initialize_data_arrays(self):
         """

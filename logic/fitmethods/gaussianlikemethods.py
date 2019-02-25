@@ -301,7 +301,7 @@ def make_twoDgaussian_model(self, prefix=None):
 # 1D Gaussian with flat offset    #
 ###################################
 
-def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a 1D gaussian peak fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -325,7 +325,7 @@ def make_gaussian_fit(self, x_axis, data, estimator, units=None, add_params=None
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = mod_final.fit(data, x=x_axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The 1D gaussian peak fit did not work. Error '
                        'message: {0}\n'.format(result.message))
@@ -412,7 +412,7 @@ def estimate_gaussian_peak(self, x_axis, data, params):
 
     # calculate the second moment of the gaussian distribution:
     #   int (x^2 * f(x) dx) :
-    mom2 = np.sum((x_axis)**2 * data_smoothed) / np.sum(data_smoothed)
+    mom2 = np.sum(x_axis ** 2 * data_smoothed) / np.sum(data_smoothed)
 
     # and use the standard formula to obtain the standard deviation:
     #   sigma^2 = int( (x - mean)^2 f(x) dx ) = int (x^2 * f(x) dx) - mean^2
@@ -474,7 +474,7 @@ def estimate_gaussian_dip(self, x_axis, data, params):
 # 1D Gaussian with linear inclined offset    #
 ##############################################
 
-def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a 1D gaussian peak fit with linear offset on the provided data.
     @param numpy.array x_axis: 1D axis values
     @param numpy.array data: 1D data, should have the same dimension as x_axis.
@@ -496,7 +496,7 @@ def make_gaussianlinearoffset_fit(self, x_axis, data, estimator, units=None, add
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = mod_final.fit(data, x=x_axis, params=params)
+        result = mod_final.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The 1D gaussian peak fit did not work. Error '
                        'message: {0}\n'.format(result.message))
@@ -589,7 +589,7 @@ def make_gaussiandouble_fit(self, x_axis, data, estimator,
                             add_params=None,
                             threshold_fraction=0.4,
                             minimal_threshold=0.2,
-                            sigma_threshold_fraction=0.3):
+                            sigma_threshold_fraction=0.3, **kwargs):
     """ Perform a 1D two gaussian dip fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -624,9 +624,9 @@ def make_gaussiandouble_fit(self, x_axis, data, estimator,
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
     except:
-        result = model.fit(data, x=x_axis, params=params)
+        result = model.fit(data, x=x_axis, params=params, **kwargs)
         self.log.warning('The double gaussian dip fit did not work: {0}'.format(
             result.message))
 
@@ -758,7 +758,7 @@ def estimate_gaussiandouble_dip(self, x_axis, data, params,
 # TODO: I think this has an offset, and it should be named so to be consistent with
 #       the 1D functions.
 
-def make_twoDgaussian_fit(self, xy_axes, data, estimator, units=None, add_params=None):
+def make_twoDgaussian_fit(self, xy_axes, data, estimator, units=None, add_params=None, **kwargs):
     """ This method performes a 2D gaussian fit on the provided data.
 
     @param numpy.array xy_axes: 2D axes values. xy_axes[0] contains x_axis and
@@ -787,9 +787,9 @@ def make_twoDgaussian_fit(self, xy_axes, data, estimator, units=None, add_params
     params = self._substitute_params(initial_params=params,
                                      update_params=add_params)
     try:
-        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params, **kwargs)
     except:
-        result = gaussian_2d_model.fit(data, x=xy_axes, params=params)
+        result = gaussian_2d_model.fit(data, x=xy_axes, params=params, **kwargs)
         self.log.warning('The 2D gaussian fit did not work: {0}'.format(
                        result.message))
 

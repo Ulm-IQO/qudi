@@ -605,7 +605,7 @@ class SaveLogic(GenericLogic):
             folderlist = [d for d in os.listdir(current_dir) if os.path.isdir(os.path.join(current_dir, d))]
             # Search if there is a folder which starts with the current date:
             for entry in folderlist:
-                if (time.strftime("%Y%m%d") in (entry[:2])):
+                if time.strftime("%Y%m%d") in (entry[:2]):
                     current_dir = os.path.join(current_dir, str(entry))
                     folder_exists = True
                     break

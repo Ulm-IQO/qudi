@@ -156,7 +156,7 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
             self._channel_detect,
             self._channel_sequence
         )
-        return (bin_width_s, record_length_s, number_of_gates)
+        return bin_width_s, record_length_s, number_of_gates
 
     def start_measure(self):
         """ Start the fast counter. """
@@ -214,7 +214,9 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         care of in this hardware class. A possible overflow of the histogram
         bins must be caught here and taken care of.
         """
-        return np.array(self.pulsed.getData(), dtype='int64')
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return np.array(self.pulsed.getData(), dtype='int64'), info_dict
 
 
     def get_status(self):
@@ -233,3 +235,4 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
         """ Returns the width of a single timebin in the timetrace in seconds. """
         width_in_seconds = self._bin_width * 1e-9
         return width_in_seconds
+

@@ -993,9 +993,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         last_state = set()
         for event in events:
             if event['direction']:
-                last_state |= set([event['channel']])
+                last_state |= {event['channel']}
             else:
-                last_state -= set([event['channel']])
+                last_state -= {event['channel']}
 
         # Let's construct back the sequence
         corrected_sequence = []
@@ -1006,9 +1006,9 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
             # add the pulse between last event an this event (so use the last state)
             corrected_sequence.append({'active_channels': list(state | always_on), 'length': duration})
             if event['direction']:
-                state |= set([event['channel']])
+                state |= {event['channel']}
             else:
-                state -= set([event['channel']])
+                state -= {event['channel']}
             time += duration
 
         # We need to add the last pulse manually
@@ -1668,7 +1668,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
 
         active_ch = {}
 
-        if ch == []:
+        if not ch:
             active_ch = self.channel_states
 
         else:

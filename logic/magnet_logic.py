@@ -61,9 +61,7 @@ class MagnetLogic(GenericLogic):
     drastic changes.
 
     ---
-    Alexander Stark
     """
-
 
     _modclass = 'MagnetLogic'
     _modtype = 'logic'
@@ -88,14 +86,14 @@ class MagnetLogic(GenericLogic):
     curr_2d_pathway_mode = StatusVar('curr_2d_pathway_mode', 'snake-wise')
 
     _checktime = StatusVar('_checktime', 2.5)
-    _1D_axis0_data = StatusVar('_1D_axis0_data', np.zeros(2))
-    _2D_axis0_data = StatusVar('_2D_axis0_data', np.zeros(2))
-    _2D_axis1_data = StatusVar('_2D_axis1_data', np.zeros(2))
-    _3D_axis0_data = StatusVar('_3D_axis0_data', np.zeros(2))
-    _3D_axis1_data = StatusVar('_3D_axis1_data', np.zeros(2))
-    _3D_axis2_data = StatusVar('_3D_axis2_data', np.zeros(2))
+    _1D_axis0_data = StatusVar('_1D_axis0_data', default=np.arange(3))
+    _2D_axis0_data = StatusVar('_2D_axis0_data', default=np.arange(3))
+    _2D_axis1_data = StatusVar('_2D_axis1_data', default=np.arange(2))
+    _3D_axis0_data = StatusVar('_3D_axis0_data', default=np.arange(2))
+    _3D_axis1_data = StatusVar('_3D_axis1_data', default=np.arange(2))
+    _3D_axis2_data = StatusVar('_3D_axis2_data', default=np.arange(2))
 
-    _2D_data_matrix = StatusVar('_2D_data_matrix', np.zeros((2, 2)))
+    _2D_data_matrix = StatusVar('_2D_data_matrix', np.zeros((3, 2)))
     _3D_data_matrix = StatusVar('_3D_data_matrix', np.zeros((2, 2, 2)))
 
     curr_alignment_method = StatusVar('curr_alignment_method', '2d_fluorescence')
@@ -128,11 +126,9 @@ class MagnetLogic(GenericLogic):
     nuclear_2d_reps_within_ssr = StatusVar('nuclear_2d_reps_within_ssr', 1000)
     nuclear_2d_num_ssr = StatusVar('nuclear_2d_num_ssr', 3000)
 
-
     # General Signals, used everywhere:
     sigIdleStateChanged = QtCore.Signal(bool)
     sigPosChanged = QtCore.Signal(dict)
-
 
     sigMeasurementStarted = QtCore.Signal()
     sigMeasurementContinued = QtCore.Signal()
@@ -149,7 +145,7 @@ class MagnetLogic(GenericLogic):
     # GUI to the leading underscore signals!
     _sigStepwiseAlignmentNext = QtCore.Signal()
     _sigContinuousAlignmentNext = QtCore.Signal()
-    _sigInitializeMeasPos = QtCore.Signal(bool) # signal to go to the initial measurement position
+    _sigInitializeMeasPos = QtCore.Signal(bool)  # signal to go to the initial measurement position
     sigPosReached = QtCore.Signal()
 
     # signals if new data are writen to the data arrays (during measurement):
@@ -175,7 +171,6 @@ class MagnetLogic(GenericLogic):
 
     sigMoveRelChanged = QtCore.Signal(dict)
 
-
     # signals for fluorescence alignment
     sigFluoIntTimeChanged = QtCore.Signal(float)
     sigOptPosFreqChanged = QtCore.Signal(float)
@@ -197,7 +192,7 @@ class MagnetLogic(GenericLogic):
         self._magnet_device = self.magnetstage()
         self._save_logic = self.savelogic()
 
-        #FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
+        # FIXME: THAT IS JUST A TEMPORARY SOLUTION! Implement the access on the
         #       needed methods via the TaskRunner!
         self._optimizer_logic = self.optimizerlogic()
         self._confocal_logic = self.scannerlogic()
@@ -206,7 +201,6 @@ class MagnetLogic(GenericLogic):
 
         self._gc_logic = self.gatedcounterlogic()
         self._ta_logic = self.traceanalysis()
-        #self._odmr_logic = self.odmrlogic()
 
         self._seq_gen_logic = self.sequencegeneratorlogic()
 
@@ -229,7 +223,7 @@ class MagnetLogic(GenericLogic):
         # relative movement settings
 
         constraints = self._magnet_device.get_constraints()
-        self.move_rel_dict={}
+        self.move_rel_dict = {}
 
         for axis_label in constraints:
             if ('move_rel_' + axis_label) in self._statusVariables:
@@ -291,19 +285,18 @@ class MagnetLogic(GenericLogic):
         # use that if only one ODMR transition is available.
         self.odmr_2d_single_trans = False
 
-
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
-        constraints=self.get_hardware_constraints()
+        constraints = self.get_hardware_constraints()
         for axis_label in constraints:
-            self._statusVariables[('move_rel_'+axis_label)] = self.move_rel_dict[axis_label]
+            self._statusVariables[('move_rel_' + axis_label)] = self.move_rel_dict[axis_label]
 
         self._statusVariables['align_2d_axis0_name'] = self.align_2d_axis0_name
         self._statusVariables['align_2d_axis1_name'] = self.align_2d_axis1_name
 
-        self._statusVariables['odmr_2d_low_fitfunction'] =  self.odmr_2d_low_fitfunction
-        self._statusVariables['odmr_2d_high_fitfunction'] =  self.odmr_2d_high_fitfunction
+        self._statusVariables['odmr_2d_low_fitfunction'] = self.odmr_2d_low_fitfunction
+        self._statusVariables['odmr_2d_high_fitfunction'] = self.odmr_2d_high_fitfunction
         return 0
 
     def get_hardware_constraints(self):
@@ -331,7 +324,6 @@ class MagnetLogic(GenericLogic):
                                     param_dict = { 'x' : 23 }
         """
 
-
         self.sigMoveRel.emit(param_dict)
         # self._check_position_reached_loop(start_pos, end_pos)
         # self.sigPosChanged.emit(param_dict)
@@ -345,22 +337,21 @@ class MagnetLogic(GenericLogic):
                                  {'axis_label': <a-value>}.
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
-                                 
+
         @return param dict: dictionary, which passes all the relevant
                                 parameters. E.g., for a movement of an axis
                                 labeled with 'x' by 23 the dict should have the
                                 form:
                                     param_dict = { 'x' : 23 }
         """
-        #self._magnet_device.move_abs(param_dict)
+        # self._magnet_device.move_abs(param_dict)
         # start_pos = self.get_pos(list(param_dict))
         self.sigMoveAbs.emit(param_dict)
 
         # self._check_position_reached_loop(start_pos, param_dict)
 
-        #self.sigPosChanged.emit(param_dict)
+        # self.sigPosChanged.emit(param_dict)
         return param_dict
-
 
     def get_pos(self, param_list=None):
         """ Gets current position of the stage.
@@ -393,14 +384,11 @@ class MagnetLogic(GenericLogic):
         status = self._magnet_device.get_status(param_list)
         return status
 
-
-
     def stop_movement(self):
         """ Stops movement of the stage. """
         self._stop_measure = True
         self.sigAbort.emit()
         return self._stop_measure
-
 
     def set_velocity(self, param_dict):
         """ Write new value for velocity.
@@ -412,10 +400,7 @@ class MagnetLogic(GenericLogic):
                                  to one of the axis.
         """
         self.sigVelChanged.emit()
-        #self._magnet_device.set_velocity(param_dict)
         return param_dict
-
-
 
     def _create_1d_pathway(self, axis_name, axis_range, axis_step, axis_vel):
         """  Create a path along with the magnet should move with one axis
@@ -471,8 +456,8 @@ class MagnetLogic(GenericLogic):
         """
 
         # calculate number of steps (those are NOT the number of points!)
-        axis0_num_of_steps = int(axis0_range/axis0_step)
-        axis1_num_of_steps = int(axis1_range/axis1_step)
+        axis0_num_of_steps = int(axis0_range / axis0_step)
+        axis1_num_of_steps = int(axis1_range / axis1_step)
 
         # make an array of movement steps
         axis0_steparray = [axis0_step] * axis0_num_of_steps
@@ -480,29 +465,29 @@ class MagnetLogic(GenericLogic):
 
         pathway = []
 
-        #FIXME: create these path modes:
+        # FIXME: create these path modes:
         if self.curr_2d_pathway_mode == 'spiral-in':
             self.log.error('The pathway creation method "{0}" through the '
-                    'matrix is not implemented yet!\nReturn an empty '
-                    'patharray.'.format(self.curr_2d_pathway_mode))
+                           'matrix is not implemented yet!\nReturn an empty '
+                           'patharray.'.format(self.curr_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'spiral-out':
             self.log.error('The pathway creation method "{0}" through the '
-                    'matrix is not implemented yet!\nReturn an empty '
-                    'patharray.'.format(self.curr_2d_pathway_mode))
+                           'matrix is not implemented yet!\nReturn an empty '
+                           'patharray.'.format(self.curr_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'diagonal-snake-wise':
             self.log.error('The pathway creation method "{0}" through the '
-                    'matrix is not implemented yet!\nReturn an empty '
-                    'patharray.'.format(self.current_2d_pathway_mode))
+                           'matrix is not implemented yet!\nReturn an empty '
+                           'patharray.'.format(self.current_2d_pathway_mode))
             return [], []
 
         elif self.curr_2d_pathway_mode == 'selected-points':
             self.log.error('The pathway creation method "{0}" through the '
-                    'matrix is not implemented yet!\nReturn an empty '
-                    'patharray.'.format(self.current_2d_pathway_mode))
+                           'matrix is not implemented yet!\nReturn an empty '
+                           'patharray.'.format(self.current_2d_pathway_mode))
             return [], []
 
         # choose the snake-wise as default for now.
@@ -512,8 +497,8 @@ class MagnetLogic(GenericLogic):
             self.log.debug(axis0_name)
             self.log.debug(axis0_range)
             self.log.debug(init_pos[axis0_name])
-            axis0_pos = round(init_pos[axis0_name] - axis0_range/2, 7)
-            axis1_pos = round(init_pos[axis1_name] - axis1_range/2, 7)
+            axis0_pos = round(init_pos[axis0_name] - axis0_range / 2, 7)
+            axis1_pos = round(init_pos[axis1_name] - axis1_range / 2, 7)
 
             # append again so that the for loop later will run once again
             # through the axis0 array but the last value of axis1_steparray will
@@ -574,7 +559,7 @@ class MagnetLogic(GenericLogic):
                     # step_config[axis0_name] = {'move_rel': direction*step_in_axis0}
 
                     # absolute movement:
-                    axis0_pos =round(axis0_pos + direction*step_in_axis0, 7)
+                    axis0_pos = round(axis0_pos + direction * step_in_axis0, 7)
 
                     # if axis0_vel is None:
                     #     step_config[axis0_name] = {'move_abs': axis0_pos}
@@ -602,7 +587,7 @@ class MagnetLogic(GenericLogic):
                                             'index': (axis0_index, axis1_index)}
                     path_index += 1
 
-                if (axis1_index+1) >= len(axis1_steparray):
+                if (axis1_index + 1) >= len(axis1_steparray):
                     break
 
                 # make a move along axis1:
@@ -634,10 +619,7 @@ class MagnetLogic(GenericLogic):
                                         'index': (axis0_index, axis1_index)}
                 path_index += 1
 
-
-
         return pathway, back_map
-
 
     def _create_2d_cont_pathway(self, pathway):
 
@@ -663,28 +645,18 @@ class MagnetLogic(GenericLogic):
         # in order to display the rectangles in the 2d plot in the gui such that the
         # measurement position is in the center of the rectangle.
         # data axis0:
-        data_axis0 = np.linspace(axis0_start-axis0_step/2, axis0_start+(num_points_axis0-0.5)*axis0_step,
-                                 num_points_axis0)
+        data_axis0 = np.linspace(axis0_start, axis0_start + (num_points_axis0 - 1) * axis0_step, num_points_axis0)
 
         # data axis1:
-        data_axis1 = np.linspace(axis1_start-axis1_step/2, axis1_start+(num_points_axis1-0.5)*axis1_step,
-                                 num_points_axis1)
+        data_axis1 = np.linspace(axis1_start, axis1_start + (num_points_axis1 - 1) * axis1_step, num_points_axis1)
 
         return matrix, data_axis0, data_axis1
-
-
-
 
     def _prepare_1d_graph(self, axis_range, axis_step):
         pass
 
-
-
-
-
     def start_1d_alignment(self, axis_name, axis_range, axis_step, axis_vel,
-                                 stepwise_meas=True, continue_meas=False):
-
+                           stepwise_meas=True, continue_meas=False):
 
         # actual measurement routine, which is called to start the measurement
 
@@ -714,9 +686,7 @@ class MagnetLogic(GenericLogic):
         # index position:
         self._sigInitializeMeasPos.emit(stepwise_meas)
 
-
-
-    def start_2d_alignment(self,stepwise_meas=True, continue_meas=False):
+    def start_2d_alignment(self, stepwise_meas=True, continue_meas=False):
 
         # before starting the measurement you should convince yourself that the
         # passed traveling range is possible. Otherwise the measurement will be
@@ -742,22 +712,16 @@ class MagnetLogic(GenericLogic):
         key_set1 = set(pos_dict.keys())
         key_set2 = set([self.align_2d_axis1_name, self.align_2d_axis0_name])
         key_complement = key_set1 - key_set2
-        self._control_dict = {key : pos_dict[key] for key in key_complement}
+        self._control_dict = {key: pos_dict[key] for key in key_complement}
 
         # additional values to save
         self._2d_error = []
         self._2d_measured_fields = []
         self._2d_intended_fields = []
 
-
-        #self.log.debug("contro_dict {0}".format(self._control_dict))
-
-
-
         # save only the position of the axis, which are going to be moved
         # during alignment, the return will be a dict!
         self._saved_pos_before_align = self.get_pos([self.align_2d_axis0_name, self.align_2d_axis1_name])
-
 
         if not continue_meas:
 
@@ -820,7 +784,6 @@ class MagnetLogic(GenericLogic):
         self._sigInitializeMeasPos.emit(stepwise_meas)
         return 0
 
-
     def _move_to_curr_pathway_index(self, stepwise_meas):
 
         # move to the passed pathway index in the list _pathway and start the
@@ -846,9 +809,7 @@ class MagnetLogic(GenericLogic):
         for axis_name in self._saved_pos_before_align:
             end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-
         self.log.debug("(first movement) magnet moving ? {0}".format(self._check_is_moving()))
-
 
         if stepwise_meas:
             # start the Stepwise alignment loop body self._stepwise_loop_body:
@@ -856,7 +817,6 @@ class MagnetLogic(GenericLogic):
         else:
             # start the continuous alignment loop body self._continuous_loop_body:
             self._sigContinuousAlignmentNext.emit()
-
 
     def _stepwise_loop_body(self):
         """ Go one by one through the created path
@@ -874,15 +834,14 @@ class MagnetLogic(GenericLogic):
         self.log.debug('end_pos {0}'.format(end_pos))
         differences = []
         for key in end_pos:
-            differences.append((pos[key] - end_pos[key]['move_abs'])**2)
+            differences.append((pos[key] - end_pos[key]['move_abs']) ** 2)
 
         for key in self._control_dict:
-            differences.append((pos[key] - self._control_dict[key])**2)
+            differences.append((pos[key] - self._control_dict[key]) ** 2)
 
         distance = 0
         for difference in differences:
             distance += difference
-
 
         # this is not the actual distance (in a physical sense), just some sort of mean of the
         # variation of the measurement variables. ( Don't know which coordinates are used ... spheric, cartesian ... )
@@ -890,12 +849,12 @@ class MagnetLogic(GenericLogic):
         self._2d_error.append(distance)
         self._2d_measured_fields.append(pos)
         # the desired field
-        act_pos = {key: self._pathway[self._pathway_index][key]['move_abs'] for key in self._pathway[self._pathway_index]}
+        act_pos = {key: self._pathway[self._pathway_index][key]['move_abs'] for key in
+                   self._pathway[self._pathway_index]}
         # wanted_pos = {**self._control_dict, **act_pos}
         # Workaround for Python 3.4.4
         self._control_dict.update(act_pos)
         wanted_pos = self._control_dict
-
 
         self._2d_intended_fields.append(wanted_pos)
 
@@ -911,7 +870,7 @@ class MagnetLogic(GenericLogic):
         # increase the index
         self._pathway_index += 1
 
-        if (self._pathway_index) < len(self._pathway):
+        if self._pathway_index < len(self._pathway):
 
             #
             self._do_postmeasurement_proc()
@@ -936,14 +895,12 @@ class MagnetLogic(GenericLogic):
                 start_pos[axis_name] = self._backmap[self._pathway_index - 1][axis_name]
                 end_pos[axis_name] = self._backmap[self._pathway_index][axis_name]
 
-
-
             # rerun this loop again
             self._sigStepwiseAlignmentNext.emit()
 
         else:
             self._end_alignment_procedure()
-
+        return
 
     def _continuous_loop_body(self):
         """ Go as much as possible in one direction
@@ -953,8 +910,6 @@ class MagnetLogic(GenericLogic):
         The loop body goes through the 1D array
         """
         pass
-
-
 
     def stop_alignment(self):
         """ Stops any kind of ongoing alignment measurement by setting a flag.
@@ -978,7 +933,7 @@ class MagnetLogic(GenericLogic):
 
         last_pos = dict()
         for axis_name in self._saved_pos_before_align:
-            last_pos[axis_name] = self._backmap[self._pathway_index-1][axis_name]
+            last_pos[axis_name] = self._backmap[self._pathway_index - 1][axis_name]
 
         self._magnet_device.move_abs(self._saved_pos_before_align)
 
@@ -993,7 +948,6 @@ class MagnetLogic(GenericLogic):
         self.log.info('Alignment Complete!')
 
         pass
-
 
     def _check_position_reached_loop(self, start_pos_dict, end_pos_dict):
         """ Perform just a while loop, which checks everytime the conditions
@@ -1012,13 +966,12 @@ class MagnetLogic(GenericLogic):
         too fast or the magnet does not move further.
         """
 
-
         distance_init = 0.0
         constraints = self.get_hardware_constraints()
         minimal_distance = 0.0
         for axis_label in start_pos_dict:
-            distance_init = (end_pos_dict[axis_label] - start_pos_dict[axis_label])**2
-            minimal_distance = minimal_distance + (constraints[axis_label]['pos_step'])**2
+            distance_init = (end_pos_dict[axis_label] - start_pos_dict[axis_label]) ** 2
+            minimal_distance = minimal_distance + (constraints[axis_label]['pos_step']) ** 2
         distance_init = np.sqrt(distance_init)
         minimal_distance = np.sqrt(minimal_distance)
 
@@ -1033,7 +986,7 @@ class MagnetLogic(GenericLogic):
             curr_pos = self.get_pos(list(end_pos_dict))
 
             for axis_label in start_pos_dict:
-                current_dist = (end_pos_dict[axis_label] - curr_pos[axis_label])**2
+                current_dist = (end_pos_dict[axis_label] - curr_pos[axis_label]) ** 2
 
             current_dist = np.sqrt(current_dist)
 
@@ -1044,7 +997,7 @@ class MagnetLogic(GenericLogic):
 
                 break
 
-        #return either pos reached signal of check position
+                # return either pos reached signal of check position
 
     def _check_is_moving(self):
         """
@@ -1057,7 +1010,6 @@ class MagnetLogic(GenericLogic):
 
         return (state[axes[0]] or state[axes[1]] or state[axes[2]]) is (1 or -1)
 
-
     def _set_meas_point(self, meas_val, add_meas_val, pathway_index, back_map):
 
         # is it point for 1d meas or 2d meas?
@@ -1069,7 +1021,7 @@ class MagnetLogic(GenericLogic):
         # 1D case:
         if np.shape(index_array) == ():
 
-            #FIXME: Implement the 1D save
+            # FIXME: Implement the 1D save
 
             self.sig1DMatrixChanged.emit()
 
@@ -1084,19 +1036,15 @@ class MagnetLogic(GenericLogic):
 
         elif np.shape(index_array)[0] == 3:
 
-
-            #FIXME: Implement the 3D save
+            # FIXME: Implement the 3D save
             self.sig3DMatrixChanged.emit()
         else:
             self.log.error('The measurement point "{0}" could not be set in '
-                    'the _set_meas_point routine, since either a 1D, a 2D or '
-                    'a 3D index array was expected, but an index array "{1}" '
-                    'was given in the passed back_map. Correct the '
-                    'back_map creation in the routine '
-                    '_create_2d_pathway!'.format(meas_val, index_array))
-
-
-
+                           'the _set_meas_point routine, since either a 1D, a 2D or '
+                           'a 3D index array was expected, but an index array "{1}" '
+                           'was given in the passed back_map. Correct the '
+                           'back_map creation in the routine '
+                           '_create_2d_pathway!'.format(meas_val, index_array))
 
         pass
 
@@ -1116,8 +1064,8 @@ class MagnetLogic(GenericLogic):
                 self._do_optimize_pos()
 
         elif 0 < freq < 1:
-            freq = int(np.round(1/freq))
-            if not ii%freq:
+            freq = int(np.round(1 / freq))
+            if not ii % freq:
                 self._do_optimize_pos()
 
         elif freq < 0:
@@ -1187,10 +1135,9 @@ class MagnetLogic(GenericLogic):
 
         return data, add_data
 
-
     def _perform_fluorescence_measure(self):
 
-        #FIXME: that should be run through the TaskRunner! Implement the call
+        # FIXME: that should be run through the TaskRunner! Implement the call
         #       by not using this connection!
 
         if self._counter_logic.get_counting_mode() != CountingMode.CONTINUOUS:
@@ -1215,7 +1162,6 @@ class MagnetLogic(GenericLogic):
         # optimize at first the position:
         self._do_optimize_pos()
 
-
         # correct the ODMR alignment the shift of the ODMR lines due to movement
         # in axis0 and axis1, therefore find out how much you will move in each
         # distance:
@@ -1226,10 +1172,10 @@ class MagnetLogic(GenericLogic):
             axis1_pos_start = self._saved_pos_before_align[self._axis1_name]
             axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
         else:
-            axis0_pos_start = self._backmap[self._pathway_index-1][self._axis0_name]
+            axis0_pos_start = self._backmap[self._pathway_index - 1][self._axis0_name]
             axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
 
-            axis1_pos_start = self._backmap[self._pathway_index-1][self._axis1_name]
+            axis1_pos_start = self._backmap[self._pathway_index - 1][self._axis1_name]
             axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
 
         # that is the current distance the magnet has moved:
@@ -1243,25 +1189,45 @@ class MagnetLogic(GenericLogic):
         # odmr_2d_peak_axis1_move_ratio:
         if self._pathway_index > 1:
             # in essence, get the last measurement value for odmr freq:
-            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('low_freq_Frequency') is not None:
-                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq_Frequency']['value']*1e6
-                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq_Frequency']['value']*1e6
-            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('low_freq_Freq. 1') is not None:
-                low_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['low_freq_Freq. 1']['value']*1e6
-                low_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['low_freq_Freq. 1']['value']*1e6
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get(
+                    'low_freq_Frequency') is not None:
+                low_odmr_freq1 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['low_freq_Frequency'][
+                    'value'] * 1e6
+                low_odmr_freq2 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['low_freq_Frequency'][
+                    'value'] * 1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get(
+                    'low_freq_Freq. 1') is not None:
+                low_odmr_freq1 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['low_freq_Freq. 1'][
+                    'value'] * 1e6
+                low_odmr_freq2 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['low_freq_Freq. 1'][
+                    'value'] * 1e6
             else:
                 self.log.error('No previous saved lower odmr freq found in '
-                        'ODMR alignment data! Cannot do the ODMR Alignment!')
+                               'ODMR alignment data! Cannot do the ODMR Alignment!')
 
-            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('high_freq_Frequency') is not None:
-                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq_Frequency']['value']*1e6
-                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq_Frequency']['value']*1e6
-            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('high_freq_Freq. 1') is not None:
-                high_odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['high_freq_Freq. 1']['value']*1e6
-                high_odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['high_freq_Freq. 1']['value']*1e6
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get(
+                    'high_freq_Frequency') is not None:
+                high_odmr_freq1 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['high_freq_Frequency'][
+                    'value'] * 1e6
+                high_odmr_freq2 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['high_freq_Frequency'][
+                    'value'] * 1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get(
+                    'high_freq_Freq. 1') is not None:
+                high_odmr_freq1 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['high_freq_Freq. 1'][
+                    'value'] * 1e6
+                high_odmr_freq2 = \
+                self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['high_freq_Freq. 1'][
+                    'value'] * 1e6
             else:
                 self.log.error('No previous saved higher odmr freq found in '
-                        'ODMR alignment data! Cannot do the ODMR Alignment!')
+                               'ODMR alignment data! Cannot do the ODMR Alignment!')
 
             # only if there was a non zero movement, the if make sense to
             # calculate the shift for either the axis0 or axis1.
@@ -1269,25 +1235,25 @@ class MagnetLogic(GenericLogic):
             # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
             if not np.isclose(axis0_move, 0.0):
                 # update the correction ratio:
-                low_peak_axis0_move_ratio = (low_odmr_freq1 - low_odmr_freq2)/axis0_move
-                high_peak_axis0_move_ratio = (high_odmr_freq1 - high_odmr_freq2)/axis0_move
+                low_peak_axis0_move_ratio = (low_odmr_freq1 - low_odmr_freq2) / axis0_move
+                high_peak_axis0_move_ratio = (high_odmr_freq1 - high_odmr_freq2) / axis0_move
 
                 # print('low_odmr_freq2', low_odmr_freq2, 'low_odmr_freq1', low_odmr_freq1)
                 # print('high_odmr_freq2', high_odmr_freq2, 'high_odmr_freq1', high_odmr_freq1)
 
                 # calculate the average shift of the odmr lines for the lower
                 # and the upper transition:
-                self.odmr_2d_peak_axis0_move_ratio = (low_peak_axis0_move_ratio +high_peak_axis0_move_ratio)/2
+                self.odmr_2d_peak_axis0_move_ratio = (low_peak_axis0_move_ratio + high_peak_axis0_move_ratio) / 2
 
                 # print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
             if not np.isclose(axis1_move, 0.0):
                 # update the correction ratio:
-                low_peak_axis1_move_ratio = (low_odmr_freq1 - low_odmr_freq2)/axis1_move
-                high_peak_axis1_move_ratio = (high_odmr_freq1 - high_odmr_freq2)/axis1_move
+                low_peak_axis1_move_ratio = (low_odmr_freq1 - low_odmr_freq2) / axis1_move
+                high_peak_axis1_move_ratio = (high_odmr_freq1 - high_odmr_freq2) / axis1_move
 
                 # calculate the average shift of the odmr lines for the lower
                 # and the upper transition:
-                self.odmr_2d_peak_axis1_move_ratio = (low_peak_axis1_move_ratio + high_peak_axis1_move_ratio)/2
+                self.odmr_2d_peak_axis1_move_ratio = (low_peak_axis1_move_ratio + high_peak_axis1_move_ratio) / 2
 
                 # print('new odmr_2d_peak_axis1_move_ratio', self.odmr_2d_peak_axis1_move_ratio/1e12)
 
@@ -1302,8 +1268,8 @@ class MagnetLogic(GenericLogic):
         # print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
 
         # create a unique nametag for the current measurement:
-        name_tag = 'low_trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
-                   +'_'+ str(self._backmap[self._pathway_index]['index'][1])
+        name_tag = 'low_trans_index_' + str(self._backmap[self._pathway_index]['index'][0]) \
+                   + '_' + str(self._backmap[self._pathway_index]['index'][1])
 
         # of course the shift of the ODMR peak is not linear for a movement in
         # axis0 and axis1, but we need just an estimate how to set the boundary
@@ -1312,9 +1278,9 @@ class MagnetLogic(GenericLogic):
         # peak(s).
 
         # calculate the parameters for the odmr scan:
-        low_start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq/2
+        low_start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq / 2
         low_step_freq = self.odmr_2d_low_step_freq
-        low_stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq/2
+        low_stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq / 2
 
         param = self._odmr_logic.perform_odmr_measurement(low_start_freq,
                                                           low_step_freq,
@@ -1327,13 +1293,13 @@ class MagnetLogic(GenericLogic):
 
         # restructure the output parameters:
         for entry in param:
-            store_dict['low_freq_'+str(entry)] = param[entry]
+            store_dict['low_freq_' + str(entry)] = param[entry]
 
         # extract the frequency meausure:
         if param.get('Frequency') is not None:
-            odmr_low_freq_meas = param['Frequency']['value']*1e6
+            odmr_low_freq_meas = param['Frequency']['value'] * 1e6
         elif param.get('Freq. 1') is not None:
-            odmr_low_freq_meas = param['Freq. 1']['value']*1e6
+            odmr_low_freq_meas = param['Freq. 1']['value'] * 1e6
         else:
             # a default value for testing and debugging:
             odmr_low_freq_meas = 1000e6
@@ -1350,8 +1316,8 @@ class MagnetLogic(GenericLogic):
         self.odmr_2d_high_center_freq += (freq_shift_high_axis0 + freq_shift_high_axis1)
 
         # create a unique nametag for the current measurement:
-        name_tag = 'high_trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
-                   +'_'+ str(self._backmap[self._pathway_index]['index'][1])
+        name_tag = 'high_trans_index_' + str(self._backmap[self._pathway_index]['index'][0]) \
+                   + '_' + str(self._backmap[self._pathway_index]['index'][1])
 
         # of course the shift of the ODMR peak is not linear for a movement in
         # axis0 and axis1, but we need just an estimate how to set the boundary
@@ -1360,9 +1326,9 @@ class MagnetLogic(GenericLogic):
         # peak(s).
 
         # calculate the parameters for the odmr scan:
-        high_start_freq = self.odmr_2d_high_center_freq - self.odmr_2d_high_range_freq/2
+        high_start_freq = self.odmr_2d_high_center_freq - self.odmr_2d_high_range_freq / 2
         high_step_freq = self.odmr_2d_high_step_freq
-        high_stop_freq = self.odmr_2d_high_center_freq + self.odmr_2d_high_range_freq/2
+        high_stop_freq = self.odmr_2d_high_center_freq + self.odmr_2d_high_range_freq / 2
 
         param = self._odmr_logic.perform_odmr_measurement(high_start_freq,
                                                           high_step_freq,
@@ -1374,13 +1340,13 @@ class MagnetLogic(GenericLogic):
                                                           name_tag)
         # restructure the output parameters:
         for entry in param:
-            store_dict['high_freq_'+str(entry)] = param[entry]
+            store_dict['high_freq_' + str(entry)] = param[entry]
 
         # extract the frequency meausure:
         if param.get('Frequency') is not None:
-            odmr_high_freq_meas = param['Frequency']['value']*1e6
+            odmr_high_freq_meas = param['Frequency']['value'] * 1e6
         elif param.get('Freq. 1') is not None:
-            odmr_high_freq_meas = param['Freq. 1']['value']*1e6
+            odmr_high_freq_meas = param['Freq. 1']['value'] * 1e6
         else:
             # a default value for testing and debugging:
             odmr_high_freq_meas = 2000e6
@@ -1388,10 +1354,10 @@ class MagnetLogic(GenericLogic):
         # correct the estimated center frequency by the actual measured one.
         self.odmr_2d_high_center_freq = odmr_high_freq_meas
 
-        #FIXME: the normalization is just done for the display to view the
+        # FIXME: the normalization is just done for the display to view the
         #       value properly! There is right now a bug in the colorbad
         #       display, which need to be solved.
-        diff = (abs(odmr_high_freq_meas - odmr_low_freq_meas)/2)/self.norm
+        diff = (abs(odmr_high_freq_meas - odmr_low_freq_meas) / 2) / self.norm
 
         while self._odmr_logic.module_state() != 'idle' and not self._stop_measure:
             time.sleep(0.5)
@@ -1418,10 +1384,10 @@ class MagnetLogic(GenericLogic):
             axis1_pos_start = self._saved_pos_before_align[self._axis1_name]
             axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
         else:
-            axis0_pos_start = self._backmap[self._pathway_index-1][self._axis0_name]
+            axis0_pos_start = self._backmap[self._pathway_index - 1][self._axis0_name]
             axis0_pos_stop = self._backmap[self._pathway_index][self._axis0_name]
 
-            axis1_pos_start = self._backmap[self._pathway_index-1][self._axis1_name]
+            axis1_pos_start = self._backmap[self._pathway_index - 1][self._axis1_name]
             axis1_pos_stop = self._backmap[self._pathway_index][self._axis1_name]
 
         # that is the current distance the magnet has moved:
@@ -1435,17 +1401,20 @@ class MagnetLogic(GenericLogic):
         # odmr_2d_peak_axis1_move_ratio:
         if self._pathway_index > 1:
             # in essence, get the last measurement value for odmr freq:
-            if self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Frequency') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Frequency']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Frequency']['value']*1e6
-            elif self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']].get('Freq. 1') is not None:
-                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index-1]['index']]['Freq. 1']['value']*1e6
-                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index-2]['index']]['Freq. 1']['value']*1e6
+            if self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get('Frequency') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['Frequency'][
+                                 'value'] * 1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['Frequency'][
+                                 'value'] * 1e6
+            elif self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']].get('Freq. 1') is not None:
+                odmr_freq1 = self._2D_add_data_matrix[self._backmap[self._pathway_index - 1]['index']]['Freq. 1'][
+                                 'value'] * 1e6
+                odmr_freq2 = self._2D_add_data_matrix[self._backmap[self._pathway_index - 2]['index']]['Freq. 1'][
+                                 'value'] * 1e6
             else:
                 self.log.error('No previous saved lower odmr freq found in '
-                            'ODMR alignment data! Cannot do the ODMR '
-                            'Alignment!')
-
+                               'ODMR alignment data! Cannot do the ODMR '
+                               'Alignment!')
 
             # only if there was a non zero movement, the if make sense to
             # calculate the shift for either the axis0 or axis1.
@@ -1453,17 +1422,16 @@ class MagnetLogic(GenericLogic):
             # NO PROPER CALCULATION OF THE OMDR LINES CAN BE PROVIDED!
             if not np.isclose(axis0_move, 0.0):
                 # update the correction ratio:
-                peak_axis0_move_ratio = (odmr_freq1 - odmr_freq2)/axis0_move
+                peak_axis0_move_ratio = (odmr_freq1 - odmr_freq2) / axis0_move
 
                 # calculate the average shift of the odmr lines for the lower
                 # and the upper transition:
                 self.odmr_2d_peak_axis0_move_ratio = peak_axis0_move_ratio
 
-                print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio/1e12)
+                print('new odmr_2d_peak_axis0_move_ratio', self.odmr_2d_peak_axis0_move_ratio / 1e12)
             if not np.isclose(axis1_move, 0.0):
                 # update the correction ratio:
-                peak_axis1_move_ratio = (odmr_freq1 - odmr_freq2)/axis1_move
-
+                peak_axis1_move_ratio = (odmr_freq1 - odmr_freq2) / axis1_move
 
                 # calculate the shift of the odmr lines for the transition:
                 self.odmr_2d_peak_axis1_move_ratio = peak_axis1_move_ratio
@@ -1479,8 +1447,8 @@ class MagnetLogic(GenericLogic):
         # print('self.odmr_2d_low_center_freq',self.odmr_2d_low_center_freq)
 
         # create a unique nametag for the current measurement:
-        name_tag = 'trans_index_'+str(self._backmap[self._pathway_index]['index'][0]) \
-                   +'_'+ str(self._backmap[self._pathway_index]['index'][1])
+        name_tag = 'trans_index_' + str(self._backmap[self._pathway_index]['index'][0]) \
+                   + '_' + str(self._backmap[self._pathway_index]['index'][1])
 
         # of course the shift of the ODMR peak is not linear for a movement in
         # axis0 and axis1, but we need just an estimate how to set the boundary
@@ -1489,9 +1457,9 @@ class MagnetLogic(GenericLogic):
         # peak(s).
 
         # calculate the parameters for the odmr scan:
-        start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq/2
+        start_freq = self.odmr_2d_low_center_freq - self.odmr_2d_low_range_freq / 2
         step_freq = self.odmr_2d_low_step_freq
-        stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq/2
+        stop_freq = self.odmr_2d_low_center_freq + self.odmr_2d_low_range_freq / 2
 
         param = self._odmr_logic.perform_odmr_measurement(start_freq,
                                                           step_freq,
@@ -1507,10 +1475,10 @@ class MagnetLogic(GenericLogic):
 
         # extract the frequency meausure:
         if param.get('Frequency') is not None:
-            odmr_freq_meas = param['Frequency']['value']*1e6
+            odmr_freq_meas = param['Frequency']['value'] * 1e6
             cont_meas = param['Contrast']['value']
         elif param.get('Freq. 1') is not None:
-            odmr_freq_meas = param['Freq. 1']['value']*1e6
+            odmr_freq_meas = param['Freq. 1']['value'] * 1e6
             cont_meas = param['Contrast 0']['value'] + param['Contrast 1']['value'] + param['Contrast 2']['value']
         else:
             # a default value for testing and debugging:
@@ -1553,7 +1521,7 @@ class MagnetLogic(GenericLogic):
         # Use the parameters from the ODMR alignment!
         cont_meas, param = self._perform_single_trans_contrast_measure()
 
-        odmr_freq = param['Freq. ' + str(self.nuclear_2d_mw_on_peak-1)]['value']*1e6
+        odmr_freq = param['Freq. ' + str(self.nuclear_2d_mw_on_peak - 1)]['value'] * 1e6
 
         self._set_cw_mw(switch_on=True, freq=odmr_freq, power=self.nuclear_2d_mw_power)
         self._load_nuclear_spin_readout()
@@ -1578,14 +1546,12 @@ class MagnetLogic(GenericLogic):
 
         hist_fit_x, hist_fit_y, param_single_poisson = self._ta_logic.do_fit('Poisson')
 
-
         param['chi_sqr_single'] = param_single_poisson['chi_sqr']['value']
-
 
         # try with normal double poissonian:
 
         # better performance by starting with half of number of bins:
-        num_bins = int((self._gc_logic.countdata.max() - self._gc_logic.countdata.min())/2)
+        num_bins = int((self._gc_logic.countdata.max() - self._gc_logic.countdata.min()) / 2)
         self._ta_logic.set_num_bins_histogram(num_bins)
 
         flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
@@ -1595,50 +1561,54 @@ class MagnetLogic(GenericLogic):
         # self._load_pulsed_odmr()
         # self._pulser_on()
 
-        out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
-                       (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+        out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0'][
+            'value'] > self._gc_logic.countdata.max()) or \
+                       (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1'][
+                           'value'] > self._gc_logic.countdata.max())
 
-        while (np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4):
+        while np.isnan(param2['fidelity'] or out_of_range) and num_bins > 4:
             # Reduce the number of bins if the calculation yields an invalid
             # number
-            num_bins = int(num_bins/2)
+            num_bins = int(num_bins / 2)
             self._ta_logic.set_num_bins_histogram(num_bins)
             flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
-
 
             # reduce the number of bins by one, so that the fitting algorithm
             # work. Eventually, that has to go in the fit constaints of the
             # algorithm.
 
-            out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0']['value'] > self._gc_logic.countdata.max()) or \
-                           (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1']['value'] > self._gc_logic.countdata.max())
+            out_of_range = (param2['\u03BB0']['value'] < self._gc_logic.countdata.min() or param2['\u03BB0'][
+                'value'] > self._gc_logic.countdata.max()) or \
+                           (param2['\u03BB1']['value'] < self._gc_logic.countdata.min() or param2['\u03BB1'][
+                               'value'] > self._gc_logic.countdata.max())
 
             if out_of_range:
-                num_bins = num_bins-1
+                num_bins = num_bins - 1
                 self._ta_logic.set_num_bins_histogram(num_bins)
                 self.log.warning('Fitted values {0},{1} are out of range [{2},{3}]! '
-                            'Change the histogram a '
-                            'bit.'.format(param2['\u03BB0']['value'],
-                                          param2['\u03BB1']['value'],
-                                          self._gc_logic.countdata.min(),
-                                          self._gc_logic.countdata.max()))
+                                 'Change the histogram a '
+                                 'bit.'.format(param2['\u03BB0']['value'],
+                                               param2['\u03BB1']['value'],
+                                               self._gc_logic.countdata.min(),
+                                               self._gc_logic.countdata.max()))
 
                 flip_prob, param2 = self._ta_logic.analyze_flip_prob(self._gc_logic.countdata, num_bins)
 
         # run the lifetime calculatiion:
         #        In order to calculate the T1 time one needs the length of one SingleShot readout
-        dt = (self.nuclear_2d_rabi_periode/2 + self.nuclear_2d_laser_time + self.nuclear_2d_idle_time) * self.nuclear_2d_reps_within_ssr
+        dt = (
+             self.nuclear_2d_rabi_periode / 2 + self.nuclear_2d_laser_time + self.nuclear_2d_idle_time) * self.nuclear_2d_reps_within_ssr
         # param_lifetime = self._ta_logic.analyze_lifetime(self._gc_logic.countdata, dt, self.nuclear_2d_estimated_lifetime)
         # param.update(param_lifetime)
 
 
         # If everything went wrong, then put at least a reasonable number:
         if np.isnan(param2['fidelity']):
-            param2['fidelity'] = 0.5    # that fidelity means that
+            param2['fidelity'] = 0.5  # that fidelity means that
 
         # add the flip probability as a parameter to the parameter dict and add
         # also all the other parameters to that dict:
-        param['flip_probability'] =  flip_prob
+        param['flip_probability'] = flip_prob
         param.update(param2)
 
         if self.nuclear_2d_use_single_poisson:
@@ -1659,7 +1629,6 @@ class MagnetLogic(GenericLogic):
             # print('in SSR measure')
             time.sleep(1)
 
-
     def _set_cw_mw(self, switch_on, freq=2.87e9, power=-40):
 
         if switch_on:
@@ -1671,13 +1640,13 @@ class MagnetLogic(GenericLogic):
 
     def _load_pulsed_odmr(self):
         """ Load a pulsed ODMR asset. """
-        #FIXME: Move this creation routine to the tasks!
+        # FIXME: Move this creation routine to the tasks!
 
         self._seq_gen_logic.load_asset(asset_name='PulsedODMR')
 
     def _load_nuclear_spin_readout(self):
         """ Load a nuclear spin readout asset. """
-        #FIXME: Move this creation routine to the tasks!
+        # FIXME: Move this creation routine to the tasks!
 
         self._seq_gen_logic.load_asset(asset_name='SSR')
 
@@ -1718,7 +1687,7 @@ class MagnetLogic(GenericLogic):
         # here is the current activation pattern of the pulse device:
         active_ch = self._seq_gen_logic.get_active_channels()
 
-        ch_to_change = {} # create something like  a_ch = {1:True, 2:True} to switch
+        ch_to_change = {}  # create something like  a_ch = {1:True, 2:True} to switch
 
         # check whether the correct channels are already active, and if not
         # correct for that and activate and deactivate the appropriate ones:
@@ -1786,7 +1755,6 @@ class MagnetLogic(GenericLogic):
 
         return
 
-
     def get_available_odmr_peaks(self):
         """ Retrieve the information on which odmr peak the microwave can be
             applied.
@@ -1797,12 +1765,10 @@ class MagnetLogic(GenericLogic):
 
     def save_1d_data(self):
 
-
         # save also all kinds of data, which are the results during the
         # alignment measurements
 
         pass
-
 
     def save_2d_data(self, tag=None, timestamp=None):
         """ Save the data of the  """
@@ -1849,7 +1815,6 @@ class MagnetLogic(GenericLogic):
 
         axes_names = list(self._saved_pos_before_align)
 
-
         matrix_data['Alignment Matrix'] = self._2D_data_matrix
 
         parameters = OrderedDict()
@@ -1860,14 +1825,12 @@ class MagnetLogic(GenericLogic):
         parameters['Pathway of the magnet alignment'] = 'Snake-wise steps'
 
         for index, entry in enumerate(self._pathway):
-            parameters['index_'+str(index)] = entry
+            parameters['index_' + str(index)] = entry
 
         parameters['Backmap of the magnet alignment'] = 'Index wise display'
 
         for entry in self._backmap:
-            parameters['related_intex_'+str(entry)] = self._backmap[entry]
-
-
+            parameters['related_intex_' + str(entry)] = self._backmap[entry]
 
         self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp)
@@ -1892,8 +1855,6 @@ class MagnetLogic(GenericLogic):
         add_data['{0} values ({1})'.format(self._axis0_name, units_axis0)] = axis0_data
         add_data['{0} values ({1})'.format(self._axis1_name, units_axis1)] = axis1_data
         add_data['all measured additional parameter'] = param_data
-
-
 
         self._save_logic.save_data(add_data, filepath=filepath, filelabel=filelabel2,
                                    timestamp=timestamp)
@@ -1961,7 +1922,7 @@ class MagnetLogic(GenericLogic):
         for axis_name in move_commmands:
 
             if move_commmands[axis_name].get('vel') is not None:
-                    move_dict_vel[axis_name] = move_commmands[axis_name]['vel']
+                move_dict_vel[axis_name] = move_commmands[axis_name]['vel']
 
             if move_commmands[axis_name].get('move_abs') is not None:
                 move_dict_abs[axis_name] = move_commmands[axis_name]['move_abs']
@@ -1971,14 +1932,13 @@ class MagnetLogic(GenericLogic):
         return move_dict_vel, move_dict_abs, move_dict_rel
 
     def set_pos_checktime(self, checktime):
-        if not np.isclose(0, checktime) and checktime>0:
+        if not np.isclose(0, checktime) and checktime > 0:
             self._checktime = checktime
         else:
             self.log.warning('Could not set a new value for checktime, since '
-                    'the passed value "{0}" is either zero or negative!\n'
-                    'Choose a proper checktime value in seconds, the old '
-                    'value will be kept!')
-
+                             'the passed value "{0}" is either zero or negative!\n'
+                             'Choose a proper checktime value in seconds, the old '
+                             'value will be kept!')
 
     def get_2d_data_matrix(self):
         return self._2D_data_matrix
@@ -1986,20 +1946,19 @@ class MagnetLogic(GenericLogic):
     def get_2d_axis_arrays(self):
         return self._2D_axis0_data, self._2D_axis1_data
 
-
-    def set_move_rel_para(self,dict):
+    def set_move_rel_para(self, parameters):
         """ Set the move relative parameters according to dict
 
         @params dict: Dictionary with new values
 
         @return dict: Dictionary with new values
         """
-        for axis_label in dict:
-            self.move_rel_dict[axis_label]=dict[axis_label]
-            self.sigMoveRelChanged.emit(dict)
+        for axis_label in parameters:
+            self.move_rel_dict[axis_label] = parameters[axis_label]
+            self.sigMoveRelChanged.emit(parameters)
         return self.move_rel_dict
 
-    def get_move_rel_para(self,param_list=None):
+    def get_move_rel_para(self, param_list=None):
         """ Get the move relative parameters
 
         @params list: Optional list with axis names
@@ -2009,10 +1968,10 @@ class MagnetLogic(GenericLogic):
         if param_list is None:
             return self.move_rel_dict
         else:
-            dict={}
+            return_dict = dict()
             for axis_label in param_list:
-                dict[axis_label] = self.move_rel_dict[axis_label]
-            return dict
+                return_dict[axis_label] = self.move_rel_dict[axis_label]
+            return return_dict
 
     def set_optimize_pos_freq(self, freq):
         """ Set the optimization frequency """
@@ -2033,11 +1992,11 @@ class MagnetLogic(GenericLogic):
         """
         return self._optimize_pos
 
-    def set_fluorescence_integration_time(self,time):
+    def set_fluorescence_integration_time(self, integration_time):
         """ Set the integration time """
-        self._fluorescence_integration_time = time
+        self._fluorescence_integration_time = integration_time
         self.sigFluoIntTimeChanged.emit(self._fluorescence_integration_time)
-        return time
+        return integration_time
 
     def get_fluorescence_integration_time(self):
         """ Get the fluorescence integration time.
@@ -2048,86 +2007,86 @@ class MagnetLogic(GenericLogic):
 
     ##### 2D alignment settings
 
-    #TODO: Check hardware constraints
+    # TODO: Check hardware constraints
 
-    def set_align_2d_axis0_name(self,axisname):
-        '''Set the specified value '''
-        self.align_2d_axis0_name=axisname
+    def set_align_2d_axis0_name(self, axisname):
+        """Set the specified value """
+        self.align_2d_axis0_name = axisname
         self.sig2DAxis0NameChanged.emit(axisname)
         return axisname
 
-    def set_align_2d_axis0_range(self,range):
-        '''Set the specified value '''
-        self.align_2d_axis0_range=range
-        self.sig2DAxis0RangeChanged.emit(range)
-        return range
+    def set_align_2d_axis0_range(self, axis_range):
+        """Set the specified value """
+        self.align_2d_axis0_range = axis_range
+        self.sig2DAxis0RangeChanged.emit(axis_range)
+        return axis_range
 
-    def set_align_2d_axis0_step(self,step):
-        '''Set the specified value '''
-        self.align_2d_axis0_step=step
+    def set_align_2d_axis0_step(self, step):
+        """Set the specified value """
+        self.align_2d_axis0_step = step
         self.sig2DAxis0StepChanged.emit(step)
         return step
 
-    def set_align_2d_axis0_vel(self,vel):
-        '''Set the specified value '''
-        self.align_2d_axis0_vel=vel
+    def set_align_2d_axis0_vel(self, vel):
+        """Set the specified value """
+        self.align_2d_axis0_vel = vel
         self.sig2DAxis0VelChanged.emit(vel)
         return vel
 
     def set_align_2d_axis1_name(self, axisname):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis1_name = axisname
         self.sig2DAxis1NameChanged.emit(axisname)
         return axisname
 
-    def set_align_2d_axis1_range(self, range):
-        '''Set the specified value '''
-        self.align_2d_axis1_range = range
-        self.sig2DAxis1RangeChanged.emit(range)
-        return range
+    def set_align_2d_axis1_range(self, axis_range):
+        """Set the specified value """
+        self.align_2d_axis1_range = axis_range
+        self.sig2DAxis1RangeChanged.emit(axis_range)
+        return axis_range
 
     def set_align_2d_axis1_step(self, step):
-        '''Set the specified value '''
+        """Set the specified value """
         self.align_2d_axis1_step = step
         self.sig2DAxis1StepChanged.emit(step)
         return step
 
     def set_align_2d_axis1_vel(self, vel):
-        '''Set the specified value '''
+        """Set the specified value """
         self._2d_align_axis1_vel = vel
         self.sig2DAxis1VelChanged.emit(vel)
         return vel
 
     def get_align_2d_axis0_name(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_name
 
     def get_align_2d_axis0_range(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_range
 
     def get_align_2d_axis0_step(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_step
 
     def get_align_2d_axis0_vel(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis0_vel
 
     def get_align_2d_axis1_name(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_name
 
     def get_align_2d_axis1_range(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_range
 
     def get_align_2d_axis1_step(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_step
 
     def get_align_2d_axis1_vel(self):
-        '''Return the current value'''
+        """Return the current value"""
         return self.align_2d_axis1_vel
 
 

@@ -179,41 +179,20 @@ class Magnet(Base, MagnetInterface):
         pos_max_dict = self.rho_pos_max({'rad': coord_list})
 
         # get the constraints for the x axis:
-        axis0 = {}
-        axis0['label'] = 'rho'       # name is just as a sanity included
-        axis0['unit'] = 'T'        # the SI units
-        axis0['pos_min'] = 0
-        axis0['pos_max'] = pos_max_dict['rho']
-        axis0['pos_step'] = 300000
-        axis0['vel_min'] = 0
-        axis0['vel_max'] = 0.0404*0.01799  # unit is T/s
-        axis0['vel_step'] = 10**4
+        axis0 = {'label': 'rho', 'unit': 'T', 'pos_min': 0, 'pos_max': pos_max_dict['rho'], 'pos_step': 300000,
+                 'vel_min': 0, 'vel_max': 0.0404 * 0.01799, 'vel_step': 10 ** 4}
 
-# In fact position constraints for rho is dependent on theta and phi, which would need
+        # In fact position constraints for rho is dependent on theta and phi, which would need
 # the use of an additional function to calculate
 # going to change the return value to a function rho_max_pos which needs the current theta and
 # phi position
         # get the constraints for the x axis:
-        axis1 = {}
-        axis1['label'] = 'theta'       # name is just as a sanity included
-        axis1['unit'] = 'rad'        # the SI units
-        axis1['pos_min'] = -1000  # arbitrary values for now ( there isn't any restriction on them )
-        axis1['pos_max'] = 1000  # that is basically the traveling range
-        axis1['pos_step'] = 36000
-        axis1['vel_min'] = 0
-        axis1['vel_max'] = 0.0404*0.01799  #unit is T/s
-        axis1['vel_step'] = 10**4
+        axis1 = {'label': 'theta', 'unit': 'rad', 'pos_min': -1000, 'pos_max': 1000, 'pos_step': 36000, 'vel_min': 0,
+                 'vel_max': 0.0404 * 0.01799, 'vel_step': 10 ** 4}
 
         # get the constraints for the x axis:
-        axis2 = {}
-        axis2['label'] = 'phi'       # name is just as a sanity included
-        axis2['unit'] = 'rad'        # the SI units
-        axis2['pos_min'] = -1000 # arbitrary values for now ( there isn't any restriction on them )
-        axis2['pos_max'] = 1000  # that is basically the traveling range
-        axis2['pos_step'] = 92000
-        axis2['vel_min'] = 0
-        axis2['vel_max'] = 0.0380*0.07028 #unit is T/s
-        axis2['vel_step'] = 10**4
+        axis2 = {'label': 'phi', 'unit': 'rad', 'pos_min': -1000, 'pos_max': 1000, 'pos_step': 92000, 'vel_min': 0,
+                 'vel_max': 0.0380 * 0.07028, 'vel_step': 10 ** 4}
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
@@ -903,10 +882,7 @@ class Magnet(Base, MagnetInterface):
                           float z : representing the field strength in z direction
 
             """
-        ask_dict = {}
-        ask_dict['x'] = "FIELD:MAG?\n"
-        ask_dict['y'] = "FIELD:MAG?\n"
-        ask_dict['z'] = "FIELD:MAG?\n"
+        ask_dict = {'x': "FIELD:MAG?\n", 'y': "FIELD:MAG?\n", 'z': "FIELD:MAG?\n"}
         answ_dict = self.ask(ask_dict)
         # having always a weird bug, where the response of the magnet
         # doesn't make sense, as it is always the same way I try to
@@ -1314,8 +1290,7 @@ class Magnet(Base, MagnetInterface):
         # we need to find the
         # intersection between the vector and the cube (Sadly this will need
         # 6 cases, just like a dice), else we are finished.
-        pos_max_dict = {'rho': -1, 'theta': -1, 'phi': -1}
-        pos_max_dict['phi'] = 2*np.pi
+        pos_max_dict = {'rho': -1, 'theta': -1, 'phi': 2 * np.pi}
         param_dict = {self.mode: param_dict}
 
         if param_dict.get("z_mode") is not None:

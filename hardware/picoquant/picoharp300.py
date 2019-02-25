@@ -183,7 +183,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                 content = f.readlines()
         except:
             self.log.error('No file "errorcodes.h" could be found in the '
-                        'PicoHarp hardware directory!')
+                           'PicoHarp hardware directory!')
 
         errorcode = {}
         for line in content:
@@ -247,7 +247,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         if not func_val == 0:
             self.log.error('Error in PicoHarp300 with errorcode {0}:\n'
-                        '{1}'.format(func_val, self.errorcode[func_val]))
+                           '{1}'.format(func_val, self.errorcode[func_val]))
         return func_val
 
     # =========================================================================
@@ -304,16 +304,15 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         mode = int(mode)    # for safety reasons, convert to integer
         self._mode = mode
 
-        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or \
-                (mode != self.MODE_T3)):
+        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or (mode != self.MODE_T3)):
             self.log.error('Picoharp: Mode for the device could not be set. '
-                    'It must be {0}=Histogram-Mode, {1}=T2-Mode or '
-                    '{2}=T3-Mode, but a parameter {3} was '
-                    'passed.'.format(
-                        self.MODE_HIST,
-                        self.MODE_T2,
-                        self.MODE_T3,
-                        mode))
+                           'It must be {0}=Histogram-Mode, {1}=T2-Mode or '
+                           '{2}=T3-Mode, but a parameter {3} was '
+                           'passed.'.format(self.MODE_HIST,
+                                            self.MODE_T2,
+                                            self.MODE_T3,
+                                            mode)
+                           )
         else:
             self.check(self._dll.PH_Initialize(self._deviceID, mode))
 
@@ -326,9 +325,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         self.check(self._dll.PH_CloseDevice(self._deviceID))
         self.log.info('Connection to the Picoharp 300 closed.')
 
-#    def __del__(self):
-#        """ Delete the object PicoHarp300."""
-#        self.close()
+    #    def __del__(self):
+    #        """ Delete the object PicoHarp300."""
+    #        self.close()
 
     # =========================================================================
     # All functions below can be used if the device was successfully called.
@@ -344,10 +343,10 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         version = ctypes.create_string_buffer(16)   # at least 8 byte
         partnum = ctypes.create_string_buffer(16)   # at least 8 byte
         self.check(self._dll.PH_GetHardwareInfo(self._deviceID, ctypes.byref(model),
-                                                    ctypes.byref(partnum), ctypes.byref(version)))
+                                                ctypes.byref(partnum), ctypes.byref(version)))
 
         # the .decode() function converts byte objects to string objects
-        return (model.value.decode(), partnum.value.decode(), version.value.decode())
+        return model.value.decode(), partnum.value.decode(), version.value.decode()
 
     def get_serial_number(self):
         """ Retrieve the serial number of the device.
@@ -394,19 +393,19 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         zerocross = int(zerocross)
         if channel not in (0, 1):
             self.log.error('PicoHarp: Channal does not exist.\nChannel has '
-                    'to be 0 or 1 but {0} was passed.'.format(channel))
+                           'to be 0 or 1 but {0} was passed.'.format(channel))
             return
         if not(self.DISCRMIN <= level <= self.DISCRMAX):
             self.log.error('PicoHarp: Invalid CFD level.\nValue must be '
-                        'within the range [{0},{1}] millivolts but a value of '
-                        '{2} has been '
-                        'passed.'.format(self.DISCRMIN, self.DISCRMAX, level))
+                           'within the range [{0},{1}] millivolts but a value of '
+                           '{2} has been '
+                           'passed.'.format(self.DISCRMIN, self.DISCRMAX, level))
             return
         if not(self.ZCMIN <= zerocross <= self.ZCMAX):
             self.log.error('PicoHarp: Invalid CFD zero cross.\nValue must be '
-                        'within the range [{0},{1}] millivolts but a value of '
-                        '{2} has been '
-                        'passed.'.format(self.ZCMIN, self.ZCMAX, zerocross))
+                           'within the range [{0},{1}] millivolts but a value of '
+                           '{2} has been '
+                           'passed.'.format(self.ZCMIN, self.ZCMAX, zerocross))
             return
 
         self.check(self._dll.PH_SetInputCFD(self._deviceID, channel, level, zerocross))
@@ -424,8 +423,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if not ( (div !=1) or (div !=2) or (div !=4) or (div !=8) ):
             self.log.error('PicoHarp: Invalid sync devider.\n'
-                        'Value must be 1, 2, 4 or 8 but a value of {0} was '
-                        'passed.'.format(div))
+                           'Value must be 1, 2, 4 or 8 but a value of {0} was '
+                           'passed.'.format(div))
             return
         else:
             self.check(self._dll.PH_SetSyncDiv(self._deviceID, div))
@@ -440,9 +439,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         offset = int(offset)
         if not(self.SYNCOFFSMIN <= offset <= self.SYNCOFFSMAX):
             self.log.error('PicoHarp: Invalid Synchronization offset.\nValue '
-                    'must be within the range [{0},{1}] ps but a value of '
-                    '{2} has been passed.'.format(
-                        self.SYNCOFFSMIN, self.SYNCOFFSMAX, offset))
+                           'must be within the range [{0},{1}] ps but a value of '
+                           '{2} has been passed.'.format(
+                self.SYNCOFFSMIN, self.SYNCOFFSMAX, offset))
         else:
             self.check(self._dll.PH_SetSyncOffset(self._deviceID, offset))
 
@@ -461,14 +460,14 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if stop_ovfl not in (0, 1):
             self.log.error('PicoHarp: Invalid overflow parameter.\n'
-                        'The overflow parameter must be either 0 or 1 but a '
-                        'value of {0} was passed.'.format(stop_ovfl))
+                           'The overflow parameter must be either 0 or 1 but a '
+                           'value of {0} was passed.'.format(stop_ovfl))
             return
 
         if not(0 <= stopcount <= self.HISTCHAN):
             self.log.error('PicoHarp: Invalid stopcount parameter.\n'
-                        'stopcount must be within the range [0,{0}] but a '
-                        'value of {1} was passed.'.format(self.HISTCHAN, stopcount))
+                           'stopcount must be within the range [0,{0}] but a '
+                           'value of {1} was passed.'.format(self.HISTCHAN, stopcount))
             return
 
         return self.check(self._dll.PH_SetStopOverflow(self._deviceID, stop_ovfl, stopcount))
@@ -497,8 +496,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if not(0 <= binning < self.BINSTEPSMAX):
             self.log.error('PicoHarp: Invalid binning.\nValue must be within '
-                    'the range [{0},{1}] bins, but a value of {2} has been '
-                    'passed.'.format(0, self.BINSTEPSMAX, binning))
+                           'the range [{0},{1}] bins, but a value of {2} has been '
+                           'passed.'.format(0, self.BINSTEPSMAX, binning))
         else:
             self.check(self._dll.PH_SetBinning(self._deviceID, binning))
 
@@ -530,8 +529,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if not(self.OFFSETMIN <= offset <= self.OFFSETMAX):
             self.log.error('PicoHarp: Invalid offset.\nValue must be within '
-                    'the range [{0},{1}] ps, but a value of {2} has been '
-                    'passed.'.format(self.OFFSETMIN, self.OFFSETMAX, offset))
+                           'the range [{0},{1}] ps, but a value of {2} has been '
+                           'passed.'.format(self.OFFSETMIN, self.OFFSETMAX, offset))
         else:
             self.check(self._dll.PH_SetOffset(self._deviceID, offset))
 
@@ -550,9 +549,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if not(self.ACQTMIN <= acq_time <= self.ACQTMAX):
             self.log.error('PicoHarp: No measurement could be started.\n'
-                'The acquisition time must be within the range [{0},{1}] '
-                'ms, but a value of {2} has been passed.'
-                ''.format(self.ACQTMIN, self.ACQTMAX, acq_time))
+                           'The acquisition time must be within the range [{0},{1}] '
+                           'ms, but a value of {2} has been passed.'
+                           ''.format(self.ACQTMIN, self.ACQTMAX, acq_time))
         else:
             self.check(self._dll.PH_StartMeas(self._deviceID, int(acq_time)))
 
@@ -620,8 +619,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         if not ((channel !=0) or (channel != 1)):
             self.log.error('PicoHarp: Count Rate could not be read out, '
-                    'Channel does not exist.\nChannel has to be 0 or 1 '
-                    'but {0} was passed.'.format(channel))
+                           'Channel does not exist.\nChannel has to be 0 or 1 '
+                           'but {0} was passed.'.format(channel))
             return -1
         else:
             rate = ctypes.c_int32()
@@ -745,7 +744,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
                                          num_counts, ctypes.byref(actual_num_counts)))
 
 
-        return (buffer, actual_num_counts.value)
+        return buffer, actual_num_counts.value
 
     def tttr_set_marker_edges(self, me0, me1, me2, me3):
         """ Set the marker edges
@@ -759,16 +758,16 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
 
         if (me0 != 0) or (me0 != 1) or (me1 != 0) or (me1 != 1) or \
-           (me2 != 0) or (me2 != 1) or (me3 != 0) or (me3 != 1):
+                (me2 != 0) or (me2 != 1) or (me3 != 0) or (me3 != 1):
 
             self.log.error('PicoHarp: All the marker edges must be either 0 '
-                    'or 1, but the current marker settings were passed:\n'
-                    'me0={0}, me1={1}, '
-                    'me2={2}, me3={3},'.format(me0, me1, me2, me3))
+                           'or 1, but the current marker settings were passed:\n'
+                           'me0={0}, me1={1}, '
+                           'me2={2}, me3={3},'.format(me0, me1, me2, me3))
             return
         else:
             self.check(self._dll.PH_TTSetMarkerEdges(self._deviceID, me0, me1,
-                                                      me2, me3))
+                                                     me2, me3))
 
     def tttr_set_marker_enable(self, me0, me1, me2, me3):
         """ Set the marker enable or not.
@@ -781,18 +780,18 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         three markers. Default after Initialize is all rising, i.e. set to 1.
         """
 
-#        if ((me0 != 0) or (me0 != 1)) or ((me1 != 0) or (me1 != 1)) or \
-#           ((me2 != 0) or (me2 != 1)) or ((me3 != 0) or (me3 != 1)):
-#
-#            self.log.error('PicoHarp: Could not set marker enable.\n'
-#                        'All the marker options must be either 0 or 1, but '
-#                        'the current marker settings were passed:\n'
-#                        'me0={0}, me1={1}, '
-#                        'me2={2}, me3={3},'.format(me0, me1, me2, me3))
-#            return
-#        else:
+        #        if ((me0 != 0) or (me0 != 1)) or ((me1 != 0) or (me1 != 1)) or \
+        #           ((me2 != 0) or (me2 != 1)) or ((me3 != 0) or (me3 != 1)):
+        #
+        #            self.log.error('PicoHarp: Could not set marker enable.\n'
+        #                        'All the marker options must be either 0 or 1, but '
+        #                        'the current marker settings were passed:\n'
+        #                        'me0={0}, me1={1}, '
+        #                        'me2={2}, me3={3},'.format(me0, me1, me2, me3))
+        #            return
+        #        else:
         self.check(self._dll.PH_SetMarkerEnable(self._deviceID, me0,
-                                                       me1, me2, me3))
+                                                me1, me2, me3))
 
     def tttr_set_marker_holdofftime(self, holfofftime):
         """ Set the holdofftime for the markers.
@@ -809,9 +808,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         if not(0 <= holdofftime <= self.HOLDOFFMAX):
             self.log.error('PicoHarp: Holdofftime could not be set.\n'
-                'Value of holdofftime must be within the range '
-                '[0,{0}], but a value of {1} was passed.'
-                ''.format(self.HOLDOFFMAX, holfofftime))
+                           'Value of holdofftime must be within the range '
+                           '[0,{0}], but a value of {1} was passed.'
+                           ''.format(self.HOLDOFFMAX, holfofftime))
         else:
             self.check(self._dll.PH_SetMarkerHoldofftime(self._deviceID, holfofftime))
 
@@ -874,9 +873,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         if not(self.OFFSETMIN <= offset_time <= self.OFFSETMAX):
             self.log.error('PicoHarp: Invalid offset time for routing.\nThe '
-                        'offset time was expected to be within the interval '
-                        '[{0},{1}] ps, but a value of {2} was passed.'
-                        ''.format(self.OFFSETMIN, self.OFFSETMAX, offset_time))
+                           'offset time was expected to be within the interval '
+                           '[{0},{1}] ps, but a value of {2} was passed.'
+                           ''.format(self.OFFSETMIN, self.OFFSETMAX, offset_time))
             return
         else:
             self.check(self._dll.PH_SetRoutingChannelOffset(self._deviceID, offset_time))
@@ -902,20 +901,20 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         if channel not in range(0, 4):
             self.log.error('PicoHarp: Invalid channel for routing.\n'
-                    'The channel must be within the interval [0,3], but a value '
-                    'of {2} was passed.'.format(channel))
+                           'The channel must be within the interval [0,3], but a value '
+                           'of {0} was passed.'.format(channel))
             return
         if not(self.PHR800LVMIN <= level <= self.PHR800LVMAX):
             self.log.error('PicoHarp: Invalid level for routing.\n'
-                'The level used for channel {0} must be within the interval '
-                '[{1},{2}] mV, but a value of {3} was passed.'
-                ''.format(channel, self.PHR800LVMIN, self.PHR800LVMAX, level))
+                           'The level used for channel {0} must be within the interval '
+                           '[{1},{2}] mV, but a value of {3} was passed.'
+                           ''.format(channel, self.PHR800LVMIN, self.PHR800LVMAX, level))
             return
         if (edge != 0) or (edge != 1):
             self.log.error('PicoHarp: Could not set edge.\n'
-                        'The edge setting must be either 0 or 1, but the '
-                        'current edge value {0} was '
-                        'passed'.format(edge))
+                           'The edge setting must be either 0 or 1, but the '
+                           'current edge value {0} was '
+                           'passed'.format(edge))
             return
 
         self.check(self._dll.PH_SetPHR800Input(self._deviceID, channel, level, edge))
@@ -935,20 +934,20 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         if channel not in range(0, 4):
             self.log.error('PicoHarp: Invalid channel for routing.\nThe '
-                    'channel must be within the interval [0,3], but a value '
-                    'of {2} has been passed.'.format(channel))
+                           'channel must be within the interval [0,3], but a value '
+                           'of {0} has been passed.'.format(channel))
             return
         if not(self.DISCRMIN <= dscrlevel <= self.DISCRMAX):
             self.log.error('PicoHarp: Invalid Constant Fraction Discriminators '
-                        'level.\nValue must be within the range [{0},{1}] '
-                        ' millivolts but a value of {2} has been '
-                        'passed.'.format(self.DISCRMIN, self.DISCRMAX, dscrlevel))
+                           'level.\nValue must be within the range [{0},{1}] '
+                           ' millivolts but a value of {2} has been '
+                           'passed.'.format(self.DISCRMIN, self.DISCRMAX, dscrlevel))
             return
         if not(self.ZCMIN <= zerocross <= self.ZCMAX):
             self.log.error('PicoHarp: Invalid CFD zero cross.\nValue must be '
-                        'within the range [{0},{1}] millivolts but a value of '
-                        '{2} has been '
-                        'passed.'.format(self.ZCMIN, self.ZCMAX, zerocross))
+                           'within the range [{0},{1}] millivolts but a value of '
+                           '{2} has been '
+                           'passed.'.format(self.ZCMIN, self.ZCMAX, zerocross))
             return
 
         self.check(self._dll.PH_SetPHR800CFD(self._deviceID, channel, dscrlevel, zerocross))
@@ -979,10 +978,10 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         self.log.info('Picoharp: The Hardware clock for the Picoharp is not '
-                    'programmable!\n'
-                    'It is a gated counter every 100ms. That you cannot change. '
-                    'You can retrieve from both channels simultaneously the '
-                    'count rates.')
+                      'programmable!\n'
+                      'It is a gated counter every 100ms. That you cannot change. '
+                      'You can retrieve from both channels simultaneously the '
+                      'count rates.')
 
         return 0
 
@@ -1000,8 +999,8 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         """
         self._count_channel = counter_channels
         self.log.info('Picoharp: The counter allows no set up!\n'
-                    'The implementation of this command ensures Interface '
-                    'compatibility.')
+                      'The implementation of this command ensures Interface '
+                      'compatibility.')
 
         #FIXME: make the counter channel chooseable in config
         #FIXME: add second photon source either to config or in a better way to file
@@ -1069,13 +1068,13 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         number_of_gates: Number of gates in the pulse sequence. Ignore for
                          ungated counter.
         """
-#        self.initialize(mode=3)
+        #        self.initialize(mode=3)
         self._bin_width_ns = bin_width_ns
         self._record_length_ns = record_length_ns
         self._number_of_gates = number_of_gates
 
         #FIXME: actualle only an unsigned array will be needed. Change that later.
-#        self.data_trace = np.zeros(number_of_gates, dtype=np.int64 )
+        #        self.data_trace = np.zeros(number_of_gates, dtype=np.int64 )
         self.data_trace = [0]*number_of_gates
         self.count = 0
 
@@ -1144,10 +1143,9 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
             returnarray[gate_index, timebin_index]
         """
 
-
-        return self.data_trace
-
-
+        info_dict = {'elapsed_sweeps': None,
+                     'elapsed_time': None}  # TODO : implement that according to hardware capabilities
+        return self.data_trace, info_dict
 
     # =========================================================================
     #  Test routine for continuous readout
@@ -1177,7 +1175,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         # for testing one can also take another array:
         buffer, actual_counts = self.tttr_read_fifo()
-#        buffer, actual_counts = [1,2,3,4,5,6,7,8,9], 9
+        #        buffer, actual_counts = [1,2,3,4,5,6,7,8,9], 9
 
         # This analysis signel should be analyzed in a queued thread:
         self.sigAnalyzeData.emit(buffer[0:actual_counts-1], actual_counts)
@@ -1185,7 +1183,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
         if not self.meas_run:
             with self.threadlock:
                 self.unlock()
-                self.stop_device
+                self.stop_device()
                 return
 
         print('get new data.')
