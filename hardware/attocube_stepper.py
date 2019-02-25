@@ -47,13 +47,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
 
-        @param object e: Event class object from Fysom.
-                         An object created by the state machine module Fysom,
-                         which is connected to a specific event (have a look in
-                         the Base Class). This object contains the passed event,
-                         the state before the event happened and the destination
-                         of the state which should be reached after the event
-                         had happened.
         """
         config = self.getConfiguration()
         # some default values for the hardware:
@@ -177,7 +170,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
         # This reads all the values from the hardware and checks if values ly inside defined boundaries
         self._get_all_hardwaresettings()
 
-    def on_deactivate(self, e):
+    def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
 
         @param object e: Event class object from Fysom. A more detailed

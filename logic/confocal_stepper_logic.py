@@ -470,7 +470,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
         self.signal_start_3D_stepping.connect(self._start_3D_step_scan, QtCore.Qt.QueuedConnection)
         self.signal_continue_stepping.connect(self.continue_stepper, QtCore.Qt.QueuedConnection)
-        self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.QueuedConnection)
+        self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.DirectConnection)
         self.signal_sort_count_data_3D.connect(self.sort_3D_count_data, QtCore.Qt.DirectConnection)
 
     def on_deactivate(self):
@@ -478,7 +478,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        self.switch_hardware(False)  # restarts NIDAQ
+        pass
+        #self.switch_hardware(False)  # restarts NIDAQ
         # self.switch_hardware(True)
         # Todo: This method needs to be implemented
 
