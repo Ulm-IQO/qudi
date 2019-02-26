@@ -479,7 +479,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @return int: error code (0:OK, -1:error)
         """
         pass
-        #self.switch_hardware(False)  # restarts NIDAQ
+        # self.switch_hardware(False)  # restarts NIDAQ
         # self.switch_hardware(True)
         # Todo: This method needs to be implemented
 
@@ -768,6 +768,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self._step_counter = 0
         self.module_state.lock()
+        self._3D_measurement = True
 
         if self._get_scan_axes() < 0:
             return -1
@@ -808,75 +809,29 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._feedback_axis.append(self._second_scan_axis)
         axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
 
-        # initialize counting device
-        clock_status = self._counting_device.set_up_finite_counter_clock(clock_frequency=self._clock_frequency_3D)
-        if clock_status < 0:
-            self.module_state.unlock()
-            return -1
-
-        # Todo: The connection to the GUI amount of samples needs to be made
-        # maybe a value given by the function needs to be implemented here
-        scanner_status = self._counting_device.set_up_finite_counter(self._steps_scan_first_line * self._ramp_length)
-        if scanner_status < 0:
-            # self._counting_device.close_finite_counter_clock()
-            # elf._counting_device.module_state.unlock()
-            self.module_state.unlock()
-            return -1
-
         # check if scan positions should be saved and if it is possible
+        self._ai_scan_axes = []
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
-                # initialise position scan
-                # Todo: This is a little dirty and should not be done this way here. Fixme!
-                if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
-                                                                                [self._first_scan_axis,
-                                                                                 self._second_scan_axis]):
-                    self.stopRequested = True
-                elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
-                        self._steps_scan_first_line * self._ramp_length, self._first_scan_axis):
-                    self.stopRequested = True
-                else:
-                    if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(
-                            self._first_scan_axis, [self._second_scan_axis]):
-                        self.stopRequested = True
+                self._ai_scan_axes.append(self._first_scan_axis)
+                self._ai_scan_axes.append(self._second_scan_axis)
             else:
                 self.map_scan_position = False
-
-        # if AI is chosen for counts set this up.
+                # initialise position scan
         if self._ai_scanner:
-            if 0 > self._counting_device.add_clock_task_to_channel("Scanner_clock",
-                                                                   [self._ai_counter]):
-                self.stopRequested = True
-            if self.map_scan_position:
-                if 0 > self._counting_device.add_analogue_reader_channel_to_measurement(
-                        self._first_scan_axis, [self._ai_counter]):
-                    self.stopRequested = True
-            else:
-                if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
-                        self._steps_scan_first_line * self._ramp_length, self._ai_counter):
-                    self.stopRequested = True
+            self._ai_scan_axes.append(self._ai_counter)
 
-        if 0 > self._analogue_output_device.set_up_analogue_output([self._ao_channel]):
-            self.log.error("Problems setting up analogue out put for 3D step scan on channel (%s)", self._ao_channel)
-            self.stopRequested = True
+        if 0 > self._initalize_measurement(steps=self._steps_scan_first_line * self._ramp_length,
+                                    frequency=self._clock_frequency_3D, ai_channels=self._ai_scan_axes):
+            return -1
 
-        if 0 > self._analogue_output_device.add_clock_task_to_channel("Scanner_clock", [self._ao_channel]):
-            self.log.error("Problems setting up analogue output clock.")
-            self.stopRequested = True
-
-        if 0 > self._analogue_output_device.configure_analogue_timing(self._ao_channel,
-                                                                      self._ramp_length * self._steps_scan_first_line):
-            self.log.error("Not possible to set appropriate timing for analogue scan.")
-            self._output_device.close_analogue_output(self._ao_channel)
-            self.stopRequested = True
         # Initialize data
         self._initalize_data_arrays_stepper()
         self._initalize_data_arrays_3D_stepper()
         self.initialize_image()
         self.signal_image_updated.emit()
 
-        self._3D_measurement = True
         self.generate_file_path()
         self.signal_step_lines_next.emit(True)
 
@@ -1140,6 +1095,66 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return 0
 
+    def _initalize_measurement(self, steps, frequency, ai_channels):
+        """Initializes everything but the stepper for a step scan measurement
+
+        @param int steps: the steps that are to be counted/scanned during one part of the measurement
+        @param float frequency:the frequency with which the data is to be acquired/generated during
+                                one part of the measurement
+        @param list(str) ai_channels: the analogue input channels used during the measurement,
+                                        eg. analogue input counters
+
+        @return int: error code (0:OK, -1:error)
+        """
+        # initialize counting device
+        clock_status = self._counting_device.set_up_finite_counter_clock(
+            clock_frequency=frequency)
+        if clock_status < 0:
+            self.module_state.unlock()
+            return -1
+        # Todo: The connection to the GUI amount of samples needs to be made
+        # maybe a value given by the function needs to be implemented here
+        scanner_status = self._counting_device.set_up_finite_counter(steps)
+        if scanner_status < 0:
+            # self._counting_device.close_finite_counter_clock()
+            # elf._counting_device.module_state.unlock()
+            self.module_state.unlock()
+            self.stopRequested = True
+            return -1
+
+        # setup analogue input if existing
+        if len(ai_channels) > 0:
+            if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock", ai_channels):
+                self.stopRequested = True
+            elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                    steps, ai_channels[0]):
+                self.stopRequested = True
+            else:
+                if len(ai_channels) > 1:
+                    if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(
+                            ai_channels[0], self._ai_scan_axes[1:]):
+                        self.stopRequested = True
+
+        # setup analogue output if 3rd axis is scanned as well
+        if self._3D_measurement:
+            if 0 > self._analogue_output_device.set_up_analogue_output([self._ao_channel]):
+                self.log.error("Problems setting up analogue out put for 3D step scan on channel (%s)",
+                               self._ao_channel)
+                self.stopRequested = True
+
+            if 0 > self._analogue_output_device.add_clock_task_to_channel("Scanner_clock", [self._ao_channel]):
+                self.log.error("Problems setting up analogue output clock.")
+                self.stopRequested = True
+
+            if 0 > self._analogue_output_device.configure_analogue_timing(self._ao_channel, steps):
+                self.log.error("Not possible to set appropriate timing for analogue scan.")
+                self._output_device.close_analogue_output(self._ao_channel)
+                self.stopRequested = True
+
+        if self.stopRequested:
+            return -1
+        return 0
+
     def start_stepper(self):
         """Starts the scanning procedure
 
@@ -1168,55 +1183,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._feedback_axis.append(self._second_scan_axis)
         axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
 
-        # initialize counting device
-        clock_status = self._counting_device.set_up_finite_counter_clock(
-            clock_frequency=self.axis_class[self._first_scan_axis].step_freq)
-        if clock_status < 0:
-            self.module_state.unlock()
-            return -1
-
-        # Todo: The connection to the GUI amount of samples needs to be made
-        # maybe a value given by the function needs to be implemented here
-        scanner_status = self._counting_device.set_up_finite_counter(self._steps_scan_first_line)
-        if scanner_status < 0:
-            # self._counting_device.close_finite_counter_clock()
-            # elf._counting_device.module_state.unlock()
-            self.module_state.unlock()
-            return -1
-
         # check if scan positions should be saved and if it is possible
+        self._ai_scan_axes = []
         if self.map_scan_position:
             if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
                 self._second_scan_axis].closed_loop:
-                # initialise position scan
-                # Todo: This is a little dirty and should not be done this way here. Fixme!
-                if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock",
-                                                                                [self._first_scan_axis,
-                                                                                 self._second_scan_axis]):
-                    self.stopRequested = True
-                elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
-                        self._steps_scan_first_line, self._first_scan_axis):
-                    self.stopRequested = True
-                else:
-                    if 0 > self._position_feedback_device.add_analogue_reader_channel_to_measurement(
-                            self._first_scan_axis, [self._second_scan_axis]):
-                        self.stopRequested = True
+                self._ai_scan_axes.append(self._first_scan_axis)
+                self._ai_scan_axes.append(self._second_scan_axis)
             else:
                 self.map_scan_position = False
-
-        # if AI is chosen for counts set this up.
+                # initialise position scan
         if self._ai_scanner:
-            if 0 > self._counting_device.add_clock_task_to_channel("Scanner_clock",
-                                                                   [self._ai_counter]):
-                self.stopRequested = True
-            if self.map_scan_position:
-                if 0 > self._counting_device.add_analogue_reader_channel_to_measurement(
-                        self._first_scan_axis, [self._ai_counter]):
-                    self.stopRequested = True
-            else:
-                if 0 > self._counting_device.set_up_analogue_voltage_reader_scanner(
-                        self._steps_scan_first_line, self._ai_counter):
-                    self.stopRequested = True
+            self._ai_scan_axes.append(self._ai_counter)
+
+        if 0 > self._initalize_measurement(steps=self._steps_scan_first_line,
+                                           frequency=self.axis_class[self._first_scan_axis].step_freq, ai_channels=
+                                           self._ai_scan_axes):
+            return -1
 
         self._initalize_data_arrays_stepper()
         self.initialize_image()
@@ -1514,7 +1497,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.signal_sort_count_data.emit(new_counts, self._step_counter)
 
         if self.axis_class[self._first_scan_axis].closed_loop:
-            self.go_to_start_position()
+            steps = self._steps_scan_first_line
+            frequency = self.axis_class[self._first_scan_axis].step_freq
+            if self._3D_measurement:
+                steps = steps * self._ramp_length
+                frequency = self._clock_frequency_3D
+            self.go_to_start_position(steps, clock_frequency=frequency)
 
         # do z position correction
         # Todo: This is still very crude
@@ -1831,8 +1819,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # self.save_to_npy(forward_split)
         self.sort_counted_data(mean_counts, line)
 
-    def go_to_start_position(self):
+    def go_to_start_position(self, steps, clock_frequency):
+        """Moves stepper to the first position measured for the last line measured.
+
+        @param int steps: the steps that are counted/scanned during one part of the measurement
+        @param float frequency: the frequency with which the data is acquired/generated during
+                                one part of the measurement
+        """
         # check starting position of fast scan direction
+
+        measurement_stopped = False
         if self.map_scan_position:
             # Todo: how is the position data saved for the backward direction?
             if not self._fast_scan:
@@ -1845,8 +1841,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                                                                      self._step_counter, -1, 0])]
             self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
         else:
+            if len(self._ai_scan_axes) > 0:
+                self.kill_counter()
+                self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
+                if self._3D_measurement:
+                    self._analogue_output_device.close_analogue_output(self._ao_channel)
+                # self.change_analogue_output_voltage(0.0)
+                measurement_stopped = True
+
             new_position = self.get_position([self._first_scan_axis], 1000, 10000)
-            self._end_position_back[self._step_counter] = self.get_position(self._feedback_axis, 1000, 10000)
 
         # check if end position differs from start position
         if abs(self._start_position[0] - new_position[0]) > self.axis_class[
@@ -1861,10 +1864,14 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # stop readout for scanning so positions can be optimised
             # Todo: Let user choose offset
             if steps_res > 0:
-                if self.map_scan_position:
-                    self._position_feedback_device.close_analogue_voltage_reader(self._first_scan_axis)
-                # elif self._ai_scanner:
-                #    self._position_feedback_device.close_analogue_voltage_reader(self._ai_counter)
+                if len(self._ai_scan_axes) > 0 and not measurement_stopped:
+                    self.kill_counter()
+                    self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
+                    if self._3D_measurement:
+                        self._analogue_output_device.close_analogue_output(self._ao_channel)
+                    # self.change_analogue_output_voltage(0.0)
+                    measurement_stopped = True
+
                 # go to start position
                 if self._fast_scan:
                     step_freq = self.axis_class[self._first_scan_axis].step_freq
@@ -1876,20 +1883,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     # restart position readout for scanning
                     # the second if ensures that the analogue scanner is  s not started when
                     # the stepping scan is already finished
+
                 if self._fast_scan:
                     self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq)
 
-                if self.map_scan_position:
-                    steps = self._steps_scan_first_line
-                    if self._3D_measurement:
-                        steps = steps * self._ramp_length
-                    self._position_feedback_device.set_up_analogue_voltage_reader_scanner(steps,
-                                                                                          self._first_scan_axis)
-                    self._position_feedback_device.add_analogue_reader_channel_to_measurement(
-                        self._first_scan_axis, [self._second_scan_axis])
-                    if self._ai_scanner:
-                        self._counting_device.add_analogue_reader_channel_to_measurement(self._first_scan_axis,
-                                                                                         [self._ai_counter])
+        if measurement_stopped:
+            self._initalize_measurement(steps, clock_frequency, ai_channels=self._ai_scan_axes)
 
     def measure_end_position_during_scan(self):
         if self.map_scan_position:
@@ -1991,8 +1990,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if not self._fast_scan:
                     self._scan_pos_voltages_back = np.zeros(
                         (self._steps_scan_second_line, self._steps_scan_first_line, 2))
-        self._end_position_back = np.zeros((self._steps_scan_second_line, 3))
-        self._end_position_forward = np.zeros((self._steps_scan_second_line, 3))
+
 
         if self._ai_scanner:
             self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
