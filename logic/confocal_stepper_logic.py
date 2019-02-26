@@ -823,7 +823,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._ai_scan_axes.append(self._ai_counter)
 
         if 0 > self._initalize_measurement(steps=self._steps_scan_first_line * self._ramp_length,
-                                    frequency=self._clock_frequency_3D, ai_channels=self._ai_scan_axes):
+                                           frequency=self._clock_frequency_3D, ai_channels=self._ai_scan_axes):
             return -1
 
         # Initialize data
@@ -1540,15 +1540,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
                     self.log.error("Starting the counter failed")
                     return [-1], []
-                if self.map_scan_position:
-                    if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._first_scan_axis,
+                if len(self._ai_scan_axes) > 0:
+                    if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_scan_axes[0],
                                                                                         start_clock=False):
                         self.log.error("Starting the counter failed")
-                        return [-1], []
-                if self._ai_scanner:
-                    if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_counter,
-                                                                                        start_clock=False):
-                        self.log.error("Starting the analogue input counter failed")
                         return [-1], []
                 if self._3D_measurement:
                     self._analogue_output_device.analogue_scan_line(self._ao_channel, self._output_voltages_array)
@@ -1653,15 +1648,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
             self.log.error("Starting the counter failed")
             return [-1], []
-        if self.map_scan_position:
-            if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._first_scan_axis,
+        if len(self._ai_scan_axes) > 0:
+            if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_scan_axes[0],
                                                                                 start_clock=False):
                 self.log.error("Starting the counter failed")
-                return [-1], []
-        if self._ai_scanner:
-            if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_counter,
-                                                                                start_clock=False):
-                self.log.error("Starting the analogue input counter failed")
                 return [-1], []
 
         if self._3D_measurement:
@@ -1990,7 +1980,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if not self._fast_scan:
                     self._scan_pos_voltages_back = np.zeros(
                         (self._steps_scan_second_line, self._steps_scan_first_line, 2))
-
 
         if self._ai_scanner:
             self._ai_counter_voltages = np.zeros((self._steps_scan_second_line, self._steps_scan_first_line))
