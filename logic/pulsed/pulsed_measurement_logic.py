@@ -1169,11 +1169,12 @@ class PulsedMeasurementLogic(GenericLogic):
                                                  info_dict with keys 'elapsed_sweeps' and 'elapsed_time'
         """
         # get raw data from fast counter
-        fc_data = netobtain(self.fastcounter().get_data_trace())
+        fc_data = self.fastcounter().get_data_trace()
         if type(fc_data) == tuple and len(fc_data) == 2:  # if the hardware implement the new version of the interface
             fc_data, info_dict = fc_data
         else:
             info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+        fc_data = netobtain(fc_data)
 
         if isinstance(info_dict, dict) and info_dict.get('elapsed_sweeps') is not None:
             elapsed_sweeps = info_dict['elapsed_sweeps']
