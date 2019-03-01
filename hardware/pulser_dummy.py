@@ -333,6 +333,12 @@ class PulserDummy(Base, PulserInterface):
         if name in self.sequence_dict:
             del self.sequence_dict[name]
 
+
+        # Fill in sequence information
+        for step, (wfm_tuple, seq_step) in enumerate(sequence_parameter_list, 1):
+            self.log.debug('flag_trigger: {}'.format(seq_step.flag_trigger))
+            self.log.debug('flag_high: {}'.format(seq_step.flag_high))
+
         self.sequence_dict[name] = len(sequence_parameter_list[0][0])
         time.sleep(1)
 
@@ -540,10 +546,8 @@ class PulserDummy(Base, PulserInterface):
                              description for all the possible status variables
                              of the pulse generator hardware
         """
-        status_dic = {}
-        status_dic[-1] = 'Failed Request or Communication'
-        status_dic[0] = 'Device has stopped, but can receive commands.'
-        status_dic[1] = 'Device is active and running.'
+        status_dic = {-1: 'Failed Request or Communication', 0: 'Device has stopped, but can receive commands.',
+                      1: 'Device is active and running.'}
         # All the other status messages should have higher integer values
         # then 1.
         return self.current_status, status_dic

@@ -224,8 +224,12 @@ class M3202A(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
-        return 0
+        if self.last_sequence is None:
+            self.log.error('This AWG only supports sequences. Please put the waveform in a sequence and then load it.')
+            return -1
+        else:
+            self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
+            return 0
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -708,11 +712,11 @@ class M3202A(Base, PulserInterface):
         c_double_p = ctypes.POINTER(ctypes.c_double)
         if len(waveformDataA) > 0 and (waveformDataB is None or len(waveformDataA) == len(waveformDataB)):
             if isinstance(waveformDataA, np.ndarray):
-                print(type(waveformDataA), waveformDataA.dtype)
+                # print(type(waveformDataA), waveformDataA.dtype)
                 waveform_dataA_C = waveformDataA.ctypes.data_as(c_double_p)
                 length = len(waveformDataA)
             else:
-                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA);
+                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA)
                 length = waveform_dataA_C._length_
 
             if waveformDataB is None:

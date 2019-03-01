@@ -5,8 +5,7 @@ def can_connect(out_port, in_port):
     if out_port.base == 'gui':
         return False
 
-    # print('Compare: {} <= {}'.format(in_port.interfaces, out_port.interfaces))
-    return set(in_port.interfaces) <= set(out_port.interfaces) 
+    return set(in_port.interfaces) <= set(out_port.interfaces)
 
 
 class QudiPortType:

@@ -40,7 +40,8 @@ class PulseBlockElement(object):
     contain many Pulse_Block_Element Objects. These objects can be displayed in
     a GUI as single rows of a Pulse_Block.
     """
-    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None):
+
+    def __init__(self, init_length_s=10e-9, increment_s=0, pulse_function=None, digital_high=None, laser_on=False):
         """
         The constructor for a Pulse_Block_Element needs to have:
 
@@ -58,10 +59,13 @@ class PulseBlockElement(object):
                                   low (False) or high (True).
                                   For 3 digital channel it may look like:
                                   {'d_ch1': True, 'd_ch2': False, 'd_ch5': False}
+        @param bool laser_on: boolean indicating if the laser is on during this block.
+                              This is required for laser channels, that are not digital channels.
         """
         # FIXME: Sanity checks need to be implemented here
         self.init_length_s = init_length_s
         self.increment_s = increment_s
+        self.laser_on = laser_on
         if pulse_function is None:
             self.pulse_function = OrderedDict()
         else:
@@ -77,8 +81,8 @@ class PulseBlockElement(object):
         self.channel_set = self.analog_channels.union(self.digital_channels)
 
     def __repr__(self):
-        repr_str = 'PulseBlockElement(init_length_s={0}, increment_s={1}, pulse_function='.format(
-            self.init_length_s, self.increment_s)
+        repr_str = 'PulseBlockElement(init_length_s={0}, increment_s={1}, laser_on={2}, pulse_function='.format(
+            self.init_length_s, self.increment_s, self.laser_on)
         repr_str += '{'
         for ind, (channel, sampling_func) in enumerate(self.pulse_function.items()):
             repr_str += '\'{0}\': {1}'.format(channel, 'SamplingFunctions.' + repr(sampling_func))
@@ -90,9 +94,10 @@ class PulseBlockElement(object):
 
     def __str__(self):
         pulse_func_dict = {chnl: type(func).__name__ for chnl, func in self.pulse_function.items()}
-        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\t' \
-                     'analog channels: {2}\n\tdigital channels: {3}'.format(self.init_length_s,
+        return_str = 'PulseBlockElement\n\tinitial length: {0}s\n\tlength increment: {1}s\n\tlaser_on : {2],' \
+                     'analog channels: {3}\n\tdigital channels: {4}'.format(self.init_length_s,
                                                                             self.increment_s,
+                                                                            self.laser_on,
                                                                             pulse_func_dict,
                                                                             dict(self.digital_high))
         return return_str
@@ -104,7 +109,8 @@ class PulseBlockElement(object):
             return True
         if self.channel_set != other.channel_set:
             return False
-        if (self.init_length_s, self.increment_s) != (other.init_length_s, other.increment_s):
+        if (self.init_length_s, self.increment_s, self.laser_on) != (
+                other.init_length_s, other.increment_s, other.laser_on):
             return False
         if set(self.digital_high.items()) != set(other.digital_high.items()):
             return False
@@ -117,6 +123,7 @@ class PulseBlockElement(object):
         dict_repr = dict()
         dict_repr['init_length_s'] = self.init_length_s
         dict_repr['increment_s'] = self.increment_s
+        dict_repr['laser_on'] = self.laser_on
         dict_repr['digital_high'] = self.digital_high
         dict_repr['pulse_function'] = dict()
         for chnl, func in self.pulse_function.items():
@@ -135,6 +142,7 @@ class PulseBlock(object):
     """
     Collection of Pulse_Block_Elements which is called a Pulse_Block.
     """
+
     def __init__(self, name, element_list=None):
         """
         The constructor for a Pulse_Block needs to have:
@@ -283,7 +291,6 @@ class PulseBlock(object):
                                  'same PulseBlock is prohibited.\nPulseBlock creation failed!\n'
                                  'Used channel sets are:\n{0}\n{1}'.format(self.channel_set,
                                                                            elem.channel_set))
-                break
         self.analog_channels = {chnl for chnl in self.channel_set if chnl.startswith('a')}
         self.digital_channels = {chnl for chnl in self.channel_set if chnl.startswith('d')}
         return
@@ -388,6 +395,7 @@ class PulseBlockEnsemble(object):
 
     This object is used as a construction plan to create one sampled file.
     """
+
     def __init__(self, name, block_list=None, rotating_frame=True):
         """
         The constructor for a Pulse_Block_Ensemble needs to have:
@@ -428,7 +436,7 @@ class PulseBlockEnsemble(object):
     def __str__(self):
         return_str = 'PulseBlockEnsemble "{0}"\n\trotating frame: {1}\n\t' \
                      'has been sampled: {2}\n\t<block name>\t<repetitions>\n\t'.format(
-                         self.name, self.rotating_frame, bool(self.sampling_information))
+            self.name, self.rotating_frame, bool(self.sampling_information))
         return_str += '\n\t'.join(('{0}\t{1}'.format(name, reps) for name, reps in self.block_list))
         return return_str
 
@@ -608,8 +616,8 @@ class SequenceStep(dict):
                             'event_jump_to': -1,
                             'event_trigger': 'OFF',
                             'wait_for': 'OFF',
-                            'flag_trigger': 'OFF',
-                            'flag_high': 'OFF'}
+                            'flag_trigger': list(),
+                            'flag_high': list()}
 
     def __init__(self, *args, **kwargs):
         if len(args) > 2:
@@ -645,6 +653,11 @@ class SequenceStep(dict):
         for key, default_value in self.__default_parameters.items():
             if key not in self:
                 self[key] = default_value
+
+        if not isinstance(self.flag_trigger, list):
+            raise KeyError('"flag_trigger" is only allowed to be a list.')
+        if not isinstance(self.flag_high, list):
+            raise KeyError('"flag_high" is only allowed to be a list.')
         return
 
     def __setitem__(self, key, value):
@@ -701,12 +714,14 @@ class PulseSequence(object):
                                           'wait_for': The trigger input to wait for before playing
                                                       this sequence step. Set to 'OFF' (default)
                                                       in order to play the current step immediately.
-                                          'flag_trigger': The flag to trigger when this sequence
-                                                          step starts playing. Select 'OFF'
-                                                          (default) for no flag trigger.
-                                          'flag_high': The flag to set to high while this step is
-                                                       playing. Select 'OFF' (default) to set all
-                                                       flags to low.
+                                          'flag_trigger': List containing the flags (str) to
+                                                          trigger when this sequence step starts
+                                                          playing. Empty list (default) for no flag
+                                                          trigger.
+                                          'flag_high': List containing the flags (str) to set to
+                                                       high when this sequence step is playing. All
+                                                       others will be low (or triggered; see above).
+                                                       Empty list (default) for all flags low.
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
@@ -974,6 +989,7 @@ class PredefinedGeneratorBase:
     qudi module (e.g. self.log.error(...)).
     Also provides helper methods to simplify sequence/ensemble generation.
     """
+
     def __init__(self, sequencegeneratorlogic):
         # Keep protected reference to the SequenceGeneratorLogic
         self.__sequencegeneratorlogic = sequencegeneratorlogic
@@ -1116,7 +1132,7 @@ class PredefinedGeneratorBase:
         for channel in channels:
             if channel.startswith('d'):
                 digital_high[channel] = True
-            else:
+            elif channel.startswith('a'):
                 pulse_function[channel] = SamplingFunctions.DC(voltage=self.analog_trigger_voltage)
 
         # return trigger element
@@ -1134,9 +1150,11 @@ class PredefinedGeneratorBase:
 
         @return: PulseBlockElement, two elements for laser and gate trigger (delay element)
         """
-        return self._get_trigger_element(length=length,
-                                         increment=increment,
-                                         channels=self.laser_channel)
+        laser_element = self._get_trigger_element(length=length,
+                                                  increment=increment,
+                                                  channels=self.laser_channel)
+        laser_element.laser_on = True
+        return laser_element
 
     def _get_laser_gate_element(self, length, increment):
         """
@@ -1146,7 +1164,7 @@ class PredefinedGeneratorBase:
         if self.gate_channel:
             if self.gate_channel.startswith('d'):
                 laser_gate_element.digital_high[self.gate_channel] = True
-            else:
+            elif self.gate_channel.startswith('a'):
                 laser_gate_element.pulse_function[self.gate_channel] = SamplingFunctions.DC(
                     voltage=self.analog_trigger_voltage)
         return laser_gate_element
@@ -1280,9 +1298,11 @@ class PredefinedGeneratorBase:
                                                 phase=phase)
         if self.laser_channel.startswith('d'):
             mw_laser_element.digital_high[self.laser_channel] = True
-        else:
+        elif self.laser_channel.startswith('a'):
             mw_laser_element.pulse_function[self.laser_channel] = SamplingFunctions.DC(
                 voltage=self.analog_trigger_voltage)
+
+        mw_laser_element.laser_on = True
         return mw_laser_element
 
     def _get_readout_element(self):
@@ -1301,12 +1321,14 @@ class PredefinedGeneratorBase:
         return created_blocks, block_ensemble
 
     def _add_metadata_to_settings(self, block_ensemble, created_blocks, alternating=False,
-                                  laser_ignore_list=list(), controlled_variable=[0, 1], units=('s', ''),
+                                  laser_ignore_list=None, controlled_variable=None, units=('s', ''),
                                   labels=('Tau', 'Signal'), number_of_lasers=None, counting_length=None):
 
         block_ensemble.measurement_information['alternating'] = alternating
-        block_ensemble.measurement_information['laser_ignore_list'] = laser_ignore_list
-        block_ensemble.measurement_information['controlled_variable'] = controlled_variable
+        block_ensemble.measurement_information[
+            'laser_ignore_list'] = laser_ignore_list if laser_ignore_list is not None else list()
+        block_ensemble.measurement_information[
+            'controlled_variable'] = controlled_variable if controlled_variable is not None else [0, 1]
         block_ensemble.measurement_information['units'] = units
         block_ensemble.measurement_information['labels'] = labels
         if number_of_lasers is None:
@@ -1339,7 +1361,7 @@ class PredefinedGeneratorBase:
         resolution = 1 / self.sample_rate * divisibility
         mod = value % resolution
         if mod < resolution / 2:
-            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value-mod))
+            self.log.debug('Adjusted to sampling rate:' + str(value) + ' to ' + str(value - mod))
             value = value - mod
         else:
             value = value + resolution - mod
@@ -1369,6 +1391,7 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
     """
 
     """
+
     def __init__(self, sequencegeneratorlogic):
         # Initialize base class
         super().__init__(sequencegeneratorlogic)
@@ -1482,6 +1505,3 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         if inspect.isclass(obj):
             return PredefinedGeneratorBase in obj.__bases__ and len(obj.__bases__) == 1
         return False
-
-
-

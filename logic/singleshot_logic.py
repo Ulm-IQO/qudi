@@ -360,7 +360,7 @@ class SingleShotLogic(GenericLogic):
         time.sleep(10)
         # try to do this differently
         tmp_var1 = self._fast_counter_device.get_status()
-        while (tmp_var1 - 1):
+        while tmp_var1 - 1:
             time.sleep(5)
             tmp_var1 = self._fast_counter_device.get_status()
 

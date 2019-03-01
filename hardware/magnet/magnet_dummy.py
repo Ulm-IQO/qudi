@@ -93,61 +93,57 @@ class MagnetDummy(Base, MagnetInterface):
         """
         constraints = OrderedDict()
 
-        axis0 = {}
-        axis0['label'] = self._x_axis.label # name is just as a sanity included
-        axis0['unit'] = 'm'                 # the SI units
-        axis0['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis0['pos_min'] = 0
-        axis0['pos_max'] = 100e-3  # that is basically the traveling range
-        axis0['pos_step'] = 0.001e-3
-        axis0['vel_min'] = 0
-        axis0['vel_max'] = 100e-3
-        axis0['vel_step'] = 0.01e-3
-        axis0['acc_min'] = 0.1e-3
-        axis0['acc_max'] = 0.0
-        axis0['acc_step'] = 0.0
+        axis0 = {'label': self._x_axis.label,
+                 'unit': 'm',
+                 'ramp': ['Sinus', 'Linear'],
+                 'pos_min': 0,
+                 'pos_max': 100e-3,
+                 'pos_step': 0.001e-3,
+                 'vel_min': 0,
+                 'vel_max': 100e-3,
+                 'vel_step': 0.01e-3,
+                 'acc_min': 0.1e-3,
+                 'acc_max': 0.0,
+                 'acc_step': 0.0}
 
-        axis1 = {}
-        axis1['label'] = self._y_axis.label        # that axis label should be obtained from config
-        axis1['unit'] = 'm'        # the SI units
-        axis1['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis1['pos_min'] = 0
-        axis1['pos_max'] = 100e-3  # that is basically the traveling range
-        axis1['pos_step'] = 0.001e-3
-        axis1['vel_min'] = 0
-        axis1['vel_max'] = 100e-3
-        axis1['vel_step'] = 0.01e-3
-        axis1['acc_min'] = 0.1e-3
-        axis1['acc_max'] = 0.0
-        axis1['acc_step'] = 0.0
+        axis1 = {'label': self._y_axis.label,
+                 'unit': 'm',
+                 'ramp': ['Sinus', 'Linear'],
+                 'pos_min': 0,
+                 'pos_max': 100e-3,
+                 'pos_step': 0.001e-3,
+                 'vel_min': 0,
+                 'vel_max': 100e-3,
+                 'vel_step': 0.01e-3,
+                 'acc_min': 0.1e-3,
+                 'acc_max': 0.0,
+                 'acc_step': 0.0}
 
-        axis2 = {}
-        axis2['label'] = self._z_axis.label        # that axis label should be obtained from config
-        axis2['unit'] = 'm'        # the SI units
-        axis2['ramp'] = ['Sinus','Linear'] # a possible list of ramps
-        axis2['pos_min'] = 0
-        axis2['pos_max'] = 100e-3   # that is basically the traveling range
-        axis2['pos_step'] = 0.001e-3
-        axis2['vel_min'] = 0
-        axis2['vel_max'] = 100e-3
-        axis2['vel_step'] = 0.01e-3
-        axis2['acc_min'] = 0.1e-3
-        axis2['acc_max'] = 0.0
-        axis2['acc_step'] = 0.0
+        axis2 = {'label': self._z_axis.label,
+                 'unit': 'm',
+                 'ramp': ['Sinus', 'Linear'],
+                 'pos_min': 0,
+                 'pos_max': 100e-3,
+                 'pos_step': 0.001e-3,
+                 'vel_min': 0,
+                 'vel_max': 100e-3,
+                 'vel_step': 0.01e-3,
+                 'acc_min': 0.1e-3,
+                 'acc_max': 0.0,
+                 'acc_step': 0.0}
 
-        axis3 = {}
-        axis3['label'] = self._phi_axis.label      # that axis label should be obtained from config
-        axis3['unit'] = '°'        # the SI units
-        axis3['ramp'] = ['Sinus','Trapez'] # a possible list of ramps
-        axis3['pos_min'] = 0
-        axis3['pos_max'] = 360  # that is basically the traveling range
-        axis3['pos_step'] = 0.1
-        axis3['vel_min'] = 1
-        axis3['vel_max'] = 20
-        axis3['vel_step'] = 0.1
-        axis3['acc_min'] = None
-        axis3['acc_max'] = None
-        axis3['acc_step'] = None
+        axis3 = {'label': self._phi_axis.label,
+                 'unit': '°',
+                 'ramp': ['Sinus', 'Trapez'],
+                 'pos_min': 0,
+                 'pos_max': 360,
+                 'pos_step': 0.1,
+                 'vel_min': 1,
+                 'vel_max': 20,
+                 'vel_step': 0.1,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
@@ -604,7 +600,6 @@ class MagnetDummy(Base, MagnetInterface):
         """
 
         return self._idle_state
-
 
     def initialize(self):
         """

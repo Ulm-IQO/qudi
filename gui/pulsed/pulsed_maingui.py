@@ -1372,10 +1372,10 @@ class PulsedMeasurementGui(GUIBase):
             config_name = settings_dict['activation_config'][0]
             digital_channels = sorted(
                 (ch for ch in settings_dict['activation_config'][1] if ch.startswith('d')),
-                key=lambda chnl: int(chnl.split('ch')[-1]))
+                key=lambda channel: int(channel.split('ch')[-1]))
             analog_channels = sorted(
                 (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')),
-                key=lambda chnl: int(chnl.split('ch')[-1]))
+                key=lambda channel: int(channel.split('ch')[-1]))
             index = self._pgs.gen_activation_config_ComboBox.findText(config_name)
             self._pgs.gen_activation_config_ComboBox.setCurrentIndex(index)
             digital_str = str(digital_channels).strip('[]').replace('\'', '').replace(',', ' |')
@@ -1386,11 +1386,13 @@ class PulsedMeasurementGui(GUIBase):
             # Update channel ComboBoxes
             former_laser_channel = self._pg.gen_laserchannel_ComboBox.currentText()
             self._pg.gen_laserchannel_ComboBox.clear()
+            self._pg.gen_laserchannel_ComboBox.addItem('')
             self._pg.gen_laserchannel_ComboBox.addItems(digital_channels)
             self._pg.gen_laserchannel_ComboBox.addItems(analog_channels)
             if former_laser_channel in settings_dict['activation_config'][1]:
                 index = self._pg.gen_laserchannel_ComboBox.findText(former_laser_channel)
                 self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+                self._pg.block_editor.set_laser_channel_is_digital(former_laser_channel.startswith('d'))
 
             former_sync_channel = self._pg.gen_syncchannel_ComboBox.currentText()
             self._pg.gen_syncchannel_ComboBox.clear()
@@ -1466,6 +1468,8 @@ class PulsedMeasurementGui(GUIBase):
                 self._digital_chnl_setting_widgets[chnl][2].setValue(high_voltage)
         if 'interleave' in settings_dict:
             self._pgs.gen_use_interleave_CheckBox.setChecked(settings_dict['interleave'])
+        if 'flags' in settings_dict:
+            self._sg.sequence_editor.set_available_flags(settings_dict['flags'])
 
         # unblock signals
         self._pgs.gen_sample_freq_DSpinBox.blockSignals(False)
@@ -1517,6 +1521,8 @@ class PulsedMeasurementGui(GUIBase):
                     settings_dict[param_name] = widget.text()
 
         self.pulsedmasterlogic().set_generation_parameters(settings_dict)
+
+        self._pg.block_editor.set_laser_channel_is_digital(settings_dict['laser_channel'].startswith('d'))
         return
 
     @QtCore.Slot(dict)
@@ -1534,6 +1540,7 @@ class PulsedMeasurementGui(GUIBase):
         if 'laser_channel' in settings_dict:
             index = self._pg.gen_laserchannel_ComboBox.findText(settings_dict['laser_channel'])
             self._pg.gen_laserchannel_ComboBox.setCurrentIndex(index)
+            self._pg.block_editor.set_laser_channel_is_digital(settings_dict['laser_channel'].startswith('d'))
         if 'sync_channel' in settings_dict:
             index = self._pg.gen_syncchannel_ComboBox.findText(settings_dict['sync_channel'])
             self._pg.gen_syncchannel_ComboBox.setCurrentIndex(index)
@@ -1970,7 +1977,7 @@ class PulsedMeasurementGui(GUIBase):
         self._sg.curr_sequence_length_DSpinBox.setRange(0, np.inf)
         pulser_constr = self.pulsedmasterlogic().pulse_generator_constraints
         self._sg.sequence_editor.set_available_triggers(pulser_constr.event_triggers)
-        self._sg.sequence_editor.set_available_flags(pulser_constr.flags)
+        self._sg.sequence_editor.set_available_flags(set(pulser_constr.flags))
         return
 
     def _deactivate_sequence_generator_ui(self):

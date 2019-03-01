@@ -4,6 +4,7 @@
 
 Changes/New features:
 
+* Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
 * splitting up the huge hardware file of the ni card as preparation to reworking the scanner interface 
 * Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
@@ -43,6 +44,9 @@ This can be used to specify the axis labels for the measurement (excluding units
 * Add a copy-paste config option to the docstrings of all current qudi hardware modules.
 * **Pulsed 3.0:**\
     _A truckload of changes regarding all pulsed measurement related modules_
+    * analyze_sequence now returns all the necessary values to work with sequences.
+    * It is now possible to select no or analogue laser channels. In this case, the relevant block element gets marked as laser.
+    * Adding the possibility to reliably add flags to sequence steps and making them selectable in the GUI.
     * Bug fix for waveform generation larger than ~2 GSamples
     * Added chirp function to available analog shapes in pulsed measurements
     * Tab order in pulsed measurement GUI is now more useful

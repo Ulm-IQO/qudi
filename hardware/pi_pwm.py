@@ -154,14 +154,14 @@ class PiPWM(Base, ProcessControlInterface):
 
             @return tuple(str, str): short and text form of unit
         """
-        return ('%', 'percent')
+        return '%', 'percent'
 
     def getControlLimits(self):
         """ Get minimum and maxuimum value for control value.
 
             @return tuple(float, float): min and max control value
         """
-        return (-100, 100)
+        return -100, 100
 
 
 class PiPWMHalf(PiPWM):
@@ -178,4 +178,4 @@ class PiPWMHalf(PiPWM):
 
             @return tuple(float, float): min and max control value
         """
-        return (0, 100)
+        return 0, 100
