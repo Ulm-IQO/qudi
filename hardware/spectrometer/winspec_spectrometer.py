@@ -63,7 +63,7 @@ class WinSpec32(Base, SpectrometerInterface):
         """
         pass
 
-    def recordSpectrum(self):
+    def record_spectrum(self):
         """ Record spectrum from WinSpec32 software.
 
             @return []: spectrum data
@@ -97,7 +97,8 @@ class WinSpec32(Base, SpectrometerInterface):
             
             datapointer = c_float()
             raw_spectrum = self.WinspecDoc.GetFrame(1, datapointer)
-            # winspec uses 16 bit unsigned int. Make sure to consider that while converting to numpy arrays
+            # winspec uses 16 bit unsigned int.
+            # Make sure to consider that while converting to numpy arrays
             spectrum = np.array(raw_spectrum, dtype=np.uint16).flatten()
             specdata = np.empty((2, len(spectrum)), dtype=np.double)
             specdata[1] = spectrum
@@ -122,13 +123,13 @@ class WinSpec32(Base, SpectrometerInterface):
             print("Could not initiate acquisition.")
             return {'wavelength': [0], 'intensity': [0]}
 
-    def saveSpectrum(self, path, postfix = ''):
+    def save_spectrum(self, path, postfix = ''):
         """ Save spectrum from WinSpec32 software.
 
             @param str path: path to save origial spectrum
             @param str postfix: file posfix
         """
-        savetime=datetime.datetime.now()
+        savetime = datetime.datetime.now()
         w32c.pythoncom.CoInitialize()
         timestr = savetime.strftime("%Y%m%d-%H%M-%S-%f_")
         self.WinspecDoc.SetParam(
@@ -138,7 +139,7 @@ class WinSpec32(Base, SpectrometerInterface):
         print(self.WinspecDoc.GetParam(WinSpecLib.DM_FILENAME))
         self.WinspecDoc.Save()
 
-    def getExposure(self):
+    def get_exposure(self):
         """ Get exposure.
 
             @return float: exposure
@@ -147,7 +148,7 @@ class WinSpec32(Base, SpectrometerInterface):
         """
         return -1
 
-    def setExposure(self, exposureTime):
+    def set_exposure(self, exposure_time):
         """ Set exposure.
 
             @param float exposureTime: exposure

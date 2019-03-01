@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-This module contains fake spectrometer.
+This module controls spectrometers from Ocean Optics Inc.
+All spectrometers supported by python-seabreeze should work.
+
+Do "conda install -c poehlmann python-seabreeze to install python-seabreeze"
+before using this module.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -19,7 +23,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, Connector
+from core.module import Base, ConfigOption
 from interface.spectrometer_interface import SpectrometerInterface
 
 from time import strftime, localtime
@@ -27,68 +31,43 @@ from time import strftime, localtime
 import time
 import numpy as np
 
+import seabreeze.spectrometers as sbs
 
-class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
+
+class OceanOpticsSpectrometer(Base, SpectrometerInterface):
     """ Dummy spectrometer module.
 
     Shows a silicon vacancy spectrum at liquid helium temperatures.
 
     Example config for copy-paste:
 
-    spectrometer_dummy:
-        module.Class: 'spectrometer.spectrometer_dummy.SpectrometerInterfaceDummy'
-        fitlogic: 'fitlogic' # name of the fitlogic module, see default config
+    ocean_spectrometer:
+        module.Class: 'spectrometer.ocean_optics_spectrometer.OceanOpticsSpectrometer'
+        spectrometer_serial: 'QEP01111'  # Optional, necessary when running multiple spectrometers
 
     """
 
-    fitlogic = Connector(interface='FitLogic')
+    _serial = ConfigOption('spectrometer_serial', missing='warn')
 
     def on_activate(self):
         """ Activate module.
         """
-        self._fitLogic = self.fitlogic()
-        self.exposure = 0.1
+        self.spec = sbs.Spectrometer.from_serial_number(self._serial)
+        self.log.info(''.format(self.spec.model, self.spec.serial_number))
 
     def on_deactivate(self):
         """ Deactivate module.
         """
-        pass
+        self.spec.close()
 
     def record_spectrum(self):
         """ Record a dummy spectrum.
 
-            @return ndarray: 1024-value ndarray containing wavelength and intensity of simulated spectrum
+            @return ndarray: numpy array containing wavelength and intensity of simulated spectrum
         """
-        length = 1024
+        return np.vstack((self.spec.wavelengths() * 1e-9, self.spec.intensities()))
 
-        data = np.empty((2, length), dtype=np.double)
-        data[0] = np.arange(730, 750, 20/length)
-        data[1] = np.random.uniform(0, 2000, length)
-
-        lorentz, params = self._fitLogic.make_multiplelorentzian_model(no_of_functions=4)
-        sigma = 0.05
-        params.add('l0_amplitude', value=2000)
-        params.add('l0_center', value=736.46)
-        params.add('l0_sigma', value=1.5*sigma)
-        params.add('l1_amplitude', value=5800)
-        params.add('l1_center', value=736.545)
-        params.add('l1_sigma', value=sigma)
-        params.add('l2_amplitude', value=7500)
-        params.add('l2_center', value=736.923)
-        params.add('l2_sigma', value=sigma)
-        params.add('l3_amplitude', value=1000)
-        params.add('l3_center', value=736.99)
-        params.add('l3_sigma', value=1.5*sigma)
-        params.add('offset', value=50000.)
-
-        data[1] += lorentz.eval(x=data[0], params=params)
-
-        data[0] = data[0] * 1e-9  # return to logic in SI units (m)
-
-        time.sleep(self.exposure)
-        return data
-
-    def save_spectrum(self, path, postfix = ''):
+    def saveSpectrum(self, path, postfix = ''):
         """ Dummy save function.
 
             @param str path: path of saved spectrum
@@ -102,7 +81,7 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
 
             @return float: exposure time
         """
-        return self.exposure
+        return self.spec.ex
 
     def set_exposure(self, exposureTime):
         """ Set exposure time.
@@ -110,3 +89,4 @@ class SpectrometerInterfaceDummy(Base,SpectrometerInterface):
             @param float exposureTime: exposure time
         """
         self.exposure = exposureTime
+        self.spec.integration_time_micros(20000)

@@ -40,7 +40,6 @@ class SpectrumLogic(GenericLogic):
 
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
-    odmrlogic = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
 
@@ -82,7 +81,6 @@ class SpectrumLogic(GenericLogic):
         self.repetition_count = 0    # count loops for differential spectrum
 
         self._spectrometer_device = self.spectrometer()
-        self._odmr_logic = self.odmrlogic()
         self._save_logic = self.savelogic()
 
         self.sig_next_diff_loop.connect(self._loop_differential_spectrum)
@@ -127,9 +125,9 @@ class SpectrumLogic(GenericLogic):
         self.fc.clear_result()
 
         if background:
-            self._spectrum_background = netobtain(self._spectrometer_device.recordSpectrum())
+            self._spectrum_background = netobtain(self._spectrometer_device.record_spectrum())
         else:
-            self._spectrum_data = netobtain(self._spectrometer_device.recordSpectrum())
+            self._spectrum_data = netobtain(self._spectrometer_device.record_spectrum())
 
         self._calculate_corrected_spectrum()
 
@@ -175,16 +173,17 @@ class SpectrumLogic(GenericLogic):
         """
         # TODO: sanity check the passed parameters.
 
-        self._spectrometer_device.saveSpectrum(path, postfix=postfix)
+        self._spectrometer_device.save_spectrum(path, postfix=postfix)
 
     def start_differential_spectrum(self):
-        """Start a differential spectrum acquisition.  An initial spectrum is recorded to initialise the data arrays to the right size.
+        """Start a differential spectrum acquisition.
+         An initial spectrum is recorded to initialise the data arrays to the right size.
         """
 
         self._continue_differential = True
 
         # Taking a demo spectrum gives us the wavelength values and the length of the spectrum data.
-        demo_data = netobtain(self._spectrometer_device.recordSpectrum())
+        demo_data = netobtain(self._spectrometer_device.record_spectrum())
 
         wavelengths = demo_data[0, :]
         empty_signal = np.zeros(len(wavelengths))
@@ -220,12 +219,12 @@ class SpectrumLogic(GenericLogic):
 
         # Toggle on, take spectrum and add data to the mod_on data
         self.toggle_modulation(on=True)
-        these_data = netobtain(self._spectrometer_device.recordSpectrum())
+        these_data = netobtain(self._spectrometer_device.record_spectrum())
         self.diff_spec_data_mod_on[1, :] += these_data[1, :]
 
         # Toggle off, take spectrum and add data to the mod_off data
         self.toggle_modulation(on=False)
-        these_data = netobtain(self._spectrometer_device.recordSpectrum())
+        these_data = netobtain(self._spectrometer_device.record_spectrum())
         self.diff_spec_data_mod_off[1, :] += these_data[1, :]
 
         self.repetition_count += 1    # increment the loop count
@@ -426,7 +425,7 @@ class SpectrumLogic(GenericLogic):
         @return index of nearest element.
         """
 
-        idx = (np.abs(array-value)).argmin()
+        idx = (np.abs(array - value)).argmin()
         return idx
 
     def set_fit_domain(self, domain=None):

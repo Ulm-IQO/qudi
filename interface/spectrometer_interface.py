@@ -28,13 +28,19 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     optical spectrometer.
     """
     @abc.abstractmethod
-    def recordSpectrum(self):
+    def record_spectrum(self):
+        """ Record a single spectrum.
+
+        @return: numpy array [wavelength [] , intensity [] ]
+        """
         pass
 
     @abc.abstractmethod
-    def setExposure(self, exposureTime):
+    def set_exposure(self, exposure_time):
+        """ Exposure or integration time in seconds """
         pass
 
     @abc.abstractmethod
-    def getExposure(self):
+    def get_exposure(self):
+        """ Return exposure or integration time in seconds """
         pass
