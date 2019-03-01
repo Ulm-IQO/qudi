@@ -31,19 +31,17 @@ from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
 
 
-class NationalInstrumentsXSeries(Base, SlowCounterInterface):
+class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
     """ A National Instruments device that can count and control microvave generators.
 
     !!!!!! NI USB 63XX, NI PCIe 63XX and NI PXIe 63XX DEVICES ONLY !!!!!!
 
     See [National Instruments X Series Documentation](@ref nidaq-x-series) for details.
 
-    stable: Kay Jahnke, Alexander Stark
-
     Example config for copy-paste:
 
     nicard_6343:
-        module.Class: 'national_instruments_x_series.NationalInstrumentsXSeries'
+        module.Class: 'ni_x_series_counter.NationalInstrumentsXSeriesCounter'
         photon_sources:
             - '/Dev1/PFI8'
         #    - '/Dev1/PFI9'
@@ -53,32 +51,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
             - '/Dev1/Ctr1'
         counter_ai_channels:
             - '/Dev1/AI0'
-        default_scanner_clock_frequency: 100 # optional, in Hz
-        scanner_clock_channel: '/Dev1/Ctr2'
-        pixel_clock_channel: '/Dev1/PFI6'
-        scanner_ao_channels:
-            - '/Dev1/AO0'
-            - '/Dev1/AO1'
-            - '/Dev1/AO2'
-            - '/Dev1/AO3'
-        scanner_ai_channels:
-            - '/Dev1/AI1'
-        scanner_counter_channels:
-            - '/Dev1/Ctr3'
-        scanner_voltage_ranges:
-            - [-10, 10]
-            - [-10, 10]
-            - [-10, 10]
-            - [-10, 10]
-        scanner_position_ranges:
-            - [0e-6, 200e-6]
-            - [0e-6, 200e-6]
-            - [-100e-6, 100e-6]
-            - [-10, 10]
-
-        odmr_trigger_channel: '/Dev1/PFI7'
-
-        gate_in_channel: '/Dev1/PFI9'
         default_samples_number: 50
         max_counts: 3e7
         read_write_timeout: 10
@@ -115,7 +87,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
     def on_deactivate(self):
         """ Shut down the NI card.
         """
-        self.reset_hardware()
+        self.close_counter()
+        self.close_clock()
+        #self.reset_hardware()
 
     # =================== SlowCounterInterface Commands ========================
 
@@ -133,16 +107,13 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
         constraints.counting_mode = [CountingMode.CONTINUOUS]
         return constraints
 
-    def set_up_clock(self, clock_frequency=None, clock_channel=None, scanner=False, idle=False):
+    def set_up_clock(self, clock_frequency=None, clock_channel=None, idle=False):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
         @param float clock_frequency: if defined, this sets the frequency of
                                       the clock in Hz
         @param string clock_channel: if defined, this is the physical channel
                                      of the clock within the NI card.
-        @param bool scanner: if set to True method will set up a clock function
-                             for the scanner, otherwise a clock function for a
-                             counter will be set.
         @param bool idle: set whether idle situation of the counter (where
                           counter is doing nothing) is defined as
                                 True  = 'Voltage High/Rising Edge'
@@ -151,12 +122,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if not scanner and self._clock_daq_task is not None:
+        if self._clock_daq_task is not None:
             self.log.error('Another counter clock is already running, close this one first.')
-            return -1
-
-        if scanner and self._scanner_clock_daq_task is not None:
-            self.log.error('Another scanner clock is already running, close this one first.')
             return -1
 
         # Create handle for task, this task will generate pulse signal for
@@ -164,51 +131,18 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
         my_clock_daq_task = daq.TaskHandle()
 
         # assign the clock frequency, if given
-        if clock_frequency is not None:
-            if not scanner:
-                self._clock_frequency = float(clock_frequency)
-            else:
-                self._scanner_clock_frequency = float(clock_frequency)
-        else:
-            if not scanner:
-                self._clock_frequency = self._default_clock_frequency
-            else:
-                self._scanner_clock_frequency = self._default_scanner_clock_frequency
-
-        # use the correct clock in this method
-        if scanner:
-            my_clock_frequency = self._scanner_clock_frequency * 2
-        else:
-            my_clock_frequency = self._clock_frequency * 2
+        self._clock_frequency = float(clock_frequency) if clock_frequency is not None else self._default_clock_frequency
 
         # assign the clock channel, if given
         if clock_channel is not None:
-            if not scanner:
-                self._clock_channel = clock_channel
-            else:
-                self._scanner_clock_channel = clock_channel
-
-        # use the correct clock channel in this method
-        if scanner:
-            my_clock_channel = self._scanner_clock_channel
-        else:
-            my_clock_channel = self._clock_channel
-
-        # check whether only one clock pair is available, since some NI cards
-        # only one clock channel pair.
-        if self._scanner_clock_channel == self._clock_channel:
-            if not ((self._clock_daq_task is None) and (self._scanner_clock_daq_task is None)):
-                self.log.error(
-                    'Only one clock channel is available!\n'
-                    'Another clock is already running, close this one first '
-                    'in order to use it for your purpose!')
-                return -1
+            self._clock_channel = clock_channel
 
         # Adjust the idle state if necessary
         my_idle = daq.DAQmx_Val_High if idle else daq.DAQmx_Val_Low
+
         try:
             # create task for clock
-            task_name = 'ScannerClock' if scanner else 'CounterClock'
+            task_name = 'CounterClock'
             daq.DAQmxCreateTask(task_name, daq.byref(my_clock_daq_task))
 
             # create a digital clock channel with specific clock frequency:
@@ -216,8 +150,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                 # The task to which to add the channels
                 my_clock_daq_task,
                 # which channel is used?
-                my_clock_channel,
-                # Name to assign to task (NIDAQ uses by # default the physical channel name as
+                self._clock_channel,
+                # Name to assign to task (NIDAQ uses by default the physical channel name as
                 # the virtual channel name. If name is specified, then you must use the name
                 # when you refer to that channel in other NIDAQ functions)
                 'Clock Producer',
@@ -227,8 +161,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                 my_idle,
                 # initial delay
                 0,
-                # pulse frequency, divide by 2 such that length of semi period = count_interval
-                my_clock_frequency / 2,
+                # pulse frequency
+                self._clock_frequency,
                 # duty cycle of pulses, 0.5 such that high and low duration are both
                 # equal to count_interval
                 0.5)
@@ -244,12 +178,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                 # buffer length which stores temporarily the number of generated samples
                 1000)
 
-            if scanner:
-                self._scanner_clock_daq_task = my_clock_daq_task
-            else:
-                # actually start the preconfigured clock task
-                daq.DAQmxStartTask(my_clock_daq_task)
-                self._clock_daq_task = my_clock_daq_task
+            # actually start the preconfigured clock task
+            self._clock_daq_task = my_clock_daq_task
+            daq.DAQmxStartTask(self._clock_daq_task)
         except:
             self.log.exception('Error while setting up clock.')
             return -1
@@ -282,29 +213,18 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
             self.log.error('Another counter is already running, close this one first.')
             return -1
 
-        if counter_channels is not None:
-            my_counter_channels = counter_channels
-        else:
-            my_counter_channels = self._counter_channels
+        counter_channels = counter_channels if counter_channels is not None else self._counter_channels
+        sources = sources if sources is not None else self._photon_sources
+        clock_channel = clock_channel if clock_channel is not None else self._clock_channel
 
-        if sources is not None:
-            my_photon_sources = sources
-        else:
-            my_photon_sources = self._photon_sources
-
-        if clock_channel is not None:
-            my_clock_channel = clock_channel
-        else:
-            my_clock_channel = self._clock_channel
-
-        if len(my_photon_sources) < len(my_counter_channels):
+        if len(sources) < len(counter_channels):
             self.log.error('You have given {0} sources but {1} counting channels.'
                            'Please give an equal or greater number of sources.'
-                           ''.format(len(my_photon_sources), len(my_counter_channels)))
+                           ''.format(len(sources), len(counter_channels)))
             return -1
 
         try:
-            for i, ch in enumerate(my_counter_channels):
+            for i, ch in enumerate(counter_channels):
                 # This task will count photons with binning defined by the clock_channel
                 task = daq.TaskHandle()  # Initialize a Task
                 # Create task for the counter
@@ -340,7 +260,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                         # use this counter channel
                         ch,
                         # assign a named Terminal
-                        my_clock_channel + 'InternalOutput')
+                        clock_channel + 'InternalOutput')
 
                 # Set a Counter Input Control Timebase Source.
                 # Specify the terminal of the timebase which is used for the counter:
@@ -352,7 +272,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                     # counter channel
                     ch,
                     # counter channel to output the counting results
-                    my_photon_sources[i])
+                    sources[i])
 
                 # Configure Implicit Timing.
                 # Set timing to continuous, i.e. set only the number of samples to
@@ -408,7 +328,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
                     # Analog in channel timebase
                     daq.DAQmxCfgSampClkTiming(
                         atask,
-                        my_clock_channel + 'InternalOutput',
+                        clock_channel + 'InternalOutput',
                         self._clock_frequency,
                         daq.DAQmx_Val_Rising,
                         daq.DAQmx_Val_ContSamps,
@@ -441,9 +361,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
 
         Most methods calling this might just care about the number of channels, though.
         """
-        ch = self._counter_channels[:]
-        ch.extend(self._counter_ai_channels)
-        return ch
+        return set(self._counter_channels).union(set(self._counter_ai_channels))
 
     def get_counter(self, samples=None):
         """ Returns the current counts per second of the counter.
@@ -616,7 +534,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
 
     # ================ End SlowCounterInterface Commands =======================
 
-    # ================ ConfocalScannerInterface Commands =======================
     def reset_hardware(self):
         """ Resets the NI hardware, so the connection is lost and other
             programs can access it.
@@ -624,16 +541,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         retval = 0
-        chanlist = [
-            self._odmr_trigger_channel,
-            self._clock_channel,
-            self._scanner_clock_channel,
-            self._gate_in_channel
-            ]
-        chanlist.extend(self._scanner_ao_channels)
-        chanlist.extend(self._photon_sources)
+        chanlist = [self._clock_channel]
         chanlist.extend(self._counter_channels)
-        chanlist.extend(self._scanner_counter_channels)
+        chanlist.extend(self._counter_ai_channels)
 
         devicelist = []
         for channel in chanlist:
