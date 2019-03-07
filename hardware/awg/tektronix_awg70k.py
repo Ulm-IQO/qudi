@@ -479,10 +479,8 @@ class AWG70K(Base, PulserInterface):
                                    '"{1}".'.format(seq_step.go_to, num_steps))
                     return -1
             # Set flag states
-            if len(seq_step.flag_trigger) > 0:
-                self.sequence_set_flags(name, step, seq_step.flag_trigger, True)
-            if len(seq_step.flag_high) > 0:
-                self.sequence_set_flags(name, step, seq_step.flag_high, False)
+            if len(seq_step.flag_trigger) + len(seq_step.flag_high) > 0:
+                self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -1374,16 +1372,16 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIS:SEQ:STEP{0:d}:WINP "{1}", {2}'.format(step, sequence_name, trigger))
         return 0
 
-    def sequence_set_flags(self, sequence_name, step, flags=None, trigger=False):
+    def sequence_set_flags(self, sequence_name, step, flags_t=None, flags_h=None):
         """
         Set the flags in "flags" to HIGH (trigger=False) during the sequence step or let the flags
         send out a fixed duration trigger pulse (trigger=True). All other flags are set to LOW.
 
         @param str sequence_name: Name of the sequence to be edited
         @param int step: Sequence step to be edited
-        @param list flags: List of flag specifiers to be active during this sequence step
-        @param bool trigger: Whether the flag should be HIGH during the step (False) or send out a
-                             fixed length trigger pulse when starting to play the step (True).
+        @param list flags_t: List of flag trigger specifiers to be active during this sequence step, if both options are
+                             selected, the flag is set to trigger (PULS)
+        @param list flags_h: List of flag high specifiers to be active during this sequence step
 
         @return int: error code
         """
@@ -1393,8 +1391,10 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         for flag in ('A', 'B', 'C', 'D'):
-            if flag in flags:
-                state = 'PULS' if trigger else 'HIGH'
+            if flag in flags_t:
+                state = 'PULS'
+            elif flag in flags_h:
+                state = 'HIGH'
             else:
                 state = 'LOW'
 
