@@ -342,13 +342,7 @@ class PoiManagerLogic(GenericLogic):
 
     @refocus_period.setter
     def refocus_period(self, period):
-        if period < 0:
-            self.log.error('Refocus period must be a value > 0. Unable to set period of "{0}".'
-                           ''.format(period))
-            return
-        # Acquire thread lock in order to change the period during a running periodic refocus
-        with self._threadlock:
-            self._refocus_period = float(period)
+        self.set_refocus_period(period)
         return
 
     @property
@@ -452,7 +446,11 @@ class PoiManagerLogic(GenericLogic):
         @param bool emit_change:
         """
         if name is None:
-            name = self.active_poi
+            if self.active_poi is None:
+                self.log.error('Unable to rename POI. No POI name given and no active POI set.')
+                return
+            else:
+                name = self.active_poi
 
         try:
             self._roi.rename_poi(name=name, new_name=new_name)
@@ -489,17 +487,16 @@ class PoiManagerLogic(GenericLogic):
         Set the name of the currently active POI
         @param name:
         """
-        if name is not None and not isinstance(name, str):
-            self.log.error('POI name must be of type str.')
-        elif name is None:
+        if name is None:
             self.active_poi = None
+        elif not isinstance(name, str):
+            self.log.error('POI name must be of type str or None.')
         elif name in self.poi_names:
             self.active_poi = name
         else:
             self.log.error('No POI with name "{0}" found in POI list.'.format(name))
 
         self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
-
         self.update_poi_tag_in_savelogic()
         return
 
@@ -515,6 +512,7 @@ class PoiManagerLogic(GenericLogic):
         self._roi = RegionOfInterest()
         self.active_poi = None
         self.sigActivePoiUpdated('')
+        self.update_poi_tag_in_savelogic()
         self.sigPoisUpdated(self.poi_names)
         return
 
@@ -548,6 +546,10 @@ class PoiManagerLogic(GenericLogic):
         @param bool update_roi_position: Flag indicating if the ROI should be shifted accordingly.
                                          If None (default) do not change the flag.
         """
+        if name is None and self.active_poi is None:
+            self.log.error('Unable to optimize POI position. '
+                           'No POI name given and not active POI set.')
+            return
         self.__optimised_poi = self.active_poi if name is None else name
         if update_roi_position is not None:
             self.shift_roi_after_optimize = bool(update_roi_position)
@@ -587,6 +589,8 @@ class PoiManagerLogic(GenericLogic):
         self.scannerlogic().set_position('poimanager', x=position[0], y=position[1], z=position[2])
         return
 
+    @QtCore.Slot()
+    @QtCore.Slot(str)
     def start_periodic_refocus(self, name=None):
         """
         Starts perodic refocussing of the POI <name>.
@@ -598,7 +602,13 @@ class PoiManagerLogic(GenericLogic):
             self.log.error('Periodic refocus already running. Unable to start a new one.')
             return
         if name is None:
-            name = self.active_poi
+            if self.active_poi is None:
+                self.log.error('Unable to start periodic refocus. No POI name given and no active '
+                               'POI set.')
+                return
+            else:
+                name = self.active_poi
+
         if name not in self.poi_names:
             self.log.error('No POI with name "{0}" found in POI list.\n'
                            'Unable to start periodic refocus.')
@@ -615,28 +625,40 @@ class PoiManagerLogic(GenericLogic):
         self.sigRefocusTimerUpdated.emit(True, self.refocus_period, self.refocus_period)
         return
 
+    @QtCore.Slot(int)
+    @QtCore.Slot(float)
     def set_refocus_period(self, period):
         """ Change the duration of the periodic optimise timer during active
         periodic refocussing.
 
         @param float period: The time between optimisation procedures.
         """
-        self.refocus_period = period
+        if period < 0:
+            self.log.error('Refocus period must be a value > 0. Unable to set period of "{0}".'
+                           ''.format(period))
+            return
+        # Acquire thread lock in order to change the period during a running periodic refocus
+        with self._threadlock:
+            self._refocus_period = float(period)
         return
 
+    @QtCore.Slot()
     def _periodic_refocus_loop(self):
         """ This is the looped function that does the actual periodic refocus.
 
         If the time has run out, it refocussed the current poi.
         Otherwise it just updates the time that is left.
         """
-        remaining_time = self.time_until_refocus
-        self.sigRefocusTimerUpdated.emit(True, self.refocus_period, remaining_time)
-        if remaining_time <= 0 and self.optimiserlogic().module_state() == 'idle':
-            self.optimise_poi_position(self._refocus_poi)
-            self._last_refocus = time.time()
+        with self._threadlock:
+            if self.__timer.isActive():
+                remaining_time = self.time_until_refocus
+                self.sigRefocusTimerUpdated.emit(True, self.refocus_period, remaining_time)
+                if remaining_time <= 0 and self.optimiserlogic().module_state() == 'idle':
+                    self.optimise_poi_position(self._refocus_poi)
+                    self._last_refocus = time.time()
         return
 
+    @QtCore.Slot()
     def stop_periodic_refocus(self):
         """ Stops the perodic refocussing of the poi.
 
@@ -644,61 +666,16 @@ class PoiManagerLogic(GenericLogic):
         """
         if not self.__timer.isActive():
             self.log.warning('Unable to stop periodic refocus. No periodic refocus running.')
-            return
-        self.__timer.timeout.disconnect()
-        self.__timer.stop()
-        self.__timer = None
-
-        self.signal_periodic_opt_stopped.emit()
-        return 0
-
-    def _refocus_done(self, caller_tag, optimal_pos):
-        """ Gets called automatically after the refocus is done and saves the new position
-        to the poi history.
-
-        Also it tracks the sample and may go back to the crosshair.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        # We only need x, y, z
-        optimised_position = optimal_pos[0:3]
-
-        # If the refocus was on the crosshair, then only update crosshair POI and don't
-        # do anything with sample position.
-        caller_tags = ['confocalgui', 'magnet_logic', 'singleshot_logic']
-        if caller_tag in caller_tags:
-            self.poi_list['crosshair'].add_position_to_history(position=optimised_position)
-
-        # If the refocus was initiated here by poimanager, then update POI and sample
-        elif caller_tag == 'poimanager':
-
-            if self._current_poi_key is not None and self._current_poi_key in self.poi_list.keys():
-
-                self.set_new_position(poikey=self._current_poi_key, newpos=optimised_position)
-
-                if self.go_to_crosshair_after_optimisation:
-                    temp_key = self._current_poi_key
-                    self.go_to_poi(poikey='crosshair')
-                    self._current_poi_key = temp_key
-                else:
-                    self.go_to_poi(poikey=self._current_poi_key)
-                return 0
-            else:
-                self.log.error('The given POI ({0}) does not exist.'.format(
-                    self._current_poi_key))
-                return -1
-
         else:
-            self.log.warning("Unknown caller_tag for the optimiser. POI "
-                             "Manager does not know what to do with optimised "
-                             "position, and has done nothing.")
+            with self._threadlock:
+                self.__timer.stop()
+                self.__timer.timeout.disconnect()
+
+        self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
+        return
 
     def update_poi_tag_in_savelogic(self):
-
-        if self.active_poi is not None:
-            self.savelogic().active_poi_name = self.active_poi.get_name()
-        else:
-            self.savelogic().active_poi_name = ''
+        pass
 
     def save_poi_map_as_roi(self):
         """ Save a list of POIs with their coordinates to a file.
