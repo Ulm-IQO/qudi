@@ -364,7 +364,7 @@ class PoiManagerGui(GUIBase):
         self._mw.manual_update_poi_PushButton.clicked.connect(
             self.poimanagerlogic().set_poi_position, QtCore.Qt.QueuedConnection)
         self._mw.move_poi_PushButton.clicked.connect(self.move_poi)
-        self._mw.poi_name_LineEdit.editingFinished.connect(self.change_poi_name)
+        self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.set_roi_name)
         self._mw.delete_poi_PushButton.clicked.connect(
             self.poimanagerlogic().delete_poi, QtCore.Qt.QueuedConnection)
@@ -447,23 +447,24 @@ class PoiManagerGui(GUIBase):
         Gets the mouse position, converts it to a position scaled to the image axis
         and than calculates and updated the position to the current POI.
         """
-
-        # converts the absolute mouse position to a position relative to the axis
-        mouse_point = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(
-            event.toPoint())
-
-        # only calculate distance, if a POI is selected
-        if self.poimanagerlogic().active_poi is not None:
-            cur_poi_pos = self.poimanagerlogic().get_poi_position(
-                poikey=self.poimanagerlogic().active_poi.get_key())
-            dx = ScaledFloat(mouse_point.x() - cur_poi_pos[0])
-            dy = ScaledFloat(mouse_point.y() - cur_poi_pos[1])
-            d_total = ScaledFloat(np.sqrt(
-                    (mouse_point.x() - cur_poi_pos[0])**2
-                    + (mouse_point.y() - cur_poi_pos[1])**2))
-
-            self._mw.poi_distance_label.setText(
-                '{0:.2r}m ({1:.2r}m, {2:.2r}m)'.format(d_total, dx, dy))
+        #
+        # # converts the absolute mouse position to a position relative to the axis
+        # mouse_point = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(
+        #     event.toPoint())
+        #
+        # # only calculate distance, if a POI is selected
+        # if self.poimanagerlogic().active_poi is not None:
+        #     cur_poi_pos = self.poimanagerlogic().get_poi_position(
+        #         poikey=self.poimanagerlogic().active_poi.get_key())
+        #     dx = ScaledFloat(mouse_point.x() - cur_poi_pos[0])
+        #     dy = ScaledFloat(mouse_point.y() - cur_poi_pos[1])
+        #     d_total = ScaledFloat(np.sqrt(
+        #             (mouse_point.x() - cur_poi_pos[0])**2
+        #             + (mouse_point.y() - cur_poi_pos[1])**2))
+        #
+        #     self._mw.poi_distance_label.setText(
+        #         '{0:.2r}m ({1:.2r}m, {2:.2r}m)'.format(d_total, dx, dy))
+        pass
 
     def show(self):
         """Make main window visible and put it above all other windows. """
@@ -595,7 +596,7 @@ class PoiManagerGui(GUIBase):
         """ Change the name of a poi."""
 
         new_name = self._mw.poi_name_LineEdit.text()
-        if self._mw.active_poi_ComboBox.text() == new_name or not new_name:
+        if self._mw.active_poi_ComboBox.currentText() == new_name or not new_name:
             return
 
         self.poimanagerlogic().rename_poi(new_name=new_name)
