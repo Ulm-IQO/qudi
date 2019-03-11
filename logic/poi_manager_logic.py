@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import math
+import os
 import numpy as np
 import scipy.ndimage as ndimage
 import scipy.ndimage.filters as filters
@@ -41,9 +42,10 @@ class RegionOfInterest:
     e.g. the sample drift history and the corresponding confocal image.
     Each individual point of interest (POI) will be represented as a PointOfInterest instance.
     """
-    def __init__(self, name=None):
+    def __init__(self, name=None, creation_time=None, history=None, scan_image=None,
+                 scan_image_extent=None, poi_list=None):
         # Remember the creation time for drift history timestamps
-        self._creation_time = datetime.now()
+        self._creation_time = None
         # Keep track of the global position history relative to the initial position (sample drift).
         self._pos_history = list()
         # Optional scan image associated with this ROI
@@ -52,9 +54,16 @@ class RegionOfInterest:
         self._scan_image_extent = None
         # Save name of the ROI. Create a generic, unambiguous one as default.
         self._name = ''
-        self.name = name
         # dictionary of POIs contained in this ROI with keys being the name
         self._pois = dict()
+
+        self.creation_time = creation_time
+        self.name = name
+        self.pos_history = history
+        self.set_scan_image(scan_image, scan_image_extent)
+        if poi_list is not None:
+            for poi in poi_list:
+                self.add_poi(poi)
         return
 
     @property
@@ -132,6 +141,13 @@ class RegionOfInterest:
         if name not in self._pois:
             raise KeyError('No POI with name "{0}" found in POI list.'.format(name))
         return self._pois[name].position + self.origin
+
+    def get_poi_anchor(self, name):
+        if not isinstance(name, str):
+            raise TypeError('POI name must be of type str.')
+        if name not in self._pois:
+            raise KeyError('No POI with name "{0}" found in POI list.'.format(name))
+        return self._pois[name].position
 
     def set_scan_image(self, image_arr, image_extent):
         """
@@ -212,6 +228,7 @@ class RegionOfInterest:
         if name not in self._pois:
             raise KeyError('Name "{0}" not found in POI list.'.format(name))
         self._pois[name].name = new_name
+        self._pois[new_name] = self._pois.pop(name)
         return
 
     def to_dict(self):
@@ -225,14 +242,19 @@ class RegionOfInterest:
     @classmethod
     def from_dict(cls, dict_repr):
         if not isinstance(dict_repr, dict):
-            return
-        roi = cls(name=dict_repr.get('name'))
-        roi.creation_time = dict_repr.get('creation_time')
-        roi.pos_history = dict_repr.get('pos_history')
-        roi.set_scan_image(image_arr=dict_repr.get('scan_image'),
-                           image_extent=dict_repr.get('scan_image_extent'))
-        for poi_dict in dict_repr['pois']:
-            roi.add_poi(poi_inst=PointOfInterest.from_dict(poi_dict))
+            raise TypeError('Parameter to generate RegionOfInterest instance from must be of type '
+                            'dict.')
+        if 'pois' in dict_repr:
+            poi_list = [PointOfInterest.from_dict(poi) for poi in dict_repr.get('pois')]
+        else:
+            poi_list = None
+
+        roi = cls(name=dict_repr.get('name'),
+                  creation_time=dict_repr.get('creation_time'),
+                  history=dict_repr.get('pos_history'),
+                  scan_image=dict_repr.get('scan_image'),
+                  scan_image_extent=dict_repr.get('scan_image_extent'),
+                  poi_list=poi_list)
         return roi
 
 
@@ -240,7 +262,7 @@ class PointOfInterest:
     """
     The actual individual poi is saved in this generic object.
     """
-    def __init__(self, name=None, position=None):
+    def __init__(self, position, name=None):
         # Name of the POI
         self._name = ''
         # Relative POI position within the ROI (x,y,z)
@@ -296,7 +318,7 @@ class PoiManagerLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
 
     # status vars
-    _roi = StatusVar(default=RegionOfInterest())
+    _roi = StatusVar(default=dict())
     _refocus_period = StatusVar(default=120)
     active_poi = StatusVar(default=None)
     shift_roi_after_optimize = StatusVar(default=True)
@@ -348,6 +370,14 @@ class PoiManagerLogic(GenericLogic):
         return self._roi.poi_names
 
     @property
+    def poi_positions(self):
+        return {name: self.get_poi_position(name) for name in self.poi_names}
+
+    @property
+    def poi_anchors(self):
+        return {name: self.get_poi_anchor(name) for name in self.poi_names}
+
+    @property
     def roi_name(self):
         return self._roi.name
 
@@ -358,6 +388,18 @@ class PoiManagerLogic(GenericLogic):
     @property
     def roi_origin(self):
         return self._roi.origin
+
+    @property
+    def roi_creation_time(self):
+        return self._roi.creation_time
+
+    @property
+    def roi_creation_time_as_str(self):
+        return self._roi.creation_time_as_str
+
+    @property
+    def roi_pos_history(self):
+        return self._roi.pos_history
 
     @property
     def roi_scan_image(self):
@@ -382,6 +424,10 @@ class PoiManagerLogic(GenericLogic):
             return -1
         return max(0., self._refocus_period - (time.time() - self._last_refocus))
 
+    @QtCore.Slot()
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, np.ndarray)
+    @QtCore.Slot(str, np.ndarray, bool)
     def add_poi(self, name=None, position=None, emit_change=True):
         """
         Creates a new POI and adds it to the current ROI.
@@ -400,7 +446,7 @@ class PoiManagerLogic(GenericLogic):
 
         # Create instance of PointOfInterest
         try:
-            new_poi = PointOfInterest(name=name, position=position)
+            new_poi = PointOfInterest(position=position, name=name)
         except (ValueError, TypeError) as e:
             self.log.error('Failed to add POI:\n' + str(e))
             return
@@ -414,7 +460,7 @@ class PoiManagerLogic(GenericLogic):
 
         # Notify about a changed set of POIs if necessary
         if emit_change:
-            self.sigPoisUpdated.emit({name: self.get_poi_position(name) for name in self.poi_names})
+            self.sigPoisUpdated.emit(self.poi_positions)
 
         # Set newly created POI as active poi
         self.set_active_poi(new_poi.name)
@@ -445,7 +491,7 @@ class PoiManagerLogic(GenericLogic):
 
         # Notify about a changed set of POIs if necessary
         if emit_change:
-            self.sigPoisUpdated.emit({name: self.get_poi_position(name) for name in self.poi_names})
+            self.sigPoisUpdated.emit(self.poi_positions)
         return
 
     def get_poi_position(self, name=None):
@@ -460,6 +506,23 @@ class PoiManagerLogic(GenericLogic):
             name = self.active_poi
         return self._roi.get_poi_position(name)
 
+    def get_poi_anchor(self, name=None):
+        """
+        Returns the POI anchor position (excluding sample movement) of the specified POI or the
+        active POI if none is given.
+
+        @param str name: Name of the POI to return the position for.
+                         If None (default) the active POI position is returned.
+        @return float[3]: Coordinates of the desired POI anchor (x,y,z)
+        """
+        if name is None:
+            name = self.active_poi
+        return self._roi.get_poi_anchor(name)
+
+    # @QtCore.Slot(str)
+    # @QtCore.Slot(str, np.ndarray)
+    # @QtCore.Slot(str, np.ndarray, bool)
+    @QtCore.Slot()
     def set_poi_position(self, name=None, position=None, shift_roi=True):
         if position is None:
             position = self.scannerlogic().get_position()[:3]
@@ -474,8 +537,9 @@ class PoiManagerLogic(GenericLogic):
 
         shift = position - self.get_poi_position(name)
         if shift_roi:
-            self.set_roi_position(self.roi_origin + shift)
-        position = np.array(position, dtype=float) - self.roi_origin
+            self.set_roi_position(self.roi_origin + shift, emit_change=False)
+        else:
+            position = np.array(position, dtype=float) - self.roi_origin - shift
         self._roi.change_poi_position(name=name, new_pos=position)
         return
 
@@ -500,7 +564,8 @@ class PoiManagerLogic(GenericLogic):
             return
 
         if emit_change:
-            self.sigPoisUpdated.emit({name: self.get_poi_position(name) for name in self.poi_names})
+            self.sigPoisUpdated.emit(
+                {poi_name: self.get_poi_position(poi_name) for poi_name in self.poi_names})
 
         if self.active_poi == name:
             self.set_active_poi(new_name)
@@ -527,7 +592,7 @@ class PoiManagerLogic(GenericLogic):
 
     @QtCore.Slot()
     @QtCore.Slot(str)
-    def set_active_poi(self, name=None):
+    def set_active_poi(self, name=None, emit_change=True):
         """
         Set the name of the currently active POI
         @param name:
@@ -541,18 +606,22 @@ class PoiManagerLogic(GenericLogic):
         else:
             self.log.error('No POI with name "{0}" found in POI list.'.format(name))
 
-        self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
+        if emit_change:
+            self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
         self.update_poi_tag_in_savelogic()
         return
 
-    def update_scan_image(self):
+    @QtCore.Slot()
+    def update_scan_image(self, emit_change=True):
         """ Get the current xy scan data and set as scan_image of ROI. """
         self._roi.set_scan_image(
             self.scannerlogic().xy_image[:, :, 3],
             (self.scannerlogic().image_x_range, self.scannerlogic().image_y_range))
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
+        if emit_change:
+            self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
         return
 
+    @QtCore.Slot()
     def reset_roi(self):
         self._roi = RegionOfInterest()
         self.active_poi = None
@@ -561,16 +630,19 @@ class PoiManagerLogic(GenericLogic):
         self.sigPoisUpdated.emit({name: self.get_poi_position(name) for name in self.poi_names})
         return
 
-    def set_roi_position(self, position):
+    @QtCore.Slot(np.ndarray)
+    def set_roi_position(self, position, emit_change=True):
         try:
             self._roi.add_history_entry(position)
         except ValueError as e:
             self.log.error('Unable to set ROI position:\n' + str(e))
+        if emit_change:
+            self.sigScanImageUpdated(self.roi_scan_image, self.roi_scan_image_extent)
         return
 
     @QtCore.Slot()
     @QtCore.Slot(int)
-    def delete_history_entry(self, history_index=-1):
+    def delete_history_entry(self, history_index=-1, emit_change=True):
         """
         Delete an entry in the ROI history. Deletes the last position by default.
 
@@ -724,52 +796,79 @@ class PoiManagerLogic(GenericLogic):
     def update_poi_tag_in_savelogic(self):
         pass
 
-    def save_poi_map_as_roi(self):
-        """ Save a list of POIs with their coordinates to a file.
+    def save_roi(self):
         """
-        # File path and name
+        Save all current absolute POI coordinates to a file.
+        Save ROI history to a second file.
+        Save ROI scan image (if present) to a third file (binary numpy .npy-format).
+        """
+        # File path and names
         filepath = self.savelogic().get_path_for_module(module_name='ROIs')
+        pois_filename = '{0}_poi_list'.format(self.roi_name)
+        roi_filename = '{0}_history'.format(self.roi_name)
+        roi_image_filename = '{0}_scan_image'.format(self.roi_name)
 
-        # We will fill the data OderedDict to send to savelogic
+        # Common timestamp for all files
+        timestamp = datetime.now()
+
+        # Metadata to save in both file headers
+        parameters = OrderedDict()
+        parameters['roi_name'] = self.roi_name
+        parameters['roi_creation_time'] = self.roi_creation_time_as_str
+        parameters['scan_image_extent'] = str(self.roi_scan_image_extent)
+
+        ##################################
+        # Save POI positions to first file
+        ##################################
         data = OrderedDict()
+        # Save POI names in the first column
+        data['name'] = np.array(self.poi_names, dtype=str)
+        # Save x,y,z coordinates in the following 3 columns
+        data['X (m)'] = np.empty(len(self.poi_names), dtype=float)
+        data['Y (m)'] = np.empty(len(self.poi_names), dtype=float)
+        data['Z (m)'] = np.empty(len(self.poi_names), dtype=float)
+        # coordinates = np.empty((len(self.poi_names), 3), dtype=float)
+        for ii, name in enumerate(self.poi_names):
+            data['X (m)'][ii], data['Y (m)'][ii], data['Z (m)'][ii] = self.get_poi_position(name)
 
-        # Lists for each column of the output file
-        poinames = []
-        poikeys = []
-        x_coords = []
-        y_coords = []
-        z_coords = []
+        self.savelogic().save_data(data,
+                                   filepath=filepath,
+                                   timestamp=timestamp,
+                                   parameters=parameters,
+                                   filelabel=pois_filename,
+                                   fmt=['%s', '%.6e', '%.6e', '%.6e'])
 
-        for poikey in self.get_all_pois(abc_sort=True):
-            if poikey is not 'sample' and poikey is not 'crosshair':
-                thispoi = self.poi_list[poikey]
+        ############################################
+        # Save ROI history to second file if present
+        ############################################
+        if self.roi_pos_history:
+            data = OrderedDict()
+            history = np.array(self.roi_pos_history, dtype=float)
+            # Save timestamps in the first column
+            data['time (s)'] = history[:, 0]
+            # Save x,y,z coordinates in the following 3 columns
+            data['X (m)'] = history[:, 1]
+            data['Y (m)'] = history[:, 2]
+            data['Z (m)'] = history[:, 3]
 
-                poinames.append(thispoi.get_name())
-                poikeys.append(poikey)
-                x_coords.append(thispoi.get_coords_in_sample()[0])
-                y_coords.append(thispoi.get_coords_in_sample()[1])
-                z_coords.append(thispoi.get_coords_in_sample()[2])
+            self.savelogic().save_data(data,
+                                       filepath=filepath,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filelabel=roi_filename,
+                                       fmt=['%.15e', '%.6e', '%.6e', '%.6e'])
 
-        data['POI Name'] = np.array(poinames)
-        data['POI Key'] = np.array(poikeys)
-        data['X'] = np.array(x_coords)
-        data['Y'] = np.array(y_coords)
-        data['Z'] = np.array(z_coords)
-
-        self.savelogic().save_data(
-            data,
-            filepath=filepath,
-            filelabel=self.roi_name,
-            fmt=['%s', '%s', '%.6e', '%.6e', '%.6e']
-        )
-
-        self.log.debug('ROI saved to:\n{0}'.format(filepath))
-        return 0
+        #######################################################
+        # Save ROI scan image to third file (binary) if present
+        #######################################################
+        if self.roi_scan_image is not None:
+            np.save(os.path.join(filepath, roi_image_filename), self.roi_scan_image)
+        return
 
     def load_roi_from_file(self, filename=None):
-
+        print(filename)
         if filename is None:
-            return -1
+            return
 
         with open(filename, 'r') as roifile:
             for line in roifile:
@@ -789,57 +888,13 @@ class PoiManagerLogic(GenericLogic):
             self.signal_poi_updated.emit()
         return 0
 
-    # @poi_list.constructor
-    # def dict_to_poi_list(self, val):
-    #     pdict = {}
-    #     # initially add crosshair to the pois
-    #     crosshair = PoI(pos=[0, 0, 0], name='crosshair')
-    #     crosshair._key = 'crosshair'
-    #     pdict[crosshair._key] = crosshair
-    #
-    #     # initally add sample to the pois
-    #     sample = PoI(pos=[0, 0, 0], name='sample')
-    #     sample._key = 'sample'
-    #     pdict[sample._key] = sample
-    #
-    #     if isinstance(val, dict):
-    #         for key, poidict in val.items():
-    #             try:
-    #                 if len(poidict['pos']) >= 3:
-    #                     newpoi = PoI(name=poidict['name'], key=poidict['key'])
-    #                     newpoi.set_coords_in_sample(poidict['pos'])
-    #                     newpoi._creation_time = poidict['time']
-    #                     newpoi._position_time_trace = poidict['history']
-    #                     pdict[key] = newpoi
-    #             except Exception as e:
-    #                 self.log.exception('Could not load PoI {0}: {1}'.format(key, poidict))
-    #     return pdict
-    #
-    # @poi_list.representer
-    # def poi_list_to_dict(self, val):
-    #     pdict = {
-    #         key: poi.to_dict() for key, poi in val.items()
-    #     }
-    #     return pdict
-    #
-    # @active_poi.representer
-    # def active_poi_to_dict(self, val):
-    #     if isinstance(val, PoI):
-    #         return val.to_dict()
-    #     return None
-    #
-    # @active_poi.constructor
-    # def dict_to_active_poi(self, val):
-    #     try:
-    #         if isinstance(val, dict):
-    #             if len(val['pos']) >= 3:
-    #                 newpoi = PoI(pos=val['pos'], name=val['name'], key=val['key'])
-    #                 newpoi._creation_time = val['time']
-    #                 newpoi._position_time_trace = val['history']
-    #                 return newpoi
-    #     except Exception as e:
-    #         self.log.exception('Could not load active poi {0}'.format(val))
-    #         return None
+    @_roi.constructor
+    def dict_to_roi(self, roi_dict):
+        return RegionOfInterest.from_dict(roi_dict)
+
+    @_roi.representer
+    def roi_to_dict(self, roi):
+        return roi.to_dict()
 
     def triangulate(self, r, a1, b1, c1, a2, b2, c2):
         """ Reorients a coordinate r that is known relative to reference points a1, b1, c1 to
