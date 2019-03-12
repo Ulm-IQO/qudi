@@ -226,6 +226,11 @@ class PoiManagerGui(GUIBase):
     poimanagerlogic = Connector(interface='PoiManagerLogic')
     scannerlogic = Connector(interface='ConfocalLogic')
 
+    # declare signals
+    sigTrackPeriodChanged = QtCore.Signal(float)
+    sigPoiNameChanged = QtCore.Signal(str)
+    sigRoiNameChanged = QtCore.Signal(str)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -319,9 +324,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_ViewWidget.setMouseEnabled(x=False, y=False)
 
         # Get scan image from logic and update initialize plot
-        image = self.poimanagerlogic().roi_scan_image
-        if image is not None:
-            self._update_scan_image(image, self.poimanagerlogic().roi_scan_image_extent)
+        self._update_scan_image()
         return
 
     def __init_roi_history_plot(self):
@@ -413,6 +416,16 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().delete_poi, QtCore.Qt.QueuedConnection)
         self._mw.active_poi_ComboBox.currentIndexChanged[str].connect(
             self.poimanagerlogic().set_active_poi, QtCore.Qt.QueuedConnection)
+        self._mw.goto_poi_after_update_checkBox.stateChanged.connect(
+            self.poimanagerlogic().set_move_scanner_after_optimise, QtCore.Qt.QueuedConnection)
+        self._mw.track_poi_Action.triggered.connect(
+            self.poimanagerlogic().toggle_periodic_refocus, QtCore.Qt.QueuedConnection)
+        self.sigTrackPeriodChanged.connect(
+            self.poimanagerlogic().set_refocus_period, QtCore.Qt.QueuedConnection)
+        self.sigRoiNameChanged.connect(
+            self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
+        self.sigPoiNameChanged.connect(
+            self.poimanagerlogic().rename_poi, QtCore.Qt.QueuedConnection)
         # self._mw.optimize_roi_Action.triggered.connect(
         #     self.poimanagerlogic().optimise_poi_position, QtCore.Qt.QueuedConnection)
         return
@@ -430,44 +443,51 @@ class PoiManagerGui(GUIBase):
         self._mw.manual_update_poi_PushButton.clicked.disconnect()
         self._mw.delete_poi_PushButton.clicked.disconnect()
         self._mw.active_poi_ComboBox.currentIndexChanged[str].disconnect()
+        self._mw.goto_poi_after_update_checkBox.stateChanged.disconnect()
+        self._mw.track_poi_Action.triggered.disconnect()
+        self.sigTrackPeriodChanged.disconnect()
+        self.sigRoiNameChanged.disconnect()
+        self.sigPoiNameChanged.disconnect()
         # self._mw.optimize_roi_Action.triggered.disconnect()
         return
 
     def __connect_internal_signals(self):
+        self._mw.track_period_SpinBox.editingFinished.connect(self.track_period_changed)
+        self._mw.roi_name_LineEdit.editingFinished.connect(self.roi_name_changed)
+        self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
         # self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
         # self._mw.autofind_pois_Action.triggered.connect(self.autofind_pois)
         #
-        # self._mw.track_poi_Action.triggered.connect(self.toggle_tracking)
         # self._mw.move_poi_PushButton.clicked.connect(self.move_poi)
-        # self._mw.poi_name_LineEdit.returnPressed.connect(self.change_poi_name)
-        # self._mw.roi_name_LineEdit.editingFinished.connect(self.poimanagerlogic().set_poi_position,
-        #                                                    QtCore.Qt.QueuedConnection)
-        # self._mw.roi_cb_centiles_RadioButton.toggled.connect(self._update_scan_image)
-        # self._mw.roi_cb_manual_RadioButton.toggled.connect(self._update_scan_image)
-        # self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
-        # self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
-        # self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
-        # self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.shortcut_to_roi_cb_centiles)
         #
         # self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
+        self._mw.roi_cb_centiles_RadioButton.toggled.connect(self._update_scan_image)
+        self._mw.roi_cb_manual_RadioButton.toggled.connect(self._update_scan_image)
+        self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
+        self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.shortcut_to_roi_cb_manual)
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(
+            self.shortcut_to_roi_cb_centiles)
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(
+            self.shortcut_to_roi_cb_centiles)
         return
 
     def __disconnect_internal_signals(self):
+        self._mw.track_period_SpinBox.editingFinished.disconnect()
+        self._mw.roi_name_LineEdit.editingFinished.disconnect()
+        self._mw.poi_name_LineEdit.returnPressed.disconnect()
         # self._mw.reorient_roi_Action.triggered.disconnect()
         # self._mw.autofind_pois_Action.triggered.disconnect()
         # self._mw.track_poi_Action.triggered.disconnect()
         # self._mw.move_poi_PushButton.clicked.disconnect()
-        # self._mw.poi_name_LineEdit.returnPressed.disconnect()
-        # self._mw.roi_name_LineEdit.editingFinished.disconnect()
-        # self._mw.roi_cb_centiles_RadioButton.toggled.disconnect()
-        # self._mw.roi_cb_manual_RadioButton.toggled.disconnect()
-        # self._mw.roi_cb_min_SpinBox.valueChanged.disconnect()
-        # self._mw.roi_cb_max_SpinBox.valueChanged.disconnect()
-        # self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
-        # self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         # self._mw.display_shift_vs_duration_RadioButton.toggled.disconnect()
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.disconnect()
+        self._mw.roi_cb_centiles_RadioButton.toggled.disconnect()
+        self._mw.roi_cb_manual_RadioButton.toggled.disconnect()
+        self._mw.roi_cb_min_SpinBox.valueChanged.disconnect()
+        self._mw.roi_cb_max_SpinBox.valueChanged.disconnect()
+        self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
+        self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         return
 
     def initReorientRoiDialogUI(self):
@@ -537,8 +557,18 @@ class PoiManagerGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    @QtCore.Slot()
     @QtCore.Slot(np.ndarray, tuple)
-    def _update_scan_image(self, scan_image, image_extent):
+    def _update_scan_image(self, scan_image=None, image_extent=None):
+        """
+
+        @param scan_image:
+        @param image_extent:
+        """
+        if scan_image is None or image_extent is None:
+            scan_image = self.poimanagerlogic().roi_scan_image
+            image_extent = self.poimanagerlogic().roi_scan_image_extent
+
         cb_range = self.get_cb_range(image=scan_image)
         self.roi_image.setImage(image=scan_image, levels=cb_range)
 
@@ -623,6 +653,39 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_name_LineEdit.blockSignals(False)
         return
 
+    @QtCore.Slot()
+    def track_period_changed(self):
+        self.sigTrackPeriodChanged.emit(self._mw.track_period_SpinBox.value())
+        return
+
+    @QtCore.Slot()
+    def roi_name_changed(self):
+        """ Set the name of the current ROI."""
+        self.sigRoiNameChanged.emit(self._mw.roi_name_LineEdit.text())
+        return
+
+    @QtCore.Slot()
+    def poi_name_changed(self):
+        """ Change the name of the active poi."""
+        new_name = self._mw.poi_name_LineEdit.text()
+        if self._mw.active_poi_ComboBox.currentText() == new_name or not new_name:
+            return
+
+        self.sigPoiNameChanged.emit(new_name)
+
+        # After POI name is changed, empty name field
+        self._mw.poi_name_LineEdit.blockSignals(True)
+        self._mw.poi_name_LineEdit.setText('')
+        self._mw.poi_name_LineEdit.blockSignals(False)
+        return
+
+    def toggle_tracking(self, state):
+        if state:
+            self.poimanagerlogic().start_periodic_refocus()
+        else:
+            self.poimanagerlogic().stop_periodic_refocus()
+        return
+
     def shortcut_to_roi_cb_manual(self):
         if not self._mw.roi_cb_manual_RadioButton.isChecked():
             self._mw.roi_cb_manual_RadioButton.toggle()
@@ -661,32 +724,6 @@ class PoiManagerGui(GUIBase):
         """Manually move a POI to a new location in the sample map, but WITHOUT changing the sample position.  This moves a POI relative to all the others.
         """
         self.poimanagerlogic().set_poi_position(shift_roi=False)
-        return
-
-    def toggle_tracking(self, state):
-        if state:
-            self.poimanagerlogic().start_periodic_refocus()
-        else:
-            self.poimanagerlogic().stop_periodic_refocus()
-        return
-
-    def set_roi_name(self, name):
-        """ Set the name of the current ROI."""
-        self.poimanagerlogic().roi_name = name
-
-    def change_poi_name(self):
-        """ Change the name of a poi."""
-
-        new_name = self._mw.poi_name_LineEdit.text()
-        if self._mw.active_poi_ComboBox.currentText() == new_name or not new_name:
-            return
-
-        self.poimanagerlogic().rename_poi(new_name=new_name)
-
-        # After POI name is changed, empty name field
-        self._mw.poi_name_LineEdit.blockSignals(True)
-        self._mw.poi_name_LineEdit.setText('')
-        self._mw.poi_name_LineEdit.blockSignals(False)
         return
 
     def select_poi_from_marker(self, poikey=None):
