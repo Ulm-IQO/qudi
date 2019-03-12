@@ -335,6 +335,7 @@ class PoiManagerLogic(GenericLogic):
     _active_poi = StatusVar(default=None)
     _move_scanner_after_optimization = StatusVar(default=True)
 
+    # Signals for connecting modules
     sigRefocusTimerUpdated = QtCore.Signal(bool, float, float)  # is_active, period, remaining_time
     sigPoisUpdated = QtCore.Signal(dict)
     sigScanImageUpdated = QtCore.Signal(np.ndarray, tuple)  # x,y image and extent
@@ -342,12 +343,15 @@ class PoiManagerLogic(GenericLogic):
     sigRoiHistoryUpdated = QtCore.Signal(np.ndarray)
     sigRoiNameUpdated = QtCore.Signal(str)
 
+    # Internal signals
+    __sigStartPeriodicRefocus = QtCore.Signal()
+    __sigStopPeriodicRefocus = QtCore.Signal()
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         # timer for the periodic refocus
-        self.__timer = QtCore.QTimer()
-        self.__timer.setSingleShot(False)
+        self.__timer = None
         self._last_refocus = 0
         self._periodic_refocus_poi = None
 
@@ -358,11 +362,19 @@ class PoiManagerLogic(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self.__timer = QtCore.QTimer()
+        self.__timer.setSingleShot(False)
         self._last_refocus = 0
         self._periodic_refocus_poi = None
 
         # Connect callback for a finished refocus
-        self.optimiserlogic().sigRefocusFinished.connect(self._optimisation_callback)
+        self.optimiserlogic().sigRefocusFinished.connect(
+            self._optimisation_callback, QtCore.Qt.QueuedConnection)
+        # Connect internal start/stop signals to decouple QTimer from other threads
+        self.__sigStartPeriodicRefocus.connect(
+            self.start_periodic_refocus, QtCore.Qt.QueuedConnection)
+        self.__sigStopPeriodicRefocus.connect(
+            self.stop_periodic_refocus, QtCore.Qt.QueuedConnection)
 
         # Initialise the ROI scan image (xy confocal image) if not present
         if self._roi.scan_image is None:
@@ -376,6 +388,8 @@ class PoiManagerLogic(GenericLogic):
 
         # Disconnect signals
         self.optimiserlogic().sigRefocusFinished.disconnect()
+        self.__sigStartPeriodicRefocus.disconnect()
+        self.__sigStopPeriodicRefocus.disconnect()
         return
 
     @property
@@ -449,6 +463,22 @@ class PoiManagerLogic(GenericLogic):
     @property
     def scanner_position(self):
         return self.scannerlogic().get_position()[:3]
+
+    @property
+    def move_scanner_after_optimise(self):
+        return bool(self._move_scanner_after_optimization)
+
+    @move_scanner_after_optimise.setter
+    def move_scanner_after_optimise(self, move):
+        self.set_move_scanner_after_optimise(move)
+        return
+
+    @QtCore.Slot(int)
+    @QtCore.Slot(bool)
+    def set_move_scanner_after_optimise(self, move):
+        with self._threadlock:
+            self._move_scanner_after_optimization = bool(move)
+        return
 
     @QtCore.Slot()
     def add_poi(self, name=None, position=None, emit_change=True):
@@ -698,9 +728,13 @@ class PoiManagerLogic(GenericLogic):
         # Acquire thread lock in order to change the period during a running periodic refocus
         with self._threadlock:
             self._refocus_period = float(period)
+            is_running = self.__timer.isActive()
+            if is_running:
+                self.sigRefocusTimerUpdated.emit(True, self.refocus_period, self.time_until_refocus)
+            else:
+                self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
         return
 
-    @QtCore.Slot()
     def start_periodic_refocus(self, name=None):
         """
         Starts periodic refocusing of the POI <name>.
@@ -734,7 +768,6 @@ class PoiManagerLogic(GenericLogic):
             self.sigRefocusTimerUpdated.emit(True, self.refocus_period, self.refocus_period)
         return
 
-    @QtCore.Slot()
     def stop_periodic_refocus(self):
         """ Stops the periodic refocusing of the POI. """
         with self._threadlock:
@@ -744,6 +777,18 @@ class PoiManagerLogic(GenericLogic):
                 self._periodic_refocus_poi = None
                 self.module_state.unlock()
             self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
+        return
+
+    @QtCore.Slot(bool)
+    def toggle_periodic_refocus(self, switch_on):
+        """
+
+        @param switch_on:
+        """
+        if switch_on:
+            self.__sigStartPeriodicRefocus.emit()
+        else:
+            self.__sigStopPeriodicRefocus.emit()
         return
 
     @QtCore.Slot()
@@ -786,7 +831,12 @@ class PoiManagerLogic(GenericLogic):
         else:
             tag = 'poimanager_{0}'.format(name)
 
-        self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name), caller_tag=tag)
+        if self.optimiserlogic().module_state() == 'idle':
+            self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name),
+                                                caller_tag=tag)
+        else:
+            self.log.warning('Unable to start POI refocus procedure. '
+                             'OptimizerLogic module is still locked.')
         return
 
     def _optimisation_callback(self, caller_tag, optimal_pos):
