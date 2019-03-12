@@ -92,7 +92,7 @@ class RegionOfInterest:
     @pos_history.setter
     def pos_history(self, new_history):
         if new_history is None:
-            new_history = list(np.zeros(4, dtype=float))
+            new_history = [np.zeros(4, dtype=float)]
         self._pos_history = list(new_history)
         if len(self._pos_history) == 0:
             self._pos_history.append(np.zeros(4, dtype=float))
@@ -129,7 +129,7 @@ class RegionOfInterest:
         x, y, z = self.origin
         x_extent = (self._scan_image_extent[0][0] + x, self._scan_image_extent[0][1] + x)
         y_extent = (self._scan_image_extent[1][0] + y, self._scan_image_extent[1][1] + y)
-        return
+        return x_extent, y_extent
 
     @property
     def poi_names(self):
@@ -234,7 +234,12 @@ class RegionOfInterest:
 
         @param int|slice history_index: List index of history entry to delete
         """
-        del self._pos_history[history_index]
+        try:
+            del self._pos_history[history_index]
+        except IndexError:
+            pass
+        if len(self._pos_history) == 0:
+            self._pos_history.append(np.zeros(4, dtype=float))
         return
 
     def to_dict(self):
@@ -335,6 +340,7 @@ class PoiManagerLogic(GenericLogic):
     sigScanImageUpdated = QtCore.Signal(np.ndarray, tuple)  # x,y image and extent
     sigActivePoiUpdated = QtCore.Signal(str)
     sigRoiHistoryUpdated = QtCore.Signal(np.ndarray)
+    sigRoiNameUpdated = QtCore.Signal(str)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -399,7 +405,7 @@ class PoiManagerLogic(GenericLogic):
 
     @roi_name.setter
     def roi_name(self, name):
-        self._roi.name = name
+        self.rename_roi(new_name=name)
 
     @property
     def roi_origin(self):
@@ -467,7 +473,7 @@ class PoiManagerLogic(GenericLogic):
         self._roi.add_poi(position=position, name=name)
 
         # Get newly added POI name from comparing POI names before and after addition of new POI
-        poi_name = set(self.poi_names).difference(current_poi_set)[0]
+        poi_name = set(self.poi_names).difference(current_poi_set).pop()
 
         # Notify about a changed set of POIs if necessary
         if emit_change:
@@ -502,8 +508,8 @@ class PoiManagerLogic(GenericLogic):
             self.sigPoisUpdated.emit(self.poi_positions)
         return
 
-    @QtCore(str)
-    @QtCore(str, str)
+    @QtCore.Slot(str)
+    @QtCore.Slot(str, str)
     def rename_poi(self, new_name, name=None, emit_change=True):
         """
 
@@ -540,9 +546,9 @@ class PoiManagerLogic(GenericLogic):
         if not isinstance(name, str) and name is not None:
             self.log.error('POI name must be of type str or None.')
         elif name is None or name == '':
-            self.active_poi = None
+            self._active_poi = None
         elif name in self.poi_names:
-            self.active_poi = name
+            self._active_poi = name
         else:
             self.log.error('No POI with name "{0}" found in POI list.'.format(name))
 
@@ -602,6 +608,15 @@ class PoiManagerLogic(GenericLogic):
             self.sigPoisUpdated.emit(self.poi_positions)
         return
 
+    @QtCore.Slot(str)
+    def rename_roi(self, new_name):
+        if not isinstance(new_name, str) or new_name == '':
+            self.log.error('ROI name to set must be str of length > 0.')
+            return
+        self._roi.name = new_name
+        self.sigRoiNameUpdated.emit(self.roi_name)
+        return
+
     @QtCore.Slot(np.ndarray)
     def add_roi_position(self, position):
         self._roi.add_history_entry(position)
@@ -619,6 +634,9 @@ class PoiManagerLogic(GenericLogic):
         @param int|slice history_index: List index for history entry
         """
         self._roi.delete_history_entry(history_index)
+        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
+        self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
         return
 
     @QtCore.Slot()
@@ -647,9 +665,11 @@ class PoiManagerLogic(GenericLogic):
     @QtCore.Slot()
     def set_scan_image(self):
         """ Get the current xy scan data and set as scan_image of ROI. """
+        print((tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
         self._roi.set_scan_image(
             self.scannerlogic().xy_image[:, :, 3],
             (tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
+
         self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
         return
 
@@ -659,7 +679,7 @@ class PoiManagerLogic(GenericLogic):
         self._roi = RegionOfInterest()
         self.active_poi = None
         self.sigPoisUpdated.emit(self.poi_positions)
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
+        self.set_scan_image()
         self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
         return
 
@@ -704,6 +724,7 @@ class PoiManagerLogic(GenericLogic):
             if self.__timer.isActive():
                 self.log.error('Periodic refocus already running. Unable to start a new one.')
                 return
+            self.module_state.lock()
             self._periodic_refocus_poi = name
             self.optimise_poi_position(name=name)
             self._last_refocus = time.time()
@@ -721,6 +742,7 @@ class PoiManagerLogic(GenericLogic):
                 self.__timer.stop()
                 self.__timer.timeout.disconnect()
                 self._periodic_refocus_poi = None
+                self.module_state.unlock()
             self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
         return
 
@@ -858,7 +880,7 @@ class PoiManagerLogic(GenericLogic):
             np.save(os.path.join(filepath, roi_image_filename), self.roi_scan_image)
         return
 
-    def load_roi_from_file(self, filename=None):
+    def load_roi(self, filename=None):
         print(filename)
         if filename is None:
             return
