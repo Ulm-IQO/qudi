@@ -35,51 +35,43 @@ from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 
-# Rather than import the ui*.py file here, the ui*.ui file itself is
-# loaded by uic.loadUI in the QtGui classes below.
-
 
 class PoiMark(pg.CircleROI):
     """
     Creates a circle as a marker.
 
-    @param int[2] pos: (length-2 sequence) The position of the ROI’s origin.
+    @param float[2] pos: The (x, y) position of the POI.
     @param **args: All extra keyword arguments are passed to ROI()
 
     Have a look at:
     http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
     """
-
     color = "F0F"
     selectcolor = "FFF"
-    selected = False
     radius = 0.6e-6
 
-    def __init__(self, pos, poi=None, click_action=None, viewwidget=None, **args):
-        pg.CircleROI.__init__(
-            self, pos, [2 * self.radius, 2 * self.radius], pen={'color': self.color, 'width': 2}, **args)
+    def __init__(self, position, poi_name=None, click_callback=None, view_widget=None, **kwargs):
+        pg.CircleROI.__init__(self,
+                              position,
+                              [2 * self.radius, 2 * self.radius],
+                              pen={'color': self.color, 'width': 2},
+                              **kwargs)
 
-        self.poi = None
-        self.viewwidget = None
-        self.position = None
+        self.poi_name = '' if poi_name is None else poi_name
+        self.view_widget = view_widget
+        self.position = np.array(position, dtype=float)
         self.label = None
-        self.click_action = None
+        self.click_callback = (lambda *args: None) if click_callback is None else click_callback
+        self.my_handle = None  # TODO: What is this exactly?
+        self.selected = False
 
-        if viewwidget is not None:
-            self.viewwidget = viewwidget
-        if poi is not None:
-            self.poi = poi
-        if pos is not None:
-            self.position = pos  # This is the POI pos, so the centre of the marker circle.
-        if click_action is not None:
-            self.click_action = click_action
         self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.sigClicked.connect(self._activate_poi_from_marker)
 
-    def add_to_viewwidget(self, viewwidget=None):
-        if viewwidget is not None:
-            self.viewwidget = viewwidget
-        self.viewwidget.addItem(self)
+    def add_to_view_widget(self, view_widget=None):
+        if view_widget is not None:
+            self.view_widget = view_widget
+        self.view_widget.addItem(self)
 
         # Removing the handle from this CricleROI
         self.removeHandle(0)
@@ -87,26 +79,23 @@ class PoiMark(pg.CircleROI):
         # create a new free handle for the name tag, positioned at "east" on the circle.
         self.my_handle = self.addRotateHandle([1, 0.5], [0.5, 0.5])
         self.sigRegionChangeFinished.connect(self._redraw_label)
-        self.label = pg.TextItem(text=self.poi.get_name(),
-                                 anchor=(0, 1),
-                                 color=self.color)
+        self.label = pg.TextItem(text=self.poi_name, anchor=(0, 1), color=self.color)
 
         self.setAngle(30)
         self.setPos(self.position + self.get_marker_offset())
-        # self.viewwidget.addItem(self.label)
+        # self.view_widget.addItem(self.label)
 
     def _activate_poi_from_marker(self):
-        self.click_action(self.poi.get_key())
+        self.click_callback(self.poi_name)
 
     def _redraw_label(self):
         if self.label is not None:
-            self.viewwidget.removeItem(self.label)
+            self.view_widget.removeItem(self.label)
 
             cos_th = np.cos(self.angle() / 180. * np.pi)
             sin_th = np.sin(self.angle() / 180. * np.pi)
 
-            text_pos = self.position\
-                + [self.radius * cos_th, self.radius * sin_th]
+            text_pos = self.position + [self.radius * cos_th, self.radius * sin_th]
 
             if cos_th > 0 and sin_th > 0:
                 my_anchor = (0, 1)
@@ -122,16 +111,11 @@ class PoiMark(pg.CircleROI):
             # _redraw_label method recursively
             self.setPos(self.position + self.get_marker_offset(), finish=False)
 
-            my_color = self.color
-            if self.selected:
-                my_color = self.selectcolor
-
-            self.label = pg.TextItem(text=self.poi.get_name(),
-                                     anchor=my_anchor,
-                                     color=my_color
-                                     )
+            my_color = self.selectcolor if self.selected else self.color
+            self.label = pg.TextItem(text=self.poi_name, anchor=my_anchor, color=my_color)
             self.label.setPos(text_pos[0], text_pos[1])
-            self.viewwidget.addItem(self.label)
+            self.view_widget.addItem(self.label)
+        return
 
     def get_marker_offset(self):
 
@@ -147,47 +131,55 @@ class PoiMark(pg.CircleROI):
 
         return [x_offset, y_offset]
 
-    def delete_from_viewwidget(self, viewwidget=None):
-        if viewwidget is not None:
-            self.viewwidget = viewwidget
-        self.viewwidget.removeItem(self.label)
-        self.viewwidget.removeItem(self)
+    def delete_from_view_widget(self, view_widget=None):
+        if view_widget is not None:
+            self.view_widget = view_widget
+        self.view_widget.removeItem(self.label)
+        self.view_widget.removeItem(self)
+        return
 
-    def set_position(self, pos=None):
-        if pos is not None:
-            self.position = pos  # This is the POI pos, so the centre of the marker circle.
+    def set_position(self, position):
+        """
+        Sets the POI position, so the centre of the marker circle.
+
+        @param float[2] position: The (x,y) center position of the POI marker
+        """
+        self.position = np.array(position, dtype=float)
+        return
 
     def select(self):
         self.selected = True
         self.setPen({'color': self.selectcolor, 'width': 2})
         if self.label is not None:
             self._redraw_label()
+        return
 
     def deselect(self):
         self.selected = False
         self.setPen({'color': self.color, 'width': 2})
         if self.label is not None:
             self._redraw_label()
+        return
 
 
-class CustomViewBox(pg.ViewBox):
-
-    def __init__(self, *args, **kwds):
-        pg.ViewBox.__init__(self, *args, **kwds)
-        self.setMouseMode(self.RectMode)
-
-    # reimplement right-click to zoom out
-    def mouseClickEvent(self, ev):
-        if ev.button() == QtCore.Qt.RightButton:
-            # self.autoRange()
-            self.setXRange(0, 5)
-            self.setYRange(0, 10)
-
-    def mouseDragEvent(self, ev, axis=0):
-        if (ev.button() == QtCore.Qt.LeftButton) and (ev.modifiers() & QtCore.Qt.ControlModifier):
-            pg.ViewBox.mouseDragEvent(self, ev, axis)
-        else:
-            ev.ignore()
+# class CustomViewBox(pg.ViewBox):
+#
+#     def __init__(self, *args, **kwds):
+#         pg.ViewBox.__init__(self, *args, **kwds)
+#         self.setMouseMode(self.RectMode)
+#
+#     # reimplement right-click to zoom out
+#     def mouseClickEvent(self, ev):
+#         if ev.button() == QtCore.Qt.RightButton:
+#             # self.autoRange()
+#             self.setXRange(0, 5)
+#             self.setYRange(0, 10)
+#
+#     def mouseDragEvent(self, ev, axis=0):
+#         if (ev.button() == QtCore.Qt.LeftButton) and (ev.modifiers() & QtCore.Qt.ControlModifier):
+#             pg.ViewBox.mouseDragEvent(self, ev, axis)
+#         else:
+#             ev.ignore()
 
 
 class PoiManagerMainWindow(QtWidgets.QMainWindow):
@@ -289,11 +281,6 @@ class PoiManagerGui(GUIBase):
         # # Connecting a Mouse Signal to trace to mouse movement function.
         # self.roi_image.scene().sigMouseMoved.connect(self.mouseMoved)
 
-        # There could be POIs created in the logic already, so update lists and map
-        # self.populate_poi_list()
-        # self._redraw_sample_shift()
-        # self._redraw_poi_markers()
-
         # Redraw the sample_shift axes if the range changes
         # self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect(self._redraw_sample_shift)
         return
@@ -372,6 +359,8 @@ class PoiManagerGui(GUIBase):
             self._update_refocus_timer, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigPoisUpdated.connect(
             self._update_pois, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigPoiUpdated.connect(
+            self._update_poi, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigScanImageUpdated.connect(
             self._update_scan_image, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigActivePoiUpdated.connect(
@@ -385,6 +374,7 @@ class PoiManagerGui(GUIBase):
     def __disconnect_update_signals_from_logic(self):
         self.poimanagerlogic().sigRefocusTimerUpdated.disconnect()
         self.poimanagerlogic().sigPoisUpdated.disconnect()
+        self.poimanagerlogic().sigPoiUpdated.disconnect()
         self.poimanagerlogic().sigScanImageUpdated.disconnect()
         self.poimanagerlogic().sigActivePoiUpdated.disconnect()
         self.poimanagerlogic().sigRoiHistoryUpdated.disconnect()
@@ -398,10 +388,6 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)
         self._mw.new_roi_Action.triggered.connect(
             self.poimanagerlogic().reset_roi, QtCore.Qt.QueuedConnection)
-        self._mw.save_roi_Action.triggered.connect(
-            self.poimanagerlogic().save_roi, QtCore.Qt.DirectConnection)
-        self._mw.load_roi_Action.triggered.connect(
-            self.poimanagerlogic().load_roi, QtCore.Qt.QueuedConnection)
         self._mw.refind_poi_Action.triggered.connect(
             self.poimanagerlogic().optimise_poi_position, QtCore.Qt.QueuedConnection)
         self._mw.get_confocal_image_PushButton.clicked.connect(
@@ -411,10 +397,12 @@ class PoiManagerGui(GUIBase):
         self._mw.delete_last_pos_Button.clicked.connect(
             self.poimanagerlogic().delete_history_entry, QtCore.Qt.QueuedConnection)
         self._mw.manual_update_poi_PushButton.clicked.connect(
-            self.poimanagerlogic().set_poi_position, QtCore.Qt.QueuedConnection)
+            self.poimanagerlogic().move_roi_from_poi_position, QtCore.Qt.QueuedConnection)
+        self._mw.move_poi_PushButton.clicked.connect(
+            self.poimanagerlogic().set_poi_anchor_from_position, QtCore.Qt.QueuedConnection)
         self._mw.delete_poi_PushButton.clicked.connect(
             self.poimanagerlogic().delete_poi, QtCore.Qt.QueuedConnection)
-        self._mw.active_poi_ComboBox.currentIndexChanged[str].connect(
+        self._mw.active_poi_ComboBox.activated[str].connect(
             self.poimanagerlogic().set_active_poi, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_after_update_checkBox.stateChanged.connect(
             self.poimanagerlogic().set_move_scanner_after_optimise, QtCore.Qt.QueuedConnection)
@@ -426,40 +414,35 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
         self.sigPoiNameChanged.connect(
             self.poimanagerlogic().rename_poi, QtCore.Qt.QueuedConnection)
-        # self._mw.optimize_roi_Action.triggered.connect(
-        #     self.poimanagerlogic().optimise_poi_position, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_control_signals_to_logic(self):
         self._mw.new_poi_Action.triggered.disconnect()
         self._mw.goto_poi_Action.triggered.disconnect()
         self._mw.new_roi_Action.triggered.disconnect()
-        self._mw.save_roi_Action.triggered.disconnect()
-        self._mw.load_roi_Action.triggered.disconnect()
         self._mw.refind_poi_Action.triggered.disconnect()
         self._mw.get_confocal_image_PushButton.clicked.disconnect()
         self._mw.set_poi_PushButton.clicked.disconnect()
         self._mw.delete_last_pos_Button.clicked.disconnect()
         self._mw.manual_update_poi_PushButton.clicked.disconnect()
+        self._mw.move_poi_PushButton.clicked.disconnect()
         self._mw.delete_poi_PushButton.clicked.disconnect()
-        self._mw.active_poi_ComboBox.currentIndexChanged[str].disconnect()
+        self._mw.active_poi_ComboBox.activated[str].disconnect()
         self._mw.goto_poi_after_update_checkBox.stateChanged.disconnect()
         self._mw.track_poi_Action.triggered.disconnect()
         self.sigTrackPeriodChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
-        # self._mw.optimize_roi_Action.triggered.disconnect()
         return
 
     def __connect_internal_signals(self):
         self._mw.track_period_SpinBox.editingFinished.connect(self.track_period_changed)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.roi_name_changed)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
+        self._mw.save_roi_Action.triggered.connect(self.save_roi)
+        self._mw.load_roi_Action.triggered.connect(self.load_roi)
         # self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
-        # self._mw.autofind_pois_Action.triggered.connect(self.autofind_pois)
-        #
-        # self._mw.move_poi_PushButton.clicked.connect(self.move_poi)
-        #
+
         # self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
         self._mw.roi_cb_centiles_RadioButton.toggled.connect(self._update_scan_image)
@@ -476,10 +459,10 @@ class PoiManagerGui(GUIBase):
         self._mw.track_period_SpinBox.editingFinished.disconnect()
         self._mw.roi_name_LineEdit.editingFinished.disconnect()
         self._mw.poi_name_LineEdit.returnPressed.disconnect()
+        self._mw.save_roi_Action.triggered.disconnect()
+        self._mw.load_roi_Action.triggered.disconnect()
         # self._mw.reorient_roi_Action.triggered.disconnect()
-        # self._mw.autofind_pois_Action.triggered.disconnect()
-        # self._mw.track_poi_Action.triggered.disconnect()
-        # self._mw.move_poi_PushButton.clicked.disconnect()
+
         # self._mw.display_shift_vs_duration_RadioButton.toggled.disconnect()
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.disconnect()
         self._mw.roi_cb_centiles_RadioButton.toggled.disconnect()
@@ -592,20 +575,24 @@ class PoiManagerGui(GUIBase):
 
     @QtCore.Slot(bool, float, float)
     def _update_refocus_timer(self, is_active, period, time_until_refocus):
+        if not self._mw.track_period_SpinBox.hasFocus():
+            self._mw.track_period_SpinBox.blockSignals(True)
+            self._mw.track_period_SpinBox.setValue(period)
+            self._mw.track_period_SpinBox.blockSignals(False)
+
         self._mw.track_poi_Action.blockSignals(True)
-        self._mw.track_period_SpinBox.blockSignals(True)
         self._mw.time_till_next_update_ProgressBar.blockSignals(True)
 
         if is_active:
             self._mw.track_poi_Action.setChecked(True)
+            self._mw.refind_poi_Action.setEnabled(False)
         else:
             self._mw.track_poi_Action.setChecked(False)
-        self._mw.track_period_SpinBox.setValue(period)
+            self._mw.refind_poi_Action.setEnabled(True)
         self._mw.time_till_next_update_ProgressBar.setMaximum(period)
         self._mw.time_till_next_update_ProgressBar.setValue(time_until_refocus)
 
         self._mw.time_till_next_update_ProgressBar.blockSignals(False)
-        self._mw.track_period_SpinBox.blockSignals(False)
         self._mw.track_poi_Action.blockSignals(False)
         return
 
@@ -625,12 +612,24 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_ComboBox.addItems(poi_names)
         self._mw.offset_anchor_ComboBox.addItems(poi_names)
 
+        # Delete all POI markers in the image
+        for marker in self._markers.values():
+            marker.delete_from_view_widget()
+        self._markers = dict()
+        # Add new POI markers
         for name, position in poi_dict.items():
-            pass
+            self._add_poi_marker(name=name, position=position)
 
         # If there is no active POI, set the combobox to nothing (-1)
-        if self.poimanagerlogic().active_poi in poi_names:
-            self._mw.active_poi_ComboBox.setCurrentText(self.poimanagerlogic().active_poi)
+        active_poi = self.poimanagerlogic().active_poi
+        if active_poi in poi_names:
+            self._mw.active_poi_ComboBox.setCurrentText(active_poi)
+            self._markers[active_poi].select()
+            active_poi_pos = poi_dict[active_poi]
+            self._mw.poi_coords_label.setText(
+                '({0:.2r}m, {1:.2r}m, {2:.2r}m)'.format(ScaledFloat(active_poi_pos[0]),
+                                                        ScaledFloat(active_poi_pos[1]),
+                                                        ScaledFloat(active_poi_pos[2])))
         else:
             self._mw.active_poi_ComboBox.setCurrentIndex(-1)
 
@@ -638,12 +637,57 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_ComboBox.blockSignals(False)
         return
 
+    @QtCore.Slot(str, str, np.ndarray)
+    def _update_poi(self, old_name, new_name, position):
+        # Handle changed names and deleted/added POIs
+        if old_name != new_name:
+            self._mw.active_poi_ComboBox.blockSignals(True)
+            self._mw.offset_anchor_ComboBox.blockSignals(True)
+            # Remember current text
+            text_active_poi = self._mw.active_poi_ComboBox.currentText()
+            text_anchor = self._mw.offset_anchor_ComboBox.currentText()
+            # sort POI names and repopulate ComboBoxes
+            self._mw.active_poi_ComboBox.clear()
+            self._mw.offset_anchor_ComboBox.clear()
+            poi_names = sorted(self.poimanagerlogic().poi_names)
+            self._mw.active_poi_ComboBox.addItems(poi_names)
+            self._mw.offset_anchor_ComboBox.addItems(poi_names)
+            if text_active_poi == old_name:
+                self._mw.active_poi_ComboBox.setCurrentText(new_name)
+            else:
+                self._mw.active_poi_ComboBox.setCurrentText(text_active_poi)
+            if text_anchor == old_name:
+                self._mw.offset_anchor_ComboBox.setCurrentText(new_name)
+            else:
+                self._mw.offset_anchor_ComboBox.setCurrentText(text_anchor)
+            self._mw.active_poi_ComboBox.blockSignals(False)
+            self._mw.offset_anchor_ComboBox.blockSignals(False)
+
+        # Delete/add/update POI marker to image
+        self._remove_poi_marker(name=old_name)
+        self._add_poi_marker(name=new_name, position=position)
+        self._markers[self._mw.active_poi_ComboBox.currentText()].select()
+        return
+
     @QtCore.Slot(str)
     def _update_active_poi(self, name):
+        # Deselect current marker
+        for marker in self._markers.values():
+            if marker.selected:
+                marker.deselect()
+                break
         self._mw.active_poi_ComboBox.blockSignals(True)
         index = self._mw.active_poi_ComboBox.findText(name) if name else -1
         self._mw.active_poi_ComboBox.setCurrentIndex(index)
         self._mw.active_poi_ComboBox.blockSignals(False)
+
+        active_poi_pos = self.poimanagerlogic().get_poi_position(name)
+        self._mw.poi_coords_label.setText(
+            '({0:.2r}m, {1:.2r}m, {2:.2r}m)'.format(ScaledFloat(active_poi_pos[0]),
+                                                    ScaledFloat(active_poi_pos[1]),
+                                                    ScaledFloat(active_poi_pos[2])))
+        if name in self._markers:
+            self._markers[name].select()
         return
 
     @QtCore.Slot(str)
@@ -679,11 +723,22 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.blockSignals(False)
         return
 
-    def toggle_tracking(self, state):
-        if state:
-            self.poimanagerlogic().start_periodic_refocus()
-        else:
-            self.poimanagerlogic().stop_periodic_refocus()
+    @QtCore.Slot()
+    def save_roi(self):
+        """ Save ROI to file."""
+        roi_name = self._mw.roi_name_LineEdit.text()
+        self.poimanagerlogic().rename_roi(roi_name)
+        self.poimanagerlogic().save_roi()
+        return
+
+    @QtCore.Slot()
+    def load_roi(self):
+        """ Load a saved ROI from file."""
+        this_file = QtWidgets.QFileDialog.getOpenFileName(self._mw,
+                                                          'Open ROI',
+                                                          None,
+                                                          'Data files (*.dat)')[0]
+        self.poimanagerlogic().load_roi(filename=this_file)
         return
 
     def shortcut_to_roi_cb_manual(self):
@@ -691,12 +746,14 @@ class PoiManagerGui(GUIBase):
             self._mw.roi_cb_manual_RadioButton.toggle()
         else:
             self._update_scan_image()
+        return
 
     def shortcut_to_roi_cb_centiles(self):
         if not self._mw.roi_cb_centiles_RadioButton.isChecked():
             self._mw.roi_cb_centiles_RadioButton.toggle()
         else:
             self._update_scan_image()
+        return
 
     def get_cb_range(self, image):
         """ Process UI input to determine color bar range"""
@@ -713,65 +770,36 @@ class PoiManagerGui(GUIBase):
             cb_max = self._mw.roi_cb_max_SpinBox.value()
         return cb_min, cb_max
 
+    def _add_poi_marker(self, name, position):
+        """ Add a circular POI marker to the ROI scan image. """
+        if name:
+            if name in self._markers:
+                self.log.error('Unable to add POI marker to ROI image. POI marker already present.')
+                return
+            position = position[:2]
+            marker = PoiMark(position=position,
+                             view_widget=self._mw.roi_map_ViewWidget,
+                             poi_name=name,
+                             click_callback=self.select_poi_from_marker,
+                             movable=False,
+                             scaleSnap=False,
+                             snapSize=1.0e-6)
+            # Add to the scan image widget
+            marker.add_to_view_widget()
+            self._markers[name] = marker
+        return
+
     def _remove_poi_marker(self, name):
         """ Remove the POI marker for a POI that was deleted. """
         if name in self._markers:
-            self._markers[name].delete_from_viewwidget()
+            self._markers[name].delete_from_view_widget()
             del self._markers[name]
         return
 
-    def move_poi(self):
-        """Manually move a POI to a new location in the sample map, but WITHOUT changing the sample position.  This moves a POI relative to all the others.
-        """
-        self.poimanagerlogic().set_poi_position(shift_roi=False)
+    def select_poi_from_marker(self, poi_name=None):
+        """ Process the selection of a POI from click on PoiMark. """
+        self.poimanagerlogic().set_active_poi(poi_name)
         return
-
-    def select_poi_from_marker(self, poikey=None):
-        """ Process the selection of a POI from click on POImark."""
-
-        # Keep track of selected POI
-        self.poimanagerlogic().set_active_poi(poikey)
-
-#        # Set the selected POI in the combobox
-#        self._mw.active_poi_ComboBox.setCurrentIndex(self._mw.active_poi_ComboBox.findData(poikey))
-#        self._redraw_poi_markers()
-
-    def update_poi_pos(self):
-        if self.poimanagerlogic().active_poi is None:
-            self.log.warning("No POI selected.")
-        else:
-            if self._mw.refind_method_ComboBox.currentText() == 'position optimisation':
-                self.poimanagerlogic().optimise_poi(poikey=self.poimanagerlogic().active_poi.get_key())
-
-            elif self._mw.refind_method_ComboBox.currentText() == 'offset anchor':
-                anchor_key = self._mw.offset_anchor_ComboBox.itemData(
-                    self._mw.offset_anchor_ComboBox.currentIndex())
-                self.poimanagerlogic().optimise_poi(poikey=self.poimanagerlogic().active_poi.get_key(),
-                                                     anchorkey=anchor_key)
-
-    def toggle_follow(self):
-        if self._mw.goto_poi_after_update_checkBox.isChecked():
-            self.poimanagerlogic().go_to_crosshair_after_refocus = False
-        else:
-            self.poimanagerlogic().go_to_crosshair_after_refocus = True
-
-    def set_track_period(self):
-        """ Change the progress bar and update the timer duration."""
-
-        new_track_period = self._mw.track_period_SpinBox.value()
-        self.poimanagerlogic().set_periodic_optimize_duration(duration=new_track_period)
-
-    def _track_period_changed(self):
-        """ Reflect the changed track period in the GUI elements.
-        """
-        new_track_period = self.poimanagerlogic().timer_duration
-        # Set the new maximum for the progress bar
-        self._mw.time_till_next_update_ProgressBar.setMaximum(new_track_period)
-
-        # If the tracker is not active, then set the value of the progress bar to the
-        # new maximum
-        if not self._mw.track_poi_Action.isChecked():
-            self._mw.time_till_next_update_ProgressBar.setValue(new_track_period)
 
     def _redraw_clocktime_ticks(self):
         """If duration is displayed, reset ticks to default.
@@ -855,78 +883,6 @@ class PoiManagerGui(GUIBase):
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
 
         self._redraw_clocktime_ticks()
-
-    def _redraw_poi_markers(self):
-
-        self.log.debug('starting redraw_poi_markers {0}'.format(time.time()))
-
-        for key in self.poimanagerlogic().get_all_pois():
-            if key is not 'crosshair' and key is not 'sample':
-                position = self.poimanagerlogic().get_poi_position(poikey=key)
-                position = position[:2]
-
-                if key in self._markers.keys():
-                    self._markers[key].set_position(position)
-                    self._markers[key].deselect()
-                else:
-                    # Create Region of Interest as marker:
-                    marker = PoiMark(
-                        position,
-                        poi=self.poimanagerlogic().poi_list[key],
-                        click_action=self.select_poi_from_marker,
-                        movable=False,
-                        scaleSnap=False,
-                        snapSize=1.0e-6)
-
-                    # Add to the Map Widget
-                    marker.add_to_viewwidget(self._mw.roi_map_ViewWidget)
-                    self._markers[key] = marker
-
-        if self.poimanagerlogic().active_poi is not None:
-            active_poi_key = self.poimanagerlogic().active_poi.get_key()
-
-            self._markers[active_poi_key].select()
-            cur_poi_pos = self.poimanagerlogic().get_poi_position(poikey=active_poi_key)
-            self._mw.poi_coords_label.setText(
-                '({0:.2r}m, {1:.2r}m, {2:.2r}m)'.format(
-                    ScaledFloat(cur_poi_pos[0]),
-                    ScaledFloat(cur_poi_pos[1]),
-                    ScaledFloat(cur_poi_pos[2])
-                    )
-                )
-        self.log.debug('finished redraw at {0}'.format(time.time()))
-
-    def make_new_roi(self):
-        """ Start new ROI by removing all POIs and resetting the sample history."""
-
-        for key in self.poimanagerlogic().get_all_pois():
-            if key is not 'crosshair' and key is not 'sample':
-                self._markers[key].delete_from_viewwidget()
-
-        del self._markers
-        self._markers = dict()
-
-        self.poimanagerlogic().reset_roi()
-
-        self.populate_poi_list()
-
-    def save_roi(self):
-        """ Save ROI to file."""
-
-        self.poimanagerlogic().save_poi_map_as_roi()
-
-    def load_roi(self):
-        """ Load a saved ROI from file."""
-
-        this_file = QtWidgets.QFileDialog.getOpenFileName(
-            self._mw,
-            str("Open ROI"),
-            None,
-            str("Data files (*.dat)"))[0]
-
-        self.poimanagerlogic().load_roi_from_file(filename=this_file)
-
-        self.populate_poi_list()
 
     def open_reorient_roi_dialog(self):
         """ Open the dialog for reorienting the ROI. """
@@ -1018,22 +974,3 @@ class PoiManagerGui(GUIBase):
         self._rrd.length_difference_ab_Label.setText(str(delta_ab))
         self._rrd.length_difference_bc_Label.setText(str(delta_bc))
         self._rrd.length_difference_ca_Label.setText(str(delta_ca))
-
-    def autofind_pois(self):
-        """Run the autofind_pois procedure in the POI Manager Logic to get all the POIs in the current ROI image."""
-        #Fixme: Add here the appropriate functionality
-
-        self.log.error("Has to be implemented properly. Feel free to do it.")
-
-        # # Get the thresholds from the user-chosen color bar range
-        # cb_min, cb_max = self.get_cb_range()
-        #
-        # this_min_threshold = cb_min + 0.3 * (cb_max - cb_min)
-        # this_max_threshold = cb_max
-        #
-        # self.poimanagerlogic().autofind_pois(neighborhood_size=1, min_threshold=this_min_threshold, max_threshold=this_max_threshold)
-
-    def optimize_roi(self):
-        """Run the autofind_pois procedure in the POI Manager Logic to get all the POIs in the current ROI image."""
-        #Fixme: Add here the appropriate functionality
-        self.log.error("Not implemented yet. Feel free to help!")
