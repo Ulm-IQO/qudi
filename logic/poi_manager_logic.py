@@ -338,6 +338,7 @@ class PoiManagerLogic(GenericLogic):
     # Signals for connecting modules
     sigRefocusTimerUpdated = QtCore.Signal(bool, float, float)  # is_active, period, remaining_time
     sigPoisUpdated = QtCore.Signal(dict)
+    sigPoiUpdated = QtCore.Signal(str, str, np.ndarray)  # old_name, new_name, current_position
     sigScanImageUpdated = QtCore.Signal(np.ndarray, tuple)  # x,y image and extent
     sigActivePoiUpdated = QtCore.Signal(str)
     sigRoiHistoryUpdated = QtCore.Signal(np.ndarray)
@@ -379,7 +380,7 @@ class PoiManagerLogic(GenericLogic):
         # Initialise the ROI scan image (xy confocal image) if not present
         if self._roi.scan_image is None:
             self.set_scan_image()
-        self.sigPoisUpdated.emit({name: self.get_poi_position(name) for name in self.poi_names})
+        self.sigPoisUpdated.emit(self.poi_positions)
         return
 
     def on_deactivate(self):
@@ -507,14 +508,14 @@ class PoiManagerLogic(GenericLogic):
 
         # Notify about a changed set of POIs if necessary
         if emit_change:
-            self.sigPoisUpdated.emit(self.poi_positions)
+            self.sigPoiUpdated.emit('', poi_name, self.get_poi_position(poi_name))
 
         # Set newly created POI as active poi
         self.set_active_poi(poi_name)
         return
 
     @QtCore.Slot()
-    def delete_poi(self, name=None, emit_change=True):
+    def delete_poi(self, name=None):
         """
         Deletes the given poi from the ROI.
 
@@ -531,21 +532,22 @@ class PoiManagerLogic(GenericLogic):
         self._roi.delete_poi(name)
 
         if self.active_poi == name:
-            self.set_active_poi(None)
+            if len(self.poi_names) > 0:
+                self.set_active_poi(self.poi_names[0])
+            else:
+                self.set_active_poi(None)
 
         # Notify about a changed set of POIs if necessary
-        if emit_change:
-            self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigPoiUpdated.emit(name, '', np.zeros(3))
         return
 
     @QtCore.Slot(str)
     @QtCore.Slot(str, str)
-    def rename_poi(self, new_name, name=None, emit_change=True):
+    def rename_poi(self, new_name, name=None):
         """
 
         @param str name:
         @param str new_name:
-        @param bool emit_change:
         """
         if not isinstance(new_name, str) or not new_name:
             self.log.error('POI name to set must be str of length > 0.')
@@ -560,8 +562,7 @@ class PoiManagerLogic(GenericLogic):
 
         self._roi.rename_poi(name=name, new_name=new_name)
 
-        if emit_change:
-            self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigPoiUpdated.emit(name, new_name, self.get_poi_position(new_name))
 
         if self.active_poi == name:
             self.set_active_poi(new_name)
@@ -612,7 +613,7 @@ class PoiManagerLogic(GenericLogic):
         return self._roi.get_poi_anchor(name)
 
     @QtCore.Slot()
-    def set_poi_position(self, name=None, position=None, shift_roi=True):
+    def move_roi_from_poi_position(self, name=None, position=None):
         if position is None:
             position = self.scanner_position
 
@@ -631,11 +632,31 @@ class PoiManagerLogic(GenericLogic):
             self.log.error('POI name must be of type str.')
 
         shift = position - self.get_poi_position(name)
-        if shift_roi:
-            self.add_roi_position(self.roi_origin + shift)
-        else:
-            self._roi.set_poi_anchor(name, self.get_poi_anchor(name) + shift)
-            self.sigPoisUpdated.emit(self.poi_positions)
+        self.add_roi_position(self.roi_origin + shift)
+        return
+
+    @QtCore.Slot()
+    def set_poi_anchor_from_position(self, name=None, position=None):
+        if position is None:
+            position = self.scanner_position
+
+        if name is None:
+            if self.active_poi is None:
+                self.log.error('Unable to set POI position. '
+                               'No POI name given and no active POI set.')
+                return
+            else:
+                name = self.active_poi
+
+        if len(position) != 3:
+            self.log.error('POI position must be iterable of length 3.')
+            return
+        if not isinstance(name, str):
+            self.log.error('POI name must be of type str.')
+
+        shift = position - self.get_poi_position(name)
+        self._roi.set_poi_anchor(name, self.get_poi_anchor(name) + shift)
+        self.sigPoiUpdated.emit(name, name, self.get_poi_position(name))
         return
 
     @QtCore.Slot(str)
@@ -670,7 +691,6 @@ class PoiManagerLogic(GenericLogic):
         return
 
     @QtCore.Slot()
-    @QtCore.Slot(str)
     def go_to_poi(self, name=None):
         """
         Move crosshair to the given poi.
@@ -695,7 +715,6 @@ class PoiManagerLogic(GenericLogic):
     @QtCore.Slot()
     def set_scan_image(self):
         """ Get the current xy scan data and set as scan_image of ROI. """
-        print((tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
         self._roi.set_scan_image(
             self.scannerlogic().xy_image[:, :, 3],
             (tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
@@ -855,7 +874,10 @@ class PoiManagerLogic(GenericLogic):
             if poi_name in self.poi_names:
                 # We only need x, y, z
                 optimal_pos = np.array(optimal_pos[:3], dtype=float)
-                self.set_poi_position(name=poi_name, position=optimal_pos, shift_roi=shift_roi)
+                if shift_roi:
+                    self.move_roi_from_poi_position(name=poi_name, position=optimal_pos)
+                else:
+                    self.set_poi_anchor_from_position(name=poi_name, position=optimal_pos)
                 if self._move_scanner_after_optimization:
                     self.move_scanner(position=optimal_pos)
         return
@@ -947,7 +969,7 @@ class PoiManagerLogic(GenericLogic):
                         position=saved_poi_coords,
                         key=saved_poi_key,
                         emit_change=False)
-                    self.rename_poi(poikey=this_poi_key, name=saved_poi_name, emit_change=False)
+                    self.rename_poi(poikey=this_poi_key, name=saved_poi_name)
 
             # Now that all the POIs are created, emit the signal for other things (ie gui) to update
             self.signal_poi_updated.emit()
