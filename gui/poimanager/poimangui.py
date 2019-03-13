@@ -77,7 +77,7 @@ class PoiMark(pg.CircleROI):
         self.removeHandle(0)
 
         # create a new free handle for the name tag, positioned at "east" on the circle.
-        self.my_handle = self.addRotateHandle([1, 0.5], [0.5, 0.5])
+        self.addRotateHandle([1, 0.5], [0.5, 0.5])
         self.sigRegionChangeFinished.connect(self._redraw_label)
         self.label = pg.TextItem(text=self.poi_name, anchor=(0, 1), color=self.color)
 
@@ -159,6 +159,96 @@ class PoiMark(pg.CircleROI):
         self.setPen({'color': self.color, 'width': 2})
         if self.label is not None:
             self._redraw_label()
+        return
+
+
+class PoiMarker(pg.CircleROI):
+    """
+    Creates a circle as a marker.
+
+    @param float[2] pos: The (x, y) position of the POI.
+    @param **args: All extra keyword arguments are passed to ROI()
+
+    Have a look at:
+    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
+    """
+    default_pen = {'color': 'F0F', 'width': 2}
+    select_pen = {'color': 'FFF', 'width': 2}
+    radius = 0.6e-6
+
+    sigPoiSelected = QtCore.Signal(str)
+
+    def __init__(self, position, poi_name=None, view_widget=None, radius=None, **kwargs):
+        self.poi_name = '' if poi_name is None else poi_name
+        self.view_widget = view_widget
+        self.position = np.array(position, dtype=float)
+        self.label = None
+        self.selected = False
+        if radius is not None:
+            PoiMarker.radius = radius
+
+        super().__init__(pos=self.position, radius=self.radius, pen=self.default_pen, **kwargs)
+        self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
+        self.sigClicked.connect(self._notify_clicked_poi_name)
+
+    def add_to_view_widget(self, view_widget=None):
+        if view_widget is not None:
+            self.view_widget = view_widget
+
+        self.view_widget.addItem(self)
+        self.removeHandle(0)
+
+        self.label = pg.TextItem(text=self.poi_name, anchor=(0, 1), color=self.default_pen['color'])
+        self.label.setPos(self.position[0] + self.radius, self.position[1] + self.radius)
+        self.setPos(self.position[0] - self.radius, self.position[1] - self.radius)
+        self.view_widget.addItem(self.label)
+
+    def delete_from_view_widget(self, view_widget=None):
+        if view_widget is not None:
+            self.view_widget = view_widget
+        self.view_widget.removeItem(self.label)
+        self.view_widget.removeItem(self)
+        return
+
+    def set_position(self, position):
+        """
+        Sets the POI position, so the centre of the marker circle.
+
+        @param float[2] position: The (x,y) center position of the POI marker
+        """
+        self.position = np.array(position, dtype=float)
+        self.setPos(self.position[0] - self.radius, self.position[1] - self.radius)
+        if self.label is not None:
+            self.label.setPos(self.position[0] + self.radius,
+                              self.position[1] + self.radius)
+        return
+
+    def set_name(self, name):
+        """
+
+        @param str name:
+        """
+        self.poi_name = name
+        if self.label is not None:
+            self.label.setText(self.poi_name)
+        return
+
+    @QtCore.Slot()
+    def _notify_clicked_poi_name(self):
+        self.sigPoiSelected.emit(self.poi_name)
+
+    def select(self):
+        self.selected = True
+        self.setPen(self.select_pen)
+        if self.label is not None:
+            self.label.setColor(self.select_pen['color'])
+        return
+
+    def deselect(self):
+        self.selected = False
+        self.setPen(self.default_pen)
+        if self.label is not None:
+            self.label.setColor(self.default_pen['color'])
         return
 
 
@@ -433,6 +523,8 @@ class PoiManagerGui(GUIBase):
         self.sigTrackPeriodChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
+        for marker in self._markers.values():
+            marker.sigPoiSelected.disconnect()
         return
 
     def __connect_internal_signals(self):
@@ -612,13 +704,22 @@ class PoiManagerGui(GUIBase):
         self._mw.active_poi_ComboBox.addItems(poi_names)
         self._mw.offset_anchor_ComboBox.addItems(poi_names)
 
-        # Delete all POI markers in the image
-        for marker in self._markers.values():
-            marker.delete_from_view_widget()
-        self._markers = dict()
-        # Add new POI markers
-        for name, position in poi_dict.items():
-            self._add_poi_marker(name=name, position=position)
+        # Get two list of POI names. One of those to delete and one of those to add
+        old_poi_names = set(self._markers)
+        new_poi_names = set(poi_names)
+        names_to_delete = list(old_poi_names.difference(new_poi_names))
+        names_to_add = list(new_poi_names.difference(old_poi_names))
+        print(names_to_add, names_to_delete)
+
+        # Delete markers accordingly
+        for name in names_to_delete:
+            self._remove_poi_marker(name)
+        # Update positions of all remaining markers
+        for name, marker in self._markers.items():
+            marker.set_position(poi_dict[name])
+        # Add new markers
+        for name in names_to_add:
+            self._add_poi_marker(name=name, position=poi_dict[name])
 
         # If there is no active POI, set the combobox to nothing (-1)
         active_poi = self.poimanagerlogic().active_poi
@@ -664,28 +765,49 @@ class PoiManagerGui(GUIBase):
             self._mw.offset_anchor_ComboBox.blockSignals(False)
 
         # Delete/add/update POI marker to image
-        self._remove_poi_marker(name=old_name)
-        self._add_poi_marker(name=new_name, position=position)
-        self._markers[self._mw.active_poi_ComboBox.currentText()].select()
+        if not old_name:
+            # POI has been added
+            self._add_poi_marker(name=new_name, position=position)
+        elif not new_name:
+            # POI has been deleted
+            self._remove_poi_marker(name=old_name)
+        else:
+            # POI has been renamed and/or changed position
+            self._markers[old_name].set_name(new_name)
+            self._markers[new_name] = self._markers.pop(old_name)
+            self._markers[new_name].set_position(position[:2])
+
+        active_poi = self._mw.active_poi_ComboBox.currentText()
+        if active_poi:
+            self._markers[active_poi].select()
         return
 
     @QtCore.Slot(str)
     def _update_active_poi(self, name):
+
         # Deselect current marker
         for marker in self._markers.values():
             if marker.selected:
                 marker.deselect()
                 break
+
+        # Unselect POI if name is None or empty str
         self._mw.active_poi_ComboBox.blockSignals(True)
-        index = self._mw.active_poi_ComboBox.findText(name) if name else -1
-        self._mw.active_poi_ComboBox.setCurrentIndex(index)
+        if not name:
+            self._mw.active_poi_ComboBox.setCurrentIndex(-1)
+        else:
+            self._mw.active_poi_ComboBox.setCurrentText(name)
         self._mw.active_poi_ComboBox.blockSignals(False)
 
-        active_poi_pos = self.poimanagerlogic().get_poi_position(name)
+        if name:
+            active_poi_pos = self.poimanagerlogic().get_poi_position(name)
+        else:
+            active_poi_pos = np.zeros(3)
         self._mw.poi_coords_label.setText(
             '({0:.2r}m, {1:.2r}m, {2:.2r}m)'.format(ScaledFloat(active_poi_pos[0]),
                                                     ScaledFloat(active_poi_pos[1]),
                                                     ScaledFloat(active_poi_pos[2])))
+
         if name in self._markers:
             self._markers[name].select()
         return
@@ -776,16 +898,17 @@ class PoiManagerGui(GUIBase):
             if name in self._markers:
                 self.log.error('Unable to add POI marker to ROI image. POI marker already present.')
                 return
-            position = position[:2]
-            marker = PoiMark(position=position,
+            marker = PoiMarker(position=position[:2],
                              view_widget=self._mw.roi_map_ViewWidget,
                              poi_name=name,
-                             click_callback=self.select_poi_from_marker,
+                             radius = self.poimanagerlogic().optimiserlogic().refocus_XY_size / 2,
                              movable=False,
                              scaleSnap=False,
                              snapSize=1.0e-6)
             # Add to the scan image widget
             marker.add_to_view_widget()
+            marker.sigPoiSelected.connect(
+                self.poimanagerlogic().set_active_poi, QtCore.Qt.QueuedConnection)
             self._markers[name] = marker
         return
 
@@ -793,6 +916,7 @@ class PoiManagerGui(GUIBase):
         """ Remove the POI marker for a POI that was deleted. """
         if name in self._markers:
             self._markers[name].delete_from_view_widget()
+            self._markers[name].sigPoiSelected.disconnect()
             del self._markers[name]
         return
 
