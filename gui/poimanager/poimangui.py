@@ -162,7 +162,7 @@ class PoiMark(pg.CircleROI):
         return
 
 
-class PoiMarker(pg.CircleROI):
+class PoiMarker(pg.EllipseROI):
     """
     Creates a circle as a marker.
 
@@ -174,40 +174,58 @@ class PoiMarker(pg.CircleROI):
     """
     default_pen = {'color': 'F0F', 'width': 2}
     select_pen = {'color': 'FFF', 'width': 2}
-    radius = 0.6e-6
 
     sigPoiSelected = QtCore.Signal(str)
 
-    def __init__(self, position, poi_name=None, view_widget=None, radius=None, **kwargs):
-        self.poi_name = '' if poi_name is None else poi_name
-        self.view_widget = view_widget
-        self.position = np.array(position, dtype=float)
-        self.label = None
-        self.selected = False
-        if radius is not None:
-            PoiMarker.radius = radius
+    def __init__(self, position, radius, poi_name=None, view_widget=None, **kwargs):
+        """
 
-        super().__init__(pos=self.position, radius=self.radius, pen=self.default_pen, **kwargs)
+        @param position:
+        @param radius:
+        @param poi_name:
+        @param view_widget:
+        @param kwargs:
+        """
+        self._poi_name = '' if poi_name is None else poi_name
+        self._view_widget = view_widget
+        self._selected = False
+
+        size = (2 * radius, 2 * radius)
+        super().__init__(pos=(0, 0), size=size, pen=self.default_pen, **kwargs)
+        self.aspectLocked = True
+        self.label = pg.TextItem(text=self._poi_name, anchor=(0, 1), color=self.default_pen['color'])
         self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.sigClicked.connect(self._notify_clicked_poi_name)
+        self.set_position(position)
+        return
+
+    def _addHandles(self):
+        pass
+
+    @property
+    def radius(self):
+        return self.size()[0] / 2
+
+    @property
+    def selected(self):
+        return bool(self._selected)
+
+    @property
+    def poi_name(self):
+        return str(self._poi_name)
 
     def add_to_view_widget(self, view_widget=None):
         if view_widget is not None:
-            self.view_widget = view_widget
-
-        self.view_widget.addItem(self)
-        self.removeHandle(0)
-
-        self.label = pg.TextItem(text=self.poi_name, anchor=(0, 1), color=self.default_pen['color'])
-        self.label.setPos(self.position[0] + self.radius, self.position[1] + self.radius)
-        self.setPos(self.position[0] - self.radius, self.position[1] - self.radius)
-        self.view_widget.addItem(self.label)
+            self._view_widget = view_widget
+        self._view_widget.addItem(self)
+        self._view_widget.addItem(self.label)
+        return
 
     def delete_from_view_widget(self, view_widget=None):
         if view_widget is not None:
-            self.view_widget = view_widget
-        self.view_widget.removeItem(self.label)
-        self.view_widget.removeItem(self)
+            self._view_widget = view_widget
+        self._view_widget.removeItem(self.label)
+        self._view_widget.removeItem(self)
         return
 
     def set_position(self, position):
@@ -216,11 +234,10 @@ class PoiMarker(pg.CircleROI):
 
         @param float[2] position: The (x,y) center position of the POI marker
         """
-        self.position = np.array(position, dtype=float)
-        self.setPos(self.position[0] - self.radius, self.position[1] - self.radius)
-        if self.label is not None:
-            self.label.setPos(self.position[0] + self.radius,
-                              self.position[1] + self.radius)
+        marker_offset = self.radius
+        label_offset = marker_offset / np.sqrt(2)
+        self.setPos(position[0] - marker_offset, position[1] - marker_offset)
+        self.label.setPos(position[0] + label_offset, position[1] + label_offset)
         return
 
     def set_name(self, name):
@@ -228,27 +245,36 @@ class PoiMarker(pg.CircleROI):
 
         @param str name:
         """
-        self.poi_name = name
-        if self.label is not None:
-            self.label.setText(self.poi_name)
+        self._poi_name = name
+        self.label.setText(self._poi_name)
+        return
+
+    def set_radius(self, radius):
+        """
+
+        @param float radius:
+        """
+        position = self.pos()
+        label_offset = radius / np.sqrt(2)
+        self.setSize((2 * radius, 2 * radius))
+        self.setPos(position[0] - radius, position[1] - radius)
+        self.label.setPos(position[0] + label_offset, position[1] + label_offset)
         return
 
     @QtCore.Slot()
     def _notify_clicked_poi_name(self):
-        self.sigPoiSelected.emit(self.poi_name)
+        self.sigPoiSelected.emit(self._poi_name)
 
     def select(self):
-        self.selected = True
+        self._selected = True
         self.setPen(self.select_pen)
-        if self.label is not None:
-            self.label.setColor(self.select_pen['color'])
+        self.label.setColor(self.select_pen['color'])
         return
 
     def deselect(self):
-        self.selected = False
+        self._selected = False
         self.setPen(self.default_pen)
-        if self.label is not None:
-            self.label.setColor(self.default_pen['color'])
+        self.label.setColor(self.default_pen['color'])
         return
 
 
@@ -709,7 +735,6 @@ class PoiManagerGui(GUIBase):
         new_poi_names = set(poi_names)
         names_to_delete = list(old_poi_names.difference(new_poi_names))
         names_to_add = list(new_poi_names.difference(old_poi_names))
-        print(names_to_add, names_to_delete)
 
         # Delete markers accordingly
         for name in names_to_delete:
@@ -858,9 +883,9 @@ class PoiManagerGui(GUIBase):
         """ Load a saved ROI from file."""
         this_file = QtWidgets.QFileDialog.getOpenFileName(self._mw,
                                                           'Open ROI',
-                                                          None,
+                                                          self.poimanagerlogic().data_directory,
                                                           'Data files (*.dat)')[0]
-        self.poimanagerlogic().load_roi(filename=this_file)
+        self.poimanagerlogic().load_roi(complete_path=this_file)
         return
 
     def shortcut_to_roi_cb_manual(self):
@@ -899,12 +924,10 @@ class PoiManagerGui(GUIBase):
                 self.log.error('Unable to add POI marker to ROI image. POI marker already present.')
                 return
             marker = PoiMarker(position=position[:2],
-                             view_widget=self._mw.roi_map_ViewWidget,
-                             poi_name=name,
-                             radius = self.poimanagerlogic().optimiserlogic().refocus_XY_size / 2,
-                             movable=False,
-                             scaleSnap=False,
-                             snapSize=1.0e-6)
+                               view_widget=self._mw.roi_map_ViewWidget,
+                               poi_name=name,
+                               radius=self.poimanagerlogic().optimise_xy_size / np.sqrt(2),
+                               movable=False)
             # Add to the scan image widget
             marker.add_to_view_widget()
             marker.sigPoiSelected.connect(
