@@ -67,8 +67,9 @@ class RegionOfInterest:
         self.pos_history = history
         self.set_scan_image(scan_image, scan_image_extent)
         if poi_list is not None:
-            for poi in poi_list:
-                self.add_poi(poi)
+            poi_names, poi_positions = poi_list
+            for i, poi_name in enumerate(poi_names):
+                self.add_poi(position=poi_positions[i], name=poi_name)
         return
 
     @property
@@ -92,7 +93,7 @@ class RegionOfInterest:
     @pos_history.setter
     def pos_history(self, new_history):
         if new_history is None:
-            new_history = [np.zeros(4, dtype=float)]
+            new_history = list()
         self._pos_history = list(new_history)
         if len(self._pos_history) == 0:
             self._pos_history.append(np.zeros(4, dtype=float))
@@ -380,7 +381,12 @@ class PoiManagerLogic(GenericLogic):
         # Initialise the ROI scan image (xy confocal image) if not present
         if self._roi.scan_image is None:
             self.set_scan_image()
+        else:
+            self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
         self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
+        self.sigRoiNameUpdated.emit(self.roi_name)
+        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
         return
 
     def on_deactivate(self):
@@ -392,6 +398,14 @@ class PoiManagerLogic(GenericLogic):
         self.__sigStartPeriodicRefocus.disconnect()
         self.__sigStopPeriodicRefocus.disconnect()
         return
+
+    @property
+    def data_directory(self):
+        return self.savelogic().data_dir
+
+    @property
+    def optimise_xy_size(self):
+        return float(self.optimiserlogic().refocus_XY_size)
 
     @property
     def active_poi(self):
@@ -726,7 +740,7 @@ class PoiManagerLogic(GenericLogic):
     def reset_roi(self):
         self.stop_periodic_refocus()
         self._roi = RegionOfInterest()
-        self.active_poi = None
+        self._active_poi = None
         self.sigPoisUpdated.emit(self.poi_positions)
         self.set_scan_image()
         self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
@@ -893,57 +907,47 @@ class PoiManagerLogic(GenericLogic):
         """
         # File path and names
         filepath = self.savelogic().get_path_for_module(module_name='ROIs')
-        pois_filename = '{0}_poi_list'.format(self.roi_name)
-        roi_filename = '{0}_history'.format(self.roi_name)
-        roi_image_filename = '{0}_scan_image'.format(self.roi_name)
-
-        # Common timestamp for all files
+        roi_name_no_blanks = self.roi_name.replace(' ', '_')
         timestamp = datetime.now()
+        pois_filename = '{0}_poi_list'.format(roi_name_no_blanks)
+        roi_history_filename = '{0}_{1}_history.npy'.format(
+            timestamp.strftime('%Y%m%d-%H%M-%S'), roi_name_no_blanks)
+        roi_image_filename = '{0}_{1}_scan_image.npy'.format(
+            timestamp.strftime('%Y%m%d-%H%M-%S'), roi_name_no_blanks)
 
         # Metadata to save in both file headers
+        x_extent, y_extent = self.roi_scan_image_extent
         parameters = OrderedDict()
         parameters['roi_name'] = self.roi_name
         parameters['roi_creation_time'] = self.roi_creation_time_as_str
-        parameters['scan_image_extent'] = str(self.roi_scan_image_extent)
+        parameters['scan_image_x_extent'] = '{0:.9e},{1:.9e}'.format(*x_extent)
+        parameters['scan_image_y_extent'] = '{0:.9e},{1:.9e}'.format(*y_extent)
 
         ##################################
         # Save POI positions to first file
         ##################################
+        poi_dict = self.poi_positions
+        poi_positions = np.array(tuple(poi_dict.values()), dtype=float)
         data = OrderedDict()
         # Save POI names in the first column
-        data['name'] = np.array(self.poi_names, dtype=str)
+        data['name'] = np.array(tuple(poi_dict), dtype=str)
         # Save x,y,z coordinates in the following 3 columns
-        data['X (m)'] = np.empty(len(self.poi_names), dtype=float)
-        data['Y (m)'] = np.empty(len(self.poi_names), dtype=float)
-        data['Z (m)'] = np.empty(len(self.poi_names), dtype=float)
-        # coordinates = np.empty((len(self.poi_names), 3), dtype=float)
-        for ii, name in enumerate(self.poi_names):
-            data['X (m)'][ii], data['Y (m)'][ii], data['Z (m)'][ii] = self.get_poi_position(name)
+        data['X (m)'] = poi_positions[:, 0]
+        data['Y (m)'] = poi_positions[:, 1]
+        data['Z (m)'] = poi_positions[:, 2]
 
         self.savelogic().save_data(data,
+                                   timestamp=timestamp,
                                    filepath=filepath,
                                    parameters=parameters,
                                    filelabel=pois_filename,
                                    fmt=['%s', '%.6e', '%.6e', '%.6e'])
 
         ############################################
-        # Save ROI history to second file if present
+        # Save ROI history to second file (binary) if present
         ############################################
-        if self.roi_pos_history:
-            data = OrderedDict()
-            history = np.array(self.roi_pos_history, dtype=float)
-            # Save timestamps in the first column
-            data['time (s)'] = history[:, 0]
-            # Save x,y,z coordinates in the following 3 columns
-            data['X (m)'] = history[:, 1]
-            data['Y (m)'] = history[:, 2]
-            data['Z (m)'] = history[:, 3]
-
-            self.savelogic().save_data(data,
-                                       filepath=filepath,
-                                       parameters=parameters,
-                                       filelabel=roi_filename,
-                                       fmt=['%.15e', '%.6e', '%.6e', '%.6e'])
+        if len(self.roi_pos_history) > 1:
+            np.save(os.path.join(filepath, roi_history_filename), self.roi_pos_history)
 
         #######################################################
         # Save ROI scan image to third file (binary) if present
@@ -952,28 +956,59 @@ class PoiManagerLogic(GenericLogic):
             np.save(os.path.join(filepath, roi_image_filename), self.roi_scan_image)
         return
 
-    def load_roi(self, filename=None):
-        print(filename)
-        if filename is None:
+    def load_roi(self, complete_path=None):
+        if complete_path is None or not complete_path.endswith('_poi_list.dat'):
             return
+        filepath, filename = os.path.split(complete_path)
+        filetag = filename.rsplit('_poi_list.dat', 1)[0]
 
-        with open(filename, 'r') as roifile:
-            for line in roifile:
-                if line[0] != '#' and line.split()[0] != 'NaN':
-                    saved_poi_name = line.split()[0]
-                    saved_poi_key = line.split()[1]
-                    saved_poi_coords = [
-                        float(line.split()[2]), float(line.split()[3]), float(line.split()[4])]
+        # Read POI data as well as roi metadata from textfile
+        poi_names = np.loadtxt(complete_path, delimiter='\t', usecols=0, dtype=str)
+        poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float)
+        with open(complete_path, 'r') as file:
+            for line in file.readlines():
+                if not line.startswith('#'):
+                    break
+                if line.startswith('#roi_name:'):
+                    roi_name = line.split('#roi_name:', 1)[1].strip()
+                elif line.startswith('#roi_creation_time:'):
+                    roi_creation_time = line.split('#roi_creation_time:', 1)[1].strip()
+                elif line.startswith('#scan_image_x_extent:'):
+                    scan_x_extent = line.split('#scan_image_x_extent:', 1)[1].strip().split(',')
+                elif line.startswith('#scan_image_y_extent:'):
+                    scan_y_extent = line.split('#scan_image_y_extent:', 1)[1].strip().split(',')
+        scan_extent = ((float(scan_x_extent[0]), float(scan_x_extent[1])),
+                       (float(scan_y_extent[0]), float(scan_y_extent[1])))
 
-                    this_poi_key = self.add_poi(
-                        position=saved_poi_coords,
-                        key=saved_poi_key,
-                        emit_change=False)
-                    self.rename_poi(poikey=this_poi_key, name=saved_poi_name)
+        # Read ROI position history from binary file
+        history_filename = os.path.join(filepath, '{0}_history.npy'.format(filetag))
+        try:
+            roi_history = np.load(history_filename)
+        except FileNotFoundError:
+            roi_history = None
 
-            # Now that all the POIs are created, emit the signal for other things (ie gui) to update
-            self.signal_poi_updated.emit()
-        return 0
+        # Read ROI scan image from binary file
+        image_filename = os.path.join(filepath, '{0}_scan_image.npy'.format(filetag))
+        try:
+            roi_scan_image = np.load(image_filename)
+        except FileNotFoundError:
+            roi_scan_image = None
+
+        # Reset current ROI and initialize new one from loaded data
+        self.reset_roi()
+        self._roi = RegionOfInterest(name=roi_name,
+                                     creation_time=roi_creation_time,
+                                     history=roi_history,
+                                     scan_image=roi_scan_image,
+                                     scan_image_extent=scan_extent,
+                                     poi_list=(poi_names, poi_coords))
+        self._active_poi = None if len(poi_names) == 0 else poi_names[0]
+        self.sigRoiNameUpdated.emit(self.roi_name)
+        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
+        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
+        self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
+        return
 
     @_roi.constructor
     def dict_to_roi(self, roi_dict):
