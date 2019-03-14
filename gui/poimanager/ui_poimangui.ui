@@ -41,7 +41,6 @@
     <addaction name="new_roi_Action"/>
     <addaction name="save_roi_Action"/>
     <addaction name="load_roi_Action"/>
-    <addaction name="reorient_roi_Action"/>
     <addaction name="actionClose"/>
    </widget>
    <widget class="QMenu" name="menuView">
@@ -79,6 +78,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="save_roi_Action"/>
+   <addaction name="load_roi_Action"/>
    <addaction name="new_roi_Action"/>
    <addaction name="separator"/>
   </widget>
@@ -92,25 +92,48 @@
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_6">
      <item>
-      <widget class="QPushButton" name="set_poi_PushButton">
-       <property name="toolTip">
-        <string>Set current cursor position as a new trackpoint in the ROI map</string>
-       </property>
-       <property name="text">
-        <string>Set new POI</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_13">
-       <item>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="6" column="0" colspan="2">
+        <widget class="QLabel" name="label_2">
+         <property name="text">
+          <string>POI distance to cursor (rel_x, rel_y):</string>
+         </property>
+        </widget>
+       </item>
+       <item row="7" column="0" colspan="2">
+        <widget class="QLabel" name="poi_distance_label">
+         <property name="toolTip">
+          <string>This text is selectable.  Copy and paste into labnotes.</string>
+         </property>
+         <property name="text">
+          <string>(?, ?)</string>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
         <widget class="QLabel" name="label">
          <property name="text">
           <string>POI:</string>
          </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
         </widget>
        </item>
-       <item>
+       <item row="2" column="1">
+        <widget class="QLineEdit" name="poi_name_LineEdit">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
         <widget class="QComboBox" name="active_poi_ComboBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -126,107 +149,106 @@
          </property>
         </widget>
        </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_14">
-       <item>
+       <item row="2" column="0">
         <widget class="QLabel" name="label_3">
          <property name="text">
           <string>Rename:</string>
          </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QLineEdit" name="poi_name_LineEdit">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
          </property>
         </widget>
        </item>
+       <item row="4" column="0" colspan="2">
+        <widget class="QLabel" name="label_9">
+         <property name="font">
+          <font>
+           <pointsize>8</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string>POI coordinates (x,y,z):</string>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="0" colspan="2">
+        <widget class="QLabel" name="poi_coords_label">
+         <property name="toolTip">
+          <string>This text is selectable.  Copy and paste into labnotes.</string>
+         </property>
+         <property name="text">
+          <string>(?, ?, ?)</string>
+         </property>
+         <property name="textInteractionFlags">
+          <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0" colspan="2">
+        <widget class="Line" name="line_3">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="8" column="0" colspan="2">
+        <widget class="Line" name="line_4">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="0" colspan="2">
+        <widget class="QPushButton" name="manual_update_poi_PushButton">
+         <property name="toolTip">
+          <string>Manually specify a new position for a known trackpoint, and update the sample shift accordingly. For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
+         </property>
+         <property name="text">
+          <string>Manual update position</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="0" colspan="2">
+        <widget class="QPushButton" name="delete_poi_PushButton">
+         <property name="text">
+          <string>Delete POI</string>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="0" colspan="2">
+        <widget class="QPushButton" name="move_poi_PushButton">
+         <property name="toolTip">
+          <string>Set a new position for a named POI, without updating the sample shift (so no movement of any other POIs).  For example, if a POI has been accidentally placed incorrectly.</string>
+         </property>
+         <property name="text">
+          <string>Move POI anchor</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0" colspan="2">
+        <widget class="QPushButton" name="set_poi_PushButton">
+         <property name="toolTip">
+          <string>Set current cursor position as a new trackpoint in the ROI map</string>
+         </property>
+         <property name="text">
+          <string>Set new POI</string>
+         </property>
+        </widget>
+       </item>
+       <item row="12" column="0" colspan="2">
+        <spacer name="verticalSpacer_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
       </layout>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_9">
-       <property name="font">
-        <font>
-         <pointsize>10</pointsize>
-        </font>
-       </property>
-       <property name="text">
-        <string>Coordinates: (x,y,z)</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="poi_coords_label">
-       <property name="toolTip">
-        <string>This text is selectable.  Copy and paste into labnotes.</string>
-       </property>
-       <property name="text">
-        <string>(?, ?, ?)</string>
-       </property>
-       <property name="textInteractionFlags">
-        <set>Qt::LinksAccessibleByMouse|Qt::TextSelectableByKeyboard|Qt::TextSelectableByMouse</set>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="label_2">
-       <property name="text">
-        <string>Distance: direct (x, y)</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="poi_distance_label">
-       <property name="text">
-        <string>? (?, ?)</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="manual_update_poi_PushButton">
-       <property name="toolTip">
-        <string>Manually specify a new position for a known trackpoint, and update the sample shift accordingly. For example, after manually shifting the sample to re-centre the ROI in the scan range.</string>
-       </property>
-       <property name="text">
-        <string>Manual update position</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="move_poi_PushButton">
-       <property name="toolTip">
-        <string>Set a new position for a named POI, without updating the sample shift (so no movement of any other POIs).  For example, if a POI has been accidentally placed incorrectly.</string>
-       </property>
-       <property name="text">
-        <string>Move POI anchor</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="delete_poi_PushButton">
-       <property name="text">
-        <string>Delete POI</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </widget>
@@ -244,203 +266,116 @@
    <widget class="QWidget" name="dockWidgetContents_7">
     <layout class="QVBoxLayout" name="verticalLayout_5">
      <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QLabel" name="label_4">
-         <property name="text">
-          <string>Refind using:</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="refind_method_ComboBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>1</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <item>
-          <property name="text">
-           <string>position optimisation</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>offset anchor</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_5">
-       <item>
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>anchor: </string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="offset_anchor_ComboBox">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>1</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_3">
-       <item>
-        <widget class="QCheckBox" name="goto_poi_after_update_checkBox">
-         <property name="toolTip">
-          <string>Move crosshair to updated POI position afterwards.</string>
-         </property>
-         <property name="text">
-          <string>Crosshair follows POI</string>
-         </property>
-         <property name="checked">
-          <bool>true</bool>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <spacer name="horizontalSpacer">
+      <layout class="QGridLayout" name="gridLayout">
+       <item row="4" column="0" colspan="2">
+        <widget class="Line" name="line_2">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
-      </layout>
-     </item>
-     <item>
-      <widget class="Line" name="line">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_11">
-       <item>
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Track period:</string>
+       <item row="3" column="0" colspan="2">
+        <widget class="QProgressBar" name="time_till_next_update_ProgressBar">
+         <property name="maximum">
+          <number>15</number>
+         </property>
+         <property name="value">
+          <number>15</number>
+         </property>
+         <property name="format">
+          <string>%v s</string>
          </property>
         </widget>
        </item>
-       <item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="label_5">
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="text">
+          <string>Track period:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
         <widget class="QSpinBox" name="track_period_SpinBox">
+         <property name="suffix">
+          <string>s</string>
+         </property>
          <property name="minimum">
           <number>5</number>
          </property>
          <property name="maximum">
-          <number>999</number>
+          <number>999999999</number>
          </property>
          <property name="singleStep">
           <number>5</number>
          </property>
          <property name="value">
-          <number>15</number>
+          <number>30</number>
+         </property>
+         <property name="displayIntegerBase">
+          <number>10</number>
          </property>
         </widget>
        </item>
-       <item>
-        <widget class="QLabel" name="label_6">
-         <property name="text">
-          <string>seconds</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item>
-      <widget class="QProgressBar" name="time_till_next_update_ProgressBar">
-       <property name="maximum">
-        <number>15</number>
-       </property>
-       <property name="value">
-        <number>15</number>
-       </property>
-       <property name="format">
-        <string>%v s</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="Line" name="line_2">
-       <property name="orientation">
-        <enum>Qt::Horizontal</enum>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <spacer name="verticalSpacer_3">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeType">
-        <enum>QSizePolicy::Fixed</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>20</height>
-        </size>
-       </property>
-      </spacer>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout_8">
-       <item>
-        <spacer name="horizontalSpacer_3">
+       <item row="2" column="0" colspan="2">
+        <widget class="Line" name="line">
          <property name="orientation">
           <enum>Qt::Horizontal</enum>
          </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
+        </widget>
        </item>
-       <item>
+       <item row="5" column="0" colspan="2">
         <widget class="QPushButton" name="delete_last_pos_Button">
          <property name="text">
           <string>Delete last position</string>
          </property>
         </widget>
        </item>
+       <item row="0" column="1">
+        <widget class="QCheckBox" name="goto_poi_after_update_checkBox">
+         <property name="toolTip">
+          <string>Move crosshair to updated POI position afterwards.</string>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="label_4">
+         <property name="text">
+          <string>Crosshair follows POI:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="0" colspan="2">
+        <spacer name="verticalSpacer">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
       </layout>
-     </item>
-     <item>
-      <spacer name="verticalSpacer">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </widget>
@@ -919,14 +854,6 @@
     <string>Add a new POI at the current crosshair position</string>
    </property>
   </action>
-  <action name="roi_management_view_Action">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>ROI management</string>
-   </property>
-  </action>
   <action name="poi_tools_view_Action">
    <property name="checkable">
     <bool>true</bool>
@@ -947,11 +874,6 @@
     <string>Move scanner to the position of the selected POI</string>
    </property>
   </action>
-  <action name="reorient_roi_Action">
-   <property name="text">
-    <string>Reorient ROI</string>
-   </property>
-  </action>
   <action name="actionClose">
    <property name="icon">
     <iconset>
@@ -959,6 +881,14 @@
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </action>
+  <action name="roi_management_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>ROI management</string>
    </property>
   </action>
  </widget>
@@ -1105,38 +1035,6 @@
    </hints>
   </connection>
   <connection>
-   <sender>roi_management_view_Action</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>roi_management_ToolBar</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>45</x>
-     <y>41</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>roi_management_ToolBar</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>roi_management_view_Action</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>45</x>
-     <y>41</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>poi_tools_view_Action</sender>
    <signal>triggered(bool)</signal>
    <receiver>poi_ToolBar</receiver>
@@ -1181,6 +1079,38 @@
     <hint type="destinationlabel">
      <x>343</x>
      <y>409</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>roi_management_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>roi_management_ToolBar</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>45</x>
+     <y>41</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>roi_management_ToolBar</sender>
+   <signal>visibilityChanged(bool)</signal>
+   <receiver>roi_management_view_Action</receiver>
+   <slot>setChecked(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>45</x>
+     <y>41</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
     </hint>
    </hints>
   </connection>

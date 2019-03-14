@@ -471,6 +471,7 @@ class PoiManagerLogic(GenericLogic):
 
     @property
     def time_until_refocus(self):
+        print('time until refocus asked.')
         if not self.__timer.isActive():
             return -1
         return max(0., self._refocus_period - (time.time() - self._last_refocus))
@@ -754,6 +755,7 @@ class PoiManagerLogic(GenericLogic):
 
         @param float period: The time between optimisation procedures.
         """
+        print('Set refocus period called.')
         if period < 0:
             self.log.error('Refocus period must be a value > 0. Unable to set period of "{0}".'
                            ''.format(period))
@@ -775,6 +777,7 @@ class PoiManagerLogic(GenericLogic):
         @param str name: The name of the POI to be refocused periodically.
         If None (default) perform periodic refocus on active POI.
         """
+        print('Start_refocus_called')
         if name is None:
             if self.active_poi is None:
                 self.log.error('Unable to start periodic refocus. No POI name given and no active '
@@ -803,6 +806,7 @@ class PoiManagerLogic(GenericLogic):
 
     def stop_periodic_refocus(self):
         """ Stops the periodic refocusing of the POI. """
+        print('Stop_refocus_called')
         with self._threadlock:
             if self.__timer.isActive():
                 self.__timer.stop()
@@ -818,6 +822,7 @@ class PoiManagerLogic(GenericLogic):
 
         @param switch_on:
         """
+        print('Toggle_refocus_called')
         if switch_on:
             self.__sigStartPeriodicRefocus.emit()
         else:
@@ -831,6 +836,7 @@ class PoiManagerLogic(GenericLogic):
         If the time has run out, it refocuses the current poi.
         Otherwise it just updates the time that is left.
         """
+        print('periodic refocus loop.')
         with self._threadlock:
             if self.__timer.isActive():
                 remaining_time = self.time_until_refocus
@@ -1018,183 +1024,7 @@ class PoiManagerLogic(GenericLogic):
     def roi_to_dict(self, roi):
         return roi.to_dict()
 
-    def triangulate(self, r, a1, b1, c1, a2, b2, c2):
-        """ Reorients a coordinate r that is known relative to reference points a1, b1, c1 to
-            produce a new vector rnew that has exactly the same relation to rotated/shifted/tilted
-            reference positions a2, b2, c2.
-
-            @param np.array r: position to be remapped.
-
-            @param np.array a1: initial location of ref1.
-
-            @param np.array a2: final location of ref1.
-
-            @param np.array b1, b2, c1, c2: similar for ref2 and ref3
-        """
-
-        ab_old = b1 - a1
-        ac_old = c1 - a1
-
-        ab_new = b2 - a2
-        ac_new = c2 - a2
-
-        # Firstly, find the angle to rotate ab_old onto ab_new.  This rotation must be done in
-        # the plane that contains these two vectors, which means rotating about an axis
-        # perpendicular to both of them (the cross product).
-
-        axis1 = np.cross(ab_old, ab_new)  # Only works if ab_old and ab_new are not parallel
-        axis1length = np.sqrt((axis1 * axis1).sum())
-
-        if axis1length == 0:
-            ab_olddif = ab_old + np.array([100, 0, 0])
-            axis1 = np.cross(ab_old, ab_olddif)
-
-        # normalising the axis1 vector
-        axis1 = axis1 / np.sqrt((axis1 * axis1).sum())
-
-        # The dot product gives the angle between ab_old and ab_new
-        dot = np.dot(ab_old, ab_new)
-        x_modulus = np.sqrt((ab_old * ab_old).sum())
-        y_modulus = np.sqrt((ab_new * ab_new).sum())
-
-        # float errors can cause the division to be slightly above 1 for 90 degree rotations, which
-        # will confuse arccos.
-        cos_angle = min(dot / x_modulus / y_modulus, 1)
-
-        angle1 = np.arccos(cos_angle)  # angle in radians
-
-        # Construct a rotational matrix for axis1
-        n1 = axis1[0]
-        n2 = axis1[1]
-        n3 = axis1[2]
-
-        m1 = np.matrix(((((n1 * n1) * (1 - np.cos(angle1)) + np.cos(angle1)),
-                         ((n1 * n2) * (1 - np.cos(angle1)) - n3 * np.sin(angle1)),
-                         ((n1 * n3) * (1 - np.cos(angle1)) + n2 * np.sin(angle1))
-                         ),
-                        (((n2 * n1) * (1 - np.cos(angle1)) + n3 * np.sin(angle1)),
-                         ((n2 * n2) * (1 - np.cos(angle1)) + np.cos(angle1)),
-                         ((n2 * n3) * (1 - np.cos(angle1)) - n1 * np.sin(angle1))
-                         ),
-                        (((n3 * n1) * (1 - np.cos(angle1)) - n2 * np.sin(angle1)),
-                         ((n3 * n2) * (1 - np.cos(angle1)) + n1 * np.sin(angle1)),
-                         ((n3 * n3) * (1 - np.cos(angle1)) + np.cos(angle1))
-                         )
-                        )
-                       )
-
-        # Now that ab_old can be rotated to overlap with ab_new, we need to rotate in another
-        # axis to fix "tilt".  By choosing ab_new as the rotation axis we ensure that the
-        # ab vectors stay where they need to be.
-
-        # ac_old_rot is the rotated ac_old (around axis1).  We need to find the angle to rotate
-        # ac_old_rot around ab_new to get ac_new.
-        ac_old_rot = np.array(np.dot(m1, ac_old))[0]
-
-        axis2 = -ab_new  # TODO: check maths to find why this negative sign is necessary.  Empirically it is now working.
-        axis2 = axis2 / np.sqrt((axis2 * axis2).sum())
-
-        # To get the angle of rotation it is most convenient to work in the plane for which axis2 is the normal.
-        # We must project vectors ac_old_rot and ac_new into this plane.
-        a = ac_old_rot - np.dot(ac_old_rot, axis2) * axis2  # projection of ac_old_rot in the plane of rotation about axis2
-        b = ac_new - np.dot(ac_new, axis2) * axis2  # projection of ac_new in the plane of rotation about axis2
-
-        # The dot product gives the angle of rotation around axis2
-        dot = np.dot(a, b)
-
-        x_modulus = np.sqrt((a * a).sum())
-        y_modulus = np.sqrt((b * b).sum())
-        cos_angle = min(dot / x_modulus / y_modulus, 1)  # float errors can cause the division to be slightly above 1 for 90 degree rotations, which will confuse arccos.
-        angle2 = np.arccos(cos_angle)  # angle in radians
-
-        # Construct a rotation matrix around axis2
-        n1 = axis2[0]
-        n2 = axis2[1]
-        n3 = axis2[2]
-
-        m2 = np.matrix(((((n1 * n1) * (1 - np.cos(angle2)) + np.cos(angle2)),
-                         ((n1 * n2) * (1 - np.cos(angle2)) - n3 * np.sin(angle2)),
-                         ((n1 * n3) * (1 - np.cos(angle2)) + n2 * np.sin(angle2))
-                         ),
-                        (((n2 * n1) * (1 - np.cos(angle2)) + n3 * np.sin(angle2)),
-                         ((n2 * n2) * (1 - np.cos(angle2)) + np.cos(angle2)),
-                         ((n2 * n3) * (1 - np.cos(angle2)) - n1 * np.sin(angle2))
-                         ),
-                        (((n3 * n1) * (1 - np.cos(angle2)) - n2 * np.sin(angle2)),
-                         ((n3 * n2) * (1 - np.cos(angle2)) + n1 * np.sin(angle2)),
-                         ((n3 * n3) * (1 - np.cos(angle2)) + np.cos(angle2))
-                         )
-                        )
-                       )
-
-        # To find the new position of r, displace by (a2 - a1) and do the rotations
-        a1r = r - a1
-
-        rnew = a2 + np.array(np.dot(m2, np.array(np.dot(m1, a1r))[0]))[0]
-
-        return rnew
-
-    def reorient_roi(self, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos):
-        """ Move and rotate the ROI to a new position specified by the newpos of 3 reference POIs from the saved ROI.
-
-        @param ref1_coords: coordinates (from ROI save file) of reference 1.
-
-        @param ref2_coords: similar, ref2.
-
-        @param ref3_coords: similar, ref3.
-
-        @param ref1_newpos: the new (current) position of POI reference 1.
-
-        @param ref2_newpos: similar, ref2.
-
-        @param ref3_newpos: similar, ref3.
-        """
-
-        for poikey in self.get_all_pois(abc_sort=True):
-            if poikey is not 'sample' and poikey is not 'crosshair':
-                thispoi = self.poi_list[poikey]
-
-                old_coords = thispoi.get_coords_in_sample()
-
-                new_coords = self.triangulate(old_coords, ref1_coords, ref2_coords, ref3_coords, ref1_newpos, ref2_newpos, ref3_newpos)
-
-                self.move_coords(poikey=poikey, newpos=new_coords)
-
-    def autofind_pois(self, neighborhood_size=1, min_threshold=10000, max_threshold=1e6):
-        """Automatically search the xy scan image for POIs.
-
-        @param neighborhood_size: size in microns.  Only the brightest POI per neighborhood will be found.
-
-        @param min_threshold: POIs must have c/s above this threshold.
-
-        @param max_threshold: POIs must have c/s below this threshold.
-        """
-
-        # Calculate the neighborhood size in pixels from the image range and resolution
-        x_range_microns = np.max(self.roi_map_data[:, :, 0]) - np.min(self.roi_map_data[:, :, 0])
-        y_range_microns = np.max(self.roi_map_data[:, :, 1]) - np.min(self.roi_map_data[:, :, 1])
-        y_pixels = len(self.roi_map_data)
-        x_pixels = len(self.roi_map_data[1, :])
-
-        pixels_per_micron = np.max([x_pixels, y_pixels]) / np.max([x_range_microns, y_range_microns])
-        # The neighborhood in pixels is nbhd_size * pixels_per_um, but it must be 1 or greater
-        neighborhood_pix = int(np.max([math.ceil(pixels_per_micron * neighborhood_size), 1]))
-
-        data = self.roi_map_data[:, :, 3]
-
-        data_max = filters.maximum_filter(data, neighborhood_pix)
-        maxima = (data == data_max)
-        data_min = filters.minimum_filter(data, 3 * neighborhood_pix)
-        diff = ((data_max - data_min) > min_threshold)
-        maxima[diff is False] = 0
-
-        labeled, num_objects = ndimage.label(maxima)
-        xy = np.array(ndimage.center_of_mass(data, labeled, range(1, num_objects + 1)))
-
-        for count, pix_pos in enumerate(xy):
-            poi_pos = self.roi_map_data[pix_pos[0], pix_pos[1], :][0:3]
-            this_poi_key = self.add_poi(position=poi_pos, emit_change=False)
-            self.rename_poi(poikey=this_poi_key, name='spot' + str(count), emit_change=False)
-
-        # Now that all the POIs are created, emit the signal for other things (ie gui) to update
-        self.signal_poi_updated.emit()
+    def transform_roi(self, transform_matrix):
+        if transform_matrix.shape != (3, 3):
+            self.log.error('Tranformation matrix must be numpy array of shape (3, 3).')
+            return
