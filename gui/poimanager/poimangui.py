@@ -36,132 +36,6 @@ from qtpy import QtWidgets
 from qtpy import uic
 
 
-class PoiMark(pg.CircleROI):
-    """
-    Creates a circle as a marker.
-
-    @param float[2] pos: The (x, y) position of the POI.
-    @param **args: All extra keyword arguments are passed to ROI()
-
-    Have a look at:
-    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
-    """
-    color = "F0F"
-    selectcolor = "FFF"
-    radius = 0.6e-6
-
-    def __init__(self, position, poi_name=None, click_callback=None, view_widget=None, **kwargs):
-        pg.CircleROI.__init__(self,
-                              position,
-                              [2 * self.radius, 2 * self.radius],
-                              pen={'color': self.color, 'width': 2},
-                              **kwargs)
-
-        self.poi_name = '' if poi_name is None else poi_name
-        self.view_widget = view_widget
-        self.position = np.array(position, dtype=float)
-        self.label = None
-        self.click_callback = (lambda *args: None) if click_callback is None else click_callback
-        self.my_handle = None  # TODO: What is this exactly?
-        self.selected = False
-
-        self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
-        self.sigClicked.connect(self._activate_poi_from_marker)
-
-    def add_to_view_widget(self, view_widget=None):
-        if view_widget is not None:
-            self.view_widget = view_widget
-        self.view_widget.addItem(self)
-
-        # Removing the handle from this CricleROI
-        self.removeHandle(0)
-
-        # create a new free handle for the name tag, positioned at "east" on the circle.
-        self.addRotateHandle([1, 0.5], [0.5, 0.5])
-        self.sigRegionChangeFinished.connect(self._redraw_label)
-        self.label = pg.TextItem(text=self.poi_name, anchor=(0, 1), color=self.color)
-
-        self.setAngle(30)
-        self.setPos(self.position + self.get_marker_offset())
-        # self.view_widget.addItem(self.label)
-
-    def _activate_poi_from_marker(self):
-        self.click_callback(self.poi_name)
-
-    def _redraw_label(self):
-        if self.label is not None:
-            self.view_widget.removeItem(self.label)
-
-            cos_th = np.cos(self.angle() / 180. * np.pi)
-            sin_th = np.sin(self.angle() / 180. * np.pi)
-
-            text_pos = self.position + [self.radius * cos_th, self.radius * sin_th]
-
-            if cos_th > 0 and sin_th > 0:
-                my_anchor = (0, 1)
-            elif cos_th > 0 > sin_th:
-                my_anchor = (0, 0)
-            elif cos_th < 0 and sin_th < 0:
-                my_anchor = (1, 0)
-            else:
-                my_anchor = (1, 1)
-
-            # Updating the position of the circleROI origin in case it has been rotated.
-            # It is important for finish=False so that this action does not call this
-            # _redraw_label method recursively
-            self.setPos(self.position + self.get_marker_offset(), finish=False)
-
-            my_color = self.selectcolor if self.selected else self.color
-            self.label = pg.TextItem(text=self.poi_name, anchor=my_anchor, color=my_color)
-            self.label.setPos(text_pos[0], text_pos[1])
-            self.view_widget.addItem(self.label)
-        return
-
-    def get_marker_offset(self):
-
-        # The origin of the circleROI is in the lower left corner, which is at -135 degrees
-        # when the circleROI is in its initial unrotated state.
-        origin_angle = self.angle() - 135
-
-        # We wish to rotate the circleROI about its centre, and so from this angle
-        # we calculate the necessary offset that will essentially rotate the circleROI origin
-        # correspondingly.
-        x_offset = np.sqrt(2.0) * self.radius * np.cos(origin_angle / 180. * np.pi)
-        y_offset = np.sqrt(2.0) * self.radius * np.sin(origin_angle / 180. * np.pi)
-
-        return [x_offset, y_offset]
-
-    def delete_from_view_widget(self, view_widget=None):
-        if view_widget is not None:
-            self.view_widget = view_widget
-        self.view_widget.removeItem(self.label)
-        self.view_widget.removeItem(self)
-        return
-
-    def set_position(self, position):
-        """
-        Sets the POI position, so the centre of the marker circle.
-
-        @param float[2] position: The (x,y) center position of the POI marker
-        """
-        self.position = np.array(position, dtype=float)
-        return
-
-    def select(self):
-        self.selected = True
-        self.setPen({'color': self.selectcolor, 'width': 2})
-        if self.label is not None:
-            self._redraw_label()
-        return
-
-    def deselect(self):
-        self.selected = False
-        self.setPen({'color': self.color, 'width': 2})
-        if self.label is not None:
-            self._redraw_label()
-        return
-
-
 class PoiMarker(pg.EllipseROI):
     """
     Creates a circle as a marker.
@@ -189,14 +63,17 @@ class PoiMarker(pg.EllipseROI):
         self._poi_name = '' if poi_name is None else poi_name
         self._view_widget = view_widget
         self._selected = False
+        self._position = np.array(position, dtype=float)
 
         size = (2 * radius, 2 * radius)
-        super().__init__(pos=(0, 0), size=size, pen=self.default_pen, **kwargs)
-        self.aspectLocked = True
-        self.label = pg.TextItem(text=self._poi_name, anchor=(0, 1), color=self.default_pen['color'])
+        super().__init__(pos=self._position, size=size, pen=self.default_pen, **kwargs)
+        # self.aspectLocked = True
+        self.label = pg.TextItem(text=self._poi_name,
+                                 anchor=(0, 1),
+                                 color=self.default_pen['color'])
         self.setAcceptedMouseButtons(QtCore.Qt.LeftButton)
         self.sigClicked.connect(self._notify_clicked_poi_name)
-        self.set_position(position)
+        self.set_position(self._position)
         return
 
     def _addHandles(self):
@@ -213,6 +90,10 @@ class PoiMarker(pg.EllipseROI):
     @property
     def poi_name(self):
         return str(self._poi_name)
+
+    @property
+    def position(self):
+        return self._position
 
     def add_to_view_widget(self, view_widget=None):
         if view_widget is not None:
@@ -234,10 +115,11 @@ class PoiMarker(pg.EllipseROI):
 
         @param float[2] position: The (x,y) center position of the POI marker
         """
-        marker_offset = self.radius
-        label_offset = marker_offset / np.sqrt(2)
-        self.setPos(position[0] - marker_offset, position[1] - marker_offset)
-        self.label.setPos(position[0] + label_offset, position[1] + label_offset)
+        self._position = np.array(position, dtype=float)
+        radius = self.radius
+        label_offset = radius / np.sqrt(2)
+        self.setPos(self._position[0] - radius, self._position[1] - radius)
+        self.label.setPos(self._position[0] + label_offset, self._position[1] + label_offset)
         return
 
     def set_name(self, name):
@@ -254,11 +136,10 @@ class PoiMarker(pg.EllipseROI):
 
         @param float radius:
         """
-        position = self.pos()
         label_offset = radius / np.sqrt(2)
         self.setSize((2 * radius, 2 * radius))
-        self.setPos(position[0] - radius, position[1] - radius)
-        self.label.setPos(position[0] + label_offset, position[1] + label_offset)
+        self.setPos(self.position[0] - radius, self.position[1] - radius)
+        self.label.setPos(self.position[0] + label_offset, self.position[1] + label_offset)
         return
 
     @QtCore.Slot()
@@ -278,26 +159,6 @@ class PoiMarker(pg.EllipseROI):
         return
 
 
-# class CustomViewBox(pg.ViewBox):
-#
-#     def __init__(self, *args, **kwds):
-#         pg.ViewBox.__init__(self, *args, **kwds)
-#         self.setMouseMode(self.RectMode)
-#
-#     # reimplement right-click to zoom out
-#     def mouseClickEvent(self, ev):
-#         if ev.button() == QtCore.Qt.RightButton:
-#             # self.autoRange()
-#             self.setXRange(0, 5)
-#             self.setYRange(0, 10)
-#
-#     def mouseDragEvent(self, ev, axis=0):
-#         if (ev.button() == QtCore.Qt.LeftButton) and (ev.modifiers() & QtCore.Qt.ControlModifier):
-#             pg.ViewBox.mouseDragEvent(self, ev, axis)
-#         else:
-#             ev.ignore()
-
-
 class PoiManagerMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
@@ -309,18 +170,6 @@ class PoiManagerMainWindow(QtWidgets.QMainWindow):
         super(PoiManagerMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
-
-
-class ReorientRoiDialog(QtWidgets.QDialog):
-
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_reorient_roi_dialog.ui')
-
-        # Load it
-        super(ReorientRoiDialog, self).__init__()
-        uic.loadUi(ui_file, self)
 
 
 class PoiManagerGui(GUIBase):
@@ -378,27 +227,18 @@ class PoiManagerGui(GUIBase):
         # Initialize ROI name
         self._update_roi_name(self.poimanagerlogic().roi_name)
 
+        # Distance Measurement:
+        # Introducing a SignalProxy will limit the rate of signals that get fired.
+        self.mouse_moved_proxy = pg.SignalProxy(signal=self.roi_image.scene().sigMouseMoved,
+                                                rateLimit=30,
+                                                slot=self.mouse_moved_callback)
+
         # Connect signals
         self.__connect_internal_signals()
         self.__connect_update_signals_from_logic()
         self.__connect_control_signals_to_logic()
 
         self._mw.show()
-
-        # self.initReorientRoiDialogUI()
-
-        # Distance Measurement:
-        # Introducing a SignalProxy will limit the rate of signals that get fired.
-        # Otherwise we will run into a heap of unhandled function calls.
-        # proxy = pg.SignalProxy(
-        #     self.roi_image.scene().sigMouseMoved,
-        #     rateLimit=60,
-        #     slot=self.mouseMoved)
-        # # Connecting a Mouse Signal to trace to mouse movement function.
-        # self.roi_image.scene().sigMouseMoved.connect(self.mouseMoved)
-
-        # Redraw the sample_shift axes if the range changes
-        # self._mw.sample_shift_ViewWidget.plotItem.sigRangeChanged.connect(self._redraw_sample_shift)
         return
 
     def on_deactivate(self):
@@ -559,7 +399,6 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
-        # self._mw.reorient_roi_Action.triggered.connect(self.open_reorient_roi_dialog)
 
         # self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
@@ -579,7 +418,6 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.returnPressed.disconnect()
         self._mw.save_roi_Action.triggered.disconnect()
         self._mw.load_roi_Action.triggered.disconnect()
-        # self._mw.reorient_roi_Action.triggered.disconnect()
 
         # self._mw.display_shift_vs_duration_RadioButton.toggled.disconnect()
         # self._mw.display_shift_vs_clocktime_RadioButton.toggled.disconnect()
@@ -591,40 +429,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         return
 
-    def initReorientRoiDialogUI(self):
-        """ Definition, configuration and initialization fo the Reorient ROI Dialog GUI.
-
-        This init connects all the graphic modules which were created in the
-        *.ui file and configures event handling.
-        """
-
-        # Create the Reorient ROI Dialog window
-        self._rrd = ReorientRoiDialog()
-
-        # Connect the QDialog buttons to methods in the GUI
-        self._rrd.accepted.connect(self.do_roi_reorientation)
-        self._rrd.rejected.connect(self.reset_reorientation_dialog)
-
-        # Connect the at_crosshair buttons
-        self._rrd.ref_a_at_crosshair_PushButton.clicked.connect(self.ref_a_at_crosshair)
-        self._rrd.ref_b_at_crosshair_PushButton.clicked.connect(self.ref_b_at_crosshair)
-        self._rrd.ref_c_at_crosshair_PushButton.clicked.connect(self.ref_c_at_crosshair)
-
-        # Connect input value changes to update the sanity-check values
-        self._rrd.ref_a_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
-        self._rrd.ref_b_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
-        self._rrd.ref_c_poi_ComboBox.activated.connect(self.reorientation_sanity_check)
-        self._rrd.ref_a_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_a_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_a_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_b_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_b_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_b_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_c_x_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_c_y_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-        self._rrd.ref_c_z_pos_DoubleSpinBox.valueChanged.connect(self.reorientation_sanity_check)
-
-    def mouseMoved(self, event):
+    def mouse_moved_callback(self, event):
         """ Handles any mouse movements inside the image.
 
         @param event:   Event that signals the new mouse movement.
@@ -633,23 +438,23 @@ class PoiManagerGui(GUIBase):
         Gets the mouse position, converts it to a position scaled to the image axis
         and than calculates and updated the position to the current POI.
         """
-        #
-        # # converts the absolute mouse position to a position relative to the axis
-        # mouse_point = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(
-        #     event.toPoint())
-        #
-        # # only calculate distance, if a POI is selected
-        # if self.poimanagerlogic().active_poi is not None:
-        #     cur_poi_pos = self.poimanagerlogic().get_poi_position(
-        #         poikey=self.poimanagerlogic().active_poi.get_key())
-        #     dx = ScaledFloat(mouse_point.x() - cur_poi_pos[0])
-        #     dy = ScaledFloat(mouse_point.y() - cur_poi_pos[1])
-        #     d_total = ScaledFloat(np.sqrt(
-        #             (mouse_point.x() - cur_poi_pos[0])**2
-        #             + (mouse_point.y() - cur_poi_pos[1])**2))
-        #
-        #     self._mw.poi_distance_label.setText(
-        #         '{0:.2r}m ({1:.2r}m, {2:.2r}m)'.format(d_total, dx, dy))
+
+        # converts the absolute mouse position to a position relative to the axis
+        mouse_pos = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(event[0])
+
+        # only calculate distance, if a POI is selected
+        active_poi = self.poimanagerlogic().active_poi
+        if active_poi:
+            poi_pos = self.poimanagerlogic().get_poi_position(active_poi)
+            dx = ScaledFloat(mouse_pos.x() - poi_pos[0])
+            dy = ScaledFloat(mouse_pos.y() - poi_pos[1])
+            d_total = ScaledFloat(
+                np.sqrt((mouse_pos.x() - poi_pos[0])**2 + (mouse_pos.y() - poi_pos[1])**2))
+
+            self._mw.poi_distance_label.setText(
+                '{0:.2r}m ({1:.2r}m, {2:.2r}m)'.format(d_total, dx, dy))
+        else:
+            self._mw.poi_distance_label.setText('? (?, ?)')
         pass
 
     def show(self):
@@ -718,17 +523,11 @@ class PoiManagerGui(GUIBase):
     def _update_pois(self, poi_dict):
         """ Populate the dropdown box for selecting a poi. """
         self._mw.active_poi_ComboBox.blockSignals(True)
-        self._mw.offset_anchor_ComboBox.blockSignals(True)
 
         self._mw.active_poi_ComboBox.clear()
-        self._mw.offset_anchor_ComboBox.clear()
-        # self._rrd.ref_a_poi_ComboBox.clear()
-        # self._rrd.ref_b_poi_ComboBox.clear()
-        # self._rrd.ref_c_poi_ComboBox.clear()
 
         poi_names = sorted(poi_dict)
         self._mw.active_poi_ComboBox.addItems(poi_names)
-        self._mw.offset_anchor_ComboBox.addItems(poi_names)
 
         # Get two list of POI names. One of those to delete and one of those to add
         old_poi_names = set(self._markers)
@@ -740,7 +539,9 @@ class PoiManagerGui(GUIBase):
         for name in names_to_delete:
             self._remove_poi_marker(name)
         # Update positions of all remaining markers
+        size = self.poimanagerlogic().optimise_xy_size * np.sqrt(2)
         for name, marker in self._markers.items():
+            marker.setSize((size, size))
             marker.set_position(poi_dict[name])
         # Add new markers
         for name in names_to_add:
@@ -759,7 +560,6 @@ class PoiManagerGui(GUIBase):
         else:
             self._mw.active_poi_ComboBox.setCurrentIndex(-1)
 
-        self._mw.offset_anchor_ComboBox.blockSignals(False)
         self._mw.active_poi_ComboBox.blockSignals(False)
         return
 
@@ -768,26 +568,17 @@ class PoiManagerGui(GUIBase):
         # Handle changed names and deleted/added POIs
         if old_name != new_name:
             self._mw.active_poi_ComboBox.blockSignals(True)
-            self._mw.offset_anchor_ComboBox.blockSignals(True)
             # Remember current text
             text_active_poi = self._mw.active_poi_ComboBox.currentText()
-            text_anchor = self._mw.offset_anchor_ComboBox.currentText()
             # sort POI names and repopulate ComboBoxes
             self._mw.active_poi_ComboBox.clear()
-            self._mw.offset_anchor_ComboBox.clear()
             poi_names = sorted(self.poimanagerlogic().poi_names)
             self._mw.active_poi_ComboBox.addItems(poi_names)
-            self._mw.offset_anchor_ComboBox.addItems(poi_names)
             if text_active_poi == old_name:
                 self._mw.active_poi_ComboBox.setCurrentText(new_name)
             else:
                 self._mw.active_poi_ComboBox.setCurrentText(text_active_poi)
-            if text_anchor == old_name:
-                self._mw.offset_anchor_ComboBox.setCurrentText(new_name)
-            else:
-                self._mw.offset_anchor_ComboBox.setCurrentText(text_anchor)
             self._mw.active_poi_ComboBox.blockSignals(False)
-            self._mw.offset_anchor_ComboBox.blockSignals(False)
 
         # Delete/add/update POI marker to image
         if not old_name:
@@ -798,8 +589,10 @@ class PoiManagerGui(GUIBase):
             self._remove_poi_marker(name=old_name)
         else:
             # POI has been renamed and/or changed position
+            size = self.poimanagerlogic().optimise_xy_size * np.sqrt(2)
             self._markers[old_name].set_name(new_name)
             self._markers[new_name] = self._markers.pop(old_name)
+            self._markers[new_name].setSize((size, size))
             self._markers[new_name].set_position(position[:2])
 
         active_poi = self._mw.active_poi_ComboBox.currentText()
@@ -834,6 +627,7 @@ class PoiManagerGui(GUIBase):
                                                     ScaledFloat(active_poi_pos[2])))
 
         if name in self._markers:
+            self._markers[name].set_radius(self.poimanagerlogic().optimise_xy_size / np.sqrt(2))
             self._markers[name].select()
         return
 
@@ -943,11 +737,6 @@ class PoiManagerGui(GUIBase):
             del self._markers[name]
         return
 
-    def select_poi_from_marker(self, poi_name=None):
-        """ Process the selection of a POI from click on PoiMark. """
-        self.poimanagerlogic().set_active_poi(poi_name)
-        return
-
     def _redraw_clocktime_ticks(self):
         """If duration is displayed, reset ticks to default.
         Otherwise, create and update custom date/time ticks to the new axis range.
@@ -1030,94 +819,3 @@ class PoiManagerGui(GUIBase):
         self.z_shift_plot.setData(time_shift_data, z_shift_data)
 
         self._redraw_clocktime_ticks()
-
-    def open_reorient_roi_dialog(self):
-        """ Open the dialog for reorienting the ROI. """
-        self._rrd.show()
-
-    def ref_a_at_crosshair(self):
-        """ Set the newpos for ref A from the current crosshair position. """
-        # TODO: get the range for these spinboxes from the hardware scanner range!
-        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[0])
-        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[1])
-        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[2])
-
-    def ref_b_at_crosshair(self):
-        """ Set the newpos for ref B from the current crosshair position. """
-        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[0])
-        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[1])
-        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[2])
-
-    def ref_c_at_crosshair(self):
-        """ Set the newpos for ref C from the current crosshair position. """
-        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[0])
-        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[1])
-        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(self.scannerlogic().get_position()[2])
-
-    def do_roi_reorientation(self):
-        """Pass the old and new positions of refs A, B, C to PoiManager Logic to reorient every POI in the ROI.
-        """
-
-        ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos = self._read_reorient_roi_dialog_values()
-
-        self.poimanagerlogic().reorient_roi(ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos)
-
-        # Clear the values in the Reorient Roi Dialog in case it is needed again
-        self.reset_reorientation_dialog()
-
-    def _read_reorient_roi_dialog_values(self):
-        """ This reads the values from reorient ROI Dialog, and returns them. """
-
-        # Get POI keys for the chosen ref points
-        ref_a_key = self._rrd.ref_a_poi_ComboBox.itemData(self._rrd.ref_a_poi_ComboBox.currentIndex())
-        ref_b_key = self._rrd.ref_b_poi_ComboBox.itemData(self._rrd.ref_b_poi_ComboBox.currentIndex())
-        ref_c_key = self._rrd.ref_c_poi_ComboBox.itemData(self._rrd.ref_c_poi_ComboBox.currentIndex())
-
-        # Get the old coords for these refs
-        ref_a_coords = np.array(self.poimanagerlogic().poi_list[ref_a_key].get_coords_in_sample())
-        ref_b_coords = np.array(self.poimanagerlogic().poi_list[ref_b_key].get_coords_in_sample())
-        ref_c_coords = np.array(self.poimanagerlogic().poi_list[ref_c_key].get_coords_in_sample())
-
-        ref_a_newpos = np.array([self._rrd.ref_a_x_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_a_y_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_a_z_pos_DoubleSpinBox.value()])
-        ref_b_newpos = np.array([self._rrd.ref_b_x_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_b_y_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_b_z_pos_DoubleSpinBox.value()])
-        ref_c_newpos = np.array([self._rrd.ref_c_x_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_c_y_pos_DoubleSpinBox.value(),
-                                 self._rrd.ref_c_z_pos_DoubleSpinBox.value()])
-
-        return ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos*1e-6, ref_b_newpos*1e-6, ref_c_newpos*1e-6
-
-    def reset_reorientation_dialog(self):
-        """ Reset all the values in the reorient roi dialog. """
-
-        self._rrd.ref_a_x_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_a_y_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_a_z_pos_DoubleSpinBox.setValue(0)
-
-        self._rrd.ref_b_x_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_b_y_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_b_z_pos_DoubleSpinBox.setValue(0)
-
-        self._rrd.ref_c_x_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_c_y_pos_DoubleSpinBox.setValue(0)
-        self._rrd.ref_c_z_pos_DoubleSpinBox.setValue(0)
-
-    def reorientation_sanity_check(self):
-        """ Calculate the difference in length between edges of old triangle defined by refs A, B, C and the new triangle.
-        """
-
-        # Get set of positions from GUI
-        ref_a_coords, ref_b_coords, ref_c_coords, ref_a_newpos, ref_b_newpos, ref_c_newpos = self._read_reorient_roi_dialog_values()
-
-        # Calculate the difference in side lengths AB, BC, CA between the old triangle and the new triangle
-        delta_ab = np.linalg.norm(ref_b_coords - ref_a_coords) - np.linalg.norm(ref_b_newpos - ref_a_newpos)
-        delta_bc = np.linalg.norm(ref_c_coords - ref_b_coords) - np.linalg.norm(ref_c_newpos - ref_b_newpos)
-        delta_ca = np.linalg.norm(ref_a_coords - ref_c_coords) - np.linalg.norm(ref_a_newpos - ref_c_newpos)
-
-        # Write to the GUI
-        self._rrd.length_difference_ab_Label.setText(str(delta_ab))
-        self._rrd.length_difference_bc_Label.setText(str(delta_bc))
-        self._rrd.length_difference_ca_Label.setText(str(delta_ca))
