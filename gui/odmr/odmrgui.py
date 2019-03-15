@@ -570,7 +570,7 @@ class ODMRGui(GUIBase):
 
         # If "Manual" is checked or the image is empty (all zeros), then take manual cb range.
         # Otherwise, calculate cb range from percentiles.
-        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.max(matrix_image) < 0.1:
+        if self._mw.odmr_cb_manual_RadioButton.isChecked() or np.count_nonzero(matrix_image) < 1:
             cb_min = self._mw.odmr_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.odmr_cb_max_DoubleSpinBox.value()
         else:
