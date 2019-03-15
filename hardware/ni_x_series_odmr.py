@@ -47,7 +47,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         photon_sources:
             - '/Dev1/PFI8'
         #    - '/Dev1/PFI9'
-        default_scanner_clock_frequency: 100 # optional, in Hz
+        default_odmr_clock_frequency: 100 # optional, in Hz
         odmr_clock_channel: '/Dev1/Ctr2'
         pixel_clock_channel: '/Dev1/PFI6'
         odmr_ai_channels:
@@ -71,15 +71,13 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
     # config options
     _photon_sources = ConfigOption('photon_sources', missing='error')
 
-    # confocal scanner
-    _default_odmr_clock_frequency = ConfigOption(
-        'default_scanner_clock_frequency', 100, missing='info')
+    # odmr
+    _default_odmr_clock_frequency = ConfigOption('default_odmr_clock_frequency', 100, missing='info')
     _odmr_clock_channel = ConfigOption('odmr_clock_channel', missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _odmr_ai_channels = ConfigOption('odmr_ai_channels', [], missing='info')
     _odmr_counter_channels = ConfigOption('odmr_counter_channels', [], missing='warn')
 
-    # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
     _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
     _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
@@ -99,20 +97,19 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         self._counter_daq_tasks = []
         self._counter_analog_daq_task = None
         self._clock_daq_task = None
-        self._scanner_clock_daq_task = None
-        self._scanner_ao_task = None
-        self._scanner_counter_daq_tasks = []
+        self._odmr_clock_daq_task = None
+        self._odmr_counter_daq_tasks = []
         self._line_length = None
         self._odmr_length = None
         self._gated_counter_daq_task = None
-        self._scanner_analog_daq_task = None
+        self._odmr_analog_daq_task = None
         self._odmr_pulser_daq_task = None
         self._oversampling = 0
         self._lock_in_active = False
 
         if len(self._odmr_counter_channels) + len(self._odmr_ai_channels) < 1:
             self.log.error(
-                'Specify at least one counter or analog input channel for the scanner!')
+                'Specify at least one counter or analog input channel for the odmr!')
 
     def on_deactivate(self):
         """ Shut down the NI card.
@@ -133,7 +130,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         constraints.counting_mode = [CountingMode.CONTINUOUS]
         return constraints
 
-    # ================ ConfocalScannerInterface Commands =======================
     def reset_hardware(self):
         """ Resets the NI hardware, so the connection is lost and other
             programs can access it.
@@ -183,15 +179,15 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        if self._scanner_clock_daq_task is not None:
-            self.log.error('Another scanner clock is already running, close this one first.')
+        if self._odmr_clock_daq_task is not None:
+            self.log.error('Another odmr clock is already running, close this one first.')
             return -1
 
         # Create handle for task, this task will generate pulse signal for
         # photon counting
         my_clock_daq_task = daq.TaskHandle()
 
-        self._scanner_clock_frequency = float(clock_frequency) if clock_frequency is not None else self._default_odmr_clock_frequency
+        self._odmr_clock_frequency = float(clock_frequency) if clock_frequency is not None else self._default_odmr_clock_frequency
 
         # assign the clock channel, if given
         if clock_channel is not None:
@@ -199,7 +195,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
         # check whether only one clock pair is available, since some NI cards
         # only one clock channel pair.
-        if self._scanner_clock_daq_task is not None:
+        if self._odmr_clock_daq_task is not None:
             self.log.error(
                 'Only one clock channel is available!\n'
                 'Another clock is already running, close this one first '
@@ -210,7 +206,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         my_idle = daq.DAQmx_Val_High if idle else daq.DAQmx_Val_Low
         try:
             # create task for clock
-            task_name = 'ScannerClock'
+            task_name = 'ODMRClock'
             daq.DAQmxCreateTask(task_name, daq.byref(my_clock_daq_task))
 
             # create a digital clock channel with specific clock frequency:
@@ -222,7 +218,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 # Name to assign to task (NIDAQ uses by # default the physical channel name as
                 # the virtual channel name. If name is specified, then you must use the name
                 # when you refer to that channel in other NIDAQ functions)
-                'Clock Producer',
+                'ODMR Clock Producer',
                 # units, Hertz in our case
                 daq.DAQmx_Val_Hz,
                 # idle state
@@ -230,7 +226,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 # initial delay
                 0,
                 # pulse frequency
-                self._scanner_clock_frequency,
+                self._odmr_clock_frequency,
                 # duty cycle of pulses, 0.5 such that high and low duration are both
                 # equal to count_interval
                 0.5)
@@ -246,7 +242,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 # buffer length which stores temporarily the number of generated samples
                 1000)
 
-            self._scanner_clock_daq_task = my_clock_daq_task
+            self._odmr_clock_daq_task = my_clock_daq_task
         except:
             self.log.exception('Error while setting up clock.')
             return -1
@@ -259,13 +255,13 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         """
         try:
             # Stop the clock task:
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            daq.DAQmxStopTask(self._odmr_clock_daq_task)
 
             # After stopping delete all the configuration of the clock:
-            daq.DAQmxClearTask(self._scanner_clock_daq_task)
+            daq.DAQmxClearTask(self._odmr_clock_daq_task)
 
             # Set the task handle to None as a safety
-            self._scanner_clock_daq_task = None
+            self._odmr_clock_daq_task = None
         except:
             self.log.exception('Could not close clock.')
             return -1
@@ -288,30 +284,19 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self._scanner_clock_daq_task is None and clock_channel is None:
+        if self._odmr_clock_daq_task is None and clock_channel is None:
             self.log.error('No clock running, call set_up_clock before starting the counter.')
             return -1
-        if len(self._scanner_counter_daq_tasks) > 0:
+        if len(self._odmr_counter_daq_tasks) > 0:
             self.log.error('Another counter is already running, close this one first.')
             return -1
-        if len(self._odmr_ai_channels) > 0 and self._scanner_analog_daq_task is not None:
+        if len(self._odmr_ai_channels) > 0 and self._odmr_analog_daq_task is not None:
             self.log.error('Another analog is already running, close this one first.')
             return -1
 
-        if clock_channel is not None:
-            my_clock_channel = clock_channel
-        else:
-            my_clock_channel = self._odmr_clock_channel
-
-        if counter_channel is not None:
-            my_counter_channel = counter_channel
-        else:
-            my_counter_channel = self._odmr_counter_channels[0]
-
-        if photon_source is not None:
-            my_photon_source = photon_source
-        else:
-            my_photon_source = self._photon_sources[0]
+        clock_channel = clock_channel if clock_channel is not None else self._odmr_clock_channel
+        counter_channel = counter_channel if counter_channel is not None else self._odmr_counter_channels[0]
+        photon_source = photon_source if photon_source is not None else self._photon_sources[0]
 
         # this task will count photons with binning defined by the clock_channel
         task = daq.TaskHandle()
@@ -333,13 +318,13 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 # define to which task to# connect this function
                 task,
                 # use this counter channel
-                my_counter_channel,
+                counter_channel,
                 # name to assign to it
                 'ODMR Counter',
                 # Expected minimum count value
                 0,
                 # Expected maximum count value
-                self._max_counts / self._scanner_clock_frequency,
+                self._max_counts / self._odmr_clock_frequency,
                 # units of width measurement, here photon ticks
                 daq.DAQmx_Val_Ticks,
                 '')
@@ -360,19 +345,19 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             # connect the pulses from the clock to the counter
             daq.DAQmxSetCISemiPeriodTerm(
                 task,
-                my_counter_channel,
-                my_clock_channel + 'InternalOutput')
+                counter_channel,
+                clock_channel + 'InternalOutput')
 
             # define the source of ticks for the counter as self._photon_source
             daq.DAQmxSetCICtrTimebaseSrc(
                 task,
-                my_counter_channel,
-                my_photon_source)
+                counter_channel,
+                photon_source)
 
             # start and stop pulse task to correctly initiate idle state high voltage.
-            daq.DAQmxStartTask(self._scanner_clock_daq_task)
+            daq.DAQmxStartTask(self._odmr_clock_daq_task)
             # otherwise, it will be low until task starts, and MW will receive wrong pulses.
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            daq.DAQmxStopTask(self._odmr_clock_daq_task)
 
             if self.lock_in_active:
                 ptask = daq.TaskHandle()
@@ -391,9 +376,9 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 self._odmr_clock_channel + 'InternalOutput',
                 self._odmr_trigger_channel,
                 daq.DAQmx_Val_DoNotInvertPolarity)
-            self._scanner_counter_daq_tasks.append(task)
+            self._odmr_counter_daq_tasks.append(task)
             if len(self._odmr_ai_channels) > 0:
-                self._scanner_analog_daq_task = atask
+                self._odmr_analog_daq_task = atask
         except:
             self.log.exception('Error while setting up ODMR scan.')
             return -1
@@ -406,11 +391,11 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if len(self._odmr_counter_channels) > 0 and len(self._scanner_counter_daq_tasks) < 1:
+        if len(self._odmr_counter_channels) > 0 and len(self._odmr_counter_daq_tasks) < 1:
             self.log.error('No counter is running, cannot do ODMR without one.')
             return -1
 
-        if len(self._odmr_ai_channels) > 0 and self._scanner_analog_daq_task is None:
+        if len(self._odmr_ai_channels) > 0 and self._odmr_analog_daq_task is None:
             self.log.error('No analog task is running, cannot do ODMR without one.')
             return -1
 
@@ -419,7 +404,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             # set timing for odmr clock task to the number of pixel.
             daq.DAQmxCfgImplicitTiming(
                 # define task
-                self._scanner_clock_daq_task,
+                self._odmr_clock_daq_task,
                 # only a limited number of counts
                 daq.DAQmx_Val_FiniteSamps,
                 # count twice for each voltage +1 for starting this task.
@@ -429,7 +414,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             # set timing for odmr count task to the number of pixel.
             daq.DAQmxCfgImplicitTiming(
                 # define task
-                self._scanner_counter_daq_tasks[0],
+                self._odmr_counter_daq_tasks[0],
                 # only a limited number of counts
                 daq.DAQmx_Val_ContSamps,
                 # count twice for each voltage +1 for starting this task.
@@ -438,26 +423,26 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
             # read samples from beginning of acquisition, do not overwrite
             daq.DAQmxSetReadRelativeTo(
-                self._scanner_counter_daq_tasks[0],
+                self._odmr_counter_daq_tasks[0],
                 daq.DAQmx_Val_CurrReadPos)
 
             # do not read first sample
             daq.DAQmxSetReadOffset(
-                self._scanner_counter_daq_tasks[0],
+                self._odmr_counter_daq_tasks[0],
                 0)
 
             # unread data in buffer will be overwritten
             daq.DAQmxSetReadOverWrite(
-                self._scanner_counter_daq_tasks[0],
+                self._odmr_counter_daq_tasks[0],
                 daq.DAQmx_Val_DoNotOverwriteUnreadSamps)
 
             # Analog
             if len(self._odmr_ai_channels) > 0:
                 # Analog in channel timebase
                 daq.DAQmxCfgSampClkTiming(
-                    self._scanner_analog_daq_task,
+                    self._odmr_analog_daq_task,
                     self._odmr_clock_channel + 'InternalOutput',
-                    self._scanner_clock_frequency,
+                    self._odmr_clock_frequency,
                     daq.DAQmx_Val_Rising,
                     daq.DAQmx_Val_ContSamps,
                     self._odmr_length + 1
@@ -468,7 +453,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 daq.DAQmxCfgSampClkTiming(
                     self._odmr_pulser_daq_task,
                     self._odmr_clock_channel + 'InternalOutput',
-                    self._scanner_clock_frequency,
+                    self._odmr_clock_frequency,
                     daq.DAQmx_Val_Rising,
                     daq.DAQmx_Val_ContSamps,
                     self._odmr_length + 1
@@ -513,30 +498,26 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
         @return float[]: the photon counts per second
         """
-        if len(self._scanner_counter_daq_tasks) < 1:
+        if len(self._odmr_counter_daq_tasks) < 1:
             self.log.error(
                 'No counter is running, cannot scan an ODMR line without one.')
             return True, np.array([-1.])
 
-        if len(self._odmr_ai_channels) > 0 and self._scanner_analog_daq_task is None:
+        if len(self._odmr_ai_channels) > 0 and self._odmr_analog_daq_task is None:
             self.log.error('No analog task is running, cannot do ODMR without one.')
             return True, np.array([-1.])
 
-        # check if length setup is correct, if not, adjust.
-        if self._odmr_pulser_daq_task:
-            odmr_length_to_set = length * self.oversampling * 2
-        else:
-            odmr_length_to_set = length
+        odmr_length_to_set = length * self.oversampling * 2 if self._odmr_pulser_daq_task else length
 
         if self.set_odmr_length(odmr_length_to_set) < 0:
             self.log.error('An error arose while setting the odmr lenth to {}.'.format(odmr_length_to_set))
             return True, np.array([-1.])
 
         try:
-            # start the scanner counting task that acquires counts synchronously
-            daq.DAQmxStartTask(self._scanner_counter_daq_tasks[0])
+            # start the odmr counting task that acquires counts synchronously
+            daq.DAQmxStartTask(self._odmr_counter_daq_tasks[0])
             if len(self._odmr_ai_channels) > 0:
-                daq.DAQmxStartTask(self._scanner_analog_daq_task)
+                daq.DAQmxStartTask(self._odmr_analog_daq_task)
         except:
             self.log.exception('Cannot start ODMR counter.')
             return True, np.array([-1.])
@@ -566,12 +547,12 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 return True, np.array([-1.])
 
         try:
-            daq.DAQmxStartTask(self._scanner_clock_daq_task)
+            daq.DAQmxStartTask(self._odmr_clock_daq_task)
 
-            # wait for the scanner clock to finish
+            # wait for the odmr clock to finish
             daq.DAQmxWaitUntilTaskDone(
                 # define task
-                self._scanner_clock_daq_task,
+                self._odmr_clock_daq_task,
                 # maximal timeout for the counter times the positions
                 self._RWTimeout * 2 * self._odmr_length)
 
@@ -587,7 +568,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             # actually read the counted photons
             daq.DAQmxReadCounterU32(
                 # read from this task
-                self._scanner_counter_daq_tasks[0],
+                self._odmr_counter_daq_tasks[0],
                 # Read number of double the# number of samples
                 2 * self._odmr_length + 1,
                 # Maximal timeout for the read # process
@@ -611,7 +592,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 analog_read_samples = daq.int32()
 
                 daq.DAQmxReadAnalogF64(
-                    self._scanner_analog_daq_task,
+                    self._odmr_analog_daq_task,
                     self._odmr_length + 1,
                     self._RWTimeout,
                     daq.DAQmx_Val_GroupByChannel,
@@ -622,10 +603,10 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 )
 
             # stop the counter task
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
-            daq.DAQmxStopTask(self._scanner_counter_daq_tasks[0])
+            daq.DAQmxStopTask(self._odmr_clock_daq_task)
+            daq.DAQmxStopTask(self._odmr_counter_daq_tasks[0])
             if len(self._odmr_ai_channels) > 0:
-                daq.DAQmxStopTask(self._scanner_analog_daq_task)
+                daq.DAQmxStopTask(self._odmr_analog_daq_task)
             if self._odmr_pulser_daq_task:
                 daq.DAQmxStopTask(self._odmr_pulser_daq_task)
 
@@ -674,7 +655,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                                                   )
 
             else:
-                all_data[0] = np.array(real_data * self._scanner_clock_frequency, np.float64)
+                all_data[0] = np.array(real_data * self._odmr_clock_frequency, np.float64)
                 if len(self._odmr_ai_channels) > 0:
                     all_data[1:] = odmr_analog_data[:, :-1]
 
@@ -699,14 +680,26 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             self.log.exception('Error while disconnecting ODMR clock channel.')
             retval = -1
 
+        for i, task in enumerate(self._odmr_counter_daq_tasks):
+            try:
+                # stop the counter task
+                daq.DAQmxStopTask(task)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(task)
+                # set the task handle to None as a safety
+            except:
+                self.log.exception('Could not close counter.')
+                retval = -1
+        self._odmr_counter_daq_tasks = []
+
         if len(self._odmr_ai_channels) > 0:
             try:
                 # stop the counter task
-                daq.DAQmxStopTask(self._scanner_analog_daq_task)
+                daq.DAQmxStopTask(self._odmr_analog_daq_task)
                 # after stopping delete all the configuration of the counter
-                daq.DAQmxClearTask(self._scanner_analog_daq_task)
+                daq.DAQmxClearTask(self._odmr_analog_daq_task)
                 # set the task handle to None as a safety
-                self._scanner_analog_daq_task = None
+                self._odmr_analog_daq_task = None
             except:
                 self.log.exception('Could not close analog.')
                 retval = -1
@@ -723,7 +716,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                 self.log.exception('Could not close pulser.')
                 retval = -1
 
-        retval = -1 if self.close_counter(scanner=True) < 0 or retval < 0 else 0
         return retval
 
     def get_odmr_channels(self):
