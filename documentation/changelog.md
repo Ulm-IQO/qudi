@@ -4,10 +4,10 @@
 
 Changes/New features:
 
-* 
+* omniscan:
+    * created omniscan branch for work on the scanning in qudi
 
 Config changes:
-
 * 
 
 ## Release 0.10
