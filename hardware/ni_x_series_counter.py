@@ -51,7 +51,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             - '/Dev1/Ctr1'
         counter_ai_channels:
             - '/Dev1/AI0'
-        default_samples_number: 50
         max_counts: 3e7
         read_write_timeout: 10
         counting_edge_rising: True
@@ -89,7 +88,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         """
         self.close_counter()
         self.close_clock()
-        #self.reset_hardware()
 
     # =================== SlowCounterInterface Commands ========================
 
@@ -265,7 +263,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                 # Set a Counter Input Control Timebase Source.
                 # Specify the terminal of the timebase which is used for the counter:
                 # Define the source of ticks for the counter as self._photon_source for
-                # the Scanner Task.
+                # the Counter Task.
                 daq.DAQmxSetCICtrTimebaseSrc(
                     # define to which task to connect this function
                     task,
@@ -385,10 +383,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             # in case of error return a lot of -1
             return np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32) * -1
 
-        if samples is None:
-            samples = int(self._samples_number)
-        else:
-            samples = int(samples)
+        samples = int(samples) if samples is not None else int(self._samples_number)
         try:
             # count data will be written here in the NumPy array of length samples
             count_data = np.empty((len(self._counter_daq_tasks), 2 * samples), dtype=np.uint32)
@@ -437,9 +432,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             # in case of error return a lot of -1
             return np.ones((len(self.get_counter_channels()), samples), dtype=np.uint32) * -1
 
-        real_data = np.empty((len(self._counter_channels), samples), dtype=np.uint32)
-
-        # add up adjoint pixels to also get the counts from the low time of
+        # add up adjoined pixels to also get the counts from the low time of
         # the clock:
         real_data = count_data[:, ::2]
         real_data += count_data[:, 1::2]
@@ -453,83 +446,55 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
 
         return all_data
 
-    def close_counter(self, scanner=False):
-        """ Closes the counter or scanner and cleans up afterwards.
-
-        @param bool scanner: specifies if the counter- or scanner- function
-                             will be excecuted to close the device.
-                                True = scanner
-                                False = counter
+    def close_counter(self):
+        """ Closes the counter and cleans up afterwards.
 
         @return int: error code (0:OK, -1:error)
         """
         error = 0
-        if scanner:
-            for i, task in enumerate(self._scanner_counter_daq_tasks):
-                try:
-                    # stop the counter task
-                    daq.DAQmxStopTask(task)
-                    # after stopping delete all the configuration of the counter
-                    daq.DAQmxClearTask(task)
-                except:
-                    self.log.exception('Could not close scanner counter.')
-                    error = -1
-            self._scanner_counter_daq_tasks = []
-        else:
-            for i, task in enumerate(self._counter_daq_tasks):
-                try:
-                    # stop the counter task
-                    daq.DAQmxStopTask(task)
-                    # after stopping delete all the configuration of the counter
-                    daq.DAQmxClearTask(task)
-                    # set the task handle to None as a safety
-                except:
-                    self.log.exception('Could not close counter.')
-                    error = -1
-            self._counter_daq_tasks = []
+        for i, task in enumerate(self._counter_daq_tasks):
+            try:
+                # stop the counter task
+                daq.DAQmxStopTask(task)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(task)
+                # set the task handle to None as a safety
+            except:
+                self.log.exception('Could not close counter.')
+                error = -1
+        self._counter_daq_tasks = []
 
-            if len(self._counter_ai_channels) > 0:
-                try:
-                    # stop the counter task
-                    daq.DAQmxStopTask(self._counter_analog_daq_task)
-                    # after stopping delete all the configuration of the counter
-                    daq.DAQmxClearTask(self._counter_analog_daq_task)
-                    # set the task handle to None as a safety
-                except:
-                    self.log.exception('Could not close counter analog channels.')
-                    error = -1
-                self._counter_analog_daq_task = None
+        if len(self._counter_ai_channels) > 0 and self._counter_analog_daq_task is not None:
+            try:
+                # stop the counter task
+                daq.DAQmxStopTask(self._counter_analog_daq_task)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(self._counter_analog_daq_task)
+                # set the task handle to None as a safety
+            except:
+                self.log.exception('Could not close counter analog channels.')
+                error = -1
+            self._counter_analog_daq_task = None
         return error
 
-    def close_clock(self, scanner=False):
+    def close_clock(self):
         """ Closes the clock and cleans up afterwards.
-
-        @param bool scanner: specifies if the counter- or scanner- function
-                             should be used to close the device.
-                                True = scanner
-                                False = counter
 
         @return int: error code (0:OK, -1:error)
         """
-        if scanner:
-            my_task = self._scanner_clock_daq_task
-        else:
-            my_task = self._clock_daq_task
-        try:
-            # Stop the clock task:
-            daq.DAQmxStopTask(my_task)
+        if self._clock_daq_task is not None:
+            try:
+                # Stop the clock task:
+                daq.DAQmxStopTask(self._clock_daq_task)
 
-            # After stopping delete all the configuration of the clock:
-            daq.DAQmxClearTask(my_task)
+                # After stopping delete all the configuration of the clock:
+                daq.DAQmxClearTask(self._clock_daq_task)
 
-            # Set the task handle to None as a safety
-            if scanner:
-                self._scanner_clock_daq_task = None
-            else:
+                # Set the task handle to None as a safety
                 self._clock_daq_task = None
-        except:
-            self.log.exception('Could not close clock.')
-            return -1
+            except:
+                self.log.exception('Could not close clock.')
+                return -1
         return 0
 
     # ================ End SlowCounterInterface Commands =======================

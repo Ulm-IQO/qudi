@@ -57,8 +57,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
 
         odmr_trigger_channel: '/Dev1/PFI7'
 
-        gate_in_channel: '/Dev1/PFI9'
-        default_samples_number: 50
         max_counts: 3e7
         read_write_timeout: 10
         counting_edge_rising: True
@@ -82,8 +80,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
     _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
     _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
 
-    # number of readout samples, mainly used for gated counter
-    _default_samples_number = ConfigOption('default_samples_number', 50, missing='info')
     # used as a default for expected maximum counts
     _max_counts = ConfigOption('max_counts', default=3e7)
     # timeout for the Read or/and write process in s
@@ -101,7 +97,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         self._odmr_counter_daq_tasks = []
         self._line_length = None
         self._odmr_length = None
-        self._gated_counter_daq_task = None
         self._odmr_analog_daq_task = None
         self._odmr_pulser_daq_task = None
         self._oversampling = 0
