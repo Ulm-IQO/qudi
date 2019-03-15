@@ -838,7 +838,7 @@ class ConfocalGui(GUIBase):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
-        if self._mw.xy_cb_manual_RadioButton.isChecked() or np.max(self.xy_image.image) == 0.0:
+        if self._mw.xy_cb_manual_RadioButton.isChecked() or np.count_nonzero(self.xy_image.image) < 1:
             cb_min = self._mw.xy_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.xy_cb_max_DoubleSpinBox.value()
 
@@ -862,7 +862,7 @@ class ConfocalGui(GUIBase):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
-        if self._mw.depth_cb_manual_RadioButton.isChecked() or np.max(self.depth_image.image) == 0.0:
+        if self._mw.depth_cb_manual_RadioButton.isChecked() or np.count_nonzero(self.depth_image.image) < 1:
             cb_min = self._mw.depth_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.depth_cb_max_DoubleSpinBox.value()
 
@@ -1608,7 +1608,7 @@ class ConfocalGui(GUIBase):
         xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
-        if np.max(xy_optimizer_image) != 0:
+        if np.count_nonzero(xy_optimizer_image) > 0:
             colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
             colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
 
