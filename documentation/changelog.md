@@ -4,10 +4,11 @@
 
 Changes/New features:
 
-* omniscan:
+* <img src="/artwork/logo/omniscan-logo.png" width="150"/>:
     * created omniscan branch for work on the scanning in qudi
 
 Config changes:
+
 * 
 
 ## Release 0.10
