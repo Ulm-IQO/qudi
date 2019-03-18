@@ -4,7 +4,7 @@
 
 Changes/New features:
 
-* 
+* Cleanup/Improvement/Debug of POI manager (logic and GUI)
 
 Config changes:
 
