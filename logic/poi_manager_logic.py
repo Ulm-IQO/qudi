@@ -467,7 +467,6 @@ class PoiManagerLogic(GenericLogic):
 
     @property
     def time_until_refocus(self):
-        print('time until refocus asked.')
         if not self.__timer.isActive():
             return -1
         return max(0., self._refocus_period - (time.time() - self._last_refocus))
@@ -762,7 +761,6 @@ class PoiManagerLogic(GenericLogic):
 
         @param float period: The time between optimisation procedures.
         """
-        print('Set refocus period called.')
         if period < 0:
             self.log.error('Refocus period must be a value > 0. Unable to set period of "{0}".'
                            ''.format(period))
@@ -783,7 +781,6 @@ class PoiManagerLogic(GenericLogic):
         @param str name: The name of the POI to be refocused periodically.
         If None (default) perform periodic refocus on active POI.
         """
-        print('Start_refocus_called')
         if name is None:
             if self.active_poi is None:
                 self.log.error('Unable to start periodic refocus. No POI name given and no active '
@@ -812,7 +809,6 @@ class PoiManagerLogic(GenericLogic):
 
     def stop_periodic_refocus(self):
         """ Stops the periodic refocusing of the POI. """
-        print('Stop_refocus_called')
         with self._threadlock:
             if self.__timer.isActive():
                 self.__timer.stop()
@@ -828,7 +824,6 @@ class PoiManagerLogic(GenericLogic):
 
         @param switch_on:
         """
-        print('Toggle_refocus_called')
         if switch_on:
             self.__sigStartPeriodicRefocus.emit()
         else:
@@ -842,7 +837,6 @@ class PoiManagerLogic(GenericLogic):
         If the time has run out, it refocuses the current poi.
         Otherwise it just updates the time that is left.
         """
-        print('periodic refocus loop.')
         with self._threadlock:
             if self.__timer.isActive():
                 remaining_time = self.time_until_refocus
