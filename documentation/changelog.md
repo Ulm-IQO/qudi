@@ -4,6 +4,18 @@
 
 Changes/New features:
 
+* 
+
+Config changes:
+
+* 
+
+## Release 0.10
+Released on 14 Mar 2019
+Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.10
+
+Changes/New features:
+
 * Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
 * Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
