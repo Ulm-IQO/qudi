@@ -53,7 +53,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             - '/Dev1/AI0'
         max_counts: 3e7
         read_write_timeout: 10
-        counting_edge_rising: True
 
     """
 
@@ -72,7 +71,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
     _max_counts = ConfigOption('max_counts', default=3e7)
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
-    _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
 
     def on_activate(self):
         """ Starts up the NI Card at activation.

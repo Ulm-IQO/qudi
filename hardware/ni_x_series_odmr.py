@@ -49,7 +49,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         #    - '/Dev1/PFI9'
         default_odmr_clock_frequency: 100 # optional, in Hz
         odmr_clock_channel: '/Dev1/Ctr2'
-        pixel_clock_channel: '/Dev1/PFI6'
         odmr_ai_channels:
             - '/Dev1/AI1'
         odmr_counter_channels:
@@ -72,7 +71,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
     # odmr
     _default_odmr_clock_frequency = ConfigOption('default_odmr_clock_frequency', 100, missing='info')
     _odmr_clock_channel = ConfigOption('odmr_clock_channel', missing='warn')
-    _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _odmr_ai_channels = ConfigOption('odmr_ai_channels', [], missing='info')
     _odmr_counter_channels = ConfigOption('odmr_counter_channels', [], missing='warn')
 
@@ -90,7 +88,6 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         """ Starts up the NI Card at activation.
         """
         # the tasks used on that hardware device:
-        self._clock_daq_task = None
         self._odmr_clock_daq_task = None
         self._odmr_counter_daq_tasks = []
         self._odmr_length = None
@@ -106,7 +103,8 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
     def on_deactivate(self):
         """ Shut down the NI card.
         """
-        self.reset_hardware()
+        self.close_odmr_clock()
+        self.close_odmr()
 
     def get_constraints(self):
         """ Get hardware limits of NI device.
@@ -289,6 +287,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         clock_channel = clock_channel if clock_channel is not None else self._odmr_clock_channel
         counter_channel = counter_channel if counter_channel is not None else self._odmr_counter_channels[0]
         photon_source = photon_source if photon_source is not None else self._photon_sources[0]
+        odmr_trigger_channel = odmr_trigger_channel if odmr_trigger_channel is not None else self._odmr_trigger_channel
 
         # this task will count photons with binning defined by the clock_channel
         task = daq.TaskHandle()
@@ -366,7 +365,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
             # microwave
             daq.DAQmxConnectTerms(
                 self._odmr_clock_channel + 'InternalOutput',
-                self._odmr_trigger_channel,
+                odmr_trigger_channel,
                 daq.DAQmx_Val_DoNotInvertPolarity)
             self._odmr_counter_daq_tasks.append(task)
             if len(self._odmr_ai_channels) > 0:

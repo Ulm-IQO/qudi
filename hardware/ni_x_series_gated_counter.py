@@ -335,7 +335,7 @@ class NationalInstrumentsXSeriesGatedCounter(Base, SlowCounterInterface):
             timeout = self._RWTimeout
 
         # Count data will be written here
-        _gated_count_data = np.empty([2, samples], dtype=np.uint32)
+        gated_count_data = np.empty([2, samples], dtype=np.uint32)
 
         # Number of samples which were read will be stored here
         n_read_samples = daq.int32()
@@ -356,7 +356,7 @@ class NationalInstrumentsXSeriesGatedCounter(Base, SlowCounterInterface):
                 num_samples,
                 # maximal timeout for the read process
                 timeout,
-                _gated_count_data[0],
+                gated_count_data[0],
                 # write into this array
                 # length of array to write into
                 samples,
@@ -368,12 +368,12 @@ class NationalInstrumentsXSeriesGatedCounter(Base, SlowCounterInterface):
             # Chops the array or read sample to the length that it exactly returns
             # acquired data and not more
             if read_available_samples:
-                return _gated_count_data[0][:n_read_samples.value], n_read_samples.value
+                return gated_count_data[0][:n_read_samples.value], n_read_samples.value
             else:
-                return _gated_count_data
+                return gated_count_data, n_read_samples.value
         except:
             self.log.exception('Error while reading gated count data.')
-            return np.array([-1])
+            return np.array([-1]), -1
 
     def stop_gated_counter(self):
         """Actually start the preconfigured counter task

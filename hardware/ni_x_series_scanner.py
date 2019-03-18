@@ -72,7 +72,6 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
 
         max_counts: 3e7
         read_write_timeout: 10
-        counting_edge_rising: True
 
     """
 
@@ -93,29 +92,20 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
     _scanner_voltage_ranges = ConfigOption('scanner_voltage_ranges', missing='error')
     _scanner_position_ranges = ConfigOption('scanner_position_ranges', missing='error')
 
-    # odmr
-    _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
-    _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
-
     # used as a default for expected maximum counts
     _max_counts = ConfigOption('max_counts', default=3e7)
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
-    _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
 
     def on_activate(self):
         """ Starts up the NI Card at activation.
         """
         # the tasks used on that hardware device:
-        self._counter_daq_tasks = []
-        self._counter_analog_daq_task = None
         self._scanner_clock_daq_task = None
         self._scanner_ao_task = None
         self._scanner_counter_daq_tasks = []
         self._line_length = None
         self._scanner_analog_daq_task = None
-        self._odmr_pulser_daq_task = None
-        self._oversampling = 0
 
         # handle all the parameters given by the config
         self._current_position = np.zeros(len(self._scanner_ao_channels))
@@ -141,7 +131,8 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
     def on_deactivate(self):
         """ Shut down the NI card.
         """
-        self.reset_hardware()
+        self.close_scanner_clock()
+        self.close_scanner()
 
     def get_constraints(self):
         """ Get hardware limits of NI device.
