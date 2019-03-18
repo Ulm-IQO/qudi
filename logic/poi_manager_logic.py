@@ -21,11 +21,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import math
 import os
 import numpy as np
-import scipy.ndimage as ndimage
-import scipy.ndimage.filters as filters
 import time
 
 from collections import OrderedDict
@@ -337,13 +334,11 @@ class PoiManagerLogic(GenericLogic):
     _move_scanner_after_optimization = StatusVar(default=True)
 
     # Signals for connecting modules
+    sigRefocusStateUpdated = QtCore.Signal(bool)  # is_active
     sigRefocusTimerUpdated = QtCore.Signal(bool, float, float)  # is_active, period, remaining_time
-    sigPoisUpdated = QtCore.Signal(dict)
     sigPoiUpdated = QtCore.Signal(str, str, np.ndarray)  # old_name, new_name, current_position
-    sigScanImageUpdated = QtCore.Signal(np.ndarray, tuple)  # x,y image and extent
     sigActivePoiUpdated = QtCore.Signal(str)
-    sigRoiHistoryUpdated = QtCore.Signal(np.ndarray)
-    sigRoiNameUpdated = QtCore.Signal(str)
+    sigRoiUpdated = QtCore.Signal(dict)  # Dict containing ROI parameters to update
 
     # Internal signals
     __sigStartPeriodicRefocus = QtCore.Signal()
@@ -380,13 +375,14 @@ class PoiManagerLogic(GenericLogic):
 
         # Initialise the ROI scan image (xy confocal image) if not present
         if self._roi.scan_image is None:
-            self.set_scan_image()
-        else:
-            self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
-        self.sigPoisUpdated.emit(self.poi_positions)
+            self.set_scan_image(False)
+
+        self.sigRoiUpdated.emit({'name': self.roi_name,
+                                 'pois': self.poi_positions,
+                                 'history': self.roi_pos_history,
+                                 'scan_image': self.roi_scan_image,
+                                 'scan_image_extent': self.roi_scan_image_extent})
         self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
-        self.sigRoiNameUpdated.emit(self.roi_name)
-        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
         return
 
     def on_deactivate(self):
@@ -680,15 +676,16 @@ class PoiManagerLogic(GenericLogic):
             self.log.error('ROI name to set must be str of length > 0.')
             return
         self._roi.name = new_name
-        self.sigRoiNameUpdated.emit(self.roi_name)
+        self.sigRoiUpdated.emit({'name': self.roi_name})
         return
 
     @QtCore.Slot(np.ndarray)
     def add_roi_position(self, position):
         self._roi.add_history_entry(position)
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
-        self.sigPoisUpdated.emit(self.poi_positions)
-        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
+        self.sigRoiUpdated.emit({'pois': self.poi_positions,
+                                 'history': self.roi_pos_history,
+                                 'scan_image': self.roi_scan_image,
+                                 'scan_image_extent': self.roi_scan_image_extent})
         return
 
     @QtCore.Slot()
@@ -699,10 +696,15 @@ class PoiManagerLogic(GenericLogic):
 
         @param int|slice history_index: List index for history entry
         """
+        old_roi_origin = self.roi_origin
         self._roi.delete_history_entry(history_index)
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
-        self.sigPoisUpdated.emit(self.poi_positions)
-        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
+        if old_roi_origin != self.roi_origin:
+            self.sigRoiUpdated.emit({'pois': self.poi_positions,
+                                     'history': self.roi_pos_history,
+                                     'scan_image': self.roi_scan_image,
+                                     'scan_image_extent': self.roi_scan_image_extent})
+        else:
+            self.sigRoiUpdated.emit({'history': self.roi_pos_history})
         return
 
     @QtCore.Slot()
@@ -728,13 +730,15 @@ class PoiManagerLogic(GenericLogic):
         return
 
     @QtCore.Slot()
-    def set_scan_image(self):
+    def set_scan_image(self, emit_change=True):
         """ Get the current xy scan data and set as scan_image of ROI. """
         self._roi.set_scan_image(
             self.scannerlogic().xy_image[:, :, 3],
             (tuple(self.scannerlogic().image_x_range), tuple(self.scannerlogic().image_y_range)))
 
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
+        if emit_change:
+            self.sigRoiUpdated.emit({'scan_image': self.roi_scan_image,
+                                     'scan_image_extent': self.roi_scan_image_extent})
         return
 
     @QtCore.Slot()
@@ -742,9 +746,12 @@ class PoiManagerLogic(GenericLogic):
         self.stop_periodic_refocus()
         self._roi = RegionOfInterest()
         self._active_poi = None
-        self.sigPoisUpdated.emit(self.poi_positions)
-        self.set_scan_image()
-        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
+        self.set_scan_image(False)
+        self.sigRoiUpdated.emit({'name': self.roi_name,
+                                 'pois': self.poi_positions,
+                                 'history': self.roi_pos_history,
+                                 'scan_image': self.roi_scan_image,
+                                 'scan_image_extent': self.roi_scan_image_extent})
         return
 
     @QtCore.Slot(int)
@@ -763,8 +770,7 @@ class PoiManagerLogic(GenericLogic):
         # Acquire thread lock in order to change the period during a running periodic refocus
         with self._threadlock:
             self._refocus_period = float(period)
-            is_running = self.__timer.isActive()
-            if is_running:
+            if self.__timer.isActive():
                 self.sigRefocusTimerUpdated.emit(True, self.refocus_period, self.time_until_refocus)
             else:
                 self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
@@ -873,6 +879,7 @@ class PoiManagerLogic(GenericLogic):
         if self.optimiserlogic().module_state() == 'idle':
             self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name),
                                                 caller_tag=tag)
+            self.sigRefocusStateUpdated.emit(True)
         else:
             self.log.warning('Unable to start POI refocus procedure. '
                              'OptimizerLogic module is still locked.')
@@ -900,6 +907,7 @@ class PoiManagerLogic(GenericLogic):
                     self.set_poi_anchor_from_position(name=poi_name, position=optimal_pos)
                 if self._move_scanner_after_optimization:
                     self.move_scanner(position=optimal_pos)
+        self.sigRefocusStateUpdated.emit(False)
         return
 
     def update_poi_tag_in_savelogic(self):
@@ -1009,10 +1017,11 @@ class PoiManagerLogic(GenericLogic):
                                      scan_image_extent=scan_extent,
                                      poi_list=(poi_names, poi_coords))
         self._active_poi = None if len(poi_names) == 0 else poi_names[0]
-        self.sigRoiNameUpdated.emit(self.roi_name)
-        self.sigScanImageUpdated.emit(self.roi_scan_image, self.roi_scan_image_extent)
-        self.sigRoiHistoryUpdated.emit(self.roi_pos_history)
-        self.sigPoisUpdated.emit(self.poi_positions)
+        self.sigRoiUpdated.emit({'name': self.roi_name,
+                                 'pois': self.poi_positions,
+                                 'history': self.roi_pos_history,
+                                 'scan_image': self.roi_scan_image,
+                                 'scan_image_extent': self.roi_scan_image_extent})
         self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
         return
 
@@ -1025,6 +1034,9 @@ class PoiManagerLogic(GenericLogic):
         return roi.to_dict()
 
     def transform_roi(self, transform_matrix):
+        # TODO: Implement this
         if transform_matrix.shape != (3, 3):
             self.log.error('Tranformation matrix must be numpy array of shape (3, 3).')
             return
+        self.log.error('Tranformation of all POI positions not implemented yet.')
+        return
