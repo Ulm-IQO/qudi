@@ -96,7 +96,6 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
     # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
     _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
-    _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
 
     # used as a default for expected maximum counts
     _max_counts = ConfigOption('max_counts', default=3e7)
@@ -110,16 +109,13 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
         # the tasks used on that hardware device:
         self._counter_daq_tasks = []
         self._counter_analog_daq_task = None
-        self._clock_daq_task = None
         self._scanner_clock_daq_task = None
         self._scanner_ao_task = None
         self._scanner_counter_daq_tasks = []
         self._line_length = None
-        self._odmr_length = None
         self._scanner_analog_daq_task = None
         self._odmr_pulser_daq_task = None
         self._oversampling = 0
-        self._lock_in_active = False
 
         # handle all the parameters given by the config
         self._current_position = np.zeros(len(self._scanner_ao_channels))
@@ -170,7 +166,6 @@ class NationalInstrumentsXSeriesScanner(Base, ConfocalScannerInterface):
         """
         retval = 0
         chanlist = [
-            self._odmr_trigger_channel,
             self._scanner_clock_channel
             ]
         chanlist.extend(self._scanner_ao_channels)

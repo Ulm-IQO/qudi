@@ -81,7 +81,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         self._counter_daq_tasks = []
         self._counter_analog_daq_task = None
         self._clock_daq_task = None
-        self._line_length = None
 
     def on_deactivate(self):
         """ Shut down the NI card.

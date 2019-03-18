@@ -90,12 +90,9 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         """ Starts up the NI Card at activation.
         """
         # the tasks used on that hardware device:
-        self._counter_daq_tasks = []
-        self._counter_analog_daq_task = None
         self._clock_daq_task = None
         self._odmr_clock_daq_task = None
         self._odmr_counter_daq_tasks = []
-        self._line_length = None
         self._odmr_length = None
         self._odmr_analog_daq_task = None
         self._odmr_pulser_daq_task = None
