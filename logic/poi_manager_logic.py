@@ -744,13 +744,13 @@ class PoiManagerLogic(GenericLogic):
     def reset_roi(self):
         self.stop_periodic_refocus()
         self._roi = RegionOfInterest()
-        self._active_poi = None
         self.set_scan_image(False)
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'pois': self.poi_positions,
                                  'history': self.roi_pos_history,
                                  'scan_image': self.roi_scan_image,
                                  'scan_image_extent': self.roi_scan_image_extent})
+        self.set_active_poi(None)
         return
 
     @QtCore.Slot(int)
@@ -905,6 +905,7 @@ class PoiManagerLogic(GenericLogic):
         return
 
     def update_poi_tag_in_savelogic(self):
+        # TODO: Implement this once there is a way to include global parameters in the savelogic.
         pass
 
     def save_roi(self):
@@ -1010,13 +1011,12 @@ class PoiManagerLogic(GenericLogic):
                                      scan_image=roi_scan_image,
                                      scan_image_extent=scan_extent,
                                      poi_list=(poi_names, poi_coords))
-        self._active_poi = None if len(poi_names) == 0 else poi_names[0]
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'pois': self.poi_positions,
                                  'history': self.roi_pos_history,
                                  'scan_image': self.roi_scan_image,
                                  'scan_image_extent': self.roi_scan_image_extent})
-        self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
+        self.set_active_poi(None if len(poi_names) == 0 else poi_names[0])
         return
 
     @_roi.constructor
