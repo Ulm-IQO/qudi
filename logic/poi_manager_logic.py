@@ -697,7 +697,7 @@ class PoiManagerLogic(GenericLogic):
         """
         old_roi_origin = self.roi_origin
         self._roi.delete_history_entry(history_index)
-        if old_roi_origin != self.roi_origin:
+        if np.any(old_roi_origin != self.roi_origin):
             self.sigRoiUpdated.emit({'pois': self.poi_positions,
                                      'history': self.roi_pos_history,
                                      'scan_image': self.roi_scan_image,
