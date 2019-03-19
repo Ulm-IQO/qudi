@@ -18,6 +18,7 @@ Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.10
 Changes/New features:
 
 * Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
+* splitting up the huge hardware file of the ni card as preparation to reworking the scanner interface 
 * Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
