@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import os
 import pyqtgraph as pg
-import time
+import re
 
 from core.module import Connector
 from core.util.units import ScaledFloat
@@ -31,7 +31,7 @@ from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
-from qtpy import QtCore
+from qtpy import QtCore, QtGui
 from qtpy import QtWidgets
 from qtpy import uic
 
@@ -170,6 +170,50 @@ class PoiMarker(pg.EllipseROI):
         return
 
 
+class NameValidator(QtGui.QValidator):
+    """
+    This is a validator for strings that should be compatible with filenames and likes.
+    So no special characters (except '_') and blanks are allowed.
+    """
+
+    name_re = re.compile(r'([\w]+)')
+
+    def validate(self, string, position):
+        """
+        This is the actual validator. It checks whether the current user input is a valid string
+        every time the user types a character. There are 3 states that are possible.
+        1) Invalid: The current input string is invalid. The user input will not accept the last
+                    typed character.
+        2) Acceptable: The user input in conform with the regular expression and will be accepted.
+        3) Intermediate: The user input is not a valid string yet but on the right track. Use this
+                         return value to allow the user to type fill-characters needed in order to
+                         complete an expression.
+        @param string: The current input string (from a QLineEdit for example)
+        @param position: The current position of the text cursor
+        @return: enum QValidator::State: the returned validator state,
+                 str: the input string, int: the cursor position
+        """
+        # Return intermediate status when empty string is passed
+        if not string:
+            return self.Intermediate, string, position
+
+        match = self.name_re.match(string)
+        if not match:
+            return self.Invalid, '', position
+
+        matched = match.group()
+        if matched == string:
+            return self.Acceptable, string, position
+
+        return self.Invalid, matched, position
+
+    def fixup(self, text):
+        match = self.name_re.search(text)
+        if match:
+            return match.group()
+        return ''
+
+
 class PoiManagerMainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
@@ -226,6 +270,10 @@ class PoiManagerGui(GUIBase):
         # All our gui elements are dockable, so there should be no "central" widget.
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
+
+        # Add validator to LineEdits
+        self._mw.roi_name_LineEdit.setValidator(NameValidator())
+        self._mw.poi_name_LineEdit.setValidator(NameValidator())
 
         # Initialize plots
         self.__init_roi_scan_image()
