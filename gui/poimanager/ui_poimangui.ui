@@ -91,7 +91,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>150</width>
+     <width>197</width>
      <height>304</height>
     </size>
    </property>
@@ -142,6 +142,9 @@
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="toolTip">
+          <string>Only alphanumeric characters and underscore are allowed [a-zA-Z0-9_]</string>
          </property>
         </widget>
        </item>
@@ -274,7 +277,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>150</width>
+     <width>216</width>
      <height>161</height>
     </size>
    </property>
@@ -452,7 +455,11 @@
         </widget>
        </item>
        <item>
-        <widget class="QLineEdit" name="roi_name_LineEdit"/>
+        <widget class="QLineEdit" name="roi_name_LineEdit">
+         <property name="toolTip">
+          <string>Only alphanumeric characters and underscore are allowed [a-zA-Z0-9_]</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>
