@@ -296,7 +296,7 @@ class PointOfInterest:
 
         if not new_name:
             new_name = datetime.now().strftime('poi_%Y%m%d%H%M%S%f')
-        self._name = new_name
+        self._name = str(new_name)
         return
 
     @property
@@ -311,7 +311,7 @@ class PointOfInterest:
         return
 
     def to_dict(self):
-        return {'name': self.name, 'position': self.position}
+        return {'name': self.name, 'position': tuple(self.position)}
 
     @classmethod
     def from_dict(cls, dict_repr):
