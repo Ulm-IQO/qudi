@@ -124,6 +124,8 @@ class RegionOfInterest:
 
     @property
     def scan_image_extent(self):
+        if self._scan_image_extent is None:
+            return None
         x, y, z = self.origin
         x_extent = (self._scan_image_extent[0][0] + x, self._scan_image_extent[0][1] + x)
         y_extent = (self._scan_image_extent[1][0] + y, self._scan_image_extent[1][1] + y)
@@ -966,28 +968,55 @@ class PoiManagerLogic(GenericLogic):
         return
 
     def load_roi(self, complete_path=None):
-        if complete_path is None or not complete_path.endswith('_poi_list.dat'):
+        if complete_path is None:
             return
         filepath, filename = os.path.split(complete_path)
-        filetag = filename.rsplit('_poi_list.dat', 1)[0]
+
+        # Try to detect legacy file format
+        is_legacy_format = False
+        if not complete_path.endswith('_poi_list.dat'):
+            self.log.info('Trying to read ROI from legacy file format...')
+            with open(complete_path, 'r') as file:
+                for line in file.readlines():
+                    if line.strip() == '#POI Name\tPOI Key\tX\tY\tZ':
+                        is_legacy_format = True
+                    elif not line.startswith('#'):
+                        break
+            if not is_legacy_format:
+                self.log.error('Unable to load ROI from file. File format not understood.')
+                return
+
+        if is_legacy_format:
+            filetag = filename.split('_', 1)[1].rsplit('.dat', 1)[0]
+        else:
+            filetag = filename.rsplit('_poi_list.dat', 1)[0]
 
         # Read POI data as well as roi metadata from textfile
         poi_names = np.loadtxt(complete_path, delimiter='\t', usecols=0, dtype=str)
-        poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float)
-        with open(complete_path, 'r') as file:
-            for line in file.readlines():
-                if not line.startswith('#'):
-                    break
-                if line.startswith('#roi_name:'):
-                    roi_name = line.split('#roi_name:', 1)[1].strip()
-                elif line.startswith('#roi_creation_time:'):
-                    roi_creation_time = line.split('#roi_creation_time:', 1)[1].strip()
-                elif line.startswith('#scan_image_x_extent:'):
-                    scan_x_extent = line.split('#scan_image_x_extent:', 1)[1].strip().split(',')
-                elif line.startswith('#scan_image_y_extent:'):
-                    scan_y_extent = line.split('#scan_image_y_extent:', 1)[1].strip().split(',')
-        scan_extent = ((float(scan_x_extent[0]), float(scan_x_extent[1])),
-                       (float(scan_y_extent[0]), float(scan_y_extent[1])))
+        if is_legacy_format:
+            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(2, 3, 4), dtype=float)
+        else:
+            poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float)
+
+        if is_legacy_format:
+            roi_name = filetag
+            roi_creation_time = None
+            scan_extent = None
+        else:
+            with open(complete_path, 'r') as file:
+                for line in file.readlines():
+                    if not line.startswith('#'):
+                        break
+                    if line.startswith('#roi_name:'):
+                        roi_name = line.split('#roi_name:', 1)[1].strip()
+                    elif line.startswith('#roi_creation_time:'):
+                        roi_creation_time = line.split('#roi_creation_time:', 1)[1].strip()
+                    elif line.startswith('#scan_image_x_extent:'):
+                        scan_x_extent = line.split('#scan_image_x_extent:', 1)[1].strip().split(',')
+                    elif line.startswith('#scan_image_y_extent:'):
+                        scan_y_extent = line.split('#scan_image_y_extent:', 1)[1].strip().split(',')
+            scan_extent = ((float(scan_x_extent[0]), float(scan_x_extent[1])),
+                           (float(scan_y_extent[0]), float(scan_y_extent[1])))
 
         # Read ROI position history from binary file
         history_filename = os.path.join(filepath, '{0}_history.npy'.format(filetag))

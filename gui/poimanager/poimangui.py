@@ -701,6 +701,11 @@ class PoiManagerGui(GUIBase):
         @param scan_image:
         @param image_extent:
         """
+        if scan_image is None or image_extent is None:
+            self._mw.roi_map_ViewWidget.removeItem(self.roi_image)
+            return
+        elif self.roi_image not in self._mw.roi_map_ViewWidget.items():
+            self._mw.roi_map_ViewWidget.addItem(self.roi_image)
         self.roi_image.setImage(image=scan_image)
         (x_min, x_max), (y_min, y_max) = image_extent
         self.roi_image.getViewBox().enableAutoRange()
