@@ -242,6 +242,7 @@ class PoiManagerGui(GUIBase):
     sigTrackPeriodChanged = QtCore.Signal(float)
     sigPoiNameChanged = QtCore.Signal(str)
     sigRoiNameChanged = QtCore.Signal(str)
+    sigAddPoiByClick = QtCore.Signal(np.ndarray)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -256,6 +257,9 @@ class PoiManagerGui(GUIBase):
         self._markers = dict()      # dict to hold handles for the POI markers
 
         self._mouse_moved_proxy = None  # Signal proxy to limit mousMoved event rate
+
+        self.__poi_selector_active = False  # Flag indicating if the poi selector is active
+        return
 
     def on_activate(self):
         """
@@ -306,6 +310,7 @@ class PoiManagerGui(GUIBase):
         """
         De-initialisation performed during deactivation of the module.
         """
+        self.toggle_poi_selector(False)
         self.__disconnect_control_signals_to_logic()
         self.__disconnect_update_signals_from_logic()
         self.__disconnect_internal_signals()
@@ -426,6 +431,7 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
         self.sigPoiNameChanged.connect(
             self.poimanagerlogic().rename_poi, QtCore.Qt.QueuedConnection)
+        self.sigAddPoiByClick.connect(self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_control_signals_to_logic(self):
@@ -445,6 +451,7 @@ class PoiManagerGui(GUIBase):
         self.sigTrackPeriodChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
+        self.sigAddPoiByClick.disconnect()
         for marker in self._markers.values():
             marker.sigPoiSelected.disconnect()
         return
@@ -455,9 +462,7 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
-
-        # self._mw.display_shift_vs_duration_RadioButton.toggled.connect(self._redraw_sample_shift)
-        # self._mw.display_shift_vs_clocktime_RadioButton.toggled.connect(self._redraw_sample_shift)
+        self._mw.poi_selector_Action.toggled.connect(self.toggle_poi_selector)
         self._mw.roi_cb_centiles_RadioButton.toggled.connect(self.update_cb)
         self._mw.roi_cb_manual_RadioButton.toggled.connect(self.update_cb)
         self._mw.roi_cb_min_SpinBox.valueChanged.connect(self.update_cb_absolute)
@@ -472,9 +477,7 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_name_LineEdit.returnPressed.disconnect()
         self._mw.save_roi_Action.triggered.disconnect()
         self._mw.load_roi_Action.triggered.disconnect()
-
-        # self._mw.display_shift_vs_duration_RadioButton.toggled.disconnect()
-        # self._mw.display_shift_vs_clocktime_RadioButton.toggled.disconnect()
+        self._mw.poi_selector_Action.toggled.disconnect()
         self._mw.roi_cb_centiles_RadioButton.toggled.disconnect()
         self._mw.roi_cb_manual_RadioButton.toggled.disconnect()
         self._mw.roi_cb_min_SpinBox.valueChanged.disconnect()
@@ -483,6 +486,13 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         return
 
+    def show(self):
+        """Make main window visible and put it above all other windows. """
+        QtWidgets.QMainWindow.show(self._mw)
+        self._mw.activateWindow()
+        self._mw.raise_()
+
+    @QtCore.Slot(object)
     def mouse_moved_callback(self, event):
         """ Handles any mouse movements inside the image.
 
@@ -494,7 +504,7 @@ class PoiManagerGui(GUIBase):
         """
 
         # converts the absolute mouse position to a position relative to the axis
-        mouse_pos = self._mw.roi_map_ViewWidget.getPlotItem().getViewBox().mapSceneToView(event[0])
+        mouse_pos = self.roi_image.getViewBox().mapSceneToView(event[0])
 
         # only calculate distance, if a POI is selected
         active_poi = self.poimanagerlogic().active_poi
@@ -511,11 +521,48 @@ class PoiManagerGui(GUIBase):
             self._mw.poi_distance_label.setText('? (?, ?)')
         pass
 
-    def show(self):
-        """Make main window visible and put it above all other windows. """
-        QtWidgets.QMainWindow.show(self._mw)
-        self._mw.activateWindow()
-        self._mw.raise_()
+    @QtCore.Slot(bool)
+    def toggle_poi_selector(self, is_active):
+        if is_active != self._mw.poi_selector_Action.isChecked():
+            self._mw.poi_selector_Action.blockSignals(True)
+            self._mw.poi_selector_Action.setChecked(is_active)
+            self._mw.poi_selector_Action.blockSignals(False)
+        if is_active != self.__poi_selector_active:
+            if is_active:
+                self.roi_image.scene().sigMouseClicked.connect(self.create_poi_from_click)
+            else:
+                self.roi_image.scene().sigMouseClicked.disconnect()
+        self.__poi_selector_active = is_active
+        return
+
+    @QtCore.Slot(object)
+    def create_poi_from_click(self, event):
+        # Only create new POI if the mouse click event has not been accepted by some other means
+        # In our case this is most likely the POI marker to select the active POI from.
+        if not event.accepted:
+            # Z position from ROI origin, X and Y positions from click event
+            new_pos = self.poimanagerlogic().roi_origin
+            cursor_pos = self.roi_image.getViewBox().mapSceneToView(event.scenePos())
+            new_pos[0] = cursor_pos.x()
+            new_pos[1] = cursor_pos.y()
+            # Check if position lies within axis boundaries.
+            x_axis_box = self._mw.roi_map_ViewWidget.getAxis('bottom').sceneBoundingRect()
+            y_axis_box = self._mw.roi_map_ViewWidget.getAxis('left').sceneBoundingRect()
+            min_x = self.roi_image.getViewBox().mapSceneToView(y_axis_box.bottomRight()).x()
+            min_y = self.roi_image.getViewBox().mapSceneToView(x_axis_box.topLeft()).y()
+            if new_pos[0] <= min_x or new_pos[1] <= min_y:
+                return
+            # Check if position is within scan image boundaries
+            image_extent = self.poimanagerlogic().roi_scan_image_extent
+            if image_extent is None:
+                return
+            if image_extent[0][0] > new_pos[0] or image_extent[0][1] < new_pos[0]:
+                return
+            if image_extent[1][0] > new_pos[1] or image_extent[1][1] < new_pos[1]:
+                return
+            event.accept()
+            self.sigAddPoiByClick.emit(new_pos)
+        return
 
     @QtCore.Slot(dict)
     def update_roi(self, roi_dict):

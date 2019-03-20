@@ -720,6 +720,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="new_poi_Action"/>
+   <addaction name="poi_selector_Action"/>
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
@@ -902,6 +903,21 @@
    </property>
    <property name="text">
     <string>ROI management</string>
+   </property>
+  </action>
+  <action name="poi_selector_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
+   </property>
+   <property name="text">
+    <string>POI Selector</string>
+   </property>
+   <property name="toolTip">
+    <string>Activate this tool to define new POIs by clicking into the ROI image.</string>
    </property>
   </action>
  </widget>
