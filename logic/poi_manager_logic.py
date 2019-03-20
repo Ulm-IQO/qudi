@@ -496,7 +496,8 @@ class PoiManagerLogic(GenericLogic):
         return
 
     @QtCore.Slot()
-    def add_poi(self, name=None, position=None, emit_change=True):
+    @QtCore.Slot(np.ndarray)
+    def add_poi(self, position=None, name=None, emit_change=True):
         """
         Creates a new POI and adds it to the current ROI.
         POI can be optionally initialized with position and name.
