@@ -64,9 +64,8 @@ class RegionOfInterest:
         self.pos_history = history
         self.set_scan_image(scan_image, scan_image_extent)
         if poi_list is not None:
-            poi_names, poi_positions = poi_list
-            for i, poi_name in enumerate(poi_names):
-                self.add_poi(position=poi_positions[i], name=poi_name)
+            for poi in poi_list:
+                self.add_poi(poi)
         return
 
     @property
@@ -182,8 +181,11 @@ class RegionOfInterest:
         return
 
     def add_poi(self, position, name=None):
-        position = position - self.origin
-        poi_inst = PointOfInterest(position=position, name=name)
+        if isinstance(position, PointOfInterest):
+            poi_inst = position
+        else:
+            position = position - self.origin
+            poi_inst = PointOfInterest(position=position, name=name)
         if poi_inst.name in self._pois:
             raise ValueError('POI with name "{0}" already present in ROI "{1}".\n'
                              'Could not add POI to ROI'.format(poi_inst.name, self.name))
@@ -591,7 +593,7 @@ class PoiManagerLogic(GenericLogic):
         elif name is None or name == '':
             self._active_poi = None
         elif name in self.poi_names:
-            self._active_poi = name
+            self._active_poi = str(name)
         else:
             self.log.error('No POI with name "{0}" found in POI list.'.format(name))
 
@@ -998,6 +1000,9 @@ class PoiManagerLogic(GenericLogic):
         else:
             poi_coords = np.loadtxt(complete_path, delimiter='\t', usecols=(1, 2, 3), dtype=float)
 
+        # Create list of POI instances
+        poi_list = [PointOfInterest(pos, poi_names[i]) for i, pos in enumerate(poi_coords)]
+
         if is_legacy_format:
             roi_name = filetag
             roi_creation_time = None
@@ -1039,7 +1044,7 @@ class PoiManagerLogic(GenericLogic):
                                      history=roi_history,
                                      scan_image=roi_scan_image,
                                      scan_image_extent=scan_extent,
-                                     poi_list=(poi_names, poi_coords))
+                                     poi_list=poi_list)
         self.sigRoiUpdated.emit({'name': self.roi_name,
                                  'pois': self.poi_positions,
                                  'history': self.roi_pos_history,
