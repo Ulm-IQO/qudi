@@ -5,6 +5,11 @@
 Changes/New features:
 
 * Cleanup/Improvement/Debug of POI manager (logic and GUI)
+* New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan 
+image
+* Added an optional POI nametag to the POI manager. If you give this property a string value, all 
+new POIs will be named after this tag together with a consecutive integer index.
+* 
 
 Config changes:
 

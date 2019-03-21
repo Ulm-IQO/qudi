@@ -241,6 +241,7 @@ class PoiManagerGui(GUIBase):
     # declare signals
     sigTrackPeriodChanged = QtCore.Signal(float)
     sigPoiNameChanged = QtCore.Signal(str)
+    sigPoiNameTagChanged = QtCore.Signal(str)
     sigRoiNameChanged = QtCore.Signal(str)
     sigAddPoiByClick = QtCore.Signal(np.ndarray)
 
@@ -278,6 +279,7 @@ class PoiManagerGui(GUIBase):
         # Add validator to LineEdits
         self._mw.roi_name_LineEdit.setValidator(NameValidator())
         self._mw.poi_name_LineEdit.setValidator(NameValidator())
+        self._mw.poi_nametag_LineEdit.setValidator(NameValidator())
 
         # Initialize plots
         self.__init_roi_scan_image()
@@ -291,6 +293,8 @@ class PoiManagerGui(GUIBase):
         self._update_pois(self.poimanagerlogic().poi_positions)
         # Initialize ROI name
         self._update_roi_name(self.poimanagerlogic().roi_name)
+        # Initialize POI nametag
+        self._update_poi_nametag(self.poimanagerlogic().poi_nametag)
 
         # Distance Measurement:
         # Introducing a SignalProxy will limit the rate of signals that get fired.
@@ -431,6 +435,8 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
         self.sigPoiNameChanged.connect(
             self.poimanagerlogic().rename_poi, QtCore.Qt.QueuedConnection)
+        self.sigPoiNameTagChanged.connect(
+            self.poimanagerlogic().set_poi_nametag, QtCore.Qt.QueuedConnection)
         self.sigAddPoiByClick.connect(self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
         return
 
@@ -451,6 +457,7 @@ class PoiManagerGui(GUIBase):
         self.sigTrackPeriodChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
+        self.sigPoiNameTagChanged.disconnect()
         self.sigAddPoiByClick.disconnect()
         for marker in self._markers.values():
             marker.sigPoiSelected.disconnect()
@@ -460,6 +467,7 @@ class PoiManagerGui(GUIBase):
         self._mw.track_period_SpinBox.editingFinished.connect(self.track_period_changed)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.roi_name_changed)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
+        self._mw.poi_nametag_LineEdit.editingFinished.connect(self.poi_nametag_changed)
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
         self._mw.poi_selector_Action.toggled.connect(self.toggle_poi_selector)
@@ -475,6 +483,7 @@ class PoiManagerGui(GUIBase):
         self._mw.track_period_SpinBox.editingFinished.disconnect()
         self._mw.roi_name_LineEdit.editingFinished.disconnect()
         self._mw.poi_name_LineEdit.returnPressed.disconnect()
+        self._mw.poi_nametag_LineEdit.editingFinished.disconnect()
         self._mw.save_roi_Action.triggered.disconnect()
         self._mw.load_roi_Action.triggered.disconnect()
         self._mw.poi_selector_Action.toggled.disconnect()
@@ -572,6 +581,8 @@ class PoiManagerGui(GUIBase):
 
         if 'name' in roi_dict:
             self._update_roi_name(name=roi_dict['name'])
+        if 'poi_nametag' in roi_dict:
+            self._update_poi_nametag(tag=roi_dict['poi_nametag'])
         if 'history' in roi_dict:
             self._update_roi_history(history=roi_dict['history'])
         if 'scan_image' in roi_dict and 'scan_image_extent' in roi_dict:
@@ -699,6 +710,11 @@ class PoiManagerGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def poi_nametag_changed(self):
+        self.sigPoiNameTagChanged.emit(self._mw.poi_nametag_LineEdit.text())
+        return
+
+    @QtCore.Slot()
     def save_roi(self):
         """ Save ROI to file."""
         roi_name = self._mw.roi_name_LineEdit.text()
@@ -713,7 +729,8 @@ class PoiManagerGui(GUIBase):
                                                           'Open ROI',
                                                           self.poimanagerlogic().data_directory,
                                                           'Data files (*.dat)')[0]
-        self.poimanagerlogic().load_roi(complete_path=this_file)
+        if this_file:
+            self.poimanagerlogic().load_roi(complete_path=this_file)
         return
 
     @QtCore.Slot()
@@ -765,6 +782,14 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_name_LineEdit.blockSignals(True)
         self._mw.roi_name_LineEdit.setText(name)
         self._mw.roi_name_LineEdit.blockSignals(False)
+        return
+
+    def _update_poi_nametag(self, tag):
+        if tag is None:
+            tag = ''
+        self._mw.poi_nametag_LineEdit.blockSignals(True)
+        self._mw.poi_nametag_LineEdit.setText(tag)
+        self._mw.poi_nametag_LineEdit.blockSignals(False)
         return
 
     def _update_roi_history(self, history=None):
