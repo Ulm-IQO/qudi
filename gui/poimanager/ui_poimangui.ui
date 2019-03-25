@@ -266,7 +266,7 @@
        <item row="0" column="0">
         <widget class="QLabel" name="label_6">
          <property name="text">
-          <string>POI nametag:</string>
+          <string>POI prefix:</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -876,13 +876,13 @@
   <action name="new_poi_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/new_poi_crosshair.png</normaloff>../../artwork/icons/qudiTheme/22x22/new_poi_crosshair.png</iconset>
    </property>
    <property name="text">
     <string>New POI</string>
    </property>
    <property name="toolTip">
-    <string>Add a new POI at the current crosshair position</string>
+    <string>Add a new POI at the current scanner position</string>
    </property>
   </action>
   <action name="poi_tools_view_Action">
@@ -928,10 +928,10 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/new_poi_mouse.png</normaloff>../../artwork/icons/qudiTheme/22x22/new_poi_mouse.png</iconset>
    </property>
    <property name="text">
-    <string>POI Selector</string>
+    <string>Add POIs</string>
    </property>
    <property name="toolTip">
     <string>Activate this tool to define new POIs by clicking into the ROI image.</string>

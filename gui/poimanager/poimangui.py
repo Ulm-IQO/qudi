@@ -178,6 +178,10 @@ class NameValidator(QtGui.QValidator):
 
     name_re = re.compile(r'([\w]+)')
 
+    def __init__(self, *args, empty_allowed=False, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._empty_allowed = bool(empty_allowed)
+
     def validate(self, string, position):
         """
         This is the actual validator. It checks whether the current user input is a valid string
@@ -195,7 +199,10 @@ class NameValidator(QtGui.QValidator):
         """
         # Return intermediate status when empty string is passed
         if not string:
-            return self.Intermediate, string, position
+            if self._empty_allowed:
+                return self.Acceptable, '', position
+            else:
+                return self.Intermediate, string, position
 
         match = self.name_re.match(string)
         if not match:
@@ -279,7 +286,7 @@ class PoiManagerGui(GUIBase):
         # Add validator to LineEdits
         self._mw.roi_name_LineEdit.setValidator(NameValidator())
         self._mw.poi_name_LineEdit.setValidator(NameValidator())
-        self._mw.poi_nametag_LineEdit.setValidator(NameValidator())
+        self._mw.poi_nametag_LineEdit.setValidator(NameValidator(empty_allowed=True))
 
         # Initialize plots
         self.__init_roi_scan_image()
