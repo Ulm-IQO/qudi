@@ -546,8 +546,10 @@ class PoiManagerGui(GUIBase):
         if is_active != self.__poi_selector_active:
             if is_active:
                 self.roi_image.scene().sigMouseClicked.connect(self.create_poi_from_click)
+                self.roi_image.setCursor(QtCore.Qt.CrossCursor)
             else:
                 self.roi_image.scene().sigMouseClicked.disconnect()
+                self.roi_image.setCursor(QtCore.Qt.ArrowCursor)
         self.__poi_selector_active = is_active
         return
 
