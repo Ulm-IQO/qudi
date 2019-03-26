@@ -4,7 +4,7 @@
 
 Changes/New features:
 
-* 
+* bug fix to how the flags are set for AWG70k
 
 Config changes:
 
