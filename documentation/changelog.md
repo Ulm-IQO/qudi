@@ -9,6 +9,7 @@ Changes/New features:
 image
 * Added an optional POI nametag to the POI manager. If you give this property a string value, all 
 new POIs will be named after this tag together with a consecutive integer index.
+* bug fix to how the flags are set for AWG70k
 * 
 
 Config changes:
