@@ -6,6 +6,13 @@ Changes/New features:
 
 * <img src="/artwork/logo/omniscan-logo.png" width="150"/>:
     * created omniscan branch for work on the scanning in qudi
+    * splitting up the huge hardware file of the ni card as preparation to reworking the scanner interface
+* Cleanup/Improvement/Debug of POI manager (logic and GUI)
+* New POI manager tool _POI selector_ which allows adding of new POIs by clicking inside the scan
+image
+* Added an optional POI nametag to the POI manager. If you give this property a string value, all
+new POIs will be named after this tag together with a consecutive integer index.
+*
 
 Config changes:
 
@@ -18,7 +25,6 @@ Available at https://github.com/Ulm-IQO/qudi/releases/tag/v0.10
 Changes/New features:
 
 * Added support for Opal Kelly XEM6310-LX45 devices to HardwareSwitchFpga hardware module.
-* splitting up the huge hardware file of the ni card as preparation to reworking the scanner interface 
 * Newport CONEX-AGP piezo stage motor module.
 * Sequence Generator checks the step constraint and adds and idle block if necessary.
 * Save_logic now expands environment variables in the configured data path (e.g. $HOME under Unix or $HOMEPATH under Windows)
