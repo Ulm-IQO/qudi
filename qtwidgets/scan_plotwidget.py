@@ -97,6 +97,7 @@ class ScanViewBox(ViewBox):
                 stop = self.mapToView(ev.pos())
                 rect = QtCore.QRectF(start, stop)
                 if self.zoom_by_selection:
+                    # AutoRange needs to be disabled by hand because of a pyqtgraph bug.
                     if self.autoRangeEnabled():
                         self.disableAutoRange()
                     self.setRange(rect=rect, padding=0)
