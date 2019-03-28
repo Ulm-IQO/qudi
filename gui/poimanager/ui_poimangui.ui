@@ -483,7 +483,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_10">
        <item>
-        <widget class="PlotWidget" name="roi_map_ViewWidget">
+        <widget class="ScanPlotWidget" name="roi_map_ViewWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -948,6 +948,11 @@
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScanPlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>qtwidgets.scan_plotwidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

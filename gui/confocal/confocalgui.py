@@ -662,10 +662,8 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_zoom.toggled.connect(self.zoom_clicked)
         self._mw.sigDoubleClick.connect(self.activate_zoom_double_click)
-        self._mw.xy_ViewWidget.sigMouseClick.connect(self.xy_scan_start_zoom_point)
-        self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
-        self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
-        self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
+        self._mw.xy_ViewWidget.sigMouseAreaSelected.connect(self.zoom_xy_scan)
+        self._mw.depth_ViewWidget.sigMouseAreaSelected.connect(self.zoom_depth_scan)
 
         ###################################################################
         #               Icons for the scan actions                        #
@@ -1927,125 +1925,60 @@ class ConfocalGui(GUIBase):
     #####################################################################
     #        Methods for the zoom functionality of confocal GUI         #
     #####################################################################
-
-# FIXME: These methods can be combined to one, because the procedure for the xy
-#       and the depth scan is the same. A nice way has to be figured our here.
-# FIXME: For the depth scan both possibilities have to be implemented, either
-#       for a xz of a yz scan. The image ranges have to be adjusted properly.
-
     def zoom_clicked(self, is_checked):
-        """ Activates the zoom mode in the xy and depth Windows.
+        """
+        Activates the zoom mode in the xy and depth scan images.
 
-        @param bool is_checked: pass the state of the zoom button if checked
-                                or not.
+        @param bool is_checked: pass the state of the zoom button (checked or not).
+        """
+        self.xy_image.getViewBox().activate_selection(is_checked)
+        self.xy_image.getViewBox().activate_zoom_by_selection(is_checked)
+        self.depth_image.getViewBox().activate_selection(is_checked)
+        self.depth_image.getViewBox().activate_zoom_by_selection(is_checked)
+        return
 
-        Depending on the state of the zoom button the DragMode in the
-        ViewWidgets are changed.  There are 3 possible modes and each of them
-        corresponds to a int value:
-            - 0: NoDrag
-            - 1: ScrollHandDrag
-            - 2: RubberBandDrag
-
-        Pyqtgraph implements every action for the NoDrag mode. That means the
-        other two modes are not used at the moment. Therefore we are using the
-        RubberBandDrag mode to simulate a zooming procedure. The selection
-        window in the RubberBandDrag is only used to show the user which region
-        will be selected. But the zooming idea is based on catched
-        mousePressEvent and mouseReleaseEvent, which will be used if the
-        RubberBandDrag mode is activated.
-
-        For more information see the qt doc:
-        http://doc.qt.io/qt-4.8/qgraphicsview.html#DragMode-enum
+    def zoom_xy_scan(self, rect):
         """
 
-        # You could also set the DragMode by its integer number, but in terms
-        # of readability it is better to use the direct attributes from the
-        # ViewWidgets and pass them to setDragMode.
-        if is_checked:
-            self.xy_image.getViewBox().setLeftButtonAction('rect')
-            self.depth_image.getViewBox().setLeftButtonAction('rect')
-        else:
-            self.xy_image.getViewBox().setLeftButtonAction('pan')
-            self.depth_image.getViewBox().setLeftButtonAction('pan')
-
-    def xy_scan_start_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was pressed.
-
-        @param QMouseEvent event: Mouse Event object which contains all the
-                                  information at the time the event was emitted
+        @param QtCore.QRectF rect: Rectangular area of the new zoomed image in physical coordinates.
         """
-        if self._mw._doubleclicked:
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        pos = self.xy_image.getViewBox().mapSceneToView(event.localPos())
-
-        # store the initial mouse position in a class variable
-        self._current_xy_zoom_start = [pos.x(), pos.y()]
-        event.accept()
-
-    def xy_scan_end_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was released.
-
-        @param QEvent event:
-        """
-        if self._mw._doubleclicked:
-            self._mw._doubleclicked = False
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        # get the ViewBox which is also responsible for the xy_image
-        viewbox = self.xy_image.getViewBox()
-
-        # Map the mouse position in the whole ViewWidget to the coordinate
-        # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.localPos())
-        endpos = [pos.x(), pos.y()]
-        initpos = self._current_xy_zoom_start
-
-        # get the right corners from the zoom window:
-        if initpos[0] > endpos[0]:
-            xMin = endpos[0]
-            xMax = initpos[0]
-        else:
-            xMin = initpos[0]
-            xMax = endpos[0]
-
-        if initpos[1] > endpos[1]:
-            yMin = endpos[1]
-            yMax = initpos[1]
-        else:
-            yMin = initpos[1]
-            yMax = endpos[1]
+        x_bounds = (rect.left(), rect.right())
+        y_bounds = (rect.bottom(), rect.top())
 
         # set the values to the InputWidgets and update them
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
+        self._mw.x_min_InputWidget.setValue(min(x_bounds))
+        self._mw.x_max_InputWidget.setValue(max(x_bounds))
+        self._mw.y_min_InputWidget.setValue(min(y_bounds))
+        self._mw.y_max_InputWidget.setValue(max(y_bounds))
         self.change_x_image_range()
-
-        self._mw.y_min_InputWidget.setValue(yMin)
-        self._mw.y_max_InputWidget.setValue(yMax)
         self.change_y_image_range()
 
-        # Finally change the visible area of the ViewBox:
-        event.accept()
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
-        # second time is really needed, otherwise zooming will not work for the first time
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
-        self.update_roi_xy()
         self._mw.action_zoom.setChecked(False)
+        return
+
+    def zoom_depth_scan(self, rect):
+        """
+
+        @param QtCore.QRectF rect: Rectangular area of the new zoomed image in physical coordinates.
+        """
+        xy_bounds = (rect.left(), rect.right())
+        z_bounds = (rect.bottom(), rect.top())
+
+        # set the values to the InputWidgets and update them
+        self._mw.z_min_InputWidget.setValue(min(z_bounds))
+        self._mw.z_max_InputWidget.setValue(max(z_bounds))
+        if self._scanning_logic.depth_img_is_xz:
+            self._mw.x_min_InputWidget.setValue(min(xy_bounds))
+            self._mw.x_max_InputWidget.setValue(max(xy_bounds))
+            self.change_x_image_range()
+        else:
+            self._mw.y_min_InputWidget.setValue(min(xy_bounds))
+            self._mw.y_max_InputWidget.setValue(max(xy_bounds))
+            self.change_y_image_range()
+        self.change_z_image_range()
+
+        self._mw.action_zoom.setChecked(False)
+        return
 
     def reset_xy_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
@@ -2087,89 +2020,8 @@ class ConfocalGui(GUIBase):
 
     def activate_zoom_double_click(self):
         """ Enable zoom tool when double clicking image """
-        if self._mw.action_zoom.isChecked():
-            self._mw.action_zoom.setChecked(False)
-        else:
-            self._mw.action_zoom.setChecked(True)
-
-    def depth_scan_start_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was pressed.
-
-        @param QMouseEvent event: Mouse Event object which contains all the
-                                  information at the time the event was emitted
-        """
-        if self._mw._doubleclicked:
-            event.ignore()
-            return
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        pos = self.depth_image.getViewBox().mapSceneToView(event.localPos())
-        self._current_depth_zoom_start = [pos.x(), pos.y()]
-
-        # store the initial mouse position in a class variable
-        event.accept()
-
-    def depth_scan_end_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was released.
-
-        @param QEvent event:
-        """
-        if self._mw._doubleclicked:
-            self._mw._doubleclicked = False
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        # get the ViewBox which is also responsible for the depth_image
-        viewbox = self.depth_image.getViewBox()
-
-        # Map the mouse position in the whole ViewWidget to the coordinate
-        # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.localPos())
-        endpos = [pos.x(), pos.y()]
-        initpos = self._current_depth_zoom_start
-
-        # get the right corners from the zoom window:
-        if initpos[0] > endpos[0]:
-            xMin = endpos[0]
-            xMax = initpos[0]
-        else:
-            xMin = initpos[0]
-            xMax = endpos[0]
-
-        if initpos[1] > endpos[1]:
-            zMin = endpos[1]
-            zMax = initpos[1]
-        else:
-            zMin = initpos[1]
-            zMax = endpos[1]
-
-        # set the values to the InputWidgets and update them
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
-        self.change_x_image_range()
-
-        self._mw.z_min_InputWidget.setValue(zMin)
-        self._mw.z_max_InputWidget.setValue(zMax)
-        self.change_z_image_range()
-
-        event.accept()
-        # Finally change the visible area of the ViewBox:
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
-        # second time is really needed, otherwisa zooming will not work for the first time
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
-        self.update_roi_depth()
-
-        self._mw.action_zoom.setChecked(False)
+        self._mw.action_zoom.setChecked(not self._mw.action_zoom.isChecked())
+        return
 
     def reset_depth_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
