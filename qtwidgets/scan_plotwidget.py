@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the modified PlotWidget for Qudi.
+This file contains modified pyqtgraph Widgets/Items for Qudi to display scan images.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -29,7 +29,11 @@ __all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox']
 
 class ScanImageItem(ImageItem):
     """
-
+    Extension of pg.ImageItem to display scanning microscopy images.
+    Adds the signal sigMouseClicked to tap into mouse click events and receive the real world data
+    coordinate of the click.
+    Adds blink correction functionality capable of filtering out single pixel wide artifacts along
+    a single image dimension.
     """
     sigMouseClicked = QtCore.Signal(QtCore.Qt.MouseButton, QtCore.QPointF)
 
@@ -40,6 +44,13 @@ class ScanImageItem(ImageItem):
         super().__init__(*args, **kwargs)
 
     def activate_blink_correction(self, set_active, axis=0):
+        """
+        De-/Activates the blink correction filter.
+        Can filter out single pixel wide artifacts along a single image dimension.
+
+        @param bool set_active: activate (True) or deactivate (False) the filter
+        @param int axis: Array dimension to apply the filter on (0 or 1)
+        """
         set_active = bool(set_active)
         axis = int(axis)
         if self.use_blink_correction != set_active:
@@ -57,7 +68,7 @@ class ScanImageItem(ImageItem):
 
     def setImage(self, image=None, autoLevels=None, **kwargs):
         """
-
+        pg.ImageItem method override to apply optional filter when setting image data.
         """
         if self.use_blink_correction:
             self.orig_image = image
@@ -82,22 +93,38 @@ class ScanPlotWidget(PlotWidget):
     sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)  # mapped rectangle mouse cursor selection
 
     def __init__(self, *args, **kwargs):
-        kwargs['viewBox'] = ScanViewBox()
+        kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
         self.getViewBox().sigMouseAreaSelected.connect(self.sigMouseAreaSelected)
 
     def activate_selection(self, set_active):
-        self.getViewBox().activate_selection(set_active)
-        return
+        """
+        De-/Activate the rectangular rubber band selection tool.
+        If active you can select a rectangular region within the ViewBox by dragging the mouse
+        with the left button. Each selection rectangle in real-world data coordinates will be
+        emitted by sigMouseAreaSelected.
+        By using activate_zoom_by_selection you can optionally de-/activate zooming in on the
+        selection.
+
+        @param bool set_active: Toggle selection on (True) or off (False)
+        """
+        return self.getViewBox().activate_selection(set_active)
 
     def activate_zoom_by_selection(self, set_active):
-        self.getViewBox().activate_zoom_by_selection(set_active)
-        return
+        """
+        De-/Activate automatic zooming into a selection.
+        See also: activate_selection
+
+        @param bool set_active: Toggle zoom upon selection on (True) or off (False)
+        """
+        return self.getViewBox().activate_zoom_by_selection(set_active)
 
 
 class ScanViewBox(ViewBox):
     """
+    Extension for pg.ViewBox to be used with ScanPlotWidget.
 
+    Implements optional rectangular rubber band area selection and optional corresponding zooming.
     """
 
     sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)
@@ -109,18 +136,32 @@ class ScanViewBox(ViewBox):
         return
 
     def activate_selection(self, set_active):
+        """
+        De-/Activate the rectangular rubber band selection tool.
+        If active you can select a rectangular region within the ViewBox by dragging the mouse
+        with the left button. Each selection rectangle in real-world data coordinates will be
+        emitted by sigMouseAreaSelected.
+        By using activate_zoom_by_selection you can optionally de-/activate zooming in on the
+        selection.
+
+        @param bool set_active: Toggle selection on (True) or off (False)
+        """
         self.rectangle_selection = bool(set_active)
         return
 
     def activate_zoom_by_selection(self, set_active):
+        """
+        De-/Activate automatic zooming into a selection.
+        See also: activate_selection
+
+        @param bool set_active: Toggle zoom upon selection on (True) or off (False)
+        """
         self.zoom_by_selection = bool(set_active)
         return
 
     def mouseDragEvent(self, ev, axis=None):
         """
-
-        @param ev:
-        @param axis:
+        Additional mouse drag event handling to implement rubber band selection and zooming.
         """
         if self.rectangle_selection and ev.button() == QtCore.Qt.LeftButton:
             ev.accept()
