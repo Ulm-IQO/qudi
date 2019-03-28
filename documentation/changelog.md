@@ -13,6 +13,9 @@ new POIs will be named after this tag together with a consecutive integer index.
 * Replaced the old `pg.PlotWidget` subclass `PlotWidgetModified` with new subclasses 
 `ScanPlotWidget`, `ScanViewBox` (`pg.ViewBox`) and `ScanImageItem` (`pg.ImageItem`) to handle coordinate transformations upon mouse 
 click/drag and zooming internally. This reduces code and improves readability in GUI modules.
+* Introduced blink correction filter to confocal and poimanager scan images (toggle in "view" menu). 
+Purely for displaying purposes; raw data is not affected by this filter.
+* Add `scan_blink_correction` filter to `core.utils.filters`
 * 
 
 Config changes:
