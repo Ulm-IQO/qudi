@@ -478,6 +478,7 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_nametag_LineEdit.editingFinished.connect(self.poi_nametag_changed)
         self._mw.save_roi_Action.triggered.connect(self.save_roi)
         self._mw.load_roi_Action.triggered.connect(self.load_roi)
+        self._mw.blink_correction_view_Action.triggered.connect(self.toggle_blink_correction)
         self._mw.poi_selector_Action.toggled.connect(self.toggle_poi_selector)
         self._mw.roi_cb_centiles_RadioButton.toggled.connect(self.update_cb)
         self._mw.roi_cb_manual_RadioButton.toggled.connect(self.update_cb)
@@ -494,6 +495,7 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_nametag_LineEdit.editingFinished.disconnect()
         self._mw.save_roi_Action.triggered.disconnect()
         self._mw.load_roi_Action.triggered.disconnect()
+        self._mw.blink_correction_view_Action.triggered.disconnect()
         self._mw.poi_selector_Action.toggled.disconnect()
         self._mw.roi_cb_centiles_RadioButton.toggled.disconnect()
         self._mw.roi_cb_manual_RadioButton.toggled.disconnect()
@@ -508,6 +510,11 @@ class PoiManagerGui(GUIBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
+
+    @QtCore.Slot(bool)
+    def toggle_blink_correction(self, is_active):
+        self.roi_image.activate_blink_correction(is_active)
+        return
 
     @QtCore.Slot(object)
     def mouse_moved_callback(self, event):

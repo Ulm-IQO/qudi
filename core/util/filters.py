@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from scipy.ndimage import minimum_filter1d, maximum_filter1d, shift
+from scipy.ndimage import minimum_filter1d, maximum_filter1d
 
 import logging
 logger = logging.getLogger(__name__)

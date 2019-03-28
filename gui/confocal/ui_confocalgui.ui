@@ -65,6 +65,7 @@
     <addaction name="actionOptimizer_view"/>
     <addaction name="actionScan_line_view"/>
     <addaction name="actionTilt_correction_view"/>
+    <addaction name="actionBlink_correction_view"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
     <addaction name="separator"/>
@@ -2298,6 +2299,17 @@
    </property>
    <property name="shortcut">
     <string>Shift+C</string>
+   </property>
+  </action>
+  <action name="actionBlink_correction_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Blink correction</string>
+   </property>
+   <property name="toolTip">
+    <string>Blink correction</string>
    </property>
   </action>
  </widget>

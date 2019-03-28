@@ -58,6 +58,7 @@
     <addaction name="poi_editor_view_Action"/>
     <addaction name="poi_tracker_view_Action"/>
     <addaction name="sample_shift_view_Action"/>
+    <addaction name="blink_correction_view_Action"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
    </widget>
@@ -935,6 +936,20 @@
    </property>
    <property name="toolTip">
     <string>Activate this tool to define new POIs by clicking into the ROI image.</string>
+   </property>
+  </action>
+  <action name="blink_correction_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Blink correction</string>
+   </property>
+   <property name="toolTip">
+    <string>Filter the scan image to remove blinking. Raw data unchanged.</string>
    </property>
   </action>
  </widget>
