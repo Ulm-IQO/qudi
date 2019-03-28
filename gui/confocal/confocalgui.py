@@ -26,6 +26,7 @@ import pyqtgraph as pg
 import time
 
 from core.module import Connector, ConfigOption, StatusVar
+from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -262,8 +263,8 @@ class ConfocalGui(GUIBase):
 
 
         # Load the images for xy and depth in the display:
-        self.xy_image = pg.ImageItem(image=raw_data_xy, axisOrder='row-major')
-        self.depth_image = pg.ImageItem(image=raw_data_depth, axisOrder='row-major')
+        self.xy_image = ScanImageItem(image=raw_data_xy, axisOrder='row-major')
+        self.depth_image = ScanImageItem(image=raw_data_depth, axisOrder='row-major')
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -286,7 +287,7 @@ class ConfocalGui(GUIBase):
         #               Configuration of the optimizer tab                #
         ###################################################################
         # Load the image for the optimizer tab
-        self.xy_refocus_image = pg.ImageItem(
+        self.xy_refocus_image = ScanImageItem(
             image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
             axisOrder='row-major')
         self.xy_refocus_image.setRect(

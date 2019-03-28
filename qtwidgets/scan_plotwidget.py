@@ -22,6 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from pyqtgraph import PlotWidget, ImageItem, ViewBox
 from qtpy import QtCore
+from core.util.filters import scan_blink_correction
+
+__all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox']
 
 
 class ScanImageItem(ImageItem):
@@ -29,6 +32,37 @@ class ScanImageItem(ImageItem):
 
     """
     sigMouseClicked = QtCore.Signal(QtCore.Qt.MouseButton, QtCore.QPointF)
+
+    def __init__(self, *args, **kwargs):
+        self.use_blink_correction = False
+        self.blink_correction_axis = 0
+        self.orig_image = None
+        super().__init__(*args, **kwargs)
+
+    def activate_blink_correction(self, set_active, axis=0):
+        set_active = bool(set_active)
+        axis = int(axis)
+        if self.use_blink_correction != set_active:
+            self.blink_correction_axis = axis
+            self.use_blink_correction = set_active
+            if set_active:
+                self.setImage(self.image, autoLevels=False)
+            else:
+                self.setImage(self.orig_image, autoLevels=False)
+        elif axis != self.blink_correction_axis:
+            self.blink_correction_axis = axis
+            if self.use_blink_correction:
+                self.setImage(self.orig_image, autoLevels=False)
+        return
+
+    def setImage(self, image=None, autoLevels=None, **kwargs):
+        """
+
+        """
+        if self.use_blink_correction:
+            self.orig_image = image
+            image = scan_blink_correction(image=image, axis=self.blink_correction_axis)
+        return super().setImage(image=image, autoLevels=autoLevels, **kwargs)
 
     def mouseClickEvent(self, ev):
         if not ev.double():
