@@ -2654,7 +2654,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         It reads a differentially connected voltage from the analogue inputs. For every period of
         time (given by the frequency) it reads the voltage at the analogue channel.
 
-        @param int samples: Defines how many values are to be measured
+        @param int samples: Defines how many values are to be measured, minimum 2
         @param string analogue_channel: the representative name of the analogue channel for
                                         which the task is created
 
@@ -2678,6 +2678,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if analogue_channel not in self._clock_channel_new:
             self.log.error("The clock channel for this task %s is not defined.", analogue_channel)
             return -1
+
+        elif samples < 2:
+            self.log.error(" The minimum amount of samples is 2. A value lower than 2 was choosen. ")
+            return -1
+
         my_clock_channel = self._clock_channel_new[analogue_channel]
 
         # Fixme: Is this sensible?
@@ -3646,7 +3651,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             return -1
 
         # assign the clock frequency, if given
-        if clock_frequency is None or clock_frequency == 0.0:
+        if clock_frequency is None or clock_frequency <= 0.0 or not isinstance(clock_frequency, (int, float)):
             self._clock_frequency_new[name] = float(self._dummy_frequency)
             self.log.info("no clock frequency given, using dummy frequency (%s Hz)instead.", self._dummy_frequency)
         else:

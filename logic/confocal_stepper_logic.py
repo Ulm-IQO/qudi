@@ -105,6 +105,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     signal_continue_stepping = QtCore.Signal()
     signal_step_lines_next = QtCore.Signal(bool)
     signal_start_3D_stepping = QtCore.Signal()
+    signal_step_lines_finesse_next = QtCore.Signal(bool)
 
     signal_image_updated = QtCore.Signal()
     signal_change_position = QtCore.Signal(str)
@@ -461,7 +462,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._current_output_voltage = 0.0
 
         self._clock_frequency_3D = self.axis_class[self._first_scan_axis].step_freq * self._ramp_length
-        self._initalize_data_arrays_3D_stepper()
+        self._initalize_data_arrays_3D_stepper()  #
 
         # Step values definitions
 
@@ -472,6 +473,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_continue_stepping.connect(self.continue_stepper, QtCore.Qt.QueuedConnection)
         self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.DirectConnection)
         self.signal_sort_count_data_3D.connect(self.sort_3D_count_data, QtCore.Qt.DirectConnection)
+        self.signal_step_lines_finesse_next.connect(self._step_line_finesse, QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -559,19 +561,20 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         @ return list: min and max possible voltage in feedback for given axis"""
         return self._position_feedback_device._ai_voltage_range[axis_name]
 
-    def get_position(self, axes, measurement_repetitions=100, clock_freq=1000):
-        """Measures the current position of the hardware axes of the stepper.
+    def get_position_voltage(self, axes, measurement_repetitions=1000, clock_freq=1000):
+        """Measures the current position voltage of the hardware axes of the stepper.
         It needs a free clock of the measurement device.
 
         @ List(str) axes: List of strings for which the hardware positions are to be measured
         @ int measurement_repetitions: The amount of measurements over which should be taken and averaged over for each
-                                        axis to increase measurement accuracy. Default 1000
+                                        axis to increase measurement accuracy. Default 1000, minimum 2
         @ float clock_freq: The frequency with which the multiple measurements to increase accuracy should be acquired.
                             This should be chosen depending on the eigenfrequencies of the system and the maximal time
                             allowed for acquisition. Default 1000.
 
         @ return List (float) : positions the hardware in mm ordered by the axes ordering or error value [-1]
         """
+
         # test if hardware has absolute position reading
         if not self.axis_class[axes[0]].closed_loop:
             self.log.info(
@@ -615,16 +618,43 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.warning("Reading the voltage for position feedback failed")
             return [-1]
 
+        # find gaussian median of voltage value
+        voltages = np.split(voltage_result[0], len(axes))
+        voltage_result = []
+        for counter in range(len(axes)):
+            voltage_result.append(norm.fit(voltages[counter])[0])
+
+        return voltage_result
+
+    def get_position(self, axes, measurement_repetitions=1000, clock_freq=1000):
+        """Measures the current position of the hardware axes of the stepper.
+        It needs a free clock of the measurement device.
+
+        @ List(str) axes: List of strings for which the hardware positions are to be measured
+        @ int measurement_repetitions: The amount of measurements over which should be taken and averaged over for each
+                                        axis to increase measurement accuracy. Default 1000, minimum 2
+        @ float clock_freq: The frequency with which the multiple measurements to increase accuracy should be acquired.
+                            This should be chosen depending on the eigenfrequencies of the system and the maximal time
+                            allowed for acquisition. Default 1000.
+
+        @ return List (float) : positions the hardware in mm ordered by the axes ordering or error value [-1]
+        """
+
+        voltage_result = self.get_position_voltage(axes, measurement_repetitions, clock_freq)
+
+        if voltage_result == [-1]:
+            return [-1]
+
         # convert voltage to position
         position_result = []
-        voltages = np.split(voltage_result[0], len(axes))
+
         for counter in range(len(axes)):
-            average_voltage = np.sum(voltages[counter]) / measurement_repetitions
-            position = self.convert_voltage_to_position(axes[counter], average_voltage)
+            position = self.convert_voltage_to_position(axes[counter], voltage_result[counter])
             position_result.append(position)
             self.axis_class[axes[counter]].absolute_position = position
 
         return position_result
+
 
     def convert_position_to_voltage(self, axis_name, position):
         """Converts a position to a voltage for a resistive readout of the axis
@@ -1123,7 +1153,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # setup analogue input if existing
-        if len(ai_channels) > 0:
+        if self._ai_scan_axes:  # checks if list is not empty
             if 0 > self._position_feedback_device.add_clock_task_to_channel("Scanner_clock", ai_channels):
                 self.stopRequested = True
             elif 0 > self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
@@ -1243,13 +1273,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         pass
 
     def move_to_position(self, position, accuracy=None):
-        """Moving the stepping device (approximately) to the desired new position from the GUI.
+        """Moving the stepping device (approximately) to the desired new position.
 
-        @param dict position: Dictionary {axis_name, new_position}. optimisation_accuracy
-                                is the lowest first accuracy the algorithm will use for the first optimisation steps.
+        @param dict position: Dictionary {axis_name, new_position}.
+        @param int accuracy: describes the maximum amount of steps made in one movement to reach desired new position.
+                                It is the lowest first accuracy the algorithm will use for the first optimisation steps.
                                 Choosing this big makes the algorithm faster, small makes it move less if new position
                                 is close to old one
-        @param int accuracy: describes the maximum amount of steps made in one movement to reach desired new position.
                                 Default None
 
         @return int: error code (0:OK, -1:error)
@@ -1275,7 +1305,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             # test if hardware has absolute position reading
             if not self.axis_class[key].closed_loop:
                 self.log.info(
-                    "This method can not be used on this hardware and these axis as the hardware has not "
+                    "This method can not be used on this hardware and these axis as the hardware has no "
                     "position feedback")
                 continue
             if not in_range(value, self.axis_class[key].step_range[0], self.axis_class[key].step_range[1]):
@@ -1338,14 +1368,27 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # Initialise position readout:
-        if self._position_feedback_device.set_up_analogue_voltage_reader(axis_name) < 0:
+        if self._position_feedback_device.set_up_analogue_voltage_reader_clock(axis_name, clock_frequency=100000) < 0:
+            return [-1]
+        # read voltages from resistive read out for position feedback
+        if self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
+                100, axis_name) < 0:
+            return [-1]
+        try:
+            self._position_feedback_device.module_state.lock()
+        except:
+            self.log.warning("Position feedback device is already in use for another task")
+            self._position_feedback_device.close_analogue_voltage_reader(axis_name)
             return -1
-        self._position_feedback_device.module_state.lock()
+
+
         # todo: kill counter
         # --- Do optimisation ---
-        # convert to hardware voltage for faster execution.
+
+        # convert to hardware voltage for faster execution and higher accuracy
         desired_voltage = self.convert_position_to_voltage(axis_name, position)
         counter = 0
+        direction_change = 0
 
         # Todo: distance feature
         # distance = 0 This will be necessary to take care of the fact, that the stepper moves not equal steps sizes in
@@ -1360,14 +1403,18 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return -1
             time.sleep(sleep)
             # compare new position to desired one
+            self._position_feedback_device.start_analogue_voltage_reader(axis_name, True)
             result = self._position_feedback_device.get_analogue_voltage_reader([axis_name])
             if result[1] == 0:
                 self._position_feedback_device.module_state.unlock()
                 self._position_feedback_device.close_analogue_voltage_reader(axis_name)
                 self.log.error("reading the axis voltage failed")
                 return -1
-            voltage_result = result[0][0]
 
+            voltage_result = norm.fit(result[0])[0]
+            if 0 > self._position_feedback_device.stop_analogue_voltage_reader(axis_name):
+                self.log.error("Stopping the analog input failed")
+                return -1
             # update position and leave algorithm if position was reached.
             if abs(voltage_result - desired_voltage) < precision:  # comparing floats
                 error = self.convert_voltage_to_position(axis_name, voltage_result)
@@ -1377,6 +1424,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 else:
                     error = -1
                 self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
                 self._position_feedback_device.module_state.unlock()
                 return error
             # check if direction movement has to changed
@@ -1392,7 +1440,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 sleep = steps / self.axis_class[axis_name].step_freq
             else:
                 counter += 1
+                direction_change = 0
             direction = not direction
+            direction_change +=1
 
         position_result = self.convert_voltage_to_position(axis_name, voltage_result)
         self.log.info("The best position that could be reached with the given freq. and voltage of the stepper has"
@@ -1540,7 +1590,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
                     self.log.error("Starting the counter failed")
                     return [-1], []
-                if len(self._ai_scan_axes) > 0:
+                if self._ai_scan_axes:
                     if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_scan_axes[0],
                                                                                         start_clock=False):
                         self.log.error("Starting the counter failed")
@@ -1581,7 +1631,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 elif error < 0:
                     self.log.error("Stopping the counter failed")
                     return retval
-                elif len(self._ai_scan_axes) > 0:
+                elif self._ai_scan_axes:
                     if analog_result[0][0] == [-1]:
                         self.log.error("The readout of the analog reader failed")
                         return retval
@@ -1609,7 +1659,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self.log.error("moving of attocube failed")
                     return [-1], []
 
-                if self.map_scan_position or self._ai_scanner:
+                if self._ai_scan_axes:  # this test if list is not empty
                     return result[0], analog_result[0]
                 else:
                     return result[0]
@@ -1630,7 +1680,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
             self.log.error("Starting the counter failed")
             return [-1], []
-        if len(self._ai_scan_axes) > 0:
+        if self._ai_scan_axes:
             if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_scan_axes[0],
                                                                                 start_clock=False):
                 self.log.error("Starting the counter failed")
@@ -1647,7 +1697,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # get data
         result_back = self._counting_device.get_finite_counts()
-        if len(self._ai_scan_axes) > 0:
+        if self._ai_scan_axes:
             analog_result_back = self._position_feedback_device.get_analogue_voltage_reader(self._ai_scan_axes)
         # self.log.info("read data down,line %s time: %s", self._step_counter,
         #              datetime.datetime.now().strftime('%M-%S-%f'))
@@ -1659,7 +1709,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         retval = [-1], []
         error = self._counting_device.stop_finite_counter()
-        if len(self._ai_scan_axes) > 0:
+        if self._ai_scan_axes:
             if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._ai_scan_axes[0]):
                 self.log.error("Stopping the analog input failed")
                 return retval
@@ -1670,7 +1720,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         elif error < 0:
             self.log.error("Stopping the counter failed (2)")
             return retval
-        elif self.map_scan_position or self._ai_scanner:
+        elif self._ai_scan_axes:
             if analog_result_back[0][0] == [-1]:
                 self.log.error("The readout of the analog reader failed")
                 return retval
@@ -1738,24 +1788,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         forward_split = []
         backward_split = []
-        if self.map_scan_position or self._ai_counter:
+        if self._ai_scan_axes:
             forward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
             data_counter += 1
             if not self._fast_scan:
                 backward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
                 data_counter += 1
 
-        for i in range(2 * self.map_scan_position + self._ai_scanner):
+        for i in range(len(self._ai_scan_axes)):
             forward_split.append(np.split(forward[i], length_scan))
             if not self._fast_scan:
                 backward_split.append(np.split(backward[i], length_scan))
 
-        if self.map_scan_position or self._ai_counter:
+        if self._ai_scan_axes:
             forward_mean_counts = np.mean(forward_split, 2)
-            if not self._fast_scan:
-                backward_mean_counts = np.mean(backward_split, 2)
             mean_counts.append(forward_mean_counts.flatten())
             if not self._fast_scan:
+                backward_mean_counts = np.mean(backward_split, 2)
                 mean_counts.append(backward_mean_counts.flatten())
 
         # self.log.info("3D finished sorting, start saving, line %s,  time: %s", line,
@@ -1778,14 +1827,13 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """Moves stepper to the first position measured for the last line measured.
 
         @param int steps: the steps that are counted/scanned during one part of the measurement
-        @param float frequency: the frequency with which the data is acquired/generated during
+        @param float clock_frequency: the frequency with which the data is acquired/generated during
                                 one part of the measurement
         """
         # check starting position of fast scan direction
 
         measurement_stopped = False
         if self.map_scan_position:
-            # Todo: how is the position data saved for the backward direction?
             if not self._fast_scan:
                 new_position = [self.convert_voltage_to_position(self._first_scan_axis,
                                                                  self._scan_pos_voltages_back[
@@ -1801,7 +1849,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
                 if self._3D_measurement:
                     self._analogue_output_device.close_analogue_output(self._ao_channel)
-                # self.change_analogue_output_voltage(0.0)
                 measurement_stopped = True
 
             new_position = self.get_position([self._first_scan_axis], 1000, 10000)
@@ -1811,7 +1858,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self._first_scan_axis].feedback_precision_position:
             if self._fast_scan:
                 steps_res = int(self._steps_scan_second_line / 10)
-                if steps_res == 0: steps_res = 3
+                if steps_res == 0:
+                    steps_res = 3
             else:
                 steps_res = int(
                     self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
@@ -1824,7 +1872,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
                     if self._3D_measurement:
                         self._analogue_output_device.close_analogue_output(self._ao_channel)
-                    # self.change_analogue_output_voltage(0.0)
                     measurement_stopped = True
 
                 # go to start position
