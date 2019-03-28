@@ -34,6 +34,7 @@ from gui.colordefs import QudiPalettePale as palette
 from qtpy import QtCore, QtGui
 from qtpy import QtWidgets
 from qtpy import uic
+from qtwidgets.scan_plotwidget import ScanImageItem
 
 
 class PoiMarker(pg.EllipseROI):
@@ -331,7 +332,7 @@ class PoiManagerGui(GUIBase):
         # Get the color scheme
         my_colors = ColorScaleInferno()
         # Setting up display of ROI xy scan image
-        self.roi_image = pg.ImageItem(axisOrder='row-major', lut=my_colors.lut)
+        self.roi_image = ScanImageItem(axisOrder='row-major', lut=my_colors.lut)
         self._mw.roi_map_ViewWidget.addItem(self.roi_image)
         self._mw.roi_map_ViewWidget.setLabel('bottom', 'X position', units='m')
         self._mw.roi_map_ViewWidget.setLabel('left', 'Y position', units='m')
@@ -545,41 +546,25 @@ class PoiManagerGui(GUIBase):
             self._mw.poi_selector_Action.blockSignals(False)
         if is_active != self.__poi_selector_active:
             if is_active:
-                self.roi_image.scene().sigMouseClicked.connect(self.create_poi_from_click)
+                self.roi_image.sigMouseClicked.connect(self.create_poi_from_click)
                 self.roi_image.setCursor(QtCore.Qt.CrossCursor)
             else:
-                self.roi_image.scene().sigMouseClicked.disconnect()
+                self.roi_image.sigMouseClicked.disconnect()
                 self.roi_image.setCursor(QtCore.Qt.ArrowCursor)
         self.__poi_selector_active = is_active
         return
 
-    @QtCore.Slot(object)
-    def create_poi_from_click(self, event):
+    @QtCore.Slot(QtCore.Qt.MouseButton, QtCore.QPointF)
+    def create_poi_from_click(self, button, pos):
         # Only create new POI if the mouse click event has not been accepted by some other means
         # In our case this is most likely the POI marker to select the active POI from.
-        if not event.accepted:
-            # Z position from ROI origin, X and Y positions from click event
-            new_pos = self.poimanagerlogic().roi_origin
-            cursor_pos = self.roi_image.getViewBox().mapSceneToView(event.scenePos())
-            new_pos[0] = cursor_pos.x()
-            new_pos[1] = cursor_pos.y()
-            # Check if position lies within axis boundaries.
-            x_axis_box = self._mw.roi_map_ViewWidget.getAxis('bottom').sceneBoundingRect()
-            y_axis_box = self._mw.roi_map_ViewWidget.getAxis('left').sceneBoundingRect()
-            min_x = self.roi_image.getViewBox().mapSceneToView(y_axis_box.bottomRight()).x()
-            min_y = self.roi_image.getViewBox().mapSceneToView(x_axis_box.topLeft()).y()
-            if new_pos[0] <= min_x or new_pos[1] <= min_y:
-                return
-            # Check if position is within scan image boundaries
-            image_extent = self.poimanagerlogic().roi_scan_image_extent
-            if image_extent is None:
-                return
-            if image_extent[0][0] > new_pos[0] or image_extent[0][1] < new_pos[0]:
-                return
-            if image_extent[1][0] > new_pos[1] or image_extent[1][1] < new_pos[1]:
-                return
-            event.accept()
-            self.sigAddPoiByClick.emit(new_pos)
+        if button != QtCore.Qt.LeftButton:
+            return
+        # Z position from ROI origin, X and Y positions from click event
+        new_pos = self.poimanagerlogic().roi_origin
+        new_pos[0] = pos.x()
+        new_pos[1] = pos.y()
+        self.sigAddPoiByClick.emit(new_pos)
         return
 
     @QtCore.Slot(dict)
