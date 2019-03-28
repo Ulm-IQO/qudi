@@ -479,8 +479,7 @@ class AWG70K(Base, PulserInterface):
                                    '"{1}".'.format(seq_step.go_to, num_steps))
                     return -1
             # Set flag states
-            if len(seq_step.flag_trigger) + len(seq_step.flag_high) > 0:
-                self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
+            self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
