@@ -666,6 +666,9 @@ class ConfocalGui(GUIBase):
         self._mw.xy_ViewWidget.sigMouseAreaSelected.connect(self.zoom_xy_scan)
         self._mw.depth_ViewWidget.sigMouseAreaSelected.connect(self.zoom_depth_scan)
 
+        # Blink correction
+        self._mw.actionBlink_correction_view.triggered.connect(self.blink_correction_clicked)
+
         ###################################################################
         #               Icons for the scan actions                        #
         ###################################################################
@@ -1922,6 +1925,11 @@ class ConfocalGui(GUIBase):
 
         # Resize the window to small dimensions
         self._mw.resize(1000, 360)
+
+    def blink_correction_clicked(self, is_active):
+        self.xy_image.activate_blink_correction(is_active)
+        self.depth_image.activate_blink_correction(is_active)
+        return
 
     #####################################################################
     #        Methods for the zoom functionality of confocal GUI         #
