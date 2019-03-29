@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import copy
 
+from core.util.helpers import natural_sort
 from qtpy import QtCore, QtGui, QtWidgets
 from gui.pulsed.pulsed_item_delegates import ScienDSpinBoxItemDelegate, ComboBoxItemDelegate
 from gui.pulsed.pulsed_item_delegates import MultipleCheckboxItemDelegate, CheckBoxItemDelegate
@@ -183,10 +184,10 @@ class BlockEditorTableModel(QtCore.QAbstractTableModel):
         self.beginResetModel()
 
         self.activation_config = activation_config
-        self.digital_channels = sorted((chnl for chnl in activation_config if chnl.startswith('d')),
-                                       key=lambda chnl: int(chnl.split('ch')[-1]))
-        self.analog_channels = sorted((chnl for chnl in activation_config if chnl.startswith('a')),
-                                      key=lambda chnl: int(chnl.split('ch')[-1]))
+        self.digital_channels = natural_sort(
+            (chnl for chnl in activation_config if chnl.startswith('d')))
+        self.analog_channels = natural_sort(
+            (chnl for chnl in activation_config if chnl.startswith('a')))
 
         analog_shape = {chnl: SamplingFunctions.Idle() for chnl in self.analog_channels}
         digital_state = {chnl: False for chnl in self.digital_channels}

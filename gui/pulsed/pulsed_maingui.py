@@ -27,6 +27,7 @@ import datetime
 
 from core.module import Connector, StatusVar
 from core.util import units
+from core.util.helpers import natural_sort
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
@@ -950,7 +951,7 @@ class PulsedMeasurementGui(GUIBase):
         for cfg in self.pulsedmasterlogic().pulse_generator_constraints.activation_config.values():
             for ach in (chnl for chnl in cfg if chnl.startswith('a')):
                 analog_channels.add(ach)
-        analog_channels = sorted(analog_channels, key=lambda chnl: int(chnl.split('ch')[1]))
+        analog_channels = natural_sort(analog_channels)
 
         for i, chnl in enumerate(analog_channels, 1):
             self._analog_chnl_setting_widgets[chnl] = (
@@ -990,7 +991,7 @@ class PulsedMeasurementGui(GUIBase):
         for cfg in self.pulsedmasterlogic().pulse_generator_constraints.activation_config.values():
             for dch in (chnl for chnl in cfg if chnl.startswith('d')):
                 digital_channels.add(dch)
-        digital_channels = sorted(digital_channels, key=lambda chnl: int(chnl.split('ch')[1]))
+        digital_channels = natural_sort(digital_channels)
 
         for i, chnl in enumerate(digital_channels, 1):
             self._digital_chnl_setting_widgets[chnl] = (
@@ -1154,10 +1155,8 @@ class PulsedMeasurementGui(GUIBase):
                 widget.setObjectName('global_param_' + param)
                 widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Minimum)
                 widget.addItem('')
-                widget.addItems(sorted(self.pulsedmasterlogic().digital_channels,
-                                       key=lambda chnl: int(chnl.split('ch')[-1])))
-                widget.addItems(sorted(self.pulsedmasterlogic().analog_channels,
-                                       key=lambda chnl: int(chnl.split('ch')[-1])))
+                widget.addItems(natural_sort(self.pulsedmasterlogic().digital_channels))
+                widget.addItems(natural_sort(self.pulsedmasterlogic().analog_channels))
                 index = widget.findText(value)
                 if index >= 0:
                     widget.setCurrentIndex(index)
@@ -1370,12 +1369,10 @@ class PulsedMeasurementGui(GUIBase):
             self._pgs.gen_sample_freq_DSpinBox.setValue(settings_dict['sample_rate'])
         if 'activation_config' in settings_dict:
             config_name = settings_dict['activation_config'][0]
-            digital_channels = sorted(
-                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('d')),
-                key=lambda channel: int(channel.split('ch')[-1]))
-            analog_channels = sorted(
-                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')),
-                key=lambda channel: int(channel.split('ch')[-1]))
+            digital_channels = natural_sort(
+                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('d')))
+            analog_channels = natural_sort(
+                (ch for ch in settings_dict['activation_config'][1] if ch.startswith('a')))
             index = self._pgs.gen_activation_config_ComboBox.findText(config_name)
             self._pgs.gen_activation_config_ComboBox.setCurrentIndex(index)
             digital_str = str(digital_channels).strip('[]').replace('\'', '').replace(',', ' |')
