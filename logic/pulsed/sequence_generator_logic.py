@@ -30,6 +30,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
+from core.util.helpers import natural_sort
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
@@ -357,8 +358,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 # search the generation_parameters for channel specifiers and adjust them if they
                 # are no longer valid
                 changed_settings = dict()
-                ana_chnls = sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1]))
-                digi_chnls = sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1]))
+                ana_chnls = natural_sort(self.analog_channels)
+                digi_chnls = natural_sort(self.digital_channels)
                 for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
                     channel = self.generation_parameters[name]
