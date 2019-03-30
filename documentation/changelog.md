@@ -10,6 +10,8 @@ image
 * Added an optional POI nametag to the POI manager. If you give this property a string value, all 
 new POIs will be named after this tag together with a consecutive integer index.
 * bug fix to how the flags are set for AWG70k
+* Added two interfuses for interfaces process value and process control to modify the values based
+on an interpolated function
 * 
 
 Config changes:
