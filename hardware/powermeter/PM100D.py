@@ -23,6 +23,7 @@ import visa
 from core.module import Base, ConfigOption
 
 from interface.simple_data_interface import SimpleDataInterface
+from interface.process_interface import ProcessInterface
 
 try:
     from ThorlabsPM100 import ThorlabsPM100
@@ -30,7 +31,7 @@ except ImportError:
     raise ImportError('ThorlabsPM100 module not found. Please install it by typing command "pip install ThorlabsPM100"')
 
 
-class PM100D(Base, SimpleDataInterface):
+class PM100D(Base, SimpleDataInterface, ProcessInterface):
     """ Hardware module for Thorlabs PM100D powermeter.
 
     Example config :
@@ -76,4 +77,12 @@ class PM100D(Base, SimpleDataInterface):
     def get_power(self):
         """ Return the power read from the ThorlabsPM100 package """
         return self._power_meter.read
+
+    def getProcessValue(self):
+        """ Return a measured value """
+        return self.get_power()
+
+    def getProcessUnit(self):
+        """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
+        return ('W', 'watt')
 
