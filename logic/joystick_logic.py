@@ -24,6 +24,7 @@ from core.module import Connector, ConfigOption
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
+import time
 
 
 class JoystickLogic(GenericLogic):
@@ -53,38 +54,6 @@ class JoystickLogic(GenericLogic):
     sig_new_frame = QtCore.Signal()
     sig_controller_changed = QtCore.Signal()
 
-    signal_left_up_pushed = QtCore.Signal()
-    signal_left_down_pushed = QtCore.Signal()
-    signal_left_left_pushed = QtCore.Signal()
-    signal_left_right_pushed = QtCore.Signal()
-    signal_left_shoulder_pushed = QtCore.Signal()
-    signal_right_shoulder_pushed = QtCore.Signal()
-
-    signal_right_up_pushed = QtCore.Signal()
-    signal_right_down_pushed = QtCore.Signal()
-    signal_right_left_pushed = QtCore.Signal()
-    signal_right_right_pushed = QtCore.Signal()
-
-    signal_left_joystick_pushed = QtCore.Signal()
-    signal_right_joystick_pushed = QtCore.Signal()
-
-    signal_middle_left_pushed = QtCore.Signal()
-    signal_middle_right_pushed = QtCore.Signal()
-
-    signal_left_vertical = QtCore.Signal()
-    signal_left_horizontal = QtCore.Signal()
-    signal_right_vertical = QtCore.Signal()
-    signal_right_horizontal = QtCore.Signal()
-    signal_left_trigger = QtCore.Signal()
-    signal_right_trigger = QtCore.Signal()
-
-    # Action may be applied only if the axis is at a maximum
-    signal_left_vertical_max = QtCore.Signal()
-    signal_left_horizontal_max = QtCore.Signal()
-    signal_right_vertical_max = QtCore.Signal()
-    signal_right_horizontal_max = QtCore.Signal()
-    signal_left_trigger_max = QtCore.Signal()
-    signal_right_trigger_max = QtCore.Signal()
 
     timer = None
     enabled = False
@@ -182,3 +151,17 @@ class JoystickLogic(GenericLogic):
         """ Return the frequency of controller request
         """
         return self._fps
+
+    def calibrate(self, calibration_time=1, calibration_fps=100):
+        """ Function to calibrate the axis zeros
+
+        Execute this function while not touching the controller to calibrate it.
+
+        """
+        elapsed_time = 0
+        n = 0
+        while elapsed_time < calibration_time:
+            state = self._hardware.get_state()
+            time.sleep(1/calibration_fps)
+            elapsed_time += 1/calibration_fps
+        #TODO
