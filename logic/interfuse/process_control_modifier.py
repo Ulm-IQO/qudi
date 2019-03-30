@@ -29,7 +29,7 @@ from interface.process_control_interface import ProcessControlInterface
 
 
 class ProcessControlModifier(GenericLogic, ProcessControlInterface):
-    """ This interfuse can be used to modifiy a process control on the fly. It needs a 2D array to interpolate
+    """ This interfuse can be used to modify a process control on the fly. It needs a 2D array to interpolate
     General form : [[x_0, y_0], [x_1, y_1], ... , [x_n, y_n]]
     Example : [[0,0], [1,10]]
     With this example, the value 0.5 sent from the logic would be transformed to 5 sent to the hardware.
@@ -91,36 +91,36 @@ class ProcessControlModifier(GenericLogic, ProcessControlInterface):
         self._interpolated_function_reversed = interp1d(self._calibration[:, 1], self._calibration[:, 0])
 
         if self._last_control_value is not None:
-            self.set_control_value(self._last_control_value)
+            self.setControlValue(self._last_control_value)
         
-    def get_control_value(self):
+    def getControlValue(self):
         """ Return the original control value
         """
         if self._interpolated_function_reversed is not None:
-            return self._interpolated_function_reversed(self._hardware.get_control_value())
+            return self._interpolated_function_reversed(self._hardware.getControlValue())
         else:
             self.log.error('No calibration was found, please set the control value modifier data first.')
 
-    def set_control_value(self, value):
+    def setControlValue(self, value):
         """ Set the control value modified
         """
         if self._interpolated_function is not None:
-            self._hardware.set_control_value(self._interpolated_function(value))
+            self._hardware.setControlValue(self._interpolated_function(value))
         else:
             self.log.error('No calibration was found, please set the control value modifier data first.')
 
-    def get_control_unit(self):
+    def getControlUnit(self):
         """ Return the process unit
         """
         if self._new_unit is not None:
             return self._new_unit
         else:
-            return self._hardware.get_control_unit()
+            return self._hardware.getControlUnit()
 
-    def get_control_limits(self):
+    def getControlLimits(self):
         """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
-        mini, maxi = self._hardware.get_control_limits()
+        mini, maxi = self._hardware.getControlLimits()
         mini = float(self._interpolated_function_reversed(mini))
         maxi = float(self._interpolated_function_reversed(maxi))
         return mini, maxi
