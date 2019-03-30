@@ -29,7 +29,7 @@ from interface.process_interface import ProcessInterface
 
 
 class ProcessValueModifier(GenericLogic, ProcessInterface):
-    """ This interfuse can be used to modifiy a process value on the fly. It needs a 2D array to interpolate
+    """ This interfuse can be used to modify a process value on the fly. It needs a 2D array to interpolate
     General form : [[x_0, y_0], [x_1, y_1], ... , [x_n, y_n]]
     Example : [[0,0], [1,10]]
     With this example, the value 0.5 read from the hardware would be transformed to 5 sent to the logic.
@@ -84,19 +84,20 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
             self._calibration = calibration
         self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
 
-    def get_process_value(self):
+    def getProcessValue(self):
         """ Return the process value modified
         """
         if self._interpolated_function is not None:
-            return float(self._interpolated_function(self._hardware.get_process_value()))
+            return float(self._interpolated_function(self._hardware.getProcessValue()))
         else:
             self.log.error('No calibration was found, please set the process value modifier data first.')
+            return 0
 
-    def get_process_unit(self):
+    def getProcessUnit(self):
         """ Return the process unit
         """
         if self._new_unit is not None:
             return self._new_unit
         else:
-            return self._hardware.get_process_unit()
+            return self._hardware.getProcessUnit()
 
