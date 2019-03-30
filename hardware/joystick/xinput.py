@@ -47,6 +47,10 @@ class JoystickXInput(Base, JoystickInterface):
 
     _joystick_id = ConfigOption('joystick_id', 0)  # xinput support up to 4 controller
     _dll_path = ConfigOption('dll_path', None)
+    _axis_maximum = ConfigOption('axis_maximum', 32767)
+    _trigger_maximum = ConfigOption('trigger_maximum', 255)
+
+
     _dll = None
 
     def on_activate(self):
@@ -93,8 +97,6 @@ class JoystickXInput(Base, JoystickInterface):
         state = XINPUT_STATE()
         self._dll.XInputGetState(ctypes.c_long(self._joystick_id), ctypes.byref(state))
 
-        scales_maximum = {'joystick': 32767.0, 'trigger': 255.0}
-
         bitmasks = {
             'XINPUT_GAMEPAD_DPAD_UP': 0x00000001,
             'XINPUT_GAMEPAD_DPAD_DOWN': 0x00000002,
@@ -116,12 +118,12 @@ class JoystickXInput(Base, JoystickInterface):
         value_buttons = state.wButtons
 
         return {'axis': {
-            'left_vertical': state.sThumbLY / scales_maximum['joystick'],
-            'left_horizontal': state.sThumbLX / scales_maximum['joystick'],
-            'right_vertical': state.sThumbRY / scales_maximum['joystick'],
-            'right_horizontal': state.sThumbRX / scales_maximum['joystick'],
-            'left_trigger': state.bLeftTrigger / scales_maximum['trigger'],
-            'right_trigger': state.bRightTrigger / scales_maximum['trigger']
+            'left_vertical': state.sThumbLY / self._axis_maximum,
+            'left_horizontal': state.sThumbLX / self._axis_maximum,
+            'right_vertical': state.sThumbRY / self._axis_maximum,
+            'right_horizontal': state.sThumbRX / self._axis_maximum,
+            'left_trigger': state.bLeftTrigger / self._trigger_maximum,
+            'right_trigger': state.bRightTrigger / self._trigger_maximum
             },
          'buttons': {
             'left_up': bool(value_buttons & bitmasks['XINPUT_GAMEPAD_DPAD_UP']),
