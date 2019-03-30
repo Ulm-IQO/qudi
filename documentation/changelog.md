@@ -34,6 +34,9 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Fixed refocus task
+* Added tracking task
+* Added pulsed acquisition task
 
 
 Config changes:
