@@ -1874,7 +1874,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
-            if sequence.rotating_frame or seq_step.ensemble not in generated_ensembles:
+            if sequence.rotating_frame \
+                    or name_tag not in self._saved_pulse_block_ensembles.keys() \
+                    or 'number_of_samples' not in self.get_ensemble(name_tag).sampling_information:
+
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
                     ensemble=seq_step.ensemble,
                     offset_bin=offset_bin,
@@ -1895,6 +1898,11 @@ class SequenceGeneratorLogic(GenericLogic):
 
                 # Add created waveform names to the set
                 written_waveforms.update(waveform_list)
+            else:
+                self.log.debug('Waveform already sampled: {0}'.format(name_tag))
+                ensemble_info = self.get_ensemble(name_tag).sampling_information.copy()
+                generated_ensembles[name_tag] = ensemble_info
+                written_waveforms.update(ensemble_info['waveforms'])
 
             # Append written sequence step to sequence_param_dict_list
             sequence_param_dict_list.append(
