@@ -1890,9 +1890,7 @@ class SequenceGeneratorLogic(GenericLogic):
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
-            if sequence.rotating_frame \
-                    or name_tag not in self._saved_pulse_block_ensembles.keys() \
-                    or 'number_of_samples' not in self.get_ensemble(name_tag).sampling_information:
+            if sequence.rotating_frame or not self.get_ensemble(name_tag).sampling_information:
 
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
                     ensemble=seq_step.ensemble,
