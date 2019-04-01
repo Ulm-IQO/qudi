@@ -1133,3 +1133,56 @@ class PoiManagerLogic(GenericLogic):
             return
         self.log.error('Tranformation of all POI positions not implemented yet.')
         return
+
+    def auto_catch_poi(self):
+        scan_image = self.scannerlogic().xy_image[:, :, 3]
+        x_range = self.scannerlogic().image_x_range
+        y_range = self.scannerlogic().image_y_range
+        x_axis = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / len(scan_image))
+        y_axis = np.arange(y_range[0], y_range[1], (y_range[1] - y_range[0]) / len(scan_image[0]))
+
+        for i in range(0, len(scan_image)):
+            for j in range(0, len(scan_image[i])):
+                scan_image[i][j] = int(scan_image[i][j])  # data here somehow needs to be reset, otherwise shit happens.
+
+        def threshold_s(scan):
+            scan = np.asarray(scan, dtype=int, order="C")
+            return 7 * scan.mean()  # crucial on the s/n ratio of the scan_image
+
+        def spot_filter(scan):
+            pixel_num = len(scan)
+            pixel_size = (x_range[1] - x_range[0]) / pixel_num
+            spot_size = 1500e-9
+            arr_size = int(spot_size / pixel_size)
+            return arr_size
+
+        def local_max(scan):
+            scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
+            filter_size = spot_filter(scan)
+            mid_f = int(filter_size / 2)
+            xc = []
+            yc = []
+            for i in range(0, len(scan) - filter_size):
+                for j in range(0, len(scan[i]) - filter_size):
+                    local_arr = scan[i:i + filter_size, j:j + filter_size]
+                    local_arr = np.asarray(local_arr)
+                    if scan[i + mid_f][j + mid_f] == local_arr.max():
+                        xc.append(i + mid_f)
+                        yc.append(j + mid_f)
+            return xc, yc
+
+        threshold = threshold_s(scan_image)
+        xc1, yc1 = local_max(scan_image)
+        xc2 = []
+        yc2 = []
+        for i in range(0, len(xc1)):
+            if scan_image[xc1[i], yc1[i]] > threshold:
+                xc2.append(xc1[i])
+                yc2.append(yc1[i])
+
+        pois = np.zeros((len(xc2), 3))
+        z = self.scanner_position[2]
+        for i in range(0, len(pois)):
+            pois[i] = [x_axis[yc2[i]], y_axis[xc2[i]], z]
+            self.add_poi(pois[i])
+            time.sleep(0.2)  # halt here, in case of poi name conflicts.
