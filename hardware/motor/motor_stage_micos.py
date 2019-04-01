@@ -34,38 +34,48 @@ class MotorStageMicos(Base, MotorInterface):
 
     motorstage_micos:
         module.Class: 'motor.motor_stage_micos.MotorStageMicos'
-        com_port_xy: 'COM4'
-        baud_rate_xy: 57600
+        com_port_xy: 'COM1'
+        baud_rate_xy: 115200
         timeout_xy: 2
-        com_port_zphi: 'COM2'
-        baud_rate_zphi: 57600
+        com_port_zphi: 'COM3'
+        baud_rate_zphi: 115200
         timeout_zphi: 2
+
+        x_velocity: 1e-3 # in m/s
+        y_velocity: 1e-3 # in m/s
+        z_velocity: 1e-3 # in m/s
+        phi_velocity: 5 # in °/s
 
         x_position_range: [0, 0.1] # in m
         y_position_range: [0, 0.1] # in m
         z_position_range: [0, 0.1] # in m
         phi_position_range: [0, 360] # in °
 
-        x_velocity_range: [15.26e-9, 5e-2] # in m/s
-        y_velocity_range: [15.26e-9, 5e-2] # in m/s
-        z_velocity_range: [15.26e-9, 5e-2] # in m/s
+        x_velocity_range: [0.1e-6, 5e-2] # in m/s
+        y_velocity_range: [0.1e-6, 5e-2] # in m/s
+        z_velocity_range: [0.1e-6, 5e-2] # in m/s
         phi_velocity_range: [0.1, 10] # in °/s
     """
     _modclass = 'MotorStageMicos'
     _modtype = 'hardware'
 
     _max_position_range = {'x': (0, 0.1), 'y': (0, 0.1), 'z': (0, 0.1), 'phi': (0, 360)}
-    _max_velocity_range = {'x': (15.26e-9, 5e-2),
-                           'y': (15.26e-9, 5e-2),
-                           'z': (15.26e-9, 5e-2),
-                           'phi': (1, 10)}
+    _max_velocity_range = {'x': (0.1e-6, 5e-2),
+                           'y': (0.1e-6, 5e-2),
+                           'z': (0.1e-6, 5e-2),
+                           'phi': (0.1, 10)}
 
     _com_port_xy = ConfigOption('com_port_xy', missing='error')
-    _baud_rate_xy = ConfigOption('baud_rate_xy', default=57600)
+    _baud_rate_xy = ConfigOption('baud_rate_xy', default=115200)
     _timeout_xy = ConfigOption('timeout_xy', default=2)
     _com_port_zphi = ConfigOption('com_port_zphi', missing='error')
-    _baud_rate_zphi = ConfigOption('baud_rate_zphi', default=57600)
+    _baud_rate_zphi = ConfigOption('baud_rate_zphi', default=115200)
     _timeout_zphi = ConfigOption('timeout_zphi', default=2)
+
+    _x_velocity = ConfigOption('x_velocity', default=None, missing='warn')
+    _y_velocity = ConfigOption('y_velocity', default=None, missing='warn')
+    _z_velocity = ConfigOption('z_velocity', default=None, missing='warn')
+    _phi_velocity = ConfigOption('phi_velocity', default=None, missing='warn')
 
     _x_position_range = ConfigOption('x_position_range', default=None, missing='warn')
     _y_position_range = ConfigOption('y_position_range', default=None, missing='warn')
@@ -109,6 +119,7 @@ class MotorStageMicos(Base, MotorInterface):
         """ Initialisation performed during activation of the module.
         @return: error code
         """
+        # Open serial connections and configure termination characters
         self._xy_controller = self._rm.open_resource(resource_name=self._com_port_xy,
                                                      baud_rate=self._baud_rate_xy,
                                                      timeout=self._timeout_xy * 1000)
@@ -120,21 +131,33 @@ class MotorStageMicos(Base, MotorInterface):
         self._zphi_controller.read_termination = '\r\n'
         self._zphi_controller.write_termination = ' '
 
+        # Set position unit to mm, velocity to mm/s and acceleration to mm/s^2
+        for ax in range(3):
+            self.write_xy('2 {0:d} setunit'.format(ax))
+            self.write_zphi('2 {0:d} setunit'.format(ax))
 
-
-        # self.set_position_limit({'x': self._x_position_range,
-        #                          'y': self._y_position_range,
-        #                          'z': self._z_position_range,
-        #                          'phi': self._phi_position_range})
-        self.set_velocity({'x': self._x_velocity_range,
-                           'y': self._y_velocity_range,
+        # Set ranges for position and velocity as specified in config
+        self.set_position_limit({'x': self._x_position_range,
+                                 'y': self._y_position_range,
+                                 'z': self._z_position_range,
+                                 'phi': self._phi_position_range})
+        self.set_velocity_limit({'x': self._x_velocity_range,
+                                 'y': self._y_velocity_range,
                                  'z': self._z_velocity_range,
                                  'phi': self._phi_velocity_range})
 
-        # Set position unit to mm, velocity to mm/s and acceleration to mm/s^2
-        # for ax in range(3):
-        #     self.write_xy('2 {0:d} setunit'.format(ax))
-        #     self.write_zphi('2 {0:d} setunit'.format(ax))
+        # Set velocity if given in config
+        vel_dict = dict()
+        if self._x_velocity is not None:
+            vel_dict['x'] = self._x_velocity
+        if self._y_velocity is not None:
+            vel_dict['y'] = self._y_velocity
+        if self._z_velocity is not None:
+            vel_dict['z'] = self._z_velocity
+        if self._phi_velocity is not None:
+            vel_dict['phi'] = self._phi_velocity
+        if vel_dict:
+            self.set_velocity(vel_dict)
         return
 
     def on_deactivate(self):
@@ -295,6 +318,7 @@ class MotorStageMicos(Base, MotorInterface):
             # Set limits
             self.write_zphi(
                 '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_z, min_phi, max_z, max_phi))
+        self._report_errors()
         return self.get_position_limit()
 
     def get_position_limit(self, axis=None):
@@ -330,6 +354,7 @@ class MotorStageMicos(Base, MotorInterface):
                 min_abs, max_abs = self._max_position_range['phi']
                 return_dict['phi'] = (max(min_pos, min_abs), min(max_pos, max_abs))
         self.axis_ranges.update(return_dict)
+        self._report_errors()
         return return_dict
 
     def set_velocity_limit(self, axis_dict):
@@ -405,6 +430,7 @@ class MotorStageMicos(Base, MotorInterface):
                 param_dict['z'] = float(pos_str_tuple[0]) / 1000
             if 'phi' in param_list:
                 param_dict['phi'] = float(pos_str_tuple[1])
+        self._report_errors()
         return param_dict
 
     def get_error(self, axis):
@@ -539,6 +565,7 @@ class MotorStageMicos(Base, MotorInterface):
             param_dict['z'] = int(self.query_zphi('st'))
         if 'phi' in param_list:
             param_dict['phi'] = param_dict['z'] if 'z' in param_dict else int(self.query_zphi('st'))
+        self._report_errors()
         return param_dict
 
     def calibrate(self, param_list=None):
@@ -585,7 +612,7 @@ class MotorStageMicos(Base, MotorInterface):
         if param_list is None:
             param_list = ('x', 'y', 'z', 'phi')
 
-        # TODO: Get velocity for each axis seperately
+        # TODO: Get velocity for each axis separately
         param_dict = dict()
         if 'x' in param_list:
             param_dict['x'] = float(self.query_xy('gv').split()[0]) / 1000
@@ -601,7 +628,7 @@ class MotorStageMicos(Base, MotorInterface):
                 param_dict['phi'] = float(self.query_zphi('gv').split()[0])
             else:
                 param_dict['phi'] = param_dict['z']
-        self.velocity_ranges.update(param_dict)
+        self._report_errors()
         return param_dict
 
     def set_velocity(self, param_dict):
@@ -613,7 +640,7 @@ class MotorStageMicos(Base, MotorInterface):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        for axis, vel in param_dict:
+        for axis, vel in param_dict.items():
             if not self._vel_in_range(axis=axis, vel=vel):
                 self.log.error('Velocity to set {0:.6e} outside of allowed range for axis "{1}".'
                                ''.format(vel, axis))
@@ -629,6 +656,7 @@ class MotorStageMicos(Base, MotorInterface):
             self.write_zphi('{0:.6f} sv'.format(vel))
             if self._report_errors('z'):
                 return self.get_velocity()
+        self._report_errors()
         return self.get_velocity()
 
     def write_xy(self, command):
@@ -637,9 +665,7 @@ class MotorStageMicos(Base, MotorInterface):
 
         @param str command: command string to send
         """
-        result = self.__write(controller=self._xy_controller, command=command)
-        self._report_errors(axis='x')
-        return result
+        return self.__write(controller=self._xy_controller, command=command)
 
     def write_zphi(self, command):
         """
@@ -647,9 +673,7 @@ class MotorStageMicos(Base, MotorInterface):
 
         @param str command: command string to send
         """
-        result = self.__write(controller=self._zphi_controller, command=command)
-        self._report_errors(axis='z')
-        return result
+        return self.__write(controller=self._zphi_controller, command=command)
 
     def query_xy(self, command, answer_lines=1):
         """
@@ -658,9 +682,7 @@ class MotorStageMicos(Base, MotorInterface):
         @param str command: command string to send
         @param int answer_lines: Number of lines to read for this answer
         """
-        answer = self.__query(self._xy_controller, command=command, answer_lines=answer_lines)
-        self._report_errors(axis='x')
-        return answer
+        return self.__query(self._xy_controller, command=command, answer_lines=answer_lines)
 
     def query_zphi(self, command, answer_lines=1):
         """
@@ -669,9 +691,7 @@ class MotorStageMicos(Base, MotorInterface):
         @param str command: command string to send
         @param int answer_lines: Number of lines to read for this answer
         """
-        answer = self.__query(self._zphi_controller, command=command, answer_lines=answer_lines)
-        self._report_errors(axis='z')
-        return answer
+        return self.__query(self._zphi_controller, command=command, answer_lines=answer_lines)
 
     def __write(self, controller, command):
         if not isinstance(command, str):
@@ -720,10 +740,10 @@ class MotorStageMicos(Base, MotorInterface):
         @param float vel:
         @return bool:
         """
-        if axis not in self.axis_ranges:
+        if axis not in self.velocity_ranges:
             self.log.error('Unknown axis: "{0}"'.format(axis))
             return False
-        if self.axis_ranges[axis][0] <= vel <= self.axis_ranges[axis][1]:
+        if self.velocity_ranges[axis][0] <= vel <= self.velocity_ranges[axis][1]:
             return True
         return False
 
