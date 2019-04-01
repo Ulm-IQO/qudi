@@ -1152,7 +1152,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1166,6 +1166,14 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+
+        if isinstance(ensemble, str):
+            ensemble = self.get_ensemble(ensemble)
+        elif not isinstance(ensemble, PulseBlockEnsemble):
+            self.log.error('Ensemble to analyze must either be of type PulseBlockEnsemble or the name of the ensemble.'
+                           'Returning empty dict')
+            return {}
+
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
@@ -1290,7 +1298,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param sequence: A PulseSequence object (see logic.pulse_objects.py)
+        @param sequence: A PulseSequence object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1304,6 +1312,14 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+
+        if isinstance(sequence, str):
+            sequence = self.get_sequence(sequence)
+        elif not isinstance(sequence, PulseSequence):
+            self.log.error('Sequence to analyze must either be of type PulseSequence or the name of the sequence.'
+                           'Returning empty dict')
+            return {}
+
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
