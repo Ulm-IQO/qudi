@@ -412,6 +412,8 @@ class PoiManagerGui(GUIBase):
     def __connect_control_signals_to_logic(self):
         self._mw.new_poi_Action.triggered.connect(
             self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
+        self._mw.auto_pois_Action.triggered.connect(
+            self.poimanagerlogic().auto_catch_poi, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_Action.triggered.connect(
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)
         self._mw.new_roi_Action.triggered.connect(

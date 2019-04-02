@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>691</width>
-    <height>864</height>
+    <width>1068</width>
+    <height>891</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -30,8 +30,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>691</width>
-     <height>21</height>
+     <width>1068</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -91,8 +91,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>197</width>
-     <height>330</height>
+     <width>233</width>
+     <height>389</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -294,8 +294,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>216</width>
-     <height>161</height>
+     <width>253</width>
+     <height>188</height>
     </size>
    </property>
    <property name="floating">
@@ -695,7 +695,7 @@
    <property name="minimumSize">
     <size>
      <width>250</width>
-     <height>119</height>
+     <height>137</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -738,6 +738,7 @@
    </attribute>
    <addaction name="new_poi_Action"/>
    <addaction name="poi_selector_Action"/>
+   <addaction name="auto_pois_Action"/>
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
@@ -937,6 +938,21 @@
     <string>Activate this tool to define new POIs by clicking into the ROI image.</string>
    </property>
   </action>
+  <action name="auto_pois_Action">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically catch some bright spots as POIs&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -1027,8 +1043,8 @@
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>297</x>
-     <y>599</y>
+     <x>634</x>
+     <y>863</y>
     </hint>
    </hints>
   </connection>
@@ -1039,8 +1055,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>297</x>
-     <y>599</y>
+     <x>634</x>
+     <y>863</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
@@ -1059,8 +1075,8 @@
      <y>-1</y>
     </hint>
     <hint type="destinationlabel">
-     <x>547</x>
-     <y>599</y>
+     <x>1067</x>
+     <y>863</y>
     </hint>
    </hints>
   </connection>
@@ -1071,8 +1087,8 @@
    <slot>setChecked(bool)</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>547</x>
-     <y>599</y>
+     <x>1067</x>
+     <y>863</y>
     </hint>
     <hint type="destinationlabel">
      <x>-1</x>
