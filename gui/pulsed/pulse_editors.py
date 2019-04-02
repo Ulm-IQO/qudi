@@ -494,7 +494,7 @@ class BlockEditor(QtWidgets.QTableView):
         # If any digital channels are present, set item delegate (custom multi-CheckBox widget)
         # for digital channels column.
         if len(self.model().digital_channels) > 0:
-            chnl_labels = sorted(chnl.split('d_ch')[1] for chnl in self.model().digital_channels)
+            chnl_labels = natural_sort(chnl.split('d_ch')[1] for chnl in self.model().digital_channels)
             self.setItemDelegateForColumn(
                 3, MultipleCheckboxItemDelegate(self, chnl_labels, self.model().digitalStateRole))
             offset_index = 4  # to indicate which column comes next.
@@ -507,7 +507,7 @@ class BlockEditor(QtWidgets.QTableView):
         for num, chnl in enumerate(self.model().analog_channels):
             self.setItemDelegateForColumn(
                 offset_index + 2 * num, ComboBoxItemDelegate(
-                    self, sorted(SamplingFunctions.parameters), self.model().analogShapeRole))
+                    self, natural_sort(SamplingFunctions.parameters), self.model().analogShapeRole))
             self.setItemDelegateForColumn(
                 offset_index + 2 * num + 1,
                 AnalogParametersItemDelegate(
@@ -675,7 +675,7 @@ class EnsembleEditorTableModel(QtCore.QAbstractTableModel):
 
         # Set default block
         if len(self.available_pulse_blocks) > 0:
-            self.__default_block = sorted(self.available_pulse_blocks)[0]
+            self.__default_block = natural_sort(self.available_pulse_blocks)[0]
         else:
             self.__default_block = ''
 
@@ -867,7 +867,7 @@ class EnsembleEditor(QtWidgets.QTableView):
         @return: int, error code (>=0: OK, <0: ERR)
         """
         if isinstance(blocks, (list, dict, set)):
-            blocks = sorted(blocks)
+            blocks = natural_sort(blocks)
         else:
             return -1
 
@@ -1026,7 +1026,7 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
 
         # Set default ensemble name
         if len(self.available_block_ensembles) > 0:
-            self.__default_ensemble = sorted(self.available_block_ensembles)[0]
+            self.__default_ensemble = natural_sort(self.available_block_ensembles)[0]
         else:
             self.__default_ensemble = ''
 
@@ -1292,7 +1292,7 @@ class SequenceEditor(QtWidgets.QTableView):
         err_code = self.model().set_available_block_ensembles(ensembles)
         if err_code >= 0:
             delegate = ComboBoxItemDelegate(
-                self, sorted(self.model().available_block_ensembles), self.model().ensembleNameRole)
+                self, natural_sort(self.model().available_block_ensembles), self.model().ensembleNameRole)
             self.setItemDelegateForColumn(0, delegate)
         return err_code
 

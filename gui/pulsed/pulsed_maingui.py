@@ -1063,7 +1063,7 @@ class PulsedMeasurementGui(GUIBase):
         editor.
         """
         # create all GUI elements and check all boxes listed in the methods to show
-        for method_name in sorted(self.pulsedmasterlogic().generate_methods):
+        for method_name in natural_sort(self.pulsedmasterlogic().generate_methods):
             # create checkboxes for the config dialogue
             name_checkbox = 'checkbox_' + method_name
             setattr(self._pm_cfg, name_checkbox, QtWidgets.QCheckBox(self._pm_cfg.scrollArea))
@@ -1234,7 +1234,7 @@ class PulsedMeasurementGui(GUIBase):
         self._pm.method_param_widgets = dict()
 
         method_params = self.pulsedmasterlogic().generate_method_params
-        for method_name in sorted(self.pulsedmasterlogic().generate_methods):
+        for method_name in natural_sort(self.pulsedmasterlogic().generate_methods):
             # Create the widgets for the predefined methods dialogue
             # Create GroupBox for the method to reside in
             groupBox = QtWidgets.QGroupBox(self._pm)
@@ -1771,7 +1771,7 @@ class PulsedMeasurementGui(GUIBase):
         @param block_dict:
         @return:
         """
-        block_names = sorted(block_dict)
+        block_names = natural_sort(block_dict)
         # Check if a block has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
@@ -1800,7 +1800,7 @@ class PulsedMeasurementGui(GUIBase):
         @param ensemble_dict:
         @return:
         """
-        ensemble_names = sorted(ensemble_dict)
+        ensemble_names = natural_sort(ensemble_dict)
         # Check if an ensemble has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
@@ -2085,7 +2085,7 @@ class PulsedMeasurementGui(GUIBase):
         @param sequence_dict:
         @return:
         """
-        sequence_names = sorted(sequence_dict)
+        sequence_names = natural_sort(sequence_dict)
         # Check if a sequence has been added. In that case set the current index to the new one.
         # In all other cases try to maintain the current item and if it was removed, set the first.
         text_to_set = None
