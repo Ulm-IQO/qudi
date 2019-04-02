@@ -108,7 +108,6 @@ class MagnetLogic(GenericLogic):
     odmrlogic = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
     scannerlogic = Connector(interface='ScannerLogic')
-    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 
     # Declare status variables
     _align_2d_axis_names = StatusVar(name='align_2d_axis_names', default=tuple())

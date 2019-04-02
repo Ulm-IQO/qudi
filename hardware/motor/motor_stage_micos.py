@@ -248,8 +248,8 @@ class MotorStageMicos(Base, MotorInterface):
         if 'x' in axis_dict or 'y' in axis_dict:
             if not ('x' in axis_dict and 'y' in axis_dict):
                 curr_limits = self.get_position_limit(('x', 'y'))
-            x_lim = axis_dict['x'] * 1000 if 'x' in axis_dict else curr_limits['x'] * 1000
-            y_lim = axis_dict['y'] * 1000 if 'y' in axis_dict else curr_limits['y'] * 1000
+            x_lim = axis_dict['x'] if 'x' in axis_dict else curr_limits['x']
+            y_lim = axis_dict['y'] if 'y' in axis_dict else curr_limits['y']
             if x_lim is None:
                 x_lim = self._max_position_range['x']
             if y_lim is None:
@@ -280,12 +280,15 @@ class MotorStageMicos(Base, MotorInterface):
 
             # Set limits
             self.write_xy(
-                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_x, min_y, max_x, max_y))
+                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_x * 1000,
+                                                               min_y * 1000,
+                                                               max_x * 1000,
+                                                               max_y * 1000))
 
         if 'z' in axis_dict or 'phi' in axis_dict:
             if not ('z' in axis_dict and 'phi' in axis_dict):
                 curr_limits = self.get_position_limit(('z', 'phi'))
-            z_lim = axis_dict['z'] * 1000 if 'z' in axis_dict else curr_limits['z'] * 1000
+            z_lim = axis_dict['z'] if 'z' in axis_dict else curr_limits['z']
             phi_lim = axis_dict['phi'] if 'phi' in axis_dict else curr_limits['phi']
             if z_lim is None:
                 z_lim = self._max_position_range['z']
@@ -317,7 +320,10 @@ class MotorStageMicos(Base, MotorInterface):
 
             # Set limits
             self.write_zphi(
-                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_z, min_phi, max_z, max_phi))
+                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_z * 1000,
+                                                               min_phi,
+                                                               max_z * 1000,
+                                                               max_phi))
         self._report_errors()
         return self.get_position_limit()
 

@@ -92,7 +92,7 @@ class MagnetGui(GUIBase):
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
 
         # update the values also of the absolute movement display:
-        for axis, pos in self.magnetlogic().magnet_position:
+        for axis, pos in self.magnetlogic().magnet_position.items():
             self.move_abs_widgets[axis]['spinbox'].setValue(pos)
             self.current_pos_widgets[axis]['spinbox'].setValue(pos)
 
@@ -182,8 +182,8 @@ class MagnetGui(GUIBase):
         """ Deactivate the module properly.
         """
         self._mw.save_Action.triggered.disconnect()
-        self._mw.alignment_2d_manual_RadioButton.clicked.disconnect()
-        self._mw.alignment_2d_centiles_RadioButton.clicked.disconnect()
+        # self._mw.alignment_2d_manual_RadioButton.clicked.disconnect()
+        # self._mw.alignment_2d_centiles_RadioButton.clicked.disconnect()
         self._mw.run_stop_2d_alignment_Action.triggered.disconnect()
         # self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_alignment)
 
@@ -309,8 +309,8 @@ class MagnetGui(GUIBase):
             # Create the ScienDSpinBox
             spinbox = ScienDSpinBox(parent=self._mw.move_rel_DockWidgetContents)
             spinbox.setSuffix(axis_dict['unit'])
-            spinbox.setMaximum(axis_dict['pos_min'])
-            spinbox.setMinimum(axis_dict['pos_max'])
+            spinbox.setMinimum(axis_dict['pos_min'])
+            spinbox.setMaximum(axis_dict['pos_max'])
             self._mw.move_rel_GridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             # Create the minus button
@@ -347,8 +347,8 @@ class MagnetGui(GUIBase):
             # Create the ScienDSpinBox
             spinbox = ScienDSpinBox(parent=self._mw.move_abs_DockWidgetContents)
             spinbox.setSuffix(axis_dict['unit'])
-            spinbox.setMaximum(axis_dict['pos_min'])
-            spinbox.setMinimum(axis_dict['pos_max'])
+            spinbox.setMinimum(axis_dict['pos_min'])
+            spinbox.setMaximum(axis_dict['pos_max'])
             self._mw.move_abs_GridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             # Create the minus button
