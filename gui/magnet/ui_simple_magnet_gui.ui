@@ -671,39 +671,6 @@
     <layout class="QGridLayout" name="gridLayout_5">
      <item row="0" column="1">
       <layout class="QGridLayout" name="move_rel_GridLayout">
-       <item row="0" column="3">
-        <widget class="QPushButton" name="move_rel_axis0_p_PushButton">
-         <property name="maximumSize">
-          <size>
-           <width>40</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>+</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="ScienDSpinBox" name="move_rel_axis0_DoubleSpinBox">
-         <property name="suffix">
-          <string>m</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QPushButton" name="move_rel_axis0_m_PushButton">
-         <property name="maximumSize">
-          <size>
-           <width>40</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>-</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="move_rel_axis0_Label">
          <property name="text">
@@ -727,30 +694,6 @@
     <layout class="QGridLayout" name="gridLayout_6">
      <item row="1" column="0">
       <layout class="QGridLayout" name="move_abs_GridLayout">
-       <item row="0" column="1">
-        <widget class="QSlider" name="move_abs_axis0_Slider">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="ScienDSpinBox" name="move_abs_axis0_DoubleSpinBox">
-         <property name="suffix">
-          <string>m</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="3">
-        <widget class="QPushButton" name="move_abs_PushButton">
-         <property name="text">
-          <string>Move</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="0">
         <widget class="QLabel" name="move_abs_axis0_Label">
          <property name="text">
