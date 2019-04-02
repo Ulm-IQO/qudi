@@ -110,6 +110,16 @@ class SlowCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
+    @abc.abstractmethod
+    def ai_voltage_range(self):
+        pass
+
+    @ai_voltage_range.setter
+    @abc.abstractmethod
+    def ai_voltage_range(self, val):
+        pass
+
 
 class CountingMode(Enum):
     CONTINUOUS = 0

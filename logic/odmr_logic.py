@@ -68,6 +68,7 @@ class ODMRLogic(GenericLogic):
     lines_to_average = StatusVar('lines_to_average', 0)
     _oversampling = StatusVar('oversampling', default=10)
     _lock_in_active = StatusVar('lock_in_active', default=False)
+    _ai_voltage_range = StatusVar('ai_voltage_range', default=[-10, 10])
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -106,6 +107,7 @@ class ODMRLogic(GenericLogic):
         self.mw_step = limits.list_step_in_range(self.mw_step)
         self._odmr_counter.oversampling = self._oversampling
         self._odmr_counter.lock_in_active = self._lock_in_active
+        self._odmr_counter.ai_voltage_range = self._ai_voltage_range
 
         # Set the trigger polarity (RISING/FALLING) of the mw-source input trigger
         # theoretically this can be changed, but the current counting scheme will not support that
@@ -331,6 +333,24 @@ class ODMRLogic(GenericLogic):
     def set_lock_in(self, active):
         self.lock_in = active
         return self.lock_in
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, values):
+        if isinstance(values, list) and len(values) == 2:
+            self._ai_voltage_range = values.copy()
+        elif isinstance(values, (int, float)):
+            self._ai_voltage_range = [-abs(values), abs(values)]
+        else:
+            self.log.error('ai_voltage_range must be either a list or int or float.')
+        self._odmr_counter.ai_voltage_range = self._ai_voltage_range
+
+    def set_ai_voltage_range(self, ai_voltage_range):
+        self.ai_voltage_range = ai_voltage_range
+        return self.ai_voltage_range
 
     def set_matrix_line_number(self, number_of_lines):
         """

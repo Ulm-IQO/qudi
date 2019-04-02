@@ -68,7 +68,7 @@ class CounterLogic(GenericLogic):
     _counting_samples = StatusVar('counting_samples', 1)
     _count_frequency = StatusVar('count_frequency', 50)
     _saving = StatusVar('saving', False)
-
+    _ai_voltage_range = StatusVar('ai_voltage_range', default=[-10, 10])
 
     def __init__(self, config, **kwargs):
         """ Create CounterLogic object with connectors.
@@ -120,6 +120,8 @@ class CounterLogic(GenericLogic):
         self.rawdata = np.zeros([len(self.get_channels()), self._counting_samples])
         self._already_counted_samples = 0  # For gated counting
         self._data_to_save = []
+
+        self._counting_device.ai_voltage_range = self._ai_voltage_range
 
         # Flag to stop the loop
         self.stopRequested = False
@@ -654,3 +656,21 @@ class CounterLogic(GenericLogic):
                 self.log.error('Stopping the counter timed out after {0}s'.format(timeout))
                 return -1
         return 0
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, values):
+        if isinstance(values, list) and len(values) == 2:
+            self._ai_voltage_range = values.copy()
+        elif isinstance(values, (int, float)):
+            self._ai_voltage_range = [-abs(values), abs(values)]
+        else:
+            self.log.error('ai_voltage_range must be either a list or int or float.')
+        self._counting_device.ai_voltage_range = self._ai_voltage_range
+
+    def set_ai_voltage_range(self, ai_voltage_range):
+        self.ai_voltage_range = ai_voltage_range
+        return self.ai_voltage_range

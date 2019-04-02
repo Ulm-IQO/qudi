@@ -86,6 +86,7 @@ class ODMRGui(GUIBase):
     sigMwSweepParamsChanged = QtCore.Signal(float, float, float, float)
     sigClockFreqChanged = QtCore.Signal(float)
     sigOversamplingChanged = QtCore.Signal(int)
+    sigAIVoltageRangeChanged = QtCore.Signal(list)
     sigLockInChanged = QtCore.Signal(bool)
     sigFitChanged = QtCore.Signal(str)
     sigNumberOfLinesChanged = QtCore.Signal(int)
@@ -219,11 +220,6 @@ class ODMRGui(GUIBase):
         self._mw.elapsed_sweeps_DisplayWidget.display(self._odmr_logic.elapsed_sweeps)
         self._mw.average_level_SpinBox.setValue(self._odmr_logic.lines_to_average)
 
-        self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
-        self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
-        self._sd.oversampling_SpinBox.setValue(self._odmr_logic.oversampling)
-        self._sd.lock_in_CheckBox.setChecked(self._odmr_logic.lock_in)
-
         # fit settings
         self._fsd = FitSettingsDialog(self._odmr_logic.fc)
         self._fsd.sigFitsUpdated.connect(self._mw.fit_methods_ComboBox.setFitFunctions)
@@ -275,6 +271,7 @@ class ODMRGui(GUIBase):
                                              QtCore.Qt.QueuedConnection)
         self.sigClockFreqChanged.connect(self._odmr_logic.set_clock_frequency,
                                          QtCore.Qt.QueuedConnection)
+        self.sigAIVoltageRangeChanged.connect(self._odmr_logic.set_ai_voltage_range, QtCore.Qt.QueuedConnection)
         self.sigOversamplingChanged.connect(self._odmr_logic.set_oversampling, QtCore.Qt.QueuedConnection)
         self.sigLockInChanged.connect(self._odmr_logic.set_lock_in, QtCore.Qt.QueuedConnection)
         self.sigSaveMeasurement.connect(self._odmr_logic.save_odmr_data, QtCore.Qt.QueuedConnection)
@@ -329,6 +326,7 @@ class ODMRGui(GUIBase):
         self.sigRuntimeChanged.disconnect()
         self.sigNumberOfLinesChanged.disconnect()
         self.sigClockFreqChanged.disconnect()
+        self.sigAIVoltageRangeChanged.disconnect()
         self.sigOversamplingChanged.disconnect()
         self.sigLockInChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
@@ -603,6 +601,8 @@ class ODMRGui(GUIBase):
         clock_frequency = self._sd.clock_frequency_DoubleSpinBox.value()
         oversampling = self._sd.oversampling_SpinBox.value()
         lock_in = self._sd.lock_in_CheckBox.isChecked()
+        ai_voltage_range = [self._sd.ai_min_doubleSpinBox.value(), self._sd.ai_max_doubleSpinBox.value()]
+        self.sigAIVoltageRangeChanged.emit(ai_voltage_range)
         self.sigOversamplingChanged.emit(oversampling)
         self.sigLockInChanged.emit(lock_in)
         self.sigClockFreqChanged.emit(clock_frequency)
@@ -615,6 +615,8 @@ class ODMRGui(GUIBase):
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
         self._sd.oversampling_SpinBox.setValue(self._odmr_logic.oversampling)
         self._sd.lock_in_CheckBox.setChecked(self._odmr_logic.lock_in)
+        self._sd.ai_min_doubleSpinBox.setValue(self._odmr_logic.ai_voltage_range[0])
+        self._sd.ai_max_doubleSpinBox.setValue(self._odmr_logic.ai_voltage_range[1])
         return
 
     def do_fit(self):

@@ -62,6 +62,7 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self._ai_voltage_range = [0, 0]
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -240,3 +241,15 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
         self.log.warning('slowcounterdummy>close_clock')
         return 0
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()
+            self.log.info('ai_voltage_range set to {}'.format(self._ai_voltage_range))

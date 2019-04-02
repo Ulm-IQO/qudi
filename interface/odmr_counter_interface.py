@@ -123,3 +123,13 @@ class ODMRCounterInterface(metaclass=InterfaceMetaclass):
     @abc.abstractmethod
     def lock_in_active(self, val):
         pass
+
+    @property
+    @abc.abstractmethod
+    def ai_voltage_range(self):
+        pass
+
+    @ai_voltage_range.setter
+    @abc.abstractmethod
+    def ai_voltage_range(self, val):
+        pass

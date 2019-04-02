@@ -79,6 +79,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         self._counter_daq_tasks = []
         self._counter_analog_daq_task = None
         self._clock_daq_task = None
+        self._ai_voltage_range = [0, 0]
 
     def on_deactivate(self):
         """ Shut down the NI card.
@@ -315,8 +316,8 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                         ', '.join(self._counter_ai_channels),
                         'Counter Analog In',
                         daq.DAQmx_Val_RSE,
-                        -10,
-                        10,
+                        self._ai_voltage_range[0],
+                        self._ai_voltage_range[1],
                         daq.DAQmx_Val_Volts,
                         ''
                     )
@@ -493,6 +494,17 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                 self.log.exception('Could not close clock.')
                 return -1
         return 0
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()
 
     # ================ End SlowCounterInterface Commands =======================
 

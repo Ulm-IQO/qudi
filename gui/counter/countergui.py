@@ -32,7 +32,6 @@ from qtpy import QtWidgets
 from qtpy import uic
 
 
-
 class CounterMainWindow(QtWidgets.QMainWindow):
 
     """ Create the Main Window based on the *.ui file. """
@@ -48,6 +47,19 @@ class CounterMainWindow(QtWidgets.QMainWindow):
         self.show()
 
 
+class CounterSettingDialog(QtWidgets.QDialog):
+    """ The settings dialog.
+    """
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_slow_counter_settings.ui')
+
+        # Load it
+        super(CounterSettingDialog, self).__init__()
+        uic.loadUi(ui_file, self)
+
+
 class CounterGui(GUIBase):
 
     """ FIXME: Please document
@@ -60,6 +72,7 @@ class CounterGui(GUIBase):
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
+    sigAIVoltageRangeChanged = QtCore.Signal(list)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -74,6 +87,7 @@ class CounterGui(GUIBase):
         # Configuring the dock widgets
         # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = CounterMainWindow()
+        self._sd = CounterSettingDialog()
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
@@ -176,6 +190,7 @@ class CounterGui(GUIBase):
         # starting the physical measurement
         self.sigStartCounter.connect(self._counting_logic.startCount)
         self.sigStopCounter.connect(self._counting_logic.stopCount)
+        self.sigAIVoltageRangeChanged.connect(self._counting_logic.set_ai_voltage_range, QtCore.Qt.QueuedConnection)
 
         ##################
         # Handling signals from the logic
@@ -196,6 +211,13 @@ class CounterGui(GUIBase):
         self._counting_logic.sigCountingModeChanged.connect(self.update_counting_mode_ComboBox)
         self._counting_logic.sigCountStatusChanged.connect(self.update_count_status_Action)
 
+        self._mw.settings_Action.triggered.connect(self._menu_settings)
+        self._sd.accepted.connect(self.update_settings)
+        self._sd.rejected.connect(self.reject_settings)
+        self._sd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.update_settings)
+        self.reject_settings()
+
         return 0
 
     def show(self):
@@ -205,6 +227,10 @@ class CounterGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
         return
+
+    def _menu_settings(self):
+        """ Open the settings menu """
+        self._sd.exec_()
 
     def on_deactivate(self):
         # FIXME: !
@@ -223,6 +249,7 @@ class CounterGui(GUIBase):
         self._mw.restore_default_view_Action.triggered.disconnect()
         self.sigStartCounter.disconnect()
         self.sigStopCounter.disconnect()
+        self.sigAIVoltageRangeChanged.disconnect()
         self._counting_logic.sigCounterUpdated.disconnect()
         self._counting_logic.sigCountingSamplesChanged.disconnect()
         self._counting_logic.sigCountLengthChanged.disconnect()
@@ -232,6 +259,18 @@ class CounterGui(GUIBase):
         self._counting_logic.sigCountStatusChanged.disconnect()
 
         self._mw.close()
+        return
+
+    def update_settings(self):
+        """ Write the new settings from the gui to the logic. """
+        ai_voltage_range = [self._sd.ai_min_doubleSpinBox.value(), self._sd.ai_max_doubleSpinBox.value()]
+        self.sigAIVoltageRangeChanged.emit(ai_voltage_range)
+        return
+
+    def reject_settings(self):
+        """ Keep the old settings and restores the old settings in the gui. """
+        self._sd.ai_min_doubleSpinBox.setValue(self._counting_logic.ai_voltage_range[0])
+        self._sd.ai_max_doubleSpinBox.setValue(self._counting_logic.ai_voltage_range[1])
         return
 
     def updateData(self):

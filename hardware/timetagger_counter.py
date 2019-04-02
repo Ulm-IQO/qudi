@@ -54,6 +54,7 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         """
         self._tagger = tt.createTimeTagger()
         self._count_frequency = 50  # Hz
+        self._ai_voltage_range = [0, 0]
 
         if self._sum_channels and self._channel_apd_1 is None:
             self.log.error('Cannot sum channels when only one apd channel given')
@@ -198,3 +199,15 @@ class TimeTaggerCounter(Base, SlowCounterInterface):
         @return int: error code (0:OK, -1:error)
         """
         return 0
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()
+            self._sc_device.ai_voltage_range = self._ai_voltage_range

@@ -35,8 +35,8 @@
        <rect>
         <x>-1</x>
         <y>0</y>
-        <width>421</width>
-        <height>109</height>
+        <width>454</width>
+        <height>143</height>
        </rect>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -118,7 +118,7 @@
      <x>0</x>
      <y>0</y>
      <width>800</width>
-     <height>18</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -141,6 +141,7 @@
     <addaction name="actionClose"/>
    </widget>
    <addaction name="menuView"/>
+   <addaction name="settings_Action"/>
   </widget>
   <widget class="QDockWidget" name="counter_trace_DockWidget">
    <property name="sizePolicy">
@@ -290,6 +291,14 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <addaction name="start_counter_Action"/>
    <addaction name="record_counts_Action"/>
   </widget>
+  <action name="settings_Action">
+   <property name="checkable">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Settings</string>
+   </property>
+  </action>
   <action name="start_counter_Action">
    <property name="checkable">
     <bool>true</bool>

@@ -132,6 +132,7 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         self._photon_source2 = None #for compatibility reasons with second APD
         self._count_channel = 1
+        self._ai_voltage_range = [0, 0]
 
         #locking for thread safety
         self.threadlock = Mutex()
@@ -1286,22 +1287,14 @@ class PicoHarp300(Base, SlowCounterInterface, FastCounterInterface):
 
         print('Data analyzed.')
 
-#        self.result = []
-#        for entry in arr_data[0:actual_counts-1]:
-#
-#            # apply three bitmasks to extract the relavent numbers:
-#            overflow = entry & (2**(32-1) )
-#            marker_ch = entry & (2**(32-2)  + 2**(32-3) + 2**(32-4))
-#            time_tag = entry & (2**32 -1 - 2**(32-1) + 2**(32-2) + 2**(32-3) + 2**(32-4))
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
 
-
-
-
-
-
-
-
-
-
-
-
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()
+            self._sc_device.ai_voltage_range = self._ai_voltage_range

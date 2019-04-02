@@ -95,6 +95,7 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         self._odmr_pulser_daq_task = None
         self._oversampling = 0
         self._lock_in_active = False
+        self._ai_voltage_range = [0, 0]
 
         if len(self._odmr_counter_channels) + len(self._odmr_ai_channels) < 1:
             self.log.error(
@@ -327,8 +328,8 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
                     ', '.join(self._odmr_ai_channels),
                     'ODMR Analog',
                     daq.DAQmx_Val_RSE,
-                    -10,
-                    10,
+                    self._ai_voltage_range[0],
+                    self._ai_voltage_range[1],
                     daq.DAQmx_Val_Volts,
                     ''
                 )
@@ -713,3 +714,14 @@ class NationalInstrumentsXSeriesODMR(Base, ODMRCounterInterface):
         ch = [self._odmr_counter_channels[0]]
         ch.extend(self._odmr_ai_channels)
         return ch
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()

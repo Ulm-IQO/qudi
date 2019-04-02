@@ -50,7 +50,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         self._lock_in_active = False
         self._oversampling = 10
         self._odmr_length = 100
-
+        self._ai_voltage_range = [0, 0]
 
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
@@ -307,3 +307,15 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
             self._lock_in_active = val
             if self._lock_in_active:
                 self.log.warn('Lock-In is not implemented')
+
+    @property
+    def ai_voltage_range(self):
+        return self._ai_voltage_range
+
+    @ai_voltage_range.setter
+    def ai_voltage_range(self, val):
+        if not isinstance(val, list):
+            self.log.error('ai_voltage_range has to be list.')
+        else:
+            self._ai_voltage_range = val.copy()
+            self._sc_device.ai_voltage_range = self._ai_voltage_range
