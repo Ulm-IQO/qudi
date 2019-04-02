@@ -111,9 +111,9 @@ class MagnetLogic(GenericLogic):
 
     # Declare status variables
     _align_2d_axis_names = StatusVar(name='align_2d_axis_names', default=tuple())
-    _align_2d_axis_ranges = StatusVar(name='align_2d_axis_ranges', default=dict())
-    _align_2d_axis_points = StatusVar(name='align_2d_axis_points', default=dict())
-    _align_2d_axis_velocities = StatusVar(name='align_2d_axis_velocities', default=dict())
+    _align_2d_axis_ranges = StatusVar(name='align_2d_axis_ranges', default=tuple())
+    _align_2d_axis_points = StatusVar(name='align_2d_axis_points', default=tuple())
+    _align_2d_axis_velocities = StatusVar(name='align_2d_axis_velocities', default=tuple())
     _align_2d_pathway_mode = StatusVar(name='align_2d_pathway_mode', default='meander')
     _alignment_method = StatusVar('alignment_method', 'fluorescence')
 
@@ -314,7 +314,7 @@ class MagnetLogic(GenericLogic):
         """
         pathway = list()
 
-        if self._align_2d_pathway_mode not in self.available_2d_path_modes:
+        if self._align_2d_pathway_mode not in self.available_path_modes:
             self.log.error('Unknown 2D alignment pathway mode.')
             return pathway
 
