@@ -132,14 +132,14 @@
                </spacer>
               </item>
               <item row="0" column="1">
-               <widget class="QDoubleSpinBox" name="doubleSpinBox">
+               <widget class="ScienDSpinBox" name="general_meas_time_doubleSpinBox">
                 <property name="suffix">
                  <string>s</string>
                 </property>
                </widget>
               </item>
               <item row="2" column="1">
-               <widget class="QCheckBox" name="checkBox">
+               <widget class="QCheckBox" name="general_save_each_checkBox">
                 <property name="text">
                  <string/>
                 </property>
