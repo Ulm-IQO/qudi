@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>984</width>
+    <width>1152</width>
     <height>722</height>
    </rect>
   </property>
@@ -640,7 +640,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>984</width>
+     <width>1152</width>
      <height>21</height>
     </rect>
    </property>
@@ -670,15 +670,7 @@
    <widget class="QWidget" name="move_rel_DockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_5">
      <item row="0" column="1">
-      <layout class="QGridLayout" name="move_rel_GridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="move_rel_axis0_Label">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <layout class="QGridLayout" name="move_rel_GridLayout"/>
      </item>
     </layout>
    </widget>
@@ -693,15 +685,7 @@
    <widget class="QWidget" name="move_abs_DockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_6">
      <item row="1" column="0">
-      <layout class="QGridLayout" name="move_abs_GridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="move_abs_axis0_Label">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+      <layout class="QGridLayout" name="move_abs_GridLayout"/>
      </item>
     </layout>
    </widget>
@@ -726,26 +710,6 @@
     <layout class="QGridLayout" name="gridLayout_4">
      <item row="1" column="0">
       <layout class="QGridLayout" name="curr_pos_GridLayout">
-       <item row="0" column="0">
-        <widget class="QLabel" name="curr_pos_axis0_Label">
-         <property name="text">
-          <string>TextLabel</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="ScienDSpinBox" name="curr_pos_axis0_DoubleSpinBox">
-         <property name="readOnly">
-          <bool>true</bool>
-         </property>
-         <property name="buttonSymbols">
-          <enum>QAbstractSpinBox::NoButtons</enum>
-         </property>
-         <property name="suffix">
-          <string>m</string>
-         </property>
-        </widget>
-       </item>
        <item row="0" column="2">
         <widget class="QPushButton" name="curr_pos_get_pos_PushButton">
          <property name="sizePolicy">
@@ -765,13 +729,33 @@
          </property>
         </widget>
        </item>
+       <item row="0" column="0">
+        <widget class="QLabel" name="curr_pos_axis0_Label">
+         <property name="text">
+          <string>TextLabel</string>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="3">
         <widget class="QPushButton" name="curr_pos_stop_PushButton">
          <property name="styleSheet">
           <string notr="true">color: red</string>
          </property>
          <property name="text">
-          <string>STOP Movement</string>
+          <string>STOP</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="ScienDSpinBox" name="curr_pos_axis0_DoubleSpinBox">
+         <property name="readOnly">
+          <bool>true</bool>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="suffix">
+          <string>m</string>
          </property>
         </widget>
        </item>

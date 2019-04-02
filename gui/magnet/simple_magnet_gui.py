@@ -273,6 +273,7 @@ class MagnetGui(GUIBase):
             # Set the QLabel according to the grid
             label = QtWidgets.QLabel(parent=self._mw.curr_pos_DockWidgetContents)
             label.setText('{0}:'.format(axis))
+            label.setAlignment(QtCore.Qt.AlignRight)
             self._mw.curr_pos_GridLayout.addWidget(label, index, 0, 1, 1)
 
             # Set the ScienDSpinBox according to the grid
@@ -304,6 +305,7 @@ class MagnetGui(GUIBase):
             # Create the QLabel
             label = QtWidgets.QLabel(parent=self._mw.move_rel_DockWidgetContents)
             label.setText('{0}:'.format(axis))
+            label.setAlignment(QtCore.Qt.AlignRight)
             self._mw.move_rel_GridLayout.addWidget(label, index, 0, 1, 1)
 
             # Create the ScienDSpinBox
@@ -342,6 +344,7 @@ class MagnetGui(GUIBase):
             # Create the QLabel
             label = QtWidgets.QLabel(parent=self._mw.move_abs_DockWidgetContents)
             label.setText('{0}:'.format(axis))
+            label.setAlignment(QtCore.Qt.AlignRight)
             self._mw.move_abs_GridLayout.addWidget(label, index, 0, 1, 1)
 
             # Create the ScienDSpinBox
