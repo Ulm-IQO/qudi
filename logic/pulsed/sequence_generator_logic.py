@@ -737,7 +737,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".block" and extract a sorted list of
         # PulseBlock names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
+            names = natural_sort(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
 
         # Load all blocks from file
         for block_name in names:
@@ -840,7 +840,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".ensemble" and extract a sorted list of
         # PulseBlockEnsemble names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
 
         # Get all waveforms currently stored on pulser hardware in order to delete outdated
         # sampling_information dicts
@@ -1002,7 +1002,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".sequence" and extract a sorted list of
         # PulseSequence names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
 
         # Get all waveforms and sequences currently stored on pulser hardware in order to delete
         # outdated sampling_information dicts
@@ -1782,7 +1782,7 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information = dict()
             ensemble.sampling_information.update(ensemble_info)
             ensemble.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-            ensemble.sampling_information['waveforms'] = sorted(written_waveforms)
+            ensemble.sampling_information['waveforms'] = natural_sort(written_waveforms)
             self.save_ensemble(ensemble)
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
@@ -1794,7 +1794,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigSampleEnsembleComplete.emit(ensemble)
-        return offset_bin, sorted(written_waveforms), ensemble_info
+        return offset_bin, natural_sort(written_waveforms), ensemble_info
 
     @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
@@ -1915,7 +1915,7 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information.update(self.analyze_sequence(sequence))
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-        sequence.sampling_information['waveforms'] = sorted(written_waveforms)
+        sequence.sampling_information['waveforms'] = natural_sort(written_waveforms)
         sequence.sampling_information['step_waveform_list'] = [step[0] for step in
                                                                sequence_param_dict_list]
         self.save_sequence(sequence)
