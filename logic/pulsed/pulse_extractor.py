@@ -25,6 +25,7 @@ import inspect
 import importlib
 
 from core.util.modules import get_main_dir
+from core.util.helpers import natural_sort
 
 
 class PulseExtractorBase:
@@ -112,9 +113,9 @@ class PulseExtractor(PulseExtractorBase):
 
         # Set default extraction method
         if self.is_gated:
-            self._current_extraction_method = sorted(self._gated_extraction_methods)[0]
+            self._current_extraction_method = natural_sort(self._gated_extraction_methods)[0]
         else:
-            self._current_extraction_method = sorted(self._ungated_extraction_methods)[0]
+            self._current_extraction_method = natural_sort(self._ungated_extraction_methods)[0]
 
         # Update from parameter_dict if handed over
         if isinstance(pulsedmeasurementlogic.extraction_parameters, dict):
