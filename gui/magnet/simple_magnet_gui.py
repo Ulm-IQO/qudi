@@ -61,6 +61,10 @@ class MagnetGui(GUIBase):
     # declare connectors
     magnetlogic = Connector(interface='MagnetLogic')
 
+    # declare signals
+    sigToggleMeasurement = QtCore.Signal(bool)
+    sigAlignmentParametersChanged = QtCore.Signal(dict)
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -81,26 +85,51 @@ class MagnetGui(GUIBase):
         self._create_axis_pos_disp()
         self._create_move_rel_control()
         self._create_move_abs_control()
-        self._create_meas_type_RadioButtons()
+        self._create_meas_type_radiobuttons()
+
+        # Add save file tag input box
+        self._mw.save_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
+        self._mw.save_nametag_LineEdit.setMaximumWidth(200)
+        self._mw.save_nametag_LineEdit.setToolTip('Enter a nametag to add to the filename.')
+        self._mw.save_ToolBar.addWidget(self._mw.save_nametag_LineEdit)
 
         # Setup dock widgets
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
         self.set_default_view_main_window()
 
-        # connect the actions of the toolbar:
-        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
-
         # update the values also of the absolute movement display:
         for axis, pos in self.magnetlogic().magnet_position.items():
             self.move_abs_widgets[axis]['spinbox'].setValue(pos)
             self.current_pos_widgets[axis]['spinbox'].setValue(pos)
 
-        # Connect signals from logic
+        # Connect update signals from logic
         self.magnetlogic().sigMagnetPositionUpdated.connect(
-            self.update_pos, QtCore.Qt.QueuedConnection)
+            self.magnet_position_updated, QtCore.Qt.QueuedConnection)
         self.magnetlogic().sigMeasurementStatusUpdated.connect(
             self.measurement_status_updated, QtCore.Qt.QueuedConnection)
+        self.magnetlogic().sigMagnetMoving.connect(
+            self.magnet_moving_updated, QtCore.Qt.QueuedConnection)
+        self.magnetlogic().sigMagnetVelocityUpdated.connect(
+            self.magnet_velocity_updated, QtCore.Qt.QueuedConnection)
+        self.magnetlogic().sigAlignmentParametersChanged.connect(
+            self.alignment_parameters_updated, QtCore.Qt.QueuedConnection)
+        self.magnetlogic().sigDataUpdated.connect(
+            self.update_plot_data, QtCore.Qt.QueuedConnection)
+
+        # Connect control signals to logic
+        self.sigToggleMeasurement.connect(
+            self.magnetlogic().toggle_measurement, QtCore.Qt.QueuedConnection)
+        self.sigAlignmentParametersChanged.connect(
+            self.magnetlogic().set_alignment_parameters, QtCore.Qt.QueuedConnection)
+
+        # Connect toolbar/menu widgets/actions
+        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
+        self._mw.save_Action.triggered.connect(self.save_data)
+        self._mw.run_stop_alignment_Action.triggered.connect(self.run_stop_alignment)
+        self._mw.continue_alignment_Action.toggled.connect(
+            self.magnetlogic().toggle_measurement_pause, QtCore.Qt.QueuedConnection)
+
 
         # self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
         # self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
@@ -142,19 +171,14 @@ class MagnetGui(GUIBase):
         # self._update_2d_data()
         # self._update_2d_graph_cb()
 
-        # Add save file tag input box
-        self._mw.alignment_2d_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
-        self._mw.alignment_2d_nametag_LineEdit.setMaximumWidth(200)
-        self._mw.alignment_2d_nametag_LineEdit.setToolTip('Enter a nametag to add to the filename.')
+        # connect the actions of the toolbar:
 
-        self._mw.save_ToolBar.addWidget(self._mw.alignment_2d_nametag_LineEdit)
-        self._mw.save_Action.triggered.connect(self.save_data)
+
 
         # Connect the buttons and inputs for the odmr colorbar
         # self._mw.alignment_2d_manual_RadioButton.clicked.connect(self._update_2d_data)
         # self._mw.alignment_2d_centiles_RadioButton.clicked.connect(self._update_2d_data)
-        self._mw.run_stop_2d_alignment_Action.triggered.connect(self.run_stop_alignment)
-        # self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_alignment)
+
 
         # General tab signals:
         self._mw.general_meas_time_doubleSpinBox.editingFinished.connect(self.general_params_changed)
@@ -176,16 +200,39 @@ class MagnetGui(GUIBase):
         self._mw.odmr_stop_freq_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
         self._mw.odmr_points_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
         self._mw.odmr_power_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
+
+        # Position signals
+        self._mw.curr_pos_get_pos_PushButton.clicked.connect(
+            self.magnetlogic().update_magnet_position, QtCore.Qt.QueuedConnection)
+        self._mw.curr_pos_stop_PushButton.clicked.connect(
+            self.magnetlogic().abort_movement, QtCore.Qt.DirectConnection)
         return
 
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
+        # Disconnect update signals from logic
+        self.magnetlogic().sigMagnetPositionUpdated.disconnect()
+        self.magnetlogic().sigMeasurementStatusUpdated.disconnect()
+        self.magnetlogic().sigMagnetMoving.disconnect()
+        self.magnetlogic().sigMagnetVelocityUpdated.disconnect()
+        self.magnetlogic().sigAlignmentParametersChanged.disconnect()
+        self.magnetlogic().sigDataUpdated.disconnect()
+
+        # Disconnect control signals to logic
+        self.sigToggleMeasurement.disconnect()
+        self.sigAlignmentParametersChanged.disconnect()
+
+        # Disconnect toolbar/menu widgets/actions
+        self._mw.default_view_Action.triggered.disconnect()
         self._mw.save_Action.triggered.disconnect()
+        self._mw.run_stop_alignment_Action.triggered.disconnect()
+        self._mw.continue_alignment_Action.toggled.disconnect()
+        for widget in self.alignment_method_radiobuttons.values():
+            widget.toggled.disconnect()
+
         # self._mw.alignment_2d_manual_RadioButton.clicked.disconnect()
         # self._mw.alignment_2d_centiles_RadioButton.clicked.disconnect()
-        self._mw.run_stop_2d_alignment_Action.triggered.disconnect()
-        # self._mw.continue_2d_alignment_Action.triggered.connect(self.continue_stop_alignment)
 
         # General tab signals:
         self._mw.general_meas_time_doubleSpinBox.editingFinished.disconnect()
@@ -216,8 +263,6 @@ class MagnetGui(GUIBase):
         for widget_dict in self.move_rel_widgets.values():
             widget_dict['minus_button'].clicked.disconnect()
             widget_dict['plus_button'].clicked.disconnect()
-        for widget in self.alignment_method_radiobuttons.values():
-            widget.toggled.disconnect()
 
         self._mw.close()
         return
@@ -244,7 +289,7 @@ class MagnetGui(GUIBase):
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.alignment_DockWidget)
         return
 
-    def _create_meas_type_RadioButtons(self):
+    def _create_meas_type_radiobuttons(self):
         """ Create the measurement Buttons for the desired measurements:
 
         @return:
@@ -292,8 +337,6 @@ class MagnetGui(GUIBase):
             self._mw.curr_pos_get_pos_PushButton, 0, 2, extension, 1)
         self._mw.curr_pos_GridLayout.addWidget(
             self._mw.curr_pos_stop_PushButton, 0, 3, extension, 1)
-        self._mw.curr_pos_get_pos_PushButton.clicked.connect(self.update_pos)
-        self._mw.curr_pos_stop_PushButton.clicked.connect(self.stop_movement)
         return
 
     def _create_move_rel_control(self):
@@ -394,6 +437,13 @@ class MagnetGui(GUIBase):
         self.magnetlogic().move_magnet_abs({axis: value})
         return
 
+    @QtCore.Slot(bool)
+    def magnet_moving_updated(self, is_moving):
+        self._mw.run_stop_alignment_Action.setEnabled(not is_moving)
+        self._mw.continue_alignment_Action.setEnabled(not is_moving)
+        return
+
+    @QtCore.Slot()
     def general_params_changed(self):
         """
 
@@ -401,9 +451,10 @@ class MagnetGui(GUIBase):
         param_dict = dict()
         param_dict['measurement_time'] = self._mw.general_meas_time_doubleSpinBox.value()
         param_dict['save_after_measure'] = self._mw.general_save_each_checkBox.isChecked()
-        self.magnetlogic().set_general_parameters(param_dict)
+        self.sigAlignmentParametersChanged.emit({'general': param_dict})
         return
 
+    @QtCore.Slot()
     def odmr_freq_params_changed(self):
         """
 
@@ -418,9 +469,10 @@ class MagnetGui(GUIBase):
         param_dict['high_points'] = int(self._mw.odmr_high_points_DSpinBox.value())
         param_dict['high_power'] = float(self._mw.odmr_high_power_DSpinBox.value())
 
-        self.magnetlogic().set_odmr_frequency_parameters(param_dict)
+        self.sigAlignmentParametersChanged.emit({'odmr_frequency': param_dict})
         return
 
+    @QtCore.Slot()
     def odmr_contrast_params_changed(self):
         """
 
@@ -431,18 +483,66 @@ class MagnetGui(GUIBase):
         param_dict['points'] = int(self._mw.odmr_points_DSpinBox.value())
         param_dict['power'] = float(self._mw.odmr_power_DSpinBox.value())
 
-        self.magnetlogic().set_odmr_contrast_parameters(param_dict)
+        self.sigAlignmentParametersChanged.emit({'odmr_contrast': param_dict})
         return
 
-    def stop_movement(self):
-        """ Invokes an immediate stop of the hardware.
-        """
-        self.magnetlogic().abort_movement()
-        return
+    @QtCore.Slot(dict)
+    def alignment_parameters_updated(self, method_dict):
+        for method, param_dict in method_dict.items():
+            if method == 'general':
+                self._mw.general_meas_time_doubleSpinBox.blockSignals(True)
+                self._mw.general_save_each_checkBox.blockSignals(True)
+                self._mw.general_meas_time_doubleSpinBox.setValue(param_dict['measurement_time'])
+                self._mw.general_save_each_checkBox.setChecked(param_dict['save_after_measure'])
+                self._mw.general_meas_time_doubleSpinBox.blockSignals(False)
+                self._mw.general_save_each_checkBox.blockSignals(False)
+            elif method == 'odmr_frequency':
+                self._mw.odmr_low_start_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_low_stop_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_low_points_DSpinBox.blockSignals(True)
+                self._mw.odmr_low_power_DSpinBox.blockSignals(True)
+                self._mw.odmr_high_start_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_high_stop_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_high_points_DSpinBox.blockSignals(True)
+                self._mw.odmr_high_power_DSpinBox.blockSignals(True)
+
+                self._mw.odmr_low_start_freq_DSpinBox.setValue(param_dict['low_freq_range'][0])
+                self._mw.odmr_low_stop_freq_DSpinBox.setValue(param_dict['low_freq_range'][1])
+                self._mw.odmr_low_points_DSpinBox.setValue(param_dict['low_points'])
+                self._mw.odmr_low_power_DSpinBox.setValue(param_dict['low_power'])
+                self._mw.odmr_high_start_freq_DSpinBox.setValue(param_dict['high_freq_range'][0])
+                self._mw.odmr_high_stop_freq_DSpinBox.setValue(param_dict['high_freq_range'][1])
+                self._mw.odmr_high_points_DSpinBox.setValue(param_dict['high_points'])
+                self._mw.odmr_high_power_DSpinBox.setValue(param_dict['high_power'])
+
+                self._mw.odmr_low_start_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_low_stop_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_low_points_DSpinBox.blockSignals(False)
+                self._mw.odmr_low_power_DSpinBox.blockSignals(False)
+                self._mw.odmr_high_start_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_high_stop_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_high_points_DSpinBox.blockSignals(False)
+                self._mw.odmr_high_power_DSpinBox.blockSignals(False)
+            elif method == 'odmr_contrast':
+                self._mw.odmr_start_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_stop_freq_DSpinBox.blockSignals(True)
+                self._mw.odmr_points_DSpinBox.blockSignals(True)
+                self._mw.odmr_power_DSpinBox.blockSignals(True)
+
+                self._mw.odmr_start_freq_DSpinBox.setValue(param_dict['freq_range'][0])
+                self._mw.odmr_stop_freq_DSpinBox.setValue(param_dict['freq_range'][1])
+                self._mw.odmr_points_DSpinBox.setValue(param_dict['points'])
+                self._mw.odmr_power_DSpinBox.setValue(param_dict['power'])
+
+                self._mw.odmr_start_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_stop_freq_DSpinBox.blockSignals(False)
+                self._mw.odmr_points_DSpinBox.blockSignals(False)
+                self._mw.odmr_power_DSpinBox.blockSignals(False)
+            return
 
     @QtCore.Slot()
     @QtCore.Slot(dict)
-    def update_pos(self, pos_dict=None):
+    def magnet_position_updated(self, pos_dict=None):
         """ Update the current position.
         """
         if not isinstance(pos_dict, dict):
@@ -452,6 +552,24 @@ class MagnetGui(GUIBase):
             self.current_pos_widgets[axis]['spinbox'].setValue(pos)
         return
 
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
+    def magnet_velocity_updated(self, vel_dict=None):
+        """ Update the current velocity.
+        """
+        if not isinstance(vel_dict, dict):
+            vel_dict = self.magnetlogic().magnet_velocity
+
+        for axis, vel in vel_dict.items():
+            pass
+            # self.current_pos_widgets[axis]['spinbox'].setValue(pos)
+        return
+
+    @QtCore.Slot(np.ndarray, tuple)
+    def update_plot_data(self, image, img_ranges):
+        pass
+
+    @QtCore.Slot()
     def run_stop_alignment(self, is_checked):
         """ Manage what happens if 2d magnet scan is started/stopped
 
@@ -480,11 +598,13 @@ class MagnetGui(GUIBase):
         self._mw.run_stop_alignment_Action.setChecked(is_running)
         self._mw.run_stop_alignment_Action.blockSignals(False)
 
-        self._mw.continue_2d_alignment_Action.blockSignals(True)
-        self._mw.continue_2d_alignment_Action.setChecked(is_paused)
-        self._mw.continue_2d_alignment_Action.blockSignals(False)
+        self._mw.continue_alignment_Action.blockSignals(True)
+        self._mw.continue_alignment_Action.setEnabled(is_running)
+        self._mw.continue_alignment_Action.setChecked(is_paused)
+        self._mw.continue_alignment_Action.blockSignals(False)
         return
 
+    @QtCore.Slot()
     def alignment_method_changed(self):
         """ According to the selected Radiobox a measurement type will be chosen."""
         for method, button in self.alignment_method_radiobuttons.items():
@@ -493,10 +613,11 @@ class MagnetGui(GUIBase):
                 break
         return
 
+    @QtCore.Slot()
     def save_data(self):
         """
 
         """
-        tag = self._mw.alignment_2d_nametag_LineEdit.text()
+        tag = self._mw.save_nametag_LineEdit.text()
         self.magnetlogic().save_2d_data(tag)
         return

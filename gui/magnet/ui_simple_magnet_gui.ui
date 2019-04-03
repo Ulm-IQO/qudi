@@ -790,8 +790,8 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="run_stop_2d_alignment_Action"/>
-   <addaction name="continue_2d_alignment_Action"/>
+   <addaction name="run_stop_alignment_Action"/>
+   <addaction name="continue_alignment_Action"/>
   </widget>
   <action name="magnet_settings_Action">
    <property name="icon">
@@ -828,7 +828,7 @@
     <string>Save alignment data</string>
    </property>
   </action>
-  <action name="run_stop_2d_alignment_Action">
+  <action name="run_stop_alignment_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -841,13 +841,13 @@
      <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
-    <string>run_stop_2d_alignment</string>
+    <string>run_stop_alignment</string>
    </property>
    <property name="toolTip">
     <string>Run or stop a 2D alignment</string>
    </property>
   </action>
-  <action name="continue_2d_alignment_Action">
+  <action name="continue_alignment_Action">
    <property name="checkable">
     <bool>true</bool>
    </property>
@@ -857,7 +857,7 @@
      <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/restart-counter.png</iconset>
    </property>
    <property name="text">
-    <string>continue_2d_alignment</string>
+    <string>continue_alignment</string>
    </property>
    <property name="toolTip">
     <string>Continue or Stop a 2D alignment</string>
