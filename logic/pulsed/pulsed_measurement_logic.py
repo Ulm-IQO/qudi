@@ -31,6 +31,7 @@ from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
+from core.util.helpers import natural_sort
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_extractor import PulseExtractor
 from logic.pulsed.pulse_analyzer import PulseAnalyzer

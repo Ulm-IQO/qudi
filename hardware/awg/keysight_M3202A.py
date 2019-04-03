@@ -27,6 +27,7 @@ import os
 import datetime
 import numpy as np
 from collections import OrderedDict
+from core.util.helpers import natural_sort
 
 import sys
 
@@ -255,7 +256,7 @@ class M3202A(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Load waveforms into channels
@@ -482,7 +483,7 @@ class M3202A(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in active_channels if chnl.startswith('a'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -554,7 +555,7 @@ class M3202A(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 

@@ -13,6 +13,7 @@ new POIs will be named after this tag together with a consecutive integer index.
 * exposed the sequencegenerator-functions analyze_sequence and analyze_ensemble to be accessible via pulsedmaster
 * analyze functions can be called either with the appropriate objects or with the object name
 * while sampling a sequence, the ensembles are only sampled if they weren't already sampled before
+* Add `natural_sort` utility function to `core.util.helpers`
 *
 
 Config changes:
