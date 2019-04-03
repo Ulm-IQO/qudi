@@ -366,6 +366,7 @@ class PoiManagerLogic(GenericLogic):
     _refocus_period = StatusVar(default=120)
     _active_poi = StatusVar(default=None)
     _move_scanner_after_optimization = StatusVar(default=True)
+    _poi_threshold = StatusVar(default=5)
 
     # Signals for connecting modules
     sigRefocusStateUpdated = QtCore.Signal(bool)  # is_active
@@ -508,6 +509,14 @@ class PoiManagerLogic(GenericLogic):
     def refocus_period(self, period):
         self.set_refocus_period(period)
         return
+
+    @property
+    def poi_threshold(self):
+        return float(self._poi_threshold)
+
+    @poi_threshold.setter
+    def poi_threshold(self, new_threshold):
+        self.set_poi_threshold(new_threshold)
 
     @property
     def time_until_refocus(self):
@@ -834,6 +843,13 @@ class PoiManagerLogic(GenericLogic):
                 self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
         return
 
+    @QtCore.Slot(float)
+    def set_poi_threshold(self, threshold):
+        if not threshold > 1:
+            self.log.error('threshold must > 1!')
+        self._poi_threshold = float(threshold)
+        return
+
     def start_periodic_refocus(self, name=None):
         """
         Starts periodic refocusing of the POI <name>.
@@ -1145,9 +1161,9 @@ class PoiManagerLogic(GenericLogic):
             for j in range(0, len(scan_image[i])):
                 scan_image[i][j] = int(scan_image[i][j])  # data here somehow needs to be reset, otherwise shit happens.
 
-        def threshold_s(scan):
+        def scan_mean(scan):
             scan = np.asarray(scan, dtype=int, order="C")
-            return 7 * scan.mean()  # crucial on the s/n ratio of the scan_image
+            return scan.mean()  # crucial on the s/n ratio of the scan_image
 
         def spot_filter(scan):
             pixel_num = len(scan)
@@ -1171,7 +1187,7 @@ class PoiManagerLogic(GenericLogic):
                         yc.append(j + mid_f)
             return xc, yc
 
-        threshold = threshold_s(scan_image)
+        threshold = scan_mean(scan_image) * self._poi_threshold
         xc1, yc1 = local_max(scan_image)
         xc2 = []
         yc2 = []
