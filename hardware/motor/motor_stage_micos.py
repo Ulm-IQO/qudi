@@ -270,20 +270,16 @@ class MotorStageMicos(Base, MotorInterface):
             # Check if current axis position is within bounds
             curr_pos = self.get_pos(('x', 'y'))
             if not (min_x <= curr_pos['x'] <= max_x):
-                self.log.error('Can not set limits {0} for axis "x". Current axis '
-                               'position outside of limits.'.format(x_lim))
-                return self.get_position_limit()
+                self.log.warning('Current x-axis position outside of limits to set.')
             if not (min_y <= curr_pos['y'] <= max_y):
-                self.log.error('Can not set limits {0} for axis "y". Current axis '
-                               'position outside of limits.'.format(y_lim))
-                return self.get_position_limit()
+                self.log.warning('Current y-axis position outside of limits to set.')
 
             # Set limits
             self.write_xy(
-                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_x * 1000,
-                                                               min_y * 1000,
-                                                               max_x * 1000,
-                                                               max_y * 1000))
+                '{0:.6f} {1:.6f} -16383 {2:.6f} {3:.6f} 16383 setlimit'.format(min_x * 1000,
+                                                                               min_y * 1000,
+                                                                               max_x * 1000,
+                                                                               max_y * 1000))
 
         if 'z' in axis_dict or 'phi' in axis_dict:
             if not ('z' in axis_dict and 'phi' in axis_dict):
@@ -310,20 +306,16 @@ class MotorStageMicos(Base, MotorInterface):
             # Check if current axis position is within bounds
             curr_pos = self.get_pos(('z', 'phi'))
             if not (min_z <= curr_pos['z'] <= max_z):
-                self.log.error('Can not set limits {0} for axis "z". Current axis '
-                               'position outside of limits.'.format(z_lim))
-                return self.get_position_limit()
+                self.log.warning('Current z-axis position outside of limits to set.')
             if not (min_phi <= curr_pos['phi'] <= max_phi):
-                self.log.error('Can not set limits {0} for axis "phi". Current axis '
-                               'position outside of limits.'.format(phi_lim))
-                return self.get_position_limit()
+                self.log.warning('Current phi-axis position outside of limits to set.')
 
             # Set limits
             self.write_zphi(
-                '{0} {1} -16383 {2} {3} 16383 setlimit'.format(min_z * 1000,
-                                                               min_phi,
-                                                               max_z * 1000,
-                                                               max_phi))
+                '{0:.6f} {1:.6f} -16383 {2:.6f} {3:.6f} 16383 setlimit'.format(min_z * 1000,
+                                                                               min_phi,
+                                                                               max_z * 1000,
+                                                                               max_phi))
         self._report_errors()
         return self.get_position_limit()
 
@@ -491,17 +483,27 @@ class MotorStageMicos(Base, MotorInterface):
         if 'x' in param_dict or 'y' in param_dict:
             x_move = param_dict['x'] * 1000 if 'x' in param_dict else 0
             y_move = param_dict['y'] * 1000 if 'y' in param_dict else 0
-            self.write_xy('{0.6f} {1.6f} 0 r'.format(x_move, y_move))
+            move_time = self._estimate_moving_time(start_pos={'x': 0, 'y': 0},
+                                                   end_pos={'x': x_move, 'y': y_move})
+            self._xy_controller.timeout = move_time * 1000
+            self.write_xy('{0:.6f} {1:.6f} 0 r'.format(x_move, y_move))
             self.write_xy('0 0 0 r')
             if self._report_errors('x'):
+                self._xy_controller.timeout = self._timeout_xy * 1000
                 return self.get_pos()
+            self._xy_controller.timeout = self._timeout_xy * 1000
         if 'z' in param_dict or 'phi' in param_dict:
             z_move = param_dict['z'] * 1000 if 'z' in param_dict else 0
             phi_move = param_dict['phi'] if 'phi' in param_dict else 0
-            self.write_zphi('{0.6f} {1.6f} 0 r'.format(z_move, phi_move))
+            move_time = self._estimate_moving_time(start_pos={'z': 0, 'phi': 0},
+                                                   end_pos={'z': z_move, 'phi': phi_move})
+            self._zphi_controller.timeout = move_time * 1000
+            self.write_zphi('{0:.6f} {1:.6f} 0 r'.format(z_move, phi_move))
             self.write_zphi('0 0 0 r')
             if self._report_errors('z'):
+                self._zphi_controller.timeout = self._timeout_zphi * 1000
                 return self.get_pos()
+            self._zphi_controller.timeout = self._timeout_zphi * 1000
         return self.get_pos()
 
     def move_abs(self, param_dict):
@@ -520,19 +522,29 @@ class MotorStageMicos(Base, MotorInterface):
 
         curr_pos = self.get_pos()
         if 'x' in param_dict or 'y' in param_dict:
-            x_move = param_dict['x'] * 1000 if 'x' in param_dict else curr_pos['x']
-            y_move = param_dict['y'] * 1000 if 'y' in param_dict else curr_pos['y']
-            self.write_xy('{0.6f} {1.6f} 0 m'.format(x_move, y_move))
+            x_move = param_dict['x'] if 'x' in param_dict else curr_pos['x']
+            y_move = param_dict['y'] if 'y' in param_dict else curr_pos['y']
+            move_time = self._estimate_moving_time(start_pos={a: curr_pos[a] for a in ('x', 'y')},
+                                                   end_pos={'x': x_move, 'y': y_move})
+            self._xy_controller.timeout = move_time * 1000
+            self.write_xy('{0:.6f} {1:.6f} 0 m'.format(x_move * 1000, y_move * 1000))
             self.write_xy('0 0 0 r')
             if self._report_errors('x'):
+                self._xy_controller.timeout = self._timeout_xy * 1000
                 return self.get_pos()
+            self._xy_controller.timeout = self._timeout_xy * 1000
         if 'z' in param_dict or 'phi' in param_dict:
-            z_move = param_dict['z'] * 1000 if 'z' in param_dict else curr_pos['z']
+            z_move = param_dict['z'] if 'z' in param_dict else curr_pos['z']
             phi_move = param_dict['phi'] if 'phi' in param_dict else curr_pos['phi']
-            self.write_zphi('{0.6f} {1.6f} 0 m'.format(z_move, phi_move))
+            move_time = self._estimate_moving_time(start_pos={a: curr_pos[a] for a in ('z', 'phi')},
+                                                   end_pos={'z': z_move, 'phi': phi_move})
+            self._zphi_controller.timeout = move_time * 1000
+            self.write_zphi('{0:.6f} {1:.6f} 0 m'.format(z_move * 1000, phi_move))
             self.write_zphi('0 0 0 r')
             if self._report_errors('z'):
+                self._zphi_controller.timeout = self._timeout_zphi * 1000
                 return self.get_pos()
+            self._zphi_controller.timeout = self._timeout_zphi * 1000
         return self.get_pos()
 
     def abort(self):
@@ -593,15 +605,21 @@ class MotorStageMicos(Base, MotorInterface):
             param_list = ('x', 'z')
 
         if 'x' in param_list or 'y' in param_list:
+            self._xy_controller.timeout = 0
             self.write_xy('cal')
             if self._report_errors():
-                self.error('Calibration of xy axis controller failed.')
+                self._xy_controller.timeout = self._timeout_xy * 1000
+                self.log.error('Calibration of xy axis controller failed.')
                 return self.get_status()
+            self._xy_controller.timeout = self._timeout_xy * 1000
         if 'z' in param_list or 'phi' in param_list:
+            self._zphi_controller.timeout = 0
             self.write_zphi('cal')
             if self._report_errors():
-                self.error('Calibration of xy axis controller failed.')
+                self._zphi_controller.timeout = self._timeout_zphi * 1000
+                self.log.error('Calibration of xy axis controller failed.')
                 return self.get_status()
+            self._zphi_controller.timeout = self._timeout_zphi * 1000
         return self.get_status()
 
     def get_velocity(self, param_list=None):
@@ -752,6 +770,23 @@ class MotorStageMicos(Base, MotorInterface):
         if self.velocity_ranges[axis][0] <= vel <= self.velocity_ranges[axis][1]:
             return True
         return False
+
+    def _estimate_moving_time(self, start_pos, end_pos):
+        """
+        Calculates the estimated travel time for each axis given.
+        The assumption is that each axis is moved sequentially (one after the other, NOT diagonal).
+
+        @param dict start_pos:
+        @param dict end_pos:
+        @return float: estimated time plus 5% safety margin in seconds
+        """
+        velocity = self.get_velocity()
+        velocity = [vel for axis, vel in velocity.items() if axis in start_pos]
+        distance = [abs(end_pos[axis]-start_pos[axis]) for axis in start_pos]
+        times = [distance[i] / velocity[i] for i in range(2)]
+        total_time = times[0] + times[1]
+        total_time *= 1.05  # Safety margin: 5%
+        return total_time
 
     def _report_errors(self, axis=None):
         err_found = False
