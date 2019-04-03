@@ -1185,4 +1185,5 @@ class PoiManagerLogic(GenericLogic):
         for i in range(0, len(pois)):
             pois[i] = [x_axis[yc2[i]], y_axis[xc2[i]], z]
             self.add_poi(pois[i])
-            time.sleep(0.2)  # halt here, in case of poi name conflicts.
+            if self.poi_nametag is None:
+                time.sleep(0.1)
