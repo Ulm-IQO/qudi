@@ -10,7 +10,9 @@ image
 * Added an optional POI nametag to the POI manager. If you give this property a string value, all 
 new POIs will be named after this tag together with a consecutive integer index.
 * bug fix to how the flags are set for AWG70k
-* 
+* New POI automatic search tool added. If you click on the 'Auto POIs' tool button, POIs will be 
+automatically added in your scan image. This makes fluorescent emitter selections much faster and
+more accurately.
 
 Config changes:
 
