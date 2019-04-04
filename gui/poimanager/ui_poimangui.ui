@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>929</width>
-    <height>935</height>
+    <height>942</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -714,6 +714,7 @@
    <addaction name="new_poi_Action"/>
    <addaction name="poi_selector_Action"/>
    <addaction name="auto_pois_Action"/>
+   <addaction name="poi_deleteall_Action"/>
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
@@ -965,6 +966,18 @@
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Automatically catch some bright spots as POIs&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+  </action>
+  <action name="poi_deleteall_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-delete-all.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-delete-all.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete all POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click on this button, all POIs will be deleted&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
  </widget>

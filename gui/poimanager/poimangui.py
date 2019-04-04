@@ -416,6 +416,8 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
         self._mw.auto_pois_Action.triggered.connect(
             self.poimanagerlogic().auto_catch_poi, QtCore.Qt.QueuedConnection)
+        self._mw.poi_deleteall_Action.triggered.connect(
+            self.poimanagerlogic().delete_all_pois, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_Action.triggered.connect(
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)
         self._mw.new_roi_Action.triggered.connect(
