@@ -66,6 +66,8 @@ class MagnetGui(GUIBase):
     sigToggleMeasurementPause = QtCore.Signal(bool)
     sigAlignmentParametersChanged = QtCore.Signal(str, dict)
     sigGeneralParametersChanged = QtCore.Signal(dict)
+    sigMoveRelative = QtCore.Signal(dict)
+    sigMoveAbsolute = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -149,6 +151,8 @@ class MagnetGui(GUIBase):
             self.magnetlogic().set_alignment_parameters, QtCore.Qt.QueuedConnection)
         self.sigGeneralParametersChanged.connect(
             self.magnetlogic().set_general_parameters, QtCore.Qt.QueuedConnection)
+        self.sigMoveAbsolute.connect(self.magnetlogic().move_magnet_abs, QtCore.Qt.QueuedConnection)
+        self.sigMoveRelative.connect(self.magnetlogic().move_magnet_rel, QtCore.Qt.QueuedConnection)
 
         # Connect general parameter widgets
         self._mw.general_method_comboBox.currentIndexChanged.connect(
@@ -260,6 +264,8 @@ class MagnetGui(GUIBase):
         self.sigToggleMeasurementPause.disconnect()
         self.sigAlignmentParametersChanged.disconnect()
         self.sigGeneralParametersChanged.disconnect()
+        self.sigMoveAbsolute.disconnect()
+        self.sigMoveRelative.disconnect()
 
         # Disconnect general parameter widgets
         self._mw.general_method_comboBox.currentIndexChanged.disconnect()
@@ -576,7 +582,7 @@ class MagnetGui(GUIBase):
         if button_name.startswith('move_minus_'):
             value *= -1
 
-        self.magnetlogic().move_magnet_rel({axis: value})
+        self.sigMoveRelative.emit({axis: value})
         return
 
     @QtCore.Slot()
@@ -590,13 +596,19 @@ class MagnetGui(GUIBase):
         axis = button_name.rsplit('_', 1)[-1]
         value = self.move_abs_widgets[axis]['spinbox'].value()
 
-        self.magnetlogic().move_magnet_abs({axis: value})
+        self.sigMoveAbsolute.emit({axis: value})
         return
 
     @QtCore.Slot(bool)
     def magnet_moving_updated(self, is_moving):
         self._mw.run_stop_alignment_Action.setEnabled(not is_moving)
         self._mw.continue_alignment_Action.setEnabled(not is_moving)
+        self._mw.curr_pos_get_pos_PushButton.setEnabled(not is_moving)
+        for widget_dict in self.move_abs_widgets.values():
+            widget_dict['button'].setEnabled(not is_moving)
+        for widget_dict in self.move_rel_widgets.values():
+            widget_dict['minus_button'].setEnabled(not is_moving)
+            widget_dict['plus_button'].setEnabled(not is_moving)
         return
 
     def set_axis_constraints(self, axis_names=None):
