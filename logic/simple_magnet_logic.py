@@ -166,7 +166,7 @@ class MagnetLogic(GenericLogic):
     _modclass = 'MagnetLogic'
     _modtype = 'logic'
 
-    # declare connectors
+    # Declare connectors
     magnetstage = Connector(interface='MagnetInterface')
     optimizerlogic = Connector(interface='OptimizerLogic')
     counterlogic = Connector(interface='CounterLogic')
@@ -186,6 +186,9 @@ class MagnetLogic(GenericLogic):
 
     _align_parameters = StatusVar(name='alignment_parameters', default=dict())
 
+    # Declare ConfigOptions
+    _position_feedback_period = ConfigOption(name='position_feedback_period', default=1)
+
     # Declare signals
     sigAlignmentParametersUpdated = QtCore.Signal(str, dict)
     sigGeneralParametersUpdated = QtCore.Signal(dict)
@@ -196,7 +199,10 @@ class MagnetLogic(GenericLogic):
     sigMagnetVelocityUpdated = QtCore.Signal(dict)
 
     _sigMeasurementLoop = QtCore.Signal()
+    __sigStartTimer = QtCore.Signal()
+    __sigStopTimer = QtCore.Signal()
 
+    # Other class variables/constants
     _available_path_modes = ('meander', 'diagonal-meander', 'spiral-in', 'spiral-out')
     _available_alignment_methods = ('fluorescence', 'odmr_frequency', 'odmr_contrast')
 
@@ -205,21 +211,32 @@ class MagnetLogic(GenericLogic):
 
         """
         super().__init__(config=config, **kwargs)
-        self._thread_lock = Mutex()
+        self.thread_lock = Mutex()
 
+        self._periodic_position_feedback_enabled = False
         self._measurement_paused = False
         self._stop_requested = True
+        self._pause_continue_requested = False
 
         self._move_path = None
         self._path_index = 0
+
+        # timer for the periodic position readout
+        self.__timer = None
         return
 
     def on_activate(self):
         """
         Actions performed upon loading/activating this module go here.
         """
+        self.__timer = QtCore.QTimer()
+        self.__timer.setSingleShot(False)
+        self.__timer.setInterval(self._position_feedback_period * 1000)
+
+        self._periodic_position_feedback_enabled = False
         self._measurement_paused = False
         self._stop_requested = True
+        self._pause_continue_requested = False
 
         # Initialize undefined variables
         constr = self.magnet_constraints
@@ -238,13 +255,34 @@ class MagnetLogic(GenericLogic):
             self._align_pathway_mode = self.available_path_modes[0]
 
         self._sigMeasurementLoop.connect(self._measurement_loop, QtCore.Qt.QueuedConnection)
+        self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
+        self.__sigStopTimer.connect(self.__timer.stop, QtCore.Qt.QueuedConnection)
+        self.__timer.timeout.connect(self.update_magnet_position, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
         """
         Deactivate the module properly.
         """
+        if self.__timer.isActive():
+            self.toggle_periodic_position_feedback(False)
+            start = time.time()
+            while self.__timer.isActive():
+                time.sleep(0.5)
+                if (time.time() - start) > self._position_feedback_period * 1.1:
+                    break
+        if self.module_state() == 'locked':
+            self.stop_measurement()
+            start = time.time()
+            while self.module_state() != 'idle':
+                time.sleep(0.5)
+                if (time.time() - start) > self._align_measurement_time * 1.1:
+                    break
+
         self._sigMeasurementLoop.disconnect()
+        self.__sigStartTimer.disconnect()
+        self.__sigStopTimer.disconnect()
+        self.__timer.timeout.disconnect()
         return
 
     @_align_parameters.representer
@@ -331,6 +369,10 @@ class MagnetLogic(GenericLogic):
         return {method: param.parameters for method, param in self._align_parameters.items()}
 
     @property
+    def is_paused(self):
+        return self._measurement_paused
+
+    @property
     def general_parameters(self):
         param_dict = dict()
         param_dict['axis_names'] = self._align_axis_names
@@ -342,13 +384,35 @@ class MagnetLogic(GenericLogic):
         param_dict['save_measurements'] = self._align_save_measurements
         return param_dict
 
+    @QtCore.Slot(bool)
+    def toggle_periodic_position_feedback(self, start):
+        if start:
+            if self.__timer.isActive():
+                self.log.warning('Unable to start periodic position feedback. Already running.')
+            else:
+                self._periodic_position_feedback_enabled = True
+                self.__sigStartTimer.emit()
+        else:
+            if not self.__timer.isActive():
+                self.log.warning('Unable to stop periodic position feedback. Not running.')
+            else:
+                self._periodic_position_feedback_enabled = False
+                self.__sigStopTimer.emit()
+        return
+
     @QtCore.Slot()
     def update_magnet_position(self):
-        self.sigMagnetPositionUpdated.emit(self.magnet_position)
+        with self.thread_lock:
+            self.sigMagnetPositionUpdated.emit(self.magnet_position)
         return
 
     @QtCore.Slot(dict)
     def set_general_parameters(self, param_dict):
+        if self.module_state() != 'idle':
+            # self.log.warning('Unable to set general parameters while measurement is running.')
+            self.sigGeneralParametersUpdated.emit(self.general_parameters)
+            return
+
         if 'axis_names' in param_dict:
             self._align_axis_names = tuple(param_dict['axis_names'])
         if 'axis_ranges' in param_dict:
@@ -377,6 +441,12 @@ class MagnetLogic(GenericLogic):
 
     @QtCore.Slot(str, dict)
     def set_alignment_parameters(self, method, param_dict):
+        if self.module_state() != 'idle':
+            # self.log.warning('Unable to set alignment parameters while measurement is running.')
+            self.sigAlignmentParametersUpdated.emit(method,
+                                                    self._align_parameters[method].to_dict())
+            return
+
         if method not in self.available_alignment_methods:
             self.log.error('Unknown alignment method "{0}"'.format(method))
             return
@@ -453,7 +523,11 @@ class MagnetLogic(GenericLogic):
                                  'axis_label' must correspond to a label given
                                  to one of the axis.
         """
-        vel = self.magnetstage().set_velocity(param_dict)
+        if self.module_state() != 'idle':
+            self.log.error('Unable to change magnet velocity while measurement is running.')
+            return
+        with self.thread_lock:
+            vel = self.magnetstage().set_velocity(param_dict)
         self.sigMagnetVelocityUpdated.emit(vel)
         return vel
 
@@ -489,9 +563,13 @@ class MagnetLogic(GenericLogic):
             positions = (
                 np.linspace(axes_ranges[0][0], axes_ranges[0][0], axes_points[0], dtype=float),
                 np.linspace(axes_ranges[1][0], axes_ranges[1][0], axes_points[1], dtype=float))
-            for dim2_val in positions[1]:
-                for dim1_val in positions[0]:
-                    pathway.append({axes_names[0]: dim1_val, axes_names[1]: dim2_val})
+            for dim2_index, dim2_val in enumerate(positions[1]):
+                if dim2_index % 2 == 0:
+                    for dim1_val in positions[0]:
+                        pathway.append({axes_names[0]: dim1_val, axes_names[1]: dim2_val})
+                else:
+                    for dim1_val in reversed(positions[0]):
+                        pathway.append({axes_names[0]: dim1_val, axes_names[1]: dim2_val})
         else:
             self.log.error('2D alignment pathway method "{0}" not implemented yet.'
                            ''.format(self._align_pathway_mode))
@@ -518,22 +596,25 @@ class MagnetLogic(GenericLogic):
 
         @return:
         """
-        with self._thread_lock:
+        with self.thread_lock:
             if self._check_measurement_start_conditions():
                 self.sigMeasurementStatusUpdated.emit(
                     self.module_state() == 'locked', self._measurement_paused)
                 return
 
             self.module_state.lock()
+            if self.__timer.isActive():
+                self.toggle_periodic_position_feedback(False)
             self._measurement_paused = False
+            self._pause_continue_requested = False
             self._stop_requested = False
             self.sigMeasurementStatusUpdated.emit(True, False)
             self._move_path = self._create_alignment_pathway(axes_names=self._align_axis_names,
                                                              axes_ranges=self._align_axis_ranges,
                                                              axes_points=self._align_axis_points)
             self._path_index = 0
-            self._alignment_data = np.zeros((len(self._move_path), 3), dtype=float)
-            self._sigMeasurementLoop.emit()
+            self._align_data = np.zeros((len(self._move_path), 3), dtype=float)
+        self._sigMeasurementLoop.emit()
         return
 
     def _check_measurement_start_conditions(self):
@@ -545,33 +626,30 @@ class MagnetLogic(GenericLogic):
             self.log.error('Can not start measurement procedure. Magnet already moving.')
             return True
 
-        if self._alignment_method not in self._available_alignment_methods:
+        if self._align_method not in self._available_alignment_methods:
             self.log.error('Can not start measurement. Unknown alignment method "{0}".'
                            ''.format(self._alignment_method))
             return True
 
-        if self._alignment_method == 'fluorescence':
-            if self.counterlogic().module_state() != 'idle':
-                self.log.error('CounterLogic still busy. '
-                               'Unable to start fluorescence magnet alignment.')
-                return True
-        elif self._alignment_method == 'odmr_frequency':
+        if self._align_method == 'fluorescence':
+            pass  # Can not check for idle
+        elif self._align_method == 'odmr_frequency':
             if self.odmrlogic().module_state() != 'idle':
                 self.log.error('OdmrLogic still busy. Unable to start ODMR magnet alignment.')
                 return True
-        elif self._alignment_method == 'odmr_contrast':
+        elif self._align_method == 'odmr_contrast':
             if self.odmrlogic().module_state() != 'idle':
                 self.log.error('OdmrLogic still busy. Unable to start ODMR magnet alignment.')
                 return True
         else:
             self.log.error('Alignment method "{0}" present in available_alignment_methods but not '
                            'handled in _check_measurement_start_conditions.'
-                           ''.format(self._alignment_method))
+                           ''.format(self._align_method))
             return True
         return False
 
     def stop_measurement(self):
-        with self._thread_lock:
+        with self.thread_lock:
             if self.module_state() != 'locked':
                 self.log.error('Unable to stop measurement. No measurement running.')
                 return
@@ -584,58 +662,76 @@ class MagnetLogic(GenericLogic):
         if self.module_state() != 'locked':
             return
 
-        with self._thread_lock:
+        with self.thread_lock:
             # Stop if requested
             if self._stop_requested:
                 self._measurement_paused = False
+                self._pause_continue_requested = False
                 self.sigMeasurementStatusUpdated.emit(False, False)
+                if self._periodic_position_feedback_enabled:
+                    self.toggle_periodic_position_feedback(True)
                 self.module_state.unlock()
                 return
 
-            path_pos = self._move_path[self._path_index]
-            magnet_pos = self.move_magnet_abs(path_pos)
-            self.sigMagnetPositionUpdated.emit(magnet_pos)
+            if self._pause_continue_requested:
+                if self._measurement_paused:
+                    self._pause_continue_requested = False
+                    self._measurement_paused = False
+                    if self.__timer.isActive():
+                        self.toggle_periodic_position_feedback(False)
+                    self.sigMeasurementStatusUpdated.emit(True, False)
+                else:
+                    self._pause_continue_requested = False
+                    self._measurement_paused = True
+                    if self._periodic_position_feedback_enabled:
+                        self.toggle_periodic_position_feedback(True)
+                    self.sigMeasurementStatusUpdated.emit(True, True)
 
-            self._optimize_position()
+            if not self._measurement_paused:
+                path_pos = self._move_path[self._path_index]
+                magnet_pos = self.move_magnet_abs(path_pos)
+                self.sigMagnetPositionUpdated.emit(magnet_pos)
 
-            self._alignment_data[self._path_index] = np.array((path_pos[self.align_2d_axis0_name[0]],
-                                                           path_pos[self.align_2d_axis0_name[1]],
-                                                           self.measure_alignment()), dtype=float)
-            self.sig2dDataUpdated.emit(self._alignment_data)
+                self._optimize_position()
 
-            self._path_index += 1
-            if self._path_index == len(self._move_path):
-                self._stop_requested = True
+                self._align_data[self._path_index] = np.array((path_pos[self._align_axis_names[0]],
+                                                               path_pos[self._align_axis_names[1]],
+                                                               self.measure_alignment()),
+                                                              dtype=float)
+                self.sigDataUpdated.emit(self._align_data, tuple(self._align_axis_ranges))
+
+                self._path_index += 1
+                if self._path_index == len(self._move_path):
+                    self._stop_requested = True
         self._sigMeasurementLoop.emit()
         return
 
     def pause_measurement(self):
-        if self.module_state() != 'locked':
-            self.log.error('Unable to pause measurement. No measurement running.')
-            self._measurement_paused = False
-            self.sigMeasurementStatusUpdated.emit(False, False)
-            return
-        if self._measurement_paused:
-            self.log.warning('Unable to pause measurement. Measurement is already paused.')
-        else:
-            pass
-            # with self._thread_lock:
-            #     self._measurement_paused = True
-        self.sigMeasurementStatusUpdated.emit(True, True)
+        with self.thread_lock:
+            if self.module_state() != 'locked':
+                self.log.error('Unable to pause measurement. No measurement running.')
+                self._measurement_paused = False
+                self._pause_continue_requested = False
+                self.sigMeasurementStatusUpdated.emit(False, False)
+            elif self._measurement_paused:
+                self.log.warning('Unable to pause measurement. Measurement is already paused.')
+                self.sigMeasurementStatusUpdated.emit(True, True)
+            else:
+                self._pause_continue_requested = True
         return
 
     def continue_measurement(self):
-        if self.module_state() != 'locked':
-            self.log.error('Unable to continue measurement. No measurement running.')
-            self._measurement_paused = False
-            self.sigMeasurementStatusUpdated.emit(False, False)
-            return
-        if not self._measurement_paused:
-            self.log.warning('Unable to continue measurement. Measurement is not paused.')
-        else:
-            pass
-        self._measurement_paused = False
-        self.sigMeasurementStatusUpdated.emit(True, False)
+        with self.thread_lock:
+            if self.module_state() != 'locked':
+                self.log.error('Unable to continue measurement. No measurement running.')
+                self._measurement_paused = False
+                self._pause_continue_requested = False
+                self.sigMeasurementStatusUpdated.emit(False, False)
+            elif not self._measurement_paused:
+                self.log.warning('Unable to continue measurement. Measurement is not paused.')
+                self.sigMeasurementStatusUpdated.emit(True, False)
+            else:
+                self._pause_continue_requested = True
         return
 
     def _optimize_position(self):
@@ -653,9 +749,9 @@ class MagnetLogic(GenericLogic):
 
         # use the position to move the scanner
         self.scannerlogic().set_position('magnet_logic',
-                                         self._optimizer_logic.optim_pos_x,
-                                         self._optimizer_logic.optim_pos_y,
-                                         self._optimizer_logic.optim_pos_z)
+                                         self.optimizerlogic().optim_pos_x,
+                                         self.optimizerlogic().optim_pos_y,
+                                         self.optimizerlogic().optim_pos_z)
         return
 
     def measure_alignment(self):
@@ -676,14 +772,14 @@ class MagnetLogic(GenericLogic):
                                     additional parameters are saved in a
                                     dictionary form.
         """
-        if self._alignment_method == 'fluorescence':
+        if self._align_method == 'fluorescence':
             data = self._measure_fluorescence()
-        elif self._alignment_method == 'odmr_frequency':
+        elif self._align_method == 'odmr_frequency':
             data = self._measure_odmr_frequency()
-        elif self._alignment_method == 'odmr_contrast':
+        elif self._align_method == 'odmr_contrast':
             data = self._measure_odmr_contrast()
         else:
-            self.log.error('Unknown alignment method "{0}".'.format(self._alignment_method))
+            self.log.error('Unknown alignment method "{0}".'.format(self._align_method))
             data = np.nan
         return data
 
@@ -697,9 +793,11 @@ class MagnetLogic(GenericLogic):
 
         self.counterlogic().start_saving()
         time.sleep(self._align_measurement_time)
-        data_array, dummy = self.counterlogic().save_data(to_file=False)
-        if self._align_save_measurements:
-            self.counterlogic().save_data()
+        curr_pos = self._move_path[self._path_index]
+        tag = 'magnetalign_{0:.3e}_{1:.3e}'.format(curr_pos[self._align_axis_names[0]],
+                                                   curr_pos[self._align_axis_names[1]])
+        data_array, dummy = self.counterlogic().save_data(to_file=self._align_save_measurements,
+                                                          postfix=tag)
 
         data_array = np.array(data_array)[:, 1]
         return data_array.mean()
@@ -726,8 +824,8 @@ class MagnetLogic(GenericLogic):
         self.odmrlogic().do_fit('Lorentzian dip')
         low_freq = self.odmrlogic().fc.current_fit_param['center'].value
         if self._align_save_measurements:
-            tag = 'magnetalign_{0:.3e}_{1:.3e}_low'.format(curr_pos[self.align_2d_axis0_name[0]],
-                                                           curr_pos[self.align_2d_axis0_name[1]])
+            tag = 'magnetalign_{0:.3e}_{1:.3e}_low'.format(curr_pos[self._align_axis_names[0]],
+                                                           curr_pos[self._align_axis_names[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
@@ -754,8 +852,8 @@ class MagnetLogic(GenericLogic):
         self.odmrlogic().do_fit('Lorentzian dip')
         high_freq = self.odmrlogic().fc.current_fit_param['center'].value
         if self._align_save_measurements:
-            tag = 'magnetalign_{0:.3e}_{1:.3e}_high'.format(curr_pos[self.align_2d_axis0_name[0]],
-                                                            curr_pos[self.align_2d_axis0_name[1]])
+            tag = 'magnetalign_{0:.3e}_{1:.3e}_high'.format(curr_pos[self._align_axis_names[0]],
+                                                            curr_pos[self._align_axis_names[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
@@ -774,10 +872,10 @@ class MagnetLogic(GenericLogic):
             self.log.warning('NaN value encountered during odmr frequency alignment at position '
                              '{0}={1:.3e}, {2}={3:.3e}.\nB-field angle returned set to zero.\n'
                              'B={4:.3e}G, angle={5:.3e}°'
-                             ''.format(self.align_2d_axis0_name[0],
-                                       curr_pos[self.align_2d_axis0_name[0]],
-                                       self.align_2d_axis0_name[1],
-                                       curr_pos[self.align_2d_axis0_name[1]], b_field, angle))
+                             ''.format(self._align_axis_names[0],
+                                       curr_pos[self._align_axis_names[0]],
+                                       self._align_axis_names[1],
+                                       curr_pos[self._align_axis_names[1]], b_field, angle))
             angle = 0.0
         return angle
 
@@ -803,8 +901,8 @@ class MagnetLogic(GenericLogic):
         odmr_freq = self.odmrlogic().fc.current_fit_param['center'].value
         odmr_contrast = self.odmrlogic().fc.current_fit_param['contrast'].value
         if self._align_save_measurements:
-            tag = 'magnetalign_{0:.3e}_{1:.3e}'.format(curr_pos[self.align_2d_axis0_name[0]],
-                                                       curr_pos[self.align_2d_axis0_name[1]])
+            tag = 'magnetalign_{0:.3e}_{1:.3e}'.format(curr_pos[self._align_axis_names[0]],
+                                                       curr_pos[self._align_axis_names[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
@@ -821,32 +919,32 @@ class MagnetLogic(GenericLogic):
     @QtCore.Slot(str)
     def save_data(self, tag=None, timestamp=None):
         """ Save the data of the """
-        filepath = self._save_logic.get_path_for_module(module_name='Magnet')
+        filepath = self.savelogic().get_path_for_module(module_name='Magnet')
 
         if timestamp is None:
             timestamp = datetime.datetime.now()
         filelabel = tag + '_magnet_alignment_data' if tag else 'magnet_alignment_data'
 
         # here is the matrix saved
-        if self._alignment_method == 'fluorescence':
+        if self._align_method == 'fluorescence':
             data_header = '{0}(m)\t{1}(m)\tcounts(1/s)'.format(self._align_axis_names[0],
                                                                self._align_axis_names[1])
-        elif self._alignment_method == 'odmr_frequency':
+        elif self._align_method == 'odmr_frequency':
             data_header = '{0}(m)\t{1}(m)\tangle(deg)'.format(self._align_axis_names[0],
                                                               self._align_axis_names[1])
-        elif self._alignment_method == 'odmr_frequency':
+        elif self._align_method == 'odmr_frequency':
             data_header = '{0}(m)\t{1}(m)\tcontrast'.format(self._align_axis_names[0],
                                                             self._align_axis_names[1])
         else:
             data_header = '{0}(m)\t{1}(m)\tvalue'.format(self._align_axis_names[0],
                                                          self._align_axis_names[1])
-        matrix_data = {data_header: self._alignment_data}
+        matrix_data = {data_header: self._align_data}
 
         parameters = OrderedDict()
         parameters['Pathway method'] = self._align_pathway_mode
-        parameters['Alignment method'] = self._alignment_method
+        parameters['Alignment method'] = self._align_method
 
-        self._save_logic.save_data(matrix_data, filepath=filepath, parameters=parameters,
+        self.savelogic().save_data(matrix_data, filepath=filepath, parameters=parameters,
                                    filelabel=filelabel, timestamp=timestamp)
 
     @staticmethod

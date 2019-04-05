@@ -63,6 +63,7 @@ class MagnetGui(GUIBase):
 
     # declare signals
     sigToggleMeasurement = QtCore.Signal(bool)
+    sigToggleMeasurementPause = QtCore.Signal(bool)
     sigAlignmentParametersChanged = QtCore.Signal(str, dict)
     sigGeneralParametersChanged = QtCore.Signal(dict)
 
@@ -112,6 +113,10 @@ class MagnetGui(GUIBase):
         self._mw.setDockNestingEnabled(True)
         self.set_default_view_main_window()
 
+        # Update measurement status
+        self.measurement_status_updated(is_running=self.magnetlogic().module_state() == 'locked',
+                                        is_paused=self.magnetlogic().is_paused)
+
         # Connect toolbar/menu actions
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
         self._mw.save_Action.triggered.connect(self.save_data)
@@ -138,6 +143,8 @@ class MagnetGui(GUIBase):
         # Connect control signals to logic
         self.sigToggleMeasurement.connect(
             self.magnetlogic().toggle_measurement, QtCore.Qt.QueuedConnection)
+        self.sigToggleMeasurementPause.connect(
+            self.magnetlogic().toggle_measurement_pause, QtCore.Qt.QueuedConnection)
         self.sigAlignmentParametersChanged.connect(
             self.magnetlogic().set_alignment_parameters, QtCore.Qt.QueuedConnection)
         self.sigGeneralParametersChanged.connect(
@@ -250,6 +257,7 @@ class MagnetGui(GUIBase):
 
         # Disconnect control signals to logic
         self.sigToggleMeasurement.disconnect()
+        self.sigToggleMeasurementPause.disconnect()
         self.sigAlignmentParametersChanged.disconnect()
         self.sigGeneralParametersChanged.disconnect()
 
@@ -355,7 +363,7 @@ class MagnetGui(GUIBase):
 
         # Set fixed constraints for SpinBoxes
         self._mw.general_x_points_spinBox.setMinimum(2)
-        self._mw.general_x_points_spinBox.setMaximum(2**31-1)
+        self._mw.general_x_points_spinBox.setMaximum(2**31 - 1)
         self._mw.general_y_points_spinBox.setMinimum(2)
         self._mw.general_y_points_spinBox.setMaximum(2**31 - 1)
 
@@ -776,10 +784,26 @@ class MagnetGui(GUIBase):
                                 False = stopped
         """
         if is_checked:
-            self.general_parameters_changed(True)
-            # FIXME: Send alignment parameters to logic
+            tab = self._mw.parameters_tabWidget.currentIndex()
+            print('tab index:', tab)
+            if tab == 0:
+                self.general_parameters_changed(True)
+            else:
+                method = list(self.alignment_param_changed_methods)[tab-1]
+                self.alignment_param_changed_methods[method](True)
 
+        self._mw.run_stop_alignment_Action.setEnabled(False)
+        self._mw.continue_alignment_Action.setEnabled(False)
         self.sigToggleMeasurement.emit(is_checked)
+        return
+
+    @QtCore.Slot(bool)
+    def pause_continue_alignment(self, is_checked):
+        """
+        Manage what happens if 2d magnet scan is paused/continued
+        """
+        self._mw.continue_alignment_Action.setEnabled(False)
+        self.sigToggleMeasurementPause.emit(is_checked)
         return
 
     @QtCore.Slot(bool, bool)
@@ -787,12 +811,17 @@ class MagnetGui(GUIBase):
         """ Changes every display component back to the stopped state. """
         self._mw.run_stop_alignment_Action.blockSignals(True)
         self._mw.run_stop_alignment_Action.setChecked(is_running)
+        self._mw.run_stop_alignment_Action.setEnabled(True)
         self._mw.run_stop_alignment_Action.blockSignals(False)
 
         self._mw.continue_alignment_Action.blockSignals(True)
         self._mw.continue_alignment_Action.setEnabled(is_running)
         self._mw.continue_alignment_Action.setChecked(is_paused)
         self._mw.continue_alignment_Action.blockSignals(False)
+
+        self._mw.parameters_tabWidget.setEnabled(not is_running)
+        self._mw.move_abs_DockWidgetContents.setEnabled(not is_running)
+        self._mw.move_rel_DockWidgetContents.setEnabled(not is_running)
         return
 
     @QtCore.Slot()
