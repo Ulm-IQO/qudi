@@ -63,7 +63,8 @@ class MagnetGui(GUIBase):
 
     # declare signals
     sigToggleMeasurement = QtCore.Signal(bool)
-    sigAlignmentParametersChanged = QtCore.Signal(dict)
+    sigAlignmentParametersChanged = QtCore.Signal(str, dict)
+    sigGeneralParametersChanged = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -71,37 +72,52 @@ class MagnetGui(GUIBase):
         self.current_pos_widgets = dict()
         self.move_abs_widgets = dict()
         self.move_rel_widgets = dict()
-        self.alignment_method_radiobuttons = dict()
+        self.alignment_param_widgets = dict()
+        self.alignment_param_changed_methods = dict()
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
         self._mw = MagnetMainWindow()
 
-        # create all the needed control elements. They will manage the
-        # connection with each other themselves. Note some buttons are also
-        # connected within these functions because they have to be placed at
-        # first in the GUI Layout, otherwise the signals will not react.
+        # Automatically create GUI elements from axis constraints
         self._create_axis_pos_disp()
         self._create_move_rel_control()
         self._create_move_abs_control()
-        self._create_meas_type_radiobuttons()
+
+        # Initialize general parameter widgets (constraints and values)
+        self._init_general_parameters()
+
+        # Automatically create GUI elements from alignment parameter objects
+        self._create_alignment_parameter_tabs()
+        # Automatically create value changed methods for the widgets created above to connect to.
+        self._create_parameter_changed_methods()
+        # Initialize the automatically created widgets with values from logic
+        self._init_alignment_parameters()
 
         # Add save file tag input box
         self._mw.save_nametag_LineEdit = QtWidgets.QLineEdit(self._mw)
-        self._mw.save_nametag_LineEdit.setMaximumWidth(200)
+        self._mw.save_nametag_LineEdit.setMaximumWidth(400)
+        self._mw.save_nametag_LineEdit.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                                     QtWidgets.QSizePolicy.Fixed)
         self._mw.save_nametag_LineEdit.setToolTip('Enter a nametag to add to the filename.')
         self._mw.save_ToolBar.addWidget(self._mw.save_nametag_LineEdit)
 
-        # Setup dock widgets
-        self._mw.centralwidget.hide()
-        self._mw.setDockNestingEnabled(True)
-        self.set_default_view_main_window()
-
-        # update the values also of the absolute movement display:
+        # Initialize the values of the absolute movement and current position displays:
         for axis, pos in self.magnetlogic().magnet_position.items():
             self.move_abs_widgets[axis]['spinbox'].setValue(pos)
             self.current_pos_widgets[axis]['spinbox'].setValue(pos)
+
+        # Initialize dockwidget layout
+        self._mw.setDockNestingEnabled(True)
+        self.set_default_view_main_window()
+
+        # Connect toolbar/menu actions
+        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
+        self._mw.save_Action.triggered.connect(self.save_data)
+        self._mw.run_stop_alignment_Action.toggled.connect(self.run_stop_alignment)
+        self._mw.continue_alignment_Action.toggled.connect(
+            self.magnetlogic().toggle_measurement_pause, QtCore.Qt.QueuedConnection)
 
         # Connect update signals from logic
         self.magnetlogic().sigMagnetPositionUpdated.connect(
@@ -112,8 +128,10 @@ class MagnetGui(GUIBase):
             self.magnet_moving_updated, QtCore.Qt.QueuedConnection)
         self.magnetlogic().sigMagnetVelocityUpdated.connect(
             self.magnet_velocity_updated, QtCore.Qt.QueuedConnection)
-        self.magnetlogic().sigAlignmentParametersChanged.connect(
+        self.magnetlogic().sigAlignmentParametersUpdated.connect(
             self.alignment_parameters_updated, QtCore.Qt.QueuedConnection)
+        self.magnetlogic().sigGeneralParametersUpdated.connect(
+            self.general_parameters_updated, QtCore.Qt.QueuedConnection)
         self.magnetlogic().sigDataUpdated.connect(
             self.update_plot_data, QtCore.Qt.QueuedConnection)
 
@@ -122,13 +140,54 @@ class MagnetGui(GUIBase):
             self.magnetlogic().toggle_measurement, QtCore.Qt.QueuedConnection)
         self.sigAlignmentParametersChanged.connect(
             self.magnetlogic().set_alignment_parameters, QtCore.Qt.QueuedConnection)
+        self.sigGeneralParametersChanged.connect(
+            self.magnetlogic().set_general_parameters, QtCore.Qt.QueuedConnection)
 
-        # Connect toolbar/menu widgets/actions
-        self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
-        self._mw.save_Action.triggered.connect(self.save_data)
-        self._mw.run_stop_alignment_Action.triggered.connect(self.run_stop_alignment)
-        self._mw.continue_alignment_Action.toggled.connect(
-            self.magnetlogic().toggle_measurement_pause, QtCore.Qt.QueuedConnection)
+        # Connect general parameter widgets
+        self._mw.general_method_comboBox.currentIndexChanged.connect(
+            self.general_parameters_changed)
+        self._mw.general_pathmode_comboBox.currentIndexChanged.connect(
+            self.general_parameters_changed)
+        self._mw.general_x_axis_comboBox.currentIndexChanged.connect(
+            self.general_parameters_changed)
+        self._mw.general_y_axis_comboBox.currentIndexChanged.connect(
+            self.general_parameters_changed)
+        self._mw.general_x_start_doubleSpinBox.editingFinished.connect(
+            self.general_parameters_changed)
+        self._mw.general_y_start_doubleSpinBox.editingFinished.connect(
+            self.general_parameters_changed)
+        self._mw.general_x_stop_doubleSpinBox.editingFinished.connect(
+            self.general_parameters_changed)
+        self._mw.general_y_stop_doubleSpinBox.editingFinished.connect(
+            self.general_parameters_changed)
+        self._mw.general_x_points_spinBox.editingFinished.connect(self.general_parameters_changed)
+        self._mw.general_y_points_spinBox.editingFinished.connect(self.general_parameters_changed)
+        self._mw.general_measurement_time_doubleSpinBox.editingFinished.connect(
+            self.general_parameters_changed)
+        self._mw.general_save_measurements_checkBox.stateChanged.connect(
+            self.general_parameters_changed)
+
+        # Connect alignment method parameter widgets
+        for method, widget_dict in self.alignment_param_widgets.items():
+            for widget in widget_dict.values():
+                if hasattr(widget, 'editingFinished'):
+                    widget.editingFinished.connect(self.alignment_param_changed_methods[method])
+                elif hasattr(widget, 'stateChanged'):
+                    widget.stateChanged.connect(self.alignment_param_changed_methods[method])
+                else:
+                    self.log.error('Failed to connect "{0}" changed signal. Unknown widget type.'
+                                   ''.format(widget.objectName()))
+
+        # Connect axis position/movement signals
+        self._mw.curr_pos_get_pos_PushButton.clicked.connect(
+            self.magnetlogic().update_magnet_position, QtCore.Qt.QueuedConnection)
+        self._mw.curr_pos_stop_PushButton.clicked.connect(
+            self.magnetlogic().abort_movement, QtCore.Qt.DirectConnection)
+        for widget_dict in self.move_abs_widgets.values():
+            widget_dict['button'].clicked.connect(self.move_abs)
+        for widget_dict in self.move_rel_widgets.values():
+            widget_dict['minus_button'].clicked.connect(self.move_rel)
+            widget_dict['plus_button'].clicked.connect(self.move_rel)
 
 
         # self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
@@ -171,41 +230,10 @@ class MagnetGui(GUIBase):
         # self._update_2d_data()
         # self._update_2d_graph_cb()
 
-        # connect the actions of the toolbar:
-
-
-
         # Connect the buttons and inputs for the odmr colorbar
         # self._mw.alignment_2d_manual_RadioButton.clicked.connect(self._update_2d_data)
         # self._mw.alignment_2d_centiles_RadioButton.clicked.connect(self._update_2d_data)
 
-
-        # General tab signals:
-        self._mw.general_meas_time_doubleSpinBox.editingFinished.connect(self.general_params_changed)
-        self._mw.general_save_each_checkBox.stateChanged.connect(self.general_params_changed)
-
-        # ODMR frequency tab signals
-        self._mw.odmr_low_start_freq_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_low_stop_freq_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_low_points_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_low_power_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-
-        self._mw.odmr_high_start_freq_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_high_stop_freq_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_high_points_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-        self._mw.odmr_high_power_DSpinBox.editingFinished.connect(self.odmr_freq_params_changed)
-
-        # ODMR contrast tab signals
-        self._mw.odmr_start_freq_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
-        self._mw.odmr_stop_freq_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
-        self._mw.odmr_points_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
-        self._mw.odmr_power_DSpinBox.editingFinished.connect(self.odmr_contrast_params_changed)
-
-        # Position signals
-        self._mw.curr_pos_get_pos_PushButton.clicked.connect(
-            self.magnetlogic().update_magnet_position, QtCore.Qt.QueuedConnection)
-        self._mw.curr_pos_stop_PushButton.clicked.connect(
-            self.magnetlogic().abort_movement, QtCore.Qt.DirectConnection)
         return
 
     def on_deactivate(self):
@@ -216,48 +244,46 @@ class MagnetGui(GUIBase):
         self.magnetlogic().sigMeasurementStatusUpdated.disconnect()
         self.magnetlogic().sigMagnetMoving.disconnect()
         self.magnetlogic().sigMagnetVelocityUpdated.disconnect()
-        self.magnetlogic().sigAlignmentParametersChanged.disconnect()
+        self.magnetlogic().sigAlignmentParametersUpdated.disconnect()
+        self.magnetlogic().sigGeneralParametersUpdated.disconnect()
         self.magnetlogic().sigDataUpdated.disconnect()
 
         # Disconnect control signals to logic
         self.sigToggleMeasurement.disconnect()
         self.sigAlignmentParametersChanged.disconnect()
+        self.sigGeneralParametersChanged.disconnect()
 
-        # Disconnect toolbar/menu widgets/actions
+        # Disconnect general parameter widgets
+        self._mw.general_method_comboBox.currentIndexChanged.disconnect()
+        self._mw.general_pathmode_comboBox.currentIndexChanged.disconnect()
+        self._mw.general_x_axis_comboBox.currentIndexChanged.disconnect()
+        self._mw.general_y_axis_comboBox.currentIndexChanged.disconnect()
+        self._mw.general_x_start_doubleSpinBox.editingFinished.disconnect()
+        self._mw.general_y_start_doubleSpinBox.editingFinished.disconnect()
+        self._mw.general_x_stop_doubleSpinBox.editingFinished.disconnect()
+        self._mw.general_y_stop_doubleSpinBox.editingFinished.disconnect()
+        self._mw.general_x_points_spinBox.editingFinished.disconnect()
+        self._mw.general_y_points_spinBox.editingFinished.disconnect()
+        self._mw.general_measurement_time_doubleSpinBox.editingFinished.disconnect()
+        self._mw.general_save_measurements_checkBox.stateChanged.disconnect()
+
+        # Disconnect toolbar/menu actions
         self._mw.default_view_Action.triggered.disconnect()
         self._mw.save_Action.triggered.disconnect()
-        self._mw.run_stop_alignment_Action.triggered.disconnect()
+        self._mw.run_stop_alignment_Action.toggled.disconnect()
         self._mw.continue_alignment_Action.toggled.disconnect()
-        for widget in self.alignment_method_radiobuttons.values():
-            widget.toggled.disconnect()
 
-        # self._mw.alignment_2d_manual_RadioButton.clicked.disconnect()
-        # self._mw.alignment_2d_centiles_RadioButton.clicked.disconnect()
+        # Disconnect alignment method parameter widgets
+        for method, widget_dict in self.alignment_param_widgets.items():
+            for widget in widget_dict.values():
+                if hasattr(widget, 'editingFinished'):
+                    widget.editingFinished.disconnect()
+                elif hasattr(widget, 'stateChanged'):
+                    widget.stateChanged.disconnect()
 
-        # General tab signals:
-        self._mw.general_meas_time_doubleSpinBox.editingFinished.disconnect()
-        self._mw.general_save_each_checkBox.stateChanged.disconnect()
-
-        # ODMR frequency tab signals
-        self._mw.odmr_low_start_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_low_stop_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_low_points_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_low_power_DSpinBox.editingFinished.disconnect()
-
-        self._mw.odmr_high_start_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_high_stop_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_high_points_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_high_power_DSpinBox.editingFinished.disconnect()
-
-        # ODMR contrast tab signals
-        self._mw.odmr_start_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_stop_freq_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_points_DSpinBox.editingFinished.disconnect()
-        self._mw.odmr_power_DSpinBox.editingFinished.disconnect()
-
+        # Disconnect axis position/movement signals
         self._mw.curr_pos_get_pos_PushButton.clicked.disconnect()
         self._mw.curr_pos_stop_PushButton.clicked.disconnect()
-
         for widget_dict in self.move_abs_widgets.values():
             widget_dict['button'].clicked.disconnect()
         for widget_dict in self.move_rel_widgets.values():
@@ -280,33 +306,71 @@ class MagnetGui(GUIBase):
         self._mw.curr_pos_DockWidget.setFloating(False)
         self._mw.move_rel_DockWidget.setFloating(False)
         self._mw.move_abs_DockWidget.setFloating(False)
-        self._mw.alignment_DockWidget.setFloating(False)
+        self._mw.parameters_DockWidget.setFloating(False)
 
         # align the widget
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.curr_pos_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.move_rel_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1), self._mw.move_abs_DockWidget)
-        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(2), self._mw.alignment_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(
+            QtCore.Qt.LeftDockWidgetArea), self._mw.curr_pos_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(
+            QtCore.Qt.LeftDockWidgetArea), self._mw.move_rel_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(
+            QtCore.Qt.LeftDockWidgetArea), self._mw.move_abs_DockWidget)
+        self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(
+            QtCore.Qt.RightDockWidgetArea), self._mw.parameters_DockWidget)
+
+        # Adjust dockwidget size
+        dockwidget_size = QtCore.QSize(self._mw.size().width() / 4, self._mw.size().height() / 3)
+        self._mw.resizeDocks([self._mw.parameters_DockWidget,
+                              self._mw.curr_pos_DockWidget,
+                              self._mw.move_rel_DockWidget,
+                              self._mw.move_abs_DockWidget],
+                             [dockwidget_size.width()]*4,
+                             QtCore.Qt.Horizontal)
+        self._mw.resizeDocks([self._mw.curr_pos_DockWidget,
+                              self._mw.move_rel_DockWidget,
+                              self._mw.move_abs_DockWidget],
+                             [dockwidget_size.height()] * 3,
+                             QtCore.Qt.Vertical)
+        self._mw.resizeDocks([self._mw.parameters_DockWidget],
+                             [self._mw.size().height()],
+                             QtCore.Qt.Vertical)
         return
 
-    def _create_meas_type_radiobuttons(self):
-        """ Create the measurement Buttons for the desired measurements:
-
-        @return:
+    def _init_general_parameters(self):
         """
-        self.alignment_method_radiobuttons = dict()
+        Initialize the general alignment parameters tab.
+        Set constraints for widgets and fill comboboxes.
+        """
+        # Populate ComboBoxes
+        self._mw.general_method_comboBox.clear()
+        self._mw.general_method_comboBox.addItems(self.magnetlogic().available_alignment_methods)
 
-        self._mw.alignment_2d_ButtonGroup = QtWidgets.QButtonGroup(self._mw)
+        self._mw.general_pathmode_comboBox.clear()
+        self._mw.general_pathmode_comboBox.addItems(self.magnetlogic().available_path_modes)
 
-        for i, method in enumerate(self.magnetlogic().available_alignment_methods):
-            radiobutton = QtWidgets.QRadioButton(parent=self._mw)
-            radiobutton.setText(method)
-            if i == 0:
-                radiobutton.setChecked(True)
-            self._mw.alignment_2d_ButtonGroup.addButton(radiobutton)
-            self._mw.alignment_2d_ToolBar.addWidget(radiobutton)
-            self.alignment_method_radiobuttons[method] = radiobutton
-            radiobutton.toggled.connect(self.alignment_method_changed)
+        self._mw.general_x_axis_comboBox.clear()
+        self._mw.general_x_axis_comboBox.addItems(self.magnetlogic().available_axes_names)
+        self._mw.general_y_axis_comboBox.clear()
+        self._mw.general_y_axis_comboBox.addItems(self.magnetlogic().available_axes_names)
+
+        # Set fixed constraints for SpinBoxes
+        self._mw.general_x_points_spinBox.setMinimum(2)
+        self._mw.general_x_points_spinBox.setMaximum(2**31-1)
+        self._mw.general_y_points_spinBox.setMinimum(2)
+        self._mw.general_y_points_spinBox.setMaximum(2**31 - 1)
+
+        # Configure and initialize (Double)SpinBoxes as well as setting constraints
+        self.general_parameters_updated()
+        return
+
+    def _init_alignment_parameters(self):
+        """
+        Initialize the automatically generated widgets for the method-specific alignment parameters.
+        """
+        for method, param_dict in self.magnetlogic().alignment_parameters.items():
+            if method not in self.alignment_param_widgets:
+                continue
+            self.alignment_parameters_updated(method=method, param_dict=param_dict)
         return
 
     def _create_axis_pos_disp(self):
@@ -318,8 +382,10 @@ class MagnetGui(GUIBase):
             # Set the QLabel according to the grid
             label = QtWidgets.QLabel(parent=self._mw.curr_pos_DockWidgetContents)
             label.setText('{0}:'.format(axis))
-            label.setAlignment(QtCore.Qt.AlignRight)
-            self._mw.curr_pos_GridLayout.addWidget(label, index, 0, 1, 1)
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+            # label.setAlignment(QtCore.Qt.AlignVCenter)
+            self._mw.curr_pos_gridLayout.addWidget(label, index, 0, 1, 1)
 
             # Set the ScienDSpinBox according to the grid
             spinbox = ScienDSpinBox(parent=self._mw.curr_pos_DockWidgetContents)
@@ -328,15 +394,11 @@ class MagnetGui(GUIBase):
             spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             spinbox.setMaximum(np.inf)
             spinbox.setMinimum(-np.inf)
-            self._mw.curr_pos_GridLayout.addWidget(spinbox, index, 1, 1, 1)
+            spinbox.setDecimals(6)
+            spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            self._mw.curr_pos_gridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             self.current_pos_widgets[axis] = {'label': label, 'spinbox': spinbox}
-
-        extension = len(self.current_pos_widgets)
-        self._mw.curr_pos_GridLayout.addWidget(
-            self._mw.curr_pos_get_pos_PushButton, 0, 2, extension, 1)
-        self._mw.curr_pos_GridLayout.addWidget(
-            self._mw.curr_pos_stop_PushButton, 0, 3, extension, 1)
         return
 
     def _create_move_rel_control(self):
@@ -348,7 +410,8 @@ class MagnetGui(GUIBase):
             # Create the QLabel
             label = QtWidgets.QLabel(parent=self._mw.move_rel_DockWidgetContents)
             label.setText('{0}:'.format(axis))
-            label.setAlignment(QtCore.Qt.AlignRight)
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_rel_GridLayout.addWidget(label, index, 0, 1, 1)
 
             # Create the ScienDSpinBox
@@ -356,21 +419,22 @@ class MagnetGui(GUIBase):
             spinbox.setSuffix(axis_dict['unit'])
             spinbox.setMinimum(axis_dict['pos_min'])
             spinbox.setMaximum(axis_dict['pos_max'])
+            spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_rel_GridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             # Create the minus button
             minus_button = QtWidgets.QPushButton(parent=self._mw.move_rel_DockWidgetContents)
             minus_button.setText('-{0}'.format(axis))
             minus_button.setObjectName('move_minus_rel_{0}'.format(axis))
+            minus_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_rel_GridLayout.addWidget(minus_button, index, 2, 1, 1)
-            minus_button.clicked.connect(self.move_rel)
 
             # Create the plus button
             plus_button = QtWidgets.QPushButton(parent=self._mw.move_rel_DockWidgetContents)
             plus_button.setText('+{0}'.format(axis))
             plus_button.setObjectName('move_plus_rel_{0}'.format(axis))
+            plus_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_rel_GridLayout.addWidget(plus_button, index, 3, 1, 1)
-            plus_button.clicked.connect(self.move_rel)
 
             self.move_rel_widgets[axis] = {'label': label,
                                            'spinbox': spinbox,
@@ -387,7 +451,8 @@ class MagnetGui(GUIBase):
             # Create the QLabel
             label = QtWidgets.QLabel(parent=self._mw.move_abs_DockWidgetContents)
             label.setText('{0}:'.format(axis))
-            label.setAlignment(QtCore.Qt.AlignRight)
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_abs_GridLayout.addWidget(label, index, 0, 1, 1)
 
             # Create the ScienDSpinBox
@@ -395,16 +460,99 @@ class MagnetGui(GUIBase):
             spinbox.setSuffix(axis_dict['unit'])
             spinbox.setMinimum(axis_dict['pos_min'])
             spinbox.setMaximum(axis_dict['pos_max'])
+            spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_abs_GridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             # Create the minus button
             button = QtWidgets.QPushButton(parent=self._mw.move_abs_DockWidgetContents)
             button.setText('move {0}'.format(axis))
             button.setObjectName('move_abs_{0}'.format(axis))
+            button.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
             self._mw.move_abs_GridLayout.addWidget(button, index, 2, 1, 1)
-            button.clicked.connect(self.move_abs)
 
             self.move_abs_widgets[axis] = {'label': label, 'spinbox': spinbox, 'button': button}
+        return
+
+    def _create_alignment_parameter_tabs(self):
+        """
+
+        """
+        self.alignment_param_widgets = dict()
+
+        for method, params_dict in self.magnetlogic().alignment_parameter_signatures.items():
+            # Create no tab if no additional parameters (additional to general params) are needed.
+            if not params_dict:
+                continue
+
+            # Create dict to store references to input widgets and parameter names as keys
+            self.alignment_param_widgets[method] = dict()
+
+            # Create new tab widget
+            tab_widget = QtWidgets.QWidget()
+            layout = QtWidgets.QGridLayout()
+            for index, (param_name, param_dict) in enumerate(params_dict.items()):
+                # Create label
+                label = QtWidgets.QLabel(param_name + ':')
+                label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+                label.setSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+
+                # Create input widget
+                if param_dict['type'] is float:
+                    widget = ScienDSpinBox()
+                    if param_dict['unit']:
+                        widget.setSuffix(param_dict['unit'])
+                    if param_dict['min']:
+                        widget.setMinimum(param_dict['min'])
+                    if param_dict['max']:
+                        widget.setMaximum(param_dict['max'])
+                elif param_dict['type'] is int:
+                    widget = QtWidgets.QSpinBox()
+                    if param_dict['unit']:
+                        widget.setSuffix(param_dict['unit'])
+                    if param_dict['min']:
+                        if param_dict['min'] < -(2**31 - 1):
+                            widget.setMinimum(-(2**31 - 1))
+                        else:
+                            widget.setMinimum(param_dict['min'])
+                    if param_dict['max']:
+                        if param_dict['max'] > 2**31 - 1:
+                            widget.setMaximum(2**31 - 1)
+                        else:
+                            widget.setMaximum(param_dict['max'])
+                elif param_dict['type'] is bool:
+                    widget = QtWidgets.QCheckBox()
+                elif param_dict['type'] is str:
+                    widget = QtWidgets.QLineEdit()
+                else:
+                    self.log.error('Unknown input type for alignment method "{0}" parameter "{1}": '
+                                   '{2}'.format(method, param_name, str(param_dict['type'])))
+                    return
+                widget.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+                widget.setObjectName('{0}_{1}_widget'.format(method, param_name))
+
+                # Add label and widget to layout
+                layout.addWidget(label, index, 0, 1, 1)
+                layout.addWidget(widget, index, 1, 1, 1)
+                # Add widget to alignment_param_widgets dict
+                self.alignment_param_widgets[method][param_name] = widget
+
+            # Add spacer to layout
+            spacer = QtWidgets.QSpacerItem(20, 40,
+                                           QtWidgets.QSizePolicy.Minimum,
+                                           QtWidgets.QSizePolicy.Expanding)
+            layout.addItem(spacer, index+1, 0, 1, 1)
+            # Assign layout to tab_widget
+            tab_widget.setLayout(layout)
+            # Add tab to TabWidget
+            self._mw.parameters_tabWidget.addTab(tab_widget, method)
+        return
+
+    def _create_parameter_changed_methods(self):
+        self.alignment_param_changed_methods = dict()
+        for method in self.alignment_param_widgets:
+            method_name = '{0}_alignment_parameters_changed'.format(method)
+            setattr(MagnetGui, method_name, self.__get_parameter_changed_method(method))
+            self.alignment_param_changed_methods[method] = getattr(self, method_name)
         return
 
     @QtCore.Slot()
@@ -443,102 +591,153 @@ class MagnetGui(GUIBase):
         self._mw.continue_alignment_Action.setEnabled(not is_moving)
         return
 
-    @QtCore.Slot()
-    def general_params_changed(self):
-        """
+    def set_axis_constraints(self, axis_names=None):
+        if axis_names is None:
+            axis_names = self.magnetlogic().current_align_axes
 
-        """
-        param_dict = dict()
-        param_dict['measurement_time'] = self._mw.general_meas_time_doubleSpinBox.value()
-        param_dict['save_after_measure'] = self._mw.general_save_each_checkBox.isChecked()
-        self.sigAlignmentParametersChanged.emit({'general': param_dict})
+        constr = self.magnetlogic().magnet_constraints
+
+        self._mw.general_x_start_doubleSpinBox.blockSignals(True)
+        old_val = self._mw.general_x_start_doubleSpinBox.value()
+        self._mw.general_x_start_doubleSpinBox.setMinimum(constr[axis_names[0]]['pos_min'])
+        self._mw.general_x_start_doubleSpinBox.setMaximum(constr[axis_names[0]]['pos_max'])
+        self._mw.general_x_start_doubleSpinBox.setSuffix(constr[axis_names[0]]['unit'])
+        if old_val != self._mw.general_x_start_doubleSpinBox.value():
+            self._mw.general_x_start_doubleSpinBox.setValue(
+                self.magnetlogic().current_align_ranges[0][0])
+        self._mw.general_x_start_doubleSpinBox.blockSignals(False)
+
+        self._mw.general_y_start_doubleSpinBox.blockSignals(True)
+        old_val = self._mw.general_y_start_doubleSpinBox.value()
+        self._mw.general_y_start_doubleSpinBox.setMinimum(constr[axis_names[1]]['pos_min'])
+        self._mw.general_y_start_doubleSpinBox.setMaximum(constr[axis_names[1]]['pos_max'])
+        self._mw.general_y_start_doubleSpinBox.setSuffix(constr[axis_names[1]]['unit'])
+        if old_val != self._mw.general_y_start_doubleSpinBox.value():
+            self._mw.general_y_start_doubleSpinBox.setValue(
+                self.magnetlogic().current_align_ranges[1][0])
+        self._mw.general_y_start_doubleSpinBox.blockSignals(False)
+
+        self._mw.general_x_stop_doubleSpinBox.blockSignals(True)
+        old_val = self._mw.general_x_stop_doubleSpinBox.value()
+        self._mw.general_x_stop_doubleSpinBox.setMinimum(constr[axis_names[0]]['pos_min'])
+        self._mw.general_x_stop_doubleSpinBox.setMaximum(constr[axis_names[0]]['pos_max'])
+        self._mw.general_x_stop_doubleSpinBox.setSuffix(constr[axis_names[0]]['unit'])
+        if old_val != self._mw.general_x_stop_doubleSpinBox.value():
+            self._mw.general_x_stop_doubleSpinBox.setValue(
+                self.magnetlogic().current_align_ranges[0][1])
+        self._mw.general_x_stop_doubleSpinBox.blockSignals(False)
+
+        self._mw.general_y_stop_doubleSpinBox.blockSignals(True)
+        old_val = self._mw.general_y_stop_doubleSpinBox.value()
+        self._mw.general_y_stop_doubleSpinBox.setMinimum(constr[axis_names[1]]['pos_min'])
+        self._mw.general_y_stop_doubleSpinBox.setMaximum(constr[axis_names[1]]['pos_max'])
+        self._mw.general_y_stop_doubleSpinBox.setSuffix(constr[axis_names[1]]['unit'])
+        if old_val != self._mw.general_y_stop_doubleSpinBox.value():
+            self._mw.general_y_stop_doubleSpinBox.setValue(
+                self.magnetlogic().current_align_ranges[1][1])
+        self._mw.general_y_stop_doubleSpinBox.blockSignals(False)
         return
 
     @QtCore.Slot()
-    def odmr_freq_params_changed(self):
+    def general_parameters_changed(self, send_all=False):
         """
 
         """
+        obj_name = self.sender().objectName() if not send_all else ''
+
         param_dict = dict()
-        param_dict['low_freq_range'] = (float(self._mw.odmr_low_start_freq_DSpinBox.value()),
-                                        float(self._mw.odmr_low_stop_freq_DSpinBox.value()))
-        param_dict['low_points'] = int(self._mw.odmr_low_points_DSpinBox.value())
-        param_dict['low_power'] = float(self._mw.odmr_low_power_DSpinBox.value())
-        param_dict['high_freq_range'] = (float(self._mw.odmr_high_start_freq_DSpinBox.value()),
-                                         float(self._mw.odmr_high_stop_freq_DSpinBox.value()))
-        param_dict['high_points'] = int(self._mw.odmr_high_points_DSpinBox.value())
-        param_dict['high_power'] = float(self._mw.odmr_high_power_DSpinBox.value())
+        if obj_name.startswith('general_method') or send_all:
+            param_dict['alignment_method'] = self._mw.general_method_comboBox.currentText()
+        if obj_name.startswith('general_pathmode') or send_all:
+            param_dict['pathway_mode'] = self._mw.general_pathmode_comboBox.currentText()
+        if obj_name.startswith(('general_x_axis', 'general_y_axis')) or send_all:
+            param_dict['axis_names'] = (self._mw.general_x_axis_comboBox.currentText(),
+                                        self._mw.general_y_axis_comboBox.currentText())
+        if obj_name.startswith(('general_x_start', 'general_y_start', 'general_x_stop', 'general_y_stop')) or send_all:
+            param_dict['axis_ranges'] = ((self._mw.general_x_start_doubleSpinBox.value(),
+                                          self._mw.general_x_stop_doubleSpinBox.value()),
+                                         (self._mw.general_y_start_doubleSpinBox.value(),
+                                          self._mw.general_y_stop_doubleSpinBox.value()))
+        if obj_name.startswith(('general_x_points', 'general_y_points')) or send_all:
+            param_dict['axis_points'] = (self._mw.general_x_points_spinBox.value(),
+                                         self._mw.general_y_points_spinBox.value())
+        if obj_name.startswith('general_measurement_time') or send_all:
+            param_dict['measurement_time'] = self._mw.general_measurement_time_doubleSpinBox.value()
+        if obj_name.startswith('general_save_measurements') or send_all:
+            param_dict[
+                'save_measurements'] = self._mw.general_save_measurements_checkBox.isChecked()
 
-        self.sigAlignmentParametersChanged.emit({'odmr_frequency': param_dict})
-        return
-
-    @QtCore.Slot()
-    def odmr_contrast_params_changed(self):
-        """
-
-        """
-        param_dict = dict()
-        param_dict['freq_range'] = (float(self._mw.odmr_start_freq_DSpinBox.value()),
-                                        float(self._mw.odmr_stop_freq_DSpinBox.value()))
-        param_dict['points'] = int(self._mw.odmr_points_DSpinBox.value())
-        param_dict['power'] = float(self._mw.odmr_power_DSpinBox.value())
-
-        self.sigAlignmentParametersChanged.emit({'odmr_contrast': param_dict})
+        self.sigGeneralParametersChanged.emit(param_dict)
         return
 
     @QtCore.Slot(dict)
-    def alignment_parameters_updated(self, method_dict):
-        for method, param_dict in method_dict.items():
-            if method == 'general':
-                self._mw.general_meas_time_doubleSpinBox.blockSignals(True)
-                self._mw.general_save_each_checkBox.blockSignals(True)
-                self._mw.general_meas_time_doubleSpinBox.setValue(param_dict['measurement_time'])
-                self._mw.general_save_each_checkBox.setChecked(param_dict['save_after_measure'])
-                self._mw.general_meas_time_doubleSpinBox.blockSignals(False)
-                self._mw.general_save_each_checkBox.blockSignals(False)
-            elif method == 'odmr_frequency':
-                self._mw.odmr_low_start_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_low_stop_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_low_points_DSpinBox.blockSignals(True)
-                self._mw.odmr_low_power_DSpinBox.blockSignals(True)
-                self._mw.odmr_high_start_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_high_stop_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_high_points_DSpinBox.blockSignals(True)
-                self._mw.odmr_high_power_DSpinBox.blockSignals(True)
+    def general_parameters_updated(self, param_dict=None):
+        if param_dict is None:
+            param_dict = self.magnetlogic().general_parameters
 
-                self._mw.odmr_low_start_freq_DSpinBox.setValue(param_dict['low_freq_range'][0])
-                self._mw.odmr_low_stop_freq_DSpinBox.setValue(param_dict['low_freq_range'][1])
-                self._mw.odmr_low_points_DSpinBox.setValue(param_dict['low_points'])
-                self._mw.odmr_low_power_DSpinBox.setValue(param_dict['low_power'])
-                self._mw.odmr_high_start_freq_DSpinBox.setValue(param_dict['high_freq_range'][0])
-                self._mw.odmr_high_stop_freq_DSpinBox.setValue(param_dict['high_freq_range'][1])
-                self._mw.odmr_high_points_DSpinBox.setValue(param_dict['high_points'])
-                self._mw.odmr_high_power_DSpinBox.setValue(param_dict['high_power'])
+        if 'axis_names' in param_dict:
+            self._mw.general_x_axis_comboBox.blockSignals(True)
+            self._mw.general_y_axis_comboBox.blockSignals(True)
+            self._mw.general_x_axis_comboBox.setCurrentText(param_dict['axis_names'][0])
+            self._mw.general_y_axis_comboBox.setCurrentText(param_dict['axis_names'][1])
+            self._mw.general_x_axis_comboBox.blockSignals(False)
+            self._mw.general_y_axis_comboBox.blockSignals(False)
+            self.set_axis_constraints(param_dict['axis_names'])
+        if 'measurement_time' in param_dict:
+            self._mw.general_measurement_time_doubleSpinBox.blockSignals(True)
+            self._mw.general_measurement_time_doubleSpinBox.setValue(param_dict['measurement_time'])
+            self._mw.general_measurement_time_doubleSpinBox.blockSignals(False)
+        if 'save_measurements' in param_dict:
+            self._mw.general_save_measurements_checkBox.blockSignals(True)
+            self._mw.general_save_measurements_checkBox.setChecked(param_dict['save_measurements'])
+            self._mw.general_save_measurements_checkBox.blockSignals(False)
+        if 'alignment_method' in param_dict:
+            self._mw.general_method_comboBox.blockSignals(True)
+            self._mw.general_method_comboBox.setCurrentText(param_dict['alignment_method'])
+            self._mw.general_method_comboBox.blockSignals(False)
+        if 'pathway_mode' in param_dict:
+            self._mw.general_pathmode_comboBox.blockSignals(True)
+            self._mw.general_pathmode_comboBox.setCurrentText(param_dict['pathway_mode'])
+            self._mw.general_pathmode_comboBox.blockSignals(False)
+        if 'axis_points' in param_dict:
+            self._mw.general_x_points_spinBox.blockSignals(True)
+            self._mw.general_y_points_spinBox.blockSignals(True)
+            self._mw.general_x_points_spinBox.setValue(param_dict['axis_points'][0])
+            self._mw.general_y_points_spinBox.setValue(param_dict['axis_points'][1])
+            self._mw.general_x_points_spinBox.blockSignals(False)
+            self._mw.general_y_points_spinBox.blockSignals(False)
+        if 'axis_ranges' in param_dict:
+            self._mw.general_x_start_doubleSpinBox.blockSignals(True)
+            self._mw.general_y_start_doubleSpinBox.blockSignals(True)
+            self._mw.general_x_stop_doubleSpinBox.blockSignals(True)
+            self._mw.general_y_stop_doubleSpinBox.blockSignals(True)
+            self._mw.general_x_start_doubleSpinBox.setValue(param_dict['axis_ranges'][0][0])
+            self._mw.general_y_start_doubleSpinBox.setValue(param_dict['axis_ranges'][1][0])
+            self._mw.general_x_stop_doubleSpinBox.setValue(param_dict['axis_ranges'][0][1])
+            self._mw.general_y_stop_doubleSpinBox.setValue(param_dict['axis_ranges'][1][1])
+            self._mw.general_x_start_doubleSpinBox.blockSignals(False)
+            self._mw.general_y_start_doubleSpinBox.blockSignals(False)
+            self._mw.general_x_stop_doubleSpinBox.blockSignals(False)
+            self._mw.general_y_stop_doubleSpinBox.blockSignals(False)
+        return
 
-                self._mw.odmr_low_start_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_low_stop_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_low_points_DSpinBox.blockSignals(False)
-                self._mw.odmr_low_power_DSpinBox.blockSignals(False)
-                self._mw.odmr_high_start_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_high_stop_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_high_points_DSpinBox.blockSignals(False)
-                self._mw.odmr_high_power_DSpinBox.blockSignals(False)
-            elif method == 'odmr_contrast':
-                self._mw.odmr_start_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_stop_freq_DSpinBox.blockSignals(True)
-                self._mw.odmr_points_DSpinBox.blockSignals(True)
-                self._mw.odmr_power_DSpinBox.blockSignals(True)
-
-                self._mw.odmr_start_freq_DSpinBox.setValue(param_dict['freq_range'][0])
-                self._mw.odmr_stop_freq_DSpinBox.setValue(param_dict['freq_range'][1])
-                self._mw.odmr_points_DSpinBox.setValue(param_dict['points'])
-                self._mw.odmr_power_DSpinBox.setValue(param_dict['power'])
-
-                self._mw.odmr_start_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_stop_freq_DSpinBox.blockSignals(False)
-                self._mw.odmr_points_DSpinBox.blockSignals(False)
-                self._mw.odmr_power_DSpinBox.blockSignals(False)
-            return
+    @QtCore.Slot(str, dict)
+    def alignment_parameters_updated(self, method, param_dict):
+        for param, value in param_dict.items():
+            widget = self.alignment_param_widgets[method][param]
+            widget.blockSignals(True)
+            if hasattr(widget, 'setValue'):
+                widget.setValue(value)
+            elif hasattr(widget, 'setChecked'):
+                widget.setChecked(value)
+            elif hasattr(widget, 'setText'):
+                widget.setText(value)
+            else:
+                self.log.error('Unable to set value "{0}" for parameter "{1}" in widget "{2}". '
+                               'Unknown widget/data type.'
+                               ''.format(value, param, widget.objectName()))
+            widget.blockSignals(False)
+        return
 
     @QtCore.Slot()
     @QtCore.Slot(dict)
@@ -569,7 +768,7 @@ class MagnetGui(GUIBase):
     def update_plot_data(self, image, img_ranges):
         pass
 
-    @QtCore.Slot()
+    @QtCore.Slot(bool)
     def run_stop_alignment(self, is_checked):
         """ Manage what happens if 2d magnet scan is started/stopped
 
@@ -577,18 +776,10 @@ class MagnetGui(GUIBase):
                                 False = stopped
         """
         if is_checked:
-            self.general_params_changed()
-            for method, button in self.alignment_method_radiobuttons.items():
-                if button.isChecked():
-                    break
-            if method.lower() == 'odmr_frequency':
-                self.odmr_freq_params_changed()
-            elif method.lower() == 'odmr_contrast':
-                self.odmr_contrast_params_changed()
+            self.general_parameters_changed(True)
+            # FIXME: Send alignment parameters to logic
 
-            self.magnetlogic().start_measurement()
-        else:
-            self.magnetlogic().stop_measurement()
+        self.sigToggleMeasurement.emit(is_checked)
         return
 
     @QtCore.Slot(bool, bool)
@@ -605,19 +796,38 @@ class MagnetGui(GUIBase):
         return
 
     @QtCore.Slot()
-    def alignment_method_changed(self):
-        """ According to the selected Radiobox a measurement type will be chosen."""
-        for method, button in self.alignment_method_radiobuttons.items():
-            if button.isChecked():
-                self.magnetlogic().set_alignment_method(method)
-                break
-        return
-
-    @QtCore.Slot()
     def save_data(self):
         """
 
         """
         tag = self._mw.save_nametag_LineEdit.text()
-        self.magnetlogic().save_2d_data(tag)
+        self.magnetlogic().save_data(tag)
         return
+
+    @staticmethod
+    def __get_parameter_changed_method(method):
+        """
+        Create a instance/bound method to attach to MagnetGui class.
+        This method can be used as slot for value changed signal of the dynamically created
+        alignment parameter widgets.
+
+        @param str method: The alignment method name to create this method for.
+        """
+
+        def method_template(self, send_all=False):
+            obj_name = self.sender().objectName() if not send_all else ''
+            param_dict = dict()
+            for param_name, widget in self.alignment_param_widgets[method].items():
+                if obj_name == widget.objectName() or send_all:
+                    if hasattr(widget, 'isChecked'):
+                        param_dict[param_name] = widget.isChecked()
+                    elif hasattr(widget, 'value'):
+                        param_dict[param_name] = widget.value()
+                    elif hasattr(widget, 'text'):
+                        param_dict[param_name] = widget.text()
+                    if not send_all:
+                        break
+            self.sigAlignmentParametersChanged.emit(method, param_dict)
+            return param_dict
+
+        return method_template

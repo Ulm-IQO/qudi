@@ -37,20 +37,14 @@ class AlignmentParameters:
     """
 
     """
-    @property
-    def parameters(self):
-        return self.__dict__.copy()
+    parameters = dict()
 
-
-class GeneralAlignmentParameters(AlignmentParameters):
-    """
-
-    """
-    def __init__(self, measurement_time=60, save_after_measure=True):
-        super().__init__()
-        self.measurement_time = float(measurement_time)
-        self.save_after_measure = bool(save_after_measure)
-        return
+    def to_dict(self):
+        param_dict = self.__dict__.copy()
+        for key in self.__dict__:
+            if key not in self.parameters:
+                del param_dict[key]
+        return param_dict
 
 
 class OdmrFrequencyAlignmentParameters(AlignmentParameters):
@@ -58,19 +52,64 @@ class OdmrFrequencyAlignmentParameters(AlignmentParameters):
 
     """
 
-    def __init__(self, low_freq_range=(2.6e9, 2.8e9), high_freq_range=(2.94e9, 3.14e9),
-                 low_power=-10, high_power=-8, low_points=50, high_points=50,
-                 fit_name='Lorentzian dip', low_result_param='center', high_result_param='center'):
+    parameters = dict()
+    parameters['low_start_freq'] = {'unit': 'Hz', 'default': 2.6e9, 'min': 0, 'max': np.inf,
+                                    'type': float}
+    parameters['low_stop_freq'] = {'unit': 'Hz', 'default': 2.8e9, 'min': 0, 'max': np.inf,
+                                   'type': float}
+    parameters['low_power'] = {'unit': 'dBm', 'default': -30, 'min': -np.inf, 'max': np.inf,
+                               'type': float}
+    parameters['low_points'] = {'unit': '', 'default': 50, 'min': 3, 'max': np.inf, 'type': int}
+    parameters['high_start_freq'] = {'unit': 'Hz', 'default': 2.94e9, 'min': 0, 'max': np.inf,
+                                     'type': float}
+    parameters['high_stop_freq'] = {'unit': 'Hz', 'default': 3.14e9, 'min': 0, 'max': np.inf,
+                                    'type': float}
+    parameters['high_power'] = {'unit': 'dBm', 'default': -30, 'min': -np.inf, 'max': np.inf,
+                                'type': float}
+    parameters['high_points'] = {'unit': '', 'default': 50, 'min': 3, 'max': np.inf, 'type': int}
+
+    def __init__(self, low_start_freq=None, low_stop_freq=None, low_power=None, low_points=None,
+                 high_start_freq=None, high_stop_freq=None, high_power=None, high_points=None):
         super().__init__()
-        self.low_freq_range = (float(min(low_freq_range)), float(max(low_freq_range)))
-        self.high_freq_range = (float(min(high_freq_range)), float(max(high_freq_range)))
-        self.low_power = float(low_power)
-        self.high_power = float(high_power)
-        self.low_points = int(low_points)
-        self.high_points = int(high_points)
-        self.fit_name = str(fit_name)
-        self.low_result_param = str(low_result_param)
-        self.high_result_param = str(high_result_param)
+        if low_start_freq is None:
+            self.low_start_freq = self.parameters['low_start_freq']['default']
+        else:
+            self.low_start_freq = float(low_start_freq)
+
+        if low_stop_freq is None:
+            self.low_stop_freq = self.parameters['low_stop_freq']['default']
+        else:
+            self.low_stop_freq = float(low_stop_freq)
+
+        if low_power is None:
+            self.low_power = self.parameters['low_power']['default']
+        else:
+            self.low_power = float(low_power)
+
+        if low_points is None:
+            self.low_points = self.parameters['low_points']['default']
+        else:
+            self.low_points = int(low_points)
+
+        if high_start_freq is None:
+            self.high_start_freq = self.parameters['high_start_freq']['default']
+        else:
+            self.high_start_freq = float(high_start_freq)
+
+        if high_stop_freq is None:
+            self.high_stop_freq = self.parameters['high_stop_freq']['default']
+        else:
+            self.high_stop_freq = float(high_stop_freq)
+
+        if high_power is None:
+            self.high_power = self.parameters['high_power']['default']
+        else:
+            self.high_power = float(high_power)
+
+        if high_points is None:
+            self.high_points = self.parameters['high_points']['default']
+        else:
+            self.high_points = int(high_points)
         return
 
 
@@ -78,13 +117,37 @@ class OdmrContrastAlignmentParameters(AlignmentParameters):
     """
 
     """
-    def __init__(self, freq_range=(2.77e9, 2.97e9), power=-10, points=50, fit_name='Lorentzian dip', result_param='contrast'):
+
+    parameters = dict()
+    parameters['start_freq'] = {'unit': 'Hz', 'default': 2.77e9, 'min': 0, 'max': np.inf,
+                                'type': float}
+    parameters['stop_freq'] = {'unit': 'Hz', 'default': 2.97e9, 'min': 0, 'max': np.inf,
+                               'type': float}
+    parameters['power'] = {'unit': 'dBm', 'default': -30, 'min': -np.inf, 'max': np.inf,
+                           'type': float}
+    parameters['points'] = {'unit': '', 'default': 50, 'min': 3, 'max': np.inf, 'type': int}
+
+    def __init__(self, start_freq=None, stop_freq=None, power=None, points=None):
         super().__init__()
-        self.freq_range = (float(min(freq_range)), float(max(freq_range)))
-        self.power = float(power)
-        self.points = int(points)
-        self.fit_name = str(fit_name)
-        self.result_param = str(result_param)
+        if start_freq is None:
+            self.start_freq = self.parameters['start_freq']['default']
+        else:
+            self.start_freq = float(start_freq)
+
+        if stop_freq is None:
+            self.stop_freq = self.parameters['stop_freq']['default']
+        else:
+            self.stop_freq = float(stop_freq)
+
+        if power is None:
+            self.power = self.parameters['power']['default']
+        else:
+            self.power = float(power)
+
+        if points is None:
+            self.points = self.parameters['points']['default']
+        else:
+            self.points = int(points)
         return
 
 
@@ -116,16 +179,16 @@ class MagnetLogic(GenericLogic):
     _align_axis_ranges = StatusVar(name='align_axis_ranges', default=tuple())
     _align_axis_points = StatusVar(name='align_axis_points', default=tuple())
     _align_pathway_mode = StatusVar(name='align_pathway_mode', default='meander')
-    _alignment_method = StatusVar(name='alignment_method', default='fluorescence')
-    _alignment_data = StatusVar(name='alignment_data', default=np.zeros((2, 2), dtype=float))
+    _align_method = StatusVar(name='alignment_method', default='fluorescence')
+    _align_measurement_time = StatusVar(name='alignment_measurement_time', default=60)
+    _align_save_measurements = StatusVar(name='alignment_save_measurements', default=True)
+    _align_data = StatusVar(name='alignment_data', default=np.zeros((2, 2), dtype=float))
 
-    _general_parameters = StatusVar(name='general_parameters', default=dict())
-    _odmr_frequency_parameters = StatusVar(name='odmr_frequency_parameters', default=dict())
-    _odmr_contrast_parameters = StatusVar(name='odmr_contrast_parameters', default=dict())
-    _fluorescence_parameters = StatusVar(name='fluorescence_parameters', default=dict())
+    _align_parameters = StatusVar(name='alignment_parameters', default=dict())
 
     # Declare signals
-    sigAlignmentParametersChanged = QtCore.Signal(dict)
+    sigAlignmentParametersUpdated = QtCore.Signal(str, dict)
+    sigGeneralParametersUpdated = QtCore.Signal(dict)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigDataUpdated = QtCore.Signal(np.ndarray, tuple)
     sigMagnetMoving = QtCore.Signal(bool)
@@ -134,7 +197,7 @@ class MagnetLogic(GenericLogic):
 
     _sigMeasurementLoop = QtCore.Signal()
 
-    _available_path_modes = ('diagonal-meander', 'meander', 'spiral-in', 'spiral-out')
+    _available_path_modes = ('meander', 'diagonal-meander', 'spiral-in', 'spiral-out')
     _available_alignment_methods = ('fluorescence', 'odmr_frequency', 'odmr_contrast')
 
     def __init__(self, config, **kwargs):
@@ -158,6 +221,22 @@ class MagnetLogic(GenericLogic):
         self._measurement_paused = False
         self._stop_requested = True
 
+        # Initialize undefined variables
+        constr = self.magnet_constraints
+        if not self._align_axis_names:
+            self._align_axis_names = (self.available_axes_names[0], self.available_axes_names[1])
+        if not self._align_axis_ranges:
+            self._align_axis_ranges = ((constr[self._align_axis_names[0]]['pos_min'],
+                                        constr[self._align_axis_names[0]]['pos_max']),
+                                       (constr[self._align_axis_names[1]]['pos_min'],
+                                        constr[self._align_axis_names[1]]['pos_max']))
+        if not self._align_axis_points:
+            self._align_axis_points = (10, 10)
+        if self._align_method not in self.available_alignment_methods:
+            self._align_method = self.available_alignment_methods[0]
+        if self._align_pathway_mode not in self.available_path_modes:
+            self._align_pathway_mode = self.available_path_modes[0]
+
         self._sigMeasurementLoop.connect(self._measurement_loop, QtCore.Qt.QueuedConnection)
         return
 
@@ -168,28 +247,32 @@ class MagnetLogic(GenericLogic):
         self._sigMeasurementLoop.disconnect()
         return
 
-    @_odmr_frequency_parameters.representer
-    @_odmr_contrast_parameters.representer
-    @_fluorescence_parameters.representer
-    @_general_parameters.representer
-    def parameters_to_dict(self, param_class_inst):
-        return param_class_inst.parameters
+    @_align_parameters.representer
+    def parameters_to_dict(self, param_dict):
+        for method in param_dict:
+            param_dict[method] = param_dict[method].to_dict()
+        return param_dict
 
-    @_general_parameters.constructor
+    @_align_parameters.constructor
     def dict_to_parameters(self, param_dict):
-        return GeneralAlignmentParameters(**param_dict)
+        for method in param_dict:
+            if method not in self.available_alignment_methods:
+                continue
 
-    @_fluorescence_parameters.constructor
-    def dict_to_parameters(self, param_dict):
-        return FluorescenceAlignmentParameters(**param_dict)
+            if method == 'fluorescence':
+                param_dict[method] = FluorescenceAlignmentParameters(**param_dict[method])
+            elif method == 'odmr_frequency':
+                param_dict[method] = OdmrFrequencyAlignmentParameters(**param_dict[method])
+            elif method == 'odmr_contrast':
+                param_dict[method] = OdmrContrastAlignmentParameters(**param_dict[method])
 
-    @_odmr_contrast_parameters.constructor
-    def dict_to_parameters(self, param_dict):
-        return OdmrContrastAlignmentParameters(**param_dict)
-
-    @_odmr_frequency_parameters.constructor
-    def dict_to_parameters(self, param_dict):
-        return OdmrFrequencyAlignmentParameters(**param_dict)
+        if 'fluorescence' not in param_dict:
+            param_dict['fluorescence'] = FluorescenceAlignmentParameters()
+        if 'odmr_frequency' not in param_dict:
+            param_dict['odmr_frequency'] = OdmrFrequencyAlignmentParameters()
+        if 'odmr_contrast' not in param_dict:
+            param_dict['odmr_contrast'] = OdmrContrastAlignmentParameters()
+        return param_dict
 
     @property
     def available_path_modes(self):
@@ -198,6 +281,30 @@ class MagnetLogic(GenericLogic):
     @property
     def available_alignment_methods(self):
         return self._available_alignment_methods
+
+    @property
+    def available_axes_names(self):
+        return tuple(self.magnet_constraints)
+
+    @property
+    def current_path_mode(self):
+        return self._align_pathway_mode
+
+    @property
+    def current_align_method(self):
+        return self._align_method
+
+    @property
+    def current_align_axes(self):
+        return tuple(self._align_axis_names)
+
+    @property
+    def current_align_ranges(self):
+        return tuple(self._align_axis_ranges)
+
+    @property
+    def current_align_points(self):
+        return tuple(self._align_axis_points)
 
     @property
     def magnet_constraints(self):
@@ -215,42 +322,72 @@ class MagnetLogic(GenericLogic):
     def magnet_status(self):
         return self.magnetstage().get_status()
 
+    @property
+    def alignment_parameters(self):
+        return {method: param.to_dict() for method, param in self._align_parameters.items()}
+
+    @property
+    def alignment_parameter_signatures(self):
+        return {method: param.parameters for method, param in self._align_parameters.items()}
+
+    @property
+    def general_parameters(self):
+        param_dict = dict()
+        param_dict['axis_names'] = self._align_axis_names
+        param_dict['axis_ranges'] = self._align_axis_ranges
+        param_dict['axis_points'] = self._align_axis_points
+        param_dict['pathway_mode'] = self._align_pathway_mode
+        param_dict['alignment_method'] = self._align_method
+        param_dict['measurement_time'] = self._align_measurement_time
+        param_dict['save_measurements'] = self._align_save_measurements
+        return param_dict
+
     @QtCore.Slot()
     def update_magnet_position(self):
         self.sigMagnetPositionUpdated.emit(self.magnet_position)
         return
 
     @QtCore.Slot(dict)
-    def set_alignment_parameters(self, param_dict):
-        for method, method_dict in param_dict.items():
-            if method == 'general':
-                for param, value in method_dict.items():
-                    setattr(self._fluorescence_parameters, param, value)
-                    setattr(self._odmr_frequency_parameters, param, value)
-                    setattr(self._odmr_contrast_parameters, param, value)
-                self.sigAlignmentParametersChanged.emit({'general': self._general_parameters.parameters})
-            elif method == 'fluorescence':
-                for param, value in method_dict.items():
-                    setattr(self._fluorescence_parameters, param, value)
-                self.sigAlignmentParametersChanged.emit(
-                    {'fluorescence': self._fluorescence_parameters.parameters})
-            elif method == 'odmr_frequency':
-                for param, value in method_dict.items():
-                    setattr(self._odmr_frequency_parameters, param, value)
-                self.sigAlignmentParametersChanged.emit(
-                    {'odmr_frequency': self._odmr_frequency_parameters.parameters})
-            elif method == 'odmr_contrast':
-                for param, value in method_dict.items():
-                    setattr(self._odmr_contrast_parameters, param, value)
-                self.sigAlignmentParametersChanged.emit(
-                    {'odmr_contrast': self._odmr_contrast_parameters.parameters})
+    def set_general_parameters(self, param_dict):
+        if 'axis_names' in param_dict:
+            self._align_axis_names = tuple(param_dict['axis_names'])
+        if 'axis_ranges' in param_dict:
+            self._align_axis_ranges = tuple(param_dict['axis_ranges'])
+        if 'axis_points' in param_dict:
+            self._align_axis_points = tuple(param_dict['axis_points'])
+        if 'pathway_mode' in param_dict:
+            if param_dict['pathway_mode'] in self.available_path_modes:
+                self._align_pathway_mode = str(param_dict['pathway_mode'])
+            else:
+                self.log.error('Unknown alignment pathway mode "{0}"'
+                               ''.format(param_dict['pathway_mode']))
+        if 'alignment_method' in param_dict:
+            if param_dict['alignment_method'] in self.available_alignment_methods:
+                self._align_method = str(param_dict['alignment_method'])
+            else:
+                self.log.error('Unknown alignment method "{0}"'
+                               ''.format(param_dict['alignment_method']))
+        if 'measurement_time' in param_dict:
+            self._align_measurement_time = float(param_dict['measurement_time'])
+        if 'save_measurements' in param_dict:
+            self._align_save_measurements = bool(param_dict['save_measurements'])
 
-    @QtCore.Slot(str)
-    def set_alignment_method(self, method):
+        self.sigGeneralParametersUpdated.emit(self.general_parameters)
+        return
+
+    @QtCore.Slot(str, dict)
+    def set_alignment_parameters(self, method, param_dict):
         if method not in self.available_alignment_methods:
-            self.log.error('Unknwon alignment method "{0}".'.format(method))
+            self.log.error('Unknown alignment method "{0}"'.format(method))
             return
-        self._alignment_method = method
+
+        for param, value in param_dict.items():
+            if not hasattr(self._align_parameters[method], param):
+                self.log.error('Unknown alignment parameter "{0}" for alignment method "{1}".'
+                               ''.format(param, method))
+            else:
+                setattr(self._align_parameters[method], param, value)
+        self.sigAlignmentParametersUpdated.emit(method, self._align_parameters[method].to_dict())
         return
 
     @QtCore.Slot(dict)
@@ -559,9 +696,9 @@ class MagnetLogic(GenericLogic):
             self.counterlogic().set_counting_mode(mode=CountingMode.CONTINUOUS)
 
         self.counterlogic().start_saving()
-        time.sleep(self._general_parameters.measurement_time)
+        time.sleep(self._align_measurement_time)
         data_array, dummy = self.counterlogic().save_data(to_file=False)
-        if self._general_parameters.save_after_measure:
+        if self._align_save_measurements:
             self.counterlogic().save_data()
 
         data_array = np.array(data_array)[:, 1]
@@ -572,56 +709,64 @@ class MagnetLogic(GenericLogic):
 
         @return float:
         """
-        params = self._odmr_frequency_parameters
+        params = self._align_parameters['odmr_frequency']
         curr_pos = self._move_path[self._path_index]
 
         # Measure low frequency
         # Set up measurement in OdmrLogic
-        step = (params.low_freq_range[1] - params.low_freq_range[0]) / (params.low_points - 1)
-        self.odmrlogic().set_sweep_parameters(start=params.low_freq_range[0],
-                                              stop=params.low_freq_range[1],
+        step = (params.low_stop_freq - params.low_start_freq) / (params.low_points - 1)
+        self.odmrlogic().set_sweep_parameters(start=params.low_start_freq,
+                                              stop=params.low_stop_freq,
                                               step=step,
                                               power=params.low_power)
-        self.odmrlogic().set_runtime(runtime=self._general_parameters.measurement_time)
+        self.odmrlogic().set_runtime(runtime=self._align_measurement_time)
         self.odmrlogic().start_odmr_scan()
         while self.odmrlogic().module_state() == 'locked':
             time.sleep(0.5)
-        self.odmrlogic().do_fit(params.fit_name)
-        low_freq = self.odmrlogic().fc.current_fit_param[params.low_result_param].value
-        if self._general_parameters.save_after_measure:
+        self.odmrlogic().do_fit('Lorentzian dip')
+        low_freq = self.odmrlogic().fc.current_fit_param['center'].value
+        if self._align_save_measurements:
             tag = 'magnetalign_{0:.3e}_{1:.3e}_low'.format(curr_pos[self.align_2d_axis0_name[0]],
-                                                            curr_pos[self.align_2d_axis0_name[1]])
+                                                           curr_pos[self.align_2d_axis0_name[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
         # Adjust center frequency for next measurement
-        freq_shift = low_freq - (params.low_frequ_range[0] + params.low_freq_range[1]) / 2
-        self._odmr_frequency_parameters.low_freq_range = (params.low_freq_range[0] + freq_shift,
-                                                         params.low_freq_range[1] + freq_shift)
+        freq_shift = low_freq - (params.low_start_freq + params.low_stop_freq) / 2
+        self._align_parameters['odmr_frequency'].low_start_freq += freq_shift
+        self._align_parameters['odmr_frequency'].low_stop_freq += freq_shift
+        self.sigAlignmentParametersUpdated.emit(
+            'odmr_frequency', {
+                'low_start_freq': self._align_parameters['odmr_frequency'].low_start_freq,
+                'low_stop_freq': self._align_parameters['odmr_frequency'].low_stop_freq})
 
         # Measure high frequency
         # Set up measurement in OdmrLogic
-        step = (params.high_freq_range[1] - params.high_freq_range[0]) / (params.high_points - 1)
-        self.odmrlogic().set_sweep_parameters(start=params.high_freq_range[0],
-                                              stop=params.high_freq_range[1],
+        step = (params.high_stop_freq - params.high_start_freq) / (params.high_points - 1)
+        self.odmrlogic().set_sweep_parameters(start=params.high_start_freq,
+                                              stop=params.high_stop_freq,
                                               step=step,
                                               power=params.high_power)
-        self.odmrlogic().set_runtime(runtime=self._general_parameters.measurement_time)
+        self.odmrlogic().set_runtime(runtime=self._align_measurement_time)
         self.odmrlogic().start_odmr_scan()
         while self.odmrlogic().module_state() == 'locked':
             time.sleep(0.5)
-        self.odmrlogic().do_fit(params.fit_name)
-        high_freq = self.odmrlogic().fc.current_fit_param[params.high_result_param].value
-        if self._general_parameters.save_after_measure:
+        self.odmrlogic().do_fit('Lorentzian dip')
+        high_freq = self.odmrlogic().fc.current_fit_param['center'].value
+        if self._align_save_measurements:
             tag = 'magnetalign_{0:.3e}_{1:.3e}_high'.format(curr_pos[self.align_2d_axis0_name[0]],
                                                             curr_pos[self.align_2d_axis0_name[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
         # Adjust center frequency for next measurement
-        freq_shift = high_freq - (params.high_freq_range[0] + params.high_freq_range[1]) / 2
-        self._odmr_frequency_parameters.high_freq_range = (params.high_freq_range[0] + freq_shift,
-                                                          params.high_freq_range[1] + freq_shift)
+        freq_shift = high_freq - (params.high_start_freq + params.high_stop_freq) / 2
+        self._align_parameters['odmr_frequency'].high_start_freq += freq_shift
+        self._align_parameters['odmr_frequency'].high_stop_freq += freq_shift
+        self.sigAlignmentParametersUpdated.emit(
+            'odmr_frequency', {
+                'high_start_freq': self._align_parameters['odmr_frequency'].high_start_freq,
+                'high_stop_freq': self._align_parameters['odmr_frequency'].high_stop_freq})
 
         # Calculate the magnetic field strength and the angle to the quantization axis.
         b_field, angle = self.calculate_field_alignment(low_freq, high_freq)
@@ -641,32 +786,35 @@ class MagnetLogic(GenericLogic):
 
         @return float:
         """
-        params = self._odmr_contrast_parameters
+        params = self._align_parameters['odmr_contrast']
         curr_pos = self._move_path[self._path_index]
 
         # Set up measurement in OdmrLogic
-        step = (params.freq_range[1] - params.freq_range[0]) / (params.points - 1)
-        self.odmrlogic().set_sweep_parameters(start=params.freq_range[0],
-                                              stop=params.freq_range[1],
+        step = (params.stop_freq - params.start_freq) / (params.points - 1)
+        self.odmrlogic().set_sweep_parameters(start=params.start_freq,
+                                              stop=params.stop_freq,
                                               step=step,
                                               power=params.power)
-        self.odmrlogic().set_runtime(runtime=self._general_parameters.measurement_time)
+        self.odmrlogic().set_runtime(runtime=self._align_measurement_time)
         self.odmrlogic().start_odmr_scan()
         while self.odmrlogic().module_state() == 'locked':
             time.sleep(0.5)
-        self.odmrlogic().do_fit(params.fit_name)
+        self.odmrlogic().do_fit('Lorentzian dip')
         odmr_freq = self.odmrlogic().fc.current_fit_param['center'].value
-        odmr_contrast = self.odmrlogic().fc.current_fit_param[params.result_param].value
-        if self._general_parameters.save_after_measure:
+        odmr_contrast = self.odmrlogic().fc.current_fit_param['contrast'].value
+        if self._align_save_measurements:
             tag = 'magnetalign_{0:.3e}_{1:.3e}'.format(curr_pos[self.align_2d_axis0_name[0]],
                                                        curr_pos[self.align_2d_axis0_name[1]])
             self.odmrlogic().save_odmr_data(tag=tag)
         self.odmrlogic().do_fit('No Fit')
 
         # Adjust center frequency for next measurement
-        freq_shift = odmr_freq - (params.freq_range[0] + params.freq_range[1]) / 2
-        self._odmr_contrast_parameters.freq_range = (params.freq_range[0] + freq_shift,
-                                                    params.freq_range[1] + freq_shift)
+        freq_shift = odmr_freq - (params.start_freq + params.stop_freq) / 2
+        self._align_parameters['odmr_contrast'].start_freq += freq_shift
+        self._align_parameters['odmr_contrast'].stop_freq += freq_shift
+        self.sigAlignmentParametersUpdated.emit('odmr_contrast', {
+            'start_freq': self._align_parameters['odmr_contrast'].start_freq,
+            'stop_freq': self._align_parameters['odmr_contrast'].stop_freq})
         return odmr_contrast
 
     @QtCore.Slot()
