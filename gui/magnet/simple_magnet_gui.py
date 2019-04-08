@@ -20,21 +20,17 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import datetime
 import numpy as np
 import os
 import pyqtgraph as pg
-import pyqtgraph.exporters
 from qtpy import uic
 
 from core.module import Connector, StatusVar
-from core.util.units import get_unit_prefix_dict
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
-from qtpy import QtCore
-from qtpy import QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 from qtwidgets.scientific_spinbox import ScienDSpinBox
 
 
@@ -49,7 +45,6 @@ class MagnetMainWindow(QtWidgets.QMainWindow):
         # Load it
         super(MagnetMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
-        self.show()
 
 
 class MagnetGui(GUIBase):
@@ -78,6 +73,9 @@ class MagnetGui(GUIBase):
         self.alignment_param_widgets = dict()
         self.alignment_param_changed_methods = dict()
 
+        self.matrix_plot = None
+        self.matrix_cb = None
+
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
@@ -90,6 +88,8 @@ class MagnetGui(GUIBase):
 
         # Initialize general parameter widgets (constraints and values)
         self._init_general_parameters()
+        # Initialize plot
+        self._init_plot()
 
         # Automatically create GUI elements from alignment parameter objects
         self._create_alignment_parameter_tabs()
@@ -200,51 +200,15 @@ class MagnetGui(GUIBase):
             widget_dict['minus_button'].clicked.connect(self.move_rel)
             widget_dict['plus_button'].clicked.connect(self.move_rel)
 
+        # Connect colorbar related widgets
+        self._mw.alignment_cb_max_DSpinBox.valueChanged.connect(self.update_cb_absolute)
+        self._mw.alignment_cb_min_DSpinBox.valueChanged.connect(self.update_cb_absolute)
+        self._mw.alignment_cb_high_centiles_DSpinBox.valueChanged.connect(self.update_cb_centiles)
+        self._mw.alignment_cb_low_centiles_DSpinBox.valueChanged.connect(self.update_cb_centiles)
+        self._mw.alignment_centiles_RadioButton.toggled.connect(self.update_cb)
+        self._mw.alignment_manual_RadioButton.toggled.connect(self.update_cb)
 
-        # self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
-        # self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
-        # self._mw.alignment_2d_cb_low_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
-        # self._mw.alignment_2d_cb_high_centiles_DSpinBox.valueChanged.connect(self._update_2d_data)
-
-        # self._2d_alignment_ImageItem = pg.ImageItem(
-        #     image=self._magnet_logic.get_2d_data_matrix())
-        #   #  axisOrder='row-major')
-
-        # axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
-        # step0 = axis0[1]-axis0[0]
-        # step1 = axis1[1] - axis1[0]
-        # self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0[0]-step0/2,
-        #                                                    axis1[0]-step1/2,
-        #                                                    axis0[-1]-axis0[0]+step0,
-        #                                                    axis1[-1]-axis1[0]+step1,))
-
-        # self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
-
-        # Get the colorscales at set LUT
-        # my_colors = ColorScaleInferno()
-
-        # self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
-
-        # Configuration of Colorbar:
-        # self._2d_alignment_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
-
-        # self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
-        # self._mw.alignment_2d_cb_GraphicsView.hideAxis('bottom')
-        # self._mw.alignment_2d_cb_GraphicsView.hideAxis('left')
-
-        # self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
-
-        # self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
-        #     self._alignment_2d_cb_label,
-        #     units=self._alignment_2d_cb_units)
-
-        # self._update_2d_data()
-        # self._update_2d_graph_cb()
-
-        # Connect the buttons and inputs for the odmr colorbar
-        # self._mw.alignment_2d_manual_RadioButton.clicked.connect(self._update_2d_data)
-        # self._mw.alignment_2d_centiles_RadioButton.clicked.connect(self._update_2d_data)
-
+        self.show()
         return
 
     def on_deactivate(self):
@@ -304,12 +268,20 @@ class MagnetGui(GUIBase):
             widget_dict['minus_button'].clicked.disconnect()
             widget_dict['plus_button'].clicked.disconnect()
 
+        # Disconnect colorbar related widgets
+        self._mw.alignment_cb_max_DSpinBox.valueChanged.disconnect()
+        self._mw.alignment_cb_min_DSpinBox.valueChanged.disconnect()
+        self._mw.alignment_cb_high_centiles_DSpinBox.valueChanged.disconnect()
+        self._mw.alignment_cb_low_centiles_DSpinBox.valueChanged.disconnect()
+        self._mw.alignment_centiles_RadioButton.toggled.disconnect()
+        self._mw.alignment_manual_RadioButton.toggled.disconnect()
+
         self._mw.close()
         return
 
     def show(self):
         """Make window visible and put it above all other windows. """
-        QtWidgets.QMainWindow.show(self._mw)
+        self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
 
@@ -348,6 +320,39 @@ class MagnetGui(GUIBase):
         self._mw.resizeDocks([self._mw.parameters_DockWidget],
                              [self._mw.size().height()],
                              QtCore.Qt.Vertical)
+        return
+
+    def _init_plot(self):
+        constr = self.magnetlogic().magnet_constraints
+        x_axis, y_axis = self.magnetlogic().align_axes_names
+        x_unit = constr[x_axis]['unit']
+        y_unit = constr[y_axis]['unit']
+        axes_values = self.magnetlogic().align_data_axes
+        x_min = min(axes_values[0])
+        y_min = min(axes_values[1])
+        x_max = max(axes_values[0])
+        y_max = max(axes_values[1])
+        my_colors = ColorScaleInferno()
+        self.matrix_plot = pg.ImageItem(image=self.magnetlogic().align_data,
+                                        # axisOrder='row-major',
+                                        lut=my_colors.lut)
+        self._mw.alignment_GraphicsView.addItem(self.matrix_plot)
+        self._mw.alignment_GraphicsView.setLabel(
+            'bottom', '{0} position'.format(x_axis), units=x_unit)
+        self._mw.alignment_GraphicsView.setLabel(
+            'left', '{0} position'.format(y_axis), units=y_unit)
+        self._mw.alignment_GraphicsView.setAspectLocked(lock=True, ratio=1.0)
+        self.matrix_plot.getViewBox().enableAutoRange()
+        self.matrix_plot.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
+
+        # Set up color bar
+        self.matrix_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
+        self._mw.alignment_cb_GraphicsView.addItem(self.matrix_cb)
+        self._mw.alignment_cb_GraphicsView.hideAxis('bottom')
+        self._mw.alignment_cb_GraphicsView.setLabel('left', 'Alignment value')
+        self._mw.alignment_cb_GraphicsView.setMouseEnabled(x=False, y=False)
+
+        self.update_cb()
         return
 
     def _init_general_parameters(self):
@@ -413,6 +418,11 @@ class MagnetGui(GUIBase):
             self._mw.curr_pos_gridLayout.addWidget(spinbox, index, 1, 1, 1)
 
             self.current_pos_widgets[axis] = {'label': label, 'spinbox': spinbox}
+
+        # Format magnet moving warning label
+        self._mw.magnet_moving_label.setStyleSheet(
+            '.QLabel {color : red;} .QLabel:disabled {color : #5d5b59;}')
+        self._mw.magnet_moving_label.setFont(QtGui.QFont('Arial', 20, QtGui.QFont.Bold))
         return
 
     def _create_move_rel_control(self):
@@ -609,11 +619,12 @@ class MagnetGui(GUIBase):
         for widget_dict in self.move_rel_widgets.values():
             widget_dict['minus_button'].setEnabled(not is_moving)
             widget_dict['plus_button'].setEnabled(not is_moving)
+        self._mw.magnet_moving_label.setEnabled(is_moving)
         return
 
     def set_axis_constraints(self, axis_names=None):
         if axis_names is None:
-            axis_names = self.magnetlogic().current_align_axes
+            axis_names = self.magnetlogic().align_axes_names
 
         constr = self.magnetlogic().magnet_constraints
 
@@ -624,7 +635,7 @@ class MagnetGui(GUIBase):
         self._mw.general_x_start_doubleSpinBox.setSuffix(constr[axis_names[0]]['unit'])
         if old_val != self._mw.general_x_start_doubleSpinBox.value():
             self._mw.general_x_start_doubleSpinBox.setValue(
-                self.magnetlogic().current_align_ranges[0][0])
+                self.magnetlogic().align_ranges[0][0])
         self._mw.general_x_start_doubleSpinBox.blockSignals(False)
 
         self._mw.general_y_start_doubleSpinBox.blockSignals(True)
@@ -634,7 +645,7 @@ class MagnetGui(GUIBase):
         self._mw.general_y_start_doubleSpinBox.setSuffix(constr[axis_names[1]]['unit'])
         if old_val != self._mw.general_y_start_doubleSpinBox.value():
             self._mw.general_y_start_doubleSpinBox.setValue(
-                self.magnetlogic().current_align_ranges[1][0])
+                self.magnetlogic().align_ranges[1][0])
         self._mw.general_y_start_doubleSpinBox.blockSignals(False)
 
         self._mw.general_x_stop_doubleSpinBox.blockSignals(True)
@@ -644,7 +655,7 @@ class MagnetGui(GUIBase):
         self._mw.general_x_stop_doubleSpinBox.setSuffix(constr[axis_names[0]]['unit'])
         if old_val != self._mw.general_x_stop_doubleSpinBox.value():
             self._mw.general_x_stop_doubleSpinBox.setValue(
-                self.magnetlogic().current_align_ranges[0][1])
+                self.magnetlogic().align_ranges[0][1])
         self._mw.general_x_stop_doubleSpinBox.blockSignals(False)
 
         self._mw.general_y_stop_doubleSpinBox.blockSignals(True)
@@ -654,7 +665,7 @@ class MagnetGui(GUIBase):
         self._mw.general_y_stop_doubleSpinBox.setSuffix(constr[axis_names[1]]['unit'])
         if old_val != self._mw.general_y_stop_doubleSpinBox.value():
             self._mw.general_y_stop_doubleSpinBox.setValue(
-                self.magnetlogic().current_align_ranges[1][1])
+                self.magnetlogic().align_ranges[1][1])
         self._mw.general_y_stop_doubleSpinBox.blockSignals(False)
         return
 
@@ -784,9 +795,59 @@ class MagnetGui(GUIBase):
             # self.current_pos_widgets[axis]['spinbox'].setValue(pos)
         return
 
-    @QtCore.Slot(np.ndarray, tuple)
+    @QtCore.Slot(np.ndarray, list)
     def update_plot_data(self, image, img_ranges):
-        pass
+        x_min, x_max = min(img_ranges[0]), max(img_ranges[0])
+        y_min, y_max = min(img_ranges[1]), max(img_ranges[1])
+        self.matrix_plot.setImage(image=image)
+        self.matrix_plot.getViewBox().enableAutoRange()
+        self.matrix_plot.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
+
+        self.update_cb()
+        return
+
+    @QtCore.Slot()
+    def update_cb_centiles(self):
+        if not self._mw.alignment_centiles_RadioButton.isChecked():
+            self._mw.alignment_centiles_RadioButton.setChecked(True)
+        else:
+            self.update_cb()
+        return
+
+    @QtCore.Slot()
+    def update_cb_absolute(self):
+        if not self._mw.alignment_manual_RadioButton.isChecked():
+            self._mw.alignment_manual_RadioButton.setChecked(True)
+        else:
+            self.update_cb()
+        return
+
+    @QtCore.Slot()
+    def update_cb(self):
+        image = self.matrix_plot.image
+        cb_range = self.get_cb_range(image)
+        self.matrix_plot.setLevels(cb_range)
+        self.matrix_cb.refresh_colorbar(*cb_range)
+
+    def get_cb_range(self, image):
+        """ Process UI input to determine color bar range"""
+        # If "Centiles" is checked, adjust colour scaling automatically to centiles.
+        # Otherwise, take user-defined values.
+        if self._mw.alignment_centiles_RadioButton.isChecked():
+            low_centile = self._mw.alignment_cb_low_centiles_DSpinBox.value()
+            high_centile = self._mw.alignment_cb_high_centiles_DSpinBox.value()
+
+            tmp = image[np.nonzero(image)]
+            if tmp.size > 0:
+                cb_min = np.percentile(tmp, low_centile)
+                cb_max = np.percentile(tmp, high_centile)
+            else:
+                cb_min = 0
+                cb_max = 1
+        else:
+            cb_min = self._mw.alignment_cb_min_DSpinBox.value()
+            cb_max = self._mw.alignment_cb_max_DSpinBox.value()
+        return cb_min, cb_max
 
     @QtCore.Slot(bool)
     def run_stop_alignment(self, is_checked):
