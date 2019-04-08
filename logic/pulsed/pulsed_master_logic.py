@@ -572,15 +572,22 @@ class PulsedMasterLogic(GenericLogic):
         self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
         return
 
-    def save_measurement_data(self, tag, with_error):
+    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=True):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_laser_pulses: select whether extracted lasers should be saved
+        @param bool save_pulsed_measurement: select whether final measurement should be saved
+        @param bool save_figure: select whether png and pdf should be saved
+
+        @return str: filepath where data were saved
         """
-        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error)
+        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
+                                                            save_figure)
         return
 
     #######################################################################
