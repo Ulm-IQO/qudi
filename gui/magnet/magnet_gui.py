@@ -216,10 +216,10 @@ class MagnetGui(GUIBase):
         ini_width_crosshair = [
             (current_2d_array[0][-1] - current_2d_array[0][0]) / len(current_2d_array[0]),
             (current_2d_array[1][-1] - current_2d_array[1][0]) / len(current_2d_array[0])]
-        self._2d_alignment_ImageItem.toggle_crosshair(True, movable=True)
-        self._2d_alignment_ImageItem.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
-        self._2d_alignment_ImageItem.set_crosshair_size(ini_width_crosshair)
-        self._2d_alignment_ImageItem.sigCrosshairDraggedPosChanged.connect(
+        self._mw.alignment_2d_GraphicsView.toggle_crosshair(True, movable=True)
+        self._mw.alignment_2d_GraphicsView.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.alignment_2d_GraphicsView.set_crosshair_size(ini_width_crosshair)
+        self._mw.alignment_2d_GraphicsView.sigCrosshairDraggedPosChanged.connect(
             self.update_from_roi_magnet)
 
         # Configuration of Colorbar:
@@ -1098,7 +1098,7 @@ class MagnetGui(GUIBase):
             #dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
             #dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
-        self._2d_alignment_ImageItem.set_crosshair_pos(
+        self._mw.alignment_2d_GraphicsView.set_crosshair_pos(
             [curr_pos[self._magnet_logic.align_2d_axis0_name],
              curr_pos[self._magnet_logic.align_2d_axis1_name]])
         return curr_pos
@@ -1486,7 +1486,7 @@ class MagnetGui(GUIBase):
         self.log.debug('get the axis0_name: {0}'.format(axis1_name))
         axis0_value = self.get_ref_move_abs_ScienDSpinBox(axis0_name).value()
         axis1_value = self.get_ref_move_abs_ScienDSpinBox(axis1_name).value()
-        self._2d_alignment_ImageItem.set_crosshair_pos([axis0_value, axis1_value])
+        self._mw.alignment_2d_GraphicsView.set_crosshair_pos([axis0_value, axis1_value])
         return 0
 
     def update_move_rel_para(self, parameters):
@@ -1511,7 +1511,7 @@ class MagnetGui(GUIBase):
         # first get the size of axis0 and axis1 range
         x_range = self._mw.align_2d_axis0_range_DSpinBox.value()
         y_range = self._mw.align_2d_axis0_range_DSpinBox.value()
-        self._2d_alignment_ImageItem.set_crosshair_size([x_range/100, y_range/100])
+        self._mw.alignment_2d_GraphicsView.set_crosshair_size([x_range/100, y_range/100])
 
     def update_align_2d_axis0_name(self,axisname):
         """ The GUT is updated taking axisname into account. Thereby no signal is triggered!

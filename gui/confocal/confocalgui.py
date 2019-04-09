@@ -232,9 +232,9 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
-        self.xy_refocus_image.toggle_crosshair(True, movable=False)
-        self.xy_refocus_image.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
-                                                 self._optimizer_logic._initial_pos_y))
+        self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=False)
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
+                                                        self._optimizer_logic._initial_pos_y))
 
         # Set the state button as ready button as default setting.
         self._mw.action_stop_scanning.setEnabled(False)
@@ -253,12 +253,12 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='m')
 
         # Create crosshair for xy image:
-        self.xy_image.toggle_crosshair(True, movable=True)
-        self.xy_image.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
-        self.xy_image.set_crosshair_size(
+        self._mw.xy_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.xy_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.xy_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
         # connect the drag event of the crosshair with a change in scanner position:
-        self.xy_image.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_xy)
+        self._mw.xy_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_xy)
 
         # Set up and connect xy channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -268,12 +268,12 @@ class ConfocalGui(GUIBase):
         self._mw.xy_channel_ComboBox.activated.connect(self.update_xy_channel)
 
         # Create crosshair for depth image:
-        self.depth_image.toggle_crosshair(True, movable=True)
-        self.depth_image.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
-        self.depth_image.set_crosshair_size(
+        self._mw.depth_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.depth_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
+        self._mw.depth_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
         # connect the drag event of the crosshair with a change in scanner position:
-        self.depth_image.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
+        self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
 
         # Set up and connect depth channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -989,13 +989,13 @@ class ConfocalGui(GUIBase):
             z_pos = position[2]
 
             # XY image
-            self.xy_image.set_crosshair_pos(position[:2])
+            self._mw.xy_ViewWidget.set_crosshair_pos(position[:2])
 
             # depth image
             if self._scanning_logic.depth_img_is_xz:
-                self.depth_image.set_crosshair_pos((x_pos, z_pos))
+                self._mw.depth_ViewWidget.set_crosshair_pos((x_pos, z_pos))
             else:
-                self.depth_image.set_crosshair_pos(position[1:3])
+                self._mw.depth_ViewWidget.set_crosshair_pos(position[1:3])
 
             self.update_slider_x(x_pos)
             self.update_slider_y(y_pos)
@@ -1033,10 +1033,10 @@ class ConfocalGui(GUIBase):
         @param float v: real value of the current vertical position
         """
         if h is None:
-            h = self.xy_image.crosshair_position[0]
+            h = self._mw.xy_ViewWidget.crosshair_position[0]
         if v is None:
-            v = self.xy_image.crosshair_position[1]
-        self.xy_image.set_crosshair_pos((h, v))
+            v = self._mw.xy_ViewWidget.crosshair_position[1]
+        self._mw.xy_ViewWidget.set_crosshair_pos((h, v))
 
     def update_roi_xy_size(self):
         """ Update the cursor size showing the optimizer scan area for the XY image.
@@ -1046,7 +1046,7 @@ class ConfocalGui(GUIBase):
         else:
             viewrange = self.xy_image.getViewBox().viewRange()
             newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
-        self.xy_image.set_crosshair_size([newsize, newsize])
+        self._mw.xy_ViewWidget.set_crosshair_size([newsize, newsize])
 
     def update_roi_depth_size(self):
         """ Update the cursor size showing the optimizer scan area for the X-depth image.
@@ -1059,7 +1059,7 @@ class ConfocalGui(GUIBase):
             newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
             newsize_h = newsize
             newsize_v = newsize
-        self.depth_image.set_crosshair_size([newsize_h, newsize_v])
+        self._mw.depth_ViewWidget.set_crosshair_size([newsize_h, newsize_v])
 
     def update_roi_depth(self, h=None, v=None):
         """ Adjust the depth ROI position if the value has changed.
@@ -1068,10 +1068,10 @@ class ConfocalGui(GUIBase):
         @param float v: real value of the current vertical position
         """
         if h is None:
-            h = self.depth_image.crosshair_position[0]
+            h = self._mw.depth_ViewWidget.crosshair_position[0]
         if v is None:
-            v = self.depth_image.crosshair_position[1]
-        self.depth_image.set_crosshair_pos((h, v))
+            v = self._mw.depth_ViewWidget.crosshair_position[1]
+        self._mw.depth_ViewWidget.set_crosshair_pos((h, v))
         return
 
     def update_from_roi_xy(self, pos):
@@ -1082,7 +1082,7 @@ class ConfocalGui(GUIBase):
         pos = (pos.x(), pos.y())
         in_range, pos = self.roi_xy_bounds_check(pos)
         if not in_range:
-            self.xy_image.set_crosshair_pos(pos)
+            self._mw.xy_ViewWidget.set_crosshair_pos(pos)
         h_pos, v_pos = pos
 
         self.update_slider_x(h_pos)
@@ -1100,7 +1100,7 @@ class ConfocalGui(GUIBase):
         pos = (pos.x(), pos.y())
         in_range, pos = self.roi_depth_bounds_check(pos)
         if not in_range:
-            self.depth_image.set_crosshair_pos(pos)
+            self._mw.depth_ViewWidget.set_crosshair_pos(pos)
         h_pos, v_pos = pos
 
         self.update_slider_z(v_pos)
@@ -1731,10 +1731,10 @@ class ConfocalGui(GUIBase):
 
         @param bool is_checked: pass the state of the zoom button (checked or not).
         """
-        self.xy_image.getViewBox().activate_selection(is_checked)
-        self.xy_image.getViewBox().activate_zoom_by_selection(is_checked)
-        self.depth_image.getViewBox().activate_selection(is_checked)
-        self.depth_image.getViewBox().activate_zoom_by_selection(is_checked)
+        self._mw.xy_ViewWidget.toggle_selection(is_checked)
+        self._mw.xy_ViewWidget.toggle_zoom_by_selection(is_checked)
+        self._mw.depth_ViewWidget.toggle_selection(is_checked)
+        self._mw.depth_ViewWidget.toggle_zoom_by_selection(is_checked)
         return
 
     def zoom_xy_scan(self, rect):
