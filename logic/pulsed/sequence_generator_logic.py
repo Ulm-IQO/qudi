@@ -1167,13 +1167,16 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
-
         if isinstance(ensemble, str):
+            if ensemble not in self._saved_pulse_block_ensembles:
+                self.log.error('No saved PulseBlockEnsemble instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(ensemble))
+                return dict()
             ensemble = self.get_ensemble(ensemble)
         elif not isinstance(ensemble, PulseBlockEnsemble):
-            self.log.error('Ensemble to analyze must either be of type PulseBlockEnsemble or the name of the ensemble.'
-                           'Returning empty dict')
-            return {}
+            self.log.error('Ensemble to analyze must either be of type PulseBlockEnsemble or the '
+                           'name of the ensemble. Returning empty dict')
+            return dict()
 
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
@@ -1313,13 +1316,16 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
-
         if isinstance(sequence, str):
+            if sequence not in self._saved_pulse_sequences:
+                self.log.error('No saved PulseSequence instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(sequence))
+                return dict()
             sequence = self.get_sequence(sequence)
         elif not isinstance(sequence, PulseSequence):
-            self.log.error('Sequence to analyze must either be of type PulseSequence or the name of the sequence.'
-                           'Returning empty dict')
-            return {}
+            self.log.error('Sequence to analyze must either be of type PulseSequence or the name '
+                           'of the sequence. Returning empty dict')
+            return dict()
 
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
