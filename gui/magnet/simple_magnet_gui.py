@@ -233,11 +233,9 @@ class MagnetGui(GUIBase):
         """ Deactivate the module properly.
         """
         # Stop and disconnect timer
-        if self.__timer.isActive():
-            self.__sigStopTimer.emit()
-            while self.__timer.isActive():
-                time.sleep(0.2)
         self.__timer.timeout.disconnect()
+        if self.__timer.isActive():
+            self.__timer.stop()
         self.__sigStartTimer.disconnect()
         self.__sigStopTimer.disconnect()
 
