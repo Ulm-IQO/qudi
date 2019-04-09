@@ -1405,14 +1405,12 @@ class ConfocalGui(GUIBase):
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
-        self.xy_refocus_image.setRect(
-            QtCore.QRectF(
-                self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size
-            )
-        )
+        self.xy_refocus_image.set_image_extent(
+            (self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+             self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
+            (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+             self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size))
+
         ##########
         # Crosshair in optimizer
         self.vLine.setValue(self._optimizer_logic.optim_pos_x)
@@ -1487,7 +1485,10 @@ class ConfocalGui(GUIBase):
                                  yMin=yMin - (yMax - yMin) * self.image_y_padding,
                                  yMax=yMax + (yMax - yMin) * self.image_y_padding)
 
-        self.xy_image.setRect(QtCore.QRectF(xMin, yMin, xMax - xMin, yMax - yMin))
+        px_size = ((xMax - xMin) / (self._scanning_logic.xy_resolution - 1),
+                   (yMax - yMin) / (self._scanning_logic.xy_resolution - 1))
+        self.xy_image.set_image_extent(((xMin - px_size[0] / 2, xMax + px_size[0] / 2),
+                                        (yMin - px_size[1] / 2, yMax + px_size[1] / 2)))
 
         # self.put_cursor_in_xy_scan()
 
@@ -1541,7 +1542,10 @@ class ConfocalGui(GUIBase):
                 yMax=zMax + zMax * self.image_z_padding
             )
 
-        self.depth_image.setRect(QtCore.QRectF(xMin, zMin, xMax - xMin, zMax - zMin))
+        px_size = ((xMax - xMin) / (self._scanning_logic.xy_resolution - 1),
+                   (zMax - zMin) / (self._scanning_logic.z_resolution - 1))
+        self.depth_image.set_image_extent(((xMin - px_size[0] / 2, xMax + px_size[0] / 2),
+                                           (zMin - px_size[1] / 2, zMax + px_size[1] / 2)))
 
         # self.put_cursor_in_depth_scan()
 
