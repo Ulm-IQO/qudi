@@ -327,11 +327,9 @@ class MagnetGui(GUIBase):
         x_axis, y_axis = self.magnetlogic().align_axes_names
         x_unit = constr[x_axis]['unit']
         y_unit = constr[y_axis]['unit']
-        axes_values = self.magnetlogic().align_data_axes
-        x_min = min(axes_values[0])
-        y_min = min(axes_values[1])
-        x_max = max(axes_values[0])
-        y_max = max(axes_values[1])
+        axes_ranges = self.magnetlogic().align_ranges
+        x_min, x_max = axes_ranges[0]
+        y_min, y_max = axes_ranges[1]
         my_colors = ColorScaleInferno()
         self.matrix_plot = pg.ImageItem(image=self.magnetlogic().align_data,
                                         # axisOrder='row-major',
@@ -795,10 +793,10 @@ class MagnetGui(GUIBase):
             # self.current_pos_widgets[axis]['spinbox'].setValue(pos)
         return
 
-    @QtCore.Slot(np.ndarray, list)
+    @QtCore.Slot(np.ndarray, tuple)
     def update_plot_data(self, image, img_ranges):
-        x_min, x_max = min(img_ranges[0]), max(img_ranges[0])
-        y_min, y_max = min(img_ranges[1]), max(img_ranges[1])
+        x_min, x_max = img_ranges[0]
+        y_min, y_max = img_ranges[1]
         self.matrix_plot.setImage(image=image)
         self.matrix_plot.getViewBox().enableAutoRange()
         self.matrix_plot.setRect(QtCore.QRectF(x_min, y_min, x_max - x_min, y_max - y_min))
@@ -858,7 +856,6 @@ class MagnetGui(GUIBase):
         """
         if is_checked:
             tab = self._mw.parameters_tabWidget.currentIndex()
-            print('tab index:', tab)
             if tab == 0:
                 self.general_parameters_changed(True)
             else:

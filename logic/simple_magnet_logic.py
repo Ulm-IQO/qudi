@@ -175,15 +175,14 @@ class MagnetLogic(GenericLogic):
     scannerlogic = Connector(interface='ScannerLogic')
 
     # Declare status variables
-    _align_axis_names = StatusVar(name='align_axis_names', default=tuple())
-    _align_axis_ranges = StatusVar(name='align_axis_ranges', default=tuple())
-    _align_axis_points = StatusVar(name='align_axis_points', default=tuple())
+    _align_axis_names = StatusVar(name='align_axis_names', default=list())
+    _align_axis_ranges = StatusVar(name='align_axis_ranges', default=list())
+    _align_axis_points = StatusVar(name='align_axis_points', default=list())
     _align_pathway_mode = StatusVar(name='align_pathway_mode', default='meander')
     _align_method = StatusVar(name='alignment_method', default='fluorescence')
     _align_measurement_time = StatusVar(name='alignment_measurement_time', default=10)
     _align_save_measurements = StatusVar(name='alignment_save_measurements', default=True)
     _align_data = StatusVar(name='alignment_data', default=None)
-    _align_data_axes = StatusVar(name='alignment_data_axes', default=[[], []])
 
     _align_parameters = StatusVar(name='alignment_parameters', default=dict())
 
@@ -194,7 +193,7 @@ class MagnetLogic(GenericLogic):
     sigAlignmentParametersUpdated = QtCore.Signal(str, dict)
     sigGeneralParametersUpdated = QtCore.Signal(dict)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
-    sigDataUpdated = QtCore.Signal(np.ndarray, list)
+    sigDataUpdated = QtCore.Signal(np.ndarray, tuple)
     sigMagnetMoving = QtCore.Signal(bool)
     sigMagnetPositionUpdated = QtCore.Signal(dict)
     sigMagnetVelocityUpdated = QtCore.Signal(dict)
@@ -218,6 +217,7 @@ class MagnetLogic(GenericLogic):
         self._measurement_paused = False
         self._stop_requested = True
         self._pause_continue_requested = False
+        self.__in_loop = False
 
         self._move_path = None
         self._path_index = 0
@@ -242,14 +242,14 @@ class MagnetLogic(GenericLogic):
         # Initialize undefined variables
         constr = self.magnet_constraints
         if not self._align_axis_names:
-            self._align_axis_names = (self.available_axes_names[0], self.available_axes_names[1])
+            self._align_axis_names = [self.available_axes_names[0], self.available_axes_names[1]]
         if not self._align_axis_ranges:
-            self._align_axis_ranges = ((constr[self._align_axis_names[0]]['pos_min'],
+            self._align_axis_ranges = [(constr[self._align_axis_names[0]]['pos_min'],
                                         constr[self._align_axis_names[0]]['pos_max']),
                                        (constr[self._align_axis_names[1]]['pos_min'],
-                                        constr[self._align_axis_names[1]]['pos_max']))
+                                        constr[self._align_axis_names[1]]['pos_max'])]
         if not self._align_axis_points:
-            self._align_axis_points = (10, 10)
+            self._align_axis_points = [10, 10]
         if self._align_method not in self.available_alignment_methods:
             self._align_method = self.available_alignment_methods[0]
         if self._align_pathway_mode not in self.available_path_modes:
@@ -257,13 +257,6 @@ class MagnetLogic(GenericLogic):
 
         if self._align_data is None:
             self._align_data = np.zeros(self._align_axis_points, dtype=float)
-
-        if len(self._align_data_axes[0]) != self._align_data.shape[0]:
-            self._align_data_axes[0] = np.linspace(
-                *(self._align_axis_ranges[0]), self._align_data.shape[0], dtype=float)
-        if len(self._align_data_axes[1]) != self._align_data.shape[1]:
-            self._align_data_axes[1] = np.linspace(
-                *(self._align_axis_ranges[1]), self._align_data.shape[1], dtype=float)
 
         self._sigMeasurementLoop.connect(self._measurement_loop, QtCore.Qt.QueuedConnection)
         self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
@@ -325,11 +318,11 @@ class MagnetLogic(GenericLogic):
 
     @property
     def available_path_modes(self):
-        return self._available_path_modes
+        return tuple(self._available_path_modes)
 
     @property
     def available_alignment_methods(self):
-        return self._available_alignment_methods
+        return tuple(self._available_alignment_methods)
 
     @property
     def available_axes_names(self):
@@ -358,10 +351,6 @@ class MagnetLogic(GenericLogic):
     @property
     def align_data(self):
         return self._align_data
-
-    @property
-    def align_data_axes(self):
-        return list(self._align_data_axes)
 
     @property
     def magnet_constraints(self):
@@ -579,15 +568,23 @@ class MagnetLogic(GenericLogic):
         if self._align_pathway_mode == 'meander':
             # create a meandering stepping procedure through the matrix
             # calculate coordinates for each axis
-            for dim2_index, dim2_val in enumerate(self._align_data_axes[1]):
+            x_values = np.linspace(self._align_axis_ranges[0][0],
+                                   self._align_axis_ranges[0][1],
+                                   self._align_axis_points[0],
+                                   dtype=float)
+            y_values = np.linspace(self._align_axis_ranges[1][0],
+                                   self._align_axis_ranges[1][1],
+                                   self._align_axis_points[1],
+                                   dtype=float)
+            for dim2_index, dim2_val in enumerate(y_values):
                 if dim2_index % 2 == 0:
-                    for dim1_index, dim1_val in enumerate(self._align_data_axes[0]):
+                    for dim1_index, dim1_val in enumerate(x_values):
                         pathway.append({'index': (dim1_index, dim2_index),
                                         'pos': {self._align_axis_names[0]: dim1_val,
                                                 self._align_axis_names[1]: dim2_val}})
                 else:
-                    for dim1_rev_index, dim1_val in enumerate(reversed(self._align_data_axes[0])):
-                        dim1_index = len(self._align_data_axes[0]) - 1 - dim1_rev_index
+                    for dim1_rev_index, dim1_val in enumerate(reversed(x_values)):
+                        dim1_index = len(x_values) - 1 - dim1_rev_index
                         pathway.append({'index': (dim1_index, dim2_index),
                                         'pos': {self._align_axis_names[0]: dim1_val,
                                                 self._align_axis_names[1]: dim2_val}})
@@ -624,24 +621,17 @@ class MagnetLogic(GenericLogic):
                 return
 
             self.module_state.lock()
-            if self.__timer.isActive():
-                self.toggle_periodic_position_feedback(False)
+            # if self.__timer.isActive():
+            #     self.toggle_periodic_position_feedback(False)
             self._measurement_paused = False
             self._pause_continue_requested = False
             self._stop_requested = False
             self.sigMeasurementStatusUpdated.emit(True, False)
-            self._align_data_axes[0] = np.linspace(self._align_axis_ranges[0][0],
-                                                   self._align_axis_ranges[0][1],
-                                                   self._align_axis_points[0],
-                                                   dtype=float)
-            self._align_data_axes[1] = np.linspace(self._align_axis_ranges[1][0],
-                                                   self._align_axis_ranges[1][1],
-                                                   self._align_axis_points[1],
-                                                   dtype=float)
+
             self._move_path = self._create_alignment_pathway()
             self._path_index = 0
-            self._align_data = np.zeros(
-                (len(self._align_data_axes[0]), len(self._align_data_axes[1])), dtype=float)
+            self._align_data = np.zeros(self._align_axis_points, dtype=float)
+            self.sigDataUpdated.emit(self._align_data, self.align_ranges)
         self._sigMeasurementLoop.emit()
         return
 
@@ -687,10 +677,10 @@ class MagnetLogic(GenericLogic):
 
     @QtCore.Slot()
     def _measurement_loop(self):
-        if self.module_state() != 'locked':
-            return
-
         with self.thread_lock:
+            if self.module_state() != 'locked' or self.__in_loop:
+                return
+
             # Stop if requested
             if self._stop_requested:
                 self._measurement_paused = False
@@ -701,34 +691,40 @@ class MagnetLogic(GenericLogic):
                 self.module_state.unlock()
                 return
 
+            self.__in_loop = True
+
             if self._pause_continue_requested:
                 if self._measurement_paused:
                     self._pause_continue_requested = False
                     self._measurement_paused = False
-                    if self.__timer.isActive():
-                        self.toggle_periodic_position_feedback(False)
+                    # if self.__timer.isActive():
+                    #     self.toggle_periodic_position_feedback(False)
                     self.sigMeasurementStatusUpdated.emit(True, False)
                 else:
                     self._pause_continue_requested = False
                     self._measurement_paused = True
-                    if self._periodic_position_feedback_enabled:
-                        self.toggle_periodic_position_feedback(True)
+                    # if self._periodic_position_feedback_enabled:
+                    #     self.toggle_periodic_position_feedback(True)
                     self.sigMeasurementStatusUpdated.emit(True, True)
 
-            if not self._measurement_paused:
-                path_entry = self._move_path[self._path_index]
+        if not self._measurement_paused:
+            path_entry = self._move_path[self._path_index]
+            with self.thread_lock:
                 magnet_pos = self.move_magnet_abs(path_entry['pos'])
-                self.sigMagnetPositionUpdated.emit(magnet_pos)
+            self.sigMagnetPositionUpdated.emit(magnet_pos)
 
-                self._optimize_position()
+            self._optimize_position()
 
-                x_ind, y_ind = path_entry['index']
-                self._align_data[x_ind, y_ind] = self.measure_alignment()
-                self.sigDataUpdated.emit(self._align_data, list(self._align_data_axes))
+            x_ind, y_ind = path_entry['index']
+            data = self.measure_alignment()
+            with self.thread_lock:
+                self._align_data[x_ind, y_ind] = data
+                self.sigDataUpdated.emit(self._align_data, self.align_ranges)
 
                 self._path_index += 1
                 if self._path_index == len(self._move_path):
                     self._stop_requested = True
+        self.__in_loop = False
         self._sigMeasurementLoop.emit()
         return
 
@@ -952,26 +948,20 @@ class MagnetLogic(GenericLogic):
         filelabel = tag + '_magnet_alignment_data' if tag else 'magnet_alignment_data'
 
         # here is the matrix saved
-        if self._align_method == 'fluorescence':
-            data_header = '{0}(m)\t{1}(m)\tcounts(1/s)'.format(self._align_axis_names[0],
-                                                               self._align_axis_names[1])
-        elif self._align_method == 'odmr_frequency':
-            data_header = '{0}(m)\t{1}(m)\tangle(deg)'.format(self._align_axis_names[0],
-                                                              self._align_axis_names[1])
-        elif self._align_method == 'odmr_frequency':
-            data_header = '{0}(m)\t{1}(m)\tcontrast'.format(self._align_axis_names[0],
-                                                            self._align_axis_names[1])
-        else:
-            data_header = '{0}(m)\t{1}(m)\tvalue'.format(self._align_axis_names[0],
+        data_header = '{0},{1}\talignment values'.format(self._align_axis_names[0],
                                                          self._align_axis_names[1])
         matrix_data = {data_header: self._align_data}
 
         parameters = OrderedDict()
-        parameters['Pathway method'] = self._align_pathway_mode
-        parameters['Alignment method'] = self._align_method
+        parameters.update(self.general_parameters)
+        parameters.update(self.alignment_parameters[self.align_method])
 
-        self.savelogic().save_data(matrix_data, filepath=filepath, parameters=parameters,
-                                   filelabel=filelabel, timestamp=timestamp)
+        self.savelogic().save_data(matrix_data,
+                                   filepath=filepath,
+                                   parameters=parameters,
+                                   filelabel=filelabel,
+                                   timestamp=timestamp)
+        return
 
     @staticmethod
     def calculate_field_alignment(freq1, freq2):
