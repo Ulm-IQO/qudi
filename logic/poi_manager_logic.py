@@ -967,9 +967,9 @@ class PoiManagerLogic(GenericLogic):
 
     def update_poi_tag_in_savelogic(self):
         if not self._active_poi:
-            self.savelogic().remove_additional_parameter('active POI')
+            self.savelogic().remove_additional_parameter('Active POI')
         else:
-            self.savelogic().update_additional_parameters({'active POI': self._active_poi})
+            self.savelogic().update_additional_parameters({'Active POI': self._active_poi})
 
     def save_roi(self):
         """
