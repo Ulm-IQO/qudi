@@ -22,10 +22,11 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import os
+import time
 import pyqtgraph as pg
 from qtpy import uic
 
-from core.module import Connector, StatusVar
+from core.module import Connector, ConfigOption
 from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
@@ -56,6 +57,9 @@ class MagnetGui(GUIBase):
     # declare connectors
     magnetlogic = Connector(interface='MagnetLogic')
 
+    # declare StatusVars
+    _position_feedback_period = ConfigOption(name='position_feedback_period', default=1)
+
     # declare signals
     sigToggleMeasurement = QtCore.Signal(bool)
     sigToggleMeasurementPause = QtCore.Signal(bool)
@@ -63,6 +67,8 @@ class MagnetGui(GUIBase):
     sigGeneralParametersChanged = QtCore.Signal(dict)
     sigMoveRelative = QtCore.Signal(dict)
     sigMoveAbsolute = QtCore.Signal(dict)
+    __sigStartTimer = QtCore.Signal()
+    __sigStopTimer = QtCore.Signal()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -75,6 +81,10 @@ class MagnetGui(GUIBase):
 
         self.matrix_plot = None
         self.matrix_cb = None
+
+        # timer for the periodic position readout
+        self.__timer = None
+        return
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -118,6 +128,14 @@ class MagnetGui(GUIBase):
         # Update measurement status
         self.measurement_status_updated(is_running=self.magnetlogic().module_state() == 'locked',
                                         is_paused=self.magnetlogic().is_paused)
+
+        # Set up timer for position update
+        self.__timer = QtCore.QTimer()
+        self.__timer.setSingleShot(False)
+        self.__timer.setInterval(self._position_feedback_period * 1000)
+        self.__timer.timeout.connect(self.magnet_position_updated)
+        self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
+        self.__sigStopTimer.connect(self.__timer.stop, QtCore.Qt.QueuedConnection)
 
         # Connect toolbar/menu actions
         self._mw.default_view_Action.triggered.connect(self.set_default_view_main_window)
@@ -214,6 +232,15 @@ class MagnetGui(GUIBase):
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
+        # Stop and disconnect timer
+        if self.__timer.isActive():
+            self.__sigStopTimer.emit()
+            while self.__timer.isActive():
+                time.sleep(0.2)
+        self.__timer.timeout.disconnect()
+        self.__sigStartTimer.disconnect()
+        self.__sigStopTimer.disconnect()
+
         # Disconnect update signals from logic
         self.magnetlogic().sigMagnetPositionUpdated.disconnect()
         self.magnetlogic().sigMeasurementStatusUpdated.disconnect()
@@ -575,6 +602,20 @@ class MagnetGui(GUIBase):
             method_name = '{0}_alignment_parameters_changed'.format(method)
             setattr(MagnetGui, method_name, self.__get_parameter_changed_method(method))
             self.alignment_param_changed_methods[method] = getattr(self, method_name)
+        return
+
+    @QtCore.Slot(bool)
+    def toggle_periodic_position_feedback(self, start):
+        if start:
+            if self.__timer.isActive():
+                self.log.warning('Unable to start periodic position feedback. Already running.')
+            else:
+                self.__sigStartTimer.emit()
+        else:
+            if not self.__timer.isActive():
+                self.log.warning('Unable to stop periodic position feedback. Not running.')
+            else:
+                self.__sigStopTimer.emit()
         return
 
     @QtCore.Slot()

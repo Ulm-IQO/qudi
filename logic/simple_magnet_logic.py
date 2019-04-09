@@ -186,9 +186,6 @@ class MagnetLogic(GenericLogic):
 
     _align_parameters = StatusVar(name='alignment_parameters', default=dict())
 
-    # Declare ConfigOptions
-    _position_feedback_period = ConfigOption(name='position_feedback_period', default=1)
-
     # Declare signals
     sigAlignmentParametersUpdated = QtCore.Signal(str, dict)
     sigGeneralParametersUpdated = QtCore.Signal(dict)
@@ -199,8 +196,6 @@ class MagnetLogic(GenericLogic):
     sigMagnetVelocityUpdated = QtCore.Signal(dict)
 
     _sigMeasurementLoop = QtCore.Signal()
-    __sigStartTimer = QtCore.Signal()
-    __sigStopTimer = QtCore.Signal()
 
     # Other class variables/constants
     _available_path_modes = ('meander', 'diagonal-meander', 'spiral-in', 'spiral-out')
@@ -213,7 +208,6 @@ class MagnetLogic(GenericLogic):
         super().__init__(config=config, **kwargs)
         self.thread_lock = Mutex()
 
-        self._periodic_position_feedback_enabled = False
         self._measurement_paused = False
         self._stop_requested = True
         self._pause_continue_requested = False
@@ -221,20 +215,12 @@ class MagnetLogic(GenericLogic):
 
         self._move_path = None
         self._path_index = 0
-
-        # timer for the periodic position readout
-        self.__timer = None
         return
 
     def on_activate(self):
         """
         Actions performed upon loading/activating this module go here.
         """
-        self.__timer = QtCore.QTimer()
-        self.__timer.setSingleShot(False)
-        self.__timer.setInterval(self._position_feedback_period * 1000)
-
-        self._periodic_position_feedback_enabled = False
         self._measurement_paused = False
         self._stop_requested = True
         self._pause_continue_requested = False
@@ -259,22 +245,12 @@ class MagnetLogic(GenericLogic):
             self._align_data = np.zeros(self._align_axis_points, dtype=float)
 
         self._sigMeasurementLoop.connect(self._measurement_loop, QtCore.Qt.QueuedConnection)
-        self.__sigStartTimer.connect(self.__timer.start, QtCore.Qt.QueuedConnection)
-        self.__sigStopTimer.connect(self.__timer.stop, QtCore.Qt.QueuedConnection)
-        self.__timer.timeout.connect(self.update_magnet_position, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
         """
         Deactivate the module properly.
         """
-        if self.__timer.isActive():
-            self.toggle_periodic_position_feedback(False)
-            start = time.time()
-            while self.__timer.isActive():
-                time.sleep(0.5)
-                if (time.time() - start) > self._position_feedback_period * 1.1:
-                    break
         if self.module_state() == 'locked':
             self.stop_measurement()
             start = time.time()
@@ -284,9 +260,6 @@ class MagnetLogic(GenericLogic):
                     break
 
         self._sigMeasurementLoop.disconnect()
-        self.__sigStartTimer.disconnect()
-        self.__sigStopTimer.disconnect()
-        self.__timer.timeout.disconnect()
         return
 
     @_align_parameters.representer
@@ -392,22 +365,6 @@ class MagnetLogic(GenericLogic):
         param_dict['save_measurements'] = self._align_save_measurements
         return param_dict
 
-    @QtCore.Slot(bool)
-    def toggle_periodic_position_feedback(self, start):
-        if start:
-            if self.__timer.isActive():
-                self.log.warning('Unable to start periodic position feedback. Already running.')
-            else:
-                self._periodic_position_feedback_enabled = True
-                self.__sigStartTimer.emit()
-        else:
-            if not self.__timer.isActive():
-                self.log.warning('Unable to stop periodic position feedback. Not running.')
-            else:
-                self._periodic_position_feedback_enabled = False
-                self.__sigStopTimer.emit()
-        return
-
     @QtCore.Slot()
     def update_magnet_position(self):
         with self.thread_lock:
@@ -417,7 +374,6 @@ class MagnetLogic(GenericLogic):
     @QtCore.Slot(dict)
     def set_general_parameters(self, param_dict):
         if self.module_state() != 'idle':
-            # self.log.warning('Unable to set general parameters while measurement is running.')
             self.sigGeneralParametersUpdated.emit(self.general_parameters)
             return
 
@@ -450,7 +406,6 @@ class MagnetLogic(GenericLogic):
     @QtCore.Slot(str, dict)
     def set_alignment_parameters(self, method, param_dict):
         if self.module_state() != 'idle':
-            # self.log.warning('Unable to set alignment parameters while measurement is running.')
             self.sigAlignmentParametersUpdated.emit(method,
                                                     self._align_parameters[method].to_dict())
             return
@@ -621,8 +576,6 @@ class MagnetLogic(GenericLogic):
                 return
 
             self.module_state.lock()
-            # if self.__timer.isActive():
-            #     self.toggle_periodic_position_feedback(False)
             self._measurement_paused = False
             self._pause_continue_requested = False
             self._stop_requested = False
@@ -686,8 +639,6 @@ class MagnetLogic(GenericLogic):
                 self._measurement_paused = False
                 self._pause_continue_requested = False
                 self.sigMeasurementStatusUpdated.emit(False, False)
-                if self._periodic_position_feedback_enabled:
-                    self.toggle_periodic_position_feedback(True)
                 self.module_state.unlock()
                 return
 
@@ -697,27 +648,21 @@ class MagnetLogic(GenericLogic):
                 if self._measurement_paused:
                     self._pause_continue_requested = False
                     self._measurement_paused = False
-                    # if self.__timer.isActive():
-                    #     self.toggle_periodic_position_feedback(False)
                     self.sigMeasurementStatusUpdated.emit(True, False)
                 else:
                     self._pause_continue_requested = False
                     self._measurement_paused = True
-                    # if self._periodic_position_feedback_enabled:
-                    #     self.toggle_periodic_position_feedback(True)
                     self.sigMeasurementStatusUpdated.emit(True, True)
 
-        if not self._measurement_paused:
-            path_entry = self._move_path[self._path_index]
-            with self.thread_lock:
+            if not self._measurement_paused:
+                path_entry = self._move_path[self._path_index]
                 magnet_pos = self.move_magnet_abs(path_entry['pos'])
-            self.sigMagnetPositionUpdated.emit(magnet_pos)
+                self.sigMagnetPositionUpdated.emit(magnet_pos)
 
-            self._optimize_position()
+                self._optimize_position()
 
-            x_ind, y_ind = path_entry['index']
-            data = self.measure_alignment()
-            with self.thread_lock:
+                x_ind, y_ind = path_entry['index']
+                data = self.measure_alignment()
                 self._align_data[x_ind, y_ind] = data
                 self.sigDataUpdated.emit(self._align_data, self.align_ranges)
 
