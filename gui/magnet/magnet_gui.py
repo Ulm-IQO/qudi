@@ -36,89 +36,9 @@ from gui.guiutils import ColorBar
 from qtpy import QtCore
 from qtpy import QtWidgets
 from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.scan_plotwidget import ScanImageItem
 
 
-class CrossROI(pg.ROI):
-
-    """ Create a Region of interest, which is a zoomable rectangular.
-
-    @param float pos: optional parameter to set the position
-    @param float size: optional parameter to set the size of the roi
-
-    Have a look at:
-    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
-    """
-    sigUserRegionUpdate = QtCore.Signal(object)
-    sigMachineRegionUpdate = QtCore.Signal(object)
-
-    def __init__(self, pos, size, **args):
-        """Create a ROI with a central handle."""
-        self.userDrag = False
-        pg.ROI.__init__(self, pos, size, **args)
-        # That is a relative position of the small box inside the region of
-        # interest, where 0 is the lowest value and 1 is the highest:
-        center = [0.5, 0.5]
-        # Translate the center to the intersection point of the crosshair.
-        self.addTranslateHandle(center)
-
-        self.sigRegionChangeStarted.connect(self.startUserDrag)
-        self.sigRegionChangeFinished.connect(self.stopUserDrag)
-        self.sigRegionChanged.connect(self.regionUpdateInfo)
-
-    def setPos(self, pos, update=True, finish=False):
-        """Sets the position of the ROI.
-
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-
-        Changed finish from parent class implementation to not disrupt user dragging detection.
-        """
-        super().setPos(pos, update=update, finish=finish)
-
-    def getPos(self, pos, update=True, finish=False):
-        """Sets the position of the ROI.
-
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-
-        Changed finish from parent class implementation to not disrupt user dragging detection.
-        """
-        return super().pos()
-
-
-    def setSize(self, size, update=True, finish=True):
-        """
-        Sets the size of the ROI
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-        """
-        super().setSize(size, update=update, finish=finish)
-
-
-    def handleMoveStarted(self):
-        """ Handles should always be moved by user."""
-        super().handleMoveStarted()
-        self.userDrag = True
-
-
-    def startUserDrag(self, roi):
-        """ROI has started being dragged by user."""
-        self.userDrag = True
-
-
-    def stopUserDrag(self, roi):
-        """ROI has stopped being dragged by user"""
-        self.userDrag = False
-        #pos = self.getPos()
-        #MagnetGui()._mw.crosshair_position_LineEdit.set(pos)
-
-
-    def regionUpdateInfo(self, roi):
-        """When the region is being dragged by the user, emit the corresponding signal."""
-        if self.userDrag:
-            self.sigUserRegionUpdate.emit(roi)
-        else:
-            self.sigMachineRegionUpdate.emit(roi)
 
 class CrossLine(pg.InfiniteLine):
 
@@ -210,43 +130,6 @@ class MagnetGui(GUIBase):
 
         self._create_meas_type_RadioButtons()
 
-        # Set initial position for the crosshair, default is current magnet position
-        current_position = self._magnet_logic.get_pos()
-        current_2d_array = self._magnet_logic.get_2d_axis_arrays()
-        ini_pos_x_crosshair = current_position[self._magnet_logic.align_2d_axis0_name]
-        ini_pos_y_crosshair = current_position[self._magnet_logic.align_2d_axis1_name]
-
-        ini_width_crosshair = [(current_2d_array[0][-1]-current_2d_array[0][0])/len(current_2d_array[0]),
-                               (current_2d_array[1][-1] - current_2d_array[1][0]) / len(current_2d_array[0])]
-
-        self.roi_magnet = CrossROI(
-            # [
-            #     ini_pos_x_crosshair - len(arr01) / 40,
-            #     ini_pos_y_crosshair - len(arr01) / 40
-            # ],
-            [
-                ini_pos_x_crosshair,
-                ini_pos_y_crosshair
-            ],
-            # [len(arr01) / 20, len(arr01) / 20],
-            ini_width_crosshair,
-            pen={'color': "F0F", 'width': 1},
-            removable=True
-        )
-
-        self._mw.alignment_2d_GraphicsView.addItem(self.roi_magnet)
-
-        # create horizontal and vertical line as a crosshair in xy image:
-        self.hline_magnet = CrossLine(pos=self.roi_magnet.pos() + self.roi_magnet.size() * 0.5,
-                                  angle=0, pen={'color': palette.green, 'width': 1})
-        self.vline_magnet = CrossLine(pos=self.roi_magnet.pos() + self.roi_magnet.size() * 0.5,
-                                  angle=90, pen={'color': palette.green, 'width': 1})
-
-        # connect the change of a region with the adjustment of the crosshair:
-        self.roi_magnet.sigRegionChanged.connect(self.hline_magnet.adjust)
-        self.roi_magnet.sigRegionChanged.connect(self.vline_magnet.adjust)
-        self.roi_magnet.sigUserRegionUpdate.connect(self.update_from_roi_magnet)
-
         # Configuring the dock widgets
         # Use the class 'MagnetMainWindow' to create the GUI window
 
@@ -314,26 +197,30 @@ class MagnetGui(GUIBase):
         self._set_vel_display_axis0()
         self._set_vel_display_axis1()
 
-        self._2d_alignment_ImageItem = pg.ImageItem(
-            image=self._magnet_logic.get_2d_data_matrix())
-          #  axisOrder='row-major')
-
-        axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
-        step0 = axis0[1]-axis0[0]
-        step1 = axis1[1] - axis1[0]
-        self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0[0]-step0/2,
-                                                           axis1[0]-step1/2,
-                                                           axis0[-1]-axis0[0]+step0,
-                                                           axis1[-1]-axis1[0]+step1,))
-
+        self._2d_alignment_ImageItem = ScanImageItem(image=self._magnet_logic.get_2d_data_matrix())
         self._mw.alignment_2d_GraphicsView.addItem(self._2d_alignment_ImageItem)
-
+        axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
+        step0 = axis0[1] - axis0[0]
+        step1 = axis1[1] - axis1[0]
+        self._2d_alignment_ImageItem.set_image_extent((axis0[0]-step0/2, axis0[-1]+step0/2),
+                                                      (axis1[0]-step1/2, axis1[-1]+step1/2))
         # Get the colorscales at set LUT
         my_colors = ColorScaleInferno()
-
         self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
+        # Set initial position for the crosshair, default is current magnet position
+        current_position = self._magnet_logic.get_pos()
+        current_2d_array = self._magnet_logic.get_2d_axis_arrays()
+        ini_pos_x_crosshair = current_position[self._magnet_logic.align_2d_axis0_name]
+        ini_pos_y_crosshair = current_position[self._magnet_logic.align_2d_axis1_name]
 
-
+        ini_width_crosshair = [
+            (current_2d_array[0][-1] - current_2d_array[0][0]) / len(current_2d_array[0]),
+            (current_2d_array[1][-1] - current_2d_array[1][0]) / len(current_2d_array[0])]
+        self._2d_alignment_ImageItem.toggle_crosshair(True, movable=True)
+        self._2d_alignment_ImageItem.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._2d_alignment_ImageItem.set_crosshair_size(ini_width_crosshair)
+        self._2d_alignment_ImageItem.sigCrosshairDraggedPosChanged.connect(
+            self.update_from_roi_magnet)
 
         # Configuration of Colorbar:
         self._2d_alignment_cb = ColorBar(my_colors.cmap_normed, 100, 0, 100000)
@@ -343,12 +230,6 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_cb_GraphicsView.hideAxis('left')
 
         self._mw.alignment_2d_cb_GraphicsView.addItem(self._2d_alignment_cb)
-
-
-
-        # add the configured crosshair to the magnet Widget
-        self._mw.alignment_2d_GraphicsView.addItem(self.hline_magnet)
-        self._mw.alignment_2d_GraphicsView.addItem(self.vline_magnet)
 
         self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
             self._alignment_2d_cb_label,
@@ -1201,7 +1082,7 @@ class MagnetGui(GUIBase):
         logic and the display is changed.
         """
         constraints = self._magnet_logic.get_hardware_constraints()
-        curr_pos =  self._magnet_logic.get_pos()
+        curr_pos = self._magnet_logic.get_pos()
         if (param_list is not None) and (type(param_list) is not bool):
             param_list = list(param_list)
             # param_list =list(param_list) # convert for safety to a list
@@ -1217,8 +1098,9 @@ class MagnetGui(GUIBase):
             #dspinbox_move_abs_ref = self.get_ref_move_abs_ScienDSpinBox(axis_label)
             #dspinbox_move_abs_ref.setValue(curr_pos[axis_label])
 
-        self.roi_magnet.setPos([curr_pos[self._magnet_logic.align_2d_axis0_name],
-                                curr_pos[self._magnet_logic.align_2d_axis1_name]])
+        self._2d_alignment_ImageItem.set_crosshair_pos(
+            [curr_pos[self._magnet_logic.align_2d_axis0_name],
+             curr_pos[self._magnet_logic.align_2d_axis1_name]])
         return curr_pos
 
 
@@ -1455,11 +1337,9 @@ class MagnetGui(GUIBase):
 
         step0 = axis0_array[1] - axis0_array[0]
         step1 = axis1_array[1] - axis1_array[0]
-        self._2d_alignment_ImageItem.setRect(QtCore.QRectF(axis0_array[0] - step0 / 2,
-                                                           axis1_array[0] - step1 / 2,
-                                                           axis0_array[-1] - axis0_array[0] + step0,
-                                                           axis1_array[-1] - axis1_array[0] + step1, ))
-
+        self._2d_alignment_ImageItem.set_image_extent(
+            (axis0_array[0]-step0/2, axis0_array[-1]+step0/2),
+            (axis1_array[0]-step1/2, axis1_array[-1]+step1/2))
 
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
@@ -1528,8 +1408,7 @@ class MagnetGui(GUIBase):
             cb_max = self._mw.alignment_2d_cb_max_centiles_DSpinBox.value()
 
 
-        self._2d_alignment_ImageItem.setImage(image=matrix_data,
-                                              levels=(cb_min, cb_max))
+        self._2d_alignment_ImageItem.setImage(image=matrix_data, levels=(cb_min, cb_max))
         self._update_2d_graph_axis()
 
         self._update_2d_graph_cb()
@@ -1576,13 +1455,13 @@ class MagnetGui(GUIBase):
         else:
             self._mw.odmr_2d_high_trans_GroupBox.setVisible(True)
 
-    def update_from_roi_magnet(self, roi):
+    def update_from_roi_magnet(self, pos):
         """The user manually moved the XY ROI, adjust all other GUI elements accordingly
 
         @params object roi: PyQtGraph ROI object
         """
-        x_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        y_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+        x_pos = pos.x()
+        y_pos = pos.y()
 
         if hasattr(self._magnet_logic, '_axis0_name') and hasattr(self._magnet_logic, '_axis1_name'):
             axis0_name = self._magnet_logic._axis0_name
@@ -1607,11 +1486,7 @@ class MagnetGui(GUIBase):
         self.log.debug('get the axis0_name: {0}'.format(axis1_name))
         axis0_value = self.get_ref_move_abs_ScienDSpinBox(axis0_name).value()
         axis1_value = self.get_ref_move_abs_ScienDSpinBox(axis1_name).value()
-
-        center_x = axis0_value + 0.5 * self.roi_magnet.size()[0]
-        center_y = axis1_value + 0.5 * self.roi_magnet.size()[1]
-        self.roi_magnet.setPos([center_x, center_y])
-
+        self._2d_alignment_ImageItem.set_crosshair_pos([axis0_value, axis1_value])
         return 0
 
     def update_move_rel_para(self, parameters):
@@ -1636,8 +1511,7 @@ class MagnetGui(GUIBase):
         # first get the size of axis0 and axis1 range
         x_range = self._mw.align_2d_axis0_range_DSpinBox.value()
         y_range = self._mw.align_2d_axis0_range_DSpinBox.value()
-        self.roi_magnet.setSize([x_range/100, y_range/100])
-
+        self._2d_alignment_ImageItem.set_crosshair_size([x_range/100, y_range/100])
 
     def update_align_2d_axis0_name(self,axisname):
         """ The GUT is updated taking axisname into account. Thereby no signal is triggered!
