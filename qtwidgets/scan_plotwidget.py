@@ -35,145 +35,11 @@ class ScanImageItem(ImageItem):
     Adds blink correction functionality capable of filtering out single pixel wide artifacts along
     a single image dimension.
     """
-    sigMouseClicked = QtCore.Signal(QtCore.Qt.MouseButton, QtCore.QPointF)
-    sigCrosshairPosChanged = QtCore.Signal(QtCore.QPointF)
-    sigCrosshairDraggedPosChanged = QtCore.Signal(QtCore.QPointF)
-
     def __init__(self, *args, **kwargs):
         self.use_blink_correction = False
         self.blink_correction_axis = 0
         self.orig_image = None
         super().__init__(*args, **kwargs)
-
-        self.crosshair = ROI((0, 0), (0, 0), pen={'color': '#00ff00', 'width': 1})
-        self.hline = InfiniteLine(pos=0,
-                                  angle=0,
-                                  movable=True,
-                                  pen={'color': '#00ff00', 'width': 1},
-                                  hoverPen={'color': '#ffff00', 'width': 1})
-        self.vline = InfiniteLine(pos=0,
-                                  angle=90,
-                                  movable=True,
-                                  pen={'color': '#00ff00', 'width': 1},
-                                  hoverPen={'color': '#ffff00', 'width': 1})
-        self.vline.sigDragged.connect(self._update_pos_from_line)
-        self.hline.sigDragged.connect(self._update_pos_from_line)
-        self.crosshair.sigRegionChanged.connect(self._update_pos_from_roi)
-        self.sigCrosshairDraggedPosChanged.connect(self.sigCrosshairPosChanged)
-        return
-
-    @property
-    def crosshair_movable(self):
-        return bool(self.crosshair.translatable)
-
-    @crosshair_movable.setter
-    def crosshair_movable(self, movable):
-        self.crosshair.translatable = bool(movable)
-        return
-
-    @property
-    def crosshair_position(self):
-        pos = self.vline.pos()
-        pos[1] = self.hline.pos()[1]
-        return tuple(pos)
-
-    @property
-    def crosshair_size(self):
-        return tuple(self.crosshair.size())
-
-    def _update_pos_from_line(self, obj):
-        if obj not in (self.hline, self.vline):
-            return
-        pos = self.vline.pos()
-        pos[1] = self.hline.pos()[1]
-        size = self.crosshair_size
-        self.crosshair.blockSignals(True)
-        self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
-        self.crosshair.blockSignals(False)
-        self.sigCrosshairDraggedPosChanged.emit(QtCore.QPointF(pos[0], pos[1]))
-        return
-
-    def _update_pos_from_roi(self, obj):
-        if obj is not self.crosshair:
-            return
-        pos = self.crosshair.pos()
-        size = self.crosshair.size()
-        pos[0] += size[0] / 2
-        pos[1] += size[1] / 2
-        self.vline.setPos(pos[0])
-        self.hline.setPos(pos[1])
-        self.sigCrosshairDraggedPosChanged.emit(QtCore.QPointF(pos[0], pos[1]))
-        return
-
-    def toggle_crosshair(self, enable, movable=True):
-        """
-
-        @param bool enable:
-        @param bool movable:
-        """
-        if not isinstance(enable, bool):
-            raise TypeError('Positional argument "enable" must be bool type.')
-        if not isinstance(movable, bool):
-            raise TypeError('Optional argument "movable" must be bool type.')
-
-        self.crosshair.translatable = movable
-        self.vline.setMovable(movable)
-        self.hline.setMovable(movable)
-
-        vw = self.getViewWidget()
-        vw_items = vw.items()
-        if enable:
-            if self.vline not in vw_items:
-                vw.addItem(self.vline)
-            if self.hline not in vw_items:
-                vw.addItem(self.hline)
-            if self.crosshair not in vw_items:
-                vw.addItem(self.crosshair)
-        else:
-            if self.vline in vw_items:
-                vw.removeItem(self.vline)
-            if self.hline in vw_items:
-                vw.removeItem(self.hline)
-            if self.crosshair in vw_items:
-                vw.removeItem(self.crosshair)
-        return
-
-    def set_crosshair_pos(self, pos):
-        try:
-            pos = (pos[0], pos[1])
-        except TypeError:
-            pos = (pos.x(), pos.y())
-        size = self.crosshair.size()
-        self.crosshair.blockSignals(True)
-        self.vline.blockSignals(True)
-        self.hline.blockSignals(True)
-        self.crosshair.setPos(pos[0] - size[0] / 2, pos[1] - size[1] / 2)
-        self.vline.setPos(pos[0])
-        self.hline.setPos(pos[1])
-        self.crosshair.blockSignals(False)
-        self.vline.blockSignals(False)
-        self.hline.blockSignals(False)
-        self.sigCrosshairPosChanged.emit(QtCore.QPointF(*pos))
-        return
-
-    def set_crosshair_size(self, size):
-        try:
-            size = (size[0], size[1])
-        except TypeError:
-            size = (size.width(), size.height())
-        pos = self.vline.pos()
-        pos[1] = self.hline.pos()[1] - size[1] / 2
-        pos[0] -= size[0] / 2
-        self.crosshair.blockSignals(True)
-        self.crosshair.setSize(size)
-        self.crosshair.setPos(pos)
-        self.crosshair.blockSignals(False)
-        return
-
-    def set_crosshair_pen(self, pen):
-        self.crosshair.setPen(pen)
-        self.vline.setPen(pen)
-        self.hline.setPen(pen)
         return
 
     def set_image_extent(self, extent):
@@ -234,11 +100,50 @@ class ScanPlotWidget(PlotWidget):
     Qt Designer before it will be loaded into the created ui file.
     """
     sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)  # mapped rectangle mouse cursor selection
+    sigCrosshairPosChanged = QtCore.Signal(QtCore.QPointF)
+    sigCrosshairDraggedPosChanged = QtCore.Signal(QtCore.QPointF)
 
     def __init__(self, *args, **kwargs):
         kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
         super().__init__(*args, **kwargs)
         self.getViewBox().sigMouseAreaSelected.connect(self.sigMouseAreaSelected)
+
+        self.crosshair = ROI((0, 0), (0, 0), pen={'color': '#00ff00', 'width': 1})
+        self.hline = InfiniteLine(pos=0,
+                                  angle=0,
+                                  movable=True,
+                                  pen={'color': '#00ff00', 'width': 1},
+                                  hoverPen={'color': '#ffff00', 'width': 1})
+        self.vline = InfiniteLine(pos=0,
+                                  angle=90,
+                                  movable=True,
+                                  pen={'color': '#00ff00', 'width': 1},
+                                  hoverPen={'color': '#ffff00', 'width': 1})
+        self.vline.sigDragged.connect(self._update_pos_from_line)
+        self.hline.sigDragged.connect(self._update_pos_from_line)
+        self.crosshair.sigRegionChanged.connect(self._update_pos_from_roi)
+        self.sigCrosshairDraggedPosChanged.connect(self.sigCrosshairPosChanged)
+
+    @property
+    def crosshair_movable(self):
+        return bool(self.crosshair.translatable)
+
+    @crosshair_movable.setter
+    def crosshair_movable(self, movable):
+        self.crosshair.translatable = bool(movable)
+        self.vline.setMovable(movable)
+        self.hline.setMovable(movable)
+        return
+
+    @property
+    def crosshair_position(self):
+        pos = self.vline.pos()
+        pos[1] = self.hline.pos()[1]
+        return tuple(pos)
+
+    @property
+    def crosshair_size(self):
+        return tuple(self.crosshair.size())
 
     def toggle_selection(self, enable):
         """
@@ -262,6 +167,96 @@ class ScanPlotWidget(PlotWidget):
         """
         return self.getViewBox().toggle_zoom_by_selection(enable)
 
+    def _update_pos_from_line(self, obj):
+        if obj not in (self.hline, self.vline):
+            return
+        pos = self.vline.pos()
+        pos[1] = self.hline.pos()[1]
+        size = self.crosshair_size
+        self.crosshair.blockSignals(True)
+        self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
+        self.crosshair.blockSignals(False)
+        self.sigCrosshairDraggedPosChanged.emit(QtCore.QPointF(pos[0], pos[1]))
+        return
+
+    def _update_pos_from_roi(self, obj):
+        if obj is not self.crosshair:
+            return
+        pos = self.crosshair.pos()
+        size = self.crosshair.size()
+        pos[0] += size[0] / 2
+        pos[1] += size[1] / 2
+        self.vline.setPos(pos[0])
+        self.hline.setPos(pos[1])
+        self.sigCrosshairDraggedPosChanged.emit(QtCore.QPointF(pos[0], pos[1]))
+        return
+
+    def toggle_crosshair(self, enable, movable=True):
+        """
+
+        @param bool enable:
+        @param bool movable:
+        """
+        if not isinstance(enable, bool):
+            raise TypeError('Positional argument "enable" must be bool type.')
+        if not isinstance(movable, bool):
+            raise TypeError('Optional argument "movable" must be bool type.')
+
+        self.crosshair_movable = movable
+
+        if enable:
+            if self.vline not in self.items():
+                self.addItem(self.vline)
+            if self.hline not in self.items():
+                self.addItem(self.hline)
+            if self.crosshair not in self.items():
+                self.addItem(self.crosshair)
+        else:
+            if self.vline in self.items():
+                self.removeItem(self.vline)
+            if self.hline in self.items():
+                self.removeItem(self.hline)
+            if self.crosshair in self.items():
+                self.removeItem(self.crosshair)
+        return
+
+    def set_crosshair_pos(self, pos):
+        try:
+            pos = (pos[0], pos[1])
+        except TypeError:
+            pos = (pos.x(), pos.y())
+        size = self.crosshair.size()
+        self.crosshair.blockSignals(True)
+        self.vline.blockSignals(True)
+        self.hline.blockSignals(True)
+        self.crosshair.setPos(pos[0] - size[0] / 2, pos[1] - size[1] / 2)
+        self.vline.setPos(pos[0])
+        self.hline.setPos(pos[1])
+        self.crosshair.blockSignals(False)
+        self.vline.blockSignals(False)
+        self.hline.blockSignals(False)
+        self.sigCrosshairPosChanged.emit(QtCore.QPointF(*pos))
+        return
+
+    def set_crosshair_size(self, size):
+        try:
+            size = (size[0], size[1])
+        except TypeError:
+            size = (size.width(), size.height())
+        pos = self.vline.pos()
+        pos[1] = self.hline.pos()[1] - size[1] / 2
+        pos[0] -= size[0] / 2
+        self.crosshair.blockSignals(True)
+        self.crosshair.setSize(size)
+        self.crosshair.setPos(pos)
+        self.crosshair.blockSignals(False)
+        return
+
+    def set_crosshair_pen(self, pen):
+        self.crosshair.setPen(pen)
+        self.vline.setPen(pen)
+        self.hline.setPen(pen)
+        return
 
 class ScanViewBox(ViewBox):
     """

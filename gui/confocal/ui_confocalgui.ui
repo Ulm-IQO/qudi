@@ -292,7 +292,7 @@
         <enum>QLayout::SetMaximumSize</enum>
        </property>
        <item>
-        <widget class="PlotWidget" name="xy_refocus_ViewWidget_2">
+        <widget class="ScanPlotWidget" name="xy_refocus_ViewWidget_2">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>1</horstretch>
