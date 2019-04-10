@@ -1405,16 +1405,16 @@ class ConfocalGui(GUIBase):
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
-        self.xy_refocus_image.set_image_extent(
+        self.xy_refocus_image.set_image_extent((
             (self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
              self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
             (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-             self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size))
+             self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
 
         ##########
         # Crosshair in optimizer
-        self.vLine.setValue(self._optimizer_logic.optim_pos_x)
-        self.hLine.setValue(self._optimizer_logic.optim_pos_y)
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic.optim_pos_x,
+                                                            self._optimizer_logic.optim_pos_y))
         ##########
         # The depth optimization
         # data from chosen channel
