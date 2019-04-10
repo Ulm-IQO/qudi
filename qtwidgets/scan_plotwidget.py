@@ -110,6 +110,10 @@ class ScanPlotWidget(PlotWidget):
         super().__init__(*args, **kwargs)
         self.getViewBox().sigMouseAreaSelected.connect(self.sigMouseAreaSelected)
 
+        self._min_crosshair_factor = 0.02
+        self._crosshair_size = (0, 0)
+        self.getViewBox().sigRangeChanged.connect(self._constraint_crosshair_size)
+
         self.crosshair = ROI((0, 0), (0, 0), pen={'color': '#00ff00', 'width': 1})
         self.hline = InfiniteLine(pos=0,
                                   angle=0,
@@ -145,7 +149,7 @@ class ScanPlotWidget(PlotWidget):
 
     @property
     def crosshair_size(self):
-        return tuple(self.crosshair.size())
+        return tuple(self._crosshair_size)
 
     def toggle_selection(self, enable):
         """
@@ -174,7 +178,7 @@ class ScanPlotWidget(PlotWidget):
             return
         pos = self.vline.pos()
         pos[1] = self.hline.pos()[1]
-        size = self.crosshair_size
+        size = self.crosshair.size()
         self.crosshair.blockSignals(True)
         self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
         self.crosshair.blockSignals(False)
@@ -224,7 +228,7 @@ class ScanPlotWidget(PlotWidget):
 
     def set_crosshair_pos(self, pos):
         try:
-            pos = (pos[0], pos[1])
+            pos = tuple(pos)
         except TypeError:
             pos = (pos.x(), pos.y())
         size = self.crosshair.size()
@@ -240,11 +244,18 @@ class ScanPlotWidget(PlotWidget):
         self.sigCrosshairPosChanged.emit(QtCore.QPointF(*pos))
         return
 
-    def set_crosshair_size(self, size):
+    def set_crosshair_size(self, size, force_default=True):
         try:
-            size = (size[0], size[1])
+            size = tuple(size)
         except TypeError:
             size = (size.width(), size.height())
+
+        if force_default:
+            self._crosshair_size = size
+
+            # Check if actually displayed size needs to be adjusted due to minimal size
+            size = self._get_corrected_crosshair_size(size)
+
         pos = self.vline.pos()
         pos[1] = self.hline.pos()[1] - size[1] / 2
         pos[0] -= size[0] / 2
@@ -259,6 +270,35 @@ class ScanPlotWidget(PlotWidget):
         self.vline.setPen(pen)
         self.hline.setPen(pen)
         return
+
+    def _constraint_crosshair_size(self):
+        size = self.crosshair.size()
+        if size[0] == 0 or size[1] == 0:
+            return
+        corr_size = self._get_corrected_crosshair_size(size)
+        if corr_size != size:
+            self.set_crosshair_size(corr_size, force_default=False)
+        return
+
+    def _get_corrected_crosshair_size(self, size):
+        try:
+            size = tuple(size)
+        except TypeError:
+            size = (size.width(), size.height())
+
+        min_size = min(size)
+        if min_size == 0:
+            return size
+        vb_size = self.getViewBox().viewRect().size()
+        short_index = int(vb_size.width() > vb_size.height())
+        min_vb_size = vb_size.width() if short_index == 0 else vb_size.height()
+        min_vb_size *= self._min_crosshair_factor
+
+        if min_size < min_vb_size:
+            scale_factor = min_vb_size / min_size
+            size = (size[0] * scale_factor, size[1] * scale_factor)
+        return size
+
 
 class ScanViewBox(ViewBox):
     """
