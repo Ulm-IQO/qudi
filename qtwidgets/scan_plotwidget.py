@@ -35,6 +35,8 @@ class ScanImageItem(ImageItem):
     Adds blink correction functionality capable of filtering out single pixel wide artifacts along
     a single image dimension.
     """
+    sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)
+
     def __init__(self, *args, **kwargs):
         self.use_blink_correction = False
         self.blink_correction_axis = 0
