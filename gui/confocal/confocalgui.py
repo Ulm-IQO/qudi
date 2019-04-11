@@ -1555,62 +1555,6 @@ class ConfocalGui(GUIBase):
         depth_viewbox.updateViewRange()
         self.update_roi_depth()
 
-    # def put_cursor_in_xy_scan(self):
-    #     """Put the xy crosshair back if it is outside of the visible range. """
-    #     view_x_min = self._scanning_logic.image_x_range[0]
-    #     view_x_max = self._scanning_logic.image_x_range[1]
-    #     view_y_min = self._scanning_logic.image_y_range[0]
-    #     view_y_max = self._scanning_logic.image_y_range[1]
-    #
-    #     x_value = self.roi_xy.pos()[0]
-    #     y_value = self.roi_xy.pos()[1]
-    #     cross_pos = self.roi_xy.pos() + self.roi_xy.size() * 0.5
-    #
-    #     if view_x_min > cross_pos[0]:
-    #         x_value = view_x_min + self.roi_xy.size()[0]
-    #
-    #     if view_x_max < cross_pos[0]:
-    #         x_value = view_x_max - self.roi_xy.size()[0]
-    #
-    #     if view_y_min > cross_pos[1]:
-    #         y_value = view_y_min + self.roi_xy.size()[1]
-    #
-    #     if view_y_max < cross_pos[1]:
-    #         y_value = view_y_max - self.roi_xy.size()[1]
-    #
-    #     self.roi_xy.setPos([x_value, y_value], update=True)
-
-    # def put_cursor_in_depth_scan(self):
-    #     """Put the depth crosshair back if it is outside of the visible range. """
-    #     view_x_min = self._scanning_logic.image_x_range[0]
-    #     view_x_max = self._scanning_logic.image_x_range[1]
-    #     view_y_min = self._scanning_logic.image_y_range[0]
-    #     view_y_max = self._scanning_logic.image_y_range[1]
-    #     view_z_min = self._scanning_logic.image_z_range[0]
-    #     view_z_max = self._scanning_logic.image_z_range[1]
-    #
-    #     horizontal_value = self.roi_depth.pos()[0]
-    #     vertical_value = self.roi_depth.pos()[1]
-    #     cross_pos = self.roi_depth.pos() + self.roi_depth.size()*0.5
-    #
-    #     if self._scanning_logic.depth_img_is_xz:
-    #         if view_x_min > cross_pos[0]:
-    #             horizontal_value = view_x_min + self.roi_depth.size()[0]
-    #         if view_x_max < cross_pos[0]:
-    #             horizontal_value = view_x_max - self.roi_depth.size()[0]
-    #     else:
-    #         if view_y_min > cross_pos[0]:
-    #             horizontal_value = view_y_min + self.roi_depth.size()[1]
-    #         if view_y_max < cross_pos[0]:
-    #             horizontal_value = view_y_max - self.roi_depth.size()[1]
-    #
-    #     if view_z_min > cross_pos[1]:
-    #         vertical_value = view_z_min + self.roi_depth.size()[1]
-    #     if view_z_max < cross_pos[1]:
-    #         vertical_value = view_z_max - self.roi_depth.size()[1]
-    #
-    #     self.roi_depth.setPos([horizontal_value, vertical_value], update=True)
-
     def save_xy_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal data."""
         cb_range = self.get_xy_cb_range()
