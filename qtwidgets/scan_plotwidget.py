@@ -112,6 +112,7 @@ class ScanPlotWidget(PlotWidget):
 
         self._min_crosshair_factor = 0.02
         self._crosshair_size = (0, 0)
+        self._crosshair_range = None
         self.getViewBox().sigRangeChanged.connect(self._constraint_crosshair_size)
 
         self.crosshair = ROI((0, 0), (0, 0), pen={'color': '#00ff00', 'width': 1})
@@ -152,6 +153,12 @@ class ScanPlotWidget(PlotWidget):
     @property
     def crosshair_min_size_factor(self):
         return float(self._min_crosshair_factor)
+
+    @property
+    def crosshair_range(self):
+        if self._crosshair_range is None:
+            return None
+        return tuple(self._crosshair_range)
 
     @property
     def selection_enabled(self):
@@ -247,6 +254,7 @@ class ScanPlotWidget(PlotWidget):
         except TypeError:
             pos = (pos.x(), pos.y())
         size = self.crosshair.size()
+
         self.crosshair.blockSignals(True)
         self.vline.blockSignals(True)
         self.hline.blockSignals(True)
@@ -276,6 +284,13 @@ class ScanPlotWidget(PlotWidget):
         pos = self.vline.pos()
         pos[1] = self.hline.pos()[1] - size[1] / 2
         pos[0] -= size[0] / 2
+
+        if self._crosshair_range:
+            crange = self._crosshair_range
+            self.crosshair.maxBounds = QtCore.QRectF(crange[0][0] - size[0] / 2,
+                                                     crange[1][0] - size[1] / 2,
+                                                     crange[0][1] - crange[0][0] + size[0],
+                                                     crange[1][1] - crange[1][0] + size[1])
         self.crosshair.blockSignals(True)
         self.crosshair.setSize(size)
         self.crosshair.setPos(pos)
@@ -289,6 +304,24 @@ class ScanPlotWidget(PlotWidget):
             self._min_crosshair_factor = float(factor)
         else:
             raise ValueError('Crosshair min size factor must be a value <= 1.')
+        return
+
+    def set_crosshair_range(self, new_range):
+        if new_range is None:
+            self.vline.setBounds([None, None])
+            self.hline.setBounds([None, None])
+            self.crosshair.maxBounds = None
+        else:
+            self.vline.setBounds(new_range[0])
+            self.hline.setBounds(new_range[1])
+            size = self.crosshair.size()
+            pos = self.crosshair_position
+            self.crosshair.maxBounds = QtCore.QRectF(new_range[0][0] - size[0] / 2,
+                                                     new_range[1][0] - size[1] / 2,
+                                                     new_range[0][1] - new_range[0][0] + size[0],
+                                                     new_range[1][1] - new_range[1][0] + size[1])
+            self.crosshair.setPos(pos[0] - size[0] / 2, pos[1] - size[1] / 2)
+        self._crosshair_range = new_range
         return
 
     def set_crosshair_pen(self, pen):
