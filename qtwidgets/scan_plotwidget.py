@@ -131,15 +131,13 @@ class ScanPlotWidget(PlotWidget):
         self.sigCrosshairDraggedPosChanged.connect(self.sigCrosshairPosChanged)
 
     @property
+    def crosshair_enabled(self):
+        items = self.items()
+        return (self.vline in items) and (self.hline in items) and (self.crosshair in items)
+
+    @property
     def crosshair_movable(self):
         return bool(self.crosshair.translatable)
-
-    @crosshair_movable.setter
-    def crosshair_movable(self, movable):
-        self.crosshair.translatable = bool(movable)
-        self.vline.setMovable(movable)
-        self.hline.setMovable(movable)
-        return
 
     @property
     def crosshair_position(self):
@@ -150,6 +148,18 @@ class ScanPlotWidget(PlotWidget):
     @property
     def crosshair_size(self):
         return tuple(self._crosshair_size)
+
+    @property
+    def crosshair_min_size_factor(self):
+        return float(self._min_crosshair_factor)
+
+    @property
+    def selection_enabled(self):
+        return bool(self.getViewBox().rectangle_selection)
+
+    @property
+    def zoom_by_selection_enabled(self):
+        return bool(self.getViewBox().zoom_by_selection)
 
     def toggle_selection(self, enable):
         """
@@ -208,22 +218,27 @@ class ScanPlotWidget(PlotWidget):
         if not isinstance(movable, bool):
             raise TypeError('Optional argument "movable" must be bool type.')
 
-        self.crosshair_movable = movable
+        self.toggle_crosshair_movable(movable)
 
-        if enable:
-            if self.vline not in self.items():
-                self.addItem(self.vline)
-            if self.hline not in self.items():
-                self.addItem(self.hline)
-            if self.crosshair not in self.items():
-                self.addItem(self.crosshair)
-        else:
-            if self.vline in self.items():
-                self.removeItem(self.vline)
-            if self.hline in self.items():
-                self.removeItem(self.hline)
-            if self.crosshair in self.items():
-                self.removeItem(self.crosshair)
+        is_enabled = self.crosshair_enabled
+        if enable and not is_enabled:
+            self.addItem(self.vline)
+            self.addItem(self.hline)
+            self.addItem(self.crosshair)
+        elif not enable and is_enabled:
+            self.removeItem(self.vline)
+            self.removeItem(self.hline)
+            self.removeItem(self.crosshair)
+        return
+
+    def toggle_crosshair_movable(self, enable):
+        """
+
+        @param enable:
+        """
+        self.crosshair.translatable = bool(enable)
+        self.vline.setMovable(enable)
+        self.hline.setMovable(enable)
         return
 
     def set_crosshair_pos(self, pos):
@@ -251,10 +266,12 @@ class ScanPlotWidget(PlotWidget):
             size = (size.width(), size.height())
 
         if force_default:
-            self._crosshair_size = size
-
-            # Check if actually displayed size needs to be adjusted due to minimal size
-            size = self._get_corrected_crosshair_size(size)
+            if size[0] <= 0 and size[1] <= 0:
+                self._crosshair_size = (0, 0)
+            else:
+                self._crosshair_size = size
+                # Check if actually displayed size needs to be adjusted due to minimal size
+                size = self._get_corrected_crosshair_size(size)
 
         pos = self.vline.pos()
         pos[1] = self.hline.pos()[1] - size[1] / 2
@@ -265,6 +282,15 @@ class ScanPlotWidget(PlotWidget):
         self.crosshair.blockSignals(False)
         return
 
+    def set_crosshair_min_size_factor(self, factor):
+        if factor <= 0:
+            self._min_crosshair_factor = 0
+        elif factor <= 1:
+            self._min_crosshair_factor = float(factor)
+        else:
+            raise ValueError('Crosshair min size factor must be a value <= 1.')
+        return
+
     def set_crosshair_pen(self, pen):
         self.crosshair.setPen(pen)
         self.vline.setPen(pen)
@@ -272,11 +298,12 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def _constraint_crosshair_size(self):
-        size = self.crosshair.size()
-        if size[0] == 0 or size[1] == 0:
+        if self._min_crosshair_factor == 0:
             return
-        corr_size = self._get_corrected_crosshair_size(size)
-        if corr_size != size:
+        if self._crosshair_size[0] == 0 or self._crosshair_size[1] == 0:
+            return
+        corr_size = self._get_corrected_crosshair_size(self._crosshair_size)
+        if corr_size != tuple(self.crosshair.size()):
             self.set_crosshair_size(corr_size, force_default=False)
         return
 
