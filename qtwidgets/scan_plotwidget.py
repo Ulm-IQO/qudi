@@ -33,7 +33,8 @@ class ScanImageItem(ImageItem):
     Adds the signal sigMouseClicked to tap into mouse click events and receive the real world data
     coordinate of the click.
     Adds blink correction functionality capable of filtering out single pixel wide artifacts along
-    a single image dimension.
+    a single image dimension. This is done by applying a non-linear 1D min-max-filter along a
+    single image dimension.
     """
     sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)
 
@@ -96,10 +97,13 @@ class ScanImageItem(ImageItem):
 class ScanPlotWidget(PlotWidget):
     """
     Extend the PlotWidget Class with more functionality used for qudi scan images.
+    Supported features:
+     - draggable/static crosshair with optional range and size constraints.
+     - zoom feature by rubberband selection
+     - rubberband area selection
 
-    This class can be promoted in the Qt designer. Here you can predefine or
-    redefined all methods and class variables, which should be used in the
-    Qt Designer before it will be loaded into the created ui file.
+    This class depends on the ScanViewBox class defined further below.
+    This class can be promoted in the Qt designer.
     """
     sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)  # mapped rectangle mouse cursor selection
     sigCrosshairPosChanged = QtCore.Signal(QtCore.QPointF)
@@ -191,6 +195,10 @@ class ScanPlotWidget(PlotWidget):
         return self.getViewBox().toggle_zoom_by_selection(enable)
 
     def _update_pos_from_line(self, obj):
+        """
+        Called each time the position of the InfiniteLines has been changed by a user drag.
+        Causes the crosshair rectangle to follow the lines.
+        """
         if obj not in (self.hline, self.vline):
             return
         pos = self.vline.pos()
@@ -203,6 +211,10 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def _update_pos_from_roi(self, obj):
+        """
+        Called each time the position of the rectangular ROI has been changed by a user drag.
+        Causes the InfiniteLines to follow the ROI.
+        """
         if obj is not self.crosshair:
             return
         pos = self.crosshair.pos()
@@ -216,9 +228,11 @@ class ScanPlotWidget(PlotWidget):
 
     def toggle_crosshair(self, enable, movable=True):
         """
+        Disable/Enable the crosshair within the PlotWidget. Optionally also toggle if it can be
+        dragged by the user.
 
-        @param bool enable:
-        @param bool movable:
+        @param bool enable: enable crosshair (True), disable crosshair (False)
+        @param bool movable: enable user drag (True), disable user drag (False)
         """
         if not isinstance(enable, bool):
             raise TypeError('Positional argument "enable" must be bool type.')
@@ -240,8 +254,9 @@ class ScanPlotWidget(PlotWidget):
 
     def toggle_crosshair_movable(self, enable):
         """
+        Toggle if the crosshair can be dragged by the user.
 
-        @param enable:
+        @param bool enable: enable (True), disable (False)
         """
         self.crosshair.translatable = bool(enable)
         self.vline.setMovable(enable)
@@ -249,6 +264,11 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def set_crosshair_pos(self, pos):
+        """
+        Set the crosshair center to the given coordinates.
+
+        @param QPointF|float[2] pos: (x,y) position of the crosshair
+        """
         try:
             pos = tuple(pos)
         except TypeError:
@@ -268,6 +288,14 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def set_crosshair_size(self, size, force_default=True):
+        """
+        Set the default size of the crosshair rectangle (x, y) and update the display.
+
+        @param QSize|float[2] size: the (x,y) size of the crosshair rectangle
+        @param bool force_default: Set default crosshair size and enforce minimal size (True).
+                                   Enforce displayed crosshair size while keeping default size
+                                   untouched (False).
+        """
         try:
             size = tuple(size)
         except TypeError:
@@ -298,6 +326,16 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def set_crosshair_min_size_factor(self, factor):
+        """
+        Sets the minimum crosshair size factor. This will determine the minimum size of the
+        smallest edge of the crosshair center rectangle.
+        This minimum size is calculated by taking the smallest visible axis of the ViewBox and
+        multiplying it with the scale factor set by this method.
+        The crosshair rectangle will be then scaled accordingly if the set crosshair size is
+        smaller than this minimal size.
+
+        @param float factor: The scale factor to set. If <= 0 no minimal crosshair size enforced.
+        """
         if factor <= 0:
             self._min_crosshair_factor = 0
         elif factor <= 1:
@@ -307,6 +345,12 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def set_crosshair_range(self, new_range):
+        """
+        Sets a range boundary for the crosshair position.
+
+        @param float[2][2] new_range: two min-max range value tuples (for x and y axis).
+                                      If None set unlimited ranges.
+        """
         if new_range is None:
             self.vline.setBounds([None, None])
             self.hline.setBounds([None, None])
@@ -325,6 +369,11 @@ class ScanPlotWidget(PlotWidget):
         return
 
     def set_crosshair_pen(self, pen):
+        """
+        Sets the pyqtgraph compatible pen to be used for drawing the crosshair lines.
+
+        @param pen: pyqtgraph compatible pen to use
+        """
         self.crosshair.setPen(pen)
         self.vline.setPen(pen)
         self.hline.setPen(pen)
