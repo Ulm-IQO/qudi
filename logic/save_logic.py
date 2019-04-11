@@ -653,14 +653,12 @@ class SaveLogic(GenericLogic):
         @param kwargs: Optional keyword arguments to be added to additional parameters
         """
         if len(args) == 0:
-            param_dict = dict()
+            param_dict = kwargs
         elif len(args) == 1 and isinstance(args[0], dict):
-            param_dict = args[0]
+            param_dict = args[0].update(kwargs)
         else:
             raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
                             'argument of type dict.')
-
-        param_dict.update(kwargs)
 
         for key in param_dict.keys():
             param_dict[key] = netobtain(param_dict[key])
