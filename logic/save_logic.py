@@ -644,27 +644,35 @@ class SaveLogic(GenericLogic):
         """ Method that return the additional parameters dictionary securely """
         return self._additional_parameters.copy()
 
-    def update_additional_parameters(self, __pdict=None, **new_params):
+    def update_additional_parameters(self, *args, **kwargs):
         """
         Method to update one or multiple additional parameters
 
-        @param dict __pdict: Optional single positional argument holding parameters in a dict to
-                             update additional parameters from.
-        @param kwargs new_params: Optional keyword arguments to be added to additional parameters
+        @param dict args: Optional single positional argument holding parameters in a dict to
+                          update additional parameters from.
+        @param kwargs: Optional keyword arguments to be added to additional parameters
         """
-        if not (__pdict is None or isinstance(__pdict, dict)):
-            raise TypeError('update_additional_parameters: optional positional argument must be '
-                            'None or dict type.')
+        if len(args) == 0:
+            param_dict = dict()
+        elif len(args) == 1 and isinstance(args[0], dict):
+            param_dict = args[0]
+        else:
+            raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
+                            'argument of type dict.')
 
-        param_dict = dict() if __pdict is None else netobtain(__pdict)
+        param_dict.update(kwargs)
 
-        for key in new_params.keys():
-            param_dict[key] = netobtain(new_params[key])
+        for key in param_dict.keys():
+            param_dict[key] = netobtain(param_dict[key])
         self._additional_parameters.update(param_dict)
         return
 
     def remove_additional_parameter(self, key):
-        """ remove a parameter from additional parameters """
+        """
+        remove parameter from additional parameters
+
+        @param str key: The additional parameters key/name to delete
+        """
         self._additional_parameters.pop(key, None)
         return
 
