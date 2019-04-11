@@ -254,6 +254,7 @@ class ConfocalGui(GUIBase):
 
         # Create crosshair for xy image:
         self._mw.xy_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.02)
         self._mw.xy_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
         self._mw.xy_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
@@ -269,6 +270,7 @@ class ConfocalGui(GUIBase):
 
         # Create crosshair for depth image:
         self._mw.depth_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
         self._mw.depth_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
         self._mw.depth_ViewWidget.set_crosshair_size(
             (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
@@ -368,8 +370,6 @@ class ConfocalGui(GUIBase):
 
         # Connect the change of the viewed area to an adjustment of the ROI:
         self.adjust_cursor_roi = True
-        self.xy_image.getViewBox().sigRangeChanged.connect(self.update_roi_xy_size)
-        self.depth_image.getViewBox().sigRangeChanged.connect(self.update_roi_depth_size)
 
         #################################################################
         #                           Actions                             #
@@ -1042,24 +1042,26 @@ class ConfocalGui(GUIBase):
         """ Update the cursor size showing the optimizer scan area for the XY image.
         """
         if self.adjust_cursor_roi:
-            newsize = self._optimizer_logic.refocus_XY_size
+            self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.02)
         else:
-            viewrange = self.xy_image.getViewBox().viewRange()
-            newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
+            self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.1)
+
+        newsize = self._optimizer_logic.refocus_XY_size
         self._mw.xy_ViewWidget.set_crosshair_size([newsize, newsize])
+        return
 
     def update_roi_depth_size(self):
         """ Update the cursor size showing the optimizer scan area for the X-depth image.
         """
         if self.adjust_cursor_roi:
-            newsize_h = self._optimizer_logic.refocus_XY_size
-            newsize_v = self._optimizer_logic.refocus_Z_size
+            self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
         else:
-            viewrange = self.depth_image.getViewBox().viewRange()
-            newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
-            newsize_h = newsize
-            newsize_v = newsize
+            self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.1)
+
+        newsize_h = self._optimizer_logic.refocus_XY_size
+        newsize_v = self._optimizer_logic.refocus_Z_size
         self._mw.depth_ViewWidget.set_crosshair_size([newsize_h, newsize_v])
+        return
 
     def update_roi_depth(self, h=None, v=None):
         """ Adjust the depth ROI position if the value has changed.
