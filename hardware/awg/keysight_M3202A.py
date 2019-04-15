@@ -745,9 +745,11 @@ class M3202A(Base, PulserInterface):
             return ksd1.SD_Error.INVALID_VALUE
 
     def set_channel_triggers(self, active_channels, sequence_parameter_list):
-        """
+        """ Set up triggers and markers according to configuration
 
-        :return:
+        @param list active_channels: active aeg channels
+        @param list sequence_parameter_list: liust with all sequence elements
+
         """
         for ch in active_channels:
             if self.chcfg[ch].enable_trigger:
