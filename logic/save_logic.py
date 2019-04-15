@@ -644,14 +644,33 @@ class SaveLogic(GenericLogic):
         """ Method that return the additional parameters dictionary securely """
         return self._additional_parameters.copy()
 
-    def update_additional_parameters(self, **new_pairs):
-        """ Method to update one or multiple additional parameters """
-        dic = {}
-        for key in new_pairs.keys():
-            dic[key] = netobtain(new_pairs[key])
-        self._additional_parameters = {**self._additional_parameters, **dic}
+    def update_additional_parameters(self, *args, **kwargs):
+        """
+        Method to update one or multiple additional parameters
+
+        @param dict args: Optional single positional argument holding parameters in a dict to
+                          update additional parameters from.
+        @param kwargs: Optional keyword arguments to be added to additional parameters
+        """
+        if len(args) == 0:
+            param_dict = kwargs
+        elif len(args) == 1 and isinstance(args[0], dict):
+            param_dict = args[0].update(kwargs)
+        else:
+            raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
+                            'argument of type dict.')
+
+        for key in param_dict.keys():
+            param_dict[key] = netobtain(param_dict[key])
+        self._additional_parameters.update(param_dict)
+        return
 
     def remove_additional_parameter(self, key):
-        """ remove a parameter from additional parameters """
+        """
+        remove parameter from additional parameters
+
+        @param str key: The additional parameters key/name to delete
+        """
         self._additional_parameters.pop(key, None)
+        return
 
