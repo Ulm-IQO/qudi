@@ -27,6 +27,7 @@ import re
 
 from core.module import Connector
 from core.util.units import ScaledFloat
+from core.util.helpers import natural_sort
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -625,7 +626,7 @@ class PoiManagerGui(GUIBase):
             text_active_poi = self._mw.active_poi_ComboBox.currentText()
             # sort POI names and repopulate ComboBoxes
             self._mw.active_poi_ComboBox.clear()
-            poi_names = sorted(self.poimanagerlogic().poi_names)
+            poi_names = natural_sort(self.poimanagerlogic().poi_names)
             self._mw.active_poi_ComboBox.addItems(poi_names)
             if text_active_poi == old_name:
                 self._mw.active_poi_ComboBox.setCurrentText(new_name)
@@ -826,7 +827,7 @@ class PoiManagerGui(GUIBase):
 
         self._mw.active_poi_ComboBox.clear()
 
-        poi_names = sorted(poi_dict)
+        poi_names = natural_sort(poi_dict)
         self._mw.active_poi_ComboBox.addItems(poi_names)
 
         # Get two list of POI names. One of those to delete and one of those to add

@@ -33,6 +33,7 @@ from collections import OrderedDict
 from core.module import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from matplotlib.backends.backend_pdf import PdfPages
 from PIL import Image
@@ -154,6 +155,8 @@ class SaveLogic(GenericLogic):
         'ytick.minor.visible': True,
         'savefig.dpi': '180'
         }
+
+    _additional_parameters = {}
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -420,6 +423,8 @@ class SaveLogic(GenericLogic):
         if parameters is not None:
             # check whether the format for the parameters have a dict type:
             if isinstance(parameters, dict):
+                if isinstance(self._additional_parameters, dict):
+                    parameters = {**self._additional_parameters, **parameters}
                 for entry, param in parameters.items():
                     if isinstance(param, float):
                         header += '{0}: {1:.16e}\n'.format(entry, param)
@@ -634,3 +639,19 @@ class SaveLogic(GenericLogic):
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
         return dir_path
+
+    def get_additional_parameters(self):
+        """ Method that return the additional parameters dictionary securely """
+        return self._additional_parameters.copy()
+
+    def update_additional_parameters(self, **new_pairs):
+        """ Method to update one or multiple additional parameters """
+        dic = {}
+        for key in new_pairs.keys():
+            dic[key] = netobtain(new_pairs[key])
+        self._additional_parameters = {**self._additional_parameters, **dic}
+
+    def remove_additional_parameter(self, key):
+        """ remove a parameter from additional parameters """
+        self._additional_parameters.pop(key, None)
+
