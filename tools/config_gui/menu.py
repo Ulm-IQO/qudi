@@ -18,6 +18,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 import os
+from core.util.helpers import natural_sort
 from qtpy import QtCore, QtWidgets
 
 class MenuItem:
@@ -55,13 +56,13 @@ class ModMenu(QtWidgets.QMenu):
         self.logicmenuitems = MenuItem(self.logicmenu)
         self.guimenuitems = MenuItem(self.guimenu)
 
-        for module_path, module in sorted(modules['hardware'].items()):
+        for module_path, module in natural_sort(modules['hardware'].items()):
             self.build_submenu(self.hwmenuitems, module_path, module)
 
-        for module_path, module in sorted(modules['logic'].items()):
+        for module_path, module in natural_sort(modules['logic'].items()):
             self.build_submenu(self.logicmenuitems, module_path, module)
 
-        for module_path, module in sorted(modules['gui'].items()):
+        for module_path, module in natural_sort(modules['gui'].items()):
             self.build_submenu(self.guimenuitems, module_path, module)
 
     def build_submenu(self, menu_item, modpath, module) :

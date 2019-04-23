@@ -12,7 +12,21 @@ Changes/New features:
 image
 * Added an optional POI nametag to the POI manager. If you give this property a string value, all
 new POIs will be named after this tag together with a consecutive integer index.
-*
+* If using the POI manager, the currently selected active POI name will be added to savelogic as 
+global parameter. All saved data files will include this POI name in the header.
+* bug fix to how the flags are set for AWG70k
+* Replaced the old `pg.PlotWidget` subclass `PlotWidgetModified` with new subclasses 
+`ScanPlotWidget`, `ScanViewBox` (`pg.ViewBox`) and `ScanImageItem` (`pg.ImageItem`) to handle 
+coordinate transformations upon mouse click/drag and zooming internally. Also integrates the 
+draggable crosshair into the PlotWidget. This reduces code and improves readability in GUI modules.
+* Introduced blink correction filter to confocal and poimanager scan images (toggle in "view" menu). 
+Purely for displaying purposes; raw data is not affected by this filter.
+* Add `scan_blink_correction` filter to `core.utils.filters`
+* exposed the sequencegenerator-functions analyze_sequence and analyze_ensemble to be accessible via pulsedmaster
+* analyze functions can be called either with the appropriate objects or with the object name
+* while sampling a sequence, the ensembles are only sampled if they weren't already sampled before
+* Add `natural_sort` utility function to `core.util.helpers`
+* 
 
 Config changes:
 

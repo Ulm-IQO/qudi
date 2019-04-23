@@ -24,6 +24,7 @@ import time
 from collections import OrderedDict
 
 from core.module import Base, StatusVar, ConfigOption
+from core.util.helpers import natural_sort
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -468,8 +469,8 @@ class PulserDummy(Base, PulserInterface):
             return self.get_loaded_assets()
 
         # Determine if the device is purely digital and get all active channels
-        analog_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('a'))
-        digital_channels = sorted(chnl for chnl in self.activation_config if chnl.startswith('d'))
+        analog_channels = natural_sort(chnl for chnl in self.activation_config if chnl.startswith('a'))
+        digital_channels = natural_sort(chnl for chnl in self.activation_config if chnl.startswith('d'))
         pure_digital = len(analog_channels) == 0
 
         if pure_digital and len(digital_channels) != self.sequence_dict[sequence_name]:

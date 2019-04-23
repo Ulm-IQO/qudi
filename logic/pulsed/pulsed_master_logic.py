@@ -580,15 +580,22 @@ class PulsedMasterLogic(GenericLogic):
         self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
         return
 
-    def save_measurement_data(self, tag, with_error):
+    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=True):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
 
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_laser_pulses: select whether extracted lasers should be saved
+        @param bool save_pulsed_measurement: select whether final measurement should be saved
+        @param bool save_figure: select whether png and pdf should be saved
+
+        @return str: filepath where data were saved
         """
-        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error)
+        self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
+                                                            save_figure)
         return
 
     #######################################################################
@@ -974,13 +981,89 @@ class PulsedMasterLogic(GenericLogic):
 
     def get_ensemble_info(self, ensemble):
         """
+        This helper method is just there for backwards compatibility. Essentially it will call the
+        method "analyze_block_ensemble".
+
+        Will return information like length in seconds and bins (with currently set sampling rate)
+        as well as number of laser pulses (with currently selected laser/gate channel)
+
+        @param PulseBlockEnsemble ensemble: The PulseBlockEnsemble instance to analyze
+        @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
         return self.sequencegeneratorlogic().get_ensemble_info(ensemble=ensemble)
 
     def get_sequence_info(self, sequence):
         """
+        This helper method will analyze a PulseSequence and return information like length in
+        seconds and bins (with currently set sampling rate), number of laser pulses (with currently
+        selected laser/gate channel)
+
+        @param PulseSequence sequence: The PulseSequence instance to analyze
+        @return (float, int, int): length in seconds, length in bins, number of laser/gate pulses
         """
         return self.sequencegeneratorlogic().get_sequence_info(sequence=sequence)
+
+    def analyze_block_ensemble(self, ensemble):
+        """
+        This helper method runs through each element of a PulseBlockEnsemble object and extracts
+        important information about the Waveform that can be created out of this object.
+        Especially the discretization due to the set self.sample_rate is taken into account.
+        The positions in time (as integer time bins) of the PulseBlockElement transitions are
+        determined here (all the "rounding-to-best-match-value").
+        Additional information like the total number of samples, total number of PulseBlockElements
+        and the timebins for digital channel low-to-high transitions get returned as well.
+
+        This method assumes that sanity checking has been already performed on the
+        PulseBlockEnsemble (via _sampling_ensemble_sanity_check). Meaning it assumes that all
+        PulseBlocks are actually present in saved blocks and the channel activation matches the
+        current pulse settings.
+
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @return: number_of_samples (int): The total number of samples in a Waveform provided the
+                                              current sample_rate and PulseBlockEnsemble object.
+                 total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
+                                       the provided PulseBlockEnsemble.
+                 elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
+                                                               PulseBlockElement in chronological
+                                                               order (incl. repetitions).
+                 digital_rising_bins (dict): Dictionary with keys being the digital channel
+                                             descriptor string and items being arrays of
+                                             chronological low-to-high transition positions
+                                             (in timebins; incl. repetitions) for each digital
+                                             channel.
+        """
+        return self.sequencegeneratorlogic().analyze_block_ensemble(ensemble=ensemble)
+
+    def analyze_sequence(self, sequence):
+        """
+        This helper method runs through each step of a PulseSequence object and extracts
+        important information about the Sequence that can be created out of this object.
+        Especially the discretization due to the set self.sample_rate is taken into account.
+        The positions in time (as integer time bins) of the PulseBlockElement transitions are
+        determined here (all the "rounding-to-best-match-value").
+        Additional information like the total number of samples, total number of PulseBlockElements
+        and the timebins for digital channel low-to-high transitions get returned as well.
+
+        This method assumes that sanity checking has been already performed on the
+        PulseSequence (via _sampling_ensemble_sanity_check). Meaning it assumes that all
+        PulseBlocks are actually present in saved blocks and the channel activation matches the
+        current pulse settings.
+
+        @param sequence: A PulseSequence object (see logic.pulse_objects.py)
+        @return: number_of_samples (int): The total number of samples in a Waveform provided the
+                                              current sample_rate and PulseBlockEnsemble object.
+                 total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
+                                       the provided PulseBlockEnsemble.
+                 elements_length_bins (1D numpy.ndarray[int]): Array of number of timebins for each
+                                                               PulseBlockElement in chronological
+                                                               order (incl. repetitions).
+                 digital_rising_bins (dict): Dictionary with keys being the digital channel
+                                             descriptor string and items being arrays of
+                                             chronological low-to-high transition positions
+                                             (in timebins; incl. repetitions) for each digital
+                                             channel.
+        """
+        return self.sequencegeneratorlogic().analyze_sequence(sequence=sequence)
 
     #######################################################################
     ###             Helper  methods                                     ###
