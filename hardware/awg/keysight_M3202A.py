@@ -786,13 +786,16 @@ class M3202A(Base, PulserInterface):
                 self.chcfg[ch].mark_delay
             )
 
+            # I/O connector is a marker *only* if it is not configured as a trigger
             if self.chcfg[ch].mark_mode != ksd1.SD_MarkerModes.DISABLED and self.chcfg[ch].mark_io == 1:
                 self.log.info('IO OUT for Ch{} '.format(self.__ch_map[ch]))
-                if self.chcfg[ch].trig_source == 0:
-                    err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_IN)
+                if not (self.chcfg[ch].enable_trigger and self.chcfg[ch].trig_source == 0):
+                    err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_OUT)
                     if err < 0:
-                        self.log.error('Error configuring triggers: {} {}'.format(
+                        self.log.error('Error configuring marker: {} {}'.format(
                             err, ksd1.SD_Error.getErrorMessage(err)))
+                else:
+                    self.log.warning('IO Trigger cfg for ch {} overrides marker cfg!'.format(ch))
 
             self.log.info('Ch {} mm: {} pxi: {} io: {} val: {}, sync: {} len: {} delay: {} err: {}'.format(
                 self.__ch_map[ch],
