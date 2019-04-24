@@ -81,6 +81,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     analogueoutput = Connector(interface='AnalogueOutputInterface')
     cavcontrol = Connector(interface="CavityStabilisationLogic")
 
+    filepath = None
     # status vars
     max_history_length = StatusVar(default=10)
     _scan_axes = StatusVar("scan_axes", default="xy")
@@ -463,6 +464,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self._clock_frequency_3D = self.axis_class[self._first_scan_axis].step_freq * self._ramp_length
         self._initalize_data_arrays_3D_stepper()  #
+
+        self.finesse_scan_freq = 1.0
 
         # Step values definitions
 
@@ -1408,6 +1411,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if result[1] == 0:
                 self._position_feedback_device.module_state.unlock()
                 self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
                 self.log.error("reading the axis voltage failed")
                 return -1
 
@@ -2527,6 +2531,288 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         np.save(self.path_name + '/' + self.filename, data)
         np.save(self.path_name + '/' + self.filename_back, data)
+
+    #################################### Finesse Measurement ########################################
+    # Todo: Add self._scan_freq=freq for one ramp in total
+
+    def start_finesse_measurement(self):
+        """
+        Sets up all hardware functions necessary for the Finesse measurement and in the end starts measurement procedure.
+
+        This is a 3D measurement where the stepper steps each steps, then waits while the 3D axis is scanned and data
+        acquired. After this it does another step and the process repeats itself until  measurement points in the
+        3D image have been acquired.
+
+
+        """
+
+        # Todo: Do we need a lock for the stepper as well?
+        if not self._ao_output:
+            self.log.error("It is not possible to do a 3D map if the 3rd axis analogue output does not exist.")
+            return -1
+
+        self._step_counter = 0
+        self.module_state.lock()
+        self._3D_measurement = True
+        self._fast_scan = True
+
+        if self._get_scan_axes() < 0:
+            return -1
+
+        # Set 3rd axis scan resolution maximal if possible and required
+        if self._3D_use_maximal_resolution:
+            if self._3D_use_maximal_resolution() == -1:
+                return -1
+
+        # generate voltage ramp
+        self.ramp = self._3D_generate_voltage_ramp(self.start_voltage_3D, self.end_voltage_3D)
+        self._ramp_length = len(self.ramp)
+        if self.ramp[0] == -11:
+            self.log.error("Not possible to initialise scanner as ramp was not generated")
+            return 0
+        self.down_ramp = self.ramp[::-1]
+        self._ramp_length = len(self.ramp)
+
+        self._clock_frequency_3D = self.finesse_scan_freq * self._ramp_length
+
+        # move piezo to desired start position to go easy on piezo
+        self._current_output_voltage = self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage
+        self.change_analogue_output_voltage(self.start_voltage_3D)
+        self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage = self.start_voltage_3D
+        # Check the parameters of the stepper device
+        if self.check_axis_stepper() == -1:
+            self.module_state.unlock()
+            return -1
+
+        # save starting positions
+        self._start_position = []
+        self._feedback_axis = []
+        if self.axis_class[self._first_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._first_scan_axis])[0])
+            self._feedback_axis.append(self._first_scan_axis)
+        if self.axis_class[self._second_scan_axis].closed_loop:
+            self._start_position.append(self.get_position([self._second_scan_axis])[0])
+            self._feedback_axis.append(self._second_scan_axis)
+        axis = np.setdiff1d([*self.axis], [self._first_scan_axis, self._second_scan_axis])[0]
+
+        # check if scan positions should be saved and if it is possible
+        self._ai_scan_axes = []
+        if self.map_scan_position:
+            if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
+                self._second_scan_axis].closed_loop:
+                self._ai_scan_axes.append(self._first_scan_axis)
+                self._ai_scan_axes.append(self._second_scan_axis)
+            else:
+                self.map_scan_position = False
+                # initialise position scan
+        if self._ai_scanner:
+            self._ai_scan_axes.append(self._ai_counter)
+
+        if 0 > self._initalize_measurement(steps=self._ramp_length,
+                                           frequency=self._clock_frequency_3D, ai_channels=
+                                           self._ai_scan_axes):
+            return -1
+
+        # Initialize data
+        self._initalize_data_arrays_stepper()
+        self._initalize_data_arrays_3D_stepper()
+        self.initialize_image()
+        self.signal_image_updated.emit()
+
+        self.generate_file_path()
+        self.signal_step_lines_finesse_next.emit(True)
+
+    def _step_line_finesse(self, direction=True):
+        """
+        Steps a line of a 2D picture where for every point and additional 3rd axis is scanned.
+        Listens for stop or end signal.
+        Sorts data acquired during scan.
+        Calls itself until end of measurement
+
+        @param bool direction: the direction of the (2nd) slow axis  (up is True or down is False), default True
+
+        """
+
+        # Todo: Make sure how to implement the thread locking here correctly.
+
+        # If the stepping measurement is not running do nothing
+        if self.module_state() != 'locked':
+            return
+
+            # stop stepping
+        if self.stopRequested:
+            with self.threadlock:
+                self.kill_counter()
+                if self._ai_scan_axes:
+                    self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
+                if self.map_scan_position:
+                    self.convert_voltage_to_position_for_image()
+
+                if self._steps_scan_first_line % 2 == 0:
+                    self._current_output_voltage = self.start_voltage_3D
+                else:
+                    self._current_output_voltage = self.end_voltage_3D
+                self._analogue_output_device.close_analogue_output(self._ao_channel)
+                self.change_analogue_output_voltage(0.0)
+                self._cavitycontrol.axis_class[self._cavitycontrol.control_axis].output_voltage = 0.0
+                # it is not necessary to stop the analogue input reader. It is closed after each line scan
+                self.stopRequested = False
+                self.module_state.unlock()
+                # self._stepping_device.module_state.unlock()
+                self.update_image_data_line(self._step_counter - 1)
+                self.smooth_out_position_data()
+                self.signal_image_updated.emit()
+                # add new history entry
+                # new_history = ConfocalHistoryEntry(self)
+                # new_history.snapshot(self)
+                # self.history.append(new_history)
+                # if len(self.history) > self.max_history_length:
+                #    self.history.pop(0)
+                # self.history_index = len(self.history) - 1
+                self.signal_step_scan_stopped.emit()
+                self.log.info("Stepping stopped successfully")
+                self.log.info("The stepper stepped %s lines", self._step_counter)
+
+                return
+
+        # move and count
+        new_counts = self._step_and_count_finesse(self._first_scan_axis, self._second_scan_axis, direction,
+                                                  steps=self._steps_scan_first_line)
+
+        if type(new_counts[0]) == int:
+            self.stopRequested = True
+            self.signal_step_lines_next.emit(direction)
+            return
+        # check if stepping worked
+        if new_counts[0][0] == -1:
+            self.stopRequested = True
+            self.signal_step_lines_next.emit(direction)
+            return
+
+        if self._ai_scan_axes:
+            if new_counts[1][0] == -1:
+                self.stopRequested = True
+                self.signal_step_lines_next.emit(direction)
+                return
+
+        direction = not direction  # invert direction
+
+        self.signal_sort_count_data_3D.emit(new_counts, self._step_counter)
+
+        if self.axis_class[self._first_scan_axis].closed_loop:
+            frequency = self._clock_frequency_3D
+            # this makes sure that the position is only corrected after stepping back to the "initial" fast axis position
+            if direction:
+                self.go_to_start_position(self._ramp_length, clock_frequency=frequency)
+
+        # do z position correction
+        # Todo: This is still very crude
+        # if self.correct_third_axis_for_tilt:
+        #    if self._step_counter % self._lines_correct_3rd_axis == 0:
+        #        self._stepping_device.move_attocube("z", True, self._3rd_direction_correction, steps=1)
+        self._step_counter += 1
+
+        # check if at end of scan
+        if self._step_counter > self._steps_scan_second_line - 1:
+            self.stopRequested = True
+            self.log.info("Stepping scan at end position")
+        # self.log.info("new line %s time: %s", self._step_counter, datetime.datetime.now().strftime('%M-%S-%f'))
+
+        self.signal_step_lines_finesse_next.emit(direction)
+
+    def _step_and_count_finesse(self, main_axis, second_axis, direction=True, steps=1):
+        """
+        Calls the hardware functions to step a line and checks if data required is sensible.
+
+        @param str main_axis: name of the fast axis of the step scan
+        @param str second_axis: name of the slow axis of the step scan
+        @param bool direction: the direction of the (1st) fast axis (up: True or down: False), default True
+        @param int steps: amount of steps, default 1
+        @return np.array: acquired data in counts/s or error value [-1],[]
+        """
+
+        # added, that the stepper now scans back and forth
+        # Todo: This needs to optional
+        ai_length = len(self._ai_scan_axes)
+
+        # check axis
+        if main_axis in self.axis_class.keys():
+            if second_axis in self.axis_class.keys():
+
+                count_list = []
+                analogue_list = []
+                ramp = self.ramp
+                for i in range(self._steps_scan_first_line):
+                    if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
+                        self.log.error("Starting the counter failed")
+                        return [-1], []
+                    if len(self._ai_scan_axes) > 0:
+                        if 0 > self._position_feedback_device.start_analogue_voltage_reader(self._ai_scan_axes[0],
+                                                                                            start_clock=False):
+                            self.log.error("Starting the analogue input failed")
+                            return [-1], []
+                    self._analogue_output_device.analogue_scan_line(self._ao_channel, ramp)
+                    ramp = ramp[::-1]
+                    if i < self._steps_scan_first_line - 1:
+                        # this way we measure _steps_scan_first_line points but step one less.
+                        if self._stepping_device.move_attocube(main_axis, True, direction, steps=1) < 0:
+                            self.log.error("Moving of attocube failed,x")
+                            # Todo: repair return values
+                            return [-1], []
+
+                    # get data
+                    count_result = self._counting_device.get_finite_counts()
+                    if len(self._ai_scan_axes) > 0:
+                        analog_result = self._position_feedback_device.get_analogue_voltage_reader(self._ai_scan_axes)
+
+                    retval = [-1], []
+                    error = self._counting_device.stop_finite_counter()
+                    if len(self._ai_scan_axes) > 0:
+                        if 0 > self._position_feedback_device.stop_analogue_voltage_reader(self._ai_scan_axes[0]):
+                            self.log.error("Stopping the analog input failed")
+                            return retval
+
+                    if count_result[0][0] == [-1]:
+                        self.log.error("The readout of the counter failed")
+                        return retval
+                    elif error < 0:
+                        self.log.error("Stopping the counter failed")
+                        return retval
+                    elif len(self._ai_scan_axes) > 0:
+                        if analog_result[0][0] == [-1]:
+                            self.log.error("The readout of the analog reader failed")
+                            return retval
+                        analogue_list.append(analog_result[0])
+
+                    count_list.append(count_result[0])
+                if direction:
+                    result = np.array(count_list).flatten()
+                else:
+                    result = np.array(np.flip(count_list, 0)).flatten()
+
+                # move on line up
+                if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
+                    self.log.error("Moving of attocube failed, y")
+                    return -1
+
+                if self._ai_scan_axes:
+                    if direction:
+                        analog_result = np.array(np.split(np.array(analogue_list), ai_length, 1)).flatten()
+                    else:
+                        tmp = np.array(np.split(np.array(analogue_list), ai_length, 1))
+                        analog_result = np.flip(tmp, 1).flatten()
+
+                    return result, analog_result
+                else:
+                    return result
+            else:
+                self.log.error(
+                    "second axis %s in not  an axis %s of the stepper", second_axis, self.axis)
+                return [-1], []
+
+        else:
+            self.log.error("main axis %s is not an axis %s of the stepper", main_axis, self.axis)
+            return [-1], []
 
     #################################### Tilt correction ########################################
 
