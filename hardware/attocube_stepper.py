@@ -59,7 +59,7 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
 
         # Todo get rid of all fine/coarse definition stuff, only step voltage will remain
 
-        self._attocube_modes = {"stepping": "stp", "ground": "gnd", "Input": "inp", "off": "off"}
+        self._attocube_modes = {"stepping": "stp", "ground": "gnd", "Input": "inp", "off": "off", "offsetstepping": "stp+", "offset": "off"}
         # Todo finish attocube modes with sensible names
         # mode_list = ["gnd", "inp", "stp", "off", "stp+", "stp-"]
 
@@ -141,7 +141,6 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                                                int(config['frequency_range'][1])]
 
         # connect Ethernet socket and FTP
-        # Todo: Add a loop here which tries connecting several times and only throws error after failing x times.
         counter = 0
         self.connected = False
         self.tn = telnetlib.Telnet(self._host, self._port)
@@ -395,8 +394,8 @@ class AttoCubeStepper(Base, ConfocalStepperInterface):
                     return self._axis_mode[axis]
             else:
                 self.log.error(
-                    "Current mode of controller {} not in list of modes{}".format(
-                        mode_line[-1], self._attocube_modes))
+                    "Current mode of controller %s  for axis %s not in list of modes %s ",
+                        mode_line[-1], axis, self._attocube_modes)
                 return -1
         self.log.error("axis {} not in list of possible axes".format(self._attocube_axis))
         return -1
