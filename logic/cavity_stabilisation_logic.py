@@ -28,6 +28,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import math
 import datetime
+from scipy.stats import norm  # To fit gaussian average to data
 from collections import OrderedDict
 
 from core.module import Connector, ConfigOption, StatusVar
@@ -151,6 +152,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
                            self.feedback_axis)
             raise Exception('Failed to initialise cavity scanner module due to analogue output failure.')
 
+        self.max_clock_freq = self._feedback_device.get_maximum_clock_freq()
         self.axis_class = dict()
 
         for name in self._axis:
@@ -218,7 +220,24 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        return self._feedback_device.set_up_analogue_voltage_reader(self.feedback_axis)
+
+        if self._feedback_device.set_up_analogue_voltage_reader_clock(self.feedback_axis,
+                                                                               clock_frequency=self.max_clock_freq) < 0:
+            return [-1]
+        # read voltages from resistive read out for position feedback
+        if self._feedback_device.set_up_analogue_voltage_reader_scanner(
+                self._average_number, self.feedback_axis) < 0:
+            return [-1]
+        try:
+            self._feedback_device.module_state.lock()
+        except:
+            self.log.warning("Position feedback device is already in use for another task")
+            self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
+            self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
+            return -1
+        self._feedback_device.module_state.unlock()
+
+        return 0
 
     def close_readout(self):
         """Closes the continuous analogue input reader
@@ -228,6 +247,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         if 0 > self._feedback_device.close_analogue_voltage_reader(self.feedback_axis):
             self.log.error("It was not possible to close the analog voltage reader")
             return -1
+        if 0 > self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis):
+            return [-1]
         return 0
 
     def initialise_analogue_stabilisation(self):
@@ -270,18 +291,22 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             self.log.info("Cavity stabilisation stopped successfully")
             return 0
 
-        # fixme: This needs to be dione with analogue voltage scanner. this is only a quick fix
-        voltage_list = []
-        for i in range(self._average_number):
-            result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis], read_samples=1)
-            if result[1] == 0:
-                self.stopRequested = True
-                self.log.error("reading the axis voltage failed")
-                return -1
-            voltage_list.append(result[0][0])
-        voltage_result = sum(voltage_list) / self._average_number
+        self._feedback_device.start_analogue_voltage_reader(self.feedback_axis, True)
+        voltage_result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
+        if voltage_result[1] == 0:
+            #self._feedback_device.module_state.unlock()
+            self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
+            self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
+            self.log.error("reading the feedback voltage failed")
+            return -1
 
-        # checks if the measured values lie outside the threshold
+        voltage_result = norm.fit(voltage_result[0])[0]
+
+        if 0 > self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
+            self.log.error("Stopping the analog input failed")
+            return -1
+
+        # checks if the measured values lies outside the threshold
         if self.reflection:
             if voltage_result > self.threshold and abs(self.threshold - voltage_result) > \
                     self.axis_class[self.feedback_axis].feedback_precision_volt:
@@ -432,16 +457,19 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         time.sleep(0.00001)  # 10mus. This is very long compared to the NIDAQ clock rate
         # Todo: Do we even need this here?
 
-        # compare new voltage to threshold
-        voltage_list = []
-        for i in range(self._average_number):
-            result = self._feedback_device.get_analogue_voltage_reader([feedback_axis], read_samples=1)
-            if result[1] == 0:
-                self.stopRequested = True
-                self.log.error("reading the axis voltage failed")
-                return -1
-            voltage_list.append(result[0][0])
-        voltage_result = sum(voltage_list) / self._average_number
+        voltage_result = self._feedback_device.get_analogue_voltage_reader([self.feedback_axis])
+        if voltage_result[1] == 0:
+            #self._feedback_device.module_state.unlock()
+            self._feedback_device.close_analogue_voltage_reader(self.feedback_axis)
+            self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
+            self.log.error("reading the feedback voltage failed")
+            return -1
+
+        voltage_result = norm.fit(voltage_result[0])[0]
+
+        if 0 > self._feedback_device.stop_analogue_voltage_reader(self.feedback_axis):
+            self.log.error("Stopping the analog input failed")
+            return -1
         return voltage_result
 
     def _get_feedback_voltage_range(self, axis_name):

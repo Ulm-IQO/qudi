@@ -169,6 +169,12 @@ class AnalogueReaderInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
+    def get_maximum_clock_freq(self):
+        """"Returns the maximally possible readout frequency of the analogue input device in Hz
+        @return int: frequency """
+        pass
+
+    @abc.abstractmethod
     def add_clock_task_to_channel(self, task_name, channels):
         """
         This function adds additional pointer to an already existing clock task.

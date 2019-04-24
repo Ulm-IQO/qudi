@@ -98,6 +98,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _modtype = 'NICard'
     _modclass = 'hardware'
 
+    # device hardware limitations
+    _max_frequency = ConfigOption("maximal_frequency", missing="error")
+    _analogue_resolution = ConfigOption('analogue_resolution', 16, missing='warn')
+
     # config options
     _photon_sources = ConfigOption('photon_sources', missing='error')
 
@@ -132,7 +136,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     # timeout for the Read or/and write process in s
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
-    _analogue_resolution = ConfigOption('analogue_resolution', 16, missing='warn')
     _a_o_channels = ConfigOption('Analogue_output_channels', {}, missing='error')
     _a_o_ranges = ConfigOption('Analogue_output_ranges', {}, missing='error')
     _a_i_channels = ConfigOption('Analogue_input_channels', {}, missing='error')
@@ -244,6 +247,17 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         """ Shut down the NI card.
         """
         self.reset_hardware()
+
+    # =================== General commands =================
+    def get_maximum_clock_freq(self):
+        """"Returns the maximally possible readout frequency of the analogue input device in Hz
+        @return int: frequency """
+        return self._max_frequency
+
+    def get_analogue_resolution(self):
+        """"Returns the resolution of the analog input of the NIDAQ in bits
+        @return int: input bit resolution """
+        return self._analogue_resolution
 
     # =================== SlowCounterInterface Commands ========================
 
@@ -1909,7 +1923,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             # create a new array for the final data (this time of the length
             # number of samples)
-            real_data = np.zeros((self._odmr_length, ), dtype=np.uint32)
+            real_data = np.zeros((self._odmr_length,), dtype=np.uint32)
 
             # add up adjoint pixels to also get the counts from the low time of
             # the clock:
@@ -1918,7 +1932,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             real_data += odmr_data[:-1:2]
 
             if self._odmr_pulser_daq_task:
-                differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
+                differential_data = np.zeros((self.oversampling * length,), dtype=np.float64)
 
                 differential_data += real_data[1::2]
                 differential_data -= real_data[::2]
@@ -1933,7 +1947,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
                 if len(self._scanner_ai_channels) > 0:
                     for i, analog_data in enumerate(odmr_analog_data):
-                        differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
+                        differential_data = np.zeros((self.oversampling * length,), dtype=np.float64)
 
                         differential_data += analog_data[1:-1:2]
                         differential_data -= analog_data[:-1:2]
@@ -1941,10 +1955,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                                                       np.zeros_like(differential_data),
                                                       where=analog_data[:-1:2] != 0)
 
-                        all_data[i+1] = np.median(np.reshape(differential_data,
-                                                             (-1, self.oversampling)),
-                                                  axis=1
-                                                  )
+                        all_data[i + 1] = np.median(np.reshape(differential_data,
+                                                               (-1, self.oversampling)),
+                                                    axis=1
+                                                    )
 
             else:
                 all_data[0] = np.array(real_data * self._scanner_clock_frequency, np.float64)
@@ -2291,7 +2305,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             daq.DAQmxStartTask(self.digital_out_task)
             daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
                                      self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
-                                        np.array(self.digital_data), self.digital_read, None)
+                                     np.array(self.digital_data), self.digital_read, None)
 
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)
@@ -3193,11 +3207,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         else:
             # this way it is a dummy method to make programming from logic more consistent
             return 0
-
-    def get_analogue_resolution(self):
-        """"Returns the resolution of the analog input of the NIDAQ in bits
-        @return int: input bit resolution """
-        return self._analogue_resolution
 
     # =============================== End AnalogReaderInterface Commands  =======================
 
