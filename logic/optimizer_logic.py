@@ -296,18 +296,30 @@ class OptimizerLogic(GenericLogic):
 
         @param start_pos float[]: 3-point vector giving x, y, z position to go to.
         """
-        n_ch = len(self._scanning_device.get_scanner_axes())
-        scanner_pos = self._scanning_device.get_scanner_position()
-        lsx = np.linspace(scanner_pos[0], start_pos[0], self.return_slowness)
-        lsy = np.linspace(scanner_pos[1], start_pos[1], self.return_slowness)
-        lsz = np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
-        if n_ch <= 3:
-            move_to_start_line = np.vstack((lsx, lsy, lsz)[0:n_ch])
-        else:
-            move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
+        try:
+            n_ch = len(self._scanning_device.get_scanner_axes())
+            scanner_pos = self._scanning_device.get_scanner_position()
+            lsx = np.linspace(scanner_pos[0], start_pos[0], self.return_slowness)
+            lsy = np.linspace(scanner_pos[1], start_pos[1], self.return_slowness)
+            lsz = np.linspace(scanner_pos[2], start_pos[2], self.return_slowness)
+            if n_ch <= 3:
+                move_to_start_line = np.vstack((lsx, lsy, lsz)[0:n_ch])
+            else:
+                move_to_start_line = np.vstack((lsx, lsy, lsz, np.ones(lsx.shape) * scanner_pos[3]))
+        except IndexError:
+            self.log.error("Can't move to start pos. Check device connection!")
+            return -1
+        except:
+            self.log.error("Can't get stage axes or position. Check device connection!")
+            return -1
 
-        counts = self._scanning_device.scan_line(move_to_start_line)
-        if np.any(counts == -1):
+        try:
+            counts = self._scanning_device.scan_line(move_to_start_line)
+            if np.any(counts == -1):
+                self.log.error("Can't get any scan counts.")
+                return -1
+        except:
+            self.log.error("Can't get scan counts. Check device connection!")
             return -1
 
         time.sleep(self.hw_settle_time)
