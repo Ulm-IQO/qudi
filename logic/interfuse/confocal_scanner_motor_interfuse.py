@@ -101,8 +101,12 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self._scanner_hw.abort()
-        self.log.warning('TODO: reset Stage.')
+        try:
+            self._scanner_hw.abort()
+            self.log.warning('TODO: reset Stage.')
+        except:
+            self.log.error("Can't abort scanner. Check device connection.")
+            return -1
         return 0
 
     def get_position_range(self):
