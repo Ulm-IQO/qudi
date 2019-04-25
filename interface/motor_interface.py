@@ -209,3 +209,18 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
+
+    @abc.abstractmethod
+    def on_target(self, param_list):
+        """ Stage will move all axes to targets 
+        and waits until the motion has finished.
+
+        @param list param_list : optional, if a specific status of an axis
+                                 is desired, then the labels of the needed
+                                 axis should be passed in the param_list.
+                                 If nothing is passed, then from each axis the
+                                 status is asked.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
