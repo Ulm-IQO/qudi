@@ -11,3 +11,5 @@ Nikolas Tomek <tomek.qudi@gmail.com>
 Simon Schmitt <simon.schmitt@uni-ulm.de>
 Thomas Unden <thomas.unden@uni-ulm.de>
 Christoph Mueller <christoph-1.mueller@uni-ulm.de>
+liuyanulm@GitHub
+diamond2nv@GitHub

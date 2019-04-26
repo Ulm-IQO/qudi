@@ -111,6 +111,8 @@ dependencies:
     - qtpy==1.4.2
     - rpyc==4.0.2
     - ruamel.yaml==0.15.40
+    - scikit-image==0.14.0
+    - scikit-learn==0.20.0
     - scipy==1.1.0
     - serial==0.0.66
     - smmap2==2.0.3

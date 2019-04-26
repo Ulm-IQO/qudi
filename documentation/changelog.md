@@ -13,10 +13,12 @@ new POIs will be named after this tag together with a consecutive integer index.
 * New POI automatic search tool added. If you click on the 'Auto POIs' tool button, POIs will be 
 automatically added in your scan image. This makes fluorescent emitter selections much faster and
 more accurately.
+* Add 'motor/piezo_stage_pi_py_gcs2.py‘ to support PI XYZ Piezo GCS Devices, such as 'E-727','E-516'...
+* Add 'logic/interfuse/confocal_scanner_motor_interfuse.py' to support PI XYZ Piezo Stage do dwell-time confocal scan.
 
 Config changes:
 
-* 
+* Add Example Actual Hardware Config Test with 'NI USB 6343', 'PI E-727 PZT'...
 
 ## Release 0.10
 Released on 14 Mar 2019

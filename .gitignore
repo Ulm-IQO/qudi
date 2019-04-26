@@ -32,3 +32,6 @@
 # log files
 *.log
 *.log.*
+
+# vscode
+/.vscode/*.json
