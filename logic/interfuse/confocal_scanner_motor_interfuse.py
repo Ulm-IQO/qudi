@@ -69,6 +69,7 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
     counterlogic = Connector(interface='CounterLogic')
     stage1 = Connector(interface='MotorInterface')
 
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -137,7 +138,7 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         # TODO
-        self.log.warning('Cannot set position range yet - fix TODO')
+        self.log.warning('Logic interfuse cannot set position range yet - fix TODO')
 
         return 0
 
@@ -150,7 +151,7 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
         @return int: error code (0:OK, -1:error)
         """
         # TODO
-        self.log.warning('Voltage range is not sensible for PiezoStagePI. Fix TODO')
+        self.log.warning('Logic interfuse: Voltage range is not sensible for PiezoStagePI. Fix TODO')
 
         return 0
 
@@ -211,30 +212,30 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
         move_dict['x'] = x
         move_dict['y'] = y
         move_dict['z'] = z
+
         try:
             self._stage_hw.move_abs(move_dict)
             return 0
         except:
-            self.log.error("Can't set stage position. Check device connection!")
-            return -1
+            self.log.error("Logic interfuse can't set stage position. Check device connection!")
+            raise
 
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
         @return float[]: current position in (x, y, z, a).
         """
+        position = [0.,0.,0.,0.]
         prange = self.get_position_range()
-        position = [0., 0., 0.]
-        for i in range(3):
+        for i in range(4):            
             position[i] = prange[i].mean()
             
         try:
             pos_dict = self._stage_hw.get_pos()
-
             position = [pos_dict['x'], pos_dict['y'], pos_dict['z'], 0]
-
         except:
-            self.log.error("Can't get stage position. Check device connection!")
+            self.log.error("Logic Interfuse can't get stage position. Check device connection!")
+            raise
 
         return position
     
@@ -278,7 +279,7 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
         #self.lock()
 
         if not isinstance(line_path, (frozenset, list, set, tuple, np.ndarray, )):
-            self.log.error('The given line to scan is not the right format or array type.')
+            self.log.error('Logic interfuse: The given line to scan is not the right format or array type.')
             return np.array([-1.])
 
         self.set_up_line(np.shape(line_path)[1])
@@ -317,7 +318,7 @@ class ScannerMotorInterfuse(Base, ConfocalScannerInterface):
         try:
             self._scanner_hw.abort()
         except:
-            self.log.error("Can't close scanner. Check device connection!")
+            self.log.error("Logic interfuse can't close scanner. Check device connection!")
             return -1
 
         return 0

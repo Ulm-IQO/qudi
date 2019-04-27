@@ -357,7 +357,7 @@ class PoiManagerLogic(GenericLogic):
     _modtype = 'logic'
 
     # declare connectors
-    optimiserlogic = Connector(interface='OptimizerLogic')
+    optimizerlogic = Connector(interface='OptimizerLogic')
     scannerlogic = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
 
@@ -400,7 +400,7 @@ class PoiManagerLogic(GenericLogic):
         self._periodic_refocus_poi = None
 
         # Connect callback for a finished refocus
-        self.optimiserlogic().sigRefocusFinished.connect(
+        self.optimizerlogic().sigRefocusFinished.connect(
             self._optimisation_callback, QtCore.Qt.QueuedConnection)
         # Connect internal start/stop signals to decouple QTimer from other threads
         self.__sigStartPeriodicRefocus.connect(
@@ -426,7 +426,7 @@ class PoiManagerLogic(GenericLogic):
         self.stop_periodic_refocus()
 
         # Disconnect signals
-        self.optimiserlogic().sigRefocusFinished.disconnect()
+        self.optimizerlogic().sigRefocusFinished.disconnect()
         self.__sigStartPeriodicRefocus.disconnect()
         self.__sigStopPeriodicRefocus.disconnect()
         return
@@ -437,7 +437,7 @@ class PoiManagerLogic(GenericLogic):
 
     @property
     def optimise_xy_size(self):
-        return float(self.optimiserlogic().refocus_XY_size)
+        return float(self.optimizerlogic().refocus_XY_size)
 
     @property
     def active_poi(self):
@@ -924,7 +924,7 @@ class PoiManagerLogic(GenericLogic):
             if self.__timer.isActive():
                 remaining_time = self.time_until_refocus
                 self.sigRefocusTimerUpdated.emit(True, self.refocus_period, remaining_time)
-                if remaining_time <= 0 and self.optimiserlogic().module_state() == 'idle':
+                if remaining_time <= 0 and self.optimizerlogic().module_state() == 'idle':
                     self.optimise_poi_position(self._periodic_refocus_poi)
                     self._last_refocus = time.time()
         return
@@ -932,7 +932,7 @@ class PoiManagerLogic(GenericLogic):
     @QtCore.Slot()
     def optimise_poi_position(self, name=None, update_roi_position=True):
         """
-        Triggers the optimisation procedure for the given poi using the optimiserlogic.
+        Triggers the optimisation procedure for the given poi using the optimizerlogic.
         The difference between old and new position can be used to update the ROI position.
         This function will return immediately. The function "_optimisation_callback" will handle
         the aftermath of the optimisation.
@@ -953,8 +953,8 @@ class PoiManagerLogic(GenericLogic):
         else:
             tag = 'poimanager_{0}'.format(name)
 
-        if self.optimiserlogic().module_state() == 'idle':
-            self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name),
+        if self.optimizerlogic().module_state() == 'idle':
+            self.optimizerlogic().start_refocus(initial_pos=self.get_poi_position(name),
                                                 caller_tag=tag)
             self.sigRefocusStateUpdated.emit(True)
         else:

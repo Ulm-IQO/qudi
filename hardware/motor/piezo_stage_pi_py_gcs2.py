@@ -210,6 +210,7 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
         """
         try:
             self._configured_constraints = self.get_constraints()
+            #FIXME: use this logic instead of PI GCS error to threshold commond move_abs()
             #TODO: get_constraints by question with controller
             pidevice.errcheck = True
 
@@ -256,7 +257,6 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
             try:
                 self._has_move_abs = pidevice.HasMOV()
                 self._has_get_pos = pidevice.HasqPOS()
-                #self._configured_constraints = self.get_constraints()
                 #above is important to logic interfuse motor scanner
 
                 if self._has_move_abs and self._has_get_pos:
@@ -276,8 +276,8 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
                     self.log.error("PI Device has no MOV() or qPOS() func !")
                     return -1
 
-                pidevice.errcheck = False
-                # If communication speed like MOV() for motor scanner is an issue, you can disable error checking.
+                # pidevice.errcheck = False
+                #FIXME: If communication speed like MOV() for motor scanner is an issue, you can disable error checking.
             except:
                 self.log.error("PI GCSError: " + str(GCSError(exc)))
                 return -1
@@ -376,17 +376,36 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
 
             @return dict param_dict : dictionary with the current magnet position
         """
+        pos = {}
+
+        #get origin pos()
+        try:
+            self.on_target()
+            pos = self.get_pos([param_dict.keys()])
+        except GCSError as exc:
+            self.log.warning("PI GCSError: " + str(GCSError(exc)))
+            return pos
+
+        #move_rel to target pos()
         if self._has_move_rel:
             try:
                 new_param_dict = self._axis_dict_send(param_dict)
                 pidevice.MVR(new_param_dict)
                 #Send str upper + um: X Y Z
+
+                try:
+                    self.on_target()
+                    pos = self.get_pos([param_dict.keys()])
+                except:
+                    pass
+            except GCSError as exc:
+                self.log.warning("PI GCSError: " + str(GCSError(exc)))
             except:
                 self.log.warning("PI move_rel / MVR failed !")
         else:
             self.log.warning('PI MVR Function not yet implemented')
 
-        return param_dict
+        return pos
 
     def move_abs(self, param_dict):
         """ Move the stage to an absolute position
@@ -407,6 +426,8 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
                 new_param_dict = self._axis_dict_send(param_dict)
                 pidevice.MOV(new_param_dict)
                 #Send str upper + um: X Y Z
+            except GCSError as exc:
+                self.log.warning("PI GCSError: " + str(GCSError(exc)))
             except:
                 self.log.warning("PI move_abs failed !")
         else:
@@ -451,6 +472,8 @@ class PiezoStagePI_PyGCS2(Base, MotorInterface):
                 pidevice.qPOS(param_dict)
                 # axis dict get conversion 
                 param_dict = self._axis_dict_get(param_dict)
+            except GCSError as exc:
+                self.log.error("PI GCSError: " + str(GCSError(exc)))
             except:
                 self.log.warning("PI get_pos failed !")
             finally:
