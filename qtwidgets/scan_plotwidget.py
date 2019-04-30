@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from pyqtgraph import PlotWidget, ImageItem, ViewBox, InfiniteLine, ROI
 from qtpy import QtCore
 from core.util.filters import scan_blink_correction
+from gui.colordefs import ColorScaleInferno
 
 __all__ = ['ScanImageItem', 'ScanPlotWidget', 'ScanViewBox']
 
@@ -43,6 +44,8 @@ class ScanImageItem(ImageItem):
         self.blink_correction_axis = 0
         self.orig_image = None
         super().__init__(*args, **kwargs)
+        # Change default colorscale
+        self.setLookupTable(ColorScaleInferno().lut)
         return
 
     def set_image_extent(self, extent):

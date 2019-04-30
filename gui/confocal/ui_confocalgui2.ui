@@ -76,14 +76,14 @@
    <addaction name="menuView"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QDockWidget" name="scan2_dockWidget">
+  <widget class="QDockWidget" name="second_scan_dockWidget">
    <property name="windowTitle">
     <string>Second scan</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>2</number>
    </attribute>
-   <widget class="QWidget" name="scan2_dockWidgetContents">
+   <widget class="QWidget" name="second_scan_dockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_6">
      <item row="0" column="0">
       <widget class="ScanPlotWidget" name="second_2d_scan_scanPlotWidget">
@@ -400,77 +400,34 @@
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QGridLayout" name="gridLayout_3">
+     <item row="3" column="3">
+      <spacer name="verticalSpacer_2">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
      <item row="2" column="3">
-      <layout class="QGridLayout" name="axes_control_gridLayout" columnstretch="0,0,0,0,0,0,0,0">
-       <item row="1" column="0">
-        <widget class="QLabel" name="axis_0_label">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-           <weight>75</weight>
-           <bold>true</bold>
-          </font>
-         </property>
-         <property name="text">
-          <string>??-Axis :</string>
-         </property>
-         <property name="scaledContents">
-          <bool>false</bool>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QSpinBox" name="axis_0_resolution_spinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="maximumSize">
+      <layout class="QGridLayout" name="axes_control_gridLayout" columnstretch="0,0,0,0,0,0,0,0,0">
+       <item row="1" column="6">
+        <widget class="QSlider" name="axis_0_slider">
+         <property name="minimumSize">
           <size>
-           <width>16777215</width>
-           <height>16777215</height>
+           <width>150</width>
+           <height>0</height>
           </size>
          </property>
-         <property name="mouseTracking">
-          <bool>true</bool>
+         <property name="singleStep">
+          <number>1</number>
          </property>
-         <property name="focusPolicy">
-          <enum>Qt::WheelFocus</enum>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;XY-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="buttonSymbols">
-          <enum>QAbstractSpinBox::NoButtons</enum>
-         </property>
-         <property name="accelerated">
-          <bool>true</bool>
-         </property>
-         <property name="minimum">
-          <number>2</number>
-         </property>
-         <property name="maximum">
-          <number>10000</number>
-         </property>
-         <property name="value">
-          <number>100</number>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
          </property>
         </widget>
        </item>
@@ -502,144 +459,7 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="2">
-        <widget class="Line" name="line">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="Line" name="axis_0_line">
-         <property name="orientation">
-          <enum>Qt::Vertical</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="3">
-        <widget class="ScienDSpinBox" name="axis_0_min_range_spinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>70</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="mouseTracking">
-          <bool>true</bool>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::WheelFocus</enum>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="buttonSymbols">
-          <enum>QAbstractSpinBox::NoButtons</enum>
-         </property>
-         <property name="accelerated">
-          <bool>true</bool>
-         </property>
-         <property name="decimals">
-          <number>2</number>
-         </property>
-         <property name="minimum">
-          <double>-200.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>200.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>0.100000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="4">
-        <widget class="ScienDSpinBox" name="axis_0_max_range_spinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>70</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="mouseTracking">
-          <bool>true</bool>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::WheelFocus</enum>
-         </property>
-         <property name="acceptDrops">
-          <bool>true</bool>
-         </property>
-         <property name="toolTip">
-          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-         </property>
-         <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-         </property>
-         <property name="buttonSymbols">
-          <enum>QAbstractSpinBox::NoButtons</enum>
-         </property>
-         <property name="accelerated">
-          <bool>true</bool>
-         </property>
-         <property name="decimals">
-          <number>2</number>
-         </property>
-         <property name="minimum">
-          <double>-200.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>200.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="5">
-        <widget class="QSlider" name="axis_0_slider">
-         <property name="minimumSize">
-          <size>
-           <width>150</width>
-           <height>0</height>
-          </size>
-         </property>
-         <property name="singleStep">
-          <number>1</number>
-         </property>
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="6">
+       <item row="1" column="7">
         <widget class="ScienDSpinBox" name="axis_0_position_scienDSpinBox">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -649,7 +469,7 @@
          </property>
          <property name="minimumSize">
           <size>
-           <width>70</width>
+           <width>75</width>
            <height>0</height>
           </size>
          </property>
@@ -672,7 +492,7 @@
           <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X-position&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
          </property>
          <property name="alignment">
-          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
          </property>
          <property name="buttonSymbols">
           <enum>QAbstractSpinBox::NoButtons</enum>
@@ -694,6 +514,194 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="0">
+        <widget class="QLabel" name="axis_0_label">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+           <weight>75</weight>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::LeftToRight</enum>
+         </property>
+         <property name="text">
+          <string>??-Axis :</string>
+         </property>
+         <property name="scaledContents">
+          <bool>false</bool>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="3">
+        <widget class="ScienDSpinBox" name="axis_0_min_range_scienDSpinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>75</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="mouseTracking">
+          <bool>true</bool>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::WheelFocus</enum>
+         </property>
+         <property name="acceptDrops">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Min&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="accelerated">
+          <bool>true</bool>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="minimum">
+          <double>-200.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>200.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QSpinBox" name="axis_0_resolution_spinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>50</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="mouseTracking">
+          <bool>true</bool>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::WheelFocus</enum>
+         </property>
+         <property name="acceptDrops">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;XY-Resolution&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="accelerated">
+          <bool>true</bool>
+         </property>
+         <property name="minimum">
+          <number>2</number>
+         </property>
+         <property name="maximum">
+          <number>10000</number>
+         </property>
+         <property name="value">
+          <number>100</number>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="4">
+        <widget class="ScienDSpinBox" name="axis_0_max_range_scienDSpinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>75</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>16777215</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="mouseTracking">
+          <bool>true</bool>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::WheelFocus</enum>
+         </property>
+         <property name="acceptDrops">
+          <bool>true</bool>
+         </property>
+         <property name="toolTip">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-size:10pt; font-weight:600;&quot;&gt;X_Max&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+         </property>
+         <property name="buttonSymbols">
+          <enum>QAbstractSpinBox::NoButtons</enum>
+         </property>
+         <property name="accelerated">
+          <bool>true</bool>
+         </property>
+         <property name="decimals">
+          <number>2</number>
+         </property>
+         <property name="minimum">
+          <double>-200.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>200.000000000000000</double>
+         </property>
+        </widget>
+       </item>
        <item row="0" column="3" colspan="2">
         <widget class="QLabel" name="scanrangeLabel">
          <property name="text">
@@ -704,32 +712,43 @@
          </property>
         </widget>
        </item>
+       <item row="0" column="2" rowspan="2">
+        <widget class="Line" name="line">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="5" rowspan="2">
+        <widget class="Line" name="line_2">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="7">
+        <widget class="QLabel" name="label">
+         <property name="text">
+          <string>Current Position</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
       </layout>
-     </item>
-     <item row="3" column="3">
-      <spacer name="verticalSpacer_2">
-       <property name="orientation">
-        <enum>Qt::Vertical</enum>
-       </property>
-       <property name="sizeHint" stdset="0">
-        <size>
-         <width>20</width>
-         <height>40</height>
-        </size>
-       </property>
-      </spacer>
      </item>
     </layout>
    </widget>
   </widget>
-  <widget class="QDockWidget" name="scan1_dockWidget">
+  <widget class="QDockWidget" name="first_scan_dockWidget">
    <property name="windowTitle">
     <string>First scan</string>
    </property>
    <attribute name="dockWidgetArea">
     <number>1</number>
    </attribute>
-   <widget class="QWidget" name="scan1_dockWidgetContents">
+   <widget class="QWidget" name="first_scan_dockWidgetContents">
     <layout class="QGridLayout" name="gridLayout_5">
      <item row="0" column="0">
       <widget class="ScanPlotWidget" name="first_2d_scan_scanPlotWidget">
@@ -1987,7 +2006,7 @@ Shortcut: Shift+R</string>
   <connection>
    <sender>action_view_first_2d_scan</sender>
    <signal>triggered(bool)</signal>
-   <receiver>scan1_dockWidget</receiver>
+   <receiver>first_scan_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2001,7 +2020,7 @@ Shortcut: Shift+R</string>
    </hints>
   </connection>
   <connection>
-   <sender>scan1_dockWidget</sender>
+   <sender>first_scan_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
    <receiver>action_view_first_2d_scan</receiver>
    <slot>setChecked(bool)</slot>
@@ -2019,7 +2038,7 @@ Shortcut: Shift+R</string>
   <connection>
    <sender>action_view_second_2d_scan</sender>
    <signal>triggered(bool)</signal>
-   <receiver>scan2_dockWidget</receiver>
+   <receiver>second_scan_dockWidget</receiver>
    <slot>setVisible(bool)</slot>
    <hints>
     <hint type="sourcelabel">
@@ -2033,7 +2052,7 @@ Shortcut: Shift+R</string>
    </hints>
   </connection>
   <connection>
-   <sender>scan2_dockWidget</sender>
+   <sender>second_scan_dockWidget</sender>
    <signal>visibilityChanged(bool)</signal>
    <receiver>action_view_second_2d_scan</receiver>
    <slot>setChecked(bool)</slot>
