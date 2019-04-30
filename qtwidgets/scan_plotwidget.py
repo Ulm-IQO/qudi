@@ -181,7 +181,7 @@ class ScanPlotWidget(PlotWidget):
         If active you can select a rectangular region within the ViewBox by dragging the mouse
         with the left button. Each selection rectangle in real-world data coordinates will be
         emitted by sigMouseAreaSelected.
-        By using activate_zoom_by_selection you can optionally de-/activate zooming in on the
+        By using toggle_zoom_by_selection you can optionally de-/activate zooming in on the
         selection.
 
         @param bool enable: Toggle selection on (True) or off (False)
@@ -433,7 +433,7 @@ class ScanViewBox(ViewBox):
         If active you can select a rectangular region within the ViewBox by dragging the mouse
         with the left button. Each selection rectangle in real-world data coordinates will be
         emitted by sigMouseAreaSelected.
-        By using activate_zoom_by_selection you can optionally de-/activate zooming in on the
+        By using toggle_zoom_by_selection you can optionally de-/activate zooming in on the
         selection.
 
         @param bool enable: Toggle selection on (True) or off (False)

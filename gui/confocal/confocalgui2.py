@@ -168,11 +168,25 @@ class ConfocalGui(GUIBase):
                 self.log.debug(
                     'Unable to restore previous window state. Falling back to default.')
 
+        # Prepare plot widgets
+        self._init_plots()
+
         # Set input widget value ranges and units according to scanner constraints
         self.apply_scanner_constraints()
 
+        # Initialize widget data
+        self.scanner_settings_updated()
+        self.scanner_position_updated()
+        self.scan_data_updated()
+
+        self.show()
+        return
+
+    def _init_plots(self):
+        """ Prepare all plot widgets so that they are ready for data updates.
+        """
         # Create plot items and add them to the respective widgets
-        self.first_scan_image = ScanImageItem(image=np.zeros((2,2)), axisOrder='row-major')
+        self.first_scan_image = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
         self.second_scan_image = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
         self.optimizer_2d_image = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
         self.optimizer_1d_plot = pg.PlotDataItem(x=np.arange(10),
@@ -201,21 +215,16 @@ class ConfocalGui(GUIBase):
         self._mw.second_2d_scan_scanPlotWidget.toggle_crosshair(True, movable=True)
         self._mw.second_2d_scan_scanPlotWidget.set_crosshair_min_size_factor(0.02)
         self._mw.optimizer_first_scanPlotWidget.toggle_crosshair(True, movable=False)
+        self._mw.optimizer_first_scanPlotWidget.set_crosshair_size((0, 0))
 
         # Lock aspect ratios
         self._mw.first_2d_scan_scanPlotWidget.setAspectLocked(lock=True, ratio=1.0)
         self._mw.second_2d_scan_scanPlotWidget.setAspectLocked(lock=True, ratio=1.0)
         self._mw.optimizer_first_scanPlotWidget.setAspectLocked(lock=True, ratio=1.0)
 
-        # Initialize widget values
-        self.scanner_settings_updated()
-        self.scanner_position_updated()
-        self.scan_data_updated()
-
-        self.init_main()      # initialize the main GUI
-        self.init_scanner_settings()  # initialize the scanner settings dialogue
-        self.init_optimizer_settings()  # initialize the optimizer settings dialogue
-        self.init_display_settings()  # initialize the display settings dialogue
+        # Enable zooming when selection mode is active
+        self._mw.first_2d_scan_scanPlotWidget.toggle_zoom_by_selection(True)
+        self._mw.second_2d_scan_scanPlotWidget.toggle_zoom_by_selection(True)
         return
 
     def init_main(self):
@@ -226,136 +235,6 @@ class ConfocalGui(GUIBase):
         configures the event handling between the modules. Moreover it sets default values and
         constraints.
         """
-
-
-
-
-
-        self.show()
-
-
-        # self.update_scan_data(self.scannerlogic().scan_data)
-        # self.update_scanner_position(self.scannerlogic().scanner_position)
-
-        # set up scan line plot
-        sc = self._scanning_logic._scan_counter
-        sc = sc - 1 if sc >= 1 else sc
-        if self._scanning_logic._zscan:
-            data = self._scanning_logic.depth_image[sc, :, 0:4:3]
-        else:
-            data = self._scanning_logic.xy_image[sc, :, 0:4:3]
-
-        self.scan_line_plot = pg.PlotDataItem(data, pen=pg.mkPen(palette.c1))
-        self._mw.scanLineGraphicsView.addItem(self.scan_line_plot)
-
-        ###################################################################
-        #               Configuration of the optimizer tab                #
-        ###################################################################
-        # Load the image for the optimizer tab
-        self.xy_refocus_image = ScanImageItem(
-            image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
-            axisOrder='row-major')
-        self.xy_refocus_image.set_image_extent(((self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                                                 self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
-                                                (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-                                                 self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
-
-        self.depth_refocus_image = pg.PlotDataItem(
-            x=self._optimizer_logic._zimage_Z_values,
-            y=self._optimizer_logic.z_refocus_line[:, self._optimizer_logic.opt_channel],
-            pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-            symbol='o',
-            symbolPen=palette.c1,
-            symbolBrush=palette.c1,
-            symbolSize=7
-        )
-        self.depth_refocus_fit_image = pg.PlotDataItem(
-            x=self._optimizer_logic._fit_zimage_Z_values,
-            y=self._optimizer_logic.z_fit_data,
-            pen=pg.mkPen(palette.c2)
-        )
-
-        # Add the display item to the xy and depth ViewWidget, which was defined in the UI file.
-        self._mw.xy_refocus_ViewWidget_2.addItem(self.xy_refocus_image)
-        self._mw.depth_refocus_ViewWidget_2.addItem(self.depth_refocus_image)
-
-        # Labelling axes
-        self._mw.xy_refocus_ViewWidget_2.setLabel('bottom', 'X position', units='m')
-        self._mw.xy_refocus_ViewWidget_2.setLabel('left', 'Y position', units='m')
-
-        self._mw.depth_refocus_ViewWidget_2.addItem(self.depth_refocus_fit_image)
-
-        self._mw.depth_refocus_ViewWidget_2.setLabel('bottom', 'Z position', units='m')
-        self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
-
-        # Add crosshair to the xy refocus scan
-        self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=False)
-        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
-                                                        self._optimizer_logic._initial_pos_y))
-
-        # Set the state button as ready button as default setting.
-        self._mw.action_stop_scanning.setEnabled(False)
-        self._mw.action_scan_xy_resume.setEnabled(False)
-        self._mw.action_scan_depth_resume.setEnabled(False)
-
-        # Add the display item to the xy and depth ViewWidget, which was defined
-        # in the UI file:
-        self._mw.xy_ViewWidget.addItem(self.xy_image)
-        self._mw.depth_ViewWidget.addItem(self.depth_image)
-
-        # Label the axes:
-        self._mw.xy_ViewWidget.setLabel('bottom', 'X position', units='m')
-        self._mw.xy_ViewWidget.setLabel('left', 'Y position', units='m')
-        self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
-        self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='m')
-
-        # Create crosshair for xy image:
-        self._mw.xy_ViewWidget.toggle_crosshair(True, movable=True)
-        self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.02)
-        self._mw.xy_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
-        self._mw.xy_ViewWidget.set_crosshair_size(
-            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
-        # connect the drag event of the crosshair with a change in scanner position:
-        self._mw.xy_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_xy)
-
-        # Set up and connect xy channel combobox
-        scan_channels = self._scanning_logic.get_scanner_count_channels()
-        for n, ch in enumerate(scan_channels):
-            self._mw.xy_channel_ComboBox.addItem(str(ch), n)
-
-        self._mw.xy_channel_ComboBox.activated.connect(self.update_xy_channel)
-
-        # Create crosshair for depth image:
-        self._mw.depth_ViewWidget.toggle_crosshair(True, movable=True)
-        self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
-        self._mw.depth_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
-        self._mw.depth_ViewWidget.set_crosshair_size(
-            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
-        # connect the drag event of the crosshair with a change in scanner position:
-        self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
-
-        # Set up and connect depth channel combobox
-        scan_channels = self._scanning_logic.get_scanner_count_channels()
-        for n, ch in enumerate(scan_channels):
-            self._mw.depth_channel_ComboBox.addItem(str(ch), n)
-
-
-
-        # history actions
-        self._mw.actionForward.triggered.connect(self._scanning_logic.history_forward)
-        self._mw.actionBack.triggered.connect(self._scanning_logic.history_back)
-        self._scanning_logic.signal_history_event.connect(lambda: self.set_history_actions(True))
-        self._scanning_logic.signal_history_event.connect(self.update_xy_cb_range)
-        self._scanning_logic.signal_history_event.connect(self.update_depth_cb_range)
-        self._scanning_logic.signal_history_event.connect(self._mw.xy_ViewWidget.autoRange)
-        self._scanning_logic.signal_history_event.connect(self._mw.depth_ViewWidget.autoRange)
-        self._scanning_logic.signal_history_event.connect(self.update_scan_range_inputs)
-        self._scanning_logic.signal_history_event.connect(self.change_x_image_range)
-        self._scanning_logic.signal_history_event.connect(self.change_y_image_range)
-        self._scanning_logic.signal_history_event.connect(self.change_z_image_range)
-
-
-
         ###################################################################
         #               Icons for the scan actions                        #
         ###################################################################
