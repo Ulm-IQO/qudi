@@ -307,6 +307,7 @@ class ConfocalGui(GUIBase):
             widget.image_scanPlotWidget.set_crosshair_min_size_factor(0.02)
             widget.image_scanPlotWidget.setAspectLocked(lock=True, ratio=1.0)
             widget.image_scanPlotWidget.toggle_zoom_by_selection(True)
+            widget.colorbar_colorBarWidget.assign_image_item(self.scan_2d_images[key])
 
         self.scan_1d_plots = dict()
         for key, dockwidget in self.scan_1d_dockwidgets.items():
