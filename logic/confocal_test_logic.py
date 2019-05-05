@@ -90,7 +90,7 @@ class ConfocalLogic(GenericLogic):
         # scanner settings
         self.pixel_clock_freq = 1000
         self.backscan_speed = 50
-        self.scan_axes = (('y', 'x'), ('z', 'phi'))
+        self.scan_axes = (('y', 'x'), ('z', 'phi'), ('y', 'z'), ('x'))
         self.scan_resolution = dict()
         self.scan_range = dict()
         for axis, constr_dict in self.constraints.items():
@@ -116,14 +116,19 @@ class ConfocalLogic(GenericLogic):
     def scan_data(self):
         settings = self.scanner_settings
         data = list()
-        for x, y in settings['2d_scan_axes']:
+        for axes in settings['2d_scan_axes']:
             scan = dict()
-            scan['scan'] = 1e6 * np.random.rand(settings['scan_resolution'][x],
-                                                settings['scan_resolution'][y])
+            scan['unit'] = 'c/s'
             scan['axes'] = dict()
-            scan['axes']['names'] = (x, y)
-            scan['axes']['units'] = (self.constraints[x]['unit'], self.constraints[y]['unit'])
-            scan['axes']['extent'] = (settings['scan_range'][x], settings['scan_range'][y])
+            scan['axes']['names'] = tuple([*axes])
+            if len(axes) == 1:
+                scan['scan'] = 1e6 * np.random.rand(settings['scan_resolution'][axes[0]])
+                scan['axes']['extent'] = (settings['scan_range'][axes[0]],)
+            else:
+                scan['scan'] = 1e6 * np.random.rand(settings['scan_resolution'][axes[0]],
+                                                    settings['scan_resolution'][axes[1]])
+                scan['axes']['extent'] = (settings['scan_range'][axes[0]],
+                                          settings['scan_range'][axes[1]])
             data.append(scan)
         return data
 
