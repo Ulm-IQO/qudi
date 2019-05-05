@@ -42,7 +42,7 @@ class ColorBarItem(GraphicsObject):
         self._pen = mkPen('k') if pen is None else mkPen(pen)
         self._brush = None
         self._shape = None
-        self.picture = None
+        self._picture = None
         self._set_brush()
         self.update()
         self.informViewBoundsChanged()
@@ -73,9 +73,9 @@ class ColorBarItem(GraphicsObject):
         return
 
     def draw_picture(self):
-        self.picture = QtGui.QPicture()
+        self._picture = QtGui.QPicture()
         self._shape = QtGui.QPainterPath()
-        p = QtGui.QPainter(self.picture)
+        p = QtGui.QPainter(self._picture)
         p.setPen(self._pen)
         p.setBrush(self._brush)
         rect = QtCore.QRectF(0, self._min_val, 1.0, self._max_val - self._min_val)
@@ -86,17 +86,17 @@ class ColorBarItem(GraphicsObject):
         return
 
     def paint(self, p, *args):
-        if self.picture is None:
+        if self._picture is None:
             self.draw_picture()
-        self.picture.play(p)
+        self._picture.play(p)
 
     def boundingRect(self):
-        if self.picture is None:
+        if self._picture is None:
             self.draw_picture()
-        return QtCore.QRectF(self.picture.boundingRect())
+        return QtCore.QRectF(self._picture.boundingRect())
 
     def shape(self):
-        if self.picture is None:
+        if self._picture is None:
             self.draw_picture()
         return self._shape
 

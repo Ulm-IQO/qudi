@@ -51,24 +51,7 @@ class ConfocalLogic(GenericLogic):
     max_history_length = StatusVar(default=10)
 
     # signals
-    signal_start_scanning = QtCore.Signal(str)
-    signal_continue_scanning = QtCore.Signal(str)
-    signal_stop_scanning = QtCore.Signal()
-    signal_scan_lines_next = QtCore.Signal()
-    signal_xy_image_updated = QtCore.Signal()
-    signal_depth_image_updated = QtCore.Signal()
-    signal_change_position = QtCore.Signal(str)
-    signal_xy_data_saved = QtCore.Signal()
-    signal_depth_data_saved = QtCore.Signal()
-    signal_tilt_correction_active = QtCore.Signal(bool)
-    signal_tilt_correction_update = QtCore.Signal()
-    signal_draw_figure_completed = QtCore.Signal()
-    signal_position_changed = QtCore.Signal()
-
-    sigImageXYInitialized = QtCore.Signal()
-    sigImageDepthInitialized = QtCore.Signal()
-
-    signal_history_event = QtCore.Signal()
+    sigScannerPositionChanged = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -100,6 +83,11 @@ class ConfocalLogic(GenericLogic):
 
         # Dummy scan data
         self.scan_images = [None] * len(self.scan_axes)
+
+        self.pos = dict()
+        for axis, axis_dict in self.scanner_constraints.items():
+            extent = axis_dict['max_value'] - axis_dict['min_value']
+            self.pos[axis] = axis_dict['min_value'] + extent * np.random.rand()
         return
 
     def on_activate(self):
@@ -134,11 +122,7 @@ class ConfocalLogic(GenericLogic):
 
     @property
     def scanner_position(self):
-        pos = dict()
-        for axis, axis_dict in self.scanner_constraints.items():
-            extent = axis_dict['max_value'] - axis_dict['min_value']
-            pos[axis] = axis_dict['min_value'] + extent * np.random.rand()
-        return pos
+        return self.pos.copy()
 
     @property
     def scanner_axes_names(self):
@@ -157,3 +141,15 @@ class ConfocalLogic(GenericLogic):
         settings['scan_resolution'] = self.scan_resolution.copy()
         settings['scan_range'] = self.scan_range.copy()
         return settings
+
+    @QtCore.Slot(dict)
+    def set_scanner_position(self, pos_dict):
+        constr = self.scanner_constraints
+        for ax, pos in pos_dict.items():
+            if ax not in constr:
+                self.log.error('Unknown scanner axis: "{0}"'.format(ax))
+                return
+        self.pos.update(pos_dict)
+        print(self.sender())
+        self.sigScannerPositionChanged.emit(pos_dict)
+        return
