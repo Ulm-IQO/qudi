@@ -90,7 +90,7 @@ class ConfocalLogic(GenericLogic):
         # scanner settings
         self.pixel_clock_freq = 1000
         self.backscan_speed = 50
-        self.scan_axes = (('y', 'x'), ('z', 'phi'), ('y', 'z'), ('x'))
+        self.scan_axes = (('y', 'x'), ('z', 'phi'), ('y', 'z'), ('x',))
         self.scan_resolution = dict()
         self.scan_range = dict()
         for axis, constr_dict in self.constraints.items():
@@ -116,7 +116,7 @@ class ConfocalLogic(GenericLogic):
     def scan_data(self):
         settings = self.scanner_settings
         data = list()
-        for axes in settings['2d_scan_axes']:
+        for axes in settings['scan_axes']:
             scan = dict()
             scan['unit'] = 'c/s'
             scan['axes'] = dict()
@@ -151,7 +151,7 @@ class ConfocalLogic(GenericLogic):
     @property
     def scanner_settings(self):
         settings = dict()
-        settings['2d_scan_axes'] = self.scan_axes
+        settings['scan_axes'] = self.scan_axes
         settings['pixel_clock_frequency'] = self.pixel_clock_freq
         settings['backscan_speed'] = self.backscan_speed
         settings['scan_resolution'] = self.scan_resolution.copy()
