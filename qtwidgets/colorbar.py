@@ -103,9 +103,12 @@ class ColorBarItem(GraphicsObject):
 
 class ColorBarWidget(QtWidgets.QWidget):
     """
-    A widget containing a controllable colorbar which can be attached to a qudi ScanImageItem to
-    synchronize the colorscale.
+    A widget containing a controllable colorbar which can be attached to an pyqtgraph ImageItem or
+    qudi ScanImageItem to synchronize the colorscale.
     """
+
+    sigRangeChanged = QtCore.Signal(float, float)  # min_val, max_val
+
     def __init__(self, parent=None, unit=None, label=None, image_item=None):
         super().__init__(parent)
         self._image_item = image_item
@@ -182,7 +185,10 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.percentile_radioButton.toggled.connect(self.refresh_colorscale)
         self.absolute_radioButton.toggled.connect(self.refresh_colorscale)
         if self._image_item is not None:
-            self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+            try:
+                self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+            except AttributeError:
+                pass
         return
 
     def sizeHint(self):
@@ -199,11 +205,14 @@ class ColorBarWidget(QtWidgets.QWidget):
         if self._image_item is not None:
             try:
                 self._image_item.sigImageChanged.disconnect()
-            except TypeError:
+            except (AttributeError, TypeError):
                 pass
         self._image_item = item
         if self._image_item is not None:
-            self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+            try:
+                self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+            except AttributeError:
+                pass
         self.refresh_colorscale()
         return
 
@@ -240,6 +249,7 @@ class ColorBarWidget(QtWidgets.QWidget):
         # Adjust image color
         if self._image_item is not None:
             self._image_item.setLevels((cb_min, cb_max))
+        self.sigRangeChanged.emit(cb_min, cb_max)
         return
 
     @QtCore.Slot()
