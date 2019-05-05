@@ -67,6 +67,11 @@ class ColorBarItem(GraphicsObject):
         self.draw_picture()
         return
 
+    def set_pen(self, pen=None):
+        self._pen = mkPen('k') if pen is None else mkPen(pen)
+        self.draw_picture()
+        return
+
     def draw_picture(self):
         self.picture = QtGui.QPicture()
         self._shape = QtGui.QPainterPath()
@@ -204,6 +209,10 @@ class ColorBarWidget(QtWidgets.QWidget):
 
     def set_colormap(self, cmap=None):
         self.colorbar.set_cmap(cmap=cmap)
+        return
+
+    def set_pen(self, pen=None):
+        self.colorbar.set_pen(pen)
         return
 
     @QtCore.Slot()
