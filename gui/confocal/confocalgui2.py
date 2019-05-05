@@ -69,6 +69,26 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         return
 
 
+class ScannerControlDockWidget(QtWidgets.QDockWidget):
+    """ Create the scanner control dockwidget based on the corresponding *.ui file.
+    """
+    def __init__(self):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'ui_scanner_control_widget.ui')
+
+        super().__init__('Scanner Control')
+        self.setObjectName('scanner_control_dockWidget')
+
+        # Load UI file
+        widget = QtWidgets.QWidget()
+        uic.loadUi(ui_file, widget)
+        widget.setObjectName('scanner_control_widget')
+
+        self.setWidget(widget)
+        return
+
+
 class Scan2dDockWidget(QtWidgets.QDockWidget):
     """ Create the 2D scan dockwidget based on the corresponding *.ui file.
     """
@@ -240,18 +260,16 @@ class ConfocalGui(GUIBase):
         self._ssd = None
         self._osd = None
 
-        # Plot items
-        self.optimizer_2d_image = None
-        self.optimizer_1d_plot = None
-        self.optimizer_1d_fit_plot = None
-
         # References to automatically generated GUI elements
         self.axes_control_widgets = None
         self.optimizer_settings_axes_widgets = None
         self.scan_2d_dockwidgets = None
         self.scan_1d_dockwidgets = None
+
+        # References to static dockwidgets
         self.optimizer_dockwidget = None
         self.tilt_correction_dockwidget = None
+        self.scanner_control_dockwidget = None
         return
 
     def on_activate(self):
@@ -268,6 +286,16 @@ class ConfocalGui(GUIBase):
         self._osd = OptimizerSettingDialog()
         self._mw = ConfocalMainWindow()
 
+        # Initialize fixed dockwidgets
+        self.optimizer_dockwidget = OptimizerDockWidget()
+        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
+        self.optimizer_dockwidget.scan_widget.toggle_crosshair(True, movable=False)
+        self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
+        self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
+        self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.scanner_control_dockwidget = ScannerControlDockWidget()
+        self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+
         # Configure widgets according to available scan axes
         self._generate_axes_control_widgets()
         self._generate_optimizer_axes_widgets()
@@ -279,14 +307,6 @@ class ConfocalGui(GUIBase):
         self.scanner_settings_updated()
         self.scanner_position_updated()
         self.scan_data_updated()
-
-        # Initialize fixed dockwidgets
-        self.optimizer_dockwidget = OptimizerDockWidget()
-        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
-        self.optimizer_dockwidget.scan_widget.toggle_crosshair(True, movable=False)
-        self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
-        self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
-        self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.RightDockWidgetArea)
 
         # Initialize dockwidgets to default view
         self.restore_default_view()
@@ -390,19 +410,19 @@ class ConfocalGui(GUIBase):
     def _generate_axes_control_widgets(self):
         font = QtGui.QFont()
         font.setBold(True)
-        layout = self._mw.centralwidget.layout()
+        layout = self.scanner_control_dockwidget.widget().layout()
 
         self.axes_control_widgets = dict()
         for index, axis_name in enumerate(self.scannerlogic().scanner_axes_names, 1):
             if index == 1:
-                label = self._mw.axis_0_label
+                label = self.scanner_control_dockwidget.widget().axis_0_label
                 label.setFont(font)
                 label.setText('{0}-Axis:'.format(axis_name))
-                res_spinbox = self._mw.axis_0_resolution_spinBox
-                min_spinbox = self._mw.axis_0_min_range_scienDSpinBox
-                max_spinbox = self._mw.axis_0_max_range_scienDSpinBox
-                slider = self._mw.axis_0_slider
-                pos_spinbox = self._mw.axis_0_position_scienDSpinBox
+                res_spinbox = self.scanner_control_dockwidget.widget().axis_0_resolution_spinBox
+                min_spinbox = self.scanner_control_dockwidget.widget().axis_0_min_range_scienDSpinBox
+                max_spinbox = self.scanner_control_dockwidget.widget().axis_0_max_range_scienDSpinBox
+                slider = self.scanner_control_dockwidget.widget().axis_0_slider
+                pos_spinbox = self.scanner_control_dockwidget.widget().axis_0_position_scienDSpinBox
             else:
                 label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
                 label.setFont(font)
@@ -455,9 +475,11 @@ class ConfocalGui(GUIBase):
             self.axes_control_widgets[axis_name]['pos_spinbox'] = pos_spinbox
 
         # layout.removeWidget(line)
-        layout.addWidget(self._mw.line, 0, 2, -1, 1)
-        layout.addWidget(self._mw.line_2, 0, 5, -1, 1)
+        layout.addWidget(self.scanner_control_dockwidget.widget().line, 0, 2, -1, 1)
+        layout.addWidget(self.scanner_control_dockwidget.widget().line_2, 0, 5, -1, 1)
         layout.setColumnStretch(5, 1)
+        self.scanner_control_dockwidget.widget().setMaximumHeight(
+            self.scanner_control_dockwidget.widget().sizeHint().height())
         return
 
     def _generate_optimizer_axes_widgets(self):
@@ -526,9 +548,6 @@ class ConfocalGui(GUIBase):
 
         # Handle static dock widgets
         self.optimizer_dockwidget.setFloating(False)
-        self.tilt_correction_dockwidget.setFloating(False)
-        self.tilt_correction_dockwidget.hide()
-        self._mw.addDockWidget(QtCore.Qt.RightDockWidgetArea, self.tilt_correction_dockwidget)
         self.optimizer_dockwidget.show()
         self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self.optimizer_dockwidget)
         if self.scan_1d_dockwidgets:
@@ -537,6 +556,13 @@ class ConfocalGui(GUIBase):
         elif len(self.scan_2d_dockwidgets) > 1:
             dockwidget = self.scan_2d_dockwidgets[list(self.scan_2d_dockwidgets)[1]]
             self._mw.splitDockWidget(dockwidget, self.optimizer_dockwidget, QtCore.Qt.Vertical)
+
+        self.scanner_control_dockwidget.setFloating(False)
+        self.scanner_control_dockwidget.show()
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.scanner_control_dockwidget)
+        self.tilt_correction_dockwidget.setFloating(False)
+        self.tilt_correction_dockwidget.hide()
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self.tilt_correction_dockwidget)
         return
 
     def apply_scanner_constraints(self):
