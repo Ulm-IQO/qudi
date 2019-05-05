@@ -270,6 +270,8 @@ class ConfocalGui(GUIBase):
         self.optimizer_dockwidget = None
         self.tilt_correction_dockwidget = None
         self.scanner_control_dockwidget = None
+
+        self._dragged_position_widget = None
         return
 
     def on_activate(self):
@@ -280,6 +282,7 @@ class ConfocalGui(GUIBase):
         """
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
+        self._dragged_position_widget = None
 
         # Initialize main window and dialogues
         self._ssd = ScannerSettingDialog()
@@ -414,56 +417,56 @@ class ConfocalGui(GUIBase):
 
         self.axes_control_widgets = dict()
         for index, axis_name in enumerate(self.scannerlogic().scanner_axes_names, 1):
-            if index == 1:
-                label = self.scanner_control_dockwidget.widget().axis_0_label
-                label.setFont(font)
-                label.setText('{0}-Axis:'.format(axis_name))
-                res_spinbox = self.scanner_control_dockwidget.widget().axis_0_resolution_spinBox
-                min_spinbox = self.scanner_control_dockwidget.widget().axis_0_min_range_scienDSpinBox
-                max_spinbox = self.scanner_control_dockwidget.widget().axis_0_max_range_scienDSpinBox
-                slider = self.scanner_control_dockwidget.widget().axis_0_slider
-                pos_spinbox = self.scanner_control_dockwidget.widget().axis_0_position_scienDSpinBox
-            else:
-                label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
-                label.setFont(font)
-                label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+            # if index == 1:
+            #     label = self.scanner_control_dockwidget.widget().axis_0_label
+            #     label.setFont(font)
+            #     label.setText('{0}-Axis:'.format(axis_name))
+            #     res_spinbox = self.scanner_control_dockwidget.widget().axis_0_resolution_spinBox
+            #     min_spinbox = self.scanner_control_dockwidget.widget().axis_0_min_range_scienDSpinBox
+            #     max_spinbox = self.scanner_control_dockwidget.widget().axis_0_max_range_scienDSpinBox
+            #     slider = self.scanner_control_dockwidget.widget().axis_0_slider
+            #     pos_spinbox = self.scanner_control_dockwidget.widget().axis_0_position_scienDSpinBox
+            # else:
+            label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
+            label.setFont(font)
+            label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
-                res_spinbox = QtWidgets.QSpinBox()
-                res_spinbox.setRange(2, 2 ** 31 - 1)
-                res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                res_spinbox.setMinimumSize(50, 0)
-                res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                          QtWidgets.QSizePolicy.Preferred)
+            res_spinbox = QtWidgets.QSpinBox()
+            res_spinbox.setRange(2, 2 ** 31 - 1)
+            res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            res_spinbox.setMinimumSize(50, 0)
+            res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Preferred)
 
-                min_spinbox = ScienDSpinBox()
-                min_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                min_spinbox.setMinimumSize(75, 0)
-                min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                          QtWidgets.QSizePolicy.Preferred)
+            min_spinbox = ScienDSpinBox()
+            min_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            min_spinbox.setMinimumSize(75, 0)
+            min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Preferred)
 
-                max_spinbox = ScienDSpinBox()
-                max_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                max_spinbox.setMinimumSize(75, 0)
-                max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                          QtWidgets.QSizePolicy.Preferred)
+            max_spinbox = ScienDSpinBox()
+            max_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            max_spinbox.setMinimumSize(75, 0)
+            max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Preferred)
 
-                slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
-                slider.setMinimumSize(150, 0)
-                slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
+            slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+            slider.setMinimumSize(150, 0)
+            slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
-                pos_spinbox = ScienDSpinBox()
-                pos_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                pos_spinbox.setMinimumSize(75, 0)
-                pos_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
-                                          QtWidgets.QSizePolicy.Preferred)
+            pos_spinbox = ScienDSpinBox()
+            pos_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            pos_spinbox.setMinimumSize(75, 0)
+            pos_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                      QtWidgets.QSizePolicy.Preferred)
 
-                # Add to layout
-                layout.addWidget(label, index, 0)
-                layout.addWidget(res_spinbox, index, 1)
-                layout.addWidget(min_spinbox, index, 3)
-                layout.addWidget(max_spinbox, index, 4)
-                layout.addWidget(slider, index, 6)
-                layout.addWidget(pos_spinbox, index, 7)
+            # Add to layout
+            layout.addWidget(label, index, 0)
+            layout.addWidget(res_spinbox, index, 1)
+            layout.addWidget(min_spinbox, index, 3)
+            layout.addWidget(max_spinbox, index, 4)
+            layout.addWidget(slider, index, 6)
+            layout.addWidget(pos_spinbox, index, 7)
 
             # Remember widgets references for later access
             self.axes_control_widgets[axis_name] = dict()
@@ -480,6 +483,12 @@ class ConfocalGui(GUIBase):
         layout.setColumnStretch(5, 1)
         self.scanner_control_dockwidget.widget().setMaximumHeight(
             self.scanner_control_dockwidget.widget().sizeHint().height())
+
+        # Connect signals
+        for axis, widget_dict in self.axes_control_widgets.items():
+            widget_dict['slider'].sliderPressed.connect(self._start_position_drag)
+            widget_dict['slider'].sliderReleased.connect(self._stop_position_drag)
+            widget_dict['slider'].sliderMoved.connect(self._update_position)
         return
 
     def _generate_optimizer_axes_widgets(self):
@@ -490,34 +499,34 @@ class ConfocalGui(GUIBase):
         self.optimizer_settings_axes_widgets = dict()
         for index, axis_name in enumerate(self.scannerlogic().scanner_axes_names, 1):
             label_text = '{0}-Axis:'.format(axis_name)
-            if index == 1:
-                label = self._osd.axis_0_label
-                label.setFont(font)
-                label.setText(label_text)
-                res_spinbox = self._osd.axis_0_optimizer_resolution_spinBox
-                range_spinbox = self._osd.axis_0_optimizer_range_scienDSpinBox
-            else:
-                label = QtWidgets.QLabel(label_text)
-                label.setFont(font)
-                label.setAlignment(QtCore.Qt.AlignRight)
+            # if index == 1:
+            #     label = self._osd.axis_0_label
+            #     label.setFont(font)
+            #     label.setText(label_text)
+            #     res_spinbox = self._osd.axis_0_optimizer_resolution_spinBox
+            #     range_spinbox = self._osd.axis_0_optimizer_range_scienDSpinBox
+            # else:
+            label = QtWidgets.QLabel(label_text)
+            label.setFont(font)
+            label.setAlignment(QtCore.Qt.AlignRight)
 
-                range_spinbox = ScienDSpinBox()
-                range_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                range_spinbox.setMinimumSize(70, 0)
-                range_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                            QtWidgets.QSizePolicy.Preferred)
+            range_spinbox = ScienDSpinBox()
+            range_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            range_spinbox.setMinimumSize(70, 0)
+            range_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                        QtWidgets.QSizePolicy.Preferred)
 
-                res_spinbox = QtWidgets.QSpinBox()
-                res_spinbox.setRange(2, 2 ** 31 - 1)
-                res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
-                res_spinbox.setMinimumSize(70, 0)
-                res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
-                                          QtWidgets.QSizePolicy.Preferred)
+            res_spinbox = QtWidgets.QSpinBox()
+            res_spinbox.setRange(2, 2 ** 31 - 1)
+            res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
+            res_spinbox.setMinimumSize(70, 0)
+            res_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                      QtWidgets.QSizePolicy.Preferred)
 
-                # Add to layout
-                layout.addWidget(label, index, 0)
-                layout.addWidget(range_spinbox, index, 1)
-                layout.addWidget(res_spinbox, index, 2)
+            # Add to layout
+            layout.addWidget(label, index, 0)
+            layout.addWidget(range_spinbox, index, 1)
+            layout.addWidget(res_spinbox, index, 2)
 
             # Remember widgets references for later access
             self.optimizer_settings_axes_widgets[axis_name] = dict()
@@ -581,8 +590,8 @@ class ConfocalGui(GUIBase):
                                                                     axis_dict['max_value'])
             self.axes_control_widgets[axis]['pos_spinbox'].setRange(axis_dict['min_value'],
                                                                     axis_dict['max_value'])
-            self.axes_control_widgets[axis]['slider'].setRange(axis_dict['min_value'],
-                                                               axis_dict['max_value'])
+            self.axes_control_widgets[axis]['slider'].setRange(max(axis_dict['min_value'], -2**31),
+                                                               min(axis_dict['max_value'], 2**31-1))
             self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setRange(
                 0, axis_dict['max_value'] - axis_dict['min_value'])
             self.optimizer_settings_axes_widgets[axis]['res_spinbox'].setRange(*res_range)
@@ -680,6 +689,19 @@ class ConfocalGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def _start_position_drag(self):
+        self._dragged_position_widget = self.sender()
+        return
+
+    @QtCore.Slot()
+    def _stop_position_drag(self):
+        self._dragged_position_widget = None
+        return
+
+    def _update_position(self, value):
+        pass
+
+    @QtCore.Slot()
     @QtCore.Slot(dict)
     def scanner_position_updated(self, position=None):
         """
@@ -692,14 +714,17 @@ class ConfocalGui(GUIBase):
             position = self.scannerlogic().scanner_position
 
         for axis, pos in position.items():
-            slider = self.axes_control_widgets[axis]['slider']
-            spinbox = self.axes_control_widgets[axis]['pos_spinbox']
-            slider.blockSignals(True)
-            spinbox.blockSignals(True)
-            slider.setValue(pos)
-            spinbox.setValue(pos)
-            slider.blockSignals(False)
-            spinbox.blockSignals(False)
+            self.axes_control_widgets[axis]['pos_spinbox'].setValue(pos)
+            if self.axes_control_widgets[axis]['slider'] is not self._dragged_position_widget:
+                self.axes_control_widgets[axis]['slider'].setValue(pos)
+            for key, dockwidget in self.scan_2d_dockwidgets.items():
+                ax1, ax2 = key.split(',')
+                if ax1 == axis:
+                    crosshair_pos = (pos, dockwidget.plot_widget.crosshair_position[1])
+                    dockwidget.plot_widget.set_crosshair_pos(crosshair_pos)
+                elif ax2 == axis:
+                    crosshair_pos = (dockwidget.plot_widget.crosshair_position[0], pos)
+                    dockwidget.plot_widget.set_crosshair_pos(crosshair_pos)
         return
 
     @QtCore.Slot()
