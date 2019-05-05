@@ -22,10 +22,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-from pyqtgraph import mkPen, mkBrush, GraphicsObject, getConfigOption, PlotWidget
+from pyqtgraph import mkPen, mkBrush, GraphicsObject, PlotWidget
 from qtpy import QtCore, QtGui, QtWidgets
 from qtwidgets.scientific_spinbox import ScienDSpinBox
-from core.util.filters import scan_blink_correction
 from gui.colordefs import ColorScaleInferno
 
 __all__ = ['ColorBarWidget']
