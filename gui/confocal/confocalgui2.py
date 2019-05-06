@@ -252,6 +252,7 @@ class ConfocalGui(GUIBase):
     # status vars
     slider_small_step = StatusVar(name='slider_small_step', default=10e-9)
     slider_big_step = StatusVar(name='slider_big_step', default=100e-9)
+    _show_true_scanner_position = StatusVar(name='show_true_scanner_position', default=False)
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
@@ -298,7 +299,8 @@ class ConfocalGui(GUIBase):
         # Initialize fixed dockwidgets
         self.optimizer_dockwidget = OptimizerDockWidget()
         self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
-        self.optimizer_dockwidget.scan_widget.toggle_crosshair(True, movable=False)
+        self.optimizer_dockwidget.scan_widget.add_crosshair(movable=False,
+                                                            pen={'color': '#00ff00', 'width': 2})
         self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
         self.optimizer_dockwidget.visibilityChanged.connect(
             self._mw.action_view_optimizer.setChecked)
@@ -650,14 +652,40 @@ class ConfocalGui(GUIBase):
                 'bottom', axes[0], units=scanner_constraints[axes[0]]['unit'])
             dockwidget.plot_widget.setLabel(
                 'left', axes[1], units=scanner_constraints[axes[1]]['unit'])
-            dockwidget.plot_widget.toggle_crosshair(True, movable=True)
-            dockwidget.plot_widget.set_crosshair_min_size_factor(0.02)
+            dockwidget.plot_widget.add_crosshair(movable=True, min_size_factor=0.02)
+            dockwidget.plot_widget.add_crosshair(movable=False,
+                                                 pen={'color': '#00ffff', 'width': 1})
+            dockwidget.plot_widget.bring_crosshair_on_top(0)
+            if not self.show_true_scanner_position:
+                dockwidget.plot_widget.hide_crosshair(1)
             dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
-            dockwidget.plot_widget.sigCrosshairStartDrag.connect(self._start_position_drag)
-            dockwidget.plot_widget.sigCrosshairStopDrag.connect(self._stop_position_drag)
-            dockwidget.plot_widget.sigCrosshairDraggedPosChanged.connect(
+            dockwidget.plot_widget.crosshairs[-1].sigDragStarted.connect(self._start_position_drag)
+            dockwidget.plot_widget.crosshairs[-1].sigDragStopped.connect(self._stop_position_drag)
+            dockwidget.plot_widget.crosshairs[-1].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes))
+        return
+
+    @property
+    def show_true_scanner_position(self):
+        return self._show_true_scanner_position
+
+    @show_true_scanner_position.setter
+    def show_true_scanner_position(self, show):
+        self.toggle_true_scanner_position_display(show)
+
+    @QtCore.Slot(bool)
+    def toggle_true_scanner_position_display(self, show):
+        show = bool(show)
+        if show == self._show_true_scanner_position:
+            return
+        self._show_true_scanner_position = show
+        if self._show_true_scanner_position:
+            for dockwidget in self.scan_2d_dockwidgets.values():
+                dockwidget.plot_widget.show_crosshair(1)
+        else:
+            for dockwidget in self.scan_2d_dockwidgets.values():
+                dockwidget.plot_widget.hide_crosshair(1)
         return
 
     @QtCore.Slot()
@@ -747,11 +775,11 @@ class ConfocalGui(GUIBase):
                     continue
                 ax1, ax2 = key.split(',')
                 if ax1 == axis:
-                    crosshair_pos = (pos, dockwidget.plot_widget.crosshair_position[1])
-                    dockwidget.plot_widget.set_crosshair_pos(crosshair_pos)
+                    crosshair_pos = (pos, dockwidget.plot_widget.crosshairs[0].position[1])
+                    dockwidget.plot_widget.crosshairs[0].set_position(crosshair_pos)
                 elif ax2 == axis:
-                    crosshair_pos = (dockwidget.plot_widget.crosshair_position[0], pos)
-                    dockwidget.plot_widget.set_crosshair_pos(crosshair_pos)
+                    crosshair_pos = (dockwidget.plot_widget.crosshairs[0].position[0], pos)
+                    dockwidget.plot_widget.crosshairs[0].set_position(crosshair_pos)
         return
 
     @QtCore.Slot()
@@ -833,4 +861,4 @@ class ConfocalGui(GUIBase):
         return lambda x: self.move_scanner_position({ax: x})
 
     def __get_crosshair_update_func(self, ax):
-        return lambda point: self.move_scanner_position({ax[0]: point.x(), ax[1]: point.y()})
+        return lambda x, y: self.move_scanner_position({ax[0]: x, ax[1]: y})

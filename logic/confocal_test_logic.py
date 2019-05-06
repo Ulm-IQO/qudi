@@ -125,6 +125,10 @@ class ConfocalLogic(GenericLogic):
         return self.pos.copy()
 
     @property
+    def scanner_target(self):
+        return
+
+    @property
     def scanner_axes_names(self):
         return tuple(self.scanner_constraints)
 
