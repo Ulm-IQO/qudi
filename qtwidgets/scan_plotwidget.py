@@ -114,6 +114,8 @@ class ScanPlotWidget(PlotWidget):
     sigMouseAreaSelected = QtCore.Signal(QtCore.QRectF)  # mapped rectangle mouse cursor selection
     sigCrosshairPosChanged = QtCore.Signal(QtCore.QPointF)
     sigCrosshairDraggedPosChanged = QtCore.Signal(QtCore.QPointF)
+    sigCrosshairStartDrag = QtCore.Signal()
+    sigCrosshairStopDrag = QtCore.Signal()
 
     def __init__(self, *args, **kwargs):
         kwargs['viewBox'] = ScanViewBox()  # Use custom pg.ViewBox subclass
@@ -123,6 +125,7 @@ class ScanPlotWidget(PlotWidget):
         self._min_crosshair_factor = 0.02
         self._crosshair_size = (0, 0)
         self._crosshair_range = None
+        self._crosshair_dragged = False
         self.getViewBox().sigRangeChanged.connect(self._constraint_crosshair_size)
 
         self.crosshair = ROI((0, 0), (0, 0), pen={'color': '#00ff00', 'width': 1})
@@ -137,8 +140,11 @@ class ScanPlotWidget(PlotWidget):
                                   pen={'color': '#00ff00', 'width': 1},
                                   hoverPen={'color': '#ffff00', 'width': 1})
         self.vline.sigDragged.connect(self._update_pos_from_line)
+        self.vline.sigPositionChangeFinished.connect(self._finish_drag)
         self.hline.sigDragged.connect(self._update_pos_from_line)
+        self.hline.sigPositionChangeFinished.connect(self._finish_drag)
         self.crosshair.sigRegionChanged.connect(self._update_pos_from_roi)
+        self.crosshair.sigRegionChangeFinished.connect(self._finish_drag)
         self.sigCrosshairDraggedPosChanged.connect(self.sigCrosshairPosChanged)
 
     @property
@@ -210,6 +216,9 @@ class ScanPlotWidget(PlotWidget):
         pos = self.vline.pos()
         pos[1] = self.hline.pos()[1]
         size = self.crosshair.size()
+        if not self._crosshair_dragged:
+            self._crosshair_dragged = True
+            self.sigCrosshairStartDrag.emit()
         self.crosshair.blockSignals(True)
         self.crosshair.setPos((pos[0] - size[0] / 2, pos[1] - size[1] / 2))
         self.crosshair.blockSignals(False)
@@ -227,10 +236,18 @@ class ScanPlotWidget(PlotWidget):
         size = self.crosshair.size()
         pos[0] += size[0] / 2
         pos[1] += size[1] / 2
+        if not self._crosshair_dragged:
+            self._crosshair_dragged = True
+            self.sigCrosshairStartDrag.emit()
         self.vline.setPos(pos[0])
         self.hline.setPos(pos[1])
         self.sigCrosshairDraggedPosChanged.emit(QtCore.QPointF(pos[0], pos[1]))
         return
+
+    def _finish_drag(self):
+        if self._crosshair_dragged:
+            self._crosshair_dragged = False
+            self.sigCrosshairStopDrag.emit()
 
     def toggle_crosshair(self, enable, movable=True):
         """

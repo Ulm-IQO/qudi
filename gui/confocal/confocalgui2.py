@@ -654,6 +654,10 @@ class ConfocalGui(GUIBase):
             dockwidget.plot_widget.set_crosshair_min_size_factor(0.02)
             dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
+            dockwidget.plot_widget.sigCrosshairStartDrag.connect(self._start_position_drag)
+            dockwidget.plot_widget.sigCrosshairStopDrag.connect(self._stop_position_drag)
+            dockwidget.plot_widget.sigCrosshairDraggedPosChanged.connect(
+                self.__get_crosshair_update_func(axes))
         return
 
     @QtCore.Slot()
@@ -739,6 +743,9 @@ class ConfocalGui(GUIBase):
             if self.axes_control_widgets[axis]['slider'] is not self._dragged_position_widget:
                 self.axes_control_widgets[axis]['slider'].setValue(pos)
             for key, dockwidget in self.scan_2d_dockwidgets.items():
+                if dockwidget.plot_widget is self._dragged_position_widget:
+                    print('der')
+                    continue
                 ax1, ax2 = key.split(',')
                 if ax1 == axis:
                     crosshair_pos = (pos, dockwidget.plot_widget.crosshair_position[1])
@@ -825,3 +832,6 @@ class ConfocalGui(GUIBase):
 
     def __get_slider_update_func(self, ax):
         return lambda x: self.move_scanner_position({ax: x})
+
+    def __get_crosshair_update_func(self, ax):
+        return lambda point: self.move_scanner_position({ax[0]: point.x(), ax[1]: point.y()})
