@@ -655,7 +655,8 @@ class SaveLogic(GenericLogic):
         if len(args) == 0:
             param_dict = kwargs
         elif len(args) == 1 and isinstance(args[0], dict):
-            param_dict = args[0].update(kwargs)
+            param_dict = args[0]
+            param_dict.update(kwargs)
         else:
             raise TypeError('"update_additional_parameters" takes exactly 0 or 1 positional '
                             'argument of type dict.')
