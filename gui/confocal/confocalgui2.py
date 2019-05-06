@@ -744,7 +744,6 @@ class ConfocalGui(GUIBase):
                 self.axes_control_widgets[axis]['slider'].setValue(pos)
             for key, dockwidget in self.scan_2d_dockwidgets.items():
                 if dockwidget.plot_widget is self._dragged_position_widget:
-                    print('der')
                     continue
                 ax1, ax2 = key.split(',')
                 if ax1 == axis:
