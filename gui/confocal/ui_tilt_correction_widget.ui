@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>200</height>
+    <height>147</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -24,13 +24,13 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>50</width>
+       <width>75</width>
        <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
-       <width>70</width>
+       <width>16777215</width>
        <height>16777215</height>
       </size>
      </property>
@@ -86,13 +86,13 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>50</width>
+       <width>75</width>
        <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
-       <width>70</width>
+       <width>16777215</width>
        <height>16777215</height>
       </size>
      </property>
@@ -298,7 +298,7 @@
    <item row="4" column="1" colspan="3">
     <widget class="QPushButton" name="calculate_tilt_pushButton">
      <property name="sizePolicy">
-      <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
        <horstretch>0</horstretch>
        <verstretch>0</verstretch>
       </sizepolicy>
@@ -355,13 +355,13 @@
      </property>
      <property name="minimumSize">
       <size>
-       <width>50</width>
+       <width>75</width>
        <height>0</height>
       </size>
      </property>
      <property name="maximumSize">
       <size>
-       <width>70</width>
+       <width>16777215</width>
        <height>16777215</height>
       </size>
      </property>

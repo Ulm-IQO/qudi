@@ -150,6 +150,6 @@ class ConfocalLogic(GenericLogic):
                 self.log.error('Unknown scanner axis: "{0}"'.format(ax))
                 return
         self.pos.update(pos_dict)
-        print(self.sender())
+        time.sleep(0.01)
         self.sigScannerPositionChanged.emit(pos_dict)
         return

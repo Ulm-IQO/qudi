@@ -28,6 +28,7 @@ import time
 from core.module import Connector, ConfigOption, StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
 from qtwidgets.scientific_spinbox import ScienDSpinBox
+from qtwidgets.slider import DoubleSlider
 from qtwidgets.colorbar import ColorBarWidget
 from gui.guibase import GUIBase
 from gui.colordefs import ColorScaleInferno
@@ -200,7 +201,12 @@ class TiltCorrectionDockWidget(QtWidgets.QDockWidget):
         uic.loadUi(ui_file, widget)
         widget.setObjectName('tilt_correction_widget')
 
+        widget.setMaximumWidth(widget.sizeHint().width())
+
         self.setWidget(widget)
+
+        # FIXME: This widget needs to be redesigned for arbitrary axes. Disable it for now.
+        self.widget().setEnabled(False)
         return
 
 
@@ -250,7 +256,7 @@ class ConfocalGui(GUIBase):
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
     # signals
-    sigStartOptimizer = QtCore.Signal(list, str)
+    sigMoveScannerPosition = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -294,10 +300,22 @@ class ConfocalGui(GUIBase):
         self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
         self.optimizer_dockwidget.scan_widget.toggle_crosshair(True, movable=False)
         self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
+        self.optimizer_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_optimizer.setChecked)
+        self._mw.action_view_optimizer.triggered[bool].connect(
+            self.optimizer_dockwidget.setVisible)
         self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
         self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.tilt_correction_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_tilt_correction.setChecked)
+        self._mw.action_view_tilt_correction.triggered[bool].connect(
+            self.tilt_correction_dockwidget.setVisible)
         self.scanner_control_dockwidget = ScannerControlDockWidget()
         self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.scanner_control_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_scanner_control.setChecked)
+        self._mw.action_view_scanner_control.triggered[bool].connect(
+            self.scanner_control_dockwidget.setVisible)
 
         # Configure widgets according to available scan axes
         self._generate_axes_control_widgets()
@@ -324,6 +342,12 @@ class ConfocalGui(GUIBase):
                 self._window_state = None
                 self.log.debug(
                     'Unable to restore previous window state. Falling back to default.')
+
+        # Connect signals
+        self.sigMoveScannerPosition.connect(
+            self.scannerlogic().set_scanner_position, QtCore.Qt.QueuedConnection)
+        self.scannerlogic().sigScannerPositionChanged.connect(
+            self.scanner_position_updated, QtCore.Qt.QueuedConnection)
 
         self.show()
         return
@@ -392,12 +416,16 @@ class ConfocalGui(GUIBase):
 
         # write the configuration to the settings window of the GUI.
         self.keep_former_optimizer_settings()
+        return
 
     def on_deactivate(self):
         """ Reverse steps of activation
 
         @return int: error code (0:OK, -1:error)
         """
+        self.sigMoveScannerPosition.disconnect()
+        self.scannerlogic().sigScannerPositionChanged.disconnect()
+
         self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
         self._window_state = bytearray(self._mw.saveState()).hex()
         self._mw.close()
@@ -417,21 +445,13 @@ class ConfocalGui(GUIBase):
 
         self.axes_control_widgets = dict()
         for index, axis_name in enumerate(self.scannerlogic().scanner_axes_names, 1):
-            # if index == 1:
-            #     label = self.scanner_control_dockwidget.widget().axis_0_label
-            #     label.setFont(font)
-            #     label.setText('{0}-Axis:'.format(axis_name))
-            #     res_spinbox = self.scanner_control_dockwidget.widget().axis_0_resolution_spinBox
-            #     min_spinbox = self.scanner_control_dockwidget.widget().axis_0_min_range_scienDSpinBox
-            #     max_spinbox = self.scanner_control_dockwidget.widget().axis_0_max_range_scienDSpinBox
-            #     slider = self.scanner_control_dockwidget.widget().axis_0_slider
-            #     pos_spinbox = self.scanner_control_dockwidget.widget().axis_0_position_scienDSpinBox
-            # else:
             label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
+            label.setObjectName('{0}_axis_label'.format(axis_name))
             label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
 
             res_spinbox = QtWidgets.QSpinBox()
+            res_spinbox.setObjectName('{0}_resolution_spinBox'.format(axis_name))
             res_spinbox.setRange(2, 2 ** 31 - 1)
             res_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             res_spinbox.setMinimumSize(50, 0)
@@ -439,22 +459,26 @@ class ConfocalGui(GUIBase):
                                       QtWidgets.QSizePolicy.Preferred)
 
             min_spinbox = ScienDSpinBox()
+            min_spinbox.setObjectName('{0}_min_range_scienDSpinBox'.format(axis_name))
             min_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             min_spinbox.setMinimumSize(75, 0)
             min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Preferred)
 
             max_spinbox = ScienDSpinBox()
+            max_spinbox.setObjectName('{0}_max_range_scienDSpinBox'.format(axis_name))
             max_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             max_spinbox.setMinimumSize(75, 0)
             max_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                       QtWidgets.QSizePolicy.Preferred)
 
-            slider = QtWidgets.QSlider(QtCore.Qt.Horizontal)
+            slider = DoubleSlider(QtCore.Qt.Horizontal)
+            slider.setObjectName('{0}_position_doubleSlider'.format(axis_name))
             slider.setMinimumSize(150, 0)
             slider.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
             pos_spinbox = ScienDSpinBox()
+            pos_spinbox.setObjectName('{0}_position_scienDSpinBox'.format(axis_name))
             pos_spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
             pos_spinbox.setMinimumSize(75, 0)
             pos_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
@@ -488,7 +512,7 @@ class ConfocalGui(GUIBase):
         for axis, widget_dict in self.axes_control_widgets.items():
             widget_dict['slider'].sliderPressed.connect(self._start_position_drag)
             widget_dict['slider'].sliderReleased.connect(self._stop_position_drag)
-            widget_dict['slider'].sliderMoved.connect(self._update_position)
+            widget_dict['slider'].sliderMoved.connect(self.__get_slider_update_func(axis))
         return
 
     def _generate_optimizer_axes_widgets(self):
@@ -498,15 +522,7 @@ class ConfocalGui(GUIBase):
 
         self.optimizer_settings_axes_widgets = dict()
         for index, axis_name in enumerate(self.scannerlogic().scanner_axes_names, 1):
-            label_text = '{0}-Axis:'.format(axis_name)
-            # if index == 1:
-            #     label = self._osd.axis_0_label
-            #     label.setFont(font)
-            #     label.setText(label_text)
-            #     res_spinbox = self._osd.axis_0_optimizer_resolution_spinBox
-            #     range_spinbox = self._osd.axis_0_optimizer_range_scienDSpinBox
-            # else:
-            label = QtWidgets.QLabel(label_text)
+            label = QtWidgets.QLabel('{0}-Axis:'.format(axis_name))
             label.setFont(font)
             label.setAlignment(QtCore.Qt.AlignRight)
 
@@ -698,8 +714,13 @@ class ConfocalGui(GUIBase):
         self._dragged_position_widget = None
         return
 
-    def _update_position(self, value):
-        pass
+    @QtCore.Slot(float)
+    def move_scanner_position(self, target_pos):
+        """
+
+        @param dict target_pos:
+        """
+        self.sigMoveScannerPosition.emit(target_pos)
 
     @QtCore.Slot()
     @QtCore.Slot(dict)
@@ -801,3 +822,6 @@ class ConfocalGui(GUIBase):
         #         self.update_from_key(z=float(round(z_pos - self.slider_small_step, 10)))
         #     else:
         #         event.ignore()
+
+    def __get_slider_update_func(self, ax):
+        return lambda x: self.move_scanner_position({ax: x})
