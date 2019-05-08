@@ -252,12 +252,13 @@ class ConfocalGui(GUIBase):
     # status vars
     slider_small_step = StatusVar(name='slider_small_step', default=10e-9)
     slider_big_step = StatusVar(name='slider_big_step', default=100e-9)
-    _show_true_scanner_position = StatusVar(name='show_true_scanner_position', default=False)
+    _show_true_scanner_position = StatusVar(name='show_true_scanner_position', default=True)
     _window_state = StatusVar(name='window_state', default=None)
     _window_geometry = StatusVar(name='window_geometry', default=None)
 
     # signals
-    sigMoveScannerPosition = QtCore.Signal(dict)
+    sigMoveScannerPosition = QtCore.Signal(dict, object)
+    sigOptimizerSettingsChanged = QtCore.Signal(dict)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -277,8 +278,6 @@ class ConfocalGui(GUIBase):
         self.optimizer_dockwidget = None
         self.tilt_correction_dockwidget = None
         self.scanner_control_dockwidget = None
-
-        self._dragged_position_widget = None
         return
 
     def on_activate(self):
@@ -289,45 +288,26 @@ class ConfocalGui(GUIBase):
         """
         self.scan_2d_dockwidgets = dict()
         self.scan_1d_dockwidgets = dict()
-        self._dragged_position_widget = None
 
         # Initialize main window and dialogues
         self._ssd = ScannerSettingDialog()
-        self._osd = OptimizerSettingDialog()
         self._mw = ConfocalMainWindow()
 
         # Initialize fixed dockwidgets
-        self.optimizer_dockwidget = OptimizerDockWidget()
-        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
-        self.optimizer_dockwidget.scan_widget.add_crosshair(movable=False,
-                                                            pen={'color': '#00ff00', 'width': 2})
-        self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
-        self.optimizer_dockwidget.visibilityChanged.connect(
-            self._mw.action_view_optimizer.setChecked)
-        self._mw.action_view_optimizer.triggered[bool].connect(
-            self.optimizer_dockwidget.setVisible)
-        self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
-        self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
-        self.tilt_correction_dockwidget.visibilityChanged.connect(
-            self._mw.action_view_tilt_correction.setChecked)
-        self._mw.action_view_tilt_correction.triggered[bool].connect(
-            self.tilt_correction_dockwidget.setVisible)
-        self.scanner_control_dockwidget = ScannerControlDockWidget()
-        self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
-        self.scanner_control_dockwidget.visibilityChanged.connect(
-            self._mw.action_view_scanner_control.setChecked)
-        self._mw.action_view_scanner_control.triggered[bool].connect(
-            self.scanner_control_dockwidget.setVisible)
+        self._init_static_dockwidgets()
+
+        # Initialize dialog windows
+        self._init_optimizer_settings()
 
         # Configure widgets according to available scan axes
         self._generate_axes_control_widgets()
-        self._generate_optimizer_axes_widgets()
 
         # Set input widget value ranges and units according to scanner constraints
         self.apply_scanner_constraints()
 
         # Initialize widget data
         self.scanner_settings_updated()
+        self.scanner_target_updated()
         self.scanner_position_updated()
         self.scan_data_updated()
 
@@ -347,9 +327,16 @@ class ConfocalGui(GUIBase):
 
         # Connect signals
         self.sigMoveScannerPosition.connect(
-            self.scannerlogic().set_scanner_position, QtCore.Qt.QueuedConnection)
+            self.scannerlogic().set_scanner_target_position, QtCore.Qt.QueuedConnection)
+        self.sigOptimizerSettingsChanged.connect(
+            self.scannerlogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
+
         self.scannerlogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
+        self.scannerlogic().sigScannerTargetChanged.connect(
+            self.scanner_target_updated, QtCore.Qt.QueuedConnection)
+        self.scannerlogic().sigOptimizerSettingsChanged.connect(
+            self.update_optimizer_settings, QtCore.Qt.QueuedConnection)
 
         self.show()
         return
@@ -393,31 +380,25 @@ class ConfocalGui(GUIBase):
         self._mw.sigKeyboardPressed.connect(self.keyPressEvent)
         self.show()
 
-    def initOptimizerSettingsUI(self):
-        """ Definition, configuration and initialisation of the optimizer settings GUI.
-
-        This init connects all the graphic modules, which were created in the
-        *.ui file and configures the event handling between the modules.
-        Moreover it sets default values if not existed in the logic modules.
+    def _init_optimizer_settings(self):
+        """ Configuration and initialisation of the optimizer settings dialog.
         """
         # Create the Settings window
         self._osd = OptimizerSettingDialog()
+
+        # Connect MainWindow actions
+        self._mw.action_optimizer_settings.triggered.connect(lambda x: self._osd.exec_())
+
+        # Create dynamically created widgets
+        self._generate_optimizer_axes_widgets()
+
         # Connect the action of the settings window with the code:
-        self._osd.accepted.connect(self.update_optimizer_settings)
-        self._osd.rejected.connect(self.keep_former_optimizer_settings)
-        self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.update_optimizer_settings)
+        self._osd.accepted.connect(self.change_optimizer_settings)
+        self._osd.rejected.connect(self.update_optimizer_settings)
+        self._osd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(self.change_optimizer_settings)
 
-        # Set up and connect xy channel combobox
-        scan_channels = self._optimizer_logic.get_scanner_count_channels()
-        for n, ch in enumerate(scan_channels):
-            self._osd.opt_channel_ComboBox.addItem(str(ch), n)
-
-        # Generation of the fit params tab ##################
-        self._osd.fit_tab = FitParametersWidget(self._optimizer_logic.z_params)
-        self._osd.settings_tabWidget.addTab(self._osd.fit_tab, "Fit Params")
-
-        # write the configuration to the settings window of the GUI.
-        self.keep_former_optimizer_settings()
+        # initialize widget content
+        self.update_optimizer_settings()
         return
 
     def on_deactivate(self):
@@ -439,6 +420,29 @@ class ConfocalGui(GUIBase):
         self._mw.show()
         self._mw.activateWindow()
         self._mw.raise_()
+
+    def _init_static_dockwidgets(self):
+        self.optimizer_dockwidget = OptimizerDockWidget()
+        self.optimizer_dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
+        self.optimizer_dockwidget.scan_widget.add_crosshair(movable=False,
+                                                            pen={'color': '#00ff00', 'width': 2})
+        self.optimizer_dockwidget.scan_widget.setAspectLocked(lock=True, ratio=1.0)
+        self.optimizer_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_optimizer.setChecked)
+        self._mw.action_view_optimizer.triggered[bool].connect(
+            self.optimizer_dockwidget.setVisible)
+        self.tilt_correction_dockwidget = TiltCorrectionDockWidget()
+        self.tilt_correction_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.tilt_correction_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_tilt_correction.setChecked)
+        self._mw.action_view_tilt_correction.triggered[bool].connect(
+            self.tilt_correction_dockwidget.setVisible)
+        self.scanner_control_dockwidget = ScannerControlDockWidget()
+        self.scanner_control_dockwidget.setAllowedAreas(QtCore.Qt.BottomDockWidgetArea)
+        self.scanner_control_dockwidget.visibilityChanged.connect(
+            self._mw.action_view_scanner_control.setChecked)
+        self._mw.action_view_scanner_control.triggered[bool].connect(
+            self.scanner_control_dockwidget.setVisible)
 
     def _generate_axes_control_widgets(self):
         font = QtGui.QFont()
@@ -512,9 +516,8 @@ class ConfocalGui(GUIBase):
 
         # Connect signals
         for axis, widget_dict in self.axes_control_widgets.items():
-            widget_dict['slider'].sliderPressed.connect(self._start_position_drag)
-            widget_dict['slider'].sliderReleased.connect(self._stop_position_drag)
-            widget_dict['slider'].sliderMoved.connect(self.__get_slider_update_func(axis))
+            widget_dict['slider'].valueChanged.connect(
+                self.__get_slider_update_func(axis, widget_dict['slider']))
         return
 
     def _generate_optimizer_axes_widgets(self):
@@ -608,8 +611,10 @@ class ConfocalGui(GUIBase):
                                                                     axis_dict['max_value'])
             self.axes_control_widgets[axis]['pos_spinbox'].setRange(axis_dict['min_value'],
                                                                     axis_dict['max_value'])
-            self.axes_control_widgets[axis]['slider'].setRange(max(axis_dict['min_value'], -2**31),
-                                                               min(axis_dict['max_value'], 2**31-1))
+            self.axes_control_widgets[axis]['slider'].setRange(axis_dict['min_value'],
+                                                               axis_dict['max_value'])
+            self.axes_control_widgets[axis]['slider'].set_granularity(
+                round((axis_dict['max_value'] - axis_dict['min_value']) / axis_dict['min_step'])+1)
             self.optimizer_settings_axes_widgets[axis]['range_spinbox'].setRange(
                 0, axis_dict['max_value'] - axis_dict['min_value'])
             self.optimizer_settings_axes_widgets[axis]['res_spinbox'].setRange(*res_range)
@@ -656,14 +661,17 @@ class ConfocalGui(GUIBase):
             dockwidget.plot_widget.add_crosshair(movable=False,
                                                  pen={'color': '#00ffff', 'width': 1})
             dockwidget.plot_widget.bring_crosshair_on_top(0)
+            dockwidget.plot_widget.crosshairs[0].set_allowed_range(
+                ((scanner_constraints[axes[0]]['min_value'],
+                  scanner_constraints[axes[0]]['max_value']),
+                 (scanner_constraints[axes[1]]['min_value'],
+                  scanner_constraints[axes[1]]['max_value'])))
             if not self.show_true_scanner_position:
                 dockwidget.plot_widget.hide_crosshair(1)
             dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
-            dockwidget.plot_widget.crosshairs[-1].sigDragStarted.connect(self._start_position_drag)
-            dockwidget.plot_widget.crosshairs[-1].sigDragStopped.connect(self._stop_position_drag)
-            dockwidget.plot_widget.crosshairs[-1].sigDraggedPosChanged.connect(
-                self.__get_crosshair_update_func(axes))
+            dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
+                self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
         return
 
     @property
@@ -736,50 +744,53 @@ class ConfocalGui(GUIBase):
                 self._add_scan_dockwidget(key)
         return
 
-    @QtCore.Slot()
-    def _start_position_drag(self):
-        self._dragged_position_widget = self.sender()
-        return
-
-    @QtCore.Slot()
-    def _stop_position_drag(self):
-        self._dragged_position_widget = None
-        return
-
     @QtCore.Slot(float)
     def move_scanner_position(self, target_pos):
         """
 
         @param dict target_pos:
         """
-        self.sigMoveScannerPosition.emit(target_pos)
+        self.sigMoveScannerPosition.emit(target_pos, self)
 
-    @QtCore.Slot()
     @QtCore.Slot(dict)
-    def scanner_position_updated(self, position=None):
+    def scanner_position_updated(self, pos_dict=None, caller=None):
         """
         Updates the scanner position and set widgets accordingly.
 
-        @param dict position: The scanner position dict to update each axis position.
+        @param dict pos_dict: The scanner position dict to update each axis position.
                               If None (default) read the scanner position from logic and update.
+        @param object caller: The qudi module responsible for setting this update in motion
         """
-        if not isinstance(position, dict):
-            position = self.scannerlogic().scanner_position
+        # If this update has been issued by this module, do not update display.
+        # This has already been done.
+        if caller is self:
+            return
 
-        for axis, pos in position.items():
-            self.axes_control_widgets[axis]['pos_spinbox'].setValue(pos)
-            if self.axes_control_widgets[axis]['slider'] is not self._dragged_position_widget:
-                self.axes_control_widgets[axis]['slider'].setValue(pos)
-            for key, dockwidget in self.scan_2d_dockwidgets.items():
-                if dockwidget.plot_widget is self._dragged_position_widget:
-                    continue
-                ax1, ax2 = key.split(',')
-                if ax1 == axis:
-                    crosshair_pos = (pos, dockwidget.plot_widget.crosshairs[0].position[1])
-                    dockwidget.plot_widget.crosshairs[0].set_position(crosshair_pos)
-                elif ax2 == axis:
-                    crosshair_pos = (dockwidget.plot_widget.crosshairs[0].position[0], pos)
-                    dockwidget.plot_widget.crosshairs[0].set_position(crosshair_pos)
+        if not isinstance(pos_dict, dict):
+            pos_dict = self.scannerlogic().scanner_position
+
+        self._update_position_display(pos_dict)
+        return
+
+    @QtCore.Slot(dict)
+    @QtCore.Slot(dict, object)
+    def scanner_target_updated(self, pos_dict=None, caller=None):
+        """
+        Updates the scanner target and set widgets accordingly.
+
+        @param dict pos_dict: The scanner position dict to update each axis position.
+                              If None (default) read the scanner position from logic and update.
+        @param object caller: The qudi module responsible for setting this update in motion
+        """
+        # If this update has been issued by this module, do not update display.
+        # This has already been done.
+        if caller is self:
+            return
+
+        if not isinstance(pos_dict, dict):
+            pos_dict = self.scannerlogic().scanner_position
+
+        self._update_target_display(pos_dict)
         return
 
     @QtCore.Slot()
@@ -809,6 +820,53 @@ class ConfocalGui(GUIBase):
                     self.scan_1d_dockwidgets[axes[0]].plot_item.setData(data['scan'])
                 self.scan_1d_dockwidgets[axes[0]].plot_widget.setLabel(
                     'left', 'scan data', units=data['unit'])
+        return
+
+    def _update_position_display(self, pos_dict):
+        """
+
+        @param dict pos_dict:
+        """
+        for axis, pos in pos_dict.items():
+            for key, dockwidget in self.scan_2d_dockwidgets.items():
+                crosshair = dockwidget.plot_widget.crosshairs[1]
+                ax1, ax2 = key.split(',')
+                if ax1 == axis:
+                    crosshair_pos = (pos, crosshair.position[1])
+                    crosshair.set_position(crosshair_pos)
+                elif ax2 == axis:
+                    crosshair_pos = (crosshair.position[0], pos)
+                    crosshair.set_position(crosshair_pos)
+        return
+
+    def _update_target_display(self, pos_dict, exclude_widget=None):
+        """
+
+        @param dict pos_dict:
+        @param object exclude_widget:
+        """
+        for axis, pos in pos_dict.items():
+            spinbox = self.axes_control_widgets[axis]['pos_spinbox']
+            if exclude_widget is not spinbox:
+                spinbox.blockSignals(True)
+                spinbox.setValue(pos)
+                spinbox.blockSignals(False)
+            slider = self.axes_control_widgets[axis]['slider']
+            if exclude_widget is not slider:
+                slider.blockSignals(True)
+                slider.setValue(pos)
+                slider.blockSignals(False)
+            for key, dockwidget in self.scan_2d_dockwidgets.items():
+                crosshair = dockwidget.plot_widget.crosshairs[0]
+                if crosshair is exclude_widget:
+                    continue
+                ax1, ax2 = key.split(',')
+                if ax1 == axis:
+                    crosshair_pos = (pos, crosshair.position[1])
+                    crosshair.set_position(crosshair_pos)
+                elif ax2 == axis:
+                    crosshair_pos = (crosshair.position[0], pos)
+                    crosshair.set_position(crosshair_pos)
         return
 
     def move_scanner_by_keyboard_event(self, event):
@@ -857,8 +915,89 @@ class ConfocalGui(GUIBase):
         #     else:
         #         event.ignore()
 
-    def __get_slider_update_func(self, ax):
-        return lambda x: self.move_scanner_position({ax: x})
+    def __get_slider_update_func(self, ax, slider):
+        def update_func(x):
+            pos_dict = {ax: x}
+            self._update_target_display(pos_dict, exclude_widget=slider)
+            self.move_scanner_position(pos_dict)
+        return update_func
 
-    def __get_crosshair_update_func(self, ax):
-        return lambda x, y: self.move_scanner_position({ax[0]: x, ax[1]: y})
+    def __get_crosshair_update_func(self, ax, crosshair):
+        def update_func(x, y):
+            pos_dict = {ax[0]: x, ax[1]: y}
+            self._update_target_display(pos_dict, exclude_widget=crosshair)
+            self.move_scanner_position(pos_dict)
+        return update_func
+
+    @QtCore.Slot()
+    def change_optimizer_settings(self):
+        settings = dict()
+        settings['settle_time'] = self._osd.init_settle_time_scienDSpinBox.value()
+        settings['pixel_clock'] = self._osd.pixel_clock_frequency_scienSpinBox.value()
+        settings['backscan_pts'] = self._osd.backscan_points_spinBox.value()
+        settings['sequence'] = [s.strip() for s in
+                                self._osd.optimization_sequence_lineEdit.text().split(',')]
+        axes_dict = dict()
+        for axis, widget_dict in self.optimizer_settings_axes_widgets.items():
+            axes_dict[axis] = dict()
+            axes_dict[axis]['range'] = widget_dict['range_spinbox'].value()
+            axes_dict[axis]['resolution'] = widget_dict['res_spinbox'].value()
+        settings['axes'] = axes_dict
+        self.sigOptimizerSettingsChanged.emit(settings)
+        return
+
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
+    def update_optimizer_settings(self, settings=None):
+        if not isinstance(settings, dict):
+            settings = self.scannerlogic().optimizer_settings
+
+        if 'settle_time' in settings:
+            self._osd.init_settle_time_scienDSpinBox.blockSignals(True)
+            self._osd.init_settle_time_scienDSpinBox.setValue(settings['settle_time'])
+            self._osd.init_settle_time_scienDSpinBox.blockSignals(False)
+        if 'pixel_clock' in settings:
+            self._osd.pixel_clock_frequency_scienSpinBox.blockSignals(True)
+            self._osd.pixel_clock_frequency_scienSpinBox.setValue(settings['pixel_clock'])
+            self._osd.pixel_clock_frequency_scienSpinBox.blockSignals(False)
+        if 'backscan_pts' in settings:
+            self._osd.backscan_points_spinBox.blockSignals(True)
+            self._osd.backscan_points_spinBox.setValue(settings['backscan_pts'])
+            self._osd.backscan_points_spinBox.blockSignals(False)
+        if 'axes' in settings:
+            for axis, axis_dict in settings['axes'].items():
+                if 'range' in axis_dict:
+                    spinbox = self.optimizer_settings_axes_widgets[axis]['range_spinbox']
+                    spinbox.blockSignals(True)
+                    spinbox.setValue(axis_dict['range'])
+                    spinbox.blockSignals(False)
+                if 'resolution' in axis_dict:
+                    spinbox = self.optimizer_settings_axes_widgets[axis]['res_spinbox']
+                    spinbox.blockSignals(True)
+                    spinbox.setValue(axis_dict['resolution'])
+                    spinbox.blockSignals(False)
+        if 'sequence' in settings:
+            self._osd.optimization_sequence_lineEdit.blockSignals(True)
+            self._osd.optimization_sequence_lineEdit.setText(','.join(settings['sequence']))
+            self._osd.optimization_sequence_lineEdit.blockSignals(False)
+            constraints = self.scannerlogic().scanner_constraints
+            for seq_step in settings['sequence']:
+                is_1d_step = False
+                for axis, axis_constr in constraints.items():
+                    if seq_step == axis:
+                        self.optimizer_dockwidget.plot_widget.setLabel(
+                            'bottom', axis, units=axis_constr['unit'])
+                        self.optimizer_dockwidget.plot_item.setData(np.zeros(10))
+                        is_1d_step = True
+                        break
+                if not is_1d_step:
+                    for axis, axis_constr in constraints.items():
+                        if seq_step.startswith(axis):
+                            self.optimizer_dockwidget.scan_widget.setLabel(
+                                'bottom', axis, units=axis_constr['unit'])
+                            second_axis = seq_step.split(axis, 1)[-1]
+                            self.optimizer_dockwidget.scan_widget.setLabel(
+                                'left', second_axis, units=constraints[second_axis]['unit'])
+                            self.optimizer_dockwidget.image_item.setImage(image=np.zeros((2, 2)))
+                            break
+        return

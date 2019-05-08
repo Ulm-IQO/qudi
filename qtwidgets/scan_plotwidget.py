@@ -191,7 +191,7 @@ class ScanPlotWidget(PlotWidget):
         crosshair = self.crosshairs[index]
         crosshair.vline.setZValue(10)
         crosshair.hline.setZValue(10)
-        crosshair.crosshair.setZValue(10)
+        crosshair.crosshair.setZValue(11)
         return
 
 
