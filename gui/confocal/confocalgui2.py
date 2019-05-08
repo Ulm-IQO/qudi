@@ -43,8 +43,6 @@ from qtpy import uic
 class ConfocalMainWindow(QtWidgets.QMainWindow):
     """ Create the Mainwindow based on the corresponding *.ui file. """
 
-    sigKeyboardPressed = QtCore.Signal(QtCore.QEvent)
-
     def __init__(self):
         # Get the path to the *.ui file
         this_dir = os.path.dirname(__file__)
@@ -53,12 +51,6 @@ class ConfocalMainWindow(QtWidgets.QMainWindow):
         # Load it
         super().__init__()
         uic.loadUi(ui_file, self)
-        return
-
-    def keyPressEvent(self, event):
-        """Pass the keyboard press event from the main window further. """
-        self.sigKeyboardPressed.emit(event)
-        super().keyPressEvent(event)
         return
 
     def mouseDoubleClickEvent(self, event):
@@ -341,44 +333,28 @@ class ConfocalGui(GUIBase):
         self.show()
         return
 
-    def init_main(self):
+    def on_deactivate(self):
+        """ Reverse steps of activation
+
+        @return int: error code (0:OK, -1:error)
         """
-        Definition, configuration and initialisation of the confocal GUI.
+        self.sigMoveScannerPosition.disconnect()
+        self.sigOptimizerSettingsChanged.disconnect()
+        self.scannerlogic().sigScannerPositionChanged.disconnect()
+        self.scannerlogic().sigScannerTargetChanged.disconnect()
+        self.scannerlogic().sigOptimizerSettingsChanged.disconnect()
 
-        This init connects all the graphic modules, which were created in the *.ui file and
-        configures the event handling between the modules. Moreover it sets default values and
-        constraints.
-        """
-        ###################################################################
-        #               Icons for the scan actions                        #
-        ###################################################################
+        self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
+        self._window_state = bytearray(self._mw.saveState()).hex()
+        self._mw.close()
+        return 0
 
-        self._scan_xy_single_icon = QtGui.QIcon()
-        self._scan_xy_single_icon.addPixmap(
-            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-start.png"),
-            QtGui.QIcon.Normal,
-            QtGui.QIcon.Off)
-
-        self._scan_depth_single_icon = QtGui.QIcon()
-        self._scan_depth_single_icon.addPixmap(
-            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-start.png"),
-            QtGui.QIcon.Normal,
-            QtGui.QIcon.Off)
-
-        self._scan_xy_loop_icon = QtGui.QIcon()
-        self._scan_xy_loop_icon.addPixmap(
-            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-xy-loop.png"),
-            QtGui.QIcon.Normal,
-            QtGui.QIcon.Off)
-
-        self._scan_depth_loop_icon = QtGui.QIcon()
-        self._scan_depth_loop_icon.addPixmap(
-            QtGui.QPixmap("artwork/icons/qudiTheme/22x22/scan-depth-loop.png"),
-            QtGui.QIcon.Normal,
-            QtGui.QIcon.Off)
-
-        self._mw.sigKeyboardPressed.connect(self.keyPressEvent)
-        self.show()
+    def show(self):
+        """Make main window visible and put it above all other windows. """
+        # Show the Main Confocal GUI:
+        self._mw.show()
+        self._mw.activateWindow()
+        self._mw.raise_()
 
     def _init_optimizer_settings(self):
         """ Configuration and initialisation of the optimizer settings dialog.
@@ -400,26 +376,6 @@ class ConfocalGui(GUIBase):
         # initialize widget content
         self.update_optimizer_settings()
         return
-
-    def on_deactivate(self):
-        """ Reverse steps of activation
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.sigMoveScannerPosition.disconnect()
-        self.scannerlogic().sigScannerPositionChanged.disconnect()
-
-        self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
-        self._window_state = bytearray(self._mw.saveState()).hex()
-        self._mw.close()
-        return 0
-
-    def show(self):
-        """Make main window visible and put it above all other windows. """
-        # Show the Main Confocal GUI:
-        self._mw.show()
-        self._mw.activateWindow()
-        self._mw.raise_()
 
     def _init_static_dockwidgets(self):
         self.optimizer_dockwidget = OptimizerDockWidget()
@@ -868,52 +824,6 @@ class ConfocalGui(GUIBase):
                     crosshair_pos = (crosshair.position[0], pos)
                     crosshair.set_position(crosshair_pos)
         return
-
-    def move_scanner_by_keyboard_event(self, event):
-        """
-        Handles the passed keyboard events from the main window.
-
-        @param object event: qtpy.QtCore.QEvent object.
-        """
-        pass
-        # modifiers = QtWidgets.QApplication.keyboardModifiers()
-        # key = event.key()
-        #
-        # position = self._scanning_logic.get_position()   # in meters
-        # x_pos = position[0]
-        # y_pos = position[1]
-        # z_pos = position[2]
-        #
-        # if modifiers == QtCore.Qt.ControlModifier:
-        #     if key == QtCore.Qt.Key_Right:
-        #         self.update_from_key(x=float(round(x_pos + self.slider_big_step, 10)))
-        #     elif key == QtCore.Qt.Key_Left:
-        #         self.update_from_key(x=float(round(x_pos - self.slider_big_step, 10)))
-        #     elif key == QtCore.Qt.Key_Up:
-        #         self.update_from_key(y=float(round(y_pos + self.slider_big_step, 10)))
-        #     elif key == QtCore.Qt.Key_Down:
-        #         self.update_from_key(y=float(round(y_pos - self.slider_big_step, 10)))
-        #     elif key == QtCore.Qt.Key_PageUp:
-        #         self.update_from_key(z=float(round(z_pos + self.slider_big_step, 10)))
-        #     elif key == QtCore.Qt.Key_PageDown:
-        #         self.update_from_key(z=float(round(z_pos - self.slider_big_step, 10)))
-        #     else:
-        #         event.ignore()
-        # else:
-        #     if key == QtCore.Qt.Key_Right:
-        #         self.update_from_key(x=float(round(x_pos + self.slider_small_step, 10)))
-        #     elif key == QtCore.Qt.Key_Left:
-        #         self.update_from_key(x=float(round(x_pos - self.slider_small_step, 10)))
-        #     elif key == QtCore.Qt.Key_Up:
-        #         self.update_from_key(y=float(round(y_pos + self.slider_small_step, 10)))
-        #     elif key == QtCore.Qt.Key_Down:
-        #         self.update_from_key(y=float(round(y_pos - self.slider_small_step, 10)))
-        #     elif key == QtCore.Qt.Key_PageUp:
-        #         self.update_from_key(z=float(round(z_pos + self.slider_small_step, 10)))
-        #     elif key == QtCore.Qt.Key_PageDown:
-        #         self.update_from_key(z=float(round(z_pos - self.slider_small_step, 10)))
-        #     else:
-        #         event.ignore()
 
     def __get_slider_update_func(self, ax, slider):
         def update_func(x):
