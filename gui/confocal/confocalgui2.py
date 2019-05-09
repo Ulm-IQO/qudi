@@ -597,6 +597,7 @@ class ConfocalGui(GUIBase):
 
     def _add_scan_dockwidget(self, key):
         scanner_constraints = self.scannerlogic().scanner_constraints
+        optimizer_settings = self.scannerlogic().optimizer_settings
         axes = key.split(',')
         if len(axes) == 1:
             dockwidget = Scan1dDockWidget(key)
@@ -626,13 +627,16 @@ class ConfocalGui(GUIBase):
                   scanner_constraints[axes[0]]['max_value']),
                  (scanner_constraints[axes[1]]['min_value'],
                   scanner_constraints[axes[1]]['max_value'])))
+            dockwidget.plot_widget.crosshairs[0].set_size(
+                (optimizer_settings['axes'][axes[0]]['range'],
+                 optimizer_settings['axes'][axes[1]]['range']))
             if not self.show_true_scanner_position:
                 dockwidget.plot_widget.hide_crosshair(1)
             dockwidget.plot_widget.setAspectLocked(lock=True, ratio=1.0)
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
             dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
-            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
+            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(tuple(axes)))
         return
 
     @property
@@ -845,7 +849,7 @@ class ConfocalGui(GUIBase):
         return update_func
 
     def __get_toggle_scan_func(self, ax):
-        return lambda enabled: self.sigToggleScan.emit(tuple(ax), enabled)
+        return lambda enabled: self.sigToggleScan.emit(ax, enabled)
 
     @QtCore.Slot()
     def change_optimizer_settings(self):
@@ -894,6 +898,22 @@ class ConfocalGui(GUIBase):
                     spinbox.blockSignals(True)
                     spinbox.setValue(axis_dict['resolution'])
                     spinbox.blockSignals(False)
+            # Adjust crosshair size according to optimizer range
+            for scan_axes_str, dockwidget in self.scan_2d_dockwidgets.items():
+                scan_axes = scan_axes_str.split(',')
+                print(scan_axes)
+                if scan_axes[0] not in settings['axes'] and scan_axes[1] not in settings['axes']:
+                    continue
+                crosshair = dockwidget.plot_widget.crosshairs[0]
+                if scan_axes[0] in settings['axes'] and 'range' in settings['axes'][scan_axes[0]]:
+                    x_size = settings['axes'][scan_axes[0]]['range']
+                else:
+                    x_size = crosshair.size[0]
+                if scan_axes[1] in settings['axes'] and 'range' in settings['axes'][scan_axes[1]]:
+                    y_size = settings['axes'][scan_axes[1]]['range']
+                else:
+                    y_size = crosshair.size[1]
+                crosshair.set_size((x_size, y_size))
         if 'sequence' in settings:
             self._osd.optimization_sequence_lineEdit.blockSignals(True)
             self._osd.optimization_sequence_lineEdit.setText(','.join(settings['sequence']))
