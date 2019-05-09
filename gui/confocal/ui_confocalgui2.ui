@@ -59,7 +59,6 @@
      <property name="title">
       <string>Too&amp;lbars</string>
      </property>
-     <addaction name="action_view_scanner_toolbar"/>
      <addaction name="action_view_utility_toolbar"/>
      <addaction name="action_view_history_toolbar"/>
     </widget>
@@ -77,24 +76,6 @@
    <addaction name="menuView"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QToolBar" name="scan_toolBar">
-   <property name="windowTitle">
-    <string>Scan toolbar</string>
-   </property>
-   <property name="toolButtonStyle">
-    <enum>Qt::ToolButtonTextUnderIcon</enum>
-   </property>
-   <property name="floatable">
-    <bool>false</bool>
-   </property>
-   <attribute name="toolBarArea">
-    <enum>TopToolBarArea</enum>
-   </attribute>
-   <attribute name="toolBarBreak">
-    <bool>false</bool>
-   </attribute>
-   <addaction name="action_optimize_position"/>
-  </widget>
   <widget class="QToolBar" name="util_toolBar">
    <property name="windowTitle">
     <string>Utilities Toolbar</string>
@@ -111,6 +92,7 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
+   <addaction name="action_optimize_position"/>
    <addaction name="action_utility_zoom"/>
    <addaction name="action_utility_full_range"/>
    <addaction name="action_utility_tilt_correction"/>
@@ -244,20 +226,6 @@ Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="toolTip">
     <string>Restore default arrangement of dock widgets </string>
-   </property>
-  </action>
-  <action name="action_view_scanner_toolbar">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="checked">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Scanning</string>
-   </property>
-   <property name="toolTip">
-    <string>Toggle toolbar containing actions to control the scanner</string>
    </property>
   </action>
   <action name="action_view_utility_toolbar">
@@ -423,22 +391,6 @@ Shortcut: Shift+R</string>
    </hints>
   </connection>
   <connection>
-   <sender>action_view_scanner_toolbar</sender>
-   <signal>triggered(bool)</signal>
-   <receiver>scan_toolBar</receiver>
-   <slot>setVisible(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>-1</x>
-     <y>-1</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>368</x>
-     <y>46</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
    <sender>action_view_utility_toolbar</sender>
    <signal>triggered(bool)</signal>
    <receiver>util_toolBar</receiver>
@@ -451,22 +403,6 @@ Shortcut: Shift+R</string>
     <hint type="destinationlabel">
      <x>784</x>
      <y>67</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>scan_toolBar</sender>
-   <signal>visibilityChanged(bool)</signal>
-   <receiver>action_view_scanner_toolbar</receiver>
-   <slot>setChecked(bool)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>457</x>
-     <y>62</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>-1</x>
-     <y>-1</y>
     </hint>
    </hints>
   </connection>

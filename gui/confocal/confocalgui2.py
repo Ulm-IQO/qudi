@@ -82,34 +82,6 @@ class ScannerControlDockWidget(QtWidgets.QDockWidget):
         return
 
 
-class Scan2dSelectionWidget(QtWidgets.QWidget):
-    """ Create the 2D scan selection widget based on the corresponding *.ui file.
-    """
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_2d_scan_selection_widget.ui')
-
-        # Load UI file
-        super().__init__()
-        uic.loadUi(ui_file, self)
-        return
-
-
-class Scan1dSelectionWidget(QtWidgets.QWidget):
-    """ Create the 1D scan selection widget based on the corresponding *.ui file.
-    """
-    def __init__(self):
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_1d_scan_selection_widget.ui')
-
-        # Load UI file
-        super().__init__()
-        uic.loadUi(ui_file, self)
-        return
-
-
 class Scan2dDockWidget(QtWidgets.QDockWidget):
     """ Create the 2D scan dockwidget based on the corresponding *.ui file.
     """
@@ -130,6 +102,7 @@ class Scan2dDockWidget(QtWidgets.QDockWidget):
         uic.loadUi(ui_file, widget)
         widget.setObjectName('{0}_{1}_scan_widget'.format(*axes_names))
 
+        self.toggle_scan_button = widget.toggle_scan_pushButton
         self.plot_widget = widget.image_scanPlotWidget
         self.colorbar = widget.colorbar_colorBarWidget
         self.image_item = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
@@ -158,6 +131,7 @@ class Scan1dDockWidget(QtWidgets.QDockWidget):
         uic.loadUi(ui_file, widget)
         widget.setObjectName('{0}_scan_widget'.format(axis_name))
 
+        self.toggle_scan_button = widget.toggle_scan_pushButton
         self.plot_widget = widget.scan_plotWidget
         self.plot_item = pg.PlotDataItem(x=np.arange(2), y=np.zeros(2), pen=pg.mkPen(palette.c1))
         self.plot_widget.addItem(self.plot_item)
@@ -316,9 +290,6 @@ class ConfocalGui(GUIBase):
 
         # Initialize fixed dockwidgets
         self._init_static_dockwidgets()
-
-        # Initialize toolbars
-        self._init_scan_toolbar()
 
         # Initialize dialog windows
         self._init_optimizer_settings()
@@ -544,17 +515,6 @@ class ConfocalGui(GUIBase):
             self.optimizer_settings_axes_widgets[axis_name]['res_spinbox'] = res_spinbox
         return
 
-    def _init_scan_toolbar(self):
-        """
-        """
-        self.scan_2d_selection_widget = Scan2dSelectionWidget()
-        self._mw.scan_toolBar.addWidget(self.scan_2d_selection_widget)
-        self.scan_1d_selection_widget = Scan1dSelectionWidget()
-        self._mw.scan_toolBar.addWidget(self.scan_1d_selection_widget)
-        self.scan_2d_selection_widget.start_scan_pushButton.clicked.connect(self.toggle_2d_scan)
-        self.scan_1d_selection_widget.start_scan_pushButton.clicked.connect(self.toggle_1d_scan)
-        return
-
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to default """
         self._mw.setDockNestingEnabled(True)
@@ -646,6 +606,7 @@ class ConfocalGui(GUIBase):
             # Set axis labels
             dockwidget.plot_widget.setLabel('bottom', key, units=scanner_constraints[key]['unit'])
             dockwidget.plot_widget.setLabel('left', 'scan data', units='arb.u.')
+            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
         else:
             dockwidget = Scan2dDockWidget(axes)
             dockwidget.setAllowedAreas(QtCore.Qt.TopDockWidgetArea)
@@ -671,6 +632,7 @@ class ConfocalGui(GUIBase):
             dockwidget.plot_widget.toggle_zoom_by_selection(True)
             dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
+            dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(axes))
         return
 
     @property
@@ -741,23 +703,6 @@ class ConfocalGui(GUIBase):
             keys_to_add = [key for key in new_keys if key not in present_keys]
             for key in keys_to_add:
                 self._add_scan_dockwidget(key)
-
-            # Update scan selection combobox
-            self.scan_2d_selection_widget.scan_selection_comboBox.clear()
-            self.scan_1d_selection_widget.scan_selection_comboBox.clear()
-            for axes in settings['scan_axes']:
-                if len(axes) == 2:
-                    self.scan_2d_selection_widget.scan_selection_comboBox.addItem('-'.join(axes))
-                elif len(axes) == 1:
-                    self.scan_1d_selection_widget.scan_selection_comboBox.addItem(axes[0])
-            if self.scan_2d_selection_widget.scan_selection_comboBox.count() == 0:
-                self._mw.scan_toolBar.actions()[1].setVisible(False)
-            else:
-                self._mw.scan_toolBar.actions()[1].setVisible(True)
-            if self.scan_1d_selection_widget.scan_selection_comboBox.count() == 0:
-                self._mw.scan_toolBar.actions()[2].setVisible(False)
-            else:
-                self._mw.scan_toolBar.actions()[2].setVisible(True)
         return
 
     def move_scanner_position(self, target_pos):
@@ -899,6 +844,9 @@ class ConfocalGui(GUIBase):
             self.move_scanner_position(pos_dict)
         return update_func
 
+    def __get_toggle_scan_func(self, ax):
+        return lambda enabled: self.sigToggleScan.emit(tuple(ax), enabled)
+
     @QtCore.Slot()
     def change_optimizer_settings(self):
         settings = dict()
@@ -970,16 +918,4 @@ class ConfocalGui(GUIBase):
                                 'left', second_axis, units=constraints[second_axis]['unit'])
                             self.optimizer_dockwidget.image_item.setImage(image=np.zeros((2, 2)))
                             break
-        return
-
-    @QtCore.Slot(bool)
-    def toggle_1d_scan(self, enabled):
-        scan_axis = self.scan_1d_selection_widget.scan_selection_comboBox.currentText()
-        self.sigToggleScan.emit((scan_axis,), enabled)
-        return
-
-    @QtCore.Slot(bool)
-    def toggle_2d_scan(self, enabled):
-        scan_axes = self.scan_1d_selection_widget.scan_selection_comboBox.currentText().split('-')
-        self.sigToggleScan.emit(tuple(scan_axes), enabled)
         return
