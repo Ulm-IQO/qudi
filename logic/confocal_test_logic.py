@@ -113,6 +113,11 @@ class ConfocalLogic(GenericLogic):
         self.__timer.setSingleShot(False)
         self.__timer.timeout.connect(self.notify_scanner_position_change)
         self.__timer.start()
+
+        self.__scan_timer = QtCore.QTimer()
+        self.__scan_timer.setSingleShot(False)
+        # self.__scan_timer.timeout.connect(self._scan_loop)
+        self.__scan_counter = 0
         return
 
     def on_deactivate(self):
@@ -189,7 +194,7 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(dict)
     @QtCore.Slot(dict, object)
-    def set_scanner_target_position(self, pos_dict, caller=None):
+    def set_scanner_target_position(self, pos_dict, caller_id=None):
         constr = self.scanner_constraints
         for ax, pos in pos_dict.items():
             if ax not in constr:
@@ -197,11 +202,24 @@ class ConfocalLogic(GenericLogic):
                 return
 
         self.target.update(pos_dict)
-        self.sigScannerTargetChanged.emit(pos_dict, caller)
+        self.sigScannerTargetChanged.emit(pos_dict, id(self) if caller_id is None else caller_id)
         time.sleep(0.01)
         self.notify_scanner_position_change()
         return
 
     @QtCore.Slot()
     def notify_scanner_position_change(self):
-        self.sigScannerPositionChanged.emit(self.scanner_position, self)
+        self.sigScannerPositionChanged.emit(self.scanner_position, id(self))
+
+    @QtCore.Slot(tuple, bool)
+    def toggle_scan(self, scan_axes, start):
+        if start and self.module_state() != 'idle':
+            self.log.error('Unable to start scan. Scan already in progress.')
+            return
+        elif not start and self.module_state() == 'idle':
+            self.log.error('Unable to stop scan. No scan running.')
+            return
+
+        if start:
+            self.module_state.lock()
+

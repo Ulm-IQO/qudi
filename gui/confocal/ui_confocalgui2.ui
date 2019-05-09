@@ -40,8 +40,6 @@
     <property name="title">
      <string>&amp;File</string>
     </property>
-    <addaction name="action_save_first_2d_scan"/>
-    <addaction name="action_save_second_2d_scan"/>
     <addaction name="separator"/>
     <addaction name="action_close_window"/>
    </widget>
@@ -95,11 +93,6 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="action_start_first_2d_scan"/>
-   <addaction name="action_resume_first_2d_scan"/>
-   <addaction name="action_stop_scanning"/>
-   <addaction name="action_start_second_2d_scan"/>
-   <addaction name="action_resume_second_2d_scan"/>
    <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="util_toolBar">
@@ -119,8 +112,7 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_utility_zoom"/>
-   <addaction name="action_utility_full_range_first"/>
-   <addaction name="action_utility_full_range_second"/>
+   <addaction name="action_utility_full_range"/>
    <addaction name="action_utility_tilt_correction"/>
   </widget>
   <widget class="QToolBar" name="history_toolBar">
@@ -145,18 +137,6 @@
    <addaction name="action_history_back"/>
    <addaction name="action_history_forward"/>
   </widget>
-  <action name="action_save_first_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save first 2D scan</string>
-   </property>
-   <property name="toolTip">
-    <string>Save first 2D scan data and corresponding image</string>
-   </property>
-  </action>
   <action name="action_scanner_settings">
    <property name="icon">
     <iconset>
@@ -176,18 +156,6 @@
    </property>
    <property name="toolTip">
     <string>Close scanning window</string>
-   </property>
-  </action>
-  <action name="action_save_second_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save second 2D scan</string>
-   </property>
-   <property name="toolTip">
-    <string>Save second 2D scan data and corresponding image</string>
    </property>
   </action>
   <action name="action_optimizer_settings">
@@ -251,66 +219,6 @@ Shortcut:Alt+O</string>
     <string>Alt+O</string>
    </property>
   </action>
-  <action name="action_start_first_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-start.png</iconset>
-   </property>
-   <property name="text">
-    <string>Scan first</string>
-   </property>
-   <property name="toolTip">
-    <string>Start a fresh 2d scan
-Shortcut:Shift+S</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+S</string>
-   </property>
-  </action>
-  <action name="action_resume_first_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-xy-resume.png</iconset>
-   </property>
-   <property name="text">
-    <string>Resume first</string>
-   </property>
-   <property name="toolTip">
-    <string>Resume an interrupted 2D scan
-Shortcut:Shift+R</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+R</string>
-   </property>
-  </action>
-  <action name="action_start_second_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</iconset>
-   </property>
-   <property name="text">
-    <string>Scan second</string>
-   </property>
-   <property name="toolTip">
-    <string>Start a fresh 2D scan
-Shortcut:Shift+D</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+D</string>
-   </property>
-  </action>
-  <action name="action_resume_second_2d_scan">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-resume.png</iconset>
-   </property>
-   <property name="text">
-    <string>Resume second</string>
-   </property>
-   <property name="toolTip">
-    <string>Resume an interrupted 2D scan</string>
-   </property>
-  </action>
   <action name="action_optimize_position">
    <property name="icon">
     <iconset>
@@ -328,21 +236,6 @@ Shortcut:Ctrl+Alt+X</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+X</string>
-   </property>
-  </action>
-  <action name="action_stop_scanning">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
-   </property>
-   <property name="text">
-    <string>Stop scan</string>
-   </property>
-   <property name="toolTip">
-    <string>Stop scanning XY or depth and return to &quot;ready&quot; state. Shortcut:Shift+E</string>
-   </property>
-   <property name="shortcut">
-    <string>Shift+E</string>
    </property>
   </action>
   <action name="action_restore_default_view">
@@ -456,36 +349,20 @@ Shortcut:Ctrl+Z</string>
     <string>Toggle line scan view</string>
    </property>
   </action>
-  <action name="action_utility_full_range_first">
+  <action name="action_utility_full_range">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
    </property>
    <property name="text">
-    <string>Full range first</string>
+    <string>Full range</string>
    </property>
    <property name="toolTip">
-    <string>Set first 2D scan to full scan range
+    <string>Set all scans to full scan range
 Shortcut:Ctrl+Alt+&lt;</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Alt+&lt;</string>
-   </property>
-  </action>
-  <action name="action_utility_full_range_second">
-   <property name="icon">
-    <iconset>
-     <normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</normaloff>../../artwork/icons/oxygen/22x22/zoom-fit-best.png</iconset>
-   </property>
-   <property name="text">
-    <string>Full range second</string>
-   </property>
-   <property name="toolTip">
-    <string>Set second 2D scan to full scan range
-Shortcut:Ctrl+Alt+Y</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+Alt+Y</string>
    </property>
   </action>
   <action name="action_autorange_2d_scans">
