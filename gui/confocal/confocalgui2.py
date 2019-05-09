@@ -105,7 +105,7 @@ class Scan2dDockWidget(QtWidgets.QDockWidget):
         self.toggle_scan_button = widget.toggle_scan_pushButton
         self.plot_widget = widget.image_scanPlotWidget
         self.colorbar = widget.colorbar_colorBarWidget
-        self.image_item = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
+        self.image_item = ScanImageItem(image=np.zeros((2, 2)))
         self.plot_widget.addItem(self.image_item)
         self.colorbar.assign_image_item(self.image_item)
 
@@ -160,7 +160,7 @@ class OptimizerDockWidget(QtWidgets.QDockWidget):
         self.scan_widget = widget.optimizer_2d_scanPlotWidget
         self.axes_label = widget.optimizer_axes_label
         self.position_label = widget.optimizer_position_label
-        self.image_item = ScanImageItem(image=np.zeros((2, 2)), axisOrder='row-major')
+        self.image_item = ScanImageItem(image=np.zeros((2, 2)))
         self.plot_item = pg.PlotDataItem(x=np.arange(10),
                                          y=np.zeros(10),
                                          pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
@@ -325,6 +325,7 @@ class ConfocalGui(GUIBase):
             self.scannerlogic().set_scanner_target_position, QtCore.Qt.QueuedConnection)
         self.sigOptimizerSettingsChanged.connect(
             self.scannerlogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
+        self.sigToggleScan.connect(self.scannerlogic().toggle_scan, QtCore.Qt.QueuedConnection)
 
         self.scannerlogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
@@ -332,6 +333,10 @@ class ConfocalGui(GUIBase):
             self.scanner_target_updated, QtCore.Qt.QueuedConnection)
         self.scannerlogic().sigOptimizerSettingsChanged.connect(
             self.update_optimizer_settings, QtCore.Qt.QueuedConnection)
+        self.scannerlogic().sigScanDataChanged.connect(
+            self.scan_data_updated, QtCore.Qt.QueuedConnection)
+        self.scannerlogic().sigScanStateChanged.connect(
+            self.scan_state_updated, QtCore.Qt.QueuedConnection)
 
         self.show()
         return
@@ -343,9 +348,12 @@ class ConfocalGui(GUIBase):
         """
         self.sigMoveScannerPosition.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
+        self.sigToggleScan.disconnect()
         self.scannerlogic().sigScannerPositionChanged.disconnect()
         self.scannerlogic().sigScannerTargetChanged.disconnect()
         self.scannerlogic().sigOptimizerSettingsChanged.disconnect()
+        self.scannerlogic().sigScanDataChanged.disconnect()
+        self.scannerlogic().sigScanStateChanged.disconnect()
 
         self._window_geometry = bytearray(self._mw.saveGeometry()).hex()
         self._window_state = bytearray(self._mw.saveState()).hex()
@@ -786,6 +794,19 @@ class ConfocalGui(GUIBase):
                 self.scan_1d_dockwidgets[axes[0]].plot_widget.setLabel(
                     'left', 'scan data', units=data['unit'])
         return
+
+    @QtCore.Slot(bool)
+    def scan_state_updated(self, is_running):
+        if is_running:
+            for dockwidget in self.scan_2d_dockwidgets.values():
+                dockwidget.toggle_scan_button.setEnabled(False)
+            for dockwidget in self.scan_1d_dockwidgets.values():
+                dockwidget.toggle_scan_button.setEnabled(False)
+        else:
+            for dockwidget in self.scan_2d_dockwidgets.values():
+                dockwidget.toggle_scan_button.setEnabled(True)
+            for dockwidget in self.scan_1d_dockwidgets.values():
+                dockwidget.toggle_scan_button.setEnabled(True)
 
     def _update_position_display(self, pos_dict):
         """
