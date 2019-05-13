@@ -27,247 +27,106 @@ import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
 
 
-# class ScanDataChannel:
-#     """
-#
-#     """
-#     def __init__(self, name, unit, data=None):
-#         self._name = ''
-#         self._unit = ''
-#         self._data = None
-#         self.name = name
-#         self.unit = unit
-#         self.data = data
-#         return
-#
-#     @property
-#     def name(self):
-#         return self._name
-#
-#     @name.setter
-#     def name(self, new_name):
-#         if not isinstance(new_name, str) or len(new_name) < 1:
-#             raise TypeError('Name property must be str type with len > 0.')
-#         self._name = str(new_name)
-#         return
-#
-#     @property
-#     def unit(self):
-#         return self._unit
-#
-#     @unit.setter
-#     def unit(self, new_unit):
-#         if new_unit is None:
-#             new_unit = ''
-#         if not isinstance(new_unit, str):
-#             raise TypeError('Unit property must be str type.')
-#         self._unit = str(new_unit)
-#         return
-#
-#     @property
-#     def data(self):
-#         return self._data
-#
-#     @data.setter
-#     def data(self, new_data):
-#         if not isinstance(new_data, np.ndarray):
-#             raise TypeError('Data property must be numpy.ndarray type.')
-#         self._data = new_data
-#         return
-
-
 class ScanData:
     """
 
     """
-    def __init__(self, channel_config, axes=None, ranges=None, resolution=None, x_axis=None,
-                 y_axis=None, x_range=None, y_range=None, x_resolution=None, y_resolution=None):
-        self._axes = ('x', 'y')
-        self._ranges = ((-0.5, 0.5), (-0.5, 0.5))
-        self._resolution = (2, 2)
-        self._channel_config = channel_config
-        self._data = {str(chnl): None for chnl in channel_config}
+    def __init__(self, scan_axes, channel_config, scanner_settings):
+        self._scan_axes = tuple(scan_axes)
+        if self._scan_axes not in scanner_settings['scan_axes']:
+            raise ValueError('scan_axes must be tuple of axes name strings contained in '
+                             'scanner_settings')
+        self._target_ranges = tuple(scanner_settings['scan_range'][ax] for ax in self._scan_axes)
+        self._resolution = tuple(scanner_settings['scan_resolution'][ax] for ax in self._scan_axes)
+        self._channel_names = tuple(channel_config)
+        self._channel_units = {ch: ch_dict['unit'] for ch, ch_dict in channel_config.items()}
+        self.__available_axes = tuple(scanner_settings['scan_resolution'])
+        self._position_data = {ax: np.zeros((*self._resolution,)) for ax in self.__available_axes}
+        self._data = {ch: np.zeros((*self._resolution,)) for ch in self._channel_names}
         # TODO: Automatic interpolation onto regular grid needs to be implemented
-        self._irregular_data = dict()
-
-        if axes is not None:
-            self.axes = axes
-        elif x_axis is not None and y_axis is not None:
-            self.x_axis = x_axis
-            self.y_axis = y_axis
-        else:
-            raise ValueError('Must either pass "axes" or "x_axis" and "y_axis" arguments to '
-                             'ScanData init.')
-
-        if ranges is not None:
-            self.ranges = ranges
-        elif x_range is not None and y_range is not None:
-            self.x_range = x_range
-            self.y_range = y_range
-        else:
-            raise ValueError('Must either pass "ranges" or "x_range" and "y_range" arguments to '
-                             'ScanData init.')
-
-        if resolution is not None:
-            self.resolution = resolution
-        elif x_resolution is not None and y_resolution is not None:
-            self.x_resolution = x_resolution
-            self.y_resolution = y_resolution
-        else:
-            raise ValueError('Must either pass "resolution" or "x_resolution" and "y_resolution" '
-                             'arguments to ScanData init.')
         return
 
     @property
-    def axes(self):
-        return self._axes
-
-    @axes.setter
-    def axes(self, ax):
-        """
-
-        @param str[2] ax:
-        """
-        if len(ax) != 2 or not isinstance(ax[0], str) or not isinstance(ax[1], str):
-            raise ValueError('axes property must be iterable of len 2 containing str type values.')
-        self._axes = (str(ax[0]), str(ax[1]))
-        return
+    def scan_axes(self):
+        return self._scan_axes
 
     @property
-    def x_axis(self):
-        return self._axes[0]
-
-    @x_axis.setter
-    def x_axis(self, ax):
-        if not isinstance(ax, str):
-            raise ValueError('x_axis property must be str type.')
-        self._axes = (str(ax), self.y_axis)
-        return
-
-    @property
-    def y_axis(self):
-        return self._axes[1]
-
-    @y_axis.setter
-    def y_axis(self, ax):
-        if not isinstance(ax, str):
-            raise ValueError('y_axis property must be str type.')
-        self._axes = (self.x_axis, str(ax))
-        return
-
-    @property
-    def ranges(self):
-        return self._ranges
-
-    @ranges.setter
-    def ranges(self, r):
-        """
-
-        @param float[2][2] r:
-        """
-        if len(r) != 2 or not len(r[0]) != 2 or len(r[1]) != 2:
-            raise ValueError('ranges property must be iterable of len 2 containing iterables of '
-                             'len 2 (float[2][2]).')
-        self._ranges = ((float(r[0][0]), float(r[0][1])), (float(r[1][0]), float(r[1][1])))
-        return
-
-    @property
-    def x_range(self):
-        return self._ranges[0]
-
-    @x_range.setter
-    def x_range(self, r):
-        if len(r) != 2:
-            raise ValueError('x_range property must be iterable of len 2 containing float values.')
-        self._ranges = ((float(r[0]), float(r[1])), self.y_range)
-        return
-
-    @property
-    def y_range(self):
-        return self._ranges[1]
-
-    @y_range.setter
-    def y_range(self, r):
-        if len(r) != 2:
-            raise ValueError('y_range property must be iterable of len 2 containing float values.')
-        self._ranges = (self.x_range, (float(r[0]), float(r[1])))
-        return
+    def target_ranges(self):
+        return self._target_ranges
 
     @property
     def resolution(self):
         return self._resolution
 
-    @resolution.setter
-    def resolution(self, res):
-        if len(res) != 2:
-            raise ValueError('resolution property must be iterable of len 2 containing integer '
-                             'values.')
-        self._resolution = (int(res[0]), int(res[1]))
-        return
-
-    @property
-    def x_resolution(self):
-        return self._resolution[0]
-
-    @x_resolution.setter
-    def x_resolution(self, res):
-        self._resolution = (int(res), self.y_resolution)
-        return
-
-    @property
-    def y_resolution(self):
-        return self._resolution[1]
-
-    @y_resolution.setter
-    def y_resolution(self, res):
-        self._resolution = (self.x_resolution, int(res))
-        return
-
     @property
     def channel_names(self):
-        return tuple(self._channel_config)
+        return self._channel_names
 
     @property
     def channel_units(self):
-        return {chnl: chnl_dict['unit'] for chnl, chnl_dict in self._channel_config.items()}
+        return self._channel_units
 
     @property
     def data(self):
-        return self._data.copy()
+        return self._data
+
+    @property
+    def position_data(self):
+        return self._position_data
 
     def new_data(self):
-        self._data = {chnl: np.zeros(self.resolution) for chnl in self._data}
+        self._position_data = {ax: np.zeros((*self.resolution,)) for ax in self.__available_axes}
+        self._data = {ch: np.zeros((*self.resolution,)) for ch in self.channel_names}
         return
 
-    def add_line_data(self, data, y_index=None, x_index=None):
+    def add_line_data(self, position, data, y_index=None, x_index=None):
         """
 
         @param dict data:
         @param int y_index:
         @param int x_index:
         """
+        if x_index is None and y_index is None:
+            raise ValueError('Must pass either x_index or y_index to add line data.')
+
+        if set(position) != set(self.__available_axes):
+            raise ValueError('position dict must contain all available axes {0}.'
+                             ''.format(self.__available_axes))
+        if set(data) != set(self.channel_names):
+            raise ValueError('data dict must contain all available data channels {0}.'
+                             ''.format(self.channel_names))
+        for arr in position.values():
+            if y_index is None and arr.size != self.resolution[1]:
+                raise ValueError('Size of line position data array must be {0} but is {1}'
+                                 ''.format(self.resolution[1], arr.size))
+            if x_index is None and arr.size != self.resolution[0]:
+                raise ValueError('Size of line position data array must be {0} but is {1}'
+                                 ''.format(self.resolution[0], arr.size))
+        for arr in data.values():
+            if y_index is None and arr.size != self.resolution[1]:
+                raise ValueError('Size of line data array must be {0} but is {1}'
+                                 ''.format(self.resolution[1], arr.size))
+            if x_index is None and arr.size != self.resolution[0]:
+                raise ValueError('Size of line data array must be {0} but is {1}'
+                                 ''.format(self.resolution[0], arr.size))
+
         for channel, arr in data.items():
-            if y_index is not None:
-                try:
-                    self._data[channel][:, int(y_index)] = arr
-                except ValueError:
-                    raise ValueError('Shape "{0}" of line data to add does not match configured '
-                                     'x_resolution ({1:d}).'.format(arr.shape, self.x_resolution))
-            elif x_index is not None:
-                try:
-                    self._data[channel][int(x_index), :] = arr
-                except ValueError:
-                    raise ValueError('Shape "{0}" of line data to add does not match configured '
-                                     'y_resolution ({1:d}).'.format(arr.shape, self.y_resolution))
-            else:
-                raise ValueError('Must pass either x_index or y_index to add line data.')
+            if y_index is None:
+                self._data[channel][int(x_index), :] = arr
+            elif x_index is None:
+                self._data[channel][:, int(y_index)] = arr
+
+        for axis, arr in position.items():
+            if y_index is None:
+                self._position_data[axis][int(x_index), :] = arr
+            elif x_index is None:
+                self._position_data[axis][:, int(y_index)] = arr
         return
 
 
@@ -358,12 +217,9 @@ class ConfocalLogic(GenericLogic):
         self._scan_data = dict()
         for axes in self._scanner_settings['scan_axes']:
             self._scan_data[tuple(axes)] = ScanData(
+                scan_axes=axes,
                 channel_config=self.scanner_constraints['data_channels'],
-                axes=axes,
-                x_range=self._scanner_settings['scan_range'][axes[0]],
-                y_range=self._scanner_settings['scan_range'][axes[1]],
-                x_resolution=self._scanner_settings['scan_resolution'][axes[0]],
-                y_resolution=self._scanner_settings['scan_resolution'][axes[1]])
+                scanner_settings=self.scanner_settings)
             self._scan_data[tuple(axes)].new_data()
 
         # others
@@ -372,6 +228,7 @@ class ConfocalLogic(GenericLogic):
         self.__running_scan = None
         self.__scan_start_time = 0
         self.__scan_line_interval = None
+        self.__scan_line_positions = dict()
         self.__scan_stop_requested = True
         return
 
@@ -548,14 +405,19 @@ class ConfocalLogic(GenericLogic):
                 self.__scan_line_count = 0
                 self.__scan_start_time = time.time()
                 self._scan_data[self.__running_scan] = ScanData(
+                    scan_axes=self.__running_scan,
                     channel_config=self.scanner_constraints['data_channels'],
-                    axes=self.__running_scan,
-                    x_range=self._scanner_settings['scan_range'][self.__running_scan[0]],
-                    y_range=self._scanner_settings['scan_range'][self.__running_scan[1]],
-                    x_resolution=self._scanner_settings['scan_resolution'][self.__running_scan[0]],
-                    y_resolution=self._scanner_settings['scan_resolution'][self.__running_scan[1]])
+                    scanner_settings=self.scanner_settings)
                 self._scan_data[self.__running_scan].new_data()
-                self.__scan_line_interval = self.scanner_settings['scan_resolution'][scan_axes[0]] / self.scanner_settings['pixel_clock_frequency']
+                num_x_vals = self.scanner_settings['scan_resolution'][scan_axes[0]]
+                self.__scan_line_interval = num_x_vals / self.scanner_settings[
+                    'pixel_clock_frequency']
+                self.__scan_line_positions = {ax: np.full(num_x_vals, self.scanner_target[ax]) for
+                                              ax in self._constraints['axes']}
+                min_val, max_val = self.scanner_settings['scan_range'][self.__running_scan[0]]
+                self.__scan_line_positions[self.__running_scan[0]] = np.linspace(min_val,
+                                                                                 max_val,
+                                                                                 num_x_vals)
                 self.__scan_stop_requested = False
                 self.__sigNextLine.emit()
             else:
@@ -568,11 +430,17 @@ class ConfocalLogic(GenericLogic):
             return
 
         with self.threadlock:
-            if self.__scan_line_count >= self.scanner_settings['scan_resolution'][self.__running_scan[1]] or self.__scan_stop_requested:
+            max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[1]]
+            if self.__scan_line_count >= max_number_of_lines or self.__scan_stop_requested:
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, self.__running_scan)
                 self.__timer.start()
                 return
+
+            y_min, y_max = self.scanner_settings['scan_range'][self.__running_scan[1]]
+            self.__scan_line_positions[self.__running_scan[1]] = np.full(
+                self.scanner_settings['scan_resolution'][self.__running_scan[0]],
+                y_min + (y_max - y_min) / (max_number_of_lines - 1))
 
             self.__scan_line_count += 1
             next_line_time = self.__scan_start_time + self.__scan_line_count * self.__scan_line_interval
@@ -581,7 +449,9 @@ class ConfocalLogic(GenericLogic):
 
             scan_line = self._current_dummy_data[:, self.__scan_line_count-1]
             channels = self._scan_data[self.__running_scan].channel_names
+
             self._scan_data[self.__running_scan].add_line_data(
+                position=self.__scan_line_positions,
                 data={chnl: scan_line for chnl in channels},
                 y_index=self.__scan_line_count-1)
 
