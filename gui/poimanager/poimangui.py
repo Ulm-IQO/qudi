@@ -417,7 +417,7 @@ class PoiManagerGui(GUIBase):
         self._mw.auto_pois_Action.triggered.connect(
             self.poimanagerlogic().auto_catch_poi, QtCore.Qt.QueuedConnection)
         self._mw.poi_deleteall_Action.triggered.connect(
-            self.poimanagerlogic().delete_all_pois, QtCore.Qt.QueuedConnection)
+            self.delete_all_pois_clicked, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_Action.triggered.connect(
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)
         self._mw.new_roi_Action.triggered.connect(
@@ -781,6 +781,16 @@ class PoiManagerGui(GUIBase):
         cb_range = self.get_cb_range(image)
         self.roi_image.setLevels(cb_range)
         self.roi_cb.refresh_colorbar(*cb_range)
+        return
+
+    @QtCore.Slot()
+    def delete_all_pois_clicked(self):
+        result = QtWidgets.QMessageBox.question(self._mw, 'Qudi: Delete all POIs?',
+                                                'Are you sure to delete all POIs?',
+                                                QtWidgets.QMessageBox.Yes,
+                                                QtWidgets.QMessageBox.No)
+        if result == QtWidgets.QMessageBox.Yes:
+            self.poimanagerlogic().delete_all_pois()
         return
 
     def _update_scan_image(self, scan_image, image_extent):

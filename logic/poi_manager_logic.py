@@ -1157,10 +1157,33 @@ class PoiManagerLogic(GenericLogic):
         self.log.error('Tranformation of all POI positions not implemented yet.')
         return
 
+    def _spot_filter(self,scan):
+        pixel_num = len(scan)
+        x_range = self.roi_scan_image_extent[0]
+        pixel_size = (x_range[1] - x_range[0]) / pixel_num
+        spot_size = self.optimise_xy_size
+        arr_size = int(spot_size / pixel_size)
+        return arr_size
+
+    def _local_max(self,scan):
+        scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
+        filter_size = self._spot_filter(scan)
+        mid_f = int(filter_size / 2)
+        xc = []
+        yc = []
+        for i in range(0, len(scan) - filter_size):
+            for j in range(0, len(scan[i]) - filter_size):
+                local_arr = scan[i:i + filter_size, j:j + filter_size]
+                local_arr = np.asarray(local_arr)
+                if scan[i + mid_f][j + mid_f] == local_arr.max():
+                    xc.append(i + mid_f)
+                    yc.append(j + mid_f)
+        return xc, yc
+
     def auto_catch_poi(self):
-        scan_image = self.scannerlogic().xy_image[:, :, 3]
-        x_range = self.scannerlogic().image_x_range
-        y_range = self.scannerlogic().image_y_range
+        scan_image = self.roi_scan_image
+        x_range = self.roi_scan_image_extent[0]
+        y_range = self.roi_scan_image_extent[1]
         x_axis = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / len(scan_image))
         y_axis = np.arange(y_range[0], y_range[1], (y_range[1] - y_range[0]) / len(scan_image[0]))
 
@@ -1168,34 +1191,9 @@ class PoiManagerLogic(GenericLogic):
             for j in range(0, len(scan_image[i])):
                 scan_image[i][j] = int(scan_image[i][j])  # data here somehow needs to be reset, otherwise shit happens.
 
-        def scan_mean(scan):
-            scan = np.asarray(scan, dtype=int, order="C")
-            return scan.mean()  # crucial on the s/n ratio of the scan_image
+        threshold = scan_image.mean() * self._poi_threshold
 
-        def spot_filter(scan):
-            pixel_num = len(scan)
-            pixel_size = (x_range[1] - x_range[0]) / pixel_num
-            spot_size = 1500e-9
-            arr_size = int(spot_size / pixel_size)
-            return arr_size
-
-        def local_max(scan):
-            scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
-            filter_size = spot_filter(scan)
-            mid_f = int(filter_size / 2)
-            xc = []
-            yc = []
-            for i in range(0, len(scan) - filter_size):
-                for j in range(0, len(scan[i]) - filter_size):
-                    local_arr = scan[i:i + filter_size, j:j + filter_size]
-                    local_arr = np.asarray(local_arr)
-                    if scan[i + mid_f][j + mid_f] == local_arr.max():
-                        xc.append(i + mid_f)
-                        yc.append(j + mid_f)
-            return xc, yc
-
-        threshold = scan_mean(scan_image) * self._poi_threshold
-        xc1, yc1 = local_max(scan_image)
+        xc1, yc1 = self._local_max(scan_image)
         xc2 = []
         yc2 = []
         for i in range(0, len(xc1)):
