@@ -60,7 +60,7 @@
     <string>POI Editor</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>4</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents_3">
     <layout class="QVBoxLayout" name="verticalLayout_6">
@@ -669,7 +669,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>250</width>
+     <width>200</width>
      <height>137</height>
     </size>
    </property>
@@ -959,7 +959,7 @@
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-new.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</iconset>
    </property>
    <property name="text">
     <string>Auto POIs</string>
@@ -971,10 +971,10 @@
   <action name="poi_deleteall_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../../artwork/icons/qudiTheme/22x22/poi-delete-all.png</normaloff>../../artwork/icons/qudiTheme/22x22/poi-delete-all.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</iconset>
    </property>
    <property name="text">
-    <string>Delete all POIs</string>
+    <string>Delete All POIs</string>
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Click on this button, all POIs will be deleted&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -983,14 +983,14 @@
  </widget>
  <customwidgets>
   <customwidget>
-   <class>PlotWidget</class>
-   <extends>QGraphicsView</extends>
-   <header>pyqtgraph</header>
-  </customwidget>
-  <customwidget>
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
  <resources/>
