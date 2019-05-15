@@ -142,9 +142,6 @@ class ConfocalLogic(GenericLogic):
     savelogic = Connector(interface='SaveLogic')
 
     # status vars
-    _clock_frequency = StatusVar('clock_frequency', 500)
-    return_slowness = StatusVar(default=50)
-    max_history_length = StatusVar(default=10)
 
     # signals
     sigScanStateChanged = QtCore.Signal(bool, tuple)
