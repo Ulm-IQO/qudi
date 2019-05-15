@@ -403,6 +403,7 @@ class PoiManagerGui(GUIBase):
         self.poimanagerlogic().sigRoiUpdated.connect(self.update_roi, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigRefocusStateUpdated.connect(
             self.update_refocus_state, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigThresholdUpdated.connect(self._update_poi_threshold, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_update_signals_from_logic(self):
@@ -416,9 +417,9 @@ class PoiManagerGui(GUIBase):
     def __connect_control_signals_to_logic(self):
         self._mw.new_poi_Action.triggered.connect(
             self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
-        self._mw.auto_pois_Action.triggered.connect(
+        self._mw.auto_pois_PushButton.clicked.connect(
             self.poimanagerlogic().auto_catch_poi, QtCore.Qt.QueuedConnection)
-        self._mw.poi_deleteall_Action.triggered.connect(
+        self._mw.del_all_pois_PushButton.clicked.connect(
             self.delete_all_pois_clicked, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_Action.triggered.connect(
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)

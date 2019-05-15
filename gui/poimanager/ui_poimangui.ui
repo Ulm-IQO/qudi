@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>691</width>
+    <width>746</width>
     <height>864</height>
    </rect>
   </property>
@@ -30,8 +30,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>691</width>
-     <height>21</height>
+     <width>746</width>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -58,6 +58,7 @@
     <addaction name="poi_editor_view_Action"/>
     <addaction name="poi_tracker_view_Action"/>
     <addaction name="sample_shift_view_Action"/>
+    <addaction name="auto_pois_view_Action"/>
     <addaction name="blink_correction_view_Action"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
@@ -92,8 +93,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>197</width>
-     <height>330</height>
+     <width>233</width>
+     <height>389</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -295,8 +296,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>216</width>
-     <height>161</height>
+     <width>253</width>
+     <height>188</height>
     </size>
    </property>
    <property name="floating">
@@ -696,7 +697,7 @@
    <property name="minimumSize">
     <size>
      <width>250</width>
-     <height>119</height>
+     <height>137</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -742,6 +743,74 @@
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
+  </widget>
+  <widget class="QDockWidget" name="auto_pois_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>150</width>
+     <height>250</height>
+    </size>
+   </property>
+   <property name="windowTitle">
+    <string>Auto POIs</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QGridLayout" name="gridLayout_6">
+     <item row="0" column="0">
+      <layout class="QGridLayout" name="gridLayout_5" rowstretch="0,0,0,0,0" columnstretch="0,0,0">
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_7">
+         <property name="layoutDirection">
+          <enum>Qt::RightToLeft</enum>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;S/N ratio:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QPushButton" name="del_all_pois_PushButton">
+         <property name="text">
+          <string>Delete All POIs</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QDoubleSpinBox" name="poi_threshold_doubleSpinBox"/>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QPushButton" name="auto_pois_PushButton">
+         <property name="text">
+          <string>Auto Find POIs</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1" colspan="2">
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="new_roi_Action">
    <property name="icon">
@@ -950,6 +1019,20 @@
    </property>
    <property name="toolTip">
     <string>Filter the scan image to remove blinking. Raw data unchanged.</string>
+   </property>
+  </action>
+  <action name="auto_pois_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Auto POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>To show Auto POIs window</string>
    </property>
   </action>
  </widget>
@@ -1177,6 +1260,22 @@
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_pois_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>auto_pois_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>863</x>
+     <y>264</y>
     </hint>
    </hints>
   </connection>
