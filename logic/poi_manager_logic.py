@@ -374,6 +374,7 @@ class PoiManagerLogic(GenericLogic):
     sigPoiUpdated = QtCore.Signal(str, str, np.ndarray)  # old_name, new_name, current_position
     sigActivePoiUpdated = QtCore.Signal(str)
     sigRoiUpdated = QtCore.Signal(dict)  # Dict containing ROI parameters to update
+    sigThresholdUpdated = QtCore.Signal(float)
 
     # Internal signals
     __sigStartPeriodicRefocus = QtCore.Signal()
@@ -518,6 +519,8 @@ class PoiManagerLogic(GenericLogic):
     @poi_threshold.setter
     def poi_threshold(self, new_threshold):
         self.set_poi_threshold(new_threshold)
+        self.sigThresholdUpdated.emit(new_threshold)
+        return
 
     @property
     def time_until_refocus(self):
@@ -856,6 +859,7 @@ class PoiManagerLogic(GenericLogic):
         if not threshold > 1:
             self.log.error('threshold must > 1!')
         self._poi_threshold = float(threshold)
+        self.sigThresholdUpdated.emit(threshold)
         return
 
     def start_periodic_refocus(self, name=None):
