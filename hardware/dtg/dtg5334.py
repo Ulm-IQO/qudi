@@ -26,6 +26,7 @@ import numpy as np
 import os
 import time
 import visa
+from core.util.helpers import natural_sort
 
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from core.module import Base, ConfigOption
@@ -571,14 +572,14 @@ class DTG5334(Base, PulserInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return list(sorted(self.waveform_names))
+        return list(natural_sort(self.waveform_names))
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        return list(sorted(self.sequence_names))
+        return list(natural_sort(self.sequence_names))
 
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.

@@ -419,6 +419,7 @@ class PoiManagerLogic(GenericLogic):
                                  'scan_image': self.roi_scan_image,
                                  'scan_image_extent': self.roi_scan_image_extent})
         self.sigActivePoiUpdated.emit('' if self.active_poi is None else self.active_poi)
+        self.update_poi_tag_in_savelogic()
         return
 
     def on_deactivate(self):
@@ -988,8 +989,10 @@ class PoiManagerLogic(GenericLogic):
         return
 
     def update_poi_tag_in_savelogic(self):
-        # TODO: Implement this once there is a way to include global parameters in the savelogic.
-        pass
+        if not self._active_poi:
+            self.savelogic().remove_additional_parameter('Active POI')
+        else:
+            self.savelogic().update_additional_parameters({'Active POI': self._active_poi})
 
     def save_roi(self):
         """
