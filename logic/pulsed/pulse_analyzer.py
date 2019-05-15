@@ -25,6 +25,7 @@ import inspect
 import importlib
 
 from core.util.modules import get_main_dir
+from core.util.helpers import natural_sort
 
 
 class PulseAnalyzerBase:
@@ -110,7 +111,7 @@ class PulseAnalyzer(PulseAnalyzerBase):
         self.__populate_parameter_dict()
 
         # Set default analysis method
-        self._current_analysis_method = sorted(self._analysis_methods)[0]
+        self._current_analysis_method = natural_sort(self._analysis_methods)[0]
 
         # Update from parameter_dict if handed over
         if isinstance(pulsedmeasurementlogic.analysis_parameters, dict):
