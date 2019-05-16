@@ -838,11 +838,11 @@ class ConfocalGui(GUIBase):
                                                                             (y_min, y_max)))
                 self.scan_2d_dockwidgets[axes].colorbar.set_label(text='scan data',
                                                                   unit=data.channel_units[channel])
-            # elif len(axes) == 1:
-            #     if 'scan' in data:
-            #         self.scan_1d_dockwidgets[axes[0]].plot_item.setData(data['scan'])
-            #     self.scan_1d_dockwidgets[axes[0]].plot_widget.setLabel(
-            #         'left', 'scan data', units=data['unit'])
+            elif len(axes) == 1:
+                channel = data.channel_names[0]
+                self.scan_1d_dockwidgets[axes].plot_item.setData(np.linspace(*(data.target_ranges[0]), data.data[channel].size), data.data[channel])
+                self.scan_1d_dockwidgets[axes].plot_widget.setLabel(
+                    'left', 'scan data', units=data.channel_units[channel])
         return
 
     @QtCore.Slot(bool, tuple)
