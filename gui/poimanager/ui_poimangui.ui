@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>746</width>
+    <width>935</width>
     <height>864</height>
    </rect>
   </property>
@@ -30,7 +30,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>746</width>
+     <width>935</width>
      <height>26</height>
     </rect>
    </property>
@@ -755,7 +755,7 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>150</width>
+     <width>197</width>
      <height>250</height>
     </size>
    </property>
@@ -808,6 +808,19 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <item row="1" column="2">
+        <widget class="QDoubleSpinBox" name="poi_diameter_doubleSpinBox"/>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>POI Diameter (μm)</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
        </item>
       </layout>
      </item>

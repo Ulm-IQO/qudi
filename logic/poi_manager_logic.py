@@ -367,6 +367,7 @@ class PoiManagerLogic(GenericLogic):
     _active_poi = StatusVar(default=None)
     _move_scanner_after_optimization = StatusVar(default=True)
     _poi_threshold = StatusVar(default=5)
+    _poi_diameter = StatusVar(default=1.5)
 
     # Signals for connecting modules
     sigRefocusStateUpdated = QtCore.Signal(bool)  # is_active
@@ -375,6 +376,7 @@ class PoiManagerLogic(GenericLogic):
     sigActivePoiUpdated = QtCore.Signal(str)
     sigRoiUpdated = QtCore.Signal(dict)  # Dict containing ROI parameters to update
     sigThresholdUpdated = QtCore.Signal(float)
+    sigDiameterUpdated = QtCore.Signal(float)
 
     # Internal signals
     __sigStartPeriodicRefocus = QtCore.Signal()
@@ -520,6 +522,16 @@ class PoiManagerLogic(GenericLogic):
     def poi_threshold(self, new_threshold):
         self.set_poi_threshold(new_threshold)
         self.sigThresholdUpdated.emit(new_threshold)
+        return
+
+    @property
+    def poi_diameter(self):
+        return float(self._poi_diameter)
+
+    @poi_diameter.setter
+    def poi_diameter(self, new_diameter):
+        self.set_poi_diameter(new_diameter)
+        self.sigDiameterUpdated.emit(new_diameter)
         return
 
     @property
@@ -862,6 +874,12 @@ class PoiManagerLogic(GenericLogic):
         self.sigThresholdUpdated.emit(threshold)
         return
 
+    @QtCore.Slot(float)
+    def set_poi_diameter(self, diameter):
+        self._poi_diameter = float(diameter)
+        self.sigDiameterUpdated.emit(diameter)
+        return
+
     def start_periodic_refocus(self, name=None):
         """
         Starts periodic refocusing of the POI <name>.
@@ -1164,15 +1182,15 @@ class PoiManagerLogic(GenericLogic):
         self.log.error('Tranformation of all POI positions not implemented yet.')
         return
 
-    def _spot_filter(self,scan):
+    def _spot_filter(self, scan):
         pixel_num = len(scan)
         x_range = self.roi_scan_image_extent[0]
         pixel_size = (x_range[1] - x_range[0]) / pixel_num
-        spot_size = self.optimise_xy_size
+        spot_size = self._poi_diameter/1e6
         arr_size = int(spot_size / pixel_size)
         return arr_size
 
-    def _local_max(self,scan):
+    def _local_max(self, scan):
         scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
         filter_size = self._spot_filter(scan)
         mid_f = int(filter_size / 2)

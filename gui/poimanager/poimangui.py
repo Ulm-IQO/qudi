@@ -250,6 +250,7 @@ class PoiManagerGui(GUIBase):
     # declare signals
     sigTrackPeriodChanged = QtCore.Signal(float)
     sigPoiThresholdChanged = QtCore.Signal(float)
+    sigPoiDiameterChanged = QtCore.Signal(float)
     sigPoiNameChanged = QtCore.Signal(str)
     sigPoiNameTagChanged = QtCore.Signal(str)
     sigRoiNameChanged = QtCore.Signal(str)
@@ -307,6 +308,8 @@ class PoiManagerGui(GUIBase):
         self._update_poi_nametag(self.poimanagerlogic().poi_nametag)
         # Initialize Auto POI threshold
         self._update_poi_threshold(self.poimanagerlogic().poi_threshold)
+        # Initialize Auto POI diameter
+        self._update_poi_diameter(self.poimanagerlogic().poi_diameter)
         # Distance Measurement:
         # Introducing a SignalProxy will limit the rate of signals that get fired.
         self._mouse_moved_proxy = pg.SignalProxy(signal=self.roi_image.scene().sigMouseMoved,
@@ -404,6 +407,7 @@ class PoiManagerGui(GUIBase):
         self.poimanagerlogic().sigRefocusStateUpdated.connect(
             self.update_refocus_state, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigThresholdUpdated.connect(self._update_poi_threshold, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigDiameterUpdated.connect(self._update_poi_diameter, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_update_signals_from_logic(self):
@@ -449,6 +453,8 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().set_refocus_period, QtCore.Qt.QueuedConnection)
         self.sigPoiThresholdChanged.connect(
             self.poimanagerlogic().set_poi_threshold)
+        self.sigPoiDiameterChanged.connect(
+            self.poimanagerlogic().set_poi_diameter)
         self.sigRoiNameChanged.connect(
             self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
         self.sigPoiNameChanged.connect(
@@ -474,6 +480,7 @@ class PoiManagerGui(GUIBase):
         self._mw.track_poi_Action.triggered.disconnect()
         self.sigTrackPeriodChanged.disconnect()
         self.sigPoiThresholdChanged.disconnect()
+        self.sigPoiDiameterChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
         self.sigPoiNameTagChanged.disconnect()
@@ -485,6 +492,7 @@ class PoiManagerGui(GUIBase):
     def __connect_internal_signals(self):
         self._mw.track_period_SpinBox.editingFinished.connect(self.track_period_changed)
         self._mw.poi_threshold_doubleSpinBox.editingFinished.connect(self.poi_threshold_changed)
+        self._mw.poi_diameter_doubleSpinBox.editingFinished.connect(self.poi_diameter_changed)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.roi_name_changed)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
         self._mw.poi_nametag_LineEdit.editingFinished.connect(self.poi_nametag_changed)
@@ -707,6 +715,11 @@ class PoiManagerGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def poi_diameter_changed(self):
+        self.sigPoiDiameterChanged.emit(self._mw.poi_diameter_doubleSpinBox.value())
+        return
+
+    @QtCore.Slot()
     def roi_name_changed(self):
         """ Set the name of the current ROI."""
         self.sigRoiNameChanged.emit(self._mw.roi_name_LineEdit.text())
@@ -822,6 +835,10 @@ class PoiManagerGui(GUIBase):
 
     def _update_poi_threshold(self, threshold):
         self._mw.poi_threshold_doubleSpinBox.setValue(threshold)
+        return
+
+    def _update_poi_diameter(self, diameter):
+        self._mw.poi_diameter_doubleSpinBox.setValue(diameter)
         return
 
     def _update_roi_history(self, history=None):
