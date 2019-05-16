@@ -27,6 +27,7 @@ import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import copy
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -38,6 +39,7 @@ class ScanData:
 
     """
     def __init__(self, scan_axes, channel_config, scanner_settings):
+        self.timestamp = datetime.datetime.now()
         self._scan_axes = tuple(scan_axes)
         if self._scan_axes not in scanner_settings['scan_axes']:
             raise ValueError('scan_axes must be tuple of axes name strings contained in '
@@ -83,6 +85,7 @@ class ScanData:
     def new_data(self):
         self._position_data = {ax: np.zeros((*self.resolution,)) for ax in self.__available_axes}
         self._data = {ch: np.zeros((*self.resolution,)) for ch in self.channel_names}
+        self.timestamp = datetime.datetime.now()
         return
 
     def add_line_data(self, position, data, y_index=None, x_index=None):
@@ -223,6 +226,10 @@ class ConfocalLogic(GenericLogic):
         self._optimizer_settings['axes']['y'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['z'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['phi'] = {'resolution': 15, 'range': 1e-6}
+
+        # Scan history
+        self._history = list()
+        self._history_index = 0
 
         # Scan data buffer
         self._current_dummy_data = None
@@ -455,6 +462,10 @@ class ConfocalLogic(GenericLogic):
             else:
                 max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[0]]
             if self.__scan_line_count >= max_number_of_lines or self.__scan_stop_requested:
+                while len(self._history) >= self.max_history_length:
+                    self._history.pop(0)
+                self._history.append(copy.deepcopy(self.scan_data[self.__running_scan]))
+                self._history_index = len(self._history) - 1
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, self.__running_scan)
                 self.__timer.start()
@@ -562,3 +573,44 @@ class ConfocalLogic(GenericLogic):
 
         pos_arr = np.linspace(start, stop, res)
         return np.random.rand(pos_arr.size) * amplitude * 0.10 + gauss(pos_arr)
+
+    @QtCore.Slot()
+    def history_backwards(self):
+        if self._history_index < 1:
+            self.log.warning('Unable to restore previous state from scan history. '
+                             'Already at first history entry.')
+            return
+        self._history_index -= 1
+        self.restore_from_history(self._history_index)
+        return
+
+    @QtCore.Slot()
+    def history_forward(self):
+        if self._history_index >= len(self._history) - 1:
+            self.log.warning('Unable to restore next state from scan history. '
+                             'Already at last history entry.')
+            return
+        self._history_index += 1
+        self.restore_from_history(self._history_index)
+        return
+
+    def restore_from_history(self, index):
+        if not isinstance(index, int):
+            self.log.error('History index to restore must be int type.')
+            return
+
+        try:
+            data = self._history[index]
+        except IndexError:
+            self.log.error('History index "{0}" out of range.'.format(index))
+            return
+
+        axes = data.scan_axes
+        resolution = data.resolution
+        ranges = data.target_ranges
+        for i, axis in enumerate(axes):
+            self._scanner_settings['scan_resolution'][axis] = resolution[i]
+            self._scanner_settings['scan_range'][axis] = ranges[i]
+        self.sigScannerSettingsChanged.emit(self.scanner_settings)
+        self.sigScanDataChanged.emit({axes: data})
+        return

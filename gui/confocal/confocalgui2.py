@@ -339,6 +339,11 @@ class ConfocalGui(GUIBase):
             self.scannerlogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
         self.sigToggleScan.connect(self.scannerlogic().toggle_scan, QtCore.Qt.QueuedConnection)
 
+        self._mw.action_history_forward.triggered.connect(
+            self.scannerlogic().history_forward, QtCore.Qt.QueuedConnection)
+        self._mw.action_history_back.triggered.connect(
+            self.scannerlogic().history_backwards, QtCore.Qt.QueuedConnection)
+
         self.scannerlogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
         self.scannerlogic().sigScannerTargetChanged.connect(
@@ -366,6 +371,8 @@ class ConfocalGui(GUIBase):
         self.sigScannerSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
+        self._mw.action_history_forward.triggered.disconnect()
+        self._mw.action_history_back.triggered.disconnect()
         self.scannerlogic().sigScannerPositionChanged.disconnect()
         self.scannerlogic().sigScannerTargetChanged.disconnect()
         self.scannerlogic().sigScannerSettingsChanged.disconnect()
