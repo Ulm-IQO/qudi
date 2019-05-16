@@ -312,6 +312,10 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(dict)
     def set_scanner_settings(self, settings):
+        if self.module_state() == 'locked':
+            self.log.warning('Scan is running. Unable to change scanner settings.')
+            return
+
         if 'scan_axes' in settings:
             for axes in settings['scan_axes']:
                 if not (0 < len(axes) < 3):
@@ -580,8 +584,7 @@ class ConfocalLogic(GenericLogic):
             self.log.warning('Unable to restore previous state from scan history. '
                              'Already at first history entry.')
             return
-        self._history_index -= 1
-        self.restore_from_history(self._history_index)
+        self.restore_from_history(self._history_index - 1)
         return
 
     @QtCore.Slot()
@@ -590,11 +593,13 @@ class ConfocalLogic(GenericLogic):
             self.log.warning('Unable to restore next state from scan history. '
                              'Already at last history entry.')
             return
-        self._history_index += 1
-        self.restore_from_history(self._history_index)
+        self.restore_from_history(self._history_index + 1)
         return
 
     def restore_from_history(self, index):
+        if self.module_state() == 'locked':
+            self.log.warning('Scan is running. Unable to restore history state.')
+            return
         if not isinstance(index, int):
             self.log.error('History index to restore must be int type.')
             return
@@ -611,6 +616,7 @@ class ConfocalLogic(GenericLogic):
         for i, axis in enumerate(axes):
             self._scanner_settings['scan_resolution'][axis] = resolution[i]
             self._scanner_settings['scan_range'][axis] = ranges[i]
+        self._history_index = index
         self.sigScannerSettingsChanged.emit(self.scanner_settings)
         self.sigScanDataChanged.emit({axes: data})
         return
