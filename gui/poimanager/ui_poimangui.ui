@@ -743,6 +743,8 @@
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
+   <addaction name="del_all_pois_Action"/>
+   <addaction name="auto_find_POIs_Action"/>
   </widget>
   <widget class="QDockWidget" name="auto_pois_dockWidget">
    <property name="sizePolicy">
@@ -1035,6 +1037,30 @@
     <string>To show Auto POIs window</string>
    </property>
   </action>
+  <action name="auto_find_POIs_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto find POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>Find POIs automatically according to user-set S/N ratio</string>
+   </property>
+  </action>
+  <action name="del_all_pois_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete all POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>click here to delete all POIs</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -1276,6 +1302,54 @@
     <hint type="destinationlabel">
      <x>863</x>
      <y>264</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_pois_view_Action</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>auto_find_POIs_Action</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_find_POIs_Action</sender>
+   <signal>triggered()</signal>
+   <receiver>auto_pois_PushButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>649</x>
+     <y>166</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>del_all_pois_Action</sender>
+   <signal>triggered()</signal>
+   <receiver>del_all_pois_PushButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>649</x>
+     <y>201</y>
     </hint>
    </hints>
   </connection>
