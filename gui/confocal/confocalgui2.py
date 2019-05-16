@@ -343,6 +343,9 @@ class ConfocalGui(GUIBase):
             self.scannerlogic().history_forward, QtCore.Qt.QueuedConnection)
         self._mw.action_history_back.triggered.connect(
             self.scannerlogic().history_backwards, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_full_range.triggered.connect(
+            self.scannerlogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
 
         self.scannerlogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
@@ -373,6 +376,8 @@ class ConfocalGui(GUIBase):
         self.sigToggleScan.disconnect()
         self._mw.action_history_forward.triggered.disconnect()
         self._mw.action_history_back.triggered.disconnect()
+        self._mw.action_utility_full_range.triggered.disconnect()
+        self._mw.action_utility_zoom.toggled.disconnect()
         self.scannerlogic().sigScannerPositionChanged.disconnect()
         self.scannerlogic().sigScannerTargetChanged.disconnect()
         self.scannerlogic().sigScannerSettingsChanged.disconnect()
@@ -700,6 +705,8 @@ class ConfocalGui(GUIBase):
             dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(tuple(axes)))
+            dockwidget.plot_widget.sigMouseAreaSelected.connect(
+                self.__get_range_from_selection_func(tuple(axes)))
         return
 
     @property
@@ -949,6 +956,15 @@ class ConfocalGui(GUIBase):
     def __get_toggle_scan_func(self, ax):
         return lambda enabled: self.sigToggleScan.emit(ax, enabled)
 
+    def __get_range_from_selection_func(self, ax):
+        def set_range_func(qrect):
+            x_min, x_max = min(qrect.left(), qrect.right()), max(qrect.left(), qrect.right())
+            y_min, y_max = min(qrect.top(), qrect.bottom()), max(qrect.top(), qrect.bottom())
+            self.sigScannerSettingsChanged.emit({'scan_range': {ax[0]: (x_min, x_max),
+                                                                ax[1]: (y_min, y_max)}})
+            self._mw.action_utility_zoom.setChecked(False)
+        return set_range_func
+
     @QtCore.Slot()
     def change_scan_range(self):
         obj_name = self.sender().objectName()
@@ -968,6 +984,17 @@ class ConfocalGui(GUIBase):
         axis = obj_name.rsplit('_', 2)[0]
         scan_res = self.axes_control_widgets[axis]['res_spinbox'].value()
         self.sigScannerSettingsChanged.emit({'scan_resolution': {axis: scan_res}})
+        return
+
+    @QtCore.Slot(bool)
+    def toggle_cursor_zoom(self, enable):
+        if self._mw.action_utility_zoom.isChecked() != enable:
+            self._mw.action_utility_zoom.blockSignals(True)
+            self._mw.action_utility_zoom.setChecked(enable)
+            self._mw.action_utility_zoom.blockSignals(False)
+
+        for dockwidget in self.scan_2d_dockwidgets.values():
+            dockwidget.plot_widget.toggle_selection(enable)
         return
 
     @QtCore.Slot()

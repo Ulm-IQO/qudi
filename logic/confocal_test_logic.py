@@ -614,3 +614,10 @@ class ConfocalLogic(GenericLogic):
         self.sigScannerSettingsChanged.emit(self.scanner_settings)
         self.sigScanDataChanged.emit({axes: data})
         return
+
+    @QtCore.Slot()
+    def set_full_scan_ranges(self):
+        scan_ranges = {ax: (ax_dict['min_value'], ax_dict['max_value']) for ax, ax_dict in
+                       self.scanner_constraints['axes'].items()}
+        self.set_scanner_settings({'scan_range': scan_ranges})
+        return
