@@ -827,7 +827,15 @@ class ConfocalGui(GUIBase):
             if len(axes) == 2:
                 channel = data.channel_names[0]
                 self.scan_2d_dockwidgets[axes].image_item.setImage(image=data.data[channel])
-                self.scan_2d_dockwidgets[axes].image_item.set_image_extent(data.target_ranges)
+                data_ranges_x, data_ranges_y = data.target_ranges
+                px_size_x = abs(data_ranges_x[1] - data_ranges_x[0]) / data.resolution[0]
+                px_size_y = abs(data_ranges_y[1] - data_ranges_y[0]) / data.resolution[1]
+                x_min = min(data_ranges_x) - px_size_x / 2
+                x_max = max(data_ranges_x) + px_size_x / 2
+                y_min = min(data_ranges_y) - px_size_y / 2
+                y_max = max(data_ranges_y) + px_size_y / 2
+                self.scan_2d_dockwidgets[axes].image_item.set_image_extent(((x_min, x_max),
+                                                                            (y_min, y_max)))
                 self.scan_2d_dockwidgets[axes].colorbar.set_label(text='scan data',
                                                                   unit=data.channel_units[channel])
             # elif len(axes) == 1:
