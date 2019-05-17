@@ -781,6 +781,9 @@
        </item>
        <item row="3" column="1" colspan="2">
         <widget class="QPushButton" name="del_all_pois_PushButton">
+         <property name="toolTip">
+          <string>Delete all POIs.</string>
+         </property>
          <property name="text">
           <string>Delete All POIs</string>
          </property>
@@ -791,6 +794,12 @@
        </item>
        <item row="2" column="1" colspan="2">
         <widget class="QPushButton" name="auto_pois_PushButton">
+         <property name="toolTip">
+          <string>Find POIs automatically with user-set POI diameter and S/N ratio.</string>
+         </property>
+         <property name="statusTip">
+          <string/>
+         </property>
          <property name="text">
           <string>Auto Find POIs</string>
          </property>
@@ -1059,7 +1068,7 @@
     <string>Auto find POIs</string>
    </property>
    <property name="toolTip">
-    <string>Find POIs automatically according to user-set S/N ratio</string>
+    <string>Use this magic fairy bar to find POIs automatically according to user-set S/N ratio</string>
    </property>
   </action>
   <action name="del_all_pois_Action">
