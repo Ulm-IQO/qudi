@@ -256,7 +256,6 @@ class ColorBarWidget(QtWidgets.QWidget):
         # Adjust image color
         if self._image_item is not None:
             self._image_item.setLevels((cb_min, cb_max))
-        print(cb_min, cb_max)
         self.sigRangeChanged.emit(cb_min, cb_max)
         return
 

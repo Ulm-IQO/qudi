@@ -105,6 +105,8 @@ class Scan2dDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('{0}_{1}_scan_widget'.format(*axes_names))
 
         self.toggle_scan_button = widget.toggle_scan_pushButton
+        self.channel_comboBox = widget.channel_comboBox
+        self.channel_set = set()
         self.plot_widget = widget.image_scanPlotWidget
         self.colorbar = widget.colorbar_colorBarWidget
         self.image_item = ScanImageItem(image=np.zeros((2, 2)))
@@ -135,6 +137,8 @@ class Scan1dDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('{0}_scan_widget'.format(axis_name))
 
         self.toggle_scan_button = widget.toggle_scan_pushButton
+        self.channel_comboBox = widget.channel_comboBox
+        self.channel_set = set()
         self.plot_widget = widget.scan_plotWidget
         self.plot_item = pg.PlotDataItem(x=np.arange(2), y=np.zeros(2), pen=pg.mkPen(palette.c1))
         self.plot_widget.addItem(self.plot_item)
@@ -839,8 +843,16 @@ class ConfocalGui(GUIBase):
 
         for axes, data in scan_data.items():
             if len(axes) == 2:
-                channel = data.channel_names[0]
-                self.scan_2d_dockwidgets[axes].image_item.setImage(image=data.data[channel])
+                dockwidget = self.scan_2d_dockwidgets[axes]
+                if set(data.channel_names) != dockwidget.channel_set:
+                    old_channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_comboBox.clear()
+                    dockwidget.channel_comboBox.addItems(data.channel_names)
+                    dockwidget.channel_set = set(data.channel_names)
+                    if old_channel in dockwidget.channel_set:
+                        dockwidget.channel_comboBox.setCurrentText(old_channel)
+                channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.image_item.setImage(image=data.data[channel])
                 data_ranges_x, data_ranges_y = data.target_ranges
                 px_size_x = abs(data_ranges_x[1] - data_ranges_x[0]) / data.resolution[0]
                 px_size_y = abs(data_ranges_y[1] - data_ranges_y[0]) / data.resolution[1]
@@ -848,14 +860,22 @@ class ConfocalGui(GUIBase):
                 x_max = max(data_ranges_x) + px_size_x / 2
                 y_min = min(data_ranges_y) - px_size_y / 2
                 y_max = max(data_ranges_y) + px_size_y / 2
-                self.scan_2d_dockwidgets[axes].image_item.set_image_extent(((x_min, x_max),
-                                                                            (y_min, y_max)))
-                self.scan_2d_dockwidgets[axes].colorbar.set_label(text='scan data',
-                                                                  unit=data.channel_units[channel])
+                dockwidget.image_item.set_image_extent(((x_min, x_max), (y_min, y_max)))
+                dockwidget.colorbar.set_label(text='scan data', unit=data.channel_units[channel])
             elif len(axes) == 1:
-                channel = data.channel_names[0]
-                self.scan_1d_dockwidgets[axes].plot_item.setData(np.linspace(*(data.target_ranges[0]), data.data[channel].size), data.data[channel])
-                self.scan_1d_dockwidgets[axes].plot_widget.setLabel(
+                dockwidget = self.scan_1d_dockwidgets[axes]
+                if set(data.channel_names) != dockwidget.channel_set:
+                    old_channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_comboBox.clear()
+                    dockwidget.channel_comboBox.addItems(data.channel_names)
+                    dockwidget.channel_set = set(data.channel_names)
+                    if old_channel in dockwidget.channel_set:
+                        dockwidget.channel_comboBox.setCurrentText(old_channel)
+                channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.plot_item.setData(
+                    np.linspace(*(data.target_ranges[0]), data.data[channel].size),
+                    data.data[channel])
+                dockwidget.plot_widget.setLabel(
                     'left', 'scan data', units=data.channel_units[channel])
         return
 
