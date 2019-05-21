@@ -711,6 +711,8 @@ class ConfocalGui(GUIBase):
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(tuple(axes)))
             dockwidget.plot_widget.sigMouseAreaSelected.connect(
                 self.__get_range_from_selection_func(tuple(axes)))
+            dockwidget.channel_comboBox.currentIndexChanged.connect(
+                self.__get_data_channel_changed_func(tuple(axes)))
         return
 
     @property
@@ -846,11 +848,13 @@ class ConfocalGui(GUIBase):
                 dockwidget = self.scan_2d_dockwidgets[axes]
                 if set(data.channel_names) != dockwidget.channel_set:
                     old_channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_comboBox.blockSignals(True)
                     dockwidget.channel_comboBox.clear()
                     dockwidget.channel_comboBox.addItems(data.channel_names)
                     dockwidget.channel_set = set(data.channel_names)
                     if old_channel in dockwidget.channel_set:
                         dockwidget.channel_comboBox.setCurrentText(old_channel)
+                    dockwidget.channel_comboBox.blockSignals(False)
                 channel = dockwidget.channel_comboBox.currentText()
                 dockwidget.image_item.setImage(image=data.data[channel])
                 data_ranges_x, data_ranges_y = data.target_ranges
@@ -984,6 +988,11 @@ class ConfocalGui(GUIBase):
                                                                 ax[1]: (y_min, y_max)}})
             self._mw.action_utility_zoom.setChecked(False)
         return set_range_func
+
+    def __get_data_channel_changed_func(self, ax):
+        def set_data_channel():
+            self.scan_data_updated({ax: self.scannerlogic().scan_data[ax]})
+        return set_data_channel
 
     @QtCore.Slot()
     def change_scan_range(self):

@@ -227,6 +227,7 @@ class ConfocalLogic(GenericLogic):
         # Scan history
         self._history = list()
         self._history_index = 0
+        self.max_history_length = 10
 
         # Scan data buffer
         self._current_dummy_data = None
@@ -492,13 +493,13 @@ class ConfocalLogic(GenericLogic):
                 scan_line = self._current_dummy_data[:, self.__scan_line_count - 1]
                 self._scan_data[self.__running_scan].add_line_data(
                     position=self.__scan_line_positions,
-                    data={chnl: scan_line for chnl in channels},
+                    data={chnl: scan_line * (i+1) for i, chnl in enumerate(channels)},
                     y_index=self.__scan_line_count-1)
             else:
                 scan_point = self._current_dummy_data[self.__scan_line_count - 1]
                 self._scan_data[self.__running_scan].add_data_point(
                     position=self.__scan_line_positions,
-                    data={chnl: scan_point for chnl in channels},
+                    data={chnl: scan_point * (i+1) for i, chnl in enumerate(channels)},
                     index=self.__scan_line_count-1)
 
             self.sigScanDataChanged.emit({self.__running_scan: self.scan_data[self.__running_scan]})
