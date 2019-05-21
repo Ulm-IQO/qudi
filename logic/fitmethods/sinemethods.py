@@ -675,6 +675,49 @@ def estimate_sine(self, x_axis, data, params):
 
     return error, params
 
+
+def estimate_sine_cosine(self, x_axis, data, params):
+    """ Provides an estimator to obtain initial values for cosine fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error, params = self.estimate_sine(x_axis=x_axis, data=data, params=params)
+
+    params['phase'].set(value=np.pi/2, vary=False)
+
+    return error, params
+
+def estimate_sine_360(self, x_axis, data, params):
+    """ Provides an estimator to obtain initial values for cosine fitting.
+
+    @param numpy.array x_axis: 1D axis values
+    @param numpy.array data: 1D data, should have the same dimension as x_axis.
+    @param lmfit.Parameters params: object includes parameter dictionary which
+                                    can be set
+
+    @return tuple (error, params):
+
+    Explanation of the return parameter:
+        int error: error code (0:OK, -1:error)
+        Parameters object params: set parameters of initial values
+    """
+
+    error, params = self.estimate_sine(x_axis=x_axis, data=data, params=params)
+
+    params['frequency'].set(value=1.0/360.0, vary=False)
+
+    return error, params
+
 ##########################
 # Sine exponential decay #
 ##########################
