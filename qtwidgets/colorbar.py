@@ -112,6 +112,7 @@ class ColorBarWidget(QtWidgets.QWidget):
     def __init__(self, parent=None, unit=None, label=None, image_item=None):
         super().__init__(parent)
         self._image_item = image_item
+        self._image_data = None
 
         self.min_spinbox = ScienDSpinBox()
         self.min_spinbox.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
@@ -186,7 +187,7 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.absolute_radioButton.toggled.connect(self.refresh_colorscale)
         if self._image_item is not None:
             try:
-                self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+                self._image_item.sigImageDataChanged.connect(self.image_data_changed)
             except AttributeError:
                 pass
         return
@@ -210,10 +211,9 @@ class ColorBarWidget(QtWidgets.QWidget):
         self._image_item = item
         if self._image_item is not None:
             try:
-                self._image_item.sigImageChanged.connect(self.refresh_colorscale)
+                self._image_item.sigImageDataChanged.connect(self.image_data_changed)
             except AttributeError:
                 pass
-        self.refresh_colorscale()
         return
 
     def set_colormap(self, cmap=None):
@@ -224,16 +224,23 @@ class ColorBarWidget(QtWidgets.QWidget):
         self.colorbar.set_pen(pen)
         return
 
+    def image_data_changed(self, image):
+        self._image_data = image
+        self.refresh_colorscale()
+        return
+
     @QtCore.Slot()
     @QtCore.Slot(bool)
-    def refresh_colorscale(self, update=True):
+    def refresh_colorscale(self, update=True, image=None):
+        if image is not None:
+            self._image_data = image
         if not update:
             return
         # Get absolute data ranges for the colorbar
         if self.percentile_radioButton.isChecked():
-            if self._image_item is None:
+            if self._image_data is None:
                 return
-            data = self._image_item.image[np.nonzero(self._image_item.image)]
+            data = self._image_data[np.nonzero(self._image_data)]
             if data.size == 0:
                 return
             low_centile = self.low_percentile_spinbox.value()

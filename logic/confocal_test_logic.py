@@ -27,6 +27,7 @@ import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import copy
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
@@ -38,6 +39,7 @@ class ScanData:
 
     """
     def __init__(self, scan_axes, channel_config, scanner_settings):
+        self.timestamp = datetime.datetime.now()
         self._scan_axes = tuple(scan_axes)
         if self._scan_axes not in scanner_settings['scan_axes']:
             raise ValueError('scan_axes must be tuple of axes name strings contained in '
@@ -83,6 +85,7 @@ class ScanData:
     def new_data(self):
         self._position_data = {ax: np.zeros((*self.resolution,)) for ax in self.__available_axes}
         self._data = {ch: np.zeros((*self.resolution,)) for ch in self.channel_names}
+        self.timestamp = datetime.datetime.now()
         return
 
     def add_line_data(self, position, data, y_index=None, x_index=None):
@@ -127,6 +130,18 @@ class ScanData:
                 self._position_data[axis][int(x_index), :] = arr
             elif x_index is None:
                 self._position_data[axis][:, int(y_index)] = arr
+        return
+
+    def add_data_point(self, position, data, index):
+        if set(position) != set(self.__available_axes):
+            raise ValueError('position dict must contain all available axes {0}.'
+                             ''.format(self.__available_axes))
+
+        for channel, value in data.items():
+            self._data[channel][index] = value
+
+        for axis, value in position.items():
+            self._position_data[axis][index] = value
         return
 
 
@@ -178,8 +193,8 @@ class ConfocalLogic(GenericLogic):
 
         # scanner settings
         self._scanner_settings = dict()
-        self._scanner_settings['scan_axes'] = tuple(combinations(self.scanner_constraints['axes'],
-                                                                 2))
+        self._scanner_settings['scan_axes'] = (*combinations(self.scanner_constraints['axes'],
+                                                                 2), ('x',))
         self._scanner_settings['pixel_clock_frequency'] = 1000
         self._scanner_settings['backscan_points'] = 50
         self._scanner_settings['scan_resolution'] = dict()
@@ -208,6 +223,10 @@ class ConfocalLogic(GenericLogic):
         self._optimizer_settings['axes']['y'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['z'] = {'resolution': 15, 'range': 1e-6}
         self._optimizer_settings['axes']['phi'] = {'resolution': 15, 'range': 1e-6}
+
+        # Scan history
+        self._history = list()
+        self._history_index = 0
 
         # Scan data buffer
         self._current_dummy_data = None
@@ -290,6 +309,10 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(dict)
     def set_scanner_settings(self, settings):
+        if self.module_state() == 'locked':
+            self.log.warning('Scan is running. Unable to change scanner settings.')
+            return
+
         if 'scan_axes' in settings:
             for axes in settings['scan_axes']:
                 if not (0 < len(axes) < 3):
@@ -384,7 +407,6 @@ class ConfocalLogic(GenericLogic):
 
     @QtCore.Slot(tuple, bool)
     def toggle_scan(self, scan_axes, start):
-        print(scan_axes)
         with self.threadlock:
             if start and self.module_state() != 'idle':
                 self.log.error('Unable to start scan. Scan already in progress.')
@@ -398,7 +420,10 @@ class ConfocalLogic(GenericLogic):
                 self.__timer.stop()
                 self.__running_scan = scan_axes
                 self.sigScanStateChanged.emit(True, self.__running_scan)
-                self._current_dummy_data = self._generate_2d_dummy_data(scan_axes)
+                if len(scan_axes) > 1:
+                    self._current_dummy_data = self._generate_2d_dummy_data(scan_axes)
+                else:
+                    self._current_dummy_data = self.generate_1d_dummy_data(scan_axes[0])
                 self.__scan_line_count = 0
                 self.__scan_start_time = time.time()
                 self._scan_data[self.__running_scan] = ScanData(
@@ -407,14 +432,20 @@ class ConfocalLogic(GenericLogic):
                     scanner_settings=self.scanner_settings)
                 self._scan_data[self.__running_scan].new_data()
                 num_x_vals = self.scanner_settings['scan_resolution'][scan_axes[0]]
-                self.__scan_line_interval = num_x_vals / self.scanner_settings[
-                    'pixel_clock_frequency']
-                self.__scan_line_positions = {ax: np.full(num_x_vals, self.scanner_target[ax]) for
-                                              ax in self._constraints['axes']}
-                min_val, max_val = self.scanner_settings['scan_range'][self.__running_scan[0]]
-                self.__scan_line_positions[self.__running_scan[0]] = np.linspace(min_val,
-                                                                                 max_val,
-                                                                                 num_x_vals)
+                if len(scan_axes) > 1:
+                    self.__scan_line_interval = num_x_vals / self.scanner_settings[
+                        'pixel_clock_frequency']
+                    self.__scan_line_positions = {ax: np.full(num_x_vals, self.scanner_target[ax])
+                                                  for
+                                                  ax in self._constraints['axes']}
+                    min_val, max_val = self.scanner_settings['scan_range'][self.__running_scan[0]]
+                    self.__scan_line_positions[self.__running_scan[0]] = np.linspace(min_val,
+                                                                                     max_val,
+                                                                                     num_x_vals)
+                else:
+                    self.__scan_line_interval = 10 / self.scanner_settings['pixel_clock_frequency']
+                    self.__scan_line_positions = self.scanner_target.copy()
+
                 self.__scan_stop_requested = False
                 self.__sigNextLine.emit()
             else:
@@ -427,30 +458,48 @@ class ConfocalLogic(GenericLogic):
             return
 
         with self.threadlock:
-            max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[1]]
+            if len(self.__running_scan) > 1:
+                max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[1]]
+            else:
+                max_number_of_lines = self.scanner_settings['scan_resolution'][self.__running_scan[0]]
             if self.__scan_line_count >= max_number_of_lines or self.__scan_stop_requested:
+                while len(self._history) >= self.max_history_length:
+                    self._history.pop(0)
+                self._history.append(copy.deepcopy(self.scan_data[self.__running_scan]))
+                self._history_index = len(self._history) - 1
                 self.module_state.unlock()
                 self.sigScanStateChanged.emit(False, self.__running_scan)
                 self.__timer.start()
                 return
 
-            y_min, y_max = self.scanner_settings['scan_range'][self.__running_scan[1]]
-            self.__scan_line_positions[self.__running_scan[1]] = np.full(
-                self.scanner_settings['scan_resolution'][self.__running_scan[0]],
-                y_min + (y_max - y_min) / (max_number_of_lines - 1))
+            if len(self.__running_scan) > 1:
+                y_min, y_max = self.scanner_settings['scan_range'][self.__running_scan[1]]
+                self.__scan_line_positions[self.__running_scan[1]] = np.full(
+                    self.scanner_settings['scan_resolution'][self.__running_scan[0]],
+                    y_min + (y_max - y_min) / (max_number_of_lines - 1))
+            else:
+                x_min, x_max = self.scanner_settings['scan_range'][self.__running_scan[0]]
+                self.__scan_line_positions[self.__running_scan[0]] = x_min + (x_max - x_min) / (
+                            max_number_of_lines - 1)
 
             self.__scan_line_count += 1
             next_line_time = self.__scan_start_time + self.__scan_line_count * self.__scan_line_interval
             while time.time() < next_line_time:
                 time.sleep(0.1)
 
-            scan_line = self._current_dummy_data[:, self.__scan_line_count-1]
             channels = self._scan_data[self.__running_scan].channel_names
-
-            self._scan_data[self.__running_scan].add_line_data(
-                position=self.__scan_line_positions,
-                data={chnl: scan_line for chnl in channels},
-                y_index=self.__scan_line_count-1)
+            if len(self.__running_scan) > 1:
+                scan_line = self._current_dummy_data[:, self.__scan_line_count - 1]
+                self._scan_data[self.__running_scan].add_line_data(
+                    position=self.__scan_line_positions,
+                    data={chnl: scan_line for chnl in channels},
+                    y_index=self.__scan_line_count-1)
+            else:
+                scan_point = self._current_dummy_data[self.__scan_line_count - 1]
+                self._scan_data[self.__running_scan].add_data_point(
+                    position=self.__scan_line_positions,
+                    data={chnl: scan_point for chnl in channels},
+                    index=self.__scan_line_count-1)
 
             self.sigScanDataChanged.emit({self.__running_scan: self.scan_data[self.__running_scan]})
             self.__sigNextLine.emit()
@@ -501,4 +550,77 @@ class ConfocalLogic(GenericLogic):
                              indexing='ij')
         return np.random.rand(xx.shape[0], xx.shape[1]) * amplitude * 0.10 + gauss_ensemble(xx, yy)
 
+    def generate_1d_dummy_data(self, axis):
+        res = self._scanner_settings['scan_resolution'][axis]
+        start, stop = self._scanner_settings['scan_range'][axis]
+        range = stop - start
 
+        density = 1 / 10e-6
+
+        params = np.random.rand(round(density * range), 2)
+        params[:, 0] = params[:, 0] * range + start  # displacement
+        params[:, 1] = params[:, 1] * 50e-9 + 150e-9  # sigma
+
+        amplitude = 200000
+        offset = 20000
+
+        def gauss(x):
+            result = np.zeros(x.size)
+            for mu, sigma in params:
+                result += np.exp(-((x - mu) ** 2) / (2 * sigma ** 2))
+            result *= amplitude - offset
+            result += offset
+            return result
+
+        pos_arr = np.linspace(start, stop, res)
+        return np.random.rand(pos_arr.size) * amplitude * 0.10 + gauss(pos_arr)
+
+    @QtCore.Slot()
+    def history_backwards(self):
+        if self._history_index < 1:
+            self.log.warning('Unable to restore previous state from scan history. '
+                             'Already at first history entry.')
+            return
+        self.restore_from_history(self._history_index - 1)
+        return
+
+    @QtCore.Slot()
+    def history_forward(self):
+        if self._history_index >= len(self._history) - 1:
+            self.log.warning('Unable to restore next state from scan history. '
+                             'Already at last history entry.')
+            return
+        self.restore_from_history(self._history_index + 1)
+        return
+
+    def restore_from_history(self, index):
+        if self.module_state() == 'locked':
+            self.log.warning('Scan is running. Unable to restore history state.')
+            return
+        if not isinstance(index, int):
+            self.log.error('History index to restore must be int type.')
+            return
+
+        try:
+            data = self._history[index]
+        except IndexError:
+            self.log.error('History index "{0}" out of range.'.format(index))
+            return
+
+        axes = data.scan_axes
+        resolution = data.resolution
+        ranges = data.target_ranges
+        for i, axis in enumerate(axes):
+            self._scanner_settings['scan_resolution'][axis] = resolution[i]
+            self._scanner_settings['scan_range'][axis] = ranges[i]
+        self._history_index = index
+        self.sigScannerSettingsChanged.emit(self.scanner_settings)
+        self.sigScanDataChanged.emit({axes: data})
+        return
+
+    @QtCore.Slot()
+    def set_full_scan_ranges(self):
+        scan_ranges = {ax: (ax_dict['min_value'], ax_dict['max_value']) for ax, ax_dict in
+                       self.scanner_constraints['axes'].items()}
+        self.set_scanner_settings({'scan_range': scan_ranges})
+        return

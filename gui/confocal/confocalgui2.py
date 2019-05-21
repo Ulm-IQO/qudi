@@ -105,6 +105,8 @@ class Scan2dDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('{0}_{1}_scan_widget'.format(*axes_names))
 
         self.toggle_scan_button = widget.toggle_scan_pushButton
+        self.channel_comboBox = widget.channel_comboBox
+        self.channel_set = set()
         self.plot_widget = widget.image_scanPlotWidget
         self.colorbar = widget.colorbar_colorBarWidget
         self.image_item = ScanImageItem(image=np.zeros((2, 2)))
@@ -135,6 +137,8 @@ class Scan1dDockWidget(QtWidgets.QDockWidget):
         widget.setObjectName('{0}_scan_widget'.format(axis_name))
 
         self.toggle_scan_button = widget.toggle_scan_pushButton
+        self.channel_comboBox = widget.channel_comboBox
+        self.channel_set = set()
         self.plot_widget = widget.scan_plotWidget
         self.plot_item = pg.PlotDataItem(x=np.arange(2), y=np.zeros(2), pen=pg.mkPen(palette.c1))
         self.plot_widget.addItem(self.plot_item)
@@ -339,6 +343,14 @@ class ConfocalGui(GUIBase):
             self.scannerlogic().set_optimizer_settings, QtCore.Qt.QueuedConnection)
         self.sigToggleScan.connect(self.scannerlogic().toggle_scan, QtCore.Qt.QueuedConnection)
 
+        self._mw.action_history_forward.triggered.connect(
+            self.scannerlogic().history_forward, QtCore.Qt.QueuedConnection)
+        self._mw.action_history_back.triggered.connect(
+            self.scannerlogic().history_backwards, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_full_range.triggered.connect(
+            self.scannerlogic().set_full_scan_ranges, QtCore.Qt.QueuedConnection)
+        self._mw.action_utility_zoom.toggled.connect(self.toggle_cursor_zoom)
+
         self.scannerlogic().sigScannerPositionChanged.connect(
             self.scanner_position_updated, QtCore.Qt.QueuedConnection)
         self.scannerlogic().sigScannerTargetChanged.connect(
@@ -366,6 +378,10 @@ class ConfocalGui(GUIBase):
         self.sigScannerSettingsChanged.disconnect()
         self.sigOptimizerSettingsChanged.disconnect()
         self.sigToggleScan.disconnect()
+        self._mw.action_history_forward.triggered.disconnect()
+        self._mw.action_history_back.triggered.disconnect()
+        self._mw.action_utility_full_range.triggered.disconnect()
+        self._mw.action_utility_zoom.toggled.disconnect()
         self.scannerlogic().sigScannerPositionChanged.disconnect()
         self.scannerlogic().sigScannerTargetChanged.disconnect()
         self.scannerlogic().sigScannerSettingsChanged.disconnect()
@@ -693,6 +709,8 @@ class ConfocalGui(GUIBase):
             dockwidget.plot_widget.crosshairs[0].sigDraggedPosChanged.connect(
                 self.__get_crosshair_update_func(axes, dockwidget.plot_widget.crosshairs[0]))
             dockwidget.toggle_scan_button.clicked.connect(self.__get_toggle_scan_func(tuple(axes)))
+            dockwidget.plot_widget.sigMouseAreaSelected.connect(
+                self.__get_range_from_selection_func(tuple(axes)))
         return
 
     @property
@@ -825,16 +843,40 @@ class ConfocalGui(GUIBase):
 
         for axes, data in scan_data.items():
             if len(axes) == 2:
-                channel = data.channel_names[0]
-                self.scan_2d_dockwidgets[axes].image_item.setImage(image=data.data[channel])
-                self.scan_2d_dockwidgets[axes].image_item.set_image_extent(data.target_ranges)
-                self.scan_2d_dockwidgets[axes].colorbar.set_label(text='scan data',
-                                                                  unit=data.channel_units[channel])
-            # elif len(axes) == 1:
-            #     if 'scan' in data:
-            #         self.scan_1d_dockwidgets[axes[0]].plot_item.setData(data['scan'])
-            #     self.scan_1d_dockwidgets[axes[0]].plot_widget.setLabel(
-            #         'left', 'scan data', units=data['unit'])
+                dockwidget = self.scan_2d_dockwidgets[axes]
+                if set(data.channel_names) != dockwidget.channel_set:
+                    old_channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_comboBox.clear()
+                    dockwidget.channel_comboBox.addItems(data.channel_names)
+                    dockwidget.channel_set = set(data.channel_names)
+                    if old_channel in dockwidget.channel_set:
+                        dockwidget.channel_comboBox.setCurrentText(old_channel)
+                channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.image_item.setImage(image=data.data[channel])
+                data_ranges_x, data_ranges_y = data.target_ranges
+                px_size_x = abs(data_ranges_x[1] - data_ranges_x[0]) / data.resolution[0]
+                px_size_y = abs(data_ranges_y[1] - data_ranges_y[0]) / data.resolution[1]
+                x_min = min(data_ranges_x) - px_size_x / 2
+                x_max = max(data_ranges_x) + px_size_x / 2
+                y_min = min(data_ranges_y) - px_size_y / 2
+                y_max = max(data_ranges_y) + px_size_y / 2
+                dockwidget.image_item.set_image_extent(((x_min, x_max), (y_min, y_max)))
+                dockwidget.colorbar.set_label(text='scan data', unit=data.channel_units[channel])
+            elif len(axes) == 1:
+                dockwidget = self.scan_1d_dockwidgets[axes]
+                if set(data.channel_names) != dockwidget.channel_set:
+                    old_channel = dockwidget.channel_comboBox.currentText()
+                    dockwidget.channel_comboBox.clear()
+                    dockwidget.channel_comboBox.addItems(data.channel_names)
+                    dockwidget.channel_set = set(data.channel_names)
+                    if old_channel in dockwidget.channel_set:
+                        dockwidget.channel_comboBox.setCurrentText(old_channel)
+                channel = dockwidget.channel_comboBox.currentText()
+                dockwidget.plot_item.setData(
+                    np.linspace(*(data.target_ranges[0]), data.data[channel].size),
+                    data.data[channel])
+                dockwidget.plot_widget.setLabel(
+                    'left', 'scan data', units=data.channel_units[channel])
         return
 
     @QtCore.Slot(bool, tuple)
@@ -934,6 +976,15 @@ class ConfocalGui(GUIBase):
     def __get_toggle_scan_func(self, ax):
         return lambda enabled: self.sigToggleScan.emit(ax, enabled)
 
+    def __get_range_from_selection_func(self, ax):
+        def set_range_func(qrect):
+            x_min, x_max = min(qrect.left(), qrect.right()), max(qrect.left(), qrect.right())
+            y_min, y_max = min(qrect.top(), qrect.bottom()), max(qrect.top(), qrect.bottom())
+            self.sigScannerSettingsChanged.emit({'scan_range': {ax[0]: (x_min, x_max),
+                                                                ax[1]: (y_min, y_max)}})
+            self._mw.action_utility_zoom.setChecked(False)
+        return set_range_func
+
     @QtCore.Slot()
     def change_scan_range(self):
         obj_name = self.sender().objectName()
@@ -953,6 +1004,17 @@ class ConfocalGui(GUIBase):
         axis = obj_name.rsplit('_', 2)[0]
         scan_res = self.axes_control_widgets[axis]['res_spinbox'].value()
         self.sigScannerSettingsChanged.emit({'scan_resolution': {axis: scan_res}})
+        return
+
+    @QtCore.Slot(bool)
+    def toggle_cursor_zoom(self, enable):
+        if self._mw.action_utility_zoom.isChecked() != enable:
+            self._mw.action_utility_zoom.blockSignals(True)
+            self._mw.action_utility_zoom.setChecked(enable)
+            self._mw.action_utility_zoom.blockSignals(False)
+
+        for dockwidget in self.scan_2d_dockwidgets.values():
+            dockwidget.plot_widget.toggle_selection(enable)
         return
 
     @QtCore.Slot()

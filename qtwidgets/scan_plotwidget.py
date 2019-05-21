@@ -38,6 +38,7 @@ class ScanImageItem(ImageItem):
     single image dimension.
     """
     sigMouseClicked = QtCore.Signal(object, QtCore.QPointF)
+    sigImageDataChanged = QtCore.Signal(object)
 
     def __init__(self, *args, **kwargs):
         self.use_blink_correction = False
@@ -89,6 +90,8 @@ class ScanImageItem(ImageItem):
             self.orig_image = image
             image = scan_blink_correction(image=image, axis=self.blink_correction_axis)
         retval = super().setImage(image=image, autoLevels=autoLevels, **kwargs)
+        if image is not None:
+            self.sigImageDataChanged.emit(image)
         return retval
 
     def mouseClickEvent(self, ev):
