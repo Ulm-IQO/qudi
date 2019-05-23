@@ -28,6 +28,9 @@ from core.module import Base, ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 
+import logging
+logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 class FastCounterDummy(Base, FastCounterInterface):
     """ Implementation of the FastCounter interface methods for a dummy usage.
@@ -62,12 +65,17 @@ class FastCounterDummy(Base, FastCounterInterface):
                 'tools',
                 'FastComTec_demo_timetrace.asc')
 
+
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self.statusvar = 0
         self._binwidth = 1
         self._gate_length_bins = 8192
+
+        self.elapsed_sweeps = 0
+
         return
 
     def on_deactivate(self):
@@ -157,7 +165,9 @@ class FastCounterDummy(Base, FastCounterInterface):
         time.sleep(1)
         self.statusvar = 2
         try:
-            self._count_data = np.loadtxt(self.trace_path, dtype='int64')
+            #self._count_data = np.loadtxt(self.trace_path, dtype='int64')
+            logger.warning("Cutting dummy counter data to length 1000 (1 laser pulse) for debug")
+            self._count_data = np.loadtxt(self.trace_path, dtype='int64')[0:1000]
         except:
             return -1
 
@@ -177,8 +187,12 @@ class FastCounterDummy(Base, FastCounterInterface):
     def stop_measure(self):
         """ Stop the fast counter. """
 
-        time.sleep(1)
+        time.sleep(0.1)
+        sweeps = self.elapsed_sweeps
+        self.elapsed_sweeps = 0
+        logger.debug("Stopping dummy fast counter, sweeps reset {}->{}".format(sweeps, self.elapsed_sweeps))
         self.statusvar = 1
+
         return 0
 
     def continue_measure(self):
@@ -227,11 +241,15 @@ class FastCounterDummy(Base, FastCounterInterface):
         """
 
         # include an artificial waiting time
-        time.sleep(0.5)
-        info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+        time.sleep(0.1)
+        info_dict = {'elapsed_sweeps': self.elapsed_sweeps, 'elapsed_time': None}
+        self.iterate_sweeps()
         return self._count_data, info_dict
 
     def get_frequency(self):
         freq = 950.
         time.sleep(0.5)
         return freq
+
+    def iterate_sweeps(self, step=1):
+        self.elapsed_sweeps += step

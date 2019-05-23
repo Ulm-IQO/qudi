@@ -5,6 +5,11 @@ import datetime
 import matplotlib.pyplot as plt
 from core.util import units
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
+from logic.user_globals import UserGlobals
+
+import logging
+logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 try:
     pulsedmasterlogic
@@ -19,6 +24,15 @@ try:
 except NameError:
     manager.startModule('logic', 'optimizerlogic')
 
+
+### dummy hardware for development ###
+"""
+# can't do this -> load dummy hardware module via config
+def build_nidaq_dummy():
+
+    from hardware.nicard_dummy import NicardDummy
+    return NicardDummy(manager, 'nidaq')
+"""
 
 
 ############################################ Static hardware parameters ################################################
@@ -66,56 +80,99 @@ setup['analysis_interval'] = 3
 
 
 
+#####
+# Autoload often used modules
+#####
+
+try:
+    nicard
+except NameError:
+    print("Nicard hardware not found, creating dummy interface")
+    try:
+        manager.loadConfigureModule('hardware', 'nicard')
+    except Exception as e:
+        logger.error("Auto module loading failed. Defined in config? {}".format(e))
+try:
+    userglobals
+except NameError:
+    try:
+        manager.loadConfigureModule('logic', 'userglobals')
+    except Exception as e:
+        logger.error("Auto module loading failed. Defined in config? {}".format(e))
+try:
+    userglobals.abort.clear()
+    userglobals.next.clear()
+except NameError:
+    pass
 
 ############################## Standard function for conventional and SSR measurements #################################
 
 
 def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, save_tag='',
                   load_tag='', sleep_time = 0.2):
+
     # add information necessary for measurement type
     qm_dict = meas_info(experiment, qm_dict)
     # perform sanity checks
     if experiment not in pulsedmasterlogic.generate_methods:
-        pulsedmasterlogic.log.error('Unknown Experiment {0}'.format(experiment))
+        logger.error('Unknown Experiment {0}'.format(experiment))
         return -1
     if not perform_sanity_check(qm_dict):
-        pulsedmasterlogic.log.error('Dictionary sanity check failed')
+        logger.error('Dictionary sanity check failed')
         return -1
-    # Sto pand save the measurement if one is running
+
+    # Stop and save the measurement if one is running
     if pulsedmasterlogic.status_dict['measurement_running']:
         pulsedmasterlogic.toggle_pulsed_measurement(False)
         pulsedmasterlogic.save_measurement_data(save_tag, True)
     if pulsedmeasurementlogic.pulsegenerator().get_status == 1:
         pulsedmasterlogic.toggle_pulse_generator(False)
-    # prepare the measurement by generating and loading the sequence/waveform
-    prepare_qm(experiment, qm_dict, generate_new)
-    # perform measurement
-    user_terminated = perform_measurement(qm_dict=qm_dict,meas_type=meas_type, load_tag=load_tag, save_tag=save_tag)
-    # wait for a moment
-    time.sleep(sleep_time)
+
+    logger.debug("Debug: do_experiment pulsedMesLogic.n_sweeps / next.is_set / abort.is_set: {},{},{}".format(
+                pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps, userglobals.next.is_set(),
+                userglobals.abort.is_set()))
+
+    user_terminated = False
+    if not userglobals.next.is_set() and not userglobals.abort.is_set():
+        # prepare the measurement by generating and loading the sequence/waveform
+        prepare_qm(experiment, qm_dict, generate_new)
+        # perform measurement
+        user_terminated = perform_measurement(qm_dict=qm_dict,meas_type=meas_type, load_tag=load_tag, save_tag=save_tag)
+
+        # wait for a moment
+        time.sleep(sleep_time)
+
     # if ssr:
     #     # # save the measurement results
     #     save_ssr_final_result(save_tag)
+
     return user_terminated
 
 def perform_sanity_check(qm_dict):
+
+    ok = True
+
     if 'tau' in qm_dict and qm_dict['tau']>setup['max_tau']:
-        return False
+        ok = False
     if 'tau_start' in qm_dict and qm_dict['tau_start']>setup['max_tau_start']:
-        return False
+        ok = False
     if 'rabi_period' in qm_dict and qm_dict['rabi_period']>setup['max_rabi_period']:
-        return False
+        ok = False
     if 'microwave_frequency' in qm_dict and qm_dict['microwave_frequency']<setup['min_microwave_frequency']:
-        return False
+        ok = False
     if 'microwave_amplitude' in qm_dict and qm_dict['microwave_amplitude']>setup['max_microwave_amplitude']:
-        return False
+        ok = False
     if 'microwave_amplitude' in qm_dict and qm_dict['microwave_amplitude']>setup['max_microwave_amplitude']:
-        return False
+        ok = False
     if 'rf_duration' in qm_dict and qm_dict['rf_duration']>1:
-        return False
+        ok = False
     if 'freq_start' in qm_dict and qm_dict['freq_start']<5000:
-        return False
-    return True
+        ok = False
+
+    if not ok:
+        logger.warning("Dict sanity check failed. Dict: {}".format(qm_dict))
+
+    return ok
 
 
 def add_conventional_information(experiment, qm_dict):
@@ -269,8 +326,15 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', analysis_i
 
 
     ################ Start and perform the measurement #################
-    user_terminated = meas_type(qm_dict)
+    if not userglobals.abort.is_set() and not userglobals.next.is_set():
+        user_terminated = meas_type(qm_dict)
     ########################## Save data ###############################
+
+    # save and fit depending on abort signals
+    if userglobals.abort.is_set():
+        user_terminated = True
+        return user_terminated
+
     save_parameters(save_tag=save_tag, save_dict=qm_dict)
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment']!= 'No fit':
@@ -280,34 +344,107 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', analysis_i
     return user_terminated
 
 
+def get_current_pulsed_mes():
+    mes = pulsedmasterlogic.pulsedmeasurementlogic()
+    return mes
+
+def get_current_pulsed_mes_running():
+    return pulsedmasterlogic.status_dict['measurement_running']
+
+def handle_abort():
+    """
+    Stops mes and returns true if should be aborted by abort or next signal.
+    """
+
+    ret = False
+
+    if userglobals.abort.is_set():
+        if pulsedmasterlogic is not None:
+            #pulsedmasterlogic.toggle_pulsed_measurement(False)
+            pass # handled in control loop
+        ret = True
+    else:
+        ret = False
+
+    if userglobals.next.is_set():
+        if pulsedmasterlogic is not None:
+            #pulsedmasterlogic.toggle_pulsed_measurement(False)
+            pass  # handled in control loop
+        userglobals.next.clear()
+        ret = True
+
+    if ret:
+        logger.debug("Handle abort received stop signal")
+
+    return ret
+
 def conventional_measurement(qm_dict):
+
+
     #set up
     set_up_conventional_measurement(qm_dict)
     # perform measurement
     pulsedmasterlogic.toggle_pulsed_measurement(True)
     while not pulsedmasterlogic.status_dict['measurement_running']: time.sleep(0.5)
+
+    'threading also freezes gui'
+    #import threading
+    #thread = threading.Thread(target=control_measurement, kwargs={"analysis_method":None})
+    #thread.start()
+    #user_terminated = False # thread doesn't return
+
     user_terminated = control_measurement(qm_dict, analysis_method=None)
+
     pulsedmasterlogic.toggle_pulsed_measurement(False)
     while pulsedmasterlogic.status_dict['measurement_running']: time.sleep(0.5)
     return user_terminated
 
+def DEBUG_pulsed_with_result_mes(qm_dict):
+    set_up_conventional_measurement(qm_dict)
+    # perform measurement
+    pulsedmasterlogic.toggle_pulsed_measurement(True)
+    while not pulsedmasterlogic.status_dict['measurement_running']: time.sleep(0.5)
+
+    user_terminated = control_measurement(qm_dict, analysis_method=None)
+    pulsedmasterlogic.toggle_pulsed_measurement(False)
+    while pulsedmasterlogic.status_dict['measurement_running']: time.sleep(0.5)
+
+    mes = pulsedmasterlogic.pulsedmeasurementlogic()
+    x = mes.signal_data[0]
+    y = mes.signal_data[1]
+
+    logger.debug("pulsed result x {} / y {}".format(x,y))
+
+    return user_terminated
+
 
 def set_up_conventional_measurement(qm_dict):
-    pulsedmeasurementlogic.fastcounter().change_sweep_mode(False)
+    from hardware.fast_counter_dummy import FastCounterDummy
+
+    if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
+        pulsedmeasurementlogic.fastcounter().change_sweep_mode(False)
+
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
                                                  'record_length': qm_dict['params']['counting_length']})
     time.sleep(0.2)
     # add sequence length to measurement dictionary
-    pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
-                                                'safety': setup['laser_safety']})
+    pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
+    #pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
+    #                                            'safety': setup['laser_safety']})
     pulsedmasterlogic.set_analysis_settings({'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
                                              'norm_start': 1.8e-6, 'norm_end': 2.8e-6})
-    pulsedmeasurementlogic.fastcounter().set_delay_start(0)
-    pulsedmeasurementlogic.fastcounter().change_save_mode(0)
+
+    if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
+        pulsedmeasurementlogic.fastcounter().set_delay_start(0)
+        pulsedmeasurementlogic.fastcounter().change_save_mode(0)
+
     return
 
 
 def control_measurement(qm_dict, analysis_method=None):
+    """
+    Main loop while running an experiment
+    """
     ################# Set the timer and run the measurement #################
     start_time = time.time()
     optimize_real_time = start_time
@@ -315,7 +452,16 @@ def control_measurement(qm_dict, analysis_method=None):
     real_update_time = start_time
 
     while True:
-        time.sleep(2)
+        time.sleep(1) #2
+
+        if 'n_sweeps' in qm_dict:
+            # stop by sweeps can't be faster than sleep time
+            if qm_dict['n_sweeps'] is not None:
+                if pulsedmasterlogic.elapsed_sweeps >= qm_dict['n_sweeps']:
+                    logger.debug("stopping mes after {}/{} sweeps".format(pulsedmasterlogic.elapsed_sweeps, qm_dict['n_sweeps']))
+                    user_terminated = False
+                    break
+
         if qm_dict['measurement_time'] is not None:
             if (time.time() - start_time) > qm_dict['measurement_time']:
                 user_terminated = False
@@ -342,6 +488,16 @@ def control_measurement(qm_dict, analysis_method=None):
             if time.time() - real_update_time > qm_dict['update_time']:
                 analysis_method()
                 real_update_time = time.time()
+
+        if handle_abort():
+            user_terminated = True
+            break
+
+        # warning: debuging in this loop seems to slow down gui
+        logger.debug(
+            "in mes loop: pulsedMesLogic.n_sweeps {}/{}".format(pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps,
+                                                                qm_dict['n_sweeps']))
+
     time.sleep(0.2)
     return user_terminated
 
@@ -466,8 +622,6 @@ def save_parameters(save_tag='', save_dict=None):
 #                             filepath=savelogic.get_path_for_module('T1_qdyne'), filelabel=save_tag, filetype='npz',
 #                             delimiter='\t', plotfig=None)
 #     return
-
-
 
 
 
