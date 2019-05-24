@@ -637,9 +637,10 @@ class PoiManagerLogic(GenericLogic):
 
     @QtCore.Slot()
     def delete_all_pois(self):
-        keys = [*self._roi._pois]
-        for i in keys:
-            self.delete_poi(i)
+        self.active_poi = None
+        for name in self.poi_names:
+            self._roi.delete_poi(name)
+            self.sigPoiUpdated.emit(name, '', np.zeros(3))
         return
 
     @QtCore.Slot(str)
