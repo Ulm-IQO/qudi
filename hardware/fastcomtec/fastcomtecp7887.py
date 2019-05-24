@@ -239,9 +239,10 @@ class FastComtec(Base, FastCounterInterface):
         constraints['hardware_binwidth_list'] = list(self.minimal_binwidth * (2 ** np.array(
                                                      np.linspace(0,24,25))))
         constraints['max_sweep_len'] = 6.8
+        constraints['max_bins'] = 6.8/0.25e-9
         return constraints
 
-    def configure(self, bin_width_s, record_length_s, number_of_gates=0, filename=None):
+    def configure(self, bin_width_s, record_length_s, number_of_gates=1, filename=None):
         """ Configuration of the fast counter.
 
         @param float bin_width_s: Length of a single time bin in the time trace
@@ -261,19 +262,22 @@ class FastComtec(Base, FastCounterInterface):
         # when not gated, record length = total sequence length, when gated, record length = laser length.
         # subtract 200 ns to make sure no sequence trigger is missed
         record_length_FastComTech_s = record_length_s
+        self.set_binwidth(bin_width_s)
+
         if self.gated:
             # add time to account for AOM delay
-            no_of_bins = int((record_length_FastComTech_s + self.aom_delay) / self.set_binwidth(bin_width_s))
+            no_of_bins = int((record_length_FastComTech_s + self.aom_delay) / bin_width_s)
         else:
             # subtract time to make sure no sequence trigger is missed
-            no_of_bins = int((record_length_FastComTech_s - self.trigger_safety) / self.set_binwidth(bin_width_s))
+            no_of_bins = int((record_length_FastComTech_s - self.trigger_safety) / bin_width_s)
 
-        self.set_length(no_of_bins, preset=1, cycles=number_of_gates)
+        self.set_length(no_of_bins)
+        self.set_cycles(number_of_gates)
 
         if filename is not None:
             self._change_filename(filename)
 
-        return self.get_binwidth(), record_length_FastComTech_s, number_of_gates
+        return self.get_binwidth(), self.get_length() * self.get_binwidth(), number_of_gates
 
 
 
@@ -466,32 +470,60 @@ class FastComtec(Base, FastCounterInterface):
 
 
     #TODO: Check such that only possible lengths are set.
-    def set_length(self, length_bins, preset=None, cycles=None, sequences=None):
+    # def set_length(self, length_bins, preset=None, cycles=None, sequences=None):
+    #     """ Sets the length of the length of the actual measurement.
+    #
+    #     @param int length_bins: Length of the measurement in bins
+    #
+    #     @return float: Red out length of measurement
+    #     """
+    #     constraints = self.get_constraints()
+    #     if length_bins * self.get_binwidth() < constraints['max_sweep_len']:
+    #         cmd = 'RANGE={0}'.format(int(length_bins))
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         cmd = 'roimax={0}'.format(int(length_bins))
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         if preset is not None:
+    #             cmd = 'swpreset={0}'.format(preset)
+    #             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         if cycles:
+    #             cmd = 'cycles={0}'.format(cycles)
+    #             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         if sequences:
+    #             cmd = 'sequences={0}'.format(sequences)
+    #             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         return self.get_length()
+    #     else:
+    #         self.log.error(
+    #             'Length of sequence is too high: %s' % (str(length_bins * self.get_binwidth())))
+    #         return -1
+
+    def set_length(self, length_bins):
         """ Sets the length of the length of the actual measurement.
 
         @param int length_bins: Length of the measurement in bins
 
         @return float: Red out length of measurement
         """
+        # First check if no constraint is
         constraints = self.get_constraints()
-        if length_bins * self.get_binwidth() < constraints['max_sweep_len']:
+        if self.is_gated():
+            cycles = self.get_cycles()
+        else:
+            cycles = 1
+        if length_bins *  cycles < constraints['max_bins']:
+            # Smallest increment is 64 bins. Since it is better if the range is too short than too long, round down
+            length_bins = int(64 * int(length_bins / 64))
             cmd = 'RANGE={0}'.format(int(length_bins))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'roimax={0}'.format(int(length_bins))
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            if preset is not None:
-                cmd = 'swpreset={0}'.format(preset)
-                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            if cycles:
-                cmd = 'cycles={0}'.format(cycles)
-                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            if sequences:
-                cmd = 'sequences={0}'.format(sequences)
-                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            return self.get_length()
+            #cmd = 'roimax={0}'.format(int(length_bins))
+            #self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+            # insert sleep time, otherwise fast counter crashed sometimes!
+            time.sleep(0.5)
+            return length_bins
         else:
-            self.log.error(
-                'Length of sequence is too high: %s' % (str(length_bins * self.get_binwidth())))
+            self.log.error('Dimensions {0} are too large for fast counter1!'.format(length_bins *  cycles))
             return -1
 
     def set_preset(self, preset):
@@ -507,11 +539,19 @@ class FastComtec(Base, FastCounterInterface):
     def get_length(self):
         """ Get the length of the current measurement.
 
-          @return int: length of the current measurement
+          @return int: length of the current measurement in bins
         """
+
+        if self.is_gated():
+            cycles = self.get_cycles()
+            if cycles ==0:
+                cycles = 1
+        else:
+            cycles = 1
         setting = AcqSettings()
         self.dll.GetSettingData(ctypes.byref(setting), 0)
-        return int(setting.range)
+        length = int(setting.range / cycles)
+        return length
 
     def _change_filename(self,name):
         """ Changed the name in FCT"""
@@ -519,22 +559,22 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return name
 
-    def change_sweep_mode(self, gated):
-        if gated:
-            cmd = 'sweepmode={0}'.format(hex(1978500))
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'prena={0}'.format(hex(16)) #To select starts preset
-            # cmd = 'prena={0}'.format(hex(4)) #To select sweeps preset
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            self.gated = True
-        else:
-            # fastcomtch standard settings for ungated acquisition (check manual)
-            cmd = 'sweepmode={0}'.format(hex(1978496))
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'prena={0}'.format(hex(0))
-            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            self.gated = False
-        return gated
+    # def change_sweep_mode(self, gated):
+    #     if gated:
+    #         cmd = 'sweepmode={0}'.format(hex(1978500))
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         cmd = 'prena={0}'.format(hex(16)) #To select starts preset
+    #         # cmd = 'prena={0}'.format(hex(4)) #To select sweeps preset
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         self.gated = True
+    #     else:
+    #         # fastcomtch standard settings for ungated acquisition (check manual)
+    #         cmd = 'sweepmode={0}'.format(hex(1978496))
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         cmd = 'prena={0}'.format(hex(0))
+    #         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+    #         self.gated = False
+    #     return gated
 
 
     def change_save_mode(self, mode):
@@ -574,10 +614,179 @@ class FastComtec(Base, FastCounterInterface):
         #prena = bsetting.prena
         return delay_s
 
+        ################################### Methods for SSR interface ####################################
+
+    def configure_ssr_counter(self, counts_per_readout=None, countlength=None):
+        # FIXME: Change description
+        """ Configuration of the gated counter.
+        @param float bin_width_s: Length of a single time bin in the time trace
+                                  histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single
+                                      gate in seconds.
+        @param int preset: optional, number of preset
+        @param int cycles: optional, number of cycles
+        @param int sequences: optional, number of sequences.
+
+        @return tuple(binwidth_s, no_of_bins, cycles, preset, sequences):
+                    binwidth_s: float the actual set binwidth in seconds
+                    no_of_bins: Length in bins
+                    cycles: Number of Cycles
+                    preset: Number of preset
+                    sequences: Number of sequences
+        """
+        self.change_sweep_mode(gated=True, cycles=countlength, preset=counts_per_readout)
+        self.set_sequences(1)
+        time.sleep(0.1)
+        return
+
+    def change_sweep_mode(self, gated, cycles = None, preset = None):
+        """ Change the sweep mode (gated, ungated)
+
+        @param bool gated: Gated or ungated
+        @param int cycles: Optional, change number of cycles
+        @param int preset: Optional, change number of preset
+        """
+
+        # Reduce length to prevent crashes
+        if self.get_length() > 3000:
+            self.set_length(64)
+        if gated:
+            self.set_cycle_mode(mode=True, cycles=cycles)
+            self.set_preset_mode(mode=16, preset=preset)
+            self.gated=True
+        else:
+            self.set_cycle_mode(mode=False, cycles=cycles)
+            self.set_preset_mode(mode=0, preset=preset)
+            self.gated=False
+        return gated
+
+    def get_preset(self):
+        """ Gets the preset
+       @return int mode: current preset
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        preset = bsetting.swpreset
+        return int(preset)
+
+    def get_cycles(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        cycles = bsetting.cycles
+        return cycles
+
+    def get_cycle_mode(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        sweepmode = bsetting.sweepmode
+        return sweepmode
+
+    def get_preset_mode(self):
+        """ Gets the preset
+       @return int mode: current preset
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        prena = bsetting.prena
+        return prena
+
+    def set_cycle_mode(self, mode = True, cycles = None):
+        """ Turns on or off the sequential cycle mode
+
+        @param bool mode: Set or unset cycle mode
+        @param int cycles: Optional, Change number of cycles
+
+        @return: just the input
+        """
+        # First set cycles to 1 to prevent crashes
+        if cycles == None:
+            cycles_old = self.get_cycles()
+        #self.set_cycles(1)
+        # Turn on or off sequential cycle mode
+        if mode:
+            if not self.get_cycle_mode() == 35528836:
+            #cmd = 'sweepmode={0}'.format(hex(1978500))
+            #cmd = 'sweepmode={0}'.format(hex(1974404))
+                cmd = 'sweepmode={0}'.format(hex(35528836))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        else:
+            if not self.get_cycle_mode() == 1978496:
+                cmd = 'sweepmode={0}'.format(hex(1978496))
+                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+        if not cycles == None:
+            #self.set_cycles(cycles_old)
+        #else:
+            self.set_cycles(cycles)
+
+        return mode, cycles
+
+    def set_preset_mode(self, mode=16, preset=None):
+        """ Turns on or off a specific preset mode
+
+        @param int mode: O for off, 4 for sweep preset, 16 for start preset
+        @param int preset: Optional, change number of presets
+
+        @return just the input
+        """
+
+        # Specify preset mode
+        cmd = 'prena={0}'.format(hex(mode))
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+        # Set the cycles if specified
+        if preset is not None:
+            self.set_preset(preset)
+
+        return mode, preset
+
+    def set_sequences(self, sequences):
+        """ Sets the cycles
+
+        @param int cycles: Total amount of cycles
+
+        @return int mode: current cycles
+        """
+        # Check that no constraint is violated
+        cmd = 'sequences={0}'.format(sequences)
+        self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+        return sequences
+
+    def get_sequences(self):
+        """ Gets the cycles
+        @return int mode: current cycles
+        """
+        bsetting = AcqSettings()
+        self.dll.GetSettingData(ctypes.byref(bsetting), 0)
+        sequences = bsetting.sequences
+        return sequences
+
     # =========================================================================
     #   The following methods have to be carefully reviewed and integrated as
     #   internal methods/function, because they might be important one day.
     # =========================================================================
+    def set_gated(self, gated):
+        """ Change the gated status of the fast counter.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        self.change_sweep_mode(gated)
+        return self.gated
+
+    def get_gated(self):
+        """ Change the gated status of the fast counter.
+
+        @return bool: Boolean value indicates if the fast counter is a gated
+                      counter (TRUE) or not (FALSE).
+        """
+        return self.gated
 
     def SetDelay(self, t):
         #~ setting = AcqSettings()
