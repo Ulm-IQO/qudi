@@ -130,7 +130,8 @@ def import_check():
                  ('fysom','fysom', '2.1.4')]
     opt_pkg = [('rpyc','rpyc', None),
                ('pyqtgraph','pyqtgraph', None),
-               ('git','gitpython', None)]
+               ('git','gitpython', None),
+               ('namespace', 'python-namespace', None)]
 
     def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
         """

@@ -8,7 +8,7 @@ Example configuration
 
 hardware:
     awg5002c:
-        module.Class: 'fgen.python_ivi_fgen.PythonIviFGen'
+        module.Class: 'ivi.fgen.python_ivi_fgen.PythonIviFGen'
         driver: 'ivi.tektronix.tektronixAWG5002C.tektronixAWG5002C'
         uri: 'TCPIP0::192.168.1.1::INSTR'
 
@@ -33,12 +33,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.ivi.inherent_capabilities_interface import InherentCapabilitiesInterface
 from interface.ivi import fgen_interface as fgen_ivi_interface
 from ..python_ivi_base import PythonIviBase
-from .._ivi_core import Namespace
 
 import abc
 import inspect
 from qtpy.QtCore import QObject
 from qtpy.QtCore import Signal
+from namespace import Namespace
 import ivi.fgen
 
 
