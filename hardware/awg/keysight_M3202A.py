@@ -27,6 +27,7 @@ import os
 import datetime
 import numpy as np
 from collections import OrderedDict
+from core.util.helpers import natural_sort
 
 import sys
 
@@ -224,8 +225,12 @@ class M3202A(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
-        return 0
+        if self.last_sequence is None:
+            self.log.error('This AWG only supports sequences. Please put the waveform in a sequence and then load it.')
+            return -1
+        else:
+            self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
+            return 0
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -251,7 +256,7 @@ class M3202A(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Load waveforms into channels
@@ -478,7 +483,7 @@ class M3202A(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in active_channels if chnl.startswith('a'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -550,7 +555,7 @@ class M3202A(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 
@@ -708,11 +713,11 @@ class M3202A(Base, PulserInterface):
         c_double_p = ctypes.POINTER(ctypes.c_double)
         if len(waveformDataA) > 0 and (waveformDataB is None or len(waveformDataA) == len(waveformDataB)):
             if isinstance(waveformDataA, np.ndarray):
-                print(type(waveformDataA), waveformDataA.dtype)
+                # print(type(waveformDataA), waveformDataA.dtype)
                 waveform_dataA_C = waveformDataA.ctypes.data_as(c_double_p)
                 length = len(waveformDataA)
             else:
-                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA);
+                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA)
                 length = waveform_dataA_C._length_
 
             if waveformDataB is None:

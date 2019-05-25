@@ -86,8 +86,7 @@ class BasicPulseExtractor(PulseExtractorBase):
         """ Detects the laser pulses in the ungated timetrace data and extracts
             them.
 
-        @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast counter
-        @param dict measurement_settings: The measurement settings of the currently running measurement.
+        @param numpy.ndarray count_data: The raw timetrace data (1D) from an ungated fast counter
         @param float conv_std_dev: The standard deviation of the gaussian used for smoothing
 
         @return 2D numpy.ndarray:   2D array, the extracted laser pulses of the timetrace.
@@ -256,17 +255,9 @@ class BasicPulseExtractor(PulseExtractorBase):
     def ungated_threshold(self, count_data, count_threshold=10, min_laser_length=200e-9,
                           threshold_tolerance=20e-9):
         """
-
-        @param count_data:
-
-        @return:
-        """
-        """
         Detects the laser pulses in the ungated timetrace data and extracts them.
     
-        @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast counter
-        @param measurement_settings: 
-        @param fast_counter_settings: 
+        @param numpy.ndarray count_data: The raw timetrace data (1D) from an ungated fast counter
         @param count_threshold: 
         @param min_laser_length: 
         @param threshold_tolerance: 
@@ -281,8 +272,9 @@ class BasicPulseExtractor(PulseExtractorBase):
             All count data from the time trace is compared to a threshold value.
             Values above the threshold are considered to belong to a laser pulse.
             If the length of a pulse would be below the minimum length the pulse is discarded.
-            If a number of bins which are below the threshold is smaller than the number of bins making the
-            threshold_tolerance then they are still considered to belong to a laser pulse.
+            If a number of bins which are below the threshold is smaller than the number of bins 
+            making the threshold_tolerance then they are still considered to belong to a laser 
+            pulse.
         """
         return_dict = dict()
 
@@ -306,7 +298,8 @@ class BasicPulseExtractor(PulseExtractorBase):
         # get all bin indices with counts > threshold value
         bigger_indices = np.where(count_data >= count_threshold)[0]
 
-        # get all indices with consecutive numbering (bin chains not interrupted by values < threshold
+        # get all indices with consecutive numbering (bin chains not interrupted by
+        # values < threshold
         index_list = np.split(bigger_indices,
                               np.where(np.diff(bigger_indices) >= threshold_tolerance)[0] + 1)
         for i, index_group in enumerate(index_list):
@@ -325,9 +318,11 @@ class BasicPulseExtractor(PulseExtractorBase):
 
         # determine max length of laser pulse and initialize laser array
         max_laser_length = max([index_array.size for index_array in consecutive_indices])
-        return_dict['laser_counts_arr'] = np.zeros((number_of_lasers, max_laser_length), dtype='int64')
+        return_dict['laser_counts_arr'] = np.zeros((number_of_lasers, max_laser_length),
+                                                   dtype='int64')
 
-        # fill laser array with slices of raw data array. Also populate the rising/falling index arrays
+        # fill laser array with slices of raw data array. Also populate the rising/falling index
+        # arrays
         for i, index_group in enumerate(consecutive_indices):
             return_dict['laser_indices_rising'][i] = index_group[0]
             return_dict['laser_indices_falling'][i] = index_group[-1]
@@ -337,49 +332,59 @@ class BasicPulseExtractor(PulseExtractorBase):
 
     def ungated_gated_conv_deriv(self, count_data, conv_std_dev=20.0, delay=5e-7, safety=2e-7):
         """
-            Extracts the laser pulses in the ungated timetrace data using laser_start_indices and laser_length
+        Extracts the laser pulses in the ungated timetrace data using laser_start_indices and
+        laser_length.
+        Procedure:
+            Finds the laser pulses from the ungated timetrace using that their positions are
+            known. The laser pulses are then extracted using gated_conv_deriv.
 
-            @param numpy.ndarray count_data:    1D array the raw timetrace data from an ungated fast counter
+        @param numpy.ndarray count_data: 1D array the raw timetrace data from an ungated fast
+                                         counter
+        @param float conv_std_dev: The standard deviation of the gaussian filter used for smoothing
+        @param float delay:
+        @param float safety:
 
-            @return 2D numpy.ndarray:   2D array, the extracted laser pulses of the timetrace.
-                                        dimensions: 0: laser number, 1: time bin
-
-            Procedure:
-                Threshold detection:
-                ---------------
-
-                Finds the laser pulses from the ungated timetrace using that their positions are known. The laser pulses are
-                the extracted using gated_conv_deriv.
-            """
-
-        # get laser channel
-        laser_channel = self.sampling_information['generation_parameters']['laser_channel']
+        @return 2D numpy.ndarray: 2D array, the extracted laser pulses of the timetrace.
+                                  dimensions: 0: laser number, 1: time bin
+        """
         # get the generation sampling rate
         sample_rate = self.sampling_information['pulse_generator_settings']['sample_rate']
         # get the fastcounter binwidth
         fc_binwidth = self.fast_counter_settings['bin_width']
-        # get laser rising bins
-        laser_start_bins = self.sampling_information['digital_rising_bins'][laser_channel]
+        # get laser rising and falling bins
+        laser_rising_bins = self.sampling_information['laser_rising_bins']
+        laser_falling_bins = self.sampling_information['laser_falling_bins']
+
+        # Sort out trailing or leading incomplete laser pulse
+        while len(laser_rising_bins) != len(laser_falling_bins):
+            if len(laser_rising_bins) > len(laser_falling_bins):
+                if laser_rising_bins[-1] >= laser_falling_bins[-1]:
+                    laser_rising_bins = laser_rising_bins[:-1]
+                else:
+                    laser_rising_bins = laser_rising_bins[1:]
+            else:
+                if laser_rising_bins[0] >= laser_falling_bins[0]:
+                    laser_falling_bins = laser_falling_bins[1:]
+                else:
+                    laser_falling_bins = laser_falling_bins[:-1]
+
         # convert to bins of fastcounter
-        laser_start_bins = (laser_start_bins / sample_rate / fc_binwidth).astype(int)
-        # get laser falling bins
-        laser_end_bins = self.sampling_information['digital_falling_bins'][laser_channel]
-        # convert to bins of fastcounter
-        laser_end_bins = (laser_end_bins / sample_rate / fc_binwidth).astype(int)
+        laser_rising_bins = np.rint(laser_rising_bins / sample_rate / fc_binwidth).astype('int64')
+        laser_falling_bins = np.rint(laser_falling_bins / sample_rate / fc_binwidth).astype('int64')
         # convert to fastcounter bins
-        safety_bins = round(safety/fc_binwidth)
-        delay_bins = round(delay/fc_binwidth)
-        #dimensions of laser pulse array
-        num_rows = len(laser_start_bins)
-        max_laser_length = max(laser_end_bins-laser_start_bins)
+        safety_bins = round(safety / fc_binwidth)
+        delay_bins = round(delay / fc_binwidth)
+        # dimensions of laser pulse array
+        num_rows = len(laser_rising_bins)
+        max_laser_length = max(laser_falling_bins - laser_rising_bins)
         num_col = max_laser_length + 2 * safety_bins
-        # compute from laser_start_indices and laser length the respective position of the laser pulses
-        laser_pulses = np.empty((num_rows,num_col))
+        # compute from laser_start_indices and laser length the respective position of the laser
+        # pulses
+        laser_pulses = np.empty((num_rows, num_col))
         for ii in range(num_rows):
-            laser_pulses[ii][:] = count_data[np.arange(laser_start_bins[ii] + delay_bins - safety_bins,
-                                                       laser_start_bins[ii] + delay_bins + safety_bins + max_laser_length)]
+            laser_pulses[ii][:] = count_data[
+                np.arange(laser_rising_bins[ii] + delay_bins - safety_bins,
+                          laser_rising_bins[ii] + delay_bins + safety_bins + max_laser_length)]
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
-
         return return_dict
-    

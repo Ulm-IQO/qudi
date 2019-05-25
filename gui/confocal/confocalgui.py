@@ -26,6 +26,7 @@ import pyqtgraph as pg
 import time
 
 from core.module import Connector, ConfigOption, StatusVar
+from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
 from gui.colordefs import ColorScaleInferno
@@ -35,97 +36,6 @@ from qtpy import QtCore
 from qtpy import QtGui
 from qtpy import QtWidgets
 from qtpy import uic
-
-
-class CrossROI(pg.ROI):
-    """ Create a Region of interest, which is a zoomable rectangular.
-
-    @param float pos: optional parameter to set the position
-    @param float size: optional parameter to set the size of the roi
-
-    Have a look at:
-    http://www.pyqtgraph.org/documentation/graphicsItems/roi.html
-    """
-    sigUserRegionUpdate = QtCore.Signal(object)
-    sigMachineRegionUpdate = QtCore.Signal(object)
-
-    def __init__(self, pos, size, **args):
-        """Create a ROI with a central handle."""
-        self.userDrag = False
-        pg.ROI.__init__(self, pos, size, **args)
-        # That is a relative position of the small box inside the region of
-        # interest, where 0 is the lowest value and 1 is the higherst:
-        center = [0.5, 0.5]
-        # Translate the center to the intersection point of the crosshair.
-        self.addTranslateHandle(center)
-
-        self.sigRegionChangeStarted.connect(self.startUserDrag)
-        self.sigRegionChangeFinished.connect(self.stopUserDrag)
-        self.sigRegionChanged.connect(self.regionUpdateInfo)
-
-    def setPos(self, pos, update=True, finish=False):
-        """Sets the position of the ROI.
-
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-
-        Changed finish from parent class implementation to not disrupt user dragging detection.
-        """
-        super().setPos(pos, update=update, finish=finish)
-
-    def setSize(self, size, update=True, finish=True):
-        """
-        Sets the size of the ROI
-        @param bool update: whether to update the display for this call of setPos
-        @param bool finish: whether to emit sigRegionChangeFinished
-        """
-        super().setSize(size, update=update, finish=finish)
-
-    def handleMoveStarted(self):
-        """ Handles should always be moved by user."""
-        super().handleMoveStarted()
-        self.userDrag = True
-
-    def startUserDrag(self, roi):
-        """ROI has started being dragged by user."""
-        self.userDrag = True
-
-    def stopUserDrag(self, roi):
-        """ROI has stopped being dragged by user"""
-        self.userDrag = False
-
-    def regionUpdateInfo(self, roi):
-        """When the region is being dragged by the user, emit the corresponding signal."""
-        if self.userDrag:
-            self.sigUserRegionUpdate.emit(roi)
-        else:
-            self.sigMachineRegionUpdate.emit(roi)
-
-
-class CrossLine(pg.InfiniteLine):
-    """ Construct one line for the Crosshair in the plot.
-
-    @param float pos: optional parameter to set the position
-    @param float angle: optional parameter to set the angle of the line
-    @param dict pen: Configure the pen.
-
-    For additional options consider the documentation of pyqtgraph.InfiniteLine
-    """
-
-    def __init__(self, **args):
-        pg.InfiniteLine.__init__(self, **args)
-#        self.setPen(QtGui.QPen(QtGui.QColor(255, 0, 255),0.5))
-
-    def adjust(self, extroi):
-        """
-        Run this function to adjust the position of the Crosshair-Line
-
-        @param object extroi: external roi object from pyqtgraph
-        """
-        if self.angle == 0:
-            self.setValue(extroi.pos()[1] + extroi.size()[1] * 0.5)
-        if self.angle == 90:
-            self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
 
 class ConfocalMainWindow(QtWidgets.QMainWindow):
@@ -260,10 +170,9 @@ class ConfocalGui(GUIBase):
         ini_pos_y_crosshair = len(raw_data_xy) / 2
         ini_pos_z_crosshair = len(raw_data_depth) / 2
 
-
         # Load the images for xy and depth in the display:
-        self.xy_image = pg.ImageItem(image=raw_data_xy, axisOrder='row-major')
-        self.depth_image = pg.ImageItem(image=raw_data_depth, axisOrder='row-major')
+        self.xy_image = ScanImageItem(image=raw_data_xy, axisOrder='row-major')
+        self.depth_image = ScanImageItem(image=raw_data_depth, axisOrder='row-major')
 
         # Hide tilt correction window
         self._mw.tilt_correction_dockWidget.hide()
@@ -286,17 +195,14 @@ class ConfocalGui(GUIBase):
         #               Configuration of the optimizer tab                #
         ###################################################################
         # Load the image for the optimizer tab
-        self.xy_refocus_image = pg.ImageItem(
+        self.xy_refocus_image = ScanImageItem(
             image=self._optimizer_logic.xy_refocus_image[:, :, 3 + self.opt_channel],
             axisOrder='row-major')
-        self.xy_refocus_image.setRect(
-            QtCore.QRectF(
-                self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size
-            )
-        )
+        self.xy_refocus_image.set_image_extent(((self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+                                                 self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
+                                                (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+                                                 self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
+
         self.depth_refocus_image = pg.PlotDataItem(
             x=self._optimizer_logic._zimage_Z_values,
             y=self._optimizer_logic.z_refocus_line[:, self._optimizer_logic.opt_channel],
@@ -312,8 +218,7 @@ class ConfocalGui(GUIBase):
             pen=pg.mkPen(palette.c2)
         )
 
-        # Add the display item to the xy and depth VieWidget, which was defined in
-        # the UI file.
+        # Add the display item to the xy and depth ViewWidget, which was defined in the UI file.
         self._mw.xy_refocus_ViewWidget_2.addItem(self.xy_refocus_image)
         self._mw.depth_refocus_ViewWidget_2.addItem(self.depth_refocus_image)
 
@@ -327,22 +232,9 @@ class ConfocalGui(GUIBase):
         self._mw.depth_refocus_ViewWidget_2.setLabel('left', 'Fluorescence', units='c/s')
 
         # Add crosshair to the xy refocus scan
-        self.vLine = pg.InfiniteLine(
-            pen=QtGui.QPen(
-                palette.green,
-                self._optimizer_logic.refocus_XY_size / 50),
-            pos=50,
-            angle=90,
-            movable=False)
-        self.hLine = pg.InfiniteLine(
-            pen=QtGui.QPen(
-                palette.green,
-                self._optimizer_logic.refocus_XY_size / 50),
-            pos=50,
-            angle=0,
-            movable=False)
-        self._mw.xy_refocus_ViewWidget_2.addItem(self.vLine, ignoreBounds=True)
-        self._mw.xy_refocus_ViewWidget_2.addItem(self.hLine, ignoreBounds=True)
+        self._mw.xy_refocus_ViewWidget_2.toggle_crosshair(True, movable=False)
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic._initial_pos_x,
+                                                        self._optimizer_logic._initial_pos_y))
 
         # Set the state button as ready button as default setting.
         self._mw.action_stop_scanning.setEnabled(False)
@@ -360,34 +252,14 @@ class ConfocalGui(GUIBase):
         self._mw.depth_ViewWidget.setLabel('bottom', 'X position', units='m')
         self._mw.depth_ViewWidget.setLabel('left', 'Z position', units='m')
 
-        # Create Region of Interest for xy image and add to xy Image Widget:
-        self.roi_xy = CrossROI(
-            [
-                ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size / 2,
-                ini_pos_y_crosshair - self._optimizer_logic.refocus_XY_size / 2
-            ],
-            [self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size],
-            pen={'color': "F0F", 'width': 1},
-            removable=True
-        )
-
-        self._mw.xy_ViewWidget.addItem(self.roi_xy)
-
-        # create horizontal and vertical line as a crosshair in xy image:
-        self.hline_xy = CrossLine(pos=self.roi_xy.pos() + self.roi_xy.size() * 0.5,
-                                  angle=0, pen={'color': palette.green, 'width': 1})
-        self.vline_xy = CrossLine(pos=self.roi_xy.pos() + self.roi_xy.size() * 0.5,
-                                  angle=90, pen={'color': palette.green, 'width': 1})
-
-        # connect the change of a region with the adjustment of the crosshair:
-        self.roi_xy.sigRegionChanged.connect(self.hline_xy.adjust)
-        self.roi_xy.sigRegionChanged.connect(self.vline_xy.adjust)
-        self.roi_xy.sigUserRegionUpdate.connect(self.update_from_roi_xy)
-        self.roi_xy.sigRegionChangeFinished.connect(self.roi_xy_bounds_check)
-
-        # add the configured crosshair to the xy Widget
-        self._mw.xy_ViewWidget.addItem(self.hline_xy)
-        self._mw.xy_ViewWidget.addItem(self.vline_xy)
+        # Create crosshair for xy image:
+        self._mw.xy_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.02)
+        self._mw.xy_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_y_crosshair))
+        self._mw.xy_ViewWidget.set_crosshair_size(
+            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_XY_size))
+        # connect the drag event of the crosshair with a change in scanner position:
+        self._mw.xy_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_xy)
 
         # Set up and connect xy channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -396,38 +268,14 @@ class ConfocalGui(GUIBase):
 
         self._mw.xy_channel_ComboBox.activated.connect(self.update_xy_channel)
 
-        # Create Region of Interest for depth image and add to xy Image Widget:
-        self.roi_depth = CrossROI(
-            [
-                ini_pos_x_crosshair - self._optimizer_logic.refocus_XY_size/2,
-                ini_pos_z_crosshair - self._optimizer_logic.refocus_Z_size/2
-            ],
-            [self._optimizer_logic.refocus_XY_size,self._optimizer_logic.refocus_Z_size],
-            pen={'color': "F0F", 'width': 1},
-            removable=True
-        )
-        self._mw.depth_ViewWidget.addItem(self.roi_depth)
-
-        # create horizontal and vertical line as a crosshair in depth image:
-        self.hline_depth = CrossLine(
-            pos=self.roi_depth.pos() + self.roi_depth.size() * 0.5,
-            angle=0,
-            pen={'color': palette.green, 'width': 1}
-        )
-        self.vline_depth = CrossLine(
-            pos=self.roi_depth.pos() + self.roi_depth.size() * 0.5,
-            angle=90,
-            pen={'color': palette.green, 'width': 1}
-        )
-        # connect the change of a region with the adjustment of the crosshair:
-        self.roi_depth.sigRegionChanged.connect(self.hline_depth.adjust)
-        self.roi_depth.sigRegionChanged.connect(self.vline_depth.adjust)
-        self.roi_depth.sigUserRegionUpdate.connect(self.update_from_roi_depth)
-        self.roi_depth.sigRegionChangeFinished.connect(self.roi_depth_bounds_check)
-
-        # add the configured crosshair to the depth Widget:
-        self._mw.depth_ViewWidget.addItem(self.hline_depth)
-        self._mw.depth_ViewWidget.addItem(self.vline_depth)
+        # Create crosshair for depth image:
+        self._mw.depth_ViewWidget.toggle_crosshair(True, movable=True)
+        self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
+        self._mw.depth_ViewWidget.set_crosshair_pos((ini_pos_x_crosshair, ini_pos_z_crosshair))
+        self._mw.depth_ViewWidget.set_crosshair_size(
+            (self._optimizer_logic.refocus_XY_size, self._optimizer_logic.refocus_Z_size))
+        # connect the drag event of the crosshair with a change in scanner position:
+        self._mw.depth_ViewWidget.sigCrosshairDraggedPosChanged.connect(self.update_from_roi_depth)
 
         # Set up and connect depth channel combobox
         scan_channels = self._scanning_logic.get_scanner_count_channels()
@@ -522,8 +370,6 @@ class ConfocalGui(GUIBase):
 
         # Connect the change of the viewed area to an adjustment of the ROI:
         self.adjust_cursor_roi = True
-        self.xy_image.getViewBox().sigRangeChanged.connect(self.update_roi_xy_size)
-        self.depth_image.getViewBox().sigRangeChanged.connect(self.update_roi_depth_size)
 
         #################################################################
         #                           Actions                             #
@@ -662,10 +508,11 @@ class ConfocalGui(GUIBase):
 
         self._mw.action_zoom.toggled.connect(self.zoom_clicked)
         self._mw.sigDoubleClick.connect(self.activate_zoom_double_click)
-        self._mw.xy_ViewWidget.sigMouseClick.connect(self.xy_scan_start_zoom_point)
-        self._mw.xy_ViewWidget.sigMouseReleased.connect(self.xy_scan_end_zoom_point)
-        self._mw.depth_ViewWidget.sigMouseClick.connect(self.depth_scan_start_zoom_point)
-        self._mw.depth_ViewWidget.sigMouseReleased.connect(self.depth_scan_end_zoom_point)
+        self._mw.xy_ViewWidget.sigMouseAreaSelected.connect(self.zoom_xy_scan)
+        self._mw.depth_ViewWidget.sigMouseAreaSelected.connect(self.zoom_depth_scan)
+
+        # Blink correction
+        self._mw.actionBlink_correction_view.triggered.connect(self.blink_correction_clicked)
 
         ###################################################################
         #               Icons for the scan actions                        #
@@ -838,7 +685,7 @@ class ConfocalGui(GUIBase):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
-        if self._mw.xy_cb_manual_RadioButton.isChecked() or np.max(self.xy_image.image) == 0.0:
+        if self._mw.xy_cb_manual_RadioButton.isChecked() or np.count_nonzero(self.xy_image.image) < 1:
             cb_min = self._mw.xy_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.xy_cb_max_DoubleSpinBox.value()
 
@@ -862,7 +709,7 @@ class ConfocalGui(GUIBase):
         """ Determines the cb_min and cb_max values for the xy scan image
         """
         # If "Manual" is checked, or the image data is empty (all zeros), then take manual cb range.
-        if self._mw.depth_cb_manual_RadioButton.isChecked() or np.max(self.depth_image.image) == 0.0:
+        if self._mw.depth_cb_manual_RadioButton.isChecked() or np.count_nonzero(self.depth_image.image) < 1:
             cb_min = self._mw.depth_cb_min_DoubleSpinBox.value()
             cb_max = self._mw.depth_cb_max_DoubleSpinBox.value()
 
@@ -1142,17 +989,13 @@ class ConfocalGui(GUIBase):
             z_pos = position[2]
 
             # XY image
-            roi_h_view = x_pos - self.roi_xy.size()[0] * 0.5
-            roi_v_view = y_pos - self.roi_xy.size()[1] * 0.5
-            self.roi_xy.setPos([roi_h_view, roi_v_view])
+            self._mw.xy_ViewWidget.set_crosshair_pos(position[:2])
 
             # depth image
             if self._scanning_logic.depth_img_is_xz:
-                roi_h_view = x_pos - self.roi_depth.size()[0] * 0.5
+                self._mw.depth_ViewWidget.set_crosshair_pos((x_pos, z_pos))
             else:
-                roi_h_view = y_pos - self.roi_depth.size()[1] * 0.5
-            roi_v_view = z_pos - self.roi_depth.size()[1] * 0.5
-            self.roi_depth.setPos([roi_h_view, roi_v_view])
+                self._mw.depth_ViewWidget.set_crosshair_pos(position[1:3])
 
             self.update_slider_x(x_pos)
             self.update_slider_y(y_pos)
@@ -1162,132 +1005,87 @@ class ConfocalGui(GUIBase):
             self.update_input_y(y_pos)
             self.update_input_z(z_pos)
 
-    def roi_xy_bounds_check(self, roi):
+    def roi_xy_bounds_check(self, pos):
         """ Check if the focus cursor is oputside the allowed range after drag
             and set its position to the limit
         """
-        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
+        new_h_pos = np.clip(pos[0], *self._scanning_logic.x_range)
+        new_v_pos = np.clip(pos[1], *self._scanning_logic.y_range)
+        in_bounds = new_h_pos == pos[0] and new_v_pos == pos[1]
+        return in_bounds, (new_h_pos, new_v_pos)
 
-        new_h_pos = np.clip(h_pos, *self._scanning_logic.x_range)
-        new_v_pos = np.clip(v_pos, *self._scanning_logic.y_range)
-
-        if h_pos != new_h_pos or v_pos != new_v_pos:
-            self.update_roi_xy(new_h_pos, new_v_pos)
-
-    def roi_depth_bounds_check(self, roi):
+    def roi_depth_bounds_check(self, pos):
         """ Check if the focus cursor is oputside the allowed range after drag
             and set its position to the limit """
-        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
-
         if self._scanning_logic.depth_img_is_xz:
             h_range = self._scanning_logic.x_range
         else:
             h_range = self._scanning_logic.y_range
-
-        new_h_pos = np.clip(h_pos, *h_range)
-        new_v_pos = np.clip(v_pos, *self._scanning_logic.z_range)
-
-        if h_pos != new_h_pos or v_pos != new_v_pos:
-            self.update_roi_depth(new_h_pos, new_v_pos)
+        new_h_pos = np.clip(pos[0], *h_range)
+        new_v_pos = np.clip(pos[1], *self._scanning_logic.z_range)
+        in_bounds = new_h_pos == pos[0] and new_v_pos == pos[1]
+        return in_bounds, (new_h_pos, new_v_pos)
 
     def update_roi_xy(self, h=None, v=None):
         """ Adjust the xy ROI position if the value has changed.
 
-        @param float x: real value of the current x position
-        @param float y: real value of the current y position
-
-        Since the origin of the region of interest (ROI) is not the crosshair
-        point but the lowest left point of the square, you have to shift the
-        origin according to that. Therefore the position of the ROI is not
-        the actual position!
+        @param float h: real value of the current horizontal position
+        @param float v: real value of the current vertical position
         """
-        roi_h_view = self.roi_xy.pos()[0]
-        roi_v_view = self.roi_xy.pos()[1]
-
-        if h is not None:
-            roi_h_view = h - self.roi_xy.size()[0] * 0.5
-        if v is not None:
-            roi_v_view = v - self.roi_xy.size()[1] * 0.5
-
-        self.roi_xy.setPos([roi_h_view, roi_v_view])
+        if h is None:
+            h = self._mw.xy_ViewWidget.crosshair_position[0]
+        if v is None:
+            v = self._mw.xy_ViewWidget.crosshair_position[1]
+        self._mw.xy_ViewWidget.set_crosshair_pos((h, v))
 
     def update_roi_xy_size(self):
         """ Update the cursor size showing the optimizer scan area for the XY image.
         """
-        hpos = self.roi_xy.pos()[0]
-        vpos = self.roi_xy.pos()[1]
-        hsize = self.roi_xy.size()[0]
-        vsize = self.roi_xy.size()[1]
-        hcenter = hpos + 0.5 * hsize
-        vcenter = vpos + 0.5 * vsize
         if self.adjust_cursor_roi:
-            newsize = self._optimizer_logic.refocus_XY_size
+            self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.02)
         else:
-            viewrange = self.xy_image.getViewBox().viewRange()
-            newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
-        self.roi_xy.setSize([newsize, newsize])
-        self.roi_xy.setPos([hcenter - newsize / 2, vcenter - newsize / 2])
+            self._mw.xy_ViewWidget.set_crosshair_min_size_factor(0.1)
+
+        newsize = self._optimizer_logic.refocus_XY_size
+        self._mw.xy_ViewWidget.set_crosshair_size([newsize, newsize])
+        return
 
     def update_roi_depth_size(self):
         """ Update the cursor size showing the optimizer scan area for the X-depth image.
         """
-        hpos = self.roi_depth.pos()[0]
-        vpos = self.roi_depth.pos()[1]
-        hsize = self.roi_depth.size()[0]
-        vsize = self.roi_depth.size()[1]
-        hcenter = hpos + 0.5 * hsize
-        vcenter = vpos + 0.5 * vsize
-
         if self.adjust_cursor_roi:
-            newsize_h = self._optimizer_logic.refocus_XY_size
-            newsize_v = self._optimizer_logic.refocus_Z_size
+            self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.02)
         else:
-            viewrange = self.depth_image.getViewBox().viewRange()
-            newsize = np.sqrt(np.sum(np.ptp(viewrange, axis=1)**2)) / 20
-            newsize_h = newsize
-            newsize_v = newsize
+            self._mw.depth_ViewWidget.set_crosshair_min_size_factor(0.1)
 
-        self.roi_depth.setSize([newsize_h, newsize_v])
-        self.roi_depth.setPos([hcenter - newsize_h / 2, vcenter - newsize_v / 2])
+        newsize_h = self._optimizer_logic.refocus_XY_size
+        newsize_v = self._optimizer_logic.refocus_Z_size
+        self._mw.depth_ViewWidget.set_crosshair_size([newsize_h, newsize_v])
+        return
 
     def update_roi_depth(self, h=None, v=None):
         """ Adjust the depth ROI position if the value has changed.
 
         @param float h: real value of the current horizontal position
         @param float v: real value of the current vertical position
-
-        Since the origin of the region of interest (ROI) is not the crosshair
-        point but the lowest left point of the square, you have to shift the
-        origin according to that. Therefore the position of the ROI is not
-        the actual position!
         """
-        roi_h_view = self.roi_depth.pos()[0]
-        roi_v_view = self.roi_depth.pos()[1]
+        if h is None:
+            h = self._mw.depth_ViewWidget.crosshair_position[0]
+        if v is None:
+            v = self._mw.depth_ViewWidget.crosshair_position[1]
+        self._mw.depth_ViewWidget.set_crosshair_pos((h, v))
+        return
 
-        if h is not None:
-            roi_h_view = h - self.roi_depth.size()[0] * 0.5
-        if v is not None:
-            roi_v_view = v - self.roi_depth.size()[1] * 0.5
-
-        self.roi_depth.setPos([roi_h_view, roi_v_view])
-
-    def update_from_roi_xy(self, roi):
+    def update_from_roi_xy(self, pos):
         """The user manually moved the XY ROI, adjust all other GUI elements accordingly
 
         @params object roi: PyQtGraph ROI object
         """
-        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
-
-        h_pos = np.clip(h_pos, *self._scanning_logic.x_range)
-        v_pos = np.clip(v_pos, *self._scanning_logic.y_range)
-
-        if self._scanning_logic.depth_img_is_xz:
-            self.update_roi_depth(h=h_pos)
-        else:
-            self.update_roi_depth(h=v_pos)
+        pos = (pos.x(), pos.y())
+        in_range, pos = self.roi_xy_bounds_check(pos)
+        if not in_range:
+            self._mw.xy_ViewWidget.set_crosshair_pos(pos)
+        h_pos, v_pos = pos
 
         self.update_slider_x(h_pos)
         self.update_slider_y(v_pos)
@@ -1298,21 +1096,14 @@ class ConfocalGui(GUIBase):
         self._scanning_logic.set_position('roixy', x=h_pos, y=v_pos)
         self._optimizer_logic.set_position('roixy', x=h_pos, y=v_pos)
 
-    def update_from_roi_depth(self, roi):
+    def update_from_roi_depth(self, pos):
         """The user manually moved the Z ROI, adjust all other GUI elements accordingly
-
-        @params object roi: PyQtGraph ROI object
         """
-        if self._scanning_logic.depth_img_is_xz:
-            h_range = self._scanning_logic.x_range
-        else:
-            h_range = self._scanning_logic.y_range
-
-        h_pos = roi.pos()[0] + 0.5 * roi.size()[0]
-        v_pos = roi.pos()[1] + 0.5 * roi.size()[1]
-
-        h_pos = np.clip(h_pos, *h_range)
-        v_pos = np.clip(v_pos, *self._scanning_logic.z_range)
+        pos = (pos.x(), pos.y())
+        in_range, pos = self.roi_depth_bounds_check(pos)
+        if not in_range:
+            self._mw.depth_ViewWidget.set_crosshair_pos(pos)
+        h_pos, v_pos = pos
 
         self.update_slider_z(v_pos)
         self.update_input_z(v_pos)
@@ -1608,7 +1399,7 @@ class ConfocalGui(GUIBase):
         xy_optimizer_image = self._optimizer_logic.xy_refocus_image[:, :, 3 + self._optimizer_logic.opt_channel]
 
         # If the Z scan is done first, then the XY image has only zeros and there is nothing to draw.
-        if np.max(xy_optimizer_image) != 0:
+        if np.count_nonzero(xy_optimizer_image) > 0:
             colorscale_min = np.min(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
             colorscale_max = np.max(xy_optimizer_image[np.nonzero(xy_optimizer_image)])
 
@@ -1616,18 +1407,16 @@ class ConfocalGui(GUIBase):
         ##########
         # TODO: does this need to be reset every time this refresh function is called?
         # Is there a better way?
-        self.xy_refocus_image.setRect(
-            QtCore.QRectF(
-                self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size,
-                self._optimizer_logic.refocus_XY_size
-            )
-        )
+        self.xy_refocus_image.set_image_extent((
+            (self._optimizer_logic._initial_pos_x - 0.5 * self._optimizer_logic.refocus_XY_size,
+             self._optimizer_logic._initial_pos_x + 0.5 * self._optimizer_logic.refocus_XY_size),
+            (self._optimizer_logic._initial_pos_y - 0.5 * self._optimizer_logic.refocus_XY_size,
+             self._optimizer_logic._initial_pos_y + 0.5 * self._optimizer_logic.refocus_XY_size)))
+
         ##########
         # Crosshair in optimizer
-        self.vLine.setValue(self._optimizer_logic.optim_pos_x)
-        self.hLine.setValue(self._optimizer_logic.optim_pos_y)
+        self._mw.xy_refocus_ViewWidget_2.set_crosshair_pos((self._optimizer_logic.optim_pos_x,
+                                                            self._optimizer_logic.optim_pos_y))
         ##########
         # The depth optimization
         # data from chosen channel
@@ -1698,9 +1487,12 @@ class ConfocalGui(GUIBase):
                                  yMin=yMin - (yMax - yMin) * self.image_y_padding,
                                  yMax=yMax + (yMax - yMin) * self.image_y_padding)
 
-        self.xy_image.setRect(QtCore.QRectF(xMin, yMin, xMax - xMin, yMax - yMin))
+        px_size = ((xMax - xMin) / (self._scanning_logic.xy_resolution - 1),
+                   (yMax - yMin) / (self._scanning_logic.xy_resolution - 1))
+        self.xy_image.set_image_extent(((xMin - px_size[0] / 2, xMax + px_size[0] / 2),
+                                        (yMin - px_size[1] / 2, yMax + px_size[1] / 2)))
 
-        self.put_cursor_in_xy_scan()
+        # self.put_cursor_in_xy_scan()
 
         xy_viewbox.updateAutoRange()
         xy_viewbox.updateViewRange()
@@ -1752,69 +1544,16 @@ class ConfocalGui(GUIBase):
                 yMax=zMax + zMax * self.image_z_padding
             )
 
-        self.depth_image.setRect(QtCore.QRectF(xMin, zMin, xMax - xMin, zMax - zMin))
+        px_size = ((xMax - xMin) / (self._scanning_logic.xy_resolution - 1),
+                   (zMax - zMin) / (self._scanning_logic.z_resolution - 1))
+        self.depth_image.set_image_extent(((xMin - px_size[0] / 2, xMax + px_size[0] / 2),
+                                           (zMin - px_size[1] / 2, zMax + px_size[1] / 2)))
 
-        self.put_cursor_in_depth_scan()
+        # self.put_cursor_in_depth_scan()
 
         depth_viewbox.updateAutoRange()
         depth_viewbox.updateViewRange()
         self.update_roi_depth()
-
-    def put_cursor_in_xy_scan(self):
-        """Put the xy crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_y_min = self._scanning_logic.image_y_range[0]
-        view_y_max = self._scanning_logic.image_y_range[1]
-
-        x_value = self.roi_xy.pos()[0]
-        y_value = self.roi_xy.pos()[1]
-        cross_pos = self.roi_xy.pos() + self.roi_xy.size() * 0.5
-
-        if view_x_min > cross_pos[0]:
-            x_value = view_x_min + self.roi_xy.size()[0]
-
-        if view_x_max < cross_pos[0]:
-            x_value = view_x_max - self.roi_xy.size()[0]
-
-        if view_y_min > cross_pos[1]:
-            y_value = view_y_min + self.roi_xy.size()[1]
-
-        if view_y_max < cross_pos[1]:
-            y_value = view_y_max - self.roi_xy.size()[1]
-
-        self.roi_xy.setPos([x_value, y_value], update=True)
-
-    def put_cursor_in_depth_scan(self):
-        """Put the depth crosshair back if it is outside of the visible range. """
-        view_x_min = self._scanning_logic.image_x_range[0]
-        view_x_max = self._scanning_logic.image_x_range[1]
-        view_y_min = self._scanning_logic.image_y_range[0]
-        view_y_max = self._scanning_logic.image_y_range[1]
-        view_z_min = self._scanning_logic.image_z_range[0]
-        view_z_max = self._scanning_logic.image_z_range[1]
-
-        horizontal_value = self.roi_depth.pos()[0]
-        vertical_value = self.roi_depth.pos()[1]
-        cross_pos = self.roi_depth.pos() + self.roi_depth.size()*0.5
-
-        if self._scanning_logic.depth_img_is_xz:
-            if view_x_min > cross_pos[0]:
-                horizontal_value = view_x_min + self.roi_depth.size()[0]
-            if view_x_max < cross_pos[0]:
-                horizontal_value = view_x_max - self.roi_depth.size()[0]
-        else:
-            if view_y_min > cross_pos[0]:
-                horizontal_value = view_y_min + self.roi_depth.size()[1]
-            if view_y_max < cross_pos[0]:
-                horizontal_value = view_y_max - self.roi_depth.size()[1]
-
-        if view_z_min > cross_pos[1]:
-            vertical_value = view_z_min + self.roi_depth.size()[1]
-        if view_z_max < cross_pos[1]:
-            vertical_value = view_z_max - self.roi_depth.size()[1]
-
-        self.roi_depth.setPos([horizontal_value, vertical_value], update=True)
 
     def save_xy_scan_data(self):
         """ Run the save routine from the logic to save the xy confocal data."""
@@ -1924,128 +1663,68 @@ class ConfocalGui(GUIBase):
         # Resize the window to small dimensions
         self._mw.resize(1000, 360)
 
+    def blink_correction_clicked(self, is_active):
+        self.xy_image.activate_blink_correction(is_active)
+        self.depth_image.activate_blink_correction(is_active)
+        return
+
     #####################################################################
     #        Methods for the zoom functionality of confocal GUI         #
     #####################################################################
-
-# FIXME: These methods can be combined to one, because the procedure for the xy
-#       and the depth scan is the same. A nice way has to be figured our here.
-# FIXME: For the depth scan both possibilities have to be implemented, either
-#       for a xz of a yz scan. The image ranges have to be adjusted properly.
-
     def zoom_clicked(self, is_checked):
-        """ Activates the zoom mode in the xy and depth Windows.
+        """
+        Activates the zoom mode in the xy and depth scan images.
 
-        @param bool is_checked: pass the state of the zoom button if checked
-                                or not.
+        @param bool is_checked: pass the state of the zoom button (checked or not).
+        """
+        self._mw.xy_ViewWidget.toggle_selection(is_checked)
+        self._mw.xy_ViewWidget.toggle_zoom_by_selection(is_checked)
+        self._mw.depth_ViewWidget.toggle_selection(is_checked)
+        self._mw.depth_ViewWidget.toggle_zoom_by_selection(is_checked)
+        return
 
-        Depending on the state of the zoom button the DragMode in the
-        ViewWidgets are changed.  There are 3 possible modes and each of them
-        corresponds to a int value:
-            - 0: NoDrag
-            - 1: ScrollHandDrag
-            - 2: RubberBandDrag
-
-        Pyqtgraph implements every action for the NoDrag mode. That means the
-        other two modes are not used at the moment. Therefore we are using the
-        RubberBandDrag mode to simulate a zooming procedure. The selection
-        window in the RubberBandDrag is only used to show the user which region
-        will be selected. But the zooming idea is based on catched
-        mousePressEvent and mouseReleaseEvent, which will be used if the
-        RubberBandDrag mode is activated.
-
-        For more information see the qt doc:
-        http://doc.qt.io/qt-4.8/qgraphicsview.html#DragMode-enum
+    def zoom_xy_scan(self, rect):
         """
 
-        # You could also set the DragMode by its integer number, but in terms
-        # of readability it is better to use the direct attributes from the
-        # ViewWidgets and pass them to setDragMode.
-        if is_checked:
-            self.xy_image.getViewBox().setLeftButtonAction('rect')
-            self.depth_image.getViewBox().setLeftButtonAction('rect')
-        else:
-            self.xy_image.getViewBox().setLeftButtonAction('pan')
-            self.depth_image.getViewBox().setLeftButtonAction('pan')
-
-    def xy_scan_start_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was pressed.
-
-        @param QMouseEvent event: Mouse Event object which contains all the
-                                  information at the time the event was emitted
+        @param QtCore.QRectF rect: Rectangular area of the new zoomed image in physical coordinates.
         """
-        if self._mw._doubleclicked:
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        pos = self.xy_image.getViewBox().mapSceneToView(event.localPos())
-
-        # store the initial mouse position in a class variable
-        self._current_xy_zoom_start = [pos.x(), pos.y()]
-        event.accept()
-
-    def xy_scan_end_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was released.
-
-        @param QEvent event:
-        """
-        if self._mw._doubleclicked:
-            self._mw._doubleclicked = False
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        # get the ViewBox which is also responsible for the xy_image
-        viewbox = self.xy_image.getViewBox()
-
-        # Map the mouse position in the whole ViewWidget to the coordinate
-        # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.localPos())
-        endpos = [pos.x(), pos.y()]
-        initpos = self._current_xy_zoom_start
-
-        # get the right corners from the zoom window:
-        if initpos[0] > endpos[0]:
-            xMin = endpos[0]
-            xMax = initpos[0]
-        else:
-            xMin = initpos[0]
-            xMax = endpos[0]
-
-        if initpos[1] > endpos[1]:
-            yMin = endpos[1]
-            yMax = initpos[1]
-        else:
-            yMin = initpos[1]
-            yMax = endpos[1]
+        x_bounds = (rect.left(), rect.right())
+        y_bounds = (rect.bottom(), rect.top())
 
         # set the values to the InputWidgets and update them
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
+        self._mw.x_min_InputWidget.setValue(min(x_bounds))
+        self._mw.x_max_InputWidget.setValue(max(x_bounds))
+        self._mw.y_min_InputWidget.setValue(min(y_bounds))
+        self._mw.y_max_InputWidget.setValue(max(y_bounds))
         self.change_x_image_range()
-
-        self._mw.y_min_InputWidget.setValue(yMin)
-        self._mw.y_max_InputWidget.setValue(yMax)
         self.change_y_image_range()
 
-        # Finally change the visible area of the ViewBox:
-        event.accept()
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
-        # second time is really needed, otherwise zooming will not work for the first time
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(yMin, yMax), update=True)
-        self.update_roi_xy()
         self._mw.action_zoom.setChecked(False)
+        return
+
+    def zoom_depth_scan(self, rect):
+        """
+
+        @param QtCore.QRectF rect: Rectangular area of the new zoomed image in physical coordinates.
+        """
+        xy_bounds = (rect.left(), rect.right())
+        z_bounds = (rect.bottom(), rect.top())
+
+        # set the values to the InputWidgets and update them
+        self._mw.z_min_InputWidget.setValue(min(z_bounds))
+        self._mw.z_max_InputWidget.setValue(max(z_bounds))
+        if self._scanning_logic.depth_img_is_xz:
+            self._mw.x_min_InputWidget.setValue(min(xy_bounds))
+            self._mw.x_max_InputWidget.setValue(max(xy_bounds))
+            self.change_x_image_range()
+        else:
+            self._mw.y_min_InputWidget.setValue(min(xy_bounds))
+            self._mw.y_max_InputWidget.setValue(max(xy_bounds))
+            self.change_y_image_range()
+        self.change_z_image_range()
+
+        self._mw.action_zoom.setChecked(False)
+        return
 
     def reset_xy_imagerange(self):
         """ Reset the imagerange if autorange was pressed.
@@ -2087,89 +1766,8 @@ class ConfocalGui(GUIBase):
 
     def activate_zoom_double_click(self):
         """ Enable zoom tool when double clicking image """
-        if self._mw.action_zoom.isChecked():
-            self._mw.action_zoom.setChecked(False)
-        else:
-            self._mw.action_zoom.setChecked(True)
-
-    def depth_scan_start_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was pressed.
-
-        @param QMouseEvent event: Mouse Event object which contains all the
-                                  information at the time the event was emitted
-        """
-        if self._mw._doubleclicked:
-            event.ignore()
-            return
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        pos = self.depth_image.getViewBox().mapSceneToView(event.localPos())
-        self._current_depth_zoom_start = [pos.x(), pos.y()]
-
-        # store the initial mouse position in a class variable
-        event.accept()
-
-    def depth_scan_end_zoom_point(self, event):
-        """ Get the mouse coordinates if the mouse button was released.
-
-        @param QEvent event:
-        """
-        if self._mw._doubleclicked:
-            self._mw._doubleclicked = False
-            event.ignore()
-            return
-
-        # catch the event if the zoom mode is activated and if the event is
-        # coming from a left mouse button.
-        if not (self._mw.action_zoom.isChecked() and (event.button() == QtCore.Qt.LeftButton)):
-            event.ignore()
-            return
-
-        # get the ViewBox which is also responsible for the depth_image
-        viewbox = self.depth_image.getViewBox()
-
-        # Map the mouse position in the whole ViewWidget to the coordinate
-        # system of the ViewBox, which also includes the 2D graph:
-        pos = viewbox.mapSceneToView(event.localPos())
-        endpos = [pos.x(), pos.y()]
-        initpos = self._current_depth_zoom_start
-
-        # get the right corners from the zoom window:
-        if initpos[0] > endpos[0]:
-            xMin = endpos[0]
-            xMax = initpos[0]
-        else:
-            xMin = initpos[0]
-            xMax = endpos[0]
-
-        if initpos[1] > endpos[1]:
-            zMin = endpos[1]
-            zMax = initpos[1]
-        else:
-            zMin = initpos[1]
-            zMax = endpos[1]
-
-        # set the values to the InputWidgets and update them
-        self._mw.x_min_InputWidget.setValue(xMin)
-        self._mw.x_max_InputWidget.setValue(xMax)
-        self.change_x_image_range()
-
-        self._mw.z_min_InputWidget.setValue(zMin)
-        self._mw.z_max_InputWidget.setValue(zMax)
-        self.change_z_image_range()
-
-        event.accept()
-        # Finally change the visible area of the ViewBox:
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
-        # second time is really needed, otherwisa zooming will not work for the first time
-        viewbox.setRange(xRange=(xMin, xMax), yRange=(zMin, zMax))
-        self.update_roi_depth()
-
-        self._mw.action_zoom.setChecked(False)
+        self._mw.action_zoom.setChecked(not self._mw.action_zoom.isChecked())
+        return
 
     def reset_depth_imagerange(self):
         """ Reset the imagerange if autorange was pressed.

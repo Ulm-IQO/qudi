@@ -8,7 +8,7 @@ logger = logging.getLogger('gc')
 
 
 class GarbageCollector(QObject):
-    '''
+    """
     Disable automatic garbage collection and instead collect manually
     on a timer.
 
@@ -26,7 +26,7 @@ class GarbageCollector(QObject):
         Source:  http://pydev.blogspot.com/2014/03/should-python-garbage-collector-be.html
     - Modified: pyqtgraph
     - Modified: qudi
-    '''
+    """
 
     def __init__(self, interval=1.0, debug=False):
         """

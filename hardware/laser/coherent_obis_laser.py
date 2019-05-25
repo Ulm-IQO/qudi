@@ -133,7 +133,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         """
         minpower = float(self._communicate('SOUR:POW:LIM:LOW?'))
         maxpower = float(self._communicate('SOUR:POW:LIM:HIGH?'))
-        return (minpower, maxpower)
+        return minpower, maxpower
 
     def set_power(self, power):
         """ Set laser power
@@ -157,7 +157,7 @@ class OBISLaser(Base, SimpleLaserInterface):
         low = self._communicate('SOUR:CURR:LIM:LOW?')
         high = self._communicate('SOUR:CURR:LIM:HIGH?')
 
-        return (float(low), float(high))
+        return float(low), float(high)
 
     def get_current(self):
         """ Cet current laser current

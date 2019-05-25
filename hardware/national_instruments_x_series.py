@@ -113,6 +113,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     # odmr
     _odmr_trigger_channel = ConfigOption('odmr_trigger_channel', missing='error')
+    _odmr_trigger_line = ConfigOption('odmr_trigger_line', 'Dev1/port0/line0', missing='warn')
+    _odmr_switch_line = ConfigOption('odmr_switch_line', 'Dev1/port0/line1', missing='warn')
 
     _gate_in_channel = ConfigOption('gate_in_channel', missing='error')
     # number of readout samples, mainly used for gated counter
@@ -137,6 +139,9 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         self._odmr_length = None
         self._gated_counter_daq_task = None
         self._scanner_analog_daq_task = None
+        self._odmr_pulser_daq_task = None
+        self._oversampling = 0
+        self._lock_in_active = False
 
         # handle all the parameters given by the config
         self._current_position = np.zeros(len(self._scanner_ao_channels))
@@ -1455,6 +1460,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
+
         return self.set_up_clock(
             clock_frequency=clock_frequency,
             clock_channel=clock_channel,
@@ -1562,6 +1568,17 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             # otherwise, it will be low until task starts, and MW will receive wrong pulses.
             daq.DAQmxStopTask(self._scanner_clock_daq_task)
 
+            if self.lock_in_active:
+                ptask = daq.TaskHandle()
+                daq.DAQmxCreateTask('ODMRPulser', daq.byref(ptask))
+                daq.DAQmxCreateDOChan(
+                    ptask,
+                    '{0:s}, {1:s}'.format(self._odmr_trigger_line, self._odmr_switch_line),
+                    "ODMRPulserChannel",
+                    daq.DAQmx_Val_ChanForAllLines)
+
+                self._odmr_pulser_daq_task = ptask
+
             # connect the clock to the trigger channel to give triggers for the
             # microwave
             daq.DAQmxConnectTerms(
@@ -1583,12 +1600,12 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        if len(self._scanner_counter_daq_tasks) < 1:
+        if len(self._scanner_counter_channels) > 0 and len(self._scanner_counter_daq_tasks) < 1:
             self.log.error('No counter is running, cannot do ODMR without one.')
             return -1
 
         if len(self._scanner_ai_channels) > 0 and self._scanner_analog_daq_task is None:
-            self.log.error('No analog is running, cannot do ODMR without one.')
+            self.log.error('No analog task is running, cannot do ODMR without one.')
             return -1
 
         self._odmr_length = length
@@ -1640,10 +1657,48 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     self._odmr_length + 1
                 )
 
+            if self._odmr_pulser_daq_task:
+                # pulser channel timebase
+                daq.DAQmxCfgSampClkTiming(
+                    self._odmr_pulser_daq_task,
+                    self._scanner_clock_channel + 'InternalOutput',
+                    self._scanner_clock_frequency,
+                    daq.DAQmx_Val_Rising,
+                    daq.DAQmx_Val_ContSamps,
+                    self._odmr_length + 1
+                )
         except:
             self.log.exception('Error while setting up ODMR counter.')
             return -1
         return 0
+
+    @property
+    def oversampling(self):
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, val):
+        if not isinstance(val, (int, float)):
+            self.log.error('oversampling has to be int of float.')
+        else:
+            self._oversampling = int(val)
+
+    @property
+    def lock_in_active(self):
+        return self._lock_in_active
+
+    @lock_in_active.setter
+    def lock_in_active(self, val):
+        if not isinstance(val, bool):
+            self.log.error('lock_in_active has to be boolean.')
+        else:
+            self._lock_in_active = val
+            if self._lock_in_active:
+                self.log.warn('You just switched the ODMR counter to Lock-In-mode. \n'
+                              'Please make sure you connected all triggers correctly:\n'
+                              '  {0:s} is the microwave trigger channel\n'
+                              '  {1:s} is the switching channel for the lock in\n'
+                              ''.format(self._odmr_trigger_line, self._odmr_switch_line))
 
     def count_odmr(self, length=100):
         """ Sweeps the microwave and returns the counts on that sweep.
@@ -1655,22 +1710,55 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         if len(self._scanner_counter_daq_tasks) < 1:
             self.log.error(
                 'No counter is running, cannot scan an ODMR line without one.')
-            return np.array([-1.])
+            return True, np.array([-1.])
 
         if len(self._scanner_ai_channels) > 0 and self._scanner_analog_daq_task is None:
-            self.log.error('No analog is running, cannot do ODMR without one.')
-            return np.array([-1.])
+            self.log.error('No analog task is running, cannot do ODMR without one.')
+            return True, np.array([-1.])
 
         # check if length setup is correct, if not, adjust.
-        self.set_odmr_length(length)
+        if self._odmr_pulser_daq_task:
+            odmr_length_to_set = length * self.oversampling * 2
+        else:
+            odmr_length_to_set = length
+
+        if self.set_odmr_length(odmr_length_to_set) < 0:
+            self.log.error('An error arose while setting the odmr lenth to {}.'.format(odmr_length_to_set))
+            return True, np.array([-1.])
+
         try:
-            # start the scanner counting task that acquires counts synchroneously
+            # start the scanner counting task that acquires counts synchronously
             daq.DAQmxStartTask(self._scanner_counter_daq_tasks[0])
             if len(self._scanner_ai_channels) > 0:
                 daq.DAQmxStartTask(self._scanner_analog_daq_task)
         except:
             self.log.exception('Cannot start ODMR counter.')
-            return np.array([-1.])
+            return True, np.array([-1.])
+
+        if self._odmr_pulser_daq_task:
+            try:
+
+                # The pulse pattern is an alternating 0 and 1 on the switching channel (line0),
+                # while the first half of the whole microwave pulse is 1 and the other half is 0.
+                # This way the beginning of the microwave has a rising edge.
+                pulse_pattern = np.zeros(self.oversampling * 2, dtype=np.uint32)
+                pulse_pattern[:self.oversampling] += 1
+                pulse_pattern[::2] += 2
+
+                daq.DAQmxWriteDigitalU32(self._odmr_pulser_daq_task,
+                                         len(pulse_pattern),
+                                         0,
+                                         self._RWTimeout * self._odmr_length,
+                                         daq.DAQmx_Val_GroupByChannel,
+                                         pulse_pattern,
+                                         None,
+                                         None)
+
+                daq.DAQmxStartTask(self._odmr_pulser_daq_task)
+            except:
+                self.log.exception('Cannot start ODMR pulser.')
+                return True, np.array([-1.])
+
         try:
             daq.DAQmxStartTask(self._scanner_clock_daq_task)
 
@@ -1682,7 +1770,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self._RWTimeout * 2 * self._odmr_length)
 
             # count data will be written here
-            self._odmr_data = np.full(
+            odmr_data = np.full(
                 (2 * self._odmr_length + 1, ),
                 222,
                 dtype=np.uint32)
@@ -1699,7 +1787,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 # Maximal timeout for the read # process
                 self._RWTimeout,
                 # write into this array
-                self._odmr_data,
+                odmr_data,
                 # length of array to write into
                 2 * self._odmr_length + 1,
                 # number of samples which were actually read
@@ -1709,7 +1797,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
             # Analog
             if len(self._scanner_ai_channels) > 0:
-                self._odmr_analog_data = np.full(
+                odmr_analog_data = np.full(
                     (len(self._scanner_ai_channels), self._odmr_length + 1),
                     222,
                     dtype=np.float64)
@@ -1721,42 +1809,73 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     self._odmr_length + 1,
                     self._RWTimeout,
                     daq.DAQmx_Val_GroupByChannel,
-                    self._odmr_analog_data,
+                    odmr_analog_data,
                     len(self._scanner_ai_channels) * (self._odmr_length + 1),
                     daq.byref(analog_read_samples),
                     None
                 )
 
             # stop the counter task
+            daq.DAQmxStopTask(self._scanner_clock_daq_task)
             daq.DAQmxStopTask(self._scanner_counter_daq_tasks[0])
             if len(self._scanner_ai_channels) > 0:
                 daq.DAQmxStopTask(self._scanner_analog_daq_task)
-            daq.DAQmxStopTask(self._scanner_clock_daq_task)
+            if self._odmr_pulser_daq_task:
+                daq.DAQmxStopTask(self._odmr_pulser_daq_task)
+
+            # prepare array to return data
+            all_data = np.full((len(self.get_odmr_channels()), length),
+                               222,
+                               dtype=np.float64)
 
             # create a new array for the final data (this time of the length
             # number of samples)
-            self._real_data = np.zeros((self._odmr_length, ), dtype=np.uint32)
+            real_data = np.zeros((self._odmr_length, ), dtype=np.uint32)
 
             # add upp adjoint pixels to also get the counts from the low time of
             # the clock:
-            self._real_data = self._odmr_data[:-1:2]
-            self._real_data += self._odmr_data[1:-1:2]
 
-            #if len(self._scanner_ai_channels) > 0:
-            #    print(analog_read_samples.value, self._odmr_length, self._odmr_analog_data)
+            real_data += odmr_data[1:-1:2]
+            real_data += odmr_data[:-1:2]
 
-            all_data = np.full(
-                (len(self.get_odmr_channels()), self._odmr_length),
-                222,
-                dtype=np.float64)
-            all_data[0] = np.array(self._real_data * self._scanner_clock_frequency, np.float64)
-            if len(self._scanner_ai_channels) > 0:
-                all_data[1:] = self._odmr_analog_data[:, :-1]
+            if self._odmr_pulser_daq_task:
+                differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
 
-            return all_data
+                differential_data += real_data[1::2]
+                differential_data -= real_data[::2]
+                differential_data = np.divide(differential_data, real_data[::2],
+                                              np.zeros_like(differential_data),
+                                              where=real_data[::2] != 0)
+
+                all_data[0] = np.median(np.reshape(differential_data,
+                                                   (-1, self.oversampling)),
+                                        axis=1
+                                        )
+
+                if len(self._scanner_ai_channels) > 0:
+                    for i, analog_data in enumerate(odmr_analog_data):
+                        differential_data = np.zeros((self.oversampling * length, ), dtype=np.float64)
+
+                        differential_data += analog_data[1:-1:2]
+                        differential_data -= analog_data[:-1:2]
+                        differential_data = np.divide(differential_data, analog_data[:-1:2],
+                                                      np.zeros_like(differential_data),
+                                                      where=analog_data[:-1:2] != 0)
+
+                        all_data[i+1] = np.median(np.reshape(differential_data,
+                                                             (-1, self.oversampling)),
+                                                  axis=1
+                                                  )
+
+            else:
+                all_data[0] = np.array(real_data * self._scanner_clock_frequency, np.float64)
+                if len(self._scanner_ai_channels) > 0:
+                    all_data[1:] = odmr_analog_data[:, :-1]
+
+            return False, all_data
         except:
             self.log.exception('Error while counting for ODMR.')
-            return np.full((len(self.get_odmr_channels()), 1), [-1.])
+            return True, np.full((len(self.get_odmr_channels()), 1), [-1.])
 
     def close_odmr(self):
         """ Closes the odmr and cleans up afterwards.
@@ -1784,6 +1903,18 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 self._scanner_analog_daq_task = None
             except:
                 self.log.exception('Could not close analog.')
+                retval = -1
+
+        if self._odmr_pulser_daq_task:
+            try:
+                # stop the pulser task
+                daq.DAQmxStopTask(self._odmr_pulser_daq_task)
+                # after stopping delete all the configuration of the pulser
+                daq.DAQmxClearTask(self._odmr_pulser_daq_task)
+                # set the task handle to None as a safety
+                self._odmr_pulser_daq_task = None
+            except:
+                self.log.exception('Could not close pulser.')
                 retval = -1
 
         retval = -1 if self.close_counter(scanner=True) < 0 or retval < 0 else 0
@@ -2055,7 +2186,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     # ======================== Digital channel control ==========================
 
-
     def digital_channel_switch(self, channel_name, mode=True):
         """
         Switches on or off the voltage output (5V) of one of the digital channels, that
@@ -2067,7 +2197,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
         @return int: error code (0:OK, -1:error)
         """
-        if channel_name == None:
+        if channel_name is None:
             self.log.error('No channel for digital output specified')
             return -1
         else:
@@ -2084,7 +2214,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             daq.DAQmxStartTask(self.digital_out_task)
             daq.DAQmxWriteDigitalU32(self.digital_out_task, self.digital_samples_channel, True,
                                         self._RWTimeout, daq.DAQmx_Val_GroupByChannel,
-                                        np.array(self.digital_data), self.digital_read, None);
+                                        np.array(self.digital_data), self.digital_read, None)
 
             daq.DAQmxStopTask(self.digital_out_task)
             daq.DAQmxClearTask(self.digital_out_task)

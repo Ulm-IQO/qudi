@@ -11,7 +11,8 @@ events and the arguments which will be passed to them.
 
 """
 
-class EventManager():
+
+class EventManager:
     """Manage a collection of events and a sequence of callbacks for each.
     
     This is attached to :class:`~IPython.core.interactiveshell.InteractiveShell`
@@ -21,7 +22,7 @@ class EventManager():
 
        This API is experimental in IPython 2.0, and may be revised in future versions.
     """
-    def __init__(self, kernel, available_events):
+    def __init__(self, kernel, available_callbacks):
         """Initialise the :class:`CallbackManager`.
         
         Parameters
@@ -31,33 +32,33 @@ class EventManager():
           An iterable of names for callback events.
         """
         self.kernel = kernel
-        self.callbacks = {n:[] for n in available_events}
+        self.callbacks = {n: [] for n in available_callbacks}
     
-    def register(self, event, function):
+    def register(self, event, register_function):
         """Register a new event callback
         
         Parameters
         ----------
         event : str
           The event for which to register this callback.
-        function : callable
+        register_function : callable
           A function to be called on the given event. It should take the same
           parameters as the appropriate callback prototype.
         
         Raises
         ------
         TypeError
-          If ``function`` is not callable.
+          If ``register_function`` is not callable.
         KeyError
           If ``event`` is not one of the known events.
         """
-        if not callable(function):
-            raise TypeError('Need a callable, got {0!r}'.format(function))
-        self.callbacks[event].append(function)
+        if not callable(register_function):
+            raise TypeError('Need a callable, got {0!r}'.format(register_function))
+        self.callbacks[event].append(register_function)
     
-    def unregister(self, event, function):
+    def unregister(self, event, register_function):
         """Remove a callback from the given event."""
-        self.callbacks[event].remove(function)
+        self.callbacks[event].remove(register_function)
     
     def trigger(self, event, *args, **kwargs):
         """Call callbacks for ``event``.

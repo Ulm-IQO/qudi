@@ -24,7 +24,7 @@
      <x>0</x>
      <y>0</y>
      <width>948</width>
-     <height>30</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
@@ -47,7 +47,6 @@
    </widget>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="qdplot_DockWidget">
    <property name="windowTitle">
     <string>Plot</string>

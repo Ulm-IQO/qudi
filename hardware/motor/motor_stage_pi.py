@@ -146,51 +146,47 @@ class MotorStagePI(Base, MotorInterface):
         """
         constraints = OrderedDict()
 
-        axis0 = {}
-        axis0['label'] = self._first_axis_label
-        axis0['ID'] = self._first_axis_ID
-        axis0['unit'] = 'm'                 # the SI units
-        axis0['ramp'] = None # a possible list of ramps
-        axis0['pos_min'] = self._min_first
-        axis0['pos_max'] = self._max_first
-        axis0['pos_step'] = self.step_first_axis
-        axis0['vel_min'] = self._vel_min_first
-        axis0['vel_max'] = self._vel_max_first
-        axis0['vel_step'] = self._vel_step_first
-        axis0['acc_min'] = None
-        axis0['acc_max'] = None
-        axis0['acc_step'] = None
+        axis0 = {'label': self._first_axis_label,
+                 'ID': self._first_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_first,
+                 'pos_max': self._max_first,
+                 'pos_step': self.step_first_axis,
+                 'vel_min': self._vel_min_first,
+                 'vel_max': self._vel_max_first,
+                 'vel_step': self._vel_step_first,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis1 = {}
-        axis1['label'] = self._second_axis_label
-        axis1['ID'] = self._second_axis_ID
-        axis1['unit'] = 'm'        # the SI units
-        axis1['ramp'] = None # a possible list of ramps
-        axis1['pos_min'] = self._min_second
-        axis1['pos_max'] = self._max_second
-        axis1['pos_step'] = self.step_second_axis
-        axis1['vel_min'] = self._vel_min_second
-        axis1['vel_max'] = self._vel_max_second
-        axis1['vel_step'] = self._vel_step_second
-        axis1['acc_min'] = None
-        axis1['acc_max'] = None
-        axis1['acc_step'] = None
+        axis1 = {'label': self._second_axis_label,
+                 'ID': self._second_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_second,
+                 'pos_max': self._max_second,
+                 'pos_step': self.step_second_axis,
+                 'vel_min': self._vel_min_second,
+                 'vel_max': self._vel_max_second,
+                 'vel_step': self._vel_step_second,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis2 = {}
-        axis2['label'] = self._third_axis_label
-        axis2['ID'] = self._third_axis_ID
-        axis2['unit'] = 'm'        # the SI units
-        axis2['ramp'] = None # a possible list of ramps
-        axis2['pos_min'] = self._min_third
-        axis2['pos_max'] = self._max_third
-        axis2['pos_step'] = self.step_third_axis
-        axis2['vel_min'] = self._vel_min_third
-        axis2['vel_max'] = self._vel_max_third
-        axis2['vel_step'] = self._vel_step_third
-        axis2['acc_min'] = None
-        axis2['acc_max'] = None
-        axis2['acc_step'] = None
-
+        axis2 = {'label': self._third_axis_label,
+                 'ID': self._third_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_third,
+                 'pos_max': self._max_third,
+                 'pos_step': self.step_third_axis,
+                 'vel_min': self._vel_min_third,
+                 'vel_max': self._vel_max_third,
+                 'vel_step': self._vel_step_third,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
@@ -437,7 +433,7 @@ class MotorStagePI(Base, MotorInterface):
         try:
             for axis_label in param_dict:
                 vel = int(param_dict[axis_label] * 1.0e7)
-                self._write_xyz(axis_label, 'SV{0:d}'.format((vel)))
+                self._write_xyz(axis_label, 'SV{0:d}'.format(vel))
 
             #The following two lines have been commented out to speed up
             #param_dict2 = self.get_velocity()
@@ -454,13 +450,13 @@ class MotorStagePI(Base, MotorInterface):
 
 
     def _write_xyz(self,axis,command):
-        '''this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
+        """this method just sends a command to the motor! DOES NOT RETURN AN ANSWER!
         @param axis string: name of the axis that should be asked
 
         @param command string: command
 
         @return error code (0:OK, -1:error)
-        '''
+        """
         constraints = self.get_constraints()
         try:
             #self.log.info(constraints[axis]['ID'] + command + '\n')
@@ -472,28 +468,27 @@ class MotorStagePI(Base, MotorInterface):
             return -1
 
     def _read_answer_xyz(self):
-        '''this method reads the answer from the motor!
+        """this method reads the answer from the motor!
         @return answer string: answer of motor
-        '''
+        """
 
         still_reading = True
         answer=''
-        while still_reading == True:
+        while still_reading:
             try:
                 answer = answer + self._serial_connection_xyz.read()[:-1]
             except:
                 still_reading = False
-        #self.log.info(answer)
         return answer
 
     def _ask_xyz(self,axis,question):
-        '''this method combines writing a command and reading the answer
+        """this method combines writing a command and reading the answer
         @param axis string: name of the axis that should be asked
 
         @param command string: command
 
         @return answer string: answer of motor
-        '''
+        """
         constraints = self.get_constraints()
         self._serial_connection_xyz.write(constraints[axis]['ID']+question+'\n')
         answer=self._read_answer_xyz()
@@ -545,12 +540,12 @@ class MotorStagePI(Base, MotorInterface):
 
 
     def _in_movement_xyz(self):
-        '''this method checks if the magnet is still moving and returns
+        """this method checks if the magnet is still moving and returns
         a dictionary which of the axis are moving.
 
         @return: dict param_dict: Dictionary displaying if axis are moving:
         0 for immobile and 1 for moving
-        '''
+        """
         constraints=self.get_constraints()
         param_dict = {}
         for axis_label in constraints:
@@ -560,11 +555,11 @@ class MotorStagePI(Base, MotorInterface):
         return param_dict
 
     def _motor_stopped(self):
-        '''this method checks if the magnet is still moving and returns
+        """this method checks if the magnet is still moving and returns
             False if it is moving and True of it is immobile
 
             @return: bool stopped: False for immobile and True for moving
-                '''
+                """
         param_dict=self._in_movement_xyz()
         stopped=True
         for axis_label in param_dict:

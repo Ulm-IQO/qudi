@@ -117,7 +117,7 @@ class HBridge(Base, SwitchInterface):
           @return bool: True if suceeds, False otherwise
         """
         coilnr = int(switchNumber) + 1
-        if int(coilnr) > 0 and int(coilnr) < 5:
+        if 0 < int(coilnr) < 5:
             with self.lock:
                 try:
                     answer = self.inst.ask('P{0}=1'.format(coilnr))
@@ -141,7 +141,7 @@ class HBridge(Base, SwitchInterface):
           @return bool: True if suceeds, False otherwise
         """
         coilnr = int(switchNumber) + 1
-        if int(coilnr) > 0 and int(coilnr) < 5:
+        if 0 < int(coilnr) < 5:
             with self.lock:
                 try:
                     answer = self.inst.ask('P{0}=0'.format(coilnr))

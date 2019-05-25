@@ -31,6 +31,7 @@ from core.module import Connector, ConfigOption, StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
+from core.util.helpers import natural_sort
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_extractor import PulseExtractor
 from logic.pulsed.pulse_analyzer import PulseAnalyzer
@@ -124,7 +125,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__analysis_timer = None
         self.__start_time = 0
         self.__elapsed_time = 0
-        self.__elapsed_sweeps = 0  # FIXME: unused
+        self.__elapsed_sweeps = 0
 
         # threading
         self._threadlock = Mutex()
@@ -141,6 +142,8 @@ class PulsedMeasurementLogic(GenericLogic):
 
         # Paused measurement flag
         self.__is_paused = False
+        self._time_of_pause = None
+        self._elapsed_pause = 0
 
         # for fit:
         self.fc = None  # Fit container
@@ -345,6 +348,14 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             err = self.fast_counter_pause()
         return err
+
+    @property
+    def elapsed_sweeps(self):
+        return self.__elapsed_sweeps
+
+    @property
+    def elapsed_time(self):
+        return self.__elapsed_time
     ############################################################################
 
     ############################################################################
@@ -782,6 +793,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # initialize analysis_timer
                 self.__elapsed_time = 0.0
+                self._elapsed_pause = 0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
                                           self.__elapsed_sweeps,
                                           self.__timer_interval)
@@ -821,9 +833,9 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # stash raw data if requested
                 if stash_raw_data_tag:
-                    #self.log.info('Raw data saved with tag "{0}" to continue measurement at a '
-                    #              'later point.'.format(stash_raw_data_tag))
-                    self._saved_raw_data[stash_raw_data_tag] = self.raw_data.copy()
+                    self._saved_raw_data[stash_raw_data_tag] = (self.raw_data.copy(),
+                                                                {'elapsed_sweeps': self.__elapsed_sweeps,
+                                                                 'elapsed_time': self.__elapsed_time})
                 self._recalled_raw_data_tag = None
 
                 # Set measurement paused flag
@@ -865,6 +877,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = True
+                self._time_of_pause = time.time()
 
                 self.sigMeasurementStatusUpdated.emit(True, True)
             else:
@@ -890,6 +903,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Set measurement paused flag
                 self.__is_paused = False
+                self.__start_time += time.time() - self._time_of_pause
 
                 self.sigMeasurementStatusUpdated.emit(True, False)
             else:
@@ -1082,7 +1096,6 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             if self.module_state() == 'locked':
                 # Update elapsed time
-                self.__elapsed_time = time.time() - self.__start_time
 
                 self._extract_laser_pulses()
 
@@ -1101,11 +1114,19 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # order data according to alternating flag
                 if self._alternating:
+                    if len(self.signal_data[0]) != len(tmp_signal[::2]):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal[::2])))
+                        return
                     self.signal_data[1] = tmp_signal[::2]
                     self.signal_data[2] = tmp_signal[1::2]
                     self.measurement_error[1] = tmp_error[::2]
                     self.measurement_error[2] = tmp_error[1::2]
                 else:
+                    if len(self.signal_data[0]) != len(tmp_signal):
+                        self.log.error('Length of controlled variable ({0}) does not match length of number of readout '
+                                       'pulses ({1}).'.format(len(self.signal_data[0]), len(tmp_signal)))
+                        return
                     self.signal_data[1] = tmp_signal
                     self.measurement_error[1] = tmp_error
 
@@ -1120,7 +1141,10 @@ class PulsedMeasurementLogic(GenericLogic):
 
     def _extract_laser_pulses(self):
         # Get counter raw data (including recalled raw data from previous measurement)
-        self.raw_data = self._get_raw_data()
+        fc_data, info_dict = self._get_raw_data()
+        self.raw_data = fc_data
+        self.__elapsed_sweeps = info_dict['elapsed_sweeps']
+        self.__elapsed_time = info_dict['elapsed_time']
 
         # extract laser pulses from raw data
         return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)
@@ -1142,29 +1166,48 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         Get the raw count data from the fast counting hardware and perform sanity checks.
         Also add recalled raw data to the newly received data.
-        :return numpy.ndarray: The count data (1D for ungated, 2D for gated counter)
+        @return tuple(numpy.ndarray, info_dict): The count data (1D for ungated, 2D for gated counter) and
+                                                 info_dict with keys 'elapsed_sweeps' and 'elapsed_time'
         """
         # get raw data from fast counter
-        fc_data = netobtain(self.fastcounter().get_data_trace())
+        fc_data = self.fastcounter().get_data_trace()
+        if type(fc_data) == tuple and len(fc_data) == 2:  # if the hardware implement the new version of the interface
+            fc_data, info_dict = fc_data
+        else:
+            info_dict = {'elapsed_sweeps': None, 'elapsed_time': None}
+        fc_data = netobtain(fc_data)
+
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_sweeps') is not None:
+            elapsed_sweeps = info_dict['elapsed_sweeps']
+        else:
+            elapsed_sweeps = -1
+
+        if isinstance(info_dict, dict) and info_dict.get('elapsed_time') is not None:
+            elapsed_time = info_dict['elapsed_time']
+        else:
+            elapsed_time = time.time() - self.__start_time
 
         # add old raw data from previous measurements if necessary
         if self._saved_raw_data.get(self._recalled_raw_data_tag) is not None:
-            self.log.info('Found old saved raw data with tag "{0}".'
-                          ''.format(self._recalled_raw_data_tag))
+            # self.log.info('Found old saved raw data with tag "{0}".'
+            #               ''.format(self._recalled_raw_data_tag))
+            elapsed_sweeps += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_sweeps']
+            elapsed_time += self._saved_raw_data[self._recalled_raw_data_tag][1]['elapsed_time']
             if not fc_data.any():
                 self.log.warning('Only zeros received from fast counter!\n'
                                  'Using recalled raw data only.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag]
-            elif self._saved_raw_data[self._recalled_raw_data_tag].shape == fc_data.shape:
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0]
+            elif self._saved_raw_data[self._recalled_raw_data_tag][0].shape == fc_data.shape:
                 self.log.debug('Recalled raw data has the same shape as current data.')
-                fc_data = self._saved_raw_data[self._recalled_raw_data_tag] + fc_data
+                fc_data = self._saved_raw_data[self._recalled_raw_data_tag][0] + fc_data
             else:
                 self.log.warning('Recalled raw data has not the same shape as current data.'
                                  '\nDid NOT add recalled raw data to current time trace.')
         elif not fc_data.any():
             self.log.warning('Only zeros received from fast counter!')
             fc_data = np.zeros(fc_data.shape, dtype='int64')
-        return fc_data
+
+        return fc_data, {'elapsed_sweeps': elapsed_sweeps, 'elapsed_time': elapsed_time}
 
     def _initialize_data_arrays(self):
         """
@@ -1198,12 +1241,16 @@ class PulsedMeasurementLogic(GenericLogic):
 
     ############################################################################
     @QtCore.Slot(str, bool)
-    def save_measurement_data(self, tag=None, with_error=True):
+    def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
+                              save_figure=True):
         """
         Prepare data to be saved and create a proper plot of the data
 
         @param str tag: a filetag which will be included in the filename
         @param bool with_error: select whether errors should be saved/plotted
+        @param bool save_laser_pulses: select whether extracted lasers should be saved
+        @param bool save_pulsed_measurement: select whether final measurement should be saved
+        @param bool save_figure: select whether png and pdf should be saved
 
         @return str: filepath where data were saved
         """
@@ -1213,295 +1260,300 @@ class PulsedMeasurementLogic(GenericLogic):
         #####################################################################
         ####                Save extracted laser pulses                  ####
         #####################################################################
-        if tag:
-            filelabel = tag + '_laser_pulses'
-        else:
-            filelabel = 'laser_pulses'
+        if save_laser_pulses:
+            if tag:
+                filelabel = tag + '_laser_pulses'
+            else:
+                filelabel = 'laser_pulses'
 
-        # prepare the data in a dict or in an OrderedDict:
-        data = OrderedDict()
-        laser_trace = self.laser_data
-        data['Signal (counts)'] = laser_trace.transpose()
+            # prepare the data in a dict or in an OrderedDict:
+            data = OrderedDict()
+            laser_trace = self.laser_data
+            data['Signal (counts)'] = laser_trace.transpose()
 
-        # write the parameters:
-        parameters = OrderedDict()
-        parameters['bin width (s)'] = self.__fast_counter_binwidth
-        parameters['record length (s)'] = self.__fast_counter_record_length
-        parameters['gated counting'] = self.fast_counter_settings['is_gated']
-        parameters['extraction parameters'] = self.extraction_settings
+            # write the parameters:
+            parameters = OrderedDict()
+            parameters['bin width (s)'] = self.__fast_counter_binwidth
+            parameters['record length (s)'] = self.__fast_counter_record_length
+            parameters['gated counting'] = self.fast_counter_settings['is_gated']
+            parameters['extraction parameters'] = self.extraction_settings
 
-        self.savelogic().save_data(data,
-                                   timestamp=timestamp,
-                                   parameters=parameters,
-                                   filepath=filepath,
-                                   filelabel=filelabel,
-                                   filetype='text',
-                                   fmt='%d',
-                                   delimiter='\t')
+            self.savelogic().save_data(data,
+                                       timestamp=timestamp,
+                                       parameters=parameters,
+                                       filepath=filepath,
+                                       filelabel=filelabel,
+                                       filetype='text',
+                                       fmt='%d',
+                                       delimiter='\t')
 
         #####################################################################
         ####                Save measurement data                        ####
         #####################################################################
-        if tag:
-            filelabel = tag + '_pulsed_measurement'
-        else:
-            filelabel = 'pulsed_measurement'
+        if save_pulsed_measurement:
+            if tag:
+                filelabel = tag + '_pulsed_measurement'
+            else:
+                filelabel = 'pulsed_measurement'
 
-        # prepare the data in a dict or in an OrderedDict:
-        header_str = 'Controlled variable'
-        if self._data_units[0]:
-            header_str += '({0})'.format(self._data_units[0])
-        header_str += '\tSignal'
-        if self._data_units[1]:
-            header_str += '({0})'.format(self._data_units[1])
-        if self._alternating:
-            header_str += '\tSignal2'
-            if self._data_units[1]:
-                header_str += '({0})'.format(self._data_units[1])
-        if with_error:
-            header_str += '\tError'
+            # prepare the data in a dict or in an OrderedDict:
+            header_str = 'Controlled variable'
+            if self._data_units[0]:
+                header_str += '({0})'.format(self._data_units[0])
+            header_str += '\tSignal'
             if self._data_units[1]:
                 header_str += '({0})'.format(self._data_units[1])
             if self._alternating:
-                header_str += '\tError2'
+                header_str += '\tSignal2'
                 if self._data_units[1]:
                     header_str += '({0})'.format(self._data_units[1])
-        data = OrderedDict()
-        if with_error:
-            data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
-        else:
-            data[header_str] = self.signal_data.transpose()
-
-        # write the parameters:
-        parameters = OrderedDict()
-        parameters['Approx. measurement time (s)'] = self.__elapsed_time
-        parameters['Measurement sweeps'] = self.__elapsed_sweeps
-        parameters['Number of laser pulses'] = self._number_of_lasers
-        parameters['Laser ignore indices'] = self._laser_ignore_list
-        parameters['alternating'] = self._alternating
-        parameters['analysis parameters'] = self.analysis_settings
-        parameters['extraction parameters'] = self.extraction_settings
-        parameters['fast counter settings'] = self.fast_counter_settings
-
-        # Prepare the figure to save as a "data thumbnail"
-        plt.style.use(self.savelogic().mpl_qd_style)
-
-        # extract the possible colors from the colorscheme:
-        prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
-        colors = {}
-        for i, color_setting in enumerate(prop_cycle):
-            colors[i] = color_setting['color']
-
-        # scale the x_axis for plotting
-        max_val = np.max(self.signal_data[0])
-        scaled_float = units.ScaledFloat(max_val)
-        counts_prefix = scaled_float.scale
-        x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
-
-        # Create the figure object
-        if self._alternative_data_type and self._alternative_data_type != 'None':
-            fig, (ax1, ax2) = plt.subplots(2, 1)
-        else:
-            fig, ax1 = plt.subplots()
-
-        if with_error:
-            ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
-                         yerr=self.measurement_error[1], fmt='-o',
-                         linestyle=':', linewidth=0.5, color=colors[0],
-                         ecolor=colors[1], capsize=3, capthick=0.9,
-                         elinewidth=1.2, label='data trace 1')
-
-            if self._alternating:
-                ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
-                             yerr=self.measurement_error[2], fmt='-D',
-                             linestyle=':', linewidth=0.5, color=colors[3],
-                             ecolor=colors[4],  capsize=3, capthick=0.7,
-                             elinewidth=1.2, label='data trace 2')
-        else:
-            ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
-                     linestyle=':', linewidth=0.5, label='data trace 1')
-
-            if self._alternating:
-                ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
-                         color=colors[3], linestyle=':', linewidth=0.5,
-                         label='data trace 2')
-
-        # Do not include fit curve if there is no fit calculated.
-        if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
-            x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
-            ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
-                     color=colors[2], marker='None', linewidth=1.5,
-                     label='fit')
-
-            # add then the fit result to the plot:
-
-            # Parameters for the text plot:
-            # The position of the text annotation is controlled with the
-            # relative offset in x direction and the relative length factor
-            # rel_len_fac of the longest entry in one column
-            rel_offset = 0.02
-            rel_len_fac = 0.011
-            entries_per_col = 24
-
-            # create the formatted fit text:
-            if hasattr(self.fit_result, 'result_str_dict'):
-                result_str = units.create_formatted_output(self.fit_result.result_str_dict)
-            else:
-                result_str = ''
-            # do reverse processing to get each entry in a list
-            entry_list = result_str.split('\n')
-            # slice the entry_list in entries_per_col
-            chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
-
-            is_first_column = True  # first entry should contain header or \n
-
-            for column in chunks:
-
-                max_length = max(column, key=len)   # get the longest entry
-                column_text = ''
-
-                for entry in column:
-                    column_text += entry + '\n'
-
-                column_text = column_text[:-1]  # remove the last new line
-
-                heading = ''
-                if is_first_column:
-                    heading = 'Fit results:'
-
-                column_text = heading + '\n' + column_text
-
-                ax1.text(1.00 + rel_offset, 0.99, column_text,
-                         verticalalignment='top',
-                         horizontalalignment='left',
-                         transform=ax1.transAxes,
-                         fontsize=12)
-
-                # the rel_offset in position of the text is a linear function
-                # which depends on the longest entry in the column
-                rel_offset += rel_len_fac * len(max_length)
-
-                is_first_column = False
-
-        # handle the save of the alternative data plot
-        if self._alternative_data_type and self._alternative_data_type != 'None':
-
-            # scale the x_axis for plotting
-            max_val = np.max(self.signal_alt_data[0])
-            scaled_float = units.ScaledFloat(max_val)
-            x_axis_prefix = scaled_float.scale
-            x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
-
-            # since no ft units are provided, make a small work around:
-            if self._alternative_data_type == 'FFT':
-                if self._data_units[0] == 's':
-                    inverse_cont_var = 'Hz'
-                elif self._data_units[0] == 'Hz':
-                    inverse_cont_var = 's'
-                else:
-                    inverse_cont_var = '(1/{0})'.format(self._data_units[0])
-                x_axis_ft_label = 'FT {0} ({1}{2})'.format(
-                    self._data_labels[0], x_axis_prefix, inverse_cont_var)
-                y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
-                ft_label = 'FT of data trace 1'
-            else:
-                if self._data_units[0]:
-                    x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
-                                                            self._data_units[0])
-                else:
-                    x_axis_ft_label = '{0}'.format(self._data_labels[0])
+            if with_error:
+                header_str += '\tError'
                 if self._data_units[1]:
-                    y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+                    header_str += '({0})'.format(self._data_units[1])
+                if self._alternating:
+                    header_str += '\tError2'
+                    if self._data_units[1]:
+                        header_str += '({0})'.format(self._data_units[1])
+            data = OrderedDict()
+            if with_error:
+                data[header_str] = np.vstack((self.signal_data, self.measurement_error[1:])).transpose()
+            else:
+                data[header_str] = self.signal_data.transpose()
+
+            # write the parameters:
+            parameters = OrderedDict()
+            parameters['Approx. measurement time (s)'] = self.__elapsed_time
+            parameters['Measurement sweeps'] = self.__elapsed_sweeps
+            parameters['Number of laser pulses'] = self._number_of_lasers
+            parameters['Laser ignore indices'] = self._laser_ignore_list
+            parameters['alternating'] = self._alternating
+            parameters['analysis parameters'] = self.analysis_settings
+            parameters['extraction parameters'] = self.extraction_settings
+            parameters['fast counter settings'] = self.fast_counter_settings
+
+            if save_figure:
+                # Prepare the figure to save as a "data thumbnail"
+                plt.style.use(self.savelogic().mpl_qd_style)
+
+                # extract the possible colors from the colorscheme:
+                prop_cycle = self.savelogic().mpl_qd_style['axes.prop_cycle']
+                colors = {}
+                for i, color_setting in enumerate(prop_cycle):
+                    colors[i] = color_setting['color']
+
+                # scale the x_axis for plotting
+                max_val = np.max(self.signal_data[0])
+                scaled_float = units.ScaledFloat(max_val)
+                counts_prefix = scaled_float.scale
+                x_axis_scaled = self.signal_data[0] / scaled_float.scale_val
+
+                # Create the figure object
+                if self._alternative_data_type and self._alternative_data_type != 'None':
+                    fig, (ax1, ax2) = plt.subplots(2, 1)
                 else:
-                    y_axis_ft_label = '{0}'.format(self._data_labels[1])
+                    fig, ax1 = plt.subplots()
 
-                ft_label = '{0} of data traces'.format(self._alternative_data_type)
+                if with_error:
+                    ax1.errorbar(x=x_axis_scaled, y=self.signal_data[1],
+                                 yerr=self.measurement_error[1], fmt='-o',
+                                 linestyle=':', linewidth=0.5, color=colors[0],
+                                 ecolor=colors[1], capsize=3, capthick=0.9,
+                                 elinewidth=1.2, label='data trace 1')
 
-            ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
-                     linestyle=':', linewidth=0.5, color=colors[0],
-                     label=ft_label)
-            if self._alternating and len(self.signal_alt_data) > 2:
-                ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
-                         linestyle=':', linewidth=0.5, color=colors[3],
-                         label=ft_label.replace('1', '2'))
-
-            ax2.set_xlabel(x_axis_ft_label)
-            ax2.set_ylabel(y_axis_ft_label)
-            ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
-                       mode="expand", borderaxespad=0.)
-
-            if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
-                x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
-                ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
-                         color=colors[2], marker='None', linewidth=1.5,
-                         label='secondary fit')
-
-                # add then the fit result to the plot:
-
-                # Parameters for the text plot:
-                # The position of the text annotation is controlled with the
-                # relative offset in x direction and the relative length factor
-                # rel_len_fac of the longest entry in one column
-                rel_offset = 0.02
-                rel_len_fac = 0.011
-                entries_per_col = 24
-
-                # create the formatted fit text:
-                if hasattr(self.alt_fit_result, 'result_str_dict'):
-                    result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+                    if self._alternating:
+                        ax1.errorbar(x=x_axis_scaled, y=self.signal_data[2],
+                                     yerr=self.measurement_error[2], fmt='-D',
+                                     linestyle=':', linewidth=0.5, color=colors[3],
+                                     ecolor=colors[4],  capsize=3, capthick=0.7,
+                                     elinewidth=1.2, label='data trace 2')
                 else:
-                    result_str = ''
-                # do reverse processing to get each entry in a list
-                entry_list = result_str.split('\n')
-                # slice the entry_list in entries_per_col
-                chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+                    ax1.plot(x_axis_scaled, self.signal_data[1], '-o', color=colors[0],
+                             linestyle=':', linewidth=0.5, label='data trace 1')
 
-                is_first_column = True  # first entry should contain header or \n
+                    if self._alternating:
+                        ax1.plot(x_axis_scaled, self.signal_data[2], '-o',
+                                 color=colors[3], linestyle=':', linewidth=0.5,
+                                 label='data trace 2')
 
-                for column in chunks:
-                    max_length = max(column, key=len)   # get the longest entry
-                    column_text = ''
+                # Do not include fit curve if there is no fit calculated.
+                if self.signal_fit_data.size != 0 and np.sum(self.signal_fit_data[1]) > 0:
+                    x_axis_fit_scaled = self.signal_fit_data[0] / scaled_float.scale_val
+                    ax1.plot(x_axis_fit_scaled, self.signal_fit_data[1],
+                             color=colors[2], marker='None', linewidth=1.5,
+                             label='fit')
 
-                    for entry in column:
-                        column_text += entry + '\n'
+                    # add then the fit result to the plot:
 
-                    column_text = column_text[:-1]  # remove the last new line
+                    # Parameters for the text plot:
+                    # The position of the text annotation is controlled with the
+                    # relative offset in x direction and the relative length factor
+                    # rel_len_fac of the longest entry in one column
+                    rel_offset = 0.02
+                    rel_len_fac = 0.011
+                    entries_per_col = 24
 
-                    heading = ''
-                    if is_first_column:
-                        heading = 'Fit results:'
+                    # create the formatted fit text:
+                    if hasattr(self.fit_result, 'result_str_dict'):
+                        result_str = units.create_formatted_output(self.fit_result.result_str_dict)
+                    else:
+                        result_str = ''
+                    # do reverse processing to get each entry in a list
+                    entry_list = result_str.split('\n')
+                    # slice the entry_list in entries_per_col
+                    chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
 
-                    column_text = heading + '\n' + column_text
+                    is_first_column = True  # first entry should contain header or \n
 
-                    ax2.text(1.00 + rel_offset, 0.99, column_text,
-                             verticalalignment='top',
-                             horizontalalignment='left',
-                             transform=ax2.transAxes,
-                             fontsize=12)
+                    for column in chunks:
 
-                    # the rel_offset in position of the text is a linear function
-                    # which depends on the longest entry in the column
-                    rel_offset += rel_len_fac * len(max_length)
+                        max_length = max(column, key=len)   # get the longest entry
+                        column_text = ''
 
-                    is_first_column = False
+                        for entry in column:
+                            column_text += entry + '\n'
 
-        ax1.set_xlabel(
-            '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
-        if self._data_units[1]:
-            ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
-        else:
-            ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+                        column_text = column_text[:-1]  # remove the last new line
 
-        fig.tight_layout()
-        ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
-                   mode="expand", borderaxespad=0.)
-        # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
-        #            mode="expand", borderaxespad=0.)
+                        heading = ''
+                        if is_first_column:
+                            heading = 'Fit results:'
 
-        self.savelogic().save_data(data, timestamp=timestamp,
-                                   parameters=parameters, fmt='%.15e',
-                                   filepath=filepath, filelabel=filelabel, filetype='text',
-                                   delimiter='\t', plotfig=fig)
+                        column_text = heading + '\n' + column_text
+
+                        ax1.text(1.00 + rel_offset, 0.99, column_text,
+                                 verticalalignment='top',
+                                 horizontalalignment='left',
+                                 transform=ax1.transAxes,
+                                 fontsize=12)
+
+                        # the rel_offset in position of the text is a linear function
+                        # which depends on the longest entry in the column
+                        rel_offset += rel_len_fac * len(max_length)
+
+                        is_first_column = False
+
+                # handle the save of the alternative data plot
+                if self._alternative_data_type and self._alternative_data_type != 'None':
+
+                    # scale the x_axis for plotting
+                    max_val = np.max(self.signal_alt_data[0])
+                    scaled_float = units.ScaledFloat(max_val)
+                    x_axis_prefix = scaled_float.scale
+                    x_axis_ft_scaled = self.signal_alt_data[0] / scaled_float.scale_val
+
+                    # since no ft units are provided, make a small work around:
+                    if self._alternative_data_type == 'FFT':
+                        if self._data_units[0] == 's':
+                            inverse_cont_var = 'Hz'
+                        elif self._data_units[0] == 'Hz':
+                            inverse_cont_var = 's'
+                        else:
+                            inverse_cont_var = '(1/{0})'.format(self._data_units[0])
+                        x_axis_ft_label = 'FT {0} ({1}{2})'.format(
+                            self._data_labels[0], x_axis_prefix, inverse_cont_var)
+                        y_axis_ft_label = 'FT({0}) (arb. u.)'.format(self._data_labels[1])
+                        ft_label = 'FT of data trace 1'
+                    else:
+                        if self._data_units[0]:
+                            x_axis_ft_label = '{0} ({1}{2})'.format(self._data_labels[0], x_axis_prefix,
+                                                                    self._data_units[0])
+                        else:
+                            x_axis_ft_label = '{0}'.format(self._data_labels[0])
+                        if self._data_units[1]:
+                            y_axis_ft_label = '{0} ({1})'.format(self._data_labels[1], self._data_units[1])
+                        else:
+                            y_axis_ft_label = '{0}'.format(self._data_labels[1])
+
+                        ft_label = '{0} of data traces'.format(self._alternative_data_type)
+
+                    ax2.plot(x_axis_ft_scaled, self.signal_alt_data[1], '-o',
+                             linestyle=':', linewidth=0.5, color=colors[0],
+                             label=ft_label)
+                    if self._alternating and len(self.signal_alt_data) > 2:
+                        ax2.plot(x_axis_ft_scaled, self.signal_alt_data[2], '-D',
+                                 linestyle=':', linewidth=0.5, color=colors[3],
+                                 label=ft_label.replace('1', '2'))
+
+                    ax2.set_xlabel(x_axis_ft_label)
+                    ax2.set_ylabel(y_axis_ft_label)
+                    ax2.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                               mode="expand", borderaxespad=0.)
+
+                    if self.signal_fit_alt_data.size != 0 and np.sum(self.signal_fit_alt_data[1]) > 0:
+                        x_axis_fit_scaled = self.signal_fit_alt_data[0] / scaled_float.scale_val
+                        ax2.plot(x_axis_fit_scaled, self.signal_fit_alt_data[1],
+                                 color=colors[2], marker='None', linewidth=1.5,
+                                 label='secondary fit')
+
+                        # add then the fit result to the plot:
+
+                        # Parameters for the text plot:
+                        # The position of the text annotation is controlled with the
+                        # relative offset in x direction and the relative length factor
+                        # rel_len_fac of the longest entry in one column
+                        rel_offset = 0.02
+                        rel_len_fac = 0.011
+                        entries_per_col = 24
+
+                        # create the formatted fit text:
+                        if hasattr(self.alt_fit_result, 'result_str_dict'):
+                            result_str = units.create_formatted_output(self.alt_fit_result.result_str_dict)
+                        else:
+                            result_str = ''
+                        # do reverse processing to get each entry in a list
+                        entry_list = result_str.split('\n')
+                        # slice the entry_list in entries_per_col
+                        chunks = [entry_list[x:x+entries_per_col] for x in range(0, len(entry_list), entries_per_col)]
+
+                        is_first_column = True  # first entry should contain header or \n
+
+                        for column in chunks:
+                            max_length = max(column, key=len)   # get the longest entry
+                            column_text = ''
+
+                            for entry in column:
+                                column_text += entry + '\n'
+
+                            column_text = column_text[:-1]  # remove the last new line
+
+                            heading = ''
+                            if is_first_column:
+                                heading = 'Fit results:'
+
+                            column_text = heading + '\n' + column_text
+
+                            ax2.text(1.00 + rel_offset, 0.99, column_text,
+                                     verticalalignment='top',
+                                     horizontalalignment='left',
+                                     transform=ax2.transAxes,
+                                     fontsize=12)
+
+                            # the rel_offset in position of the text is a linear function
+                            # which depends on the longest entry in the column
+                            rel_offset += rel_len_fac * len(max_length)
+
+                            is_first_column = False
+
+                ax1.set_xlabel(
+                    '{0} ({1}{2})'.format(self._data_labels[0], counts_prefix, self._data_units[0]))
+                if self._data_units[1]:
+                    ax1.set_ylabel('{0} ({1})'.format(self._data_labels[1], self._data_units[1]))
+                else:
+                    ax1.set_ylabel('{0}'.format(self._data_labels[1]))
+
+                fig.tight_layout()
+                ax1.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                           mode="expand", borderaxespad=0.)
+                # plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=2,
+                #            mode="expand", borderaxespad=0.)
+            else:
+                fig = None
+
+            self.savelogic().save_data(data, timestamp=timestamp,
+                                       parameters=parameters, fmt='%.15e',
+                                       filepath=filepath, filelabel=filelabel, filetype='text',
+                                       delimiter='\t', plotfig=fig)
 
         #####################################################################
         ####                Save raw data timetrace                      ####

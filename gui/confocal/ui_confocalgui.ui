@@ -65,6 +65,7 @@
     <addaction name="actionOptimizer_view"/>
     <addaction name="actionScan_line_view"/>
     <addaction name="actionTilt_correction_view"/>
+    <addaction name="actionBlink_correction_view"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
     <addaction name="separator"/>
@@ -78,7 +79,6 @@
    <addaction name="menuView"/>
    <addaction name="menu_Options"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="depth_scan_dockWidget">
    <property name="windowTitle">
     <string>Depth scan</string>
@@ -89,7 +89,7 @@
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QHBoxLayout" name="horizontalLayout_5">
      <item>
-      <widget class="PlotWidgetModified" name="depth_ViewWidget">
+      <widget class="ScanPlotWidget" name="depth_ViewWidget">
        <property name="sizePolicy">
         <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
          <horstretch>1</horstretch>
@@ -292,7 +292,7 @@
         <enum>QLayout::SetMaximumSize</enum>
        </property>
        <item>
-        <widget class="PlotWidget" name="xy_refocus_ViewWidget_2">
+        <widget class="ScanPlotWidget" name="xy_refocus_ViewWidget_2">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>1</horstretch>
@@ -1227,7 +1227,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,0">
        <item>
-        <widget class="PlotWidgetModified" name="xy_ViewWidget">
+        <widget class="ScanPlotWidget" name="xy_ViewWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -2301,22 +2301,33 @@
     <string>Shift+C</string>
    </property>
   </action>
+  <action name="actionBlink_correction_view">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Blink correction</string>
+   </property>
+   <property name="toolTip">
+    <string>Blink correction</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
-  <customwidget>
-   <class>ScienDSpinBox</class>
-   <extends>QDoubleSpinBox</extends>
-   <header>qtwidgets.scientific_spinbox.h</header>
-  </customwidget>
   <customwidget>
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
-   <class>PlotWidgetModified</class>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScanPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>qtwidgets.plotwidget_modified.h</header>
+   <header>qtwidgets.scan_plotwidget.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
