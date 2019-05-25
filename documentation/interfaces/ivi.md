@@ -199,8 +199,8 @@ drivers and fixes for oscilloscopes.
 
 The Qudi wrappers for python IVI can be found in
 
-- scope: `hardware.scope.python_ivi_scope`
-- fgen: `hardware.fgen.python_ivi_fgen`
+- scope: `hardware.ivi.scope.python_ivi_scope`
+- fgen: `hardware.ivi.fgen.python_ivi_fgen`
 
 ##### Configuration options
 
