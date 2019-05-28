@@ -31,6 +31,7 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
@@ -264,11 +265,11 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def sampled_waveforms(self):
-        return self.pulsegenerator().get_waveform_names()
+        return netobtain(self.pulsegenerator().get_waveform_names())
 
     @property
     def sampled_sequences(self):
-        return self.pulsegenerator().get_sequence_names()
+        return netobtain(self.pulsegenerator().get_sequence_names())
 
     @property
     def analog_channels(self):
