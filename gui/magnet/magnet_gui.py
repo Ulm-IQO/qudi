@@ -202,8 +202,8 @@ class MagnetGui(GUIBase):
         axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
         step0 = axis0[1] - axis0[0]
         step1 = axis1[1] - axis1[0]
-        self._2d_alignment_ImageItem.set_image_extent((axis0[0]-step0/2, axis0[-1]+step0/2),
-                                                      (axis1[0]-step1/2, axis1[-1]+step1/2))
+        self._2d_alignment_ImageItem.set_image_extent([(axis0[0]-step0/2, axis0[-1]+step0/2),
+                                                      (axis1[0]-step1/2, axis1[-1]+step1/2)])
         # Get the colorscales at set LUT
         my_colors = ColorScaleInferno()
         self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
@@ -1337,9 +1337,9 @@ class MagnetGui(GUIBase):
 
         step0 = axis0_array[1] - axis0_array[0]
         step1 = axis1_array[1] - axis1_array[0]
-        self._2d_alignment_ImageItem.set_image_extent(
-            (axis0_array[0]-step0/2, axis0_array[-1]+step0/2),
-            (axis1_array[0]-step1/2, axis1_array[-1]+step1/2))
+        extend = [(axis0_array[0]-step0/2, axis0_array[-1]+step0/2),
+            (axis1_array[0]-step1/2, axis1_array[-1]+step1/2)]
+        self._2d_alignment_ImageItem.set_image_extent(extend)
 
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
