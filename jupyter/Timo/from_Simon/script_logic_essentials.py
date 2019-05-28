@@ -421,8 +421,8 @@ def DEBUG_pulsed_with_result_mes(qm_dict):
 def set_up_conventional_measurement(qm_dict):
     from hardware.fast_counter_dummy import FastCounterDummy
 
-    if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
-        pulsedmeasurementlogic.fastcounter().change_sweep_mode(False)
+    #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
+    pulsedmeasurementlogic.fastcounter().change_sweep_mode(False)
 
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
                                                  'record_length': qm_dict['params']['counting_length']})
@@ -434,9 +434,9 @@ def set_up_conventional_measurement(qm_dict):
     pulsedmasterlogic.set_analysis_settings({'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
                                              'norm_start': 1.8e-6, 'norm_end': 2.8e-6})
 
-    if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
-        pulsedmeasurementlogic.fastcounter().set_delay_start(0)
-        pulsedmeasurementlogic.fastcounter().change_save_mode(0)
+    #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
+    pulsedmeasurementlogic.fastcounter().set_delay_start(0)
+    pulsedmeasurementlogic.fastcounter().change_save_mode(0)
 
     return
 
