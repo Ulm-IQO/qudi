@@ -1207,7 +1207,7 @@ class PoiManagerLogic(GenericLogic):
         return xc, yc
 
     def auto_catch_poi(self):
-        scan_image = self.roi_scan_image
+        scan_image = self.roi_scan_image.T
         x_range = self.roi_scan_image_extent[0]
         y_range = self.roi_scan_image_extent[1]
         x_axis = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / len(scan_image))
@@ -1230,7 +1230,7 @@ class PoiManagerLogic(GenericLogic):
         pois = np.zeros((len(xc2), 3))
         z = self.scanner_position[2]
         for i in range(0, len(pois)):
-            pois[i] = [x_axis[yc2[i]], y_axis[xc2[i]], z]
+            pois[i] = [x_axis[xc2[i]], y_axis[yc2[i]], z]
             self.add_poi(pois[i])
             if self.poi_nametag is None:
                 time.sleep(0.1)
