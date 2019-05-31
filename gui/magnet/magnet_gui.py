@@ -1261,6 +1261,9 @@ class MagnetGui(GUIBase):
         constraints = self._magnet_logic.get_hardware_constraints()
         axis0_name = self._mw.align_2d_axis0_name_ComboBox.currentText()
 
+        # inform backend
+        self._magnet_logic._axis0_name = axis0_name
+
         # set the range constraints:
         self._mw.align_2d_axis0_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis0_range_DSpinBox.setMaximum(constraints[axis0_name]['pos_max'])
@@ -1289,6 +1292,9 @@ class MagnetGui(GUIBase):
 
         constraints = self._magnet_logic.get_hardware_constraints()
         axis1_name = self._mw.align_2d_axis1_name_ComboBox.currentText()
+
+        # inform backend
+        self._magnet_logic._axis1_name = axis1_name
 
         self._mw.align_2d_axis1_range_DSpinBox.setMinimum(0)
         self._mw.align_2d_axis1_range_DSpinBox.setMaximum(constraints[axis1_name]['pos_max'])
@@ -1430,6 +1436,10 @@ class MagnetGui(GUIBase):
         exporter_graph = pyqtgraph.exporters.SVGExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
         #exporter_graph = pg.exporters.ImageExporter(self._mw.odmr_PlotWidget.plotItem)
         exporter_graph.export(filename  + '.svg')
+
+        # todo: should not export image from gui, but based on data
+        exporter_graph = pyqtgraph.exporters.ImageExporter(self._mw.alignment_2d_GraphicsView.plotItem.scene())
+        exporter_graph.export(filename + '.png')
 
         # self._save_logic.
         self._magnet_logic.save_2d_data(filetag, timestamp)
