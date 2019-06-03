@@ -86,3 +86,24 @@ class PM100D(Base, SimpleDataInterface, ProcessInterface):
         """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
         return ('W', 'watt')
 
+    def get_wavelength(self):
+        """ Return the current wavelength in nanometers """
+        return self._power_meter.sense.correction.wavelength
+
+    def set_wavelength(self, value=None):
+        """ Set the new wavelength in nanometers """
+        mini, maxi = self.get_wavelength_range()
+        if value is not None:
+            if mini <= value <= maxi:
+                self._power_meter.sense.correction.wavelength = value
+            else:
+                self.log.error('Wavelength {} is out of the range [{}, {}].'.format(
+                    value, mini, maxi
+                ))
+        return self.get_wavelength()
+
+    def get_wavelength_range(self):
+        """ Return the wavelength range of the power meter in nanometers """
+        return self._power_meter.sense.correction.minimum_beamdiameter,\
+               self._power_meter.sense.correction.maximum_wavelength
+
