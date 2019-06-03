@@ -21,9 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.module import Connector, ConfigOption
-from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
-from qtpy import QtCore
 import time
 
 
@@ -44,18 +42,11 @@ class JoystickLogic(GenericLogic):
 
     # declare connectors
     hardware = Connector(interface='JoystickInterface')
-    _hardware = None
 
     _max_fps = ConfigOption('max_fps', 100)
     _axis_threshold = ConfigOption('axis_threshold', 0.05)  # a smaller axis position will not trigger an event
     _fps = _max_fps
 
-    # signals - this can not be created in a loop because Qt wants them declared like this
-    sig_new_frame = QtCore.Signal()
-    sig_controller_changed = QtCore.Signal()
-
-
-    timer = None
     enabled = False
 
     _last_state = None
@@ -67,101 +58,83 @@ class JoystickLogic(GenericLogic):
     _axis_list = ['left_vertical', 'left_horizontal', 'right_vertical', 'right_horizontal',
                   'left_trigger', 'right_trigger']
 
-    events = {}
-
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-
-        self.threadlock = Mutex()
-
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._hardware = self.hardware()
+        self._module_list_listening = {}
 
-        self.timer = QtCore.QTimer()
-        self.timer.setSingleShot(True)
-        self.timer.timeout.connect(self.loop)
-        self._last_state = self._hardware.get_state()
-        self.start_loop()
+        self.enabled = True
+        self._last_state = self.hardware().get_state()
+        self.loop()
 
     def on_deactivate(self):
         """ Perform required deactivation.
         """
         self.stop_loop()
+        self._module_list_listening = {}
         pass
 
     def fps(self, value=None):
-        """ Set  ou get the frequency at which the hardware is read
+        """ Set ou get the frequency at which the hardware is read
         """
         if value is not None:
             self._fps = value
         return self._fps
 
-    def start_loop(self):
-        """ Start the running loop.
-        """
-        self.enabled = True
-        self.timer.start(1000*1/self._fps)
-
     def stop_loop(self):
         """ Stop the data recording loop.
         """
-        self.timer.stop()
         self.enabled = False
 
     def loop(self):
         """ Loop function of the module. Get state and emit event
         """
         old_state = self._last_state
-        state = self._hardware.get_state()
-        changed = False
+        state = self.hardware().get_state()
         self._last_state = state
 
         if not self.enabled:
             return
 
+        # First this look at button pressed/released and creates an easily accessible list
+        state['pressed_buttons'] = []
+        state['released_buttons'] = []
         for button in self._button_list:
             if state['buttons'][button] != old_state['buttons'][button]:
-                changed = True
                 if state['buttons'][button]:
-                    if hasattr(self, 'signal_{}_pushed'.format(button)):
-                        getattr(self, 'signal_{}_pushed'.format(button)).emit()
+                    state['pressed_buttons'].append(button)
+                else:
+                    state['released_buttons'].append(button)
 
-        for axis in self._axis_list:
-            if state['axis'][axis] != old_state['axis'][axis]:
-                changed = True
-            if abs(state['axis'][axis]) > self._axis_threshold:
-                getattr(self, 'signal_{}'.format(axis)).emit()
-            if abs(state['axis'][axis]) >= 1:
-                getattr(self, 'signal_{}_max'.format(axis)).emit()
+        # Secondly, this look at the modules who are listening and tell the one who have to be triggered
+        for module_key in self._module_list_listening:
+            module = self._module_list_listening[module_key]
 
-        if changed:
-            self.sig_controller_changed.emit()
-        self.sig_new_frame.emit()
+            module_triggered = True
+            for trigger_key in module.trigger_keys:
+                if state['buttons'][trigger_key] != module.trigger_keys[trigger_key]:
+                    module_triggered = False
 
-        self.timer.start(1000 * 1 / self._fps)
+            if module_triggered:
+                module['callback'](state)
+
+        time.sleep(1*self._fps)
 
     def get_last_state(self):
         """ Return last acquired state
         """
         return self._last_state
 
-    def get_fps(self):
-        """ Return the frequency of controller request
-        """
-        return self._fps
-
-    def calibrate(self, calibration_time=1, calibration_fps=100):
-        """ Function to calibrate the axis zeros
-
-        Execute this function while not touching the controller to calibrate it.
-
-        """
-        elapsed_time = 0
-        n = 0
-        while elapsed_time < calibration_time:
-            state = self._hardware.get_state()
-            time.sleep(1/calibration_fps)
-            elapsed_time += 1/calibration_fps
-        #TODO
+    # def calibrate(self, calibration_time=1, calibration_fps=100):
+    #     """ Function to calibrate the axis zeros
+    #
+    #     Execute this function while not touching the controller to calibrate it.
+    #
+    #     """
+    #     elapsed_time = 0
+    #     n = 0
+    #     while elapsed_time < calibration_time:
+    #         state = self._hardware.get_state()
+    #         time.sleep(1/calibration_fps)
+    #         elapsed_time += 1/calibration_fps
+    #     #TODO
