@@ -29,7 +29,7 @@ class E3631A(Base, ProcessControlInterface):
 
     Example config :
         voltage_generator:
-            module.Class: 'power_supply.Keysight _E3631A.E3631A'
+            module.Class: 'power_supply.Keysight_E3631A.E3631A'
             address: 'ASRL9::INSTR'
 
     """
