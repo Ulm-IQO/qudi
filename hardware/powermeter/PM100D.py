@@ -42,7 +42,7 @@ class PM100D(Base, SimpleDataInterface, ProcessInterface):
     This module needs the ThorlabsPM100 package from PyPi, this package is not included in the environment
     To add install it, type :
     pip install ThorlabsPM100
-    in the Anaconda prompt after aving activated qudi environment
+    in the Anaconda prompt after having activated qudi environment
     """
     _modclass = 'powermeter'
     _modtype = 'hardware'
