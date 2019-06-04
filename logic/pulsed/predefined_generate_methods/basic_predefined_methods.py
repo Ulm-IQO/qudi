@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
+from logic.pulsed.sampling_functions import SamplingFunctions
 
 """
 General Pulse Creation Procedure:
@@ -1359,3 +1360,211 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # Append PulseSequence to created_sequences list
         created_sequences.append(t1_sequence)
         return created_blocks, created_ensembles, created_sequences
+
+    def _get_mw_element_linearchirp(self, length, increment, amplitude=None, start_freq=None, stop_freq=None, phase=None):
+        """
+        Creates a MW pulse PulseBlockElement
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
+        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
+        @param float amp: MW amplitude in case of analogue MW channel in V
+        @param float phase: MW phase in case of analogue MW channel in deg
+
+        @return: PulseBlockElement, the generated MW element
+        """
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+            self.log.warning('You are trying to create chirped pulses on a digital channel.')
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            sampling_function_name = 'Chirp'
+            kwargs = {'amplitude': amplitude, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase}
+
+            mw_element.pulse_function[self.microwave_channel] = \
+                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
+        return mw_element
+
+    def generate_chirpedodmr(self, name='LinearChirpedODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
+                             freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9,
+                             expected_Rabi_frequency=30e6, expected_T2=5e-6):
+
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        chirpedodmr_block = PulseBlock(name=name)
+
+        # Create frequency array
+        mw_freq_start = mw_freq_center - freq_range / 2.
+        mw_freq_incr = freq_range / (num_of_points)
+        freq_array = mw_freq_start + np.arange(num_of_points) * mw_freq_incr + mw_freq_incr / 2.
+
+        if pulse_length > expected_T2:
+            self.log.error('Pulse length of chirp exceeds expected T2 time')
+
+        for mw_freq in freq_array:
+            mw_element = self._get_mw_element_linearchirp(length=pulse_length,
+                                                          increment=0,
+                                                          amplitude=self.microwave_amplitude,
+                                                          start_freq=mw_freq - mw_freq_incr / 2. - freq_overlap,
+                                                          stop_freq=mw_freq + mw_freq_incr / 2. + freq_overlap,
+                                                          phase=0)
+            chirpedodmr_block.append(mw_element)
+            chirpedodmr_block.append(laser_element)
+            chirpedodmr_block.append(delay_element)
+            chirpedodmr_block.append(waiting_element)
+        created_blocks.append(chirpedodmr_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((chirpedodmr_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
+        adiab = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length)
+        if adiab < 5:
+            self.log.error(
+                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/pulse_length) = ' + str(
+                    adiab))
+        else:
+            self.log.info(
+                'Adiabadicity conditions is Rabi**2/(pulse_freq_range/pulse_length) = {} >> 1'.format(adiab))
+
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['labels'] = ('Frequency', '')
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+
+    def _get_mw_element_AEchirp(self, length, increment, amp=None, start_freq=None, stop_freq=None, phase=None,
+                                tau_pulse=0.1):
+        """
+        Creates a MW pulse PulseBlockElement
+
+        @param float length: MW pulse duration in seconds
+        @param float increment: MW pulse duration increment in seconds
+        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
+        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
+        @param float amp: MW amplitude in case of analogue MW channel in V
+        @param float phase: MW phase in case of analogue MW channel in deg
+
+        @return: PulseBlockElement, the generated MW element
+        """
+        if self.microwave_channel.startswith('d'):
+            mw_element = self._get_trigger_element(
+                length=length,
+                increment=increment,
+                channels=self.microwave_channel)
+            self.log.warning('You are trying to create chirped pulses on a digital channel.')
+        else:
+            mw_element = self._get_idle_element(
+                length=length,
+                increment=increment)
+
+            sampling_function_name = 'AllenEberlyChirp'
+            kwargs = {'amplitude': amp, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase,
+                      'tau_pulse': tau_pulse * length}
+
+            mw_element.pulse_function[self.microwave_channel] = \
+                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
+        return mw_element
+
+        # Todo: Add description
+
+    def generate_AEchirpedodmr(self, name='AllenEberlyChirpODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
+                               freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9, tau_pulse=0.1,
+                               expected_Rabi_frequency=30e6, expected_T2=5e-6, peak_mw_amplitude=0.25):
+        """
+
+        """
+        created_blocks = list()
+        created_ensembles = list()
+        created_sequences = list()
+
+        # create the elements
+        waiting_element = self._get_idle_element(length=self.wait_time, increment=0)
+        laser_element = self._get_laser_gate_element(length=self.laser_length, increment=0)
+        delay_element = self._get_delay_gate_element()
+
+        # Create block and append to created_blocks list
+        chirpedodmr_block = PulseBlock(name=name)
+
+        # Create frequency array
+        mw_freq_start = mw_freq_center - freq_range / 2.
+        mw_freq_incr = freq_range / (num_of_points)
+        freq_array = mw_freq_start + np.arange(num_of_points) * mw_freq_incr + mw_freq_incr / 2.
+
+        if pulse_length > expected_T2:
+            self.log.error('Pulse length of chirp exceeds expected T2 time')
+
+        for mw_freq in freq_array:
+            mw_element = self._get_mw_element_AEchirp(length=pulse_length,
+                                                      increment=0,
+                                                      amp=peak_mw_amplitude,
+                                                      start_freq=mw_freq - mw_freq_incr / 2. - freq_overlap,
+                                                      stop_freq=mw_freq + mw_freq_incr / 2. + freq_overlap,
+                                                      phase=0,
+                                                      tau_pulse=tau_pulse)
+            chirpedodmr_block.append(mw_element)
+            chirpedodmr_block.append(laser_element)
+            chirpedodmr_block.append(delay_element)
+            chirpedodmr_block.append(waiting_element)
+        created_blocks.append(chirpedodmr_block)
+
+        # Create block ensemble
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble.append((chirpedodmr_block.name, 0))
+
+        # Create and append sync trigger block if needed
+        self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
+
+        pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
+        adiab = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length)
+        if adiab < 5:
+            self.log.error(
+                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/pulse_length) = ' + str(
+                    adiab))
+        else:
+            self.log.info(
+                'Adiabadicity conditions is Rabi**2/(pulse_freq_range/pulse_length) = {} >> 1'.format(adiab))
+        # add metadata to invoke settings later on
+        block_ensemble.measurement_information['alternating'] = False
+        block_ensemble.measurement_information['laser_ignore_list'] = list()
+        block_ensemble.measurement_information['controlled_variable'] = freq_array
+        block_ensemble.measurement_information['labels'] = ('Frequency', '')
+        block_ensemble.measurement_information['units'] = ('Hz', '')
+        block_ensemble.measurement_information['number_of_lasers'] = num_of_points
+        block_ensemble.measurement_information['counting_length'] = self._get_ensemble_count_length(
+            ensemble=block_ensemble, created_blocks=created_blocks)
+
+        # append ensemble to created ensembles
+        created_ensembles.append(block_ensemble)
+        return created_blocks, created_ensembles, created_sequences
+

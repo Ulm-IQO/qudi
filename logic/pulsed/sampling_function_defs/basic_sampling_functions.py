@@ -396,6 +396,7 @@ class TripleSinProduct(SamplingBase):
 
 
 class Chirp(SamplingBase):
+    # Todo: Add desctiption
     """
     Object representing a chirp element
     """
@@ -437,6 +438,74 @@ class Chirp(SamplingBase):
                         time_array - time_array[0]) / time_diff / 2) + phase_rad)
         return samples_arr
 
+class AllenEberlyChirp(SamplingBase):
+    # Todo: Add desctiption
+    """
+    Object representing a chirp element
+    """
+    params = OrderedDict()
+    params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['start_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                            'type': float}
+    params['stop_freq'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf,
+                           'type': float}
+    params['tau_pulse'] = {'unit': '', 'init': 0.1e-6, 'min': 0.0, 'max': np.inf,
+                           'type': float}
+
+    def __init__(self, amplitude=None, phase=None, start_freq=None, stop_freq=None, tau_pulse=None):
+        if amplitude is None:
+            self.amplitude = self.params['amplitude']['init']
+        else:
+            self.amplitude = amplitude
+        if phase is None:
+            self.phase = self.params['phase']['init']
+        else:
+            self.phase = phase
+        if start_freq is None:
+            self.start_freq = self.params['start_freq']['init']
+        else:
+            self.start_freq = start_freq
+        if stop_freq is None:
+            self.stop_freq = self.params['stop_freq']['init']
+        else:
+            self.stop_freq = stop_freq
+        if tau_pulse is None:
+            self.tau_pulse = self.params['tau_pulse']['init']
+        else:
+            self.tau_pulse = tau_pulse
+        return
+
+    def get_samples(self, time_array):
+        phase_rad = np.deg2rad(self.phase)  # initial phase
+        freq_range_max = self.stop_freq - self.start_freq  # frequency range
+        t_start = time_array[0]  # start time of the pulse
+        pulse_duration = time_array[-1] - time_array[0]  # pulse duration
+        freq_center = (self.stop_freq + self.start_freq) / 2  # central frequency
+        tau_run = self.tau_pulse  # tau to use for the sample generation
+
+        # conversion for AWG to actually output the specified voltage
+        amp_conv = 2 * self.amplitude  # amplitude, corrected from parabola pulse estimation
+
+        # define a sech function as it is not included in the numpy package
+        def sech(current_time):
+            return 1 / np.cosh(current_time)
+
+        # define a function to calculate the Rabi frequency as a function of time
+        def rabi_sech_envelope(current_time):
+            return amp_conv * sech((current_time - t_start - (pulse_duration / 2)) / tau_run)
+
+        # define a function to calculate the phase Phi(t) for the specific pulse parameters
+        def phi_tanh_chirp(current_time):
+            return (2 * np.pi * freq_range_max / 2) * tau_run * np.log(
+                np.cosh((current_time - t_start - (pulse_duration / 2)) / tau_run) *
+                sech(pulse_duration / (2 * tau_run)))
+
+        # calculate the samples array
+        samples_arr = rabi_sech_envelope(time_array) * \
+                      np.cos(phase_rad + 2 * np.pi * freq_center * (time_array - t_start) +
+                             phi_tanh_chirp(time_array))
+        return samples_arr
 
 # FIXME: Not implemented yet!
 # class ImportedSamples(object):
