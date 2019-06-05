@@ -1085,8 +1085,9 @@ class PulsedMeasurementLogic(GenericLogic):
                            ''.format(number_of_analyzed_lasers, len(self._controlled_variable)))
 
         if self.fastcounter().is_gated() and self._number_of_lasers != self.__fast_counter_gates:
-            self.log.error('Gated fast counter gate number differs from number of laser pulses '
-                           'configured in measurement settings.')
+            self.log.error('Gated fast counter gate number ({0:d}) differs from number of laser pulses ({1:d})'
+                           'configured in measurement settings.'.format(self._number_of_lasers,
+                                                                        self.__fast_counter_gates))
         return
 
     def _pulsed_analysis_loop(self):
