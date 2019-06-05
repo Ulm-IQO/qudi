@@ -146,7 +146,7 @@ class SaveLogic(GenericLogic):
         'axes.labelcolor': 'black',
         'font.size': '14',
         'lines.linewidth': '2',
-        'figure.figsize': '12, 6',
+        'figure.figsize': '7.5, 5',
         'lines.markeredgewidth': '0',
         'lines.markersize': '5',
         'axes.spines.right': True,
@@ -201,7 +201,7 @@ class SaveLogic(GenericLogic):
             self._daily_loghandler = DailyLogHandler(
                     '%Y%m%d-%Hh%Mm%Ss-qudi.log', self)
             self._daily_loghandler.setFormatter(logging.Formatter(
-                '%(asctime)s %(name)s %(levelname)s: %(message)s',
+                '[%(levelname)7s] - [%(asctime)s.%(msecs)03d]: %(message)s  (%(filename)s::%(funcName)s)',
                 datefmt='%Y-%m-%d %H:%M:%S'))
             self._daily_loghandler.setLevel(logging.DEBUG)
             logging.getLogger().addHandler(self._daily_loghandler)
