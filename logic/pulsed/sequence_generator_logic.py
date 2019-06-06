@@ -30,6 +30,7 @@ from qtpy import QtCore
 from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
+from core.util.helpers import natural_sort
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
@@ -357,8 +358,8 @@ class SequenceGeneratorLogic(GenericLogic):
                 # search the generation_parameters for channel specifiers and adjust them if they
                 # are no longer valid
                 changed_settings = dict()
-                ana_chnls = sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1]))
-                digi_chnls = sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1]))
+                ana_chnls = natural_sort(self.analog_channels)
+                digi_chnls = natural_sort(self.digital_channels)
                 for name in [setting for setting in self.generation_parameters if
                              setting.endswith('_channel')]:
                     channel = self.generation_parameters[name]
@@ -736,7 +737,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".block" and extract a sorted list of
         # PulseBlock names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
+            names = natural_sort(f.name[:-6] for f in scan if f.is_file and f.name.endswith('.block'))
 
         # Load all blocks from file
         for block_name in names:
@@ -839,7 +840,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".ensemble" and extract a sorted list of
         # PulseBlockEnsemble names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.ensemble'))
 
         # Get all waveforms currently stored on pulser hardware in order to delete outdated
         # sampling_information dicts
@@ -1001,7 +1002,7 @@ class SequenceGeneratorLogic(GenericLogic):
         # Get all files in asset directory ending on ".sequence" and extract a sorted list of
         # PulseSequence names
         with os.scandir(self._assets_storage_dir) as scan:
-            names = sorted(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
+            names = natural_sort(f.name[:-9] for f in scan if f.is_file and f.name.endswith('.sequence'))
 
         # Get all waveforms and sequences currently stored on pulser hardware in order to delete
         # outdated sampling_information dicts
@@ -1152,7 +1153,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py)
+        @param ensemble: A PulseBlockEnsemble object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1166,6 +1167,17 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+        if isinstance(ensemble, str):
+            if ensemble not in self._saved_pulse_block_ensembles:
+                self.log.error('No saved PulseBlockEnsemble instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(ensemble))
+                return dict()
+            ensemble = self.get_ensemble(ensemble)
+        elif not isinstance(ensemble, PulseBlockEnsemble):
+            self.log.error('Ensemble to analyze must either be of type PulseBlockEnsemble or the '
+                           'name of the ensemble. Returning empty dict')
+            return dict()
+
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
@@ -1290,7 +1302,7 @@ class SequenceGeneratorLogic(GenericLogic):
         PulseBlocks are actually present in saved blocks and the channel activation matches the
         current pulse settings.
 
-        @param sequence: A PulseSequence object (see logic.pulse_objects.py)
+        @param sequence: A PulseSequence object (see logic.pulse_objects.py) or the name of one
         @return: number_of_samples (int): The total number of samples in a Waveform provided the
                                               current sample_rate and PulseBlockEnsemble object.
                  total_elements (int): The total number of PulseBlockElements (incl. repetitions) in
@@ -1304,6 +1316,17 @@ class SequenceGeneratorLogic(GenericLogic):
                                              (in timebins; incl. repetitions) for each digital
                                              channel.
         """
+        if isinstance(sequence, str):
+            if sequence not in self._saved_pulse_sequences:
+                self.log.error('No saved PulseSequence instance by the name "{0}" found. '
+                               'Returning empty dict.'.format(sequence))
+                return dict()
+            sequence = self.get_sequence(sequence)
+        elif not isinstance(sequence, PulseSequence):
+            self.log.error('Sequence to analyze must either be of type PulseSequence or the name '
+                           'of the sequence. Returning empty dict')
+            return dict()
+
         # Determine the right laser channel to choose. For gated counting it should be the gate
         # channel instead of the laser trigger.
         laser_channel = self.generation_parameters['gate_channel'] if self.generation_parameters[
@@ -1781,7 +1804,7 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information = dict()
             ensemble.sampling_information.update(ensemble_info)
             ensemble.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-            ensemble.sampling_information['waveforms'] = sorted(written_waveforms)
+            ensemble.sampling_information['waveforms'] = natural_sort(written_waveforms)
             self.save_ensemble(ensemble)
 
         self.log.info('Time needed for sampling and writing PulseBlockEnsemble {0} to device: {1} sec'
@@ -1793,7 +1816,7 @@ class SequenceGeneratorLogic(GenericLogic):
             self.module_state.unlock()
         self.sigAvailableWaveformsUpdated.emit(self.sampled_waveforms)
         self.sigSampleEnsembleComplete.emit(ensemble)
-        return offset_bin, sorted(written_waveforms), ensemble_info
+        return offset_bin, natural_sort(written_waveforms), ensemble_info
 
     @QtCore.Slot(str)
     def sample_pulse_sequence(self, sequence):
@@ -1874,7 +1897,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 offset_bin = 0  # Keep the offset at 0
 
             # Only sample ensembles if they have not already been sampled
-            if sequence.rotating_frame or seq_step.ensemble not in generated_ensembles:
+            if sequence.rotating_frame or \
+                    not self.get_ensemble(name_tag).sampling_information or \
+                    self.get_ensemble(name_tag).sampling_information['pulse_generator_settings'] != self.pulse_generator_settings:
+
                 offset_bin, waveform_list, ensemble_info = self.sample_pulse_block_ensemble(
                     ensemble=seq_step.ensemble,
                     offset_bin=offset_bin,
@@ -1895,6 +1921,14 @@ class SequenceGeneratorLogic(GenericLogic):
 
                 # Add created waveform names to the set
                 written_waveforms.update(waveform_list)
+            else:
+                self.log.debug('Waveform already sampled: {0}'.format(name_tag))
+                ensemble_info = self.get_ensemble(name_tag).sampling_information.copy()
+                del(ensemble_info['pulse_generator_settings'])
+                generated_ensembles[name_tag] = ensemble_info
+
+                # Add created waveform names to the set
+                written_waveforms.update(ensemble_info['waveforms'])
 
             # Append written sequence step to sequence_param_dict_list
             sequence_param_dict_list.append(
@@ -1914,7 +1948,7 @@ class SequenceGeneratorLogic(GenericLogic):
         sequence.sampling_information.update(self.analyze_sequence(sequence))
         sequence.sampling_information['ensemble_info'] = generated_ensembles
         sequence.sampling_information['pulse_generator_settings'] = self.pulse_generator_settings
-        sequence.sampling_information['waveforms'] = sorted(written_waveforms)
+        sequence.sampling_information['waveforms'] = natural_sort(written_waveforms)
         sequence.sampling_information['step_waveform_list'] = [step[0] for step in
                                                                sequence_param_dict_list]
         self.save_sequence(sequence)
