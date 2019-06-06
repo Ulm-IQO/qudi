@@ -26,7 +26,9 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * Bug fix to the gated extractor: now all the function parameters are loaded
 * Added a hardware file for power supply Keysight E3631A with a process control interface
 * Updated powermeter PM100D module to add ProcessInterface and wavelength support
-*
+* Added two interfuses for interfaces process value and process control to modify the values based
+on an interpolated function
+* 
 
 Config changes:
 
