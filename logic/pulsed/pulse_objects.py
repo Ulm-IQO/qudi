@@ -30,6 +30,7 @@ from collections import OrderedDict
 
 from logic.pulsed.sampling_functions import SamplingFunctions
 from core.util.modules import get_main_dir
+from core.util.helpers import natural_sort
 
 
 class PulseBlockElement(object):
@@ -172,8 +173,7 @@ class PulseBlock(object):
         return_str += 'initial length: {0}s\n\tlength increment: {1}s\n\t'.format(
             self.init_length_s, self.increment_s)
         return_str += 'active analog channels: {0}\n\tactive digital channels: {1}'.format(
-            sorted(self.analog_channels, key=lambda ch: int(ch.split('ch')[-1])),
-            sorted(self.digital_channels, key=lambda ch: int(ch.split('ch')[-1])))
+            natural_sort(self.analog_channels), natural_sort(self.digital_channels))
         return return_str
 
     def __len__(self):
