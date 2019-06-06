@@ -63,23 +63,22 @@ class ProcessControlModifier(GenericLogic, ProcessControlInterface):
         """
         self._hardware = self.hardware()
 
-        if self._calibration is None or self._force_calibration_from_file:
-            if self._calibration_file is not None:
-                self.log.warning('No calibration can be found from previous sessions, loading from calibration file.')
-                calibration = np.loadtxt(self._calibration_file)
-                self._update(calibration)
-            else:
-                self.log.warning('No calibration can be found from previous sessions, no calibration file has been'
-                                 'given. Please update calibration before using')
+        if self._force_calibration_from_file and self._calibration_file is None:
+            self.log.error('Loading from calibration is enforced but no calibration file has been'
+                           'given.')
+        if self._force_calibration_from_file or (self._calibration is None and self._calibration_file is not None):
+            self.log.info('Loading from calibration file.')
+            calibration = np.loadtxt(self._calibration_file)
+            self.update_calibration(calibration)
         else:
-            self._update()
+            self.update_calibration()
 
     def on_deactivate(self):
         """ Deactivate module.
         """
         pass
 
-    def _update(self, calibration=None):
+    def update_calibration(self, calibration=None):
         """ Construct the interpolated function from the calibration data
 
         calibration (optional) 2d array : A new calibration to set
@@ -87,12 +86,20 @@ class ProcessControlModifier(GenericLogic, ProcessControlInterface):
         """
         if calibration is not None:
             self._calibration = calibration
-        self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
-        self._interpolated_function_reversed = interp1d(self._calibration[:, 1], self._calibration[:, 0])
-
+        if self._calibration is None:
+            self._interpolated_function = lambda x: x
+            self._interpolated_function_reversed = lambda x: x
+        else:
+            self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
+            self._interpolated_function_reversed = interp1d(self._calibration[:, 1], self._calibration[:, 0])
         if self._last_control_value is not None:
             self.setControlValue(self._last_control_value)
-        
+
+    def reset_to_identity(self):
+        """ Reset the calibration data to use identity """
+        self._calibration = None
+        self.update_calibration()
+
     def getControlValue(self):
         """ Return the original control value
         """

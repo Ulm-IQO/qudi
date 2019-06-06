@@ -34,6 +34,13 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
     Example : [[0,0], [1,10]]
     With this example, the value 0.5 read from the hardware would be transformed to 5 sent to the logic.
 
+    process_value_modifier:
+        module.Class: 'interfuse.process_value_modifier.ProcessValueModifier'
+        connect:
+            hardware: 'processdummy'
+            calibration_file: 'PATH/process_modifier.calib'
+            force_calibration_from_file: False
+
     This calibration is stored and remembered as a status variable. If this variable is None, the calibration
     can be read from a simple file with two columns :
     # X Y
@@ -58,23 +65,22 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
         """
         self._hardware = self.hardware()
 
-        if self._calibration is None or self._force_calibration_from_file:
-            if self._calibration_file is not None:
-                self.log.warning('No calibration can be found from previous sessions, loading from calibration file.')
-                calibration = np.loadtxt(self._calibration_file)
-                self._update(calibration)
-            else:
-                self.log.warning('No calibration can be found from previous sessions, no calibration file has been'
-                                 'given. Please update calibration before using')
+        if self._force_calibration_from_file and self._calibration_file is None:
+            self.log.error('Loading from calibration is enforced but no calibration file has been'
+                           'given.')
+        if self._force_calibration_from_file or (self._calibration is None and self._calibration_file is not None):
+            self.log.info('Loading from calibration file.')
+            calibration = np.loadtxt(self._calibration_file)
+            self.update_calibration(calibration)
         else:
-            self._update()
+            self.update_calibration()
 
     def on_deactivate(self):
         """ Deactivate module.
         """
         pass
 
-    def _update(self, calibration=None):
+    def update_calibration(self, calibration=None):
         """ Construct the interpolated function from the calibration data
 
         calibration (optional) 2d array : A new calibration to set
@@ -82,7 +88,15 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
         """
         if calibration is not None:
             self._calibration = calibration
-        self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
+        if self._calibration is None:
+            self._interpolated_function = lambda x: x
+        else:
+            self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
+
+    def reset_to_identity(self):
+        """ Reset the calibration data to use identity """
+        self._calibration = None
+        self.update_calibration()
 
     def getProcessValue(self):
         """ Return the process value modified
