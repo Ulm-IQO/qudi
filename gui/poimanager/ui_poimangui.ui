@@ -58,6 +58,7 @@
     <addaction name="poi_editor_view_Action"/>
     <addaction name="poi_tracker_view_Action"/>
     <addaction name="sample_shift_view_Action"/>
+    <addaction name="blink_correction_view_Action"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
    </widget>
@@ -483,7 +484,7 @@
      <item>
       <layout class="QHBoxLayout" name="horizontalLayout_10">
        <item>
-        <widget class="PlotWidget" name="roi_map_ViewWidget">
+        <widget class="ScanPlotWidget" name="roi_map_ViewWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
@@ -937,6 +938,20 @@
     <string>Activate this tool to define new POIs by clicking into the ROI image.</string>
    </property>
   </action>
+  <action name="blink_correction_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Blink correction</string>
+   </property>
+   <property name="toolTip">
+    <string>Filter the scan image to remove blinking. Raw data unchanged.</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -948,6 +963,11 @@
    <class>ScienDSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qtwidgets.scientific_spinbox.h</header>
+  </customwidget>
+  <customwidget>
+   <class>ScanPlotWidget</class>
+   <extends>QGraphicsView</extends>
+   <header>qtwidgets.scan_plotwidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
