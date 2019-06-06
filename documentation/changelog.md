@@ -23,6 +23,7 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * analyze functions can be called either with the appropriate objects or with the object name
 * while sampling a sequence, the ensembles are only sampled if they weren't already sampled before
 * Add `natural_sort` utility function to `core.util.helpers`
+* Bug fix to the gated extractor: now all the function parameters are loaded
 * Added a hardware file for power supply Keysight E3631A with a process control interface
 *
 
