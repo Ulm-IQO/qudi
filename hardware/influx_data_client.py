@@ -69,13 +69,13 @@ class InfluxDataClient(Base, ProcessInterface):
         """ Connect to Influx database """
         self.conn = InfluxDBClient(self.host, self.port, self.user, self.pw, self.dbname)
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Return a measured value """
         q = 'SELECT last({0}) FROM {1} WHERE (time > now() - 10m AND {2})'.format(self.field, self.series, self.cr)
         res = self.conn.query(q)
         return list(res[('{0}'.format(self.series), None)])[0]['last']
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Return the unit that the value is measured in
 
             @return (str, str): a tuple of ('abreviation', 'full unit name')
