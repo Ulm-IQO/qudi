@@ -1195,13 +1195,14 @@ class PoiManagerLogic(GenericLogic):
         scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
         filter_size = self._spot_filter(scan)
         mid_f = int(filter_size / 2)
+        arr_threshold = scan.mean() * self._poi_threshold * 0.5  # use half of the threhold because poi intensity generally has a lorentian profile similar to a triangle.
         xc = []
         yc = []
         for i in range(0, len(scan) - filter_size):
             for j in range(0, len(scan[i]) - filter_size):
                 local_arr = scan[i:i + filter_size, j:j + filter_size]
                 local_arr = np.asarray(local_arr)
-                if scan[i + mid_f][j + mid_f] == local_arr.max():
+                if scan[i + mid_f][j + mid_f] == local_arr.max() and np.average(local_arr) > arr_threshold:
                     xc.append(i + mid_f)
                     yc.append(j + mid_f)
         return xc, yc
