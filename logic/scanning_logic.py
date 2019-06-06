@@ -145,15 +145,17 @@ class ScanData:
         return
 
 
-class ConfocalLogic(GenericLogic):
+class ScanningLogic(GenericLogic):
     """
-    This is the Logic class for confocal scanning.
+    This is the Logic class for 1D/2D scanning measurements.
+    Scanning in this context means moving something along 1 or 2 dimensions and collecting data
+    at each position.
     """
-    _modclass = 'confocallogic'
+    _modclass = 'scanninglogic'
     _modtype = 'logic'
 
     # declare connectors
-    confocalscanner1 = Connector(interface='ConfocalScannerInterface')
+    scanner = Connector(interface='ScannerInterface')
     savelogic = Connector(interface='SaveLogic')
 
     # status vars
