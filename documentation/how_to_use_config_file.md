@@ -105,3 +105,21 @@ A reference to the connected module can then be obtained at runtime by just call
 <antother connected module> = self.<another connector name>()
 ```
 
+### Optional connectors
+
+A connector can be made optional so that no error is created if the configuration file does not 
+mention it
+
+```python
+    <mandatory_module> = Connector(interface='<InterfaceForThisConnector>')
+    <another mandatory_module> = Connector(interface='<InterfaceForTheOtherConnector>', optional=False)
+    <optional_module> = Connector(interface='<InterfaceForTheOptionalConnector>', optional=True)
+```
+
+The logic module can then test if the module is specified by checking whether the reference is *None*
+
+```python
+if self.<optional_module>() is not None:
+    self.<optional_module>().do_stuff()
+```
+
