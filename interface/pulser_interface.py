@@ -127,10 +127,12 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         # the name a_ch<num> and d_ch<num> are generic names, which describe UNAMBIGUOUSLY the
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
+        # IMPORTANT: Active channel sets must be of type frozenset to properly work as remote module
         activation_conf = OrderedDict()
-        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
-        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
-        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['yourconf'] = frozenset(
+            {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
+        activation_conf['different_conf'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
+        activation_conf['something_else'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         constraints.activation_config = activation_conf
         """
         pass
@@ -561,6 +563,5 @@ class PulserConstraints:
         self.repetitions = ScalarConstraint(unit='#')
         self.event_triggers = list()
         self.flags = list()
-
 
         self.activation_config = dict()
