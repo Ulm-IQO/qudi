@@ -43,6 +43,7 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
     _modtype = 'interfuse'
 
     _microwave_channel = ConfigOption(name='microwave_channel', default='a_ch1', missing='warn')
+    _laser_channel = ConfigOption(name='laser_channel', default='d_ch1', missing='warn')
     _max_waveform_length = ConfigOption(name='max_waveform_length', default=None, missing='warn')
     _event_trigger = ConfigOption(name='event_trigger', missing='error')
 
@@ -63,18 +64,27 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
 
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
+        # Check microwave and laser channel
         if not self._microwave_channel.startswith('a_ch'):
             self.log.error(
                 'AWG channel to use as microwave channel must be analog channel of form "a_ch<n>".')
-            return
-        channel_invalid = True
+        if not self._laser_channel.startswith('d_ch'):
+            self.log.error(
+                'AWG channel to use as laser channel must be digital channel of form "d_ch<n>".')
+
+        mw_channel_invalid = True
+        laser_channel_invalid = True
         for channel_set in self.awg().get_constraints().activation_config.values():
             if self._microwave_channel in channel_set:
-                channel_invalid = False
-                break
-        if channel_invalid:
+                mw_channel_invalid = False
+            if self._laser_channel in channel_set:
+                laser_channel_invalid = False
+        if mw_channel_invalid:
             self.log.error('AWG channel "{0}" to use as microwave channel not found in available '
                            'activation configs.'.format(self._microwave_channel))
+        if laser_channel_invalid:
+            self.log.error('AWG channel "{0}" to use as laser channel not found in available '
+                           'activation configs.'.format(self._laser_channel))
         return
 
     def on_deactivate(self):
@@ -279,7 +289,7 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
         start = self._sweep_parameters['start']
         stop = self._sweep_parameters['stop']
         step = self._sweep_parameters['step']
-        points = round((stop - start) / step) + 1
+        points = int(round((stop - start) / step)) + 1
         freq_list = [i * step + start for i in range(points)]
         self._sweep_parameters['stop'] = freq_list[-1]
 
@@ -386,25 +396,29 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
             self.log.error(
                 'Microwave channel "{0}" not active in AWG.'.format(self._microwave_channel))
             return list()
+        if self._laser_channel not in active_digital:
+            self.log.error(
+                'Laser channel "{0}" not active in AWG.'.format(self._laser_channel))
+            return list()
 
         # Calculate waveform
         waveform_len_s = 1000. / frequency
-        waveform_len_bins = round(waveform_len_s * sampling_rate)
+        waveform_len_bins = int(round(waveform_len_s * sampling_rate))
         granularity = self.awg().get_constraints().waveform_length.step
         if (waveform_len_bins % granularity) != 0:
             waveform_len_bins += granularity - (waveform_len_bins % granularity)
         if self._max_waveform_length and self._max_waveform_length < waveform_len_bins:
             self.log.error('Exceeding max waveform length.')
             return list()
-
         analog_samples = {
             chnl: np.zeros(waveform_len_bins, dtype='float32') for chnl in active_analog}
         digital_samples = {
             chnl: np.zeros(waveform_len_bins, dtype='bool') for chnl in active_digital}
 
         time_arr = np.arange(waveform_len_bins, dtype='float64') / sampling_rate
-        samples_arr = np.sin(2 * np.pi * frequency * time_arr, dtype='float64')
+        samples_arr = 2 * amplitude / pp_amp * np.sin(2 * np.pi * frequency * time_arr)
         analog_samples[self._microwave_channel] = samples_arr.astype('float32')
+        digital_samples[self._laser_channel][:] = True
 
         # Write waveform. Delete old waveform if present.
         for wfm in available_waveforms:
