@@ -29,6 +29,7 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * Added two interfuses for interfaces process value and process control to modify the values based
 on an interpolated function
 * Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
+* Added hardware module to interface temperature controller Cryocon 22C
 *
 
 Config changes:
