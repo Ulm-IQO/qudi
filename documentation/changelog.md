@@ -29,6 +29,7 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * Added two interfuses for interfaces process value and process control to modify the values based
 on an interpolated function
 * Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
+* Added an optional parameter to connectors so that dependencies can be optional
 *
 
 Config changes:
