@@ -28,11 +28,12 @@ import socket
 from core.module import Base, ConfigOption
 import numpy as np
 
-# from interface.process_interface import ProcessInterface
+from interface.process_interface import ProcessInterface
+from interface.process_control_interface import ProcessControlInterface
 
 
 class SocketInstrument:
-    """ General class for a socket instrument, this should go elsewhere ! """
+    """ General class for a socket instrument """
     def __init__(self, host, port):
         """ Initialise the connection with the instrument """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -56,7 +57,7 @@ class SocketInstrument:
         self.sock.close()
 
 
-class Cryocon(Base):
+class Cryocon(Base, ProcessInterface, ProcessControlInterface):
     """
     Main class for the Cryo-Con hardware
     """
@@ -101,13 +102,15 @@ class Cryocon(Base):
         if turn_on:
             self.control()
 
-    def get_process_value(self):
-        """ Get measured value of the temperature """
-        return self.get_temperature()
-
-    def get_process_unit(self):
-        """ Return the unit of measured temperature """
-        return 'K', 'Kelvin'
+    def get_setpoint_temperature(self, channel=None):
+        """ Return the main channel set point temperature"""
+        channel = channel if channel is not None else self._main_channel
+        loop = 1 if channel == 'A' else 2
+        try:
+            setpoint = float(self._socket.query('loop {}:setp?'.format(loop)).decode())
+        except:
+            setpoint = np.NaN
+        return setpoint
 
     def stop(self):
         """  Function to stop the heating of the Cryocon """""
@@ -117,9 +120,36 @@ class Cryocon(Base):
         """ Function to turn the heating on """
         self._socket.write('control')
 
+    # ProcessInterface methods
+
+    def get_process_value(self):
+        """ Get measured value of the temperature """
+        return self.get_temperature()
+
+    def get_process_unit(self):
+        """ Return the unit of measured temperature """
+        return 'K', 'Kelvin'
+
+    # ProcessControlInterface methods
+
     def set_control_value(self, value):
         """ Set the value of the controlled process variable """
         self.set_temperature(temperature=value)
+
+    def get_control_value(self):
+        """ Get the value of the controlled process variable """
+        return self.get_setpoint_temperature()
+
+    def get_control_unit(self):
+        """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
+        return 'K', 'Kelvin'
+
+    def get_control_limit(self):
+        """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
+        """
+        return 0, 350
+
+    # Script helper methods
 
     def wait_for_temperature(self, temperature, delta=0.1, timeout=60*60):
         """ Set the temperature and wait until the setpoint temperature is reached
