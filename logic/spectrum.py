@@ -33,6 +33,16 @@ from logic.generic_logic import GenericLogic
 class SpectrumLogic(GenericLogic):
 
     """This logic module gathers data from the spectrometer.
+
+    Demo config:
+
+    spectrumlogic:
+        module.Class: 'spectrum.SpectrumLogic'
+        connect:
+            spectrometer: 'myspectrometer'
+            savelogic: 'savelogic'
+            odmrlogic: 'odmrlogic' # optional
+            fitlogic: 'fitlogic'
     """
 
     _modclass = 'spectrumlogic'
