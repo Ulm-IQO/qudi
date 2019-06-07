@@ -60,6 +60,14 @@ class SocketInstrument:
 class Cryocon(Base, ProcessInterface, ProcessControlInterface):
     """
     Main class for the Cryo-Con hardware
+
+    Example config:
+
+    cryocon:
+        module.Class: 'temperature.cryocon.Cryocon'
+        ip_address: '192.168.1.222'
+        main_channel: 'B'
+
     """
 
     _modtype = 'cryocon'
