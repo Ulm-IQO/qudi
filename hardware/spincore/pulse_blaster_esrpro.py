@@ -1284,10 +1284,10 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         # the different configurations can be customary chosen.
 
         activation_conf = OrderedDict()
-        activation_conf['yourconf'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2',
-                                       'd_ch3', 'd_ch4'}
-        activation_conf['different_conf'] = {'a_ch1', 'd_ch1', 'd_ch2'}
-        activation_conf['something_else'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_conf['yourconf'] = frozenset(
+            {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
+        activation_conf['different_conf'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
+        activation_conf['something_else'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         constraints.activation_config = activation_conf
         """
         constraints = PulserConstraints()
@@ -1317,13 +1317,13 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
         constraints.waveform_length.default = 128
 
         activation_config = OrderedDict()
-        activation_config['4_ch'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
-        activation_config['all'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
-                                    'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8',
-                                    'd_ch9', 'd_ch10', 'd_ch11', 'd_ch12',
-                                    'd_ch13', 'd_ch14', 'd_ch15', 'd_ch16',
-                                    'd_ch17', 'd_ch18', 'd_ch19', 'd_ch20',
-                                    'd_ch21'}
+        activation_config['4_ch'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'})
+        activation_config['all'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4',
+                                              'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8',
+                                              'd_ch9', 'd_ch10', 'd_ch11', 'd_ch12',
+                                              'd_ch13', 'd_ch14', 'd_ch15', 'd_ch16',
+                                              'd_ch17', 'd_ch18', 'd_ch19', 'd_ch20',
+                                              'd_ch21'})
 
         constraints.activation_config = activation_config
 
