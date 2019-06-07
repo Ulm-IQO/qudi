@@ -51,7 +51,7 @@ class SocketInstrument:
         """sends the question and receives the answer"""
         self.write(cmd)
         answer = self.sock.recv(2048)  # 2000
-        return answer[:-2]
+        return answer.decode()[:-2]
 
     def close(self):
         self.sock.close()
@@ -97,7 +97,7 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         """ Cryocon function to get one temperature """
         channel = channel if channel is not None else self._main_channel
         try:
-            temperature = float(self._socket.query('INPUT? {}'.format(channel)).decode())
+            temperature = float(self._socket.query('INPUT? {}'.format(channel)))
         except:
             temperature = np.NaN
         return temperature
@@ -106,7 +106,7 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         """ Function to set the temperature setpoint """
         channel = channel if channel is not None else self._main_channel
         loop = 1 if channel == 'A' else 2
-        self._socket.write('loop {}:setp {}'.format(loop, temperature))
+        self._socket.query('loop {}:setp {}'.format(loop, temperature))
         if turn_on:
             self.control()
 
@@ -115,18 +115,18 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         channel = channel if channel is not None else self._main_channel
         loop = 1 if channel == 'A' else 2
         try:
-            setpoint = float(self._socket.query('loop {}:setp?'.format(loop)).decode())
+            setpoint = float(self._socket.query('loop {}:setp?'.format(loop))[:-1])
         except:
             setpoint = np.NaN
         return setpoint
 
     def stop(self):
         """  Function to stop the heating of the Cryocon """""
-        self._socket.write('stop')
+        self._socket.query('stop')
 
     def control(self):
         """ Function to turn the heating on """
-        self._socket.write('control')
+        self._socket.query('control')
 
     # ProcessInterface methods
 
