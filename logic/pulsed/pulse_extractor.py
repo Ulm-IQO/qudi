@@ -311,6 +311,8 @@ class PulseExtractor(PulseExtractorBase):
         self._parameters = dict()
         for method in self._ungated_extraction_methods.values():
             self._parameters.update(self._get_extraction_method_kwargs(method=method))
+        for method in self._gated_extraction_methods.values():
+            self._parameters.update(self._get_extraction_method_kwargs(method=method))
         return
 
     @staticmethod
