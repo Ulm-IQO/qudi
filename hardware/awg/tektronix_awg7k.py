@@ -266,17 +266,17 @@ class AWG7k(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
         # Usage of channel 1 only:
-        activation_config['A1_M1_M2'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_config['A1_M1_M2'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
         # Usage of channel 2 only:
-        activation_config['A2_M3_M4'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['A2_M3_M4'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         # Only both analog channels
-        activation_config['Two_Analog'] = {'a_ch1', 'a_ch2'}
+        activation_config['Two_Analog'] = frozenset({'a_ch1', 'a_ch2'})
         # Usage of one analog channel without digital channel
-        activation_config['Analog1'] = {'a_ch1'}
+        activation_config['Analog1'] = frozenset({'a_ch1'})
         # Usage of one analog channel without digital channel
-        activation_config['Analog2'] = {'a_ch2'}
+        activation_config['Analog2'] = frozenset({'a_ch2'})
         constraints.activation_config = activation_config
         return constraints
 
