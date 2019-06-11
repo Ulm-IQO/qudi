@@ -178,10 +178,3 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
                         return True
             time.sleep(1)
         return False
-
-
-
-
-
-
-
