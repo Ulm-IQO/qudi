@@ -188,6 +188,10 @@ class Connector:
                 'Connector {0} (interface {1}) is not connected.'
                 ''.format(self.name, self.interface))
         return self.obj
+    
+    @property
+    def is_connected(self):
+        return self.obj is not None
 
     def connect(self, target):
         """ Check if target is connectable this connector and connect."""
