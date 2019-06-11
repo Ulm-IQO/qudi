@@ -116,10 +116,10 @@ mention it
     <optional_module> = Connector(interface='<InterfaceForTheOptionalConnector>', optional=True)
 ```
 
-The logic module can then test if the module is specified by checking whether the reference is *None*
+The logic module can then test if the module is connected by checking the is_connected property
 
 ```python
-if self.<optional_module>() is not None:
+if self.<optional_module>.is_connected:
     self.<optional_module>().do_stuff()
 ```
 
