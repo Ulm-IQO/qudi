@@ -180,9 +180,11 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
         if power is not None:
             self._cw_parameters['power'] = float(power)
         self.__current_mode = MicrowaveMode.CW
-        self._cw_waveforms = self._create_sine_waveform(name='mw_interfuse_cw',
-                                                        frequency=frequency,
-                                                        amplitude=self.dbm_to_volts(power))
+        # Create new waveform if needed
+        if frequency is not None or power is not None or not self._cw_waveforms:
+            self._cw_waveforms = self._create_sine_waveform(name='mw_interfuse_cw',
+                                                            frequency=frequency,
+                                                            amplitude=self.dbm_to_volts(power))
         return self._cw_parameters['frequency'], self._cw_parameters['power'], self.current_mode
 
     def list_on(self):
@@ -221,15 +223,18 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
             self._list_parameters['frequency'] = list(frequency)
         if power is not None:
             self._list_parameters['power'] = float(power)
-        self.__current_mode = MicrowaveMode.LIST
 
         # Create sequence
-        err = self._create_list_sequence(
-            name='mw_interfuse_list',
-            frequency_list=self._list_parameters['frequency'],
-            amplitude=self.dbm_to_volts(self._list_parameters['power']))
-        if err:
-            self.log.error('Error while writing sequence for microwave list mode in AWG.')
+        # Create new waveform if needed
+        if self.__current_mode != MicrowaveMode.LIST or frequency is not None or power is not None or not self._list_sequence:
+            err = self._create_list_sequence(
+                name='mw_interfuse_list',
+                frequency_list=self._list_parameters['frequency'],
+                amplitude=self.dbm_to_volts(self._list_parameters['power']))
+            if err:
+                self.log.error('Error while writing sequence for microwave list mode in AWG.')
+
+        self.__current_mode = MicrowaveMode.LIST
         return self._list_parameters['frequency'], self._list_parameters[
             'power'], self.current_mode
 
@@ -273,7 +278,6 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
             self._sweep_parameters['step'] = float(step)
         if power is not None:
             self._sweep_parameters['power'] = float(power)
-        self.__current_mode = MicrowaveMode.SWEEP
 
         # Adjust stop frequency according to step size
         start = self._sweep_parameters['start']
@@ -284,12 +288,15 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
         self._sweep_parameters['stop'] = freq_list[-1]
 
         # Create sequence
-        err = self._create_list_sequence(
-            name='mw_interfuse_list',
-            frequency_list=freq_list,
-            amplitude=self.dbm_to_volts(self._sweep_parameters['power']))
-        if err:
-            self.log.error('Error while writing sequence for microwave sweep mode in AWG.')
+        if self.__current_mode != MicrowaveMode.SWEEP or start is not None or stop is not None or step is not None or power is not None or not self._list_sequence:
+            err = self._create_list_sequence(
+                name='mw_interfuse_list',
+                frequency_list=freq_list,
+                amplitude=self.dbm_to_volts(self._sweep_parameters['power']))
+            if err:
+                self.log.error('Error while writing sequence for microwave sweep mode in AWG.')
+
+        self.__current_mode = MicrowaveMode.SWEEP
         return self._sweep_parameters['start'], self._sweep_parameters['stop'], \
                self._sweep_parameters['step'], self._sweep_parameters['power'], self.current_mode
 
