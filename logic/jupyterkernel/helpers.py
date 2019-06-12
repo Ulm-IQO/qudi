@@ -30,9 +30,11 @@ import sys
 import builtins
 from base64 import encodebytes
 
+
 class ExecutionResult:
     """The result of a call to run_cell. Stores information about what took place.
     """
+
     def __init__(self):
         self.execution_count = None
         self.error_before_exec = None
@@ -101,11 +103,12 @@ def cursor_pos_to_lc(text, cursor_pos):
             break
     return linenr, cursor_pos
 
+
 def softspace(f, newvalue):
     """Try setting softspace on stream.
     
       @param f: stream
-      @param: newvalue: value to set softspace to
+      @param newvalue: value to set softspace to
     """
 
     oldvalue = 0
@@ -119,6 +122,7 @@ def softspace(f, newvalue):
         # "attribute-less object" or "read-only attributes"
         pass
     return oldvalue
+
 
 def encode_images(format_dict):
     """b64-encodes images in a displaypub format dict
@@ -168,6 +172,7 @@ def encode_images(format_dict):
 
     return encoded
 
+
 def getfigs(*fig_nums):
     """Get a list of matplotlib figures by figure numbers.
 
@@ -192,6 +197,7 @@ def getfigs(*fig_nums):
                 figs.append(f.canvas.figure)
         return figs
 
+
 def setup_matplotlib(kernel):
     """ Prepare matplotlib inline backend for use
     
@@ -201,9 +207,8 @@ def setup_matplotlib(kernel):
     import matplotlib.pyplot
     matplotlib.pyplot.switch_backend('module://logic.jupyterkernel.mpl.backend_inline')
     import matplotlib.pylab as pylab
-    
 
-    from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg # analysis: ignore
+    from matplotlib.backends.backend_agg import new_figure_manager, FigureCanvasAgg  # analysis: ignore
     from matplotlib._pylab_helpers import Gcf
 
     from logic.jupyterkernel.mpl.backend_inline import InlineBackend
@@ -212,14 +217,11 @@ def setup_matplotlib(kernel):
     matplotlib.pyplot.rcParams.update(cfg.rc)
 
     # IPython symbols to add
-    #kernel.user_ns['figsize'] = figsize
+    # kernel.user_ns['figsize'] = figsize
     # Add display and getfigs to the user's namespace
-    #kernel.user_ns['display'] = display_data
-    #kernel.user_ns['getfigs'] = getfigs
+    # kernel.user_ns['display'] = display_data
+    # kernel.user_ns['getfigs'] = getfigs
 
     import logic.jupyterkernel.mpl.backend_inline as bi
     bi.qudikernel = kernel
     kernel.events.register('post_execute', bi.flush_figures)
-
-
-

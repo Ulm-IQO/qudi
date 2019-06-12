@@ -4,6 +4,7 @@
 
 import sys
 
+
 class _RedirectStream:
     """ A base class for a context manager to redirect streams from the sys module."""
     _stream = None
@@ -30,5 +31,3 @@ class RedirectedStdOut(_RedirectStream):
 class RedirectedStdErr(_RedirectStream):
     """Context manager for temporarily redirecting stderr to another file."""
     _stream = "stderr"
-
-

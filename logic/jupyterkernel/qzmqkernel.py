@@ -69,8 +69,10 @@ from IPython.core.error import InputRejected
 
 from qtpy import QtCore
 
+
 class QZMQHeartbeat(QtCore.QObject):
     """ Echo Messages on a ZMQ stream. """
+
     def __init__(self, stream):
         super().__init__()
         self.stream = stream
@@ -82,7 +84,7 @@ class QZMQHeartbeat(QtCore.QObject):
 
           @param msg: message to be sent back
         """
-        logging.debug( "HB: {}".format(msg))
+        logging.debug("HB: {}".format(msg))
         if len(msg) > 0:
             retmsg = msg[0]
         try:
@@ -107,7 +109,7 @@ class QZMQKernel(QtCore.QObject):
         'image/png',
         'image/jpeg',
         'image/svg+xml'
-        )
+    )
 
     def __init__(self, config=None):
         super().__init__()
@@ -122,17 +124,17 @@ class QZMQKernel(QtCore.QObject):
         if config is not None:
             self._config = config
         else:
-            logging.info( "Starting simple_kernel with default args...")
+            logging.info("Starting simple_kernel with default args...")
             self._config = {
-                'control_port'      : 0,
-                'hb_port'           : 0,
-                'iopub_port'        : 0,
-                'ip'                : '127.0.0.1',
-                'key'               : str(uuid.uuid4()),
-                'shell_port'        : 0,
-                'signature_scheme'  : 'hmac-sha256',
-                'stdin_port'        : 0,
-                'transport'         : 'tcp'
+                'control_port': 0,
+                'hb_port': 0,
+                'iopub_port': 0,
+                'ip': '127.0.0.1',
+                'key': str(uuid.uuid4()),
+                'shell_port': 0,
+                'signature_scheme': 'hmac-sha256',
+                'stdin_port': 0,
+                'transport': 'tcp'
             }
 
         self.hb_thread = QtCore.QThread()
@@ -234,7 +236,7 @@ class QZMQKernel(QtCore.QObject):
             "session": self.engine_id,
             "msg_type": msg_type,
             "version": "5.0",
-            }
+        }
 
     def send(self, stream, msg_type, content=None, parent_header=None, metadata=None, identities=None):
         header = self.new_header(msg_type)
@@ -256,19 +258,19 @@ class QZMQKernel(QtCore.QObject):
         ]
         signature = self.sign(msg_lst)
         parts = [self.DELIM,
-                signature,
-                msg_lst[0],
-                msg_lst[1],
-                msg_lst[2],
-                msg_lst[3]]
+                 signature,
+                 msg_lst[0],
+                 msg_lst[1],
+                 msg_lst[2],
+                 msg_lst[3]]
         if identities:
             parts = identities + parts
-        logging.debug( "send parts: %s" % parts)
+        logging.debug("send parts: %s" % parts)
         stream.socket.send_multipart(parts)
 
     def display_data(self, mimetype, fmt_dict, metadata=None):
 
-        #fmt_dict, md_dict = formatter(mimetype, obj)
+        # fmt_dict, md_dict = formatter(mimetype, obj)
         dataenc = encode_images(fmt_dict)
 
         if mimetype in self.supported_mime:
@@ -283,7 +285,7 @@ class QZMQKernel(QtCore.QObject):
 
     # Socket Handlers:
     def shell_handler(self, msg):
-        logging.debug( "shell received: %s" % msg)
+        logging.debug("shell received: %s" % msg)
         position = 0
         identities, msg = self.deserialize_wire_msg(msg)
 
@@ -301,10 +303,10 @@ class QZMQKernel(QtCore.QObject):
         elif msg['header']["msg_type"] == "history_request":
             self.shell_history(identities, msg)
         else:
-            logging.info( "unknown msg_type: %s" % msg['header']["msg_type"])
+            logging.info("unknown msg_type: %s" % msg['header']["msg_type"])
 
     def shell_execute(self, identities, msg):
-        logging.debug( "simple_kernel Executing: %s" % msg['content']["code"])
+        logging.debug("simple_kernel Executing: %s" % msg['content']["code"])
         # tell the notebook server that we are busy
         content = {
             'execution_state': "busy",
@@ -317,7 +319,7 @@ class QZMQKernel(QtCore.QObject):
         }
         self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
 
-        #capture output
+        # capture output
         self.displaydata = list()
         stream_stdout = StringIO()
         stream_stderr = StringIO()
@@ -357,7 +359,7 @@ class QZMQKernel(QtCore.QObject):
                 'execution_count': self.execution_count,
                 'data': {"text/plain": res.result[0]},
                 'metadata': {}
-                }
+            }
             self.send(
                 self.iopub_stream,
                 'execute_result',
@@ -372,7 +374,7 @@ class QZMQKernel(QtCore.QObject):
                 content,
                 parent_header=msg['header'])
 
-        #tell the notebook server that we are not busy anymore
+        # tell the notebook server that we are not busy anymore
         content = {
             'execution_state': "idle",
         }
@@ -419,7 +421,7 @@ class QZMQKernel(QtCore.QObject):
                 'codemirror_mode': {
                     'name': 'ipython',
                     'version': sys.version.split()[0]
-                    },
+                },
                 'nbconvert_exporter': "python",
             },
             "banner": "Hue!"
@@ -432,7 +434,7 @@ class QZMQKernel(QtCore.QObject):
             identities=identities)
 
     def shell_history(self, identities, msg):
-        logging.info( "unhandled history request")
+        logging.info("unhandled history request")
 
     def shell_complete(self, identities, msg):
         code = msg['content']['code']
@@ -444,15 +446,15 @@ class QZMQKernel(QtCore.QObject):
             line=linenr,
             column=colnr)
         completions = script.completions()
-        matches =  [c.name_with_symbols for c in completions]
+        matches = [c.name_with_symbols for c in completions]
         rests = [len(c.name_with_symbols) - len(c.complete) for c in completions]
         replace_start = cursor_pos - rests[0] if len(rests) > 0 else cursor_pos
         content = {
-            'matches' : matches,
-            'cursor_start' : replace_start,
-            'cursor_end' : cursor_pos,
-            'status' : 'ok'
-            }
+            'matches': matches,
+            'cursor_start': replace_start,
+            'cursor_end': cursor_pos,
+            'status': 'ok'
+        }
         metadata = {}
         self.send(
             self.shell_stream,
@@ -486,7 +488,7 @@ class QZMQKernel(QtCore.QObject):
         # complete_request, complete_reply, history_request, history_reply
         # is_complete_request, is_complete_reply, connect_request, connect_reply
         # kernel_info_request, kernel_info_reply, shutdown_request, shutdown_reply
-        logging.debug( "control received: %s" % wire_msg)
+        logging.debug("control received: %s" % wire_msg)
         identities, msg = self.deserialize_wire_msg(wire_msg)
         # Control message handler:
         if msg['header']["msg_type"] == "shutdown_request":
@@ -496,12 +498,12 @@ class QZMQKernel(QtCore.QObject):
         # handle some of these messages:
         # stream, display_data, data_pub, execute_input, execute_result
         # error, status, clear_output
-        logging.debug( "iopub received: %s" % msg)
+        logging.debug("iopub received: %s" % msg)
 
     def stdin_handler(self, msg):
         # handle some of these messages:
         # input_request, input_reply
-        logging.debug( "stdin received: %s" % msg)
+        logging.debug("stdin received: %s" % msg)
 
     def bind(self, socket, connection, port):
         if port <= 0:
@@ -558,7 +560,7 @@ class QZMQKernel(QtCore.QObject):
         preprocessing_exc_tuple = None
         try:
             # Static input transformations
-            #cell = self.input_transformer_manager.transform_cell(raw_cell)
+            # cell = self.input_transformer_manager.transform_cell(raw_cell)
             cell = raw_cell
         except SyntaxError:
             preprocessing_exc_tuple = sys.exc_info()
@@ -568,7 +570,7 @@ class QZMQKernel(QtCore.QObject):
                 # Dynamic transformations - only applied for single line commands
                 try:
                     # restore trailing newline for ast.parse
-                    #cell = self.prefilter_manager.prefilter_lines(cell + '\n'
+                    # cell = self.prefilter_manager.prefilter_lines(cell + '\n'
                     cell = cell.rstrip('\n') + '\n'
                 except Exception:
                     # don't allow prefilter errors to crash IPython
@@ -577,11 +579,11 @@ class QZMQKernel(QtCore.QObject):
         # Store raw and processed history
         if store_history:
             pass
-            #self.history_manager.store_inputs(self.execution_count,
+            # self.history_manager.store_inputs(self.execution_count,
             #                                  cell, raw_cell)
         if not silent:
             pass
-            #self.logger.log(cell, raw_cell)
+            # self.logger.log(cell, raw_cell)
 
         # Display the exception if input processing failed.
         if preprocessing_exc_tuple is not None:
@@ -635,7 +637,7 @@ class QZMQKernel(QtCore.QObject):
 
                 # Reset this so later displayed values do not modify the
                 # ExecutionResult
-                #self.displayhook.exec_result = None
+                # self.displayhook.exec_result = None
                 self.displayhook.pass_result_ref(None)
 
                 self.events.trigger('post_execute')
@@ -645,7 +647,7 @@ class QZMQKernel(QtCore.QObject):
         if store_history:
             # Write output to the database. Does nothing unless
             # history output logging is enabled.
-            #self.history_manager.store_output(self.execution_count)
+            # self.history_manager.store_output(self.execution_count)
             # Each cell is a *single* input, regardless of how many lines it has
             self.execution_count += 1
 
@@ -682,9 +684,8 @@ class QZMQKernel(QtCore.QObject):
             ast.fix_missing_locations(node)
         return node
 
-
     def run_ast_nodes(self, nodelist, cell_name, interactivity='last_expr',
-                        compiler=compile, result=None):
+                      compiler=compile, result=None):
         """Run a sequence of AST nodes. The execution mode depends on the
         interactivity parameter.
         Parameters
@@ -787,8 +788,8 @@ class QZMQKernel(QtCore.QObject):
         outflag = 1  # happens in more places, so it's easier as default
         try:
             try:
-                #self.hooks.pre_run_code_hook()
-                #rprint('Running code', repr(code_obj)) # dbg
+                # self.hooks.pre_run_code_hook()
+                # rprint('Running code', repr(code_obj)) # dbg
                 exec(code_obj, self.user_global_ns, self.user_ns)
             finally:
                 # Reset our crash handler in place
@@ -798,7 +799,7 @@ class QZMQKernel(QtCore.QObject):
                 result.error_in_exec = e
             self.showtraceback(exception_only=True)
             warn("To exit: use 'exit', 'quit', or Ctrl-D.", level=1)
-        #except self.custom_exceptions:
+        # except self.custom_exceptions:
         #    etype, value, tb = sys.exc_info()
         #    if result is not None:
         #        result.error_in_exec = value
@@ -902,6 +903,7 @@ class QZMQKernel(QtCore.QObject):
     def showindentationerror(self):
         self.showtraceback()
 
+
 ##############################################################################
 # Main
 ##############################################################################
@@ -910,10 +912,10 @@ if __name__ == '__main__':
     logging.basicConfig(
         format='%(asctime)s %(levelname)s: %(message)s',
         datefmt='%Y-%m-%d %I:%M:%S %p',
-        level=logging.INFO)
+        level=logging.DEBUG)
 
-    logging.info( "Loading simple_kernel with args: %s" % sys.argv)
-    logging.info( "Reading config file '%s'..." % sys.argv[1])
+    logging.info("Loading simple_kernel with args: %s" % sys.argv)
+    logging.info("Reading config file '%s'..." % sys.argv[1])
 
     config = json.loads("".join(open(sys.argv[1]).readlines()))
 
@@ -921,7 +923,6 @@ if __name__ == '__main__':
     kernel = QZMQKernel(config)
     kernel.sigShutdownFinished.connect(app.quit)
     QtCore.QMetaObject.invokeMethod(kernel, 'connect_kernel')
-    logging.info( "GO!")
+    logging.info("GO!")
     app.exec_()
     logging.info("Done.")
-
