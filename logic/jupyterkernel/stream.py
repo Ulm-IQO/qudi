@@ -21,6 +21,13 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import zmq
 from qtpy import QtCore
 import logging
+import io
+import json
+import hmac
+import uuid
+import errno
+import hashlib
+import datetime
 
 
 class QZMQStream(QtCore.QObject):
@@ -78,3 +85,133 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier.setEnabled(False)
         self.readnotifier.activated.disconnect()
         self.sigMsgRecvd.disconnect()
+
+
+class NetworkStream(QZMQStream):
+
+    def __init__(self, context, zqm_type, connection, auth, engine_id, port=0):
+
+        self._socket = context.socket(zqm_type)
+        self._port = self.bind(self._socket, connection, port)
+        super().__init__(self._socket)
+
+        self._auth = auth
+        self._engine_id = engine_id
+
+        self.DELIM = b"<IDS|MSG>"
+        self._parent_header = dict()
+
+    def close(self):
+        super().close()
+        self._socket.close()
+
+    @property
+    def parent_header(self):
+        return self._parent_header.copy()
+
+    @parent_header.setter
+    def parent_header(self, value):
+        self._parent_header = value.copy()
+
+    @property
+    def port(self):
+        return self._port
+
+    @staticmethod
+    def bind(socket, connection, port):
+        if port <= 0:
+            return socket.bind_to_random_port(connection)
+        else:
+            socket.bind("%s:%s" % (connection, port))
+        return port
+
+    @staticmethod
+    def msg_id():
+        """ Return a new uuid for message id """
+        return str(uuid.uuid4())
+
+    def sign(self, msg_lst):
+        """
+        Sign a message with a secure signature.
+        """
+        h = self._auth.copy()
+        for m in msg_lst:
+            h.update(m)
+        return h.hexdigest().encode('ascii')
+
+    def new_header(self, msg_type):
+        """make a new header"""
+        return {
+            "date": datetime.datetime.now().isoformat(),
+            "msg_id": self.msg_id(),
+            "username": "kernel",
+            "session": self._engine_id,
+            "msg_type": msg_type,
+            "version": "5.0",
+        }
+
+    def send(self, msg_type, content=None, parent_header=None, metadata=None, identities=None):
+        header = self.new_header(msg_type)
+        if content is None:
+            content = dict()
+        if parent_header is None:
+            parent_header = self._parent_header
+        if metadata is None:
+            metadata = dict()
+
+        def jencode(msg):
+            return json.dumps(msg).encode('ascii')
+
+        msg_lst = [
+            jencode(header),
+            jencode(parent_header),
+            jencode(metadata),
+            jencode(content),
+        ]
+        signature = self.sign(msg_lst)
+        parts = [self.DELIM,
+                 signature,
+                 msg_lst[0],
+                 msg_lst[1],
+                 msg_lst[2],
+                 msg_lst[3]]
+        if identities:
+            parts = identities + parts
+        logging.debug("send parts: %s" % parts)
+        self.socket.send_multipart(parts)
+
+    def deserialize_wire_msg(self, wire_msg):
+        """split the routing prefix and message frames from a message on the wire"""
+        delim_idx = wire_msg.index(self.DELIM)
+        identities = wire_msg[:delim_idx]
+        m_signature = wire_msg[delim_idx + 1]
+        msg_frames = wire_msg[delim_idx + 2:]
+
+        def jdecode(msg):
+            return json.loads(msg.decode('ascii'))
+
+        m = {'header': jdecode(msg_frames[0]), 'parent_header': jdecode(msg_frames[1]),
+             'metadata': jdecode(msg_frames[2]), 'content': jdecode(msg_frames[3])}
+        check_sig = self.sign(msg_frames)
+        if check_sig != m_signature:
+            raise ValueError("Signatures do not match")
+
+        return identities, m
+
+    def write(self, s):
+        content = {
+            'name': "stdout",
+            'text': s,
+        }
+        self.send(msg_type='stream', content=content)
+
+    def flush(self):
+        pass
+
+    @property
+    def readable(self):
+        return False
+
+    @property
+    def writable(self):
+        return True
