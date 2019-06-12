@@ -58,16 +58,21 @@ import jedi
 import zmq
 from io import StringIO
 from zmq.error import ZMQError
+
 from .compilerop import CachingCompiler, check_linecache_ipython
 from .display_trap import DisplayTrap
 from .builtin_trap import BuiltinTrap
 from .redirect import RedirectedStdOut, RedirectedStdErr
-from .stream import QZMQStream
+from .stream import NetworkStream
 from .helpers import *
 from .events import EventManager, available_events
 from IPython.core.error import InputRejected
 
 from qtpy import QtCore
+
+# TODO: When executing two cells at the same time (the second before first is finished) the notebook hangs
+# TODO: find a better way to handle the redirect of the stderr stream into the same stream as stdout
+# TODO: Move the Heartbeat to the Stream Helper (did I unintentionally delete a conntect to the beat?)
 
 
 class QZMQHeartbeat(QtCore.QObject):
@@ -113,7 +118,6 @@ class QZMQKernel(QtCore.QObject):
 
     def __init__(self, config=None):
         super().__init__()
-        self.DELIM = b"<IDS|MSG>"
         # namespaces
         self.user_global_ns = globals()
         self.user_ns = self.user_global_ns
@@ -151,29 +155,28 @@ class QZMQKernel(QtCore.QObject):
     def connect_kernel(self):
         # Heartbeat:
         self.ctx = zmq.Context()
-        self.heartbeat_socket = self.ctx.socket(zmq.REP)
-        self._config["hb_port"] = self.bind(self.heartbeat_socket, self.connection, self._config["hb_port"])
-        self.heartbeat_stream = QZMQStream(self.heartbeat_socket)
+        self.heartbeat_stream = NetworkStream(context=self.ctx, zqm_type=zmq.REP, connection=self.connection,
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["hb_port"])
+
         # IOPub/Sub:
         # also called SubSocketChannel in IPython sources
-        self.iopub_socket = self.ctx.socket(zmq.PUB)
-        self._config["iopub_port"] = self.bind(self.iopub_socket, self.connection, self._config["iopub_port"])
-        self.iopub_stream = QZMQStream(self.iopub_socket)
+        self.iopub_stream = NetworkStream(context=self.ctx, zqm_type=zmq.PUB, connection=self.connection,
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["iopub_port"])
         self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler, QtCore.Qt.QueuedConnection)
+
         # Control:
-        self.control_socket = self.ctx.socket(zmq.ROUTER)
-        self._config["control_port"] = self.bind(self.control_socket, self.connection, self._config["control_port"])
-        self.control_stream = QZMQStream(self.control_socket)
+        self.control_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["control_port"])
         self.control_stream.sigMsgRecvd.connect(self.control_handler, QtCore.Qt.QueuedConnection)
+
         # Stdin:
-        self.stdin_socket = self.ctx.socket(zmq.ROUTER)
-        self._config["stdin_port"] = self.bind(self.stdin_socket, self.connection, self._config["stdin_port"])
-        self.stdin_stream = QZMQStream(self.stdin_socket)
+        self.stdin_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["stdin_port"])
         self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler, QtCore.Qt.QueuedConnection)
+
         # Shell:
-        self.shell_socket = self.ctx.socket(zmq.ROUTER)
-        self._config["shell_port"] = self.bind(self.shell_socket, self.connection, self._config["shell_port"])
-        self.shell_stream = QZMQStream(self.shell_socket)
+        self.shell_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["shell_port"])
         self.shell_stream.sigMsgRecvd.connect(self.shell_handler, QtCore.Qt.QueuedConnection)
 
         logging.debug("Config: %s" % json.dumps(self._config))
@@ -206,67 +209,8 @@ class QZMQKernel(QtCore.QObject):
         self.control_stream.close()
         self.heartbeat_stream.close()
 
-        self.iopub_socket.close()
-        self.stdin_socket.close()
-        self.shell_socket.close()
-        self.control_socket.close()
-        self.heartbeat_socket.close()
         self.hb_thread.quit()
         self.sigShutdownFinished.emit(self.engine_id)
-
-    def msg_id(self):
-        """ Return a new uuid for message id """
-        return str(uuid.uuid4())
-
-    def sign(self, msg_lst):
-        """
-        Sign a message with a secure signature.
-        """
-        h = self.auth.copy()
-        for m in msg_lst:
-            h.update(m)
-        return h.hexdigest().encode('ascii')
-
-    def new_header(self, msg_type):
-        """make a new header"""
-        return {
-            "date": datetime.datetime.now().isoformat(),
-            "msg_id": self.msg_id(),
-            "username": "kernel",
-            "session": self.engine_id,
-            "msg_type": msg_type,
-            "version": "5.0",
-        }
-
-    def send(self, stream, msg_type, content=None, parent_header=None, metadata=None, identities=None):
-        header = self.new_header(msg_type)
-        if content is None:
-            content = {}
-        if parent_header is None:
-            parent_header = {}
-        if metadata is None:
-            metadata = {}
-
-        def jencode(msg):
-            return json.dumps(msg).encode('ascii')
-
-        msg_lst = [
-            jencode(header),
-            jencode(parent_header),
-            jencode(metadata),
-            jencode(content),
-        ]
-        signature = self.sign(msg_lst)
-        parts = [self.DELIM,
-                 signature,
-                 msg_lst[0],
-                 msg_lst[1],
-                 msg_lst[2],
-                 msg_lst[3]]
-        if identities:
-            parts = identities + parts
-        logging.debug("send parts: %s" % parts)
-        stream.socket.send_multipart(parts)
 
     def display_data(self, mimetype, fmt_dict, metadata=None):
 
@@ -287,7 +231,7 @@ class QZMQKernel(QtCore.QObject):
     def shell_handler(self, msg):
         logging.debug("shell received: %s" % msg)
         position = 0
-        identities, msg = self.deserialize_wire_msg(msg)
+        identities, msg = self.shell_stream.deserialize_wire_msg(msg)
 
         # process some of the possible requests:
         # execute_request, execute_reply, inspect_request, inspect_reply
@@ -307,24 +251,24 @@ class QZMQKernel(QtCore.QObject):
 
     def shell_execute(self, identities, msg):
         logging.debug("simple_kernel Executing: %s" % msg['content']["code"])
+        self.iopub_stream.parent_header = msg['header']
         # tell the notebook server that we are busy
         content = {
             'execution_state': "busy",
         }
-        self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
+        self.iopub_stream.send('status', content)
         # use the code we just got sent as input cell contents
         content = {
             'execution_count': self.execution_count,
             'code': msg['content']["code"],
         }
-        self.send(self.iopub_stream, 'execute_input', content, parent_header=msg['header'])
+        self.iopub_stream.send('execute_input', content)
 
         # capture output
         self.displaydata = list()
-        stream_stdout = StringIO()
         stream_stderr = StringIO()
         with RedirectedStdErr(stream_stderr):
-            with RedirectedStdOut(stream_stdout):
+            with RedirectedStdOut(self.iopub_stream):
                 # actual execution
                 try:
                     res = self.run_cell(msg['content']['code'])
@@ -333,25 +277,16 @@ class QZMQKernel(QtCore.QObject):
                     tb = traceback.format_exc()
                     print('{}\n{}'.format(e, tb))
 
-        # send captured output if there is any
-        res.captured_stdout = stream_stdout.getvalue()
-        stream_stdout.close()
+        # send captured error if there is any
         res.captured_stderr = stream_stderr.getvalue()
         stream_stderr.close()
-
-        if len(res.captured_stdout) > 0:
-            content = {
-                'name': "stdout",
-                'text': res.captured_stdout,
-            }
-            self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
 
         if len(res.captured_stderr) > 0:
             content = {
                 'name': "stderr",
                 'text': res.captured_stderr,
             }
-            self.send(self.iopub_stream, 'stream', content, parent_header=msg['header'])
+            self.iopub_stream.send('stream', content)
 
         # send captured result if there is any
         if len(res.result) > 0:
@@ -360,27 +295,19 @@ class QZMQKernel(QtCore.QObject):
                 'data': {"text/plain": res.result[0]},
                 'metadata': {}
             }
-            self.send(
-                self.iopub_stream,
-                'execute_result',
-                content,
-                parent_header=msg['header'])
+            self.iopub_stream.send('execute_result', content)
 
         # output data from this run
         for content in self.displaydata:
-            self.send(
-                self.iopub_stream,
-                'display_data',
-                content,
-                parent_header=msg['header'])
+            self.iopub_stream.send('display_data', content)
 
         # tell the notebook server that we are not busy anymore
         content = {
             'execution_state': "idle",
         }
-        self.send(self.iopub_stream, 'status', content, parent_header=msg['header'])
+        self.iopub_stream.send('status', content)
 
-        # publich execution result on shell channel
+        # publish execution result on shell channel
         metadata = {
             "dependencies_met": True,
             "engine": self.engine_id,
@@ -394,8 +321,7 @@ class QZMQKernel(QtCore.QObject):
             "payload": [],
             "user_expressions": {},
         }
-        self.send(
-            self.shell_stream,
+        self.shell_stream.send(
             'execute_reply',
             content,
             metadata=metadata,
@@ -426,8 +352,7 @@ class QZMQKernel(QtCore.QObject):
             },
             "banner": "Hue!"
         }
-        self.send(
-            self.shell_stream,
+        self.shell_stream.send(
             'kernel_info_reply',
             content,
             parent_header=msg['header'],
@@ -455,32 +380,11 @@ class QZMQKernel(QtCore.QObject):
             'cursor_end': cursor_pos,
             'status': 'ok'
         }
-        metadata = {}
-        self.send(
-            self.shell_stream,
+        self.shell_stream.send(
             'complete_reply',
             content,
-            metadata=metadata,
             parent_header=msg['header'],
             identities=identities)
-
-    def deserialize_wire_msg(self, wire_msg):
-        """split the routing prefix and message frames from a message on the wire"""
-        delim_idx = wire_msg.index(self.DELIM)
-        identities = wire_msg[:delim_idx]
-        m_signature = wire_msg[delim_idx + 1]
-        msg_frames = wire_msg[delim_idx + 2:]
-
-        def jdecode(msg):
-            return json.loads(msg.decode('ascii'))
-
-        m = {'header': jdecode(msg_frames[0]), 'parent_header': jdecode(msg_frames[1]),
-             'metadata': jdecode(msg_frames[2]), 'content': jdecode(msg_frames[3])}
-        check_sig = self.sign(msg_frames)
-        if check_sig != m_signature:
-            raise ValueError("Signatures do not match")
-
-        return identities, m
 
     def control_handler(self, wire_msg):
         # process some of the possible requests:
@@ -489,7 +393,7 @@ class QZMQKernel(QtCore.QObject):
         # is_complete_request, is_complete_reply, connect_request, connect_reply
         # kernel_info_request, kernel_info_reply, shutdown_request, shutdown_reply
         logging.debug("control received: %s" % wire_msg)
-        identities, msg = self.deserialize_wire_msg(wire_msg)
+        identities, msg = self.control_stream.deserialize_wire_msg(wire_msg)
         # Control message handler:
         if msg['header']["msg_type"] == "shutdown_request":
             self.shutdown()
@@ -504,13 +408,6 @@ class QZMQKernel(QtCore.QObject):
         # handle some of these messages:
         # input_request, input_reply
         logging.debug("stdin received: %s" % msg)
-
-    def bind(self, socket, connection, port):
-        if port <= 0:
-            return socket.bind_to_random_port(connection)
-        else:
-            socket.bind("%s:%s" % (connection, port))
-        return port
 
     def run_cell(self, raw_cell, store_history=False, silent=False, shell_futures=True):
         """Run a complete IPython cell.
