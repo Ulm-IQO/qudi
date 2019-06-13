@@ -87,6 +87,30 @@ class QZMQStream(QtCore.QObject):
         self.sigMsgRecvd.disconnect()
 
 
+class QZMQHeartbeat(QtCore.QObject):
+    """ Echo Messages on a ZMQ stream. """
+
+    def __init__(self, stream):
+        super().__init__()
+        self.stream = stream
+        self.stream.sigMsgRecvd.connect(self.beat)
+
+    @QtCore.Slot(bytes)
+    def beat(self, msg):
+        """ Send a message back.
+
+          @param msg: message to be sent back
+        """
+        logging.debug("HB: {}".format(msg))
+        if len(msg) > 0:
+            retmsg = msg[0]
+            try:
+                self.stream.socket.send(retmsg)
+            except zmq.ZMQError as e:
+                if e.errno != errno.EINTR:
+                    raise
+
+
 class NetworkStream(QZMQStream):
 
     def __init__(self, context, zqm_type, connection, auth, engine_id, port=0):
@@ -198,12 +222,19 @@ class NetworkStream(QZMQStream):
 
         return identities, m
 
+
+class IOStdoutNetworkStream:
+    _output_channel = 'stdout'
+
+    def __init__(self, network_stream):
+        self._network_stream = network_stream
+
     def write(self, s):
         content = {
-            'name': "stdout",
+            'name': self._output_channel,
             'text': s,
         }
-        self.send(msg_type='stream', content=content)
+        self._network_stream.send(msg_type='stream', content=content)
 
     def flush(self):
         pass
@@ -215,3 +246,7 @@ class NetworkStream(QZMQStream):
     @property
     def writable(self):
         return True
+
+
+class IOStderrNetworkStream(IOStdoutNetworkStream):
+    _output_channel = 'stderr'
