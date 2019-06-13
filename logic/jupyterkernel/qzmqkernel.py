@@ -63,40 +63,15 @@ from .compilerop import CachingCompiler, check_linecache_ipython
 from .display_trap import DisplayTrap
 from .builtin_trap import BuiltinTrap
 from .redirect import RedirectedStdOut, RedirectedStdErr
-from .stream import NetworkStream
+from .stream import NetworkStream, IOStdoutNetworkStream, IOStderrNetworkStream, QZMQHeartbeat
 from .helpers import *
 from .events import EventManager, available_events
 from IPython.core.error import InputRejected
 
 from qtpy import QtCore
 
+
 # TODO: When executing two cells at the same time (the second before first is finished) the notebook hangs
-# TODO: find a better way to handle the redirect of the stderr stream into the same stream as stdout
-# TODO: Move the Heartbeat to the Stream Helper (did I unintentionally delete a conntect to the beat?)
-
-
-class QZMQHeartbeat(QtCore.QObject):
-    """ Echo Messages on a ZMQ stream. """
-
-    def __init__(self, stream):
-        super().__init__()
-        self.stream = stream
-        self.stream.sigMsgRecvd.connect(self.beat)
-
-    @QtCore.Slot(bytes)
-    def beat(self, msg):
-        """ Send a message back.
-
-          @param msg: message to be sent back
-        """
-        logging.debug("HB: {}".format(msg))
-        if len(msg) > 0:
-            retmsg = msg[0]
-        try:
-            self.stream.socket.send(retmsg)
-        except zmq.ZMQError as e:
-            if e.errno != errno.EINTR:
-                raise
 
 
 class QZMQKernel(QtCore.QObject):
@@ -156,7 +131,7 @@ class QZMQKernel(QtCore.QObject):
         # Heartbeat:
         self.ctx = zmq.Context()
         self.heartbeat_stream = NetworkStream(context=self.ctx, zqm_type=zmq.REP, connection=self.connection,
-                                          auth=self.auth, engine_id=self.engine_id, port=self._config["hb_port"])
+                                              auth=self.auth, engine_id=self.engine_id, port=self._config["hb_port"])
 
         # IOPub/Sub:
         # also called SubSocketChannel in IPython sources
@@ -166,7 +141,7 @@ class QZMQKernel(QtCore.QObject):
 
         # Control:
         self.control_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
-                                          auth=self.auth, engine_id=self.engine_id, port=self._config["control_port"])
+                                            auth=self.auth, engine_id=self.engine_id, port=self._config["control_port"])
         self.control_stream.sigMsgRecvd.connect(self.control_handler, QtCore.Qt.QueuedConnection)
 
         # Stdin:
@@ -178,6 +153,12 @@ class QZMQKernel(QtCore.QObject):
         self.shell_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
                                           auth=self.auth, engine_id=self.engine_id, port=self._config["shell_port"])
         self.shell_stream.sigMsgRecvd.connect(self.shell_handler, QtCore.Qt.QueuedConnection)
+
+        self._config["hb_port"] = self.heartbeat_stream.port
+        self._config["iopub_port"] = self.iopub_stream.port
+        self._config["control_port"] = self.control_stream.port
+        self._config["stdin_port"] = self.stdin_stream.port
+        self._config["shell_port"] = self.shell_stream.port
 
         logging.debug("Config: %s" % json.dumps(self._config))
 
@@ -266,9 +247,8 @@ class QZMQKernel(QtCore.QObject):
 
         # capture output
         self.displaydata = list()
-        stream_stderr = StringIO()
-        with RedirectedStdErr(stream_stderr):
-            with RedirectedStdOut(self.iopub_stream):
+        with RedirectedStdErr(IOStderrNetworkStream(self.iopub_stream)):
+            with RedirectedStdOut(IOStdoutNetworkStream(self.iopub_stream)):
                 # actual execution
                 try:
                     res = self.run_cell(msg['content']['code'])
@@ -276,17 +256,6 @@ class QZMQKernel(QtCore.QObject):
                     res = ExecutionResult()
                     tb = traceback.format_exc()
                     print('{}\n{}'.format(e, tb))
-
-        # send captured error if there is any
-        res.captured_stderr = stream_stderr.getvalue()
-        stream_stderr.close()
-
-        if len(res.captured_stderr) > 0:
-            content = {
-                'name': "stderr",
-                'text': res.captured_stderr,
-            }
-            self.iopub_stream.send('stream', content)
 
         # send captured result if there is any
         if len(res.result) > 0:
