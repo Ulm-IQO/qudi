@@ -26,7 +26,7 @@
          <x>0</x>
          <y>0</y>
          <width>446</width>
-         <height>539</height>
+         <height>562</height>
         </rect>
        </property>
       </widget>
@@ -40,7 +40,7 @@
      <x>0</x>
      <y>0</y>
      <width>466</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -51,7 +51,6 @@
    </widget>
    <addaction name="menuMenu"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionClose">
    <property name="icon">
     <iconset>

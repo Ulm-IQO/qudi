@@ -27,7 +27,7 @@
      <x>0</x>
      <y>0</y>
      <width>705</width>
-     <height>21</height>
+     <height>18</height>
     </rect>
    </property>
    <property name="sizePolicy">
@@ -60,14 +60,6 @@
    <addaction name="menuFile"/>
    <addaction name="menuView"/>
    <addaction name="menuOptions"/>
-  </widget>
-  <widget class="QStatusBar" name="statusbar">
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
   </widget>
   <widget class="QDockWidget" name="image_plot_DockWidget">
    <property name="sizePolicy">

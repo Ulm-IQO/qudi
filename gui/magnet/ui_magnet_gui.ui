@@ -79,7 +79,7 @@
          </widget>
         </item>
         <item row="0" column="0" rowspan="10">
-         <widget class="PlotWidgetModified" name="alignment_2d_GraphicsView">
+         <widget class="ScanPlotWidget" name="alignment_2d_GraphicsView">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Minimum" vsizetype="Expanding">
             <horstretch>0</horstretch>
@@ -1018,7 +1018,6 @@ contrast alignment</string>
    <addaction name="menuMenu"/>
    <addaction name="menuView"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="move_rel_DockWidget">
    <property name="windowTitle">
     <string>Relative Movement</string>
@@ -1301,9 +1300,9 @@ contrast alignment</string>
    <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
   <customwidget>
-   <class>PlotWidgetModified</class>
+   <class>ScanPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>qtwidgets.plotwidget_modified.h</header>
+   <header>qtwidgets.scan_plotwidget.h</header>
   </customwidget>
  </customwidgets>
  <resources/>

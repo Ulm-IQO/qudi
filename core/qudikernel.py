@@ -101,7 +101,7 @@ class Qudi:
             logging.info('load.cfg config file found at {0}'.format(loadConfigFile))
             try:
                 confDict = config.load(loadConfigFile)
-                if ('configfile' in confDict and isinstance(confDict['configfile'], str)):
+                if 'configfile' in confDict and isinstance(confDict['configfile'], str):
                     # check if this config file is existing
                     # try relative filenames
                     configFile = os.path.join(path, 'config', confDict['configfile'])
@@ -129,8 +129,8 @@ class Qudi:
 
     def getConfigFromFile(self, configfile):
         cfg = config.load(configfile)
-        if ('module_server' in cfg['global']):
-            if (not isinstance(cfg['global']['module_server'], dict)):
+        if 'module_server' in cfg['global']:
+            if not isinstance(cfg['global']['module_server'], dict):
                 raise Exception('"module_server" entry in "global" section of configuration'
                     ' file is not a dictionary.')
             else:
@@ -140,7 +140,7 @@ class Qudi:
                 certfile = cfg['global']['module_server'].get('certfile', None)
                 keyfile = cfg['global']['module_server'].get('keyfile', None)
 
-        elif ('serveraddress' in cfg['global']):
+        elif 'serveraddress' in cfg['global']:
             logging.warning('Deprecated remote server settings. Please update to new style.'
                 ' See documentation.')
             server_address = cfg['global'].get('serveraddress', 'localhost')

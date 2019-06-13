@@ -263,7 +263,7 @@ class MicrowaveAnritsuMG369x(Base, MicrowaveInterface):
         self._gpib_connection.write('RF1')
 
         if self.model == 'MG3691C':
-            time.sleep(5)  # for model MG3691C wait 5 seconds for the microwave to switch on
+            time.sleep(10)  # for model MG3691C wait 5 seconds for the microwave to switch on
         self._is_running = True
         return 0
 
@@ -280,11 +280,11 @@ class MicrowaveAnritsuMG369x(Base, MicrowaveInterface):
 
         if is_running:
             self.off()
-        if mode != 'list':
-            self._gpib_connection.write('LST')
-            self._gpib_connection.write('ELN0')
-            self._gpib_connection.write('ELI0000')
-            self._current_mode = 'list'
+        #if mode != 'list':
+        self._gpib_connection.write('LST')
+        self._gpib_connection.write('ELN0')
+        self._gpib_connection.write('ELI0000')
+        self._current_mode = 'list'
 
         # if self.set_cw(freq[0], power) != 0:
         #     error = -1
