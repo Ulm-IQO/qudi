@@ -189,7 +189,7 @@ def make_linear_model(self, prefix=None):
     return model, params
 
 
-def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Performe a linear fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -212,7 +212,7 @@ def make_linear_fit(self, x_axis, data, estimator, units=None, add_params=None):
 
     params = self._substitute_params(initial_params=params, update_params=add_params)
 
-    result = linear.fit(data, x=x_axis, params=params)
+    result = linear.fit(data, x=x_axis, params=params, **kwargs)
 
     if units is None:
         units = ['arb. unit', 'arb. unit']

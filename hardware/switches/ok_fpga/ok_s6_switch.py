@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This file contains the Qudi hardware module for the FPGA based fast counter.
+This file contains the Qudi hardware module for the FPGA (Opal Kelly XEM6310) based software
+defined 8-channel CMOS switch.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -41,9 +42,10 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
     Example config for copy-paste:
 
-    fpga_oks6_switch:
+    fpga_switch:
         module.Class: 'switches.ok_fpga.ok_s6_switch.HardwareSwitchFpga'
         fpga_serial: '143400058N'
+        fpga_type: 'XEM6310_LX45'
 
     """
     _modclass = 'HardwareSwitchFpga'
@@ -51,6 +53,16 @@ class HardwareSwitchFpga(Base, SwitchInterface):
 
     # config options
     _serial = ConfigOption('fpga_serial', missing='error')
+    # possible type options: XEM6310_LX150, XEM6310_LX45
+    _fpga_type = ConfigOption('fpga_type', default='XEM6310_LX45', missing='warn')
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._fpga = None
+        self.threadlock = Mutex()
+        self._switch_status = dict()
+        self._connected = False
 
     def on_activate(self):
         """ Connect and configure the access to the FPGA.
@@ -61,13 +73,18 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         # version to be able to run the Frontpanel wrapper:
         self._fpga = ok.FrontPanel()
 
-        # threading
-        self.threadlock = Mutex()
-
         # TTL output status of the 8 channels
-        self._switch_status = {1: False, 2: False, 3: False, 4: False,
-                              5: False, 6: False, 7: False, 8: False}
+        self._switch_status = {chnl: False for chnl in range(8)}
+
         self._connected = False
+
+        # Sanity check for fpga_type ConfigOption
+        self._fpga_type = self._fpga_type.upper()
+        if self._fpga_type not in ('XEM6310_LX45', 'XEM6310_LX150'):
+            self.log.error('Unsupported FPGA type "{0}" specified in config. Valid options are '
+                           '"XEM6310_LX45" and "XEM6310_LX150".\nAborting module activation.'
+                           ''.format(self._fpga_type))
+            return
 
         # connect to the FPGA module
         self._connect()
@@ -76,7 +93,8 @@ class HardwareSwitchFpga(Base, SwitchInterface):
     def on_deactivate(self):
         """ Deactivate the FPGA.
         """
-        self.reset()
+        if self._connected:
+            self.reset()
         del self._fpga
         self._connected = False
         return
@@ -95,7 +113,16 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         self._fpga.OpenBySerial(self._serial)
 
         # upload the proper hardware switch configuration bitfile to the FPGA
-        bitfile_name = 'switch_8chnl_withcopy_LX150.bit'
+        if self._fpga_type == 'XEM6310_LX45':
+            bitfile_name = 'switch_8chnl_withcopy_LX45.bit'
+        elif self._fpga_type == 'XEM6310_LX150':
+            bitfile_name = 'switch_8chnl_withcopy_LX150.bit'
+        else:
+            self.log.error('Unsupported FPGA type "{0}" specified in config. Valid options are '
+                           '"XEM6310_LX45" and "XEM6310_LX150".\nConnection to FPGA module failed.'
+                           ''.format(self._fpga_type))
+            return -1
+
         # Load on the FPGA a configuration file (bit file).
         self._fpga.ConfigureFPGA(os.path.join(get_main_dir(), 'thirdparty', 'qo_fpga',
                                               bitfile_name))
@@ -104,12 +131,11 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         if not self._fpga.IsFrontPanelEnabled():
             self.log.error('Opal Kelly FrontPanel is not enabled in FPGA')
             return -1
-        else:
-            self._fpga.SetWireInValue(0x00, 0x00000000)
-            self._fpga.UpdateWireIns()
 
-        self._switch_status = {0: False, 1: False, 2: False, 3: False,
-                               4: False, 5: False, 6: False, 7: False}
+        self._fpga.SetWireInValue(0x00, 0x00000000)
+        self._fpga.UpdateWireIns()
+
+        self._switch_status = {chnl: False for chnl in range(8)}
         self._connected = True
         return 0
 
@@ -207,8 +233,7 @@ class HardwareSwitchFpga(Base, SwitchInterface):
                 return
             self._fpga.SetWireInValue(0x00, 0)
             self._fpga.UpdateWireIns()
-            self._switch_status = {0: False, 1: False, 2: False, 3: False,
-                                   4: False, 5: False, 6: False, 7: False}
+            self._switch_status = {chnl: False for chnl in range(8)}
         return
 
     def getCalibration(self, switchNumber, state):

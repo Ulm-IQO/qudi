@@ -156,7 +156,7 @@ def make_poissoniandouble_model(self):
 ################################################################################
 
 
-def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Performe a poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -181,13 +181,13 @@ def make_poissonian_fit(self, x_axis, data, estimator, units=None, add_params=No
                                      update_params=add_params)
 
     try:
-        result = poissonian_model.fit(data, x=x_axis, params=params)
+        result = poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The poissonian fit did not work. Check if a poisson '
                          'distribution is needed or a normal approximation can be'
                          'used. For values above 10 a normal/ gaussian distribution '
                          'is a good approximation.')
-        result = poissonian_model.fit(data, x=x_axis, params=params)
+        result = poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
         print(result.message)
 
     if units is None:
@@ -240,7 +240,7 @@ def estimate_poissonian(self, x_axis, data, params):
     return error, params
 
 
-def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_params=None):
+def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_params=None, **kwargs):
     """ Perform a double poissonian fit on the provided data.
 
     @param numpy.array x_axis: 1D axis values
@@ -265,14 +265,14 @@ def make_poissoniandouble_fit(self, x_axis, data, estimator, units=None, add_par
                                      update_params=add_params)
 
     try:
-        result = double_poissonian_model.fit(data, x=x_axis, params=params)
+        result = double_poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
     except:
         self.log.warning('The double poissonian fit did not work. Check if a '
                          'poisson distribution is needed or a normal '
                          'approximation can be used. For values above 10 a '
                          'normal/ gaussian distribution is a good '
                          'approximation.')
-        result = double_poissonian_model.fit(data, x=x_axis, params=params)
+        result = double_poissonian_model.fit(data, x=x_axis, params=params, **kwargs)
 
     # Write the parameters to allow human-readable output to be generated
     result_str_dict = OrderedDict()

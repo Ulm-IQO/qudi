@@ -120,7 +120,7 @@ class ScaledFloat(float):
         fmt : str format string
         """
         autoscale = False
-        if (len(fmt) >= 2):
+        if len(fmt) >= 2:
             if fmt[-2] == 'r':
                 autoscale = True
                 fmt = fmt[:-2] + fmt[-1]
@@ -130,9 +130,9 @@ class ScaledFloat(float):
         elif fmt[-1] == 'r':
             autoscale = True
             fmt = fmt[:-1] + 'f'
-        if (autoscale):
+        if autoscale:
             scale = self.scale
-            if (scale == 'u'):
+            if scale == 'u':
                 index = 'micro'
             else:
                 index = scale
@@ -178,7 +178,7 @@ def create_formatted_output(param_dict, num_sig_digits=5):
 
 
     """
-    if (fn is None):
+    if fn is None:
         raise Exception('This function requires pyqtgraph.')
 
     output_str = ''
@@ -360,7 +360,7 @@ def get_si_norm(entry):
     val = get_relevant_digit(entry)
     fact = int(val / 3)
     power = int(3 * fact)
-    norm = 10**(power)
+    norm = 10 ** power
 
     return entry / norm, norm
 
@@ -537,14 +537,14 @@ def compute_ft(x_val, y_val, zeropad_num=0, window='none', base_corr=True,
     fft_y = np.abs(np.fft.fft(zeropad_arr))
 
     # Power spectral density (PSD) or just amplitude spectrum of fourier signal:
-    pow = 1.0
+    power_value = 1.0
     if psd:
-        pow = 2.0
+        power_value = 2.0
 
     # The factor 2 accounts for the fact that just the half of the spectrum was
     # taken. The ampl_norm_fact is the normalization factor due to the applied
     # window function (the offset value in the window function):
-    fft_y = ((2/len(y_val)) * fft_y * ampl_norm_fact)**pow
+    fft_y = ((2/len(y_val)) * fft_y * ampl_norm_fact)**power_value
 
     # Due to the sampling theorem you can only identify frequencies at half
     # of the sample rate, therefore the FT contains an almost symmetric

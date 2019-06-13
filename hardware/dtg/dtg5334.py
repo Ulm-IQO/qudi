@@ -26,6 +26,7 @@ import numpy as np
 import os
 import time
 import visa
+from core.util.helpers import natural_sort
 
 from interface.pulser_interface import PulserInterface, PulserConstraints
 from core.module import Base, ConfigOption
@@ -203,15 +204,14 @@ class DTG5334(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_conf = OrderedDict()
-        activation_conf['A'] = {'d_ch1', 'd_ch2'}
-        activation_conf['B'] = {'d_ch3', 'd_ch4'}
-        activation_conf['C'] = {'d_ch5', 'd_ch6'}
-        activation_conf['D'] = {'d_ch7', 'd_ch8'}
-        activation_conf['AB'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'}
-        activation_conf['ABC'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6'}
-        activation_conf['all'] = {
-            'd_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'
-        }
+        activation_conf['A'] = frozenset({'d_ch1', 'd_ch2'})
+        activation_conf['B'] = frozenset({'d_ch3', 'd_ch4'})
+        activation_conf['C'] = frozenset({'d_ch5', 'd_ch6'})
+        activation_conf['D'] = frozenset({'d_ch7', 'd_ch8'})
+        activation_conf['AB'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4'})
+        activation_conf['ABC'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6'})
+        activation_conf['all'] = frozenset(
+            {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         constraints.activation_config = activation_conf
         return constraints
 
@@ -571,14 +571,14 @@ class DTG5334(Base, PulserInterface):
 
         @return list: List of all uploaded waveform name strings in the device workspace.
         """
-        return list(sorted(self.waveform_names))
+        return list(natural_sort(self.waveform_names))
 
     def get_sequence_names(self):
         """ Retrieve the names of all uploaded sequence on the device.
 
         @return list: List of all uploaded sequence name strings in the device workspace.
         """
-        return list(sorted(self.sequence_names))
+        return list(natural_sort(self.sequence_names))
 
     def delete_waveform(self, waveform_name):
         """ Delete the waveform with name "waveform_name" from the device memory.

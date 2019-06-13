@@ -137,7 +137,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         elif self.current_output_mode == MicrowaveMode.LIST:
             return self.mw_frequency_list
         elif self.current_output_mode == MicrowaveMode.SWEEP:
-            return (self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq)
+            return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq
 
     def cw_on(self):
         """
