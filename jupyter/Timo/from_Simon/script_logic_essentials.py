@@ -41,7 +41,7 @@ def build_nidaq_dummy():
 setup = OrderedDict()
 setup['gated'] = False
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
-setup['bin_width'] = 3.2e-9
+setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
 setup['laser_delay'] = 510e-9
 setup['laser_safety'] = 200e-9
@@ -105,12 +105,24 @@ try:
 except NameError:
     pass
 
+
+def config_matplotlib_jupyter():
+    # is overwritten by qudi save logic
+    # does impact local plotting from jupyter (?)
+    import matplotlib
+    matplotlib.pylab.rcParams['figure.figsize'] = (7.5, 5)
+
+    pass
+
 ############################## Standard function for conventional and SSR measurements #################################
 
 
 def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, save_tag='',
                   load_tag='', sleep_time = 0.2):
-
+    """
+    :param save_tag: different from qudi: if == None, don't save anything.
+    :return:
+    """
     # add information necessary for measurement type
     qm_dict = meas_info(experiment, qm_dict)
     # perform sanity checks
@@ -128,7 +140,7 @@ def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, 
     if pulsedmeasurementlogic.pulsegenerator().get_status == 1:
         pulsedmasterlogic.toggle_pulse_generator(False)
 
-    logger.debug("Debug: do_experiment pulsedMesLogic.n_sweeps / next.is_set / abort.is_set: {},{},{}".format(
+    logger.debug("Debug: do_experiment pulsedMesLogic.n_sweeps / next.is_set / abort.is_set: {}, {}, {}".format(
                 pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps, userglobals.next.is_set(),
                 userglobals.abort.is_set()))
 
@@ -339,17 +351,10 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', analysis_i
     # if fit desired
     if 'fit_experiment' in qm_dict and qm_dict['fit_experiment']!= 'No fit':
         fit_data, fit_result = pulsedmeasurementlogic.do_fit(qm_dict['fit_experiment'])
-    pulsedmasterlogic.save_measurement_data(save_tag, True)
+    if save_tag is not None:
+        pulsedmasterlogic.save_measurement_data(save_tag, True)
     time.sleep(1)
     return user_terminated
-
-
-def get_current_pulsed_mes():
-    mes = pulsedmasterlogic.pulsedmeasurementlogic()
-    return mes
-
-def get_current_pulsed_mes_running():
-    return pulsedmasterlogic.status_dict['measurement_running']
 
 def handle_abort():
     """
@@ -374,7 +379,7 @@ def handle_abort():
         ret = True
 
     if ret:
-        logger.debug("Handle abort received stop signal")
+        logger.debug("handle_abort() received stop signal")
 
     return ret
 
@@ -385,7 +390,9 @@ def conventional_measurement(qm_dict):
     set_up_conventional_measurement(qm_dict)
     # perform measurement
     pulsedmasterlogic.toggle_pulsed_measurement(True)
-    while not pulsedmasterlogic.status_dict['measurement_running']: time.sleep(0.5)
+    while not pulsedmasterlogic.status_dict['measurement_running']:
+        time.sleep(0.1)
+        logger.debug("Wating for mes to start.")
 
     'threading also freezes gui'
     #import threading
@@ -428,15 +435,19 @@ def set_up_conventional_measurement(qm_dict):
                                                  'record_length': qm_dict['params']['counting_length']})
     time.sleep(0.2)
     # add sequence length to measurement dictionary
-    pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
-    #pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
-    #                                            'safety': setup['laser_safety']})
+    #pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
+    pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
+                                                'safety': setup['laser_safety']})
     pulsedmasterlogic.set_analysis_settings({'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
                                              'norm_start': 1.8e-6, 'norm_end': 2.8e-6})
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
     pulsedmeasurementlogic.fastcounter().set_delay_start(0)
     pulsedmeasurementlogic.fastcounter().change_save_mode(0)
+
+    t_loop_mes = 0.001 #s
+    logger.warning("Setting mes logic timer interval  to {} s.".format(t_loop_mes))
+    pulsedmeasurementlogic.timer_interval = t_loop_mes
 
     return
 
@@ -451,14 +462,18 @@ def control_measurement(qm_dict, analysis_method=None):
     freq_optimize_real_time = start_time
     real_update_time = start_time
 
+
+    idx_loop = 0
     while True:
-        time.sleep(1) #2
 
         if 'n_sweeps' in qm_dict:
             # stop by sweeps can't be faster than sleep time
             if qm_dict['n_sweeps'] is not None:
                 if pulsedmasterlogic.elapsed_sweeps >= qm_dict['n_sweeps']:
-                    logger.debug("stopping mes after {}/{} sweeps".format(pulsedmasterlogic.elapsed_sweeps, qm_dict['n_sweeps']))
+                    # hard break already here for debug
+                    pulsedmasterlogic.pulsedmeasurementlogic().stop_pulsed_measurement()
+                    logger.debug("stopping mes in control loop {} after {}/{} sweeps".format(idx_loop,
+                                                                pulsedmasterlogic.elapsed_sweeps, qm_dict['n_sweeps']))
                     user_terminated = False
                     break
 
@@ -493,12 +508,15 @@ def control_measurement(qm_dict, analysis_method=None):
             user_terminated = True
             break
 
-        # warning: debuging in this loop seems to slow down gui
-        logger.debug(
-            "in mes loop: pulsedMesLogic.n_sweeps {}/{}".format(pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps,
-                                                                qm_dict['n_sweeps']))
+        time.sleep(0.5) #2
+        idx_loop += 1
 
-    time.sleep(0.2)
+        # warning: debuging in this loop seems to slow down gui
+        #logger.debug(
+        #    "in mes loop: pulsedMesLogic.n_sweeps {}/{}".format(pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps,
+        #                                                        qm_dict['n_sweeps']))
+
+    #time.sleep(0.2)
     return user_terminated
 
 
@@ -564,6 +582,9 @@ def external_mw_measurement(qm_dict):
 def save_parameters(save_tag='', save_dict=None):
 
     timestamp = datetime.datetime.now()
+
+    if save_tag is None:
+        return  # don't save anything
 
     if save_dict is None:
         save_dict = OrderedDict()
@@ -691,6 +712,14 @@ def laser_on(pulser_on=True):
     pulsedmasterlogic.toggle_pulse_generator(pulser_on)
     nicard.digital_channel_switch(setup['optimize_channel'], mode=True)
     return
+
+def laser_on_awg():
+    # loads a waveform to awg that contionously enables laser marker
+    # Caution: stops any waveform currently played!
+    # waveform must be already in workspace of awg!
+
+    pulsedmasterlogic.pulsedmeasurementlogic().pulsegenerator().load_waveform({1:'laser_on_ch1'})
+    pulsedmasterlogic.toggle_pulse_generator(True)
 
 def laser_off(pulser_on=False):
     # Switches off the laser trigger from nicard
