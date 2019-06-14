@@ -280,6 +280,8 @@ class AWG70K(Base, PulserInterface):
             # wait until the AWG is actually running
             while not self._is_output_on():
                 time.sleep(0.25)
+
+        self.log.debug("AWG on.")
         return self.get_status()[0]
 
     def pulser_off(self):
@@ -370,7 +372,7 @@ class AWG70K(Base, PulserInterface):
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
             else:
                 mrk_bytes = None
-            self.log.debug('Prepare digital channel data: {0}'.format(time.time()-start))
+            self.log.debug('Prepare digital channel data: {0:.3f} s'.format(time.time()-start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -387,12 +389,12 @@ class AWG70K(Base, PulserInterface):
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
-            self.log.debug('Write WFMX file: {0}'.format(time.time() - start))
+            self.log.debug('Write WFMX file: {0:.3f} s'.format(time.time() - start))
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
             self._send_file(filename=wfm_name + '.wfmx')
-            self.log.debug('Send WFMX file: {0}'.format(time.time() - start))
+            self.log.debug('Send WFMX file: {0:.3f}'.format(time.time() - start))
 
             start = time.time()
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
@@ -410,7 +412,7 @@ class AWG70K(Base, PulserInterface):
 
             # reset the timeout
             self.awg.timeout = timeout_old
-            self.log.debug('Load WFMX file into workspace: {0}'.format(time.time() - start))
+            self.log.debug('Load WFMX file into workspace: {0:.3f} s'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
