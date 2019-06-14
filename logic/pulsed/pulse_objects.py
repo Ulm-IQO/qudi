@@ -617,7 +617,8 @@ class SequenceStep(dict):
                             'event_trigger': 'OFF',
                             'wait_for': 'OFF',
                             'flag_trigger': list(),
-                            'flag_high': list()}
+                            'flag_high': list(),
+                            'pattern_jump_address': -1}
 
     def __init__(self, *args, **kwargs):
         if len(args) > 2:
@@ -722,6 +723,11 @@ class PulseSequence(object):
                                                        high when this sequence step is playing. All
                                                        others will be low (or triggered; see above).
                                                        Empty list (default) for all flags low.
+                                          'pattern_jump_address': (int) address that will cause the
+                                                                   sequencer to jump to this sequence
+                                                                   step.
+                                                                   May not be available on all hw.
+
 
                                           If only 'repetitions' are in the dictionary, then the dict
                                           will look like:
@@ -997,6 +1003,10 @@ class PredefinedGeneratorBase:
     @property
     def log(self):
         return self.__sequencegeneratorlogic.log
+
+    @property
+    def pulse_generator_constraints(self):
+        return self.__sequencegeneratorlogic.pulse_generator_constraints
 
     @property
     def analyze_block_ensemble(self):

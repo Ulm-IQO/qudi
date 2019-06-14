@@ -483,6 +483,10 @@ class AWG70K(Base, PulserInterface):
                     return -1
             # Set flag states
             self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
+            # Set pattern jump address
+            if seq_step.pattern_jump_address != -1:
+                self.enable_pattern_jump(name)  # redundant, actually only once per sequence, not per sequence step
+                self.write_patternjump_table_entry(name, step, seq_step.pattern_jump_address)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -1677,3 +1681,10 @@ class AWG70K(Base, PulserInterface):
         # Calculates the length of the header and replace placeholder with actual number
         xml_header = xml_header.replace('XXXXXXXXX', str(len(xml_header)).zfill(9))
         return xml_header
+
+    def enable_pattern_jump(self, seqname):
+        self.write('SLIST:SEQUENCE:EVENT:PJUMP:ENABLE "{}", ON'.format(seqname))
+
+    def write_patternjump_table_entry(self, seqname, idx_segment, jump_address):
+        self.write('SLIST:SEQUENCE:EVENT:PJUMP:DEFINE "{}", {}, {}'.format(seqname, jump_address, idx_segment))
+
