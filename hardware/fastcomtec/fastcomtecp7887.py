@@ -149,7 +149,7 @@ class ACQDATA(ctypes.Structure):
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
-    unstable: Jochen Scheuer, Simon Schmitt
+    unstable: Jochen Scheuer, from_Simon Schmitt
 
     Example config for copy-paste:
 
