@@ -2246,9 +2246,14 @@ class PulsedMeasurementGui(GUIBase):
         # set boundaries
         self._pa.ana_param_num_laser_pulse_SpinBox.setMinimum(1)
         self._pa.ana_param_record_length_DoubleSpinBox.setMinimum(0)
+        self._pa.ana_param_record_length_DoubleSpinBox.setMaximum(np.inf)
         self._pa.time_param_ana_periode_DoubleSpinBox.setMinimum(0)
         self._pa.time_param_ana_periode_DoubleSpinBox.setMinimalStep(1)
         self._pa.ext_control_mw_freq_DoubleSpinBox.setMinimum(0)
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setMaximum(np.inf)
+        self._pa.ana_param_x_axis_start_ScienDSpinBox.setMinimum(-np.inf)
+        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setMaximum(np.inf)
+        self._pa.ana_param_x_axis_inc_ScienDSpinBox.setMinimum(-np.inf)
 
         # apply hardware constraints
         self._pa_apply_hardware_constraints()
