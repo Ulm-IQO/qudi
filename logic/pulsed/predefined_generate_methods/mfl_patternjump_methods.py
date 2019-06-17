@@ -252,6 +252,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # laser readout after MW
         laser_element = self._get_laser_gate_element(length=laser_length, increment=0)
         waiting_element = self._get_idle_element(length=wait_length, increment=0.0)
+        seq_trig_element = self._get_trigger_element(50e-9, 0.0, channels=['d_ch1'])
 
         block = PulseBlock(name=name)
         block.append(pi2_element)
@@ -259,6 +260,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         block.append(pi2_element)
         block.append(laser_element)
         block.append(waiting_element)
+        block.append(seq_trig_element)
 
         self._extend_to_min_samples(block, prepend=True)
 
