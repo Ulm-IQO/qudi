@@ -445,7 +445,7 @@ def set_up_conventional_measurement(qm_dict):
     pulsedmeasurementlogic.fastcounter().set_delay_start(0)
     pulsedmeasurementlogic.fastcounter().change_save_mode(0)
 
-    t_loop_mes = 0.001 #s
+    t_loop_mes = 2 # for stopping fast by software: 0.001 #s
     logger.warning("Setting mes logic timer interval  to {} s.".format(t_loop_mes))
     pulsedmeasurementlogic.timer_interval = t_loop_mes
 
