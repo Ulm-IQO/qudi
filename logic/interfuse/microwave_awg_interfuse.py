@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 import re
+import time
 
 from core.module import Connector, ConfigOption
 from core.util.helpers import natural_sort
@@ -266,6 +267,7 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
 
         # Load sequences into AWG channels and start AWG
         loaded_sequence = self.awg().load_sequence(self._list_sequence)
+        time.sleep(2)
         err_code = self.awg().pulser_on()
         return err_code if loaded_sequence else -1
 
@@ -388,7 +390,6 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
             chnl for chnl, state in channel_states.items() if state and chnl.startswith('a'))
         active_digital = natural_sort(
             chnl for chnl, state in channel_states.items() if state and chnl.startswith('d'))
-        available_waveforms = self.awg().get_waveform_names()
 
         # Sanity checking
         if 2 * frequency > sampling_rate:
@@ -428,9 +429,6 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
         digital_samples[self._laser_channel][:] = True
 
         # Write waveform. Delete old waveform if present.
-        for wfm in available_waveforms:
-            if re.match(r'\b{0}_ch\d+\b'.format(name), wfm):
-                self.awg().delete_waveform(wfm)
         samples_written, waveforms_written = self.awg().write_waveform(
             name=name,
             analog_samples=analog_samples,
@@ -455,11 +453,13 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
         @return bool: Error indicator (True: error, False: OK)
         """
         # Delete old waveforms and sequences
-        for wfm in self._list_waveforms:
-            self.awg().delete_waveform(wfm)
-        self._list_waveforms = list()
         if self._list_sequence:
             self.awg().delete_sequence(self._list_sequence)
+        time.sleep(2)
+        if self._list_waveforms:
+            self.awg().delete_waveform(self._list_waveforms)
+        time.sleep(2)
+        self._list_waveforms = list()
         self._list_sequence = None
 
         # Create new waveforms and sequence steps
@@ -471,10 +471,12 @@ class MicrowaveAwgInterfuse(GenericLogic, MicrowaveInterface):
                                                            amplitude=amplitude)
             # If waveform creation failed, delete all already created waveforms and abort
             if not created_waveforms:
-                for wfm in self._list_waveforms:
-                    self.awg().delete_waveform(wfm)
-                self._list_waveforms = list()
-                break
+                print('ABORT MISSION!!! BLACK HAWK DOWN!')
+                # if self._list_waveforms:
+                #     self.awg().delete_waveform(self._list_waveforms)
+                # self._list_waveforms = list()
+                # break
+                return True
 
             # Extend list upon successful creation
             self._list_waveforms.extend(created_waveforms)
