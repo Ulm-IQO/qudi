@@ -125,33 +125,39 @@ class QZMQKernel(QtCore.QObject):
             self.secure_key,
             digestmod=self.signature_schemes[self._config["signature_scheme"]])
         logging.debug('New Kernel {}'.format(self.engine_id))
+        logging.debug('python: {0}, zqm: {1}'.format(sys.version.replace('\n', ' ').replace('\r', ''), zmq.pyzmq_version()))
 
     @QtCore.Slot()
     def connect_kernel(self):
         # Heartbeat:
         self.ctx = zmq.Context()
         self.heartbeat_stream = NetworkStream(context=self.ctx, zqm_type=zmq.REP, connection=self.connection,
-                                              auth=self.auth, engine_id=self.engine_id, port=self._config["hb_port"])
+                                              auth=self.auth, engine_id=self.engine_id, port=self._config["hb_port"],
+                                              name='heartbeat_stream')
 
         # IOPub/Sub:
         # also called SubSocketChannel in IPython sources
         self.iopub_stream = NetworkStream(context=self.ctx, zqm_type=zmq.PUB, connection=self.connection,
-                                          auth=self.auth, engine_id=self.engine_id, port=self._config["iopub_port"])
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["iopub_port"],
+                                          name='iopub_stream')
         self.iopub_stream.sigMsgRecvd.connect(self.iopub_handler, QtCore.Qt.QueuedConnection)
 
         # Control:
         self.control_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
-                                            auth=self.auth, engine_id=self.engine_id, port=self._config["control_port"])
+                                            auth=self.auth, engine_id=self.engine_id, port=self._config["control_port"],
+                                            name='control_stream')
         self.control_stream.sigMsgRecvd.connect(self.control_handler, QtCore.Qt.QueuedConnection)
 
         # Stdin:
         self.stdin_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
-                                          auth=self.auth, engine_id=self.engine_id, port=self._config["stdin_port"])
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["stdin_port"],
+                                          name='stdin_stream')
         self.stdin_stream.sigMsgRecvd.connect(self.stdin_handler, QtCore.Qt.QueuedConnection)
 
         # Shell:
         self.shell_stream = NetworkStream(context=self.ctx, zqm_type=zmq.ROUTER, connection=self.connection,
-                                          auth=self.auth, engine_id=self.engine_id, port=self._config["shell_port"])
+                                          auth=self.auth, engine_id=self.engine_id, port=self._config["shell_port"],
+                                          name='shell_stream')
         self.shell_stream.sigMsgRecvd.connect(self.shell_handler, QtCore.Qt.QueuedConnection)
 
         self._config["hb_port"] = self.heartbeat_stream.port

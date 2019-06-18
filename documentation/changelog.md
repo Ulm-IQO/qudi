@@ -28,6 +28,7 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * Updated powermeter PM100D module to add ProcessInterface and wavelength support
 * Added two interfuses for interfaces process value and process control to modify the values based
 on an interpolated function
+* Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
 * 
 
 Config changes:
