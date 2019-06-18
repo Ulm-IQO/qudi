@@ -21,12 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import zmq
 from qtpy import QtCore
 import logging
-import io
 import json
-import hmac
 import uuid
 import errno
-import hashlib
 import datetime
 
 
@@ -35,6 +32,7 @@ class QZMQStream(QtCore.QObject):
         QSignal based notifications about arriving ZMQ messages.
     """
     sigMsgRecvd = QtCore.Signal(object)
+    name = None
 
     def __init__(self, zmqsocket):
         """ Make a stream from a socket.
@@ -46,7 +44,10 @@ class QZMQStream(QtCore.QObject):
         self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
             QtCore.QSocketNotifier.Read)
-        logging.debug("Notifier: {0!s}".format(self.readnotifier.socket()))
+        logging.debug("Notifier: {0!s} at filenumber {1!s} with socket {2!s} of class {3!s}".format(self.readnotifier.socket(),
+                                                                                                    self.socket.get(zmq.FD),
+                                                                                                    self.socket,
+                                                                                                    self.name))
         self.readnotifier.activated.connect(self.checkForMessage)
 
     def checkForMessage(self, socket):
@@ -67,6 +68,7 @@ class QZMQStream(QtCore.QObject):
                         msg = self.socket.recv_multipart(zmq.NOBLOCK)
                     except zmq.ZMQError as e:
                         if e.errno == zmq.EAGAIN:
+                            logging.debug("state changed since poll event")
                             # state changed since poll event
                             pass
                         else:
@@ -75,6 +77,7 @@ class QZMQStream(QtCore.QObject):
                         logging.debug("MSG: {0!s} {1!s}".format(self.readnotifier.socket(), msg))
                         self.sigMsgRecvd.emit(msg)
         except:
+            logging.debug("Exception in QZMQStream::checkForMessages")
             pass
         else:
             self.readnotifier.setEnabled(True)
@@ -113,8 +116,8 @@ class QZMQHeartbeat(QtCore.QObject):
 
 class NetworkStream(QZMQStream):
 
-    def __init__(self, context, zqm_type, connection, auth, engine_id, port=0):
-
+    def __init__(self, context, zqm_type, connection, auth, engine_id, name=None, port=0):
+        self.name = name if name is not None else self.msg_id()
         self._socket = context.socket(zqm_type)
         self._port = self.bind(self._socket, connection, port)
         super().__init__(self._socket)
@@ -201,7 +204,7 @@ class NetworkStream(QZMQStream):
                  msg_lst[3]]
         if identities:
             parts = identities + parts
-        logging.debug("send parts: %s" % parts)
+        logging.debug('{0!s} send parts: {1!s}'.format(self.name, parts))
         self.socket.send_multipart(parts)
 
     def deserialize_wire_msg(self, wire_msg):
