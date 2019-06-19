@@ -170,22 +170,28 @@ class ConfigOption:
 class Connector:
     """ A connector where another module can be connected """
 
-    def __init__(self, *, name=None, interface=None):
+    def __init__(self, *, name=None, interface=None, optional=False):
         """
             @param name: name of the connector
             @param interface: interface class or name of the interface for this connector
+            @param (bool) optional: the optionality of the connector
         """
         self.name = name
         self.interface = interface
         self.obj = None
+        self.optional = optional
 
     def __call__(self):
         """ Return reference to the module that this connector is connected to. """
-        if self.obj is None:
+        if self.obj is None and not self.optional:
             raise Exception(
                 'Connector {0} (interface {1}) is not connected.'
                 ''.format(self.name, self.interface))
         return self.obj
+    
+    @property
+    def is_connected(self):
+        return self.obj is not None
 
     def connect(self, target):
         """ Check if target is connectable this connector and connect."""
@@ -208,7 +214,8 @@ class Connector:
 
     def copy(self, **kwargs):
         """ Create a new instance of Connector with copied values and update """
-        newargs = {'name': copy.copy(self.name), 'interface': copy.copy(self.interface)}
+        newargs = {'name': copy.copy(self.name), 'interface': copy.copy(self.interface),
+                   'optional': copy.copy(self.optional)}
         newargs.update(kwargs)
         return Connector(**newargs)
 

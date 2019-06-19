@@ -731,7 +731,7 @@ class Manager(QtCore.QObject):
         # check that all connectors are connected
         for c, v in self.tree['loaded'][base][mkey].connectors.items():
             # new-style connector
-            if isinstance(v, Connector) and v.obj is None:
+            if isinstance(v, Connector) and not v.is_connected and not v.optional:
                 logger.error('Connector {0} of module {1}.{2} is not '
                              'connected. Connection not complete.'.format(
                                  c, base, mkey))
