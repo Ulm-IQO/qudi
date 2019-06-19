@@ -67,7 +67,6 @@ class AWG70K(Base, PulserInterface):
     _username = ConfigOption(name='ftp_login', default='anonymous', missing='warn')
     _password = ConfigOption(name='ftp_passwd', default='anonymous@', missing='warn')
 
-
     # translation dict from qudi trigger descriptor to device command
     __event_triggers = {'OFF': 'OFF', 'A': 'ATR', 'B': 'BTR', 'INT': 'INT'}
 
@@ -373,7 +372,7 @@ class AWG70K(Base, PulserInterface):
                 mrk_bytes = digital_samples[mrk_ch_1].view('uint8')
             else:
                 mrk_bytes = None
-            self.log.debug('Prepare digital channel data: {0}'.format(time.time()-start))
+            # self.log.debug('Prepare digital channel data: {0}'.format(time.time()-start))
 
             # Create waveform name string
             wfm_name = '{0}_ch{1:d}'.format(name, a_ch_num)
@@ -390,12 +389,12 @@ class AWG70K(Base, PulserInterface):
                              is_first_chunk=is_first_chunk,
                              is_last_chunk=is_last_chunk,
                              total_number_of_samples=total_number_of_samples)
-            self.log.debug('Write WFMX file: {0}'.format(time.time() - start))
+            # self.log.debug('Write WFMX file: {0}'.format(time.time() - start))
 
             # transfer waveform to AWG and load into workspace
             start = time.time()
             self._send_file(filename=wfm_name + '.wfmx')
-            self.log.debug('Send WFMX file: {0}'.format(time.time() - start))
+            # self.log.debug('Send WFMX file: {0}'.format(time.time() - start))
 
             start = time.time()
             self.write('MMEM:OPEN "{0}"'.format(os.path.join(
@@ -404,16 +403,16 @@ class AWG70K(Base, PulserInterface):
             timeout_old = self.awg.timeout
             # increase this time so that there is no timeout for loading longer sequences
             # which might take some minutes
-            self.awg.timeout = 5e6
+            self.awg.timeout = None
             # the answer of the *opc-query is received as soon as the loading is finished
-            opc = int(self.query('*OPC?'))
+            # opc = int(self.query('*OPC?'))
             # Just to make sure
             while wfm_name not in self.get_waveform_names():
-                time.sleep(0.25)
+                time.sleep(0.1)
 
             # reset the timeout
             self.awg.timeout = timeout_old
-            self.log.debug('Load WFMX file into workspace: {0}'.format(time.time() - start))
+            # self.log.debug('Load WFMX file into workspace: {0}'.format(time.time() - start))
 
             # Append created waveform name to waveform list
             waveforms.append(wfm_name)
@@ -486,8 +485,9 @@ class AWG70K(Base, PulserInterface):
             self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
 
         # Wait for everything to complete
-        while int(self.query('*OPC?')) != 1:
-            time.sleep(0.25)
+        # while int(self.query('*OPC?')) != 1:
+        while name not in self.get_sequence_names():
+            time.sleep(0.1)
         return num_steps
 
     def get_waveform_names(self):
