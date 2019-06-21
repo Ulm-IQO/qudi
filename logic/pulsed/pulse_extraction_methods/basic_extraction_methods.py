@@ -388,3 +388,31 @@ class BasicPulseExtractor(PulseExtractorBase):
         # use the gated extraction method
         return_dict = self.gated_conv_deriv(laser_pulses, conv_std_dev)
         return return_dict
+
+    def ungated_fixed_time_one_pulse(self, count_data, t1=0e-9, t2=1e-6):
+        return_dict = dict()
+
+        number_of_lasers = self.measurement_settings.get('number_of_lasers')
+        if number_of_lasers != 1:
+            self.log.warning("fixed_time only extracts from a single laser pulse")
+
+        if not isinstance(number_of_lasers, int):
+            return_dict['laser_indices_rising'] = np.zeros(1, dtype='int64')
+            return_dict['laser_indices_falling'] = np.zeros(1, dtype='int64')
+            return_dict['laser_counts_arr'] = np.zeros((1, 3000), dtype='int64')
+            return return_dict
+        else:
+            return_dict['laser_indices_rising'] = np.zeros(number_of_lasers, dtype='int64')
+            return_dict['laser_indices_falling'] = np.zeros(number_of_lasers, dtype='int64')
+            return_dict['laser_counts_arr'] = np.zeros((number_of_lasers, 3000), dtype='int64')
+
+        counter_bin_width = self.fast_counter_settings.get('bin_width')
+
+        t1_bins = round(t1 / counter_bin_width)
+        t2_bins = round(t2 / counter_bin_width)
+
+        return_dict['laser_indices_rising'][0] = t1_bins
+        return_dict['laser_indices_falling'][0] = t2_bins
+        return_dict['laser_counts_arr'][0,:(t2_bins-t1_bins)] = count_data[t1_bins:t2_bins]
+
+        return return_dict

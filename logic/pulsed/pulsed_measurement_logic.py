@@ -920,6 +920,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @param int|float interval: Interval of the timer in s
         """
         with self._threadlock:
+            self.log.debug("Setting timer_interval {} s".format(interval))
             self.__timer_interval = interval
             if self.__timer_interval > 0:
                 self.__analysis_timer.setInterval(int(1000. * self.__timer_interval))

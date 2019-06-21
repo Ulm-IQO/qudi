@@ -519,11 +519,17 @@ class FastComtec(Base, FastCounterInterface):
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return name
 
-    def change_sweep_mode(self, gated):
+    def change_sweep_mode(self, gated, is_single_sweeps=False, n_sweeps_stop=0):
+        prena = 0
+        if is_single_sweeps:
+            prena += 6      # set bit 1,2. Atm: always use 'sweep preset'
+        if gated:
+            prena += 16     # set bit 4
+
         if gated:
             cmd = 'sweepmode={0}'.format(hex(1978500))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'prena={0}'.format(hex(16)) #To select starts preset
+            cmd = 'prena={0}'.format(hex(prena)) #To select starts preset
             # cmd = 'prena={0}'.format(hex(4)) #To select sweeps preset
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             self.gated = True
@@ -531,9 +537,14 @@ class FastComtec(Base, FastCounterInterface):
             # fastcomtch standard settings for ungated acquisition (check manual)
             cmd = 'sweepmode={0}'.format(hex(1978496))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
-            cmd = 'prena={0}'.format(hex(0))
+            cmd = 'prena={0}'.format(hex(prena))
             self.dll.RunCmd(0, bytes(cmd, 'ascii'))
             self.gated = False
+
+        if is_single_sweeps:
+            cmd = 'swpreset={}'.format(int(n_sweeps_stop))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
         return gated
 
 

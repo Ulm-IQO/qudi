@@ -1,7 +1,15 @@
 from logic.generic_logic import GenericLogic
 from hardware.national_instruments_x_series import NationalInstrumentsXSeries
-
 from core.module import Connector, StatusVar
+import time
+
+import imp
+mfl_lib = imp.load_source('packages', './jupyter/Timo/own/mfl_sensing_simplelib.py')
+import qinfer as qi
+
+
+ARRAY_SIZE_MAX = 100
+
 
 class MFL_IRQ_Driven(GenericLogic):
 
@@ -10,24 +18,46 @@ class MFL_IRQ_Driven(GenericLogic):
 
     # this class requires a NI X Series counter
     counter = Connector(interface='SlowCounterInterface')
+    pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 
     _epoch_done_trig_ch = StatusVar('_epoch_done_trig_ch', 'dev1/port0/line0')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self.sequence_name = None
         self.i_epoch = 0
+        self.n_epochs = -1
+        self.n_sweeps = None
+        self.z_thresh = None    # for majority vote of Ramsey result
+
+        self.nolog_callback = False
+        self.is_running = False
         self.jumptable = None
 
+        # handles to hw
         self.nicard = None
         self.serial = None
+
+        # mfl algo
+        self.mfl_tau_from_heuristic = None  # function handle
+        self.mfl_updater = None
+        self.mfl_prior = None
+        self.mfl_model = None
+
+        # arrays (instead of lists for performance) to track results
+        self.timestamps = None      # [(i_epoch, timestamp, [s] since epoch 0)]
+        self.taus = None
+        self.taus_requested = None
+        self.bs = None
+        self.dbs = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
         self.nicard = self.counter()
         if not isinstance(self.nicard, NationalInstrumentsXSeries):
-            self.log.warning("Config defines not supported counter of type {} for MFL logic, not NI X Series.",
-                             type(self.nicard))
+            self.log.warning("Config defines not supported counter of type {} for MFL logic, not NI X Series.".format(
+                             type(self.nicard)))
 
         self.serial = PatternJumpAdapter()
         self.serial.init_ni()
@@ -35,12 +65,93 @@ class MFL_IRQ_Driven(GenericLogic):
     def on_deactivate(self):
         """ """
         self.serial.stop_ni()
+        self.end_run()
+
+    def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, z_thresh=0.5):
+        self.i_epoch = 0
+        self.n_epochs = n_epochs
+        self.nolog_callback = nolog_callback
+        self.sequence_name = name
+        self.n_sweeps = n_sweeps
+        self.z_thresh = z_thresh
+
+        self.init_arrays(self.n_epochs)
+        self.init_mfl_algo()
+
+    def setup_new_run(self, tau_first, tau_first_req):
+
+        # reset probability distris
+        self.init_mfl_algo()
+
+        self.nicard.register_callback_on_change_detection(self._epoch_done_trig_ch,
+                                                          self.__cb_func_epoch_done, edges=[True, False])
+
+        mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
+        mes.timer_interval = 100  # basically disable analysis loop, pull manually instead
+
+        self.save_estimates_before_first_run(tau_first, tau_first_req)
+
+    def init_arrays(self, n_epochs):
+
+        if n_epochs == -1:
+            n_epochs = ARRAY_SIZE_MAX
+            self.log.warning("Setting array length for infinite epochs to {}".format())
+
+        self.timestamps = np.zeros((n_epochs, 3))
+        # first estimate from flat prior is also in array
+        self.taus = np.zeros((n_epochs + 1, 1))
+        self.taus_requested = np.zeros((n_epochs + 1, 1))
+        self.bs = np.zeros((n_epochs + 1, 1))
+        self.dbs = np.zeros((n_epochs + 1, 1))
+
+    def init_mfl_algo(self):
+        n_particles = 1000
+        freq_min = 0
+        freq_max = 2 * np.pi * 10  # MHz
+        # the expected T2, when 0 this is the ideal case
+        inv_T2 = 0
+
+        self.mfl_prior = qi.UniformDistribution([freq_min, freq_max])
+        self.mfl_model = mfl_lib.ExpDecoKnownPrecessionModel(min_freq=freq_min, invT2=inv_T2)
+
+        # resetting updater&heuristic for ease of multiple calls to this cell
+        self.mfl_updater = mfl_lib.basic_SMCUpdater(self.mfl_model, n_particles, self.mfl_prior, resample_a=0.98, resample_thresh=0.5)
+        self.mfl_updater.reset()
+        self.mfl_tau_from_heuristic = mfl_lib.stdPGH(self.mfl_updater, inv_field='w_')
+
 
     def set_jumptable(self, jumptable_dict, tau_list):
-        #self._jumptable = {'name': [], 'idx_seqtable': [], 'jump_address': []}
+        """
+        self.jumptable format:
+        {'name': [], 'idx_seqtable': [], 'jump_address': []}
+        """
 
         jumptable_dict['tau'] = tau_list
         self.jumptable = jumptable_dict
+
+    def pull_jumptable(self, seqname, jumpseq_name='laser_wait_0'):
+        """
+        :param seqname: name of the whole sequence in pulser
+        :param jumpseq_name: common string of all seq elements that can be jumped to.
+        :return:
+        """
+        seq = self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_sequences[seqname]
+        taus = seq.measurement_information['controlled_variable_virtual']   # needs to be added in generation method
+
+        # get all sequence steps that correspond to a tau
+        seqsteps = [(i, el) for (i, el) in enumerate(seq.ensemble_list) if jumpseq_name in el['ensemble']]
+
+        if len(taus) != len(seqsteps):
+            self.log.error("Couldn't pull jump address table.")
+            return
+
+        # prepare output
+        jumptable = {'name': [], 'jump_address': [], 'idx_seqtable': []}
+        jumptable['name'] = [el['ensemble'] for (i, el) in seqsteps]
+        jumptable['jump_address'] = [el['pattern_jump_address'] for (i, el) in seqsteps]
+        jumptable['idx_seqtable'] = [i for (i, el) in seqsteps]
+
+        self.set_jumptable(jumptable, taus)
 
     def get_jump_address(self, idx_epoch):
         adr = self.jumptable['jump_address'][idx_epoch]
@@ -49,10 +160,69 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return adr
 
-    def setup_new_run(self):
-        self.i_epoch = 0
+    def save_estimates_before_first_run(self, tau_first_real, tau_first_req):
+        self.taus_requested[0] = tau_first_req
+        self.taus[0] = tau_first_real
+        b_mhz_rad = self.mfl_updater.est_mean()
+        self.bs[0] = b_mhz_rad / (2*np.pi)
+        db_mhz_rad =  np.sqrt(self.mfl_updater.est_covariance_mtx())
+        self.dbs[0] = db_mhz_rad / (2*np.pi)
+
+    def save_current_results(self, real_tau_s, requested_tau_s):
+
+        b_mhz_rad = self.mfl_updater.est_mean()[0]
+        db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[0,0])
+        if self.mfl_updater.est_covariance_mtx().shape != (1,1):
+            raise NotImplementedError("Never thought about >1 dimensional estimation, sorry.")
+
+        self.bs[self._arr_idx(self.i_epoch) + 1, 0] = b_mhz_rad / (2 * np.pi)   # MHz
+        self.dbs[self._arr_idx(self.i_epoch) + 1, 0] = db_mhz_rad / (2 * np.pi)
+        self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
+        self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
+
+    def get_current_results(self):
+        b = self.bs[self._arr_idx(self.i_epoch), 0]  # MHz
+        db = self.dbs[self._arr_idx(self.i_epoch), 0]
+        tau = self.taus[self._arr_idx(self.i_epoch), 0] # s
+        tau_req = self.taus_requested[self._arr_idx(self.i_epoch), 0]
+
+        return b, db, tau, tau_req
+
+    def get_first_tau(self):
+        """
+        calcs from initialized prior a requested first tau
+        :return:
+        """
+        if self.i_epoch == 0 and not self.is_running:
+            return self.calc_tau_from_posterior()
+        else:
+            self.log.error("Can't get first tau if mfl already started.")
+            raise RuntimeError
+
+    def end_run(self):
         self.nicard.register_callback_on_change_detection(self._epoch_done_trig_ch,
-                                                          self.__cb_func_epoch_done, edges=[True, False])
+                                                          None, edges=[True, False])
+
+        if self.is_running:
+            # assumes:
+            # - that fast counter gets every single sweep by AWG
+            # - constant sweeps in every tau
+            tau_total = np.sum(self.taus * self.n_sweeps)
+            b, db, tau, tau_req = self.get_current_results()
+
+            np.set_printoptions(formatter={'float': '{:0.6f}'.format})
+            self.log.info("Ending MFL run at epoch {0}/{1}. B= {4:.2f} +- {5:.2f} MHz. Total tau {3:.3f} us. Timestamps: (i_epoch, t [s], t-t0 [s]){2}".format(
+                self.i_epoch, self.n_epochs, self.timestamps, 1e6*tau_total,
+                b, db))
+            self.log.info("In MFL run: taus, taus_requested, delta: {}".format(
+                [(t, self.taus_requested[i,0], t-self.taus_requested[i,0]) for (i, t) in enumerate(self.taus[:,0])]))
+            self.log.info("In MFL run: B, dB (MHz): {}".format(
+                [(b, self.dbs[i]) for (i, b) in enumerate(self.bs)]))
+            np.set_printoptions()
+
+            self.pulsedmasterlogic().toggle_pulsed_measurement(False)
+
+        self.is_running = False
 
     def output_jump_pattern(self, jump_address):
         self.serial.output_data(jump_address)
@@ -61,7 +231,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.i_epoch += 1
 
     def get_ramsey_result(self):
-        mes = pulsedmasterlogic.pulsedmeasurementlogic()
+        mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
         # get data at least once, even if timer to analyze not fired yet
         mes.manually_pull_data()
 
@@ -71,22 +241,119 @@ class MFL_IRQ_Driven(GenericLogic):
         return (x, y)
 
     def calc_tau_from_posterior(self):
-        return 10e-1
 
-    def calc_jump_addr(self, tau):
-        return 1
+        tau_and_x = self.mfl_tau_from_heuristic()
+        tau = tau_and_x['t']    # us
+        tau = tau[0] * 1e-6
+
+        tau = 3500e-9   # DEBUG
+
+        return tau
+
+    def get_tau_and_x(self, tau_s):
+        """
+        outputs an array as expected from mfl_lib. tau in us, x set to dummy value.
+        """
+        tau_and_x = np.array([tau_s * 1e6, -1])
+        tau_and_x.dtype = ([('t', '<f8'), ('w_', '<f8')])
+
+        return tau_and_x
+
+    def calc_jump_addr(self, tau, default_addr=1):
+
+        addr = default_addr
+
+        # find closest tau in jumptable
+        idx, val = self._find_nearest(self.jumptable['tau'], tau)
+        addr = self.jumptable['jump_address'][idx]
+        name_seqstep = self.jumptable['name'][idx]
+        if not self.nolog_callback:
+            self.log.info("Finding closest tau {} ns (req: {}) in {} at jump address {} (0b{:08b})".
+                          format(1e9*val,1e9*tau, name_seqstep, addr, addr))
+
+        return addr, val
+
+    def timestamp(self, i_epoch):
+
+        t_now = time.time()
+
+        if i_epoch == 0:
+            t0 = t_now
+        else:
+            t0 = self.timestamps[0][1]
+            if i_epoch > self.n_epochs:
+                self.log.warning("Potential ringbuffer overflow in timestamps. Treat result with care.")
+
+        t_since_0 = t_now - t0
+
+        self.timestamps[self._arr_idx(i_epoch)][0] = i_epoch
+        self.timestamps[self._arr_idx(i_epoch)][1] = t_now
+        self.timestamps[self._arr_idx(i_epoch)][2] = t_since_0
+
+    def majority_vote(self, z, z_thresh=0.5):
+        if z > z_thresh:
+            return 1
+        else:
+            return 0
+
+    def _arr_idx(self, i_epoch, mode='ringbuffer'):
+
+        if self.n_epochs < ARRAY_SIZE_MAX:
+            return self.i_epoch
+
+        if mode == 'ringbuffer':
+            return i_epoch % ARRAY_SIZE_MAX
+        else:
+            raise NotImplemented
+
 
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
-        self.log.debug("MFL callback invoked in epoch {}".format(self.i_epoch))
 
-        z = self.get_ramsey_result()
+        # done here, because before mes uploaded info not available and mes directly starts after upload atm
+        # ugly, because costs time in first epoch
+        if self.i_epoch == 0:
+            self.pull_jumptable(seqname=self.sequence_name)
+            self.is_running = True  # todo: should this be mutexed?
 
-        self.iterate_mfl()
-        tau = self.calc_tau_from_posterior()
-        addr = self.calc_jump_addr(tau)
-        self.output_jump_pattern(addr)
+        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
+            self.end_run()
+            return 0
+            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
+
+        self.timestamp(self.i_epoch)
+
+        # we are after the mes -> prepare for next epoch
+        _, z = self.get_ramsey_result()
+        z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
+
+        if not self.nolog_callback:
+            self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
+
+        # prior not updated yet
+        tau_req = self.calc_tau_from_posterior()
+        addr, real_tau = self.calc_jump_addr(tau_req)
+        tau_and_x = self.get_tau_and_x(real_tau)
+
+        self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
+
+        # save result after measuring of this epoch and updating priors
+        self.save_current_results(real_tau, tau_req)
+        self.iterate_mfl()  # iterates i_epoch
+
+        self.output_jump_pattern(addr)      # should directly before return
+
+        # todo:
+        # - for some reason first epoch only half the sweeps. comtech not ready yet?
+        # - can fastcomtech start recounting while running?
+        # - fix readout: gated?
+        # - include actual mfl logic
 
         return 0
+
+    def _find_nearest(self, array, value):
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return idx, array[idx]
 
 
 import abc
@@ -126,20 +393,30 @@ class PatternJumpAdapter(SerialInterface):
         self.nitask_serial_out = daq.TaskHandle()
         self.nitask_strobe_out = daq.TaskHandle()
 
-        daq.DAQmxCreateTask('DigitalSerialOut', daq.byref(self.nitask_serial_out))
+        try:
+            daq.DAQmxCreateTask('', daq.byref(self.nitask_serial_out))
+        except daq.DuplicateTaskError:
+            self.recreate_nitask('', self.nitask_serial_out)
+
         daq.DAQmxCreateDOChan(self.nitask_serial_out, self.data_ch, "", daq.DAQmx_Val_ChanForAllLines)
         daq.DAQmxStartTask(self.nitask_serial_out)
 
-        daq.DAQmxCreateTask('DigitalStrobeOut', daq.byref(self.nitask_strobe_out))
+        try:
+            daq.DAQmxCreateTask('', daq.byref(self.nitask_strobe_out))
+        except daq.DuplicateTaskError:
+            self.recreate_nitask('', self.nitask_strobe_out)
+
         daq.DAQmxCreateDOChan(self.nitask_strobe_out, self.strobe_ch, "", daq.DAQmx_Val_ChanForAllLines)
         daq.DAQmxStartTask(self.nitask_strobe_out)
 
+    def recreate_nitask(self, name, task):
+        daq.DAQmxClearTask(task)
+        daq.DAQmxCreateTask(name, daq.byref(task))
 
     def stop_ni(self):
-        daq.DAQmxStopTask(self.nitask_serial_out)
         daq.DAQmxClearTask(self.nitask_serial_out)
-        daq.DAQmxStopTask(self.nitask_strobe_out)
         daq.DAQmxClearTask(self.nitask_strobe_out)
+
 
     def output_data(self, data):
         digital_data = daq.c_uint32(data << 17)

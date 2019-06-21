@@ -1684,6 +1684,10 @@ class AWG70K(Base, PulserInterface):
 
     def enable_pattern_jump(self, seqname):
         self.write('SLIST:SEQUENCE:EVENT:PJUMP:ENABLE "{}", ON'.format(seqname))
+        # always jump on strobe, not only if pattern changed
+        self.write('AWGControl:PJUMp:JSTRobe ON')
+        # jump on rising edge
+        self.write('AWGControl:PJUMp:SEDGe RISing')
 
     def write_patternjump_table_entry(self, seqname, idx_segment, jump_address):
         self.write('SLIST:SEQUENCE:EVENT:PJUMP:DEFINE "{}", {}, {}'.format(seqname, jump_address, idx_segment))

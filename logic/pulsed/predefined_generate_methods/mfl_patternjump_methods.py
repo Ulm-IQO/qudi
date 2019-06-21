@@ -55,7 +55,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         # only valid while iterating through generation of sequence
         return self._jumptable_address
 
-    def generate_mfl_ramsey(self, name="mfl_ramsey_pjump", n_sweeps=1000, tau_start=10e-9, tau_step=10e-9,
+    def generate_mfl_ramsey_pjump(self, name="mfl_ramsey_pjump", n_seq_sweeps=1000, tau_start=10e-9, tau_step=10e-9,
                             num_of_points=10, tau_first=50e-9,
                             laser_name='laser_wait', laser_length=1e-6, wait_length=1e-6, alternating=False):
 
@@ -68,7 +68,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # generate special blocks for flow control of mfl
         cur_name = 'START'
-        seg_idx_0 = int(self._get_index_of_ramsey(tau_first, tau_array))    # points to laser_0 before first ramsey
+        seg_idx_0, real_tau = self._get_index_of_ramsey(tau_first, tau_array)    # points to laser_0 before first ramsey
+        if tau_first != real_tau:
+            self.log.warning("Sequence start chosen to be tau= {} ns, instead of requested {} ns".format(
+                            real_tau, tau_first))
         cur_blocks, cur_ensembles, _ = self._create_generic_idle(name=cur_name)
         cur_seq_params = self._get_default_seq_params({'go_to': seg_idx_0})
         self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
@@ -78,9 +81,10 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': -1})
         self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
 
+        # epoch_done trigger by AWG (rear panel) sequence marker
         cur_name = 'epoch_done'
         cur_blocks, cur_ensembles, _ = self._create_generic_idle(name=cur_name)
-        cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': 0})
+        cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': 0, 'flag_high': ['A']})
         self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
 
 
@@ -101,20 +105,35 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                                                       mw_f=self.microwave_frequency, mw_phase=0.0,
                                                                       laser_length=laser_length, wait_length=wait_length)
 
-            cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_EPOCH_DONE_SEQMODE, 'repetitions': n_sweeps-1})
+            cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_EPOCH_DONE_SEQMODE, 'repetitions': n_seq_sweeps-1})
             self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
 
         all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
 
         sequence = PulseSequence(name=general_params['name'], ensemble_list=ensemble_list, rotating_frame=False)
+        # attention: relies on fact that last ramsey in list is longest!
+        comtech_count_length = 1.2 * self._get_longest_count_length(all_ensembles[-1], created_blocks=all_blocks)
+        self.log.info("Setting comtech count length to {} us".format(comtech_count_length * 1e6))
+
+        # every epch of mfl has only single tau
+        # however, we need all taus sometimes somewhere else
+        sequence.measurement_information['controlled_variable_virtual'] = tau_array
+
         self._add_metadata_to_settings(sequence, alternating=alternating, created_blocks=list(),
                                        laser_ignore_list=list(),
-                                       controlled_variable=tau_array, units=('s', ''), labels=('Tau', 'Signal'),
-                                       number_of_lasers=2 * num_of_points if alternating else num_of_points,
-                                       counting_length=laser_length * 1.4)
+                                       controlled_variable=[tau_array[0]], units=('s', ''), labels=('Tau', 'Signal'),
+                                       number_of_lasers=2 * 1 if alternating else 1,
+                                       counting_length=comtech_count_length)
 
 
         return all_blocks, all_ensembles, [sequence]
+
+    def _get_longest_count_length(self, longest_ensemble, created_blocks):
+        sum = self.laser_length + self.laser_delay
+
+        self._get_ensemble_count_length(longest_ensemble, created_blocks)
+
+        return sum
 
     def _create_init_laser_pulses(self, general_params, name='laser_wait'):
         created_blocks = []
@@ -176,7 +195,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         idx, val = self._find_nearest(tau_array, first_tau)
 
         idx_in_sequence = 1 + OFFSET_TAU_MFL_SEQMODE + DELTA_TAU_I_MFL_SEQMODE * idx
-        return idx_in_sequence
+        return int(idx_in_sequence), val
 
     def _find_nearest(self, array, value):
         array = np.asarray(array)
