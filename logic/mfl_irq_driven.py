@@ -80,6 +80,8 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def setup_new_run(self, tau_first, tau_first_req):
 
+        # Attention: may not run smoothly in debug mode
+
         # reset probability distris
         self.init_mfl_algo()
 
@@ -101,8 +103,10 @@ class MFL_IRQ_Driven(GenericLogic):
         # first estimate from flat prior is also in array
         self.taus = np.zeros((n_epochs + 1, 1))
         self.taus_requested = np.zeros((n_epochs + 1, 1))
+        self.t_seqs = np.zeros((n_epochs + 1, 1))
         self.bs = np.zeros((n_epochs + 1, 1))
         self.dbs = np.zeros((n_epochs + 1, 1))
+
 
     def init_mfl_algo(self):
         n_particles = 1000
@@ -120,28 +124,34 @@ class MFL_IRQ_Driven(GenericLogic):
         self.mfl_tau_from_heuristic = mfl_lib.stdPGH(self.mfl_updater, inv_field='w_')
 
 
-    def set_jumptable(self, jumptable_dict, tau_list):
+    def set_jumptable(self, jumptable_dict, tau_list, t_seqs_list):
         """
         self.jumptable format:
-        {'name': [], 'idx_seqtable': [], 'jump_address': []}
+        {'name': [], 'idx_seqtable': [], 'jump_address': [], 'tau': [], 't_seq': []}
         """
 
-        jumptable_dict['tau'] = tau_list
+        jumptable_dict['tau'] = tau_list            # interaction time
+        jumptable_dict['t_seq'] = t_seqs_list      # the length of the sequence on the AWG
+
         self.jumptable = jumptable_dict
 
-    def pull_jumptable(self, seqname, jumpseq_name='laser_wait_0'):
+    def pull_jumptable(self, seqname, step_name='mfl_ramsey_pjump', jumpseq_name='laser_wait_0'):
         """
         :param seqname: name of the whole sequence in pulser
+        :param step_name: common string of all seq elements.
         :param jumpseq_name: common string of all seq elements that can be jumped to.
+                             Every jumpseq element belongs to a single sequence step
+                             which is typically played right after the jumpseq element.
         :return:
         """
         seq = self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_sequences[seqname]
         taus = seq.measurement_information['controlled_variable_virtual']   # needs to be added in generation method
+        t_seqs = self.pull_t_seq_list(seq.ensemble_list, step_name)
 
         # get all sequence steps that correspond to a tau
         seqsteps = [(i, el) for (i, el) in enumerate(seq.ensemble_list) if jumpseq_name in el['ensemble']]
 
-        if len(taus) != len(seqsteps):
+        if len(taus) != len(seqsteps) or len(taus) != len(t_seqs):
             self.log.error("Couldn't pull jump address table.")
             return
 
@@ -151,7 +161,47 @@ class MFL_IRQ_Driven(GenericLogic):
         jumptable['jump_address'] = [el['pattern_jump_address'] for (i, el) in seqsteps]
         jumptable['idx_seqtable'] = [i for (i, el) in seqsteps]
 
-        self.set_jumptable(jumptable, taus)
+        self.set_jumptable(jumptable, taus, t_seqs)
+
+    def pull_t_seq_list(self, active_ensembles, step_name):
+        """
+        Gets a list of all sequences lengths of block ensembles that share the given step name.
+        :param step_name:  common string of all seq elements
+        :return:
+        """
+
+        sample_rate = self.pulsedmasterlogic().pulse_generator_settings['sample_rate']
+
+        # all ensembles in sequencer logic
+        ens_dict = {key: val for key, val in self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_block_ensembles.items() if
+             step_name in key}
+
+        # ensembles in the active sequence of the AWG
+        active_steps = [el.ensemble for el in active_ensembles]
+
+        t_seq_list = []
+        for key, ensemble in ens_dict.items():
+            if key in active_steps:
+                t_seq_list.append(ensemble.sampling_information['number_of_samples'] / sample_rate)
+
+        return t_seq_list
+
+
+    def _get_ensemble_count_length(self, ensemble, created_blocks):
+        """
+
+        @param ensemble:
+        @param created_blocks:
+        @return:
+        """
+
+        blocks = {block.name: block for block in created_blocks}
+        length = 0.0
+        for block_name, reps in ensemble.block_list:
+            length += blocks[block_name].init_length_s * (reps + 1)
+            length += blocks[block_name].increment_s * ((reps ** 2 + reps) / 2)
+        return length
+
 
     def get_jump_address(self, idx_epoch):
         adr = self.jumptable['jump_address'][idx_epoch]
@@ -163,12 +213,14 @@ class MFL_IRQ_Driven(GenericLogic):
     def save_estimates_before_first_run(self, tau_first_real, tau_first_req):
         self.taus_requested[0] = tau_first_req
         self.taus[0] = tau_first_real
+        self.t_seqs[0] = 0
+
         b_mhz_rad = self.mfl_updater.est_mean()
         self.bs[0] = b_mhz_rad / (2*np.pi)
         db_mhz_rad =  np.sqrt(self.mfl_updater.est_covariance_mtx())
         self.dbs[0] = db_mhz_rad / (2*np.pi)
 
-    def save_current_results(self, real_tau_s, requested_tau_s):
+    def save_current_results(self, real_tau_s, requested_tau_s, t_seq_s):
 
         b_mhz_rad = self.mfl_updater.est_mean()[0]
         db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[0,0])
@@ -178,6 +230,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.bs[self._arr_idx(self.i_epoch) + 1, 0] = b_mhz_rad / (2 * np.pi)   # MHz
         self.dbs[self._arr_idx(self.i_epoch) + 1, 0] = db_mhz_rad / (2 * np.pi)
         self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
+        self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
         self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
 
     def get_current_results(self):
@@ -208,12 +261,15 @@ class MFL_IRQ_Driven(GenericLogic):
             # - that fast counter gets every single sweep by AWG
             # - constant sweeps in every tau
             tau_total = np.sum(self.taus * self.n_sweeps)
+            t_seq_total = np.sum(self.t_seqs * self.n_sweeps)
+
             b, db, tau, tau_req = self.get_current_results()
 
             np.set_printoptions(formatter={'float': '{:0.6f}'.format})
-            self.log.info("Ending MFL run at epoch {0}/{1}. B= {4:.2f} +- {5:.2f} MHz. Total tau {3:.3f} us. Timestamps: (i_epoch, t [s], t-t0 [s]){2}".format(
+            self.log.info("Ending MFL run at epoch {0}/{1}. B= {4:.2f} +- {5:.2f} MHz. Total tau / t_seq: {3:.3f}, {6:.3f} us."
+                          " Timestamps: \n (i_epoch, t [s], t-t0 [s]){2}".format(
                 self.i_epoch, self.n_epochs, self.timestamps, 1e6*tau_total,
-                b, db))
+                b, db, 1e6*t_seq_total))
             self.log.info("In MFL run: taus, taus_requested, delta: {}".format(
                 [(t, self.taus_requested[i,0], t-self.taus_requested[i,0]) for (i, t) in enumerate(self.taus[:,0])]))
             self.log.info("In MFL run: B, dB (MHz): {}".format(
@@ -246,7 +302,7 @@ class MFL_IRQ_Driven(GenericLogic):
         tau = tau_and_x['t']    # us
         tau = tau[0] * 1e-6
 
-        tau = 3500e-9   # DEBUG
+        #tau = 3500e-9   # DEBUG
 
         return tau
 
@@ -259,19 +315,25 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return tau_and_x
 
+    def get_ts(self, idx_jumptable):
+        tau_real = self.jumptable['tau'][idx_jumptable]
+        t_seq = self.jumptable['t_seq'][idx_jumptable]
+
+        return tau_real, t_seq
+
     def calc_jump_addr(self, tau, default_addr=1):
 
         addr = default_addr
 
         # find closest tau in jumptable
-        idx, val = self._find_nearest(self.jumptable['tau'], tau)
-        addr = self.jumptable['jump_address'][idx]
-        name_seqstep = self.jumptable['name'][idx]
+        idx_jumptable, val = self._find_nearest(self.jumptable['tau'], tau)
+        addr = self.jumptable['jump_address'][idx_jumptable]
+        name_seqstep = self.jumptable['name'][idx_jumptable]
         if not self.nolog_callback:
             self.log.info("Finding closest tau {} ns (req: {}) in {} at jump address {} (0b{:08b})".
                           format(1e9*val,1e9*tau, name_seqstep, addr, addr))
 
-        return addr, val
+        return idx_jumptable, addr
 
     def timestamp(self, i_epoch):
 
@@ -324,20 +386,24 @@ class MFL_IRQ_Driven(GenericLogic):
 
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result()
+        #z = 0
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
 
         if not self.nolog_callback:
             self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
 
         # prior not updated yet
-        tau_req = self.calc_tau_from_posterior()
-        addr, real_tau = self.calc_jump_addr(tau_req)
+        tau_req = self.calc_tau_from_posterior()    # new tau
+
+        #tau_req = 3500e-9
+        idx_jumptable, addr = self.calc_jump_addr(tau_req)
+        real_tau, t_seq = self.get_ts(idx_jumptable)
         tau_and_x = self.get_tau_and_x(real_tau)
 
         self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
 
         # save result after measuring of this epoch and updating priors
-        self.save_current_results(real_tau, tau_req)
+        self.save_current_results(real_tau, tau_req, t_seq)
         self.iterate_mfl()  # iterates i_epoch
 
         self.output_jump_pattern(addr)      # should directly before return
@@ -346,7 +412,7 @@ class MFL_IRQ_Driven(GenericLogic):
         # - for some reason first epoch only half the sweeps. comtech not ready yet?
         # - can fastcomtech start recounting while running?
         # - fix readout: gated?
-        # - include actual mfl logic
+        # - results array indexing really correct?
 
         return 0
 

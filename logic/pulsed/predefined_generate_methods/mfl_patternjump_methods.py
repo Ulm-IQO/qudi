@@ -83,8 +83,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # epoch_done trigger by AWG (rear panel) sequence marker
         cur_name = 'epoch_done'
+        # repetitions > 0: too see on osci. irq triggers on rising edge, so doesn't matter performance wise
         cur_blocks, cur_ensembles, _ = self._create_generic_idle(name=cur_name)
-        cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': 0, 'flag_high': ['A']})
+        cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': 1000, 'flag_high': ['A']})
         self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
 
 
@@ -112,8 +113,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         sequence = PulseSequence(name=general_params['name'], ensemble_list=ensemble_list, rotating_frame=False)
         # attention: relies on fact that last ramsey in list is longest!
-        comtech_count_length = 1.2 * self._get_longest_count_length(all_ensembles[-1], created_blocks=all_blocks)
-        self.log.info("Setting comtech count length to {} us".format(comtech_count_length * 1e6))
+        fastcounter_count_length = 1.1 * self._get_ensemble_count_length(all_ensembles[-1], created_blocks=all_blocks)
+        self.log.info("Setting comtech count length to {} us".format(fastcounter_count_length * 1e6))
 
         # every epch of mfl has only single tau
         # however, we need all taus sometimes somewhere else
@@ -123,17 +124,11 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
                                        laser_ignore_list=list(),
                                        controlled_variable=[tau_array[0]], units=('s', ''), labels=('Tau', 'Signal'),
                                        number_of_lasers=2 * 1 if alternating else 1,
-                                       counting_length=comtech_count_length)
+                                       counting_length=fastcounter_count_length)
 
 
         return all_blocks, all_ensembles, [sequence]
 
-    def _get_longest_count_length(self, longest_ensemble, created_blocks):
-        sum = self.laser_length + self.laser_delay
-
-        self._get_ensemble_count_length(longest_ensemble, created_blocks)
-
-        return sum
 
     def _create_init_laser_pulses(self, general_params, name='laser_wait'):
         created_blocks = []
