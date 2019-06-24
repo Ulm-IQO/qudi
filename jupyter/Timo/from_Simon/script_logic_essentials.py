@@ -468,7 +468,7 @@ def set_up_conventional_measurement(qm_dict):
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
     pulsedmeasurementlogic.fastcounter().change_sweep_mode(False, is_single_sweeps=qm_dict['ctr_single_sweeps'],
-                                                           n_sweeps_stop=qm_dict['ctr_n_sweeps'])
+                                                           n_sweeps_preset=qm_dict['ctr_n_sweeps'])
 
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
                                                  'record_length': qm_dict['params']['counting_length']})
