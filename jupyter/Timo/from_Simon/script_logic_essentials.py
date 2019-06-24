@@ -5,7 +5,7 @@ import datetime
 import matplotlib.pyplot as plt
 from core.util import units
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
-from logic.user_globals import UserGlobals
+from logic.user_logic import UserGlobals
 
 import logging
 logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
@@ -93,15 +93,15 @@ except NameError:
     except Exception as e:
         logger.error("Auto module loading failed. Defined in config? {}".format(e))
 try:
-    userglobals
+    uglobals
 except NameError:
     try:
-        manager.loadConfigureModule('logic', 'userglobals')
+        manager.loadConfigureModule('logic', 'uglobals')
     except Exception as e:
         logger.error("Auto module loading failed. Defined in config? {}".format(e))
 try:
-    userglobals.abort.clear()
-    userglobals.next.clear()
+    uglobals.abort.clear()
+    uglobals.next.clear()
 except NameError:
     pass
 
@@ -141,11 +141,11 @@ def do_experiment(experiment, qm_dict, meas_type, meas_info, generate_new=True, 
         pulsedmasterlogic.toggle_pulse_generator(False)
 
     logger.debug("Debug: do_experiment pulsedMesLogic.n_sweeps / next.is_set / abort.is_set: {}, {}, {}".format(
-                pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps, userglobals.next.is_set(),
-                userglobals.abort.is_set()))
+                pulsedmasterlogic.pulsedmeasurementlogic().elapsed_sweeps, uglobals.next.is_set(),
+                uglobals.abort.is_set()))
 
     user_terminated = False
-    if not userglobals.next.is_set() and not userglobals.abort.is_set():
+    if not uglobals.next.is_set() and not uglobals.abort.is_set():
         # prepare the measurement by generating and loading the sequence/waveform
         prepare_qm(experiment, qm_dict, generate_new)
         # perform measurement
@@ -189,15 +189,36 @@ def perform_sanity_check(qm_dict):
 
 def add_conventional_information(experiment, qm_dict):
     qm_dict['experiment'] = experiment
-    qm_dict['gated'] = False
-    qm_dict['sequence_mode'] = False
+
+    if 'gated' not in qm_dict:
+        qm_dict['gated'] = False
+    if 'sequence_mode' not in qm_dict:
+        qm_dict['sequence_mode'] = False
+    if 'ctr_single_sweeps' not in qm_dict:
+        qm_dict['ctr_single_sweeps'] = False
+    if 'ctr_n_sweeps' not in qm_dict:
+        qm_dict['ctr_n_sweeps'] = 0
+
     return qm_dict
 
+def add_sequence_mode_info(experiment, qm_dict):
+    qm_dict['experiment'] = experiment
+
+    if 'gated' not in qm_dict:
+        qm_dict['gated'] = False
+    if 'sequence_mode' not in qm_dict:
+        qm_dict['sequence_mode'] = True
+    if 'ctr_single_sweeps' not in qm_dict:
+        qm_dict['ctr_single_sweeps'] = False
+    if 'ctr_n_sweeps' not in qm_dict:
+        qm_dict['ctr_n_sweeps'] = 0
+
+    return qm_dict
 
 ###################################  Upload and set parameters functionality #######################################
 
 
-def prepare_qm(experiment, qm_dict,  generate_new = True):
+def prepare_qm(experiment, qm_dict, generate_new=True):
     ###### Prepare a quantum measurement by generating the sequence and loading it up to the pulser
     if generate_new:
         generate_sample_upload(experiment, qm_dict)
@@ -205,9 +226,12 @@ def prepare_qm(experiment, qm_dict,  generate_new = True):
         load_into_channel(qm_dict['name'], sequence_mode=qm_dict['sequence_mode'])
         try:
             qm_dict.update(memory_dict[qm_dict['name']])
-        except:
+        except Exception as e:
             pulsedmasterlogic.log.error('Experiment parameters are not known. Needs to be generate newly.')
-            return cause_an_error
+            raise e
+
+    logger.debug("qm_dict {}".format(qm_dict))
+
     if not qm_dict['sequence_mode']:
         qm_dict['sequence_length'] = \
             pulsedmasterlogic.get_ensemble_info(pulsedmasterlogic.saved_pulse_block_ensembles[qm_dict['name']])[0]
@@ -236,14 +260,28 @@ def generate_sample_upload(experiment, qm_dict):
         pulsedmasterlogic.delete_block_ensemble(qm_dict['name'])
         try:
             pulsedmasterlogic.generate_predefined_sequence(experiment, qm_dict.copy())
-        except:
+        except Exception as e:
             pulsedmasterlogic.log.error('Generation failed')
-            return cause_an_error
+            raise e
+
         time.sleep(0.2)
         # sample the ensemble
-        while pulsedmasterlogic.status_dict['predefined_generation_busy']: time.sleep(0.2)
-        if qm_dict['name'] not in pulsedmasterlogic.saved_pulse_block_ensembles: cause_an_error
-        pulsedmasterlogic.sample_ensemble(qm_dict['name'], True)
+        while pulsedmasterlogic.status_dict['predefined_generation_busy']:
+            time.sleep(0.2)
+
+        not_found = False
+        if qm_dict['name'] in pulsedmasterlogic.saved_pulse_block_ensembles:
+            pulsedmasterlogic.sample_ensemble(qm_dict['name'], True)
+        else:
+            if qm_dict['name'] in pulsedmasterlogic.saved_pulse_sequences:
+                pulsedmasterlogic.sample_sequence(qm_dict['name'], True)
+            else:
+                not_found = True
+
+        if not_found:
+            raise RuntimeError("Couldn't find experiment {} in saved pulse block ensembles / sequences".format(qm_dict['name']))
+
+
     else:
         if 'exchange_parts' not in qm_dict or qm_dict['exchange_parts']=={}:
             # make sure a previous sequence is deleted
@@ -338,12 +376,12 @@ def perform_measurement(qm_dict, meas_type, load_tag='', save_tag='', analysis_i
 
 
     ################ Start and perform the measurement #################
-    if not userglobals.abort.is_set() and not userglobals.next.is_set():
+    if not uglobals.abort.is_set() and not uglobals.next.is_set():
         user_terminated = meas_type(qm_dict)
     ########################## Save data ###############################
 
     # save and fit depending on abort signals
-    if userglobals.abort.is_set():
+    if uglobals.abort.is_set():
         user_terminated = True
         return user_terminated
 
@@ -363,7 +401,7 @@ def handle_abort():
 
     ret = False
 
-    if userglobals.abort.is_set():
+    if uglobals.abort.is_set():
         if pulsedmasterlogic is not None:
             #pulsedmasterlogic.toggle_pulsed_measurement(False)
             pass # handled in control loop
@@ -371,11 +409,11 @@ def handle_abort():
     else:
         ret = False
 
-    if userglobals.next.is_set():
+    if uglobals.next.is_set():
         if pulsedmasterlogic is not None:
             #pulsedmasterlogic.toggle_pulsed_measurement(False)
             pass  # handled in control loop
-        userglobals.next.clear()
+        uglobals.next.clear()
         ret = True
 
     if ret:
@@ -392,7 +430,7 @@ def conventional_measurement(qm_dict):
     pulsedmasterlogic.toggle_pulsed_measurement(True)
     while not pulsedmasterlogic.status_dict['measurement_running']:
         time.sleep(0.1)
-        logger.debug("Wating for mes to start.")
+        logger.debug("Waiting for mes to start.")
 
     'threading also freezes gui'
     #import threading
@@ -429,15 +467,18 @@ def set_up_conventional_measurement(qm_dict):
     from hardware.fast_counter_dummy import FastCounterDummy
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
-    pulsedmeasurementlogic.fastcounter().change_sweep_mode(False)
+    pulsedmeasurementlogic.fastcounter().change_sweep_mode(False, is_single_sweeps=qm_dict['ctr_single_sweeps'],
+                                                           n_sweeps_stop=qm_dict['ctr_n_sweeps'])
 
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
                                                  'record_length': qm_dict['params']['counting_length']})
     time.sleep(0.2)
     # add sequence length to measurement dictionary
     #pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
-    pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
-                                                'safety': setup['laser_safety']})
+    #pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
+    #                                            'safety': setup['laser_safety']})
+    pulsedmasterlogic.set_extraction_settings({'method': 'fixed_time_one_pulse', 't1': 560e-9,
+                                               't2': 1.6e-6})
     pulsedmasterlogic.set_analysis_settings({'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
                                              'norm_start': 1.8e-6, 'norm_end': 2.8e-6})
 
@@ -445,9 +486,12 @@ def set_up_conventional_measurement(qm_dict):
     pulsedmeasurementlogic.fastcounter().set_delay_start(0)
     pulsedmeasurementlogic.fastcounter().change_save_mode(0)
 
-    t_loop_mes = 2 # for stopping fast by software: 0.001 #s
-    logger.warning("Setting mes logic timer interval  to {} s.".format(t_loop_mes))
+    if 'timer_interval' not in qm_dict:
+        t_loop_mes = 2 # for stopping fast by software: 0.001 #s
+    else:
+        t_loop_mes = qm_dict['timer_interval']
     pulsedmeasurementlogic.timer_interval = t_loop_mes
+    logger.debug("Setting mes logic timer interval  to {} s.".format(t_loop_mes))
 
     return
 
