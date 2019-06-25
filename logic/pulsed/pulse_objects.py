@@ -1408,6 +1408,10 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         # import path for generator modules from non-default directory if a path has been given
         if isinstance(sequencegeneratorlogic.additional_methods_dir, str):
             path_list.append(sequencegeneratorlogic.additional_methods_dir)
+        elif isinstance(sequencegeneratorlogic.additional_methods_dir, (list, tuple, set)):
+            for method_dir in sequencegeneratorlogic.additional_methods_dir:
+                if isinstance(method_dir, str):
+                    path_list.append(method_dir)
 
         # Import predefined generator modules and get a list of generator classes
         generator_classes = self.__import_external_generators(paths=path_list)
