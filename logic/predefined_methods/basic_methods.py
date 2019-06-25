@@ -731,7 +731,6 @@ def generate_xy8_tau(self, name='xy8_tau', rabi_period=1.0e-6, mw_freq=2870.0e6,
                      mw_channel='a_ch1', laser_length=3.0e-6, channel_amp=1.0, delay_length=0.7e-6,
                      wait_time=1.0e-6, sync_trig_channel='', gate_count_channel='', alternating=True):
     """
-
     """
     # Sanity checks
     if gate_count_channel == '':

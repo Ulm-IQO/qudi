@@ -267,6 +267,8 @@ class AWG7122C(Base, PulserInterface):
                                  current status of the device. Check then the
                                  class variable status_dic.)
         """
+        self.tell('OUTPUT1:STATE 1')
+        self.tell('OUTPUT2:STATE 1')
         self.tell('AWGC:RUN\n')
         while not self.get_status()[0]==1:
             time.sleep(0.25)
@@ -280,6 +282,8 @@ class AWG7122C(Base, PulserInterface):
                                  class variable status_dic.)
         """
         self.tell('AWGC:STOP\n')
+        self.tell('OUTPUT1:STATE 0')
+        self.tell('OUTPUT2:STATE 0')
         return self.get_status()[0]
 
     # TODO: works, but is this hardcoded ch2 really a good idea?
