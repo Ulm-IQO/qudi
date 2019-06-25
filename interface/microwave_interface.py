@@ -25,6 +25,7 @@ from core.util.interfaces import InterfaceMetaclass
 from core.util.units import in_range
 from enum import Enum
 
+
 class TriggerEdge(Enum):
     """ On which electrical signal edge does a trigger occur?
       So edgy!
@@ -33,6 +34,7 @@ class TriggerEdge(Enum):
     FALLING = 1
     NONE = 3
     UNKNOWN = 4
+
 
 class MicrowaveMode(Enum):
     """ Modes for microwave generators:
@@ -45,6 +47,7 @@ class MicrowaveMode(Enum):
     LIST = 1
     SWEEP = 3
     ASWEEP = 4
+
 
 class MicrowaveInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
@@ -65,7 +68,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abc.abstractmethod
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)

@@ -167,7 +167,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if not is_running:
             return 0
 
@@ -182,7 +182,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """ Get the current status of the MW source, i.e. the mode
         (cw, list or sweep) and the output state (stopped, running).
 
@@ -209,7 +209,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         @return float: the power set at the device in dBm
         """
 
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
 
         if 'list' in mode:
             power_list = self._ask(':LIST:POW?').strip().split(',')
@@ -234,7 +234,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
         # FIXME: Correct that as soon as possible in the interface!!!
 
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
 
         if 'cw' in mode:
             return_val = float(self._ask(':FREQ?'))
@@ -261,7 +261,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         Must return AFTER the device is actually running.
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'cw':
                 return 0
@@ -273,10 +273,10 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         self._write(':OUTP:STAT ON')
         self._write('*WAI')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_cw(self, frequency=None, power=None):
@@ -291,7 +291,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             current power in dBm,
             current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -308,7 +308,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             self._write(':POW {0:f}'.format(power))
 
         # Return actually set values
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
         return actual_freq, actual_power, mode
@@ -321,7 +321,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         @return int: error code (0:OK, -1:error)
         """
 
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'list':
                 return 0
@@ -332,10 +332,10 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         self._write(':FREQ:MODE LIST')
 
         self._write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_list(self, frequency=None, power=None):
@@ -351,7 +351,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             current mode
         """
 
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -416,7 +416,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
         # THIS AMBIGUITY IN THE RETURN VALUE TYPE IS NOT GOOD AT ALL!!!
         # FIXME: Ahh this is so shitty with the return value!!!
         actual_power = actual_power_list[0]
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
@@ -434,7 +434,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'sweep':
                 return 0
@@ -445,10 +445,10 @@ class MicrowaveSMR(Base, MicrowaveInterface):
             self._write('SOUR:FREQ:MODE SWE')
 
         self._write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
@@ -462,7 +462,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
 
         if is_running:
             self.off()
@@ -485,7 +485,7 @@ class MicrowaveSMR(Base, MicrowaveInterface):
 
         actual_power = self.get_power()
         freq_list = self.get_frequency()
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
 
     def reset_sweeppos(self):

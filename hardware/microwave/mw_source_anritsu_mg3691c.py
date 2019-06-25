@@ -130,7 +130,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             time.sleep(0.2)
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
@@ -153,12 +153,12 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        if self.get_status()[0] == 'cw':
+        if self.get_microwave_status()[0] == 'cw':
             power = float(self._gpib_connection.query(':POW?').strip('\r\n'))
-        if self.get_status()[0] == 'list':
+        if self.get_microwave_status()[0] == 'list':
             self._command_wait(':LIST:IND 0')
             power = self._gpib_connection.query(':LIST:POW?').strip('\r\n')
-        if self.get_status()[0] == 'sweep':
+        if self.get_microwave_status()[0] == 'sweep':
             power = self._gpib_connection.query(':POW?').strip('\r\n')
         return power
 
@@ -171,7 +171,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return [float, list]: frequency(s) currently set for this device in Hz
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if 'cw' in mode:
             return_val = float(self._gpib_connection.query(':FREQ?').strip('\r\n'))
         elif 'sweep' in mode:
@@ -194,7 +194,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'cw':
                 return 0
@@ -205,10 +205,10 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
             self._command_wait(':FREQ:MODE CW')
 
         self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_cw(self, frequency=None, power=None):
@@ -223,7 +223,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -236,7 +236,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         if power is not None:
             self._command_wait(':POW {0:.2f}'.format(power))
 
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
         return actual_freq, actual_power, mode
@@ -248,7 +248,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'list':
                 return 0
@@ -261,10 +261,10 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
         self._gpib_connection.write(':LIST:MODE MNT')
 
         self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_list(self, frequency=None, power=None):
@@ -276,7 +276,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         @return list, float, str: current frequencies in Hz, current power in dBm, current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
 
         if is_running:
             self.off()
@@ -303,7 +303,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
 
         actual_power = self.get_power()
         actual_freq = self.get_frequency()
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
@@ -335,7 +335,7 @@ class MicrowaveAnritsu(Base, MicrowaveInterface):
                                                  current mode
         """
         actual_power = self.get_power()
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return -1, -1, -1, actual_power, mode
 
     def reset_sweeppos(self):

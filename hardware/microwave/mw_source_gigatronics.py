@@ -149,7 +149,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
             time.sleep(0.2)
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
@@ -166,7 +166,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         if mode == 'list':
             return self._list_power
         else:
@@ -181,7 +181,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return [float, list]: frequency(s) currently set for this device in Hz
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if 'cw' in mode:
             return_val = float(self._gpib_connection.query(':FREQ?'))
         elif 'list' in mode:
@@ -195,7 +195,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'cw':
                 return 0
@@ -206,10 +206,10 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
             self.set_cw()
 
         self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_cw(self, frequency=None, power=None):
@@ -221,7 +221,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return float, float, str: current frequency in Hz, current power in dBm, current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -238,7 +238,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         else:
             self._command_wait(':POW {0:f} DBM'.format(self._cw_power))
 
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         self._cw_frequency = self.get_frequency()
         self._cw_power = self.get_power()
         return self._cw_frequency, self._cw_power, mode
@@ -250,7 +250,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'list':
                 return 0
@@ -261,10 +261,10 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
             self.set_list()
 
         self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_list(self, frequency=None, power=None):
@@ -276,7 +276,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
         @return list, float, str: current frequencies in Hz, current power in dBm, current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
 
         if is_running:
             self.off()
@@ -322,7 +322,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         self._gpib_connection.write(':TRIG:SOUR EXT')
         #self._gpib_connection.write('*SRE 239')
         #self._gpib_connection.write('*SRE 167')
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return self._freq_list, self._list_power, mode
 
     def reset_listpos(self):#
@@ -332,7 +332,7 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
         """
         self._gpib_connection.write(':MODE CW')
         self._gpib_connection.write(':MODE LIST')
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         return 0 if ('list' in mode) and is_running else -1
 
     def set_ext_trigger(self, pol, timing):

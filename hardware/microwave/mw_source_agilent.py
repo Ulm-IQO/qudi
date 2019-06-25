@@ -93,7 +93,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 0:
             time.sleep(0.2)
         # check if running
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if not is_running:
             return 0
         self._usb_connection.write(':RFO:STAT OFF')
@@ -102,7 +102,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         #self._mode ="cw"
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
@@ -127,7 +127,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if mode == 'list':
             #add the moment all powers in the list file should be the same
             self._usb_connection.write(':LIST:ROW:GOTO {0:e}'.format(1))
@@ -140,7 +140,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         @return float: frequency (in Hz), which is currently set for this device
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if 'cw' in mode:
             return_val = float(self._usb_connection.query(':FREQ:CW?'))
         elif 'sweep' in mode:
@@ -165,7 +165,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'cw':
                 return 0
@@ -175,7 +175,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         self._usb_connection.write(':RFO:STAT ON')
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
 
         return 0
 
@@ -191,7 +191,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -202,7 +202,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         if useinterleave is not None:
             self.log.warning("No interleave available at the moment!")
 
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
         return actual_freq, actual_power, mode
@@ -212,7 +212,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         @return int: error code (1: ready, 0:not ready, -1:error)
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'list':
                 return 0
@@ -224,10 +224,10 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
             while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1:
                 time.sleep(0.2)
             self._usb_connection.write(':RFO:STAT ON')
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
             while not is_running:
                 time.sleep(0.2)
-                dummy, is_running = self.get_status()
+                dummy, is_running = self.get_microwave_status()
             return 0
         except:
             self.log.warning("Turning on of List mode does not work")
@@ -241,7 +241,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         @param float power: MW power of the frequency list in dBm
 
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -297,7 +297,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         # dont take actual frequencz arraz at the moment since this is far too slow
         #actual_freq = self.get_frequency()
         actual_freq = freq
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
@@ -321,7 +321,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             if mode == 'sweep':
                 return 0
@@ -333,10 +333,10 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
             while int(float(self._usb_connection.query(':SWEep:RF:STATe?'))) != 1:
                 time.sleep(0.5)
             self._usb_connection.write(':RFO:STAT ON')
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
             while not is_running:
                 time.sleep(0.5)
-                dummy, is_running = self.get_status()
+                dummy, is_running = self.get_microwave_status()
             #self._usb_connection.write('*WAI')
             return 0
         except:
@@ -355,7 +355,7 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
         #self._usb_connection.write(':SOUR:POW ' + str(power))
         #self._usb_connection.write('*WAI')
 
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
 
         if is_running:
             self.off()
@@ -543,6 +543,3 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
             time.sleep(0.2)
 
         return
-
-
-

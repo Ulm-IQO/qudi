@@ -391,7 +391,7 @@ class PulsedMeasurementLogic(GenericLogic):
         err = self.microwave().cw_on()
         if err < 0:
             self.log.error('Failed to turn on external CW microwave output.')
-        self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
+        self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_microwave_status()[1])
         return err
 
     def microwave_off(self):
@@ -403,7 +403,7 @@ class PulsedMeasurementLogic(GenericLogic):
         err = self.microwave().off()
         if err < 0:
             self.log.error('Failed to turn off external CW microwave output.')
-        self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_status()[1])
+        self.sigExtMicrowaveRunningUpdated.emit(self.microwave().get_microwave_status()[1])
         return err
 
     @QtCore.Slot(bool)
@@ -437,7 +437,7 @@ class PulsedMeasurementLogic(GenericLogic):
         @return:
         """
         # Check if microwave is running and do nothing if that is the case
-        if self.microwave().get_status()[1]:
+        if self.microwave().get_microwave_status()[1]:
             self.log.warning('Microwave device is running.\nUnable to apply new settings.')
         else:
             # Determine complete settings dictionary
@@ -1613,6 +1613,3 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
             self.signal_alt_data[0] = self.signal_data[0]
         return
-
-
-

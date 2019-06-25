@@ -106,7 +106,7 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self.on()
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or
         sweep) and the output state (stopped, running)
@@ -166,10 +166,10 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         self._write('ENBR 0')
 
         # check whether device has stopped
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while is_running:
             time.sleep(0.1)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
 
         return 0
 
@@ -450,10 +450,10 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
         """
         self._write('ENBR 1')
 
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.1)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
 
         return 0
 

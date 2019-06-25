@@ -108,7 +108,7 @@ class MicrowaveSynthHDPro(Base, MicrowaveInterface):
         limits.sweep_maxentries = 100
         return limits
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)

@@ -166,7 +166,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if not is_running:
             return 0
 
@@ -183,7 +183,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._command_wait(':FREQ:MODE LIST')
         return 0
 
-    def get_status(self):
+    def get_microwave_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
@@ -202,7 +202,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return float: the power set at the device in dBm
         """
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         if mode == 'list':
             return float(self._gpib_connection.query(':LIST:POW?'))
         else:
@@ -218,7 +218,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return [float, list]: frequency(s) currently set for this device in Hz
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if 'cw' in mode:
             return_val = float(self._gpib_connection.query(':FREQ?'))
         elif 'sweep' in mode:
@@ -239,7 +239,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'cw':
                 return 0
@@ -251,10 +251,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         self._gpib_connection.write(':OUTP:STAT ON')
         self._gpib_connection.write('*WAI')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_cw(self, frequency=None, power=None):
@@ -269,7 +269,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             current power in dBm,
             current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -286,7 +286,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._command_wait(':POW {0:f}'.format(power))
 
         # Return actually set values
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
         return actual_freq, actual_power, mode
@@ -298,7 +298,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'list':
                 return 0
@@ -309,10 +309,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         self.cw_on()
         self._command_wait(':LIST:LEARN')
         self._command_wait(':FREQ:MODE LIST')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_list(self, frequency=None, power=None):
@@ -327,7 +327,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             current power in dBm,
             current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -365,7 +365,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         actual_freq = self.get_frequency()
         actual_power = self.get_power()
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return actual_freq, actual_power, mode
 
     def reset_listpos(self):
@@ -382,7 +382,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        current_mode, is_running = self.get_status()
+        current_mode, is_running = self.get_microwave_status()
         if is_running:
             if current_mode == 'sweep':
                 return 0
@@ -393,10 +393,10 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
             self._command_wait(':FREQ:MODE SWEEP')
 
         self._gpib_connection.write(':OUTP:STAT ON')
-        dummy, is_running = self.get_status()
+        dummy, is_running = self.get_microwave_status()
         while not is_running:
             time.sleep(0.2)
-            dummy, is_running = self.get_status()
+            dummy, is_running = self.get_microwave_status()
         return 0
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
@@ -410,7 +410,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
@@ -434,7 +434,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
 
         actual_power = self.get_power()
         freq_list = self.get_frequency()
-        mode, dummy = self.get_status()
+        mode, dummy = self.get_microwave_status()
         return freq_list[0], freq_list[1], freq_list[2], actual_power, mode
 
     def reset_sweeppos(self):
@@ -455,7 +455,7 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
             trigger timing
         """
-        mode, is_running = self.get_status()
+        mode, is_running = self.get_microwave_status()
         if is_running:
             self.off()
 
