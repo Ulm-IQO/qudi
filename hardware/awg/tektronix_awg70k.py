@@ -2074,7 +2074,6 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         # Try to set the values again if there has been an error. This is Tektronix bullsh..
         if set_freq != frequency or set_cycles != cycles:
-            print(self.read_error_register())
             self.write('BWAV:FREQ {0:.9e}'.format(frequency))
             self.query('*OPC?')
             self.write('BWAV:CYCL {0:d}'.format(cycles))
@@ -2118,7 +2117,6 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
                 self._compile_sine_waveform('_mw_cw_ch2', freq, amp, cycles)
         else:
             self._compile_sine_waveform('_mw_cw_ch1', freq, amp, cycles)
-        print(self.awg.query('SYSTem:ERRor:ALL?'))
         return
 
     def _create_mw_sweep_sequence(self, frequencies, power):
@@ -2133,7 +2131,6 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         self.new_sequence('_mw_sweep', len(frequencies) + 1)
         for ii, freq in enumerate(frequencies, 1):
-            print(freq)
             # Calculate waveform length (as number of periods) for this frequency step
             samples_per_period = sample_rate / freq
             cycles = max(100, int(np.ceil(self.__min_waveform_length / samples_per_period)))
@@ -2141,9 +2138,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             # Write waveform for channel 1 and add to sequence
             name = '_mw_sweep_{0:d}_ch1'.format(ii)
             if a_ch == 1:
-                print(self._compile_sine_waveform(name, freq, amp, cycles))
+                self._compile_sine_waveform(name, freq, amp, cycles)
             else:
-                print(self._compile_sine_waveform(name, freq, 0, cycles))
+                self._compile_sine_waveform(name, freq, 0, cycles)
             # Add first waveform twice
             if ii == 1:
                 self.sequence_set_waveform(sequence_name='_mw_sweep',
@@ -2158,9 +2155,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             if self.awg_model.startswith('AWG70002'):
                 name = '_mw_sweep_{0:d}_ch2'.format(ii)
                 if a_ch == 2:
-                    print(self._compile_sine_waveform(name, freq, amp, cycles))
+                    self._compile_sine_waveform(name, freq, amp, cycles)
                 else:
-                    print(self._compile_sine_waveform(name, freq, 0, cycles))
+                    self._compile_sine_waveform(name, freq, 0, cycles)
                 # Add first waveform twice
                 if ii == 1:
                     self.sequence_set_waveform(sequence_name='_mw_sweep',
@@ -2185,7 +2182,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
                                              trigger=self._microwave_trigger,
                                              jumpto=-1)
         self.make_sequence_continuous('_mw_sweep')
-        print(self.awg.query('SYSTem:ERRor:ALL?'))
+        self.awg.query('SYSTem:ERRor:ALL?')
         return
 
     @staticmethod
