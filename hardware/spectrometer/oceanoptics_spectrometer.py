@@ -1,13 +1,10 @@
 # -*- coding: utf-8 -*-
 """
-Acquire a spectrum using Winspec through the COM interface.
-This program gets the data from WinSpec, saves them and
-gets the data for plotting.
+This module controls spectrometers from Ocean Optics Inc.
+All spectrometers supported by python-seabreeze should work.
 
-Qudi is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Do "conda install -c poehlmann python-seabreeze to install python-seabreeze"
+before using this module.
 
 Qudi is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -48,9 +45,9 @@ class OceanOptics(Base, SpectrometerInterface):
     def on_activate(self):
         """ Activate module.
         """
-        self.integration_time = 100e3
+        self.integration_time_micros = 100e3
         self.spec = sb.Spectrometer.from_serial_number()
-        self.spec.integration_time_micros(self.integration_time)
+        self.spec.integration_time_micros(self.integration_time_micros)
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -75,13 +72,13 @@ class OceanOptics(Base, SpectrometerInterface):
 
             Not implemented.
         """
-        return self.integration_time
+        return self.integration_time_micros
 
     def setExposure(self, exposureTime):
         """ Set exposure.
 
-            @param float exposureTime: exposure
+            @param float exposureTime: exposure time in microseconds
 
         """
-        self.integration_time = exposureTime
-        self.spec.integration_time_micros(self.integration_time)
+        self.integration_time_micros = exposureTime
+        self.spec.integration_time_micros(self.integration_time_micros)
