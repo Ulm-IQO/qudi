@@ -31,6 +31,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.z_thresh = None    # for majority vote of Ramsey result
 
         self.nolog_callback = False
+        self.save_priors = False
         self.is_running = False
         self.jumptable = None
 
@@ -97,15 +98,16 @@ class MFL_IRQ_Driven(GenericLogic):
 
         if n_epochs == -1:
             n_epochs = ARRAY_SIZE_MAX
-            self.log.warning("Setting array length for infinite epochs to {}".format())
+            self.log.warning("Setting array length for infinite epochs to {}".format(n_epochs))
 
         self.timestamps = np.zeros((n_epochs, 3))
         # first estimate from flat prior is also in array
         self.taus = np.zeros((n_epochs + 1, 1))
         self.taus_requested = np.zeros((n_epochs + 1, 1))
         self.t_seqs = np.zeros((n_epochs + 1, 1))
-        self.bs = np.zeros((n_epochs + 1, 1))
+        self.bs = np.zeros((n_epochs + 1, 1))   # MHz
         self.dbs = np.zeros((n_epochs + 1, 1))
+        self.priors = []
 
 
     def init_mfl_algo(self):
@@ -217,8 +219,11 @@ class MFL_IRQ_Driven(GenericLogic):
 
         b_mhz_rad = self.mfl_updater.est_mean()
         self.bs[0] = b_mhz_rad / (2*np.pi)
-        db_mhz_rad =  np.sqrt(self.mfl_updater.est_covariance_mtx())
+        db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx())
         self.dbs[0] = db_mhz_rad / (2*np.pi)
+
+        if self.save_priors:
+            self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles)/(2*np.pi))
 
     def save_current_results(self, real_tau_s, requested_tau_s, t_seq_s):
 
@@ -232,6 +237,9 @@ class MFL_IRQ_Driven(GenericLogic):
         self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
         self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
         self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
+
+        if self.save_priors:
+            self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi))
 
     def get_current_results(self):
         b = self.bs[self._arr_idx(self.i_epoch), 0]  # MHz
@@ -257,6 +265,15 @@ class MFL_IRQ_Driven(GenericLogic):
                                                           None, edges=[True, False])
 
         if self.is_running:
+            self.pulsedmasterlogic().toggle_pulsed_measurement(False)
+            time.sleep(0.1)
+
+            fastcounter = self.pulsedmasterlogic().pulsedmeasurementlogic().fastcounter()
+            sweeps_done = fastcounter.get_current_sweeps()
+            if sweeps_done != self.i_epoch * self.n_sweeps:
+                self.log.warn("Counted {} / {} expected sweeps. Did we miss some?".format(
+                            sweeps_done, self.i_epoch * self.n_sweeps))
+
             # assumes:
             # - that fast counter gets every single sweep by AWG
             # - constant sweeps in every tau
@@ -270,29 +287,54 @@ class MFL_IRQ_Driven(GenericLogic):
                           " Timestamps: \n (i_epoch, t [s], t-t0 [s]){2}".format(
                 self.i_epoch, self.n_epochs, self.timestamps, 1e6*tau_total,
                 b, db, 1e6*t_seq_total))
-            self.log.info("In MFL run: taus, taus_requested, delta: {}".format(
-                [(t, self.taus_requested[i,0], t-self.taus_requested[i,0]) for (i, t) in enumerate(self.taus[:,0])]))
+            self.log.info("In MFL run: taus, taus_requested, delta (ns): {}".format(
+                [(1e9*t, 1e9*self.taus_requested[i,0], 1e9*(t-self.taus_requested[i,0])) for (i, t) in enumerate(self.taus[:,0])]))
             self.log.info("In MFL run: B, dB (MHz): {}".format(
-                [(b, self.dbs[i]) for (i, b) in enumerate(self.bs)]))
+                [(b[0], self.dbs[i,0]) for (i, b) in enumerate(self.bs)]))
             np.set_printoptions()
-
-            self.pulsedmasterlogic().toggle_pulsed_measurement(False)
 
         self.is_running = False
 
     def output_jump_pattern(self, jump_address):
-        self.serial.output_data(jump_address)
+        try:
+            self.serial.output_data(jump_address)
+        except Exception as e:
+            self.log.error("Couln't output jump pattern: {}".format(str(e)))
 
     def iterate_mfl(self):
         self.i_epoch += 1
 
     def get_ramsey_result(self):
         mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
-        # get data at least once, even if timer to analyze not fired yet
-        mes.manually_pull_data()
 
-        x = mes.signal_data[0]
-        y = mes.signal_data[1]
+        wait_for_data = True
+        timeout_cyc = 15
+        wait_s = 0.001
+        i_wait = 0
+
+        while wait_for_data and i_wait < timeout_cyc:
+            # get data at least once, even if timer to analyze not fired yet
+            mes.manually_pull_data()
+
+            x = mes.signal_data[0]
+            y = mes.signal_data[1]
+
+            # in gated mode we get results from the whole epoch array
+            if len(x) > 1:
+                x = x[self.i_epoch]
+                y = y[self.i_epoch]
+
+            if y <= 0.001:
+                self.log.warning("Zeros received from fastcounter.")
+                time.sleep(wait_s)
+                i_wait += 1
+            else:
+                wait_for_data = False
+
+        if i_wait > 0:
+            self.log.warn("Waited for data {}x {} ms".format(i_wait, wait_s*1e3))
+            if wait_for_data:
+                self.log.warn("Timed out while waiting for data.")
 
         return (x, y)
 
@@ -368,7 +410,6 @@ class MFL_IRQ_Driven(GenericLogic):
         else:
             raise NotImplemented
 
-
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
         # done here, because before mes uploaded info not available and mes directly starts after upload atm
@@ -377,16 +418,11 @@ class MFL_IRQ_Driven(GenericLogic):
             self.pull_jumptable(seqname=self.sequence_name)
             self.is_running = True  # todo: should this be mutexed?
 
-        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
-            self.end_run()
-            return 0
-            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
-
         self.timestamp(self.i_epoch)
 
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result()
-        #z = 0
+        #z = 0  # DEBUG
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
 
         if not self.nolog_callback:
@@ -406,13 +442,19 @@ class MFL_IRQ_Driven(GenericLogic):
         self.save_current_results(real_tau, tau_req, t_seq)
         self.iterate_mfl()  # iterates i_epoch
 
+        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
+            self.end_run()
+            return 0
+            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
+
         self.output_jump_pattern(addr)      # should directly before return
 
         # todo:
-        # - for some reason first epoch only half the sweeps. comtech not ready yet?
-        # - can fastcomtech start recounting while running?
-        # - fix readout: gated?
         # - results array indexing really correct?
+
+        # todo:
+        # - 300 ns laser + safety. counting photons instead normalization
+        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
 
         return 0
 

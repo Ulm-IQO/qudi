@@ -95,3 +95,7 @@ class UserCommands(GenericLogic):
 
         daq.DAQmxStopTask(digital_out_task)
         daq.DAQmxClearTask(digital_out_task)
+
+    def reset_pulsedgui(self):
+        # after fancy stuff from jupyter, invoking loads settings from predefined methods
+        pulsedmeasurementlogic.measurement_settings = {'invoke_settings': True}

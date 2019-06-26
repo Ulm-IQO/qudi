@@ -25,25 +25,15 @@ except NameError:
     manager.startModule('logic', 'optimizerlogic')
 
 
-### dummy hardware for development ###
-"""
-# can't do this -> load dummy hardware module via config
-def build_nidaq_dummy():
-
-    from hardware.nicard_dummy import NicardDummy
-    return NicardDummy(manager, 'nidaq')
-"""
-
-
 ############################################ Static hardware parameters ################################################
 
 # static hardware parameters:
 setup = OrderedDict()
-setup['gated'] = False
+setup['gated'] = True
 setup['sampling_freq'] = pulsedmasterlogic.pulse_generator_settings['sample_rate']
 setup['bin_width'] = 4.0e-9
 setup['wait_time'] = 1.0e-6
-setup['laser_delay'] = 510e-9
+setup['laser_delay'] = 510e-9       # aom delay
 setup['laser_safety'] = 200e-9
 
 if setup['gated']:
@@ -52,6 +42,11 @@ if setup['gated']:
 else:
     setup['sync_channel'] = 'd_ch1'
     setup['gate_channel'] = ''
+try:
+    pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'])
+    logger.info("Setting fastcounter to gated: {}".format(setup['gated']))
+except Exception as e:
+    logger.warning("Couldn't set fast counter sweep mode: {}".format(str(e)))
 
 setup['laser_channel'] = 'd_ch2'
 
@@ -78,7 +73,7 @@ setup['optimize_time'] = 300
 setup['freq_optimize_time'] = None
 setup['analysis_interval'] = 3
 
-
+logger.info("Scripted setup params: {}".format(setup))
 
 #####
 # Autoload often used modules
@@ -104,6 +99,15 @@ try:
     uglobals.next.clear()
 except NameError:
     pass
+
+try:
+    ucmd
+except NameError:
+    try:
+        manager.loadConfigureModule('logic', 'ucmd')
+    except Exception as e:
+        logger.error("Auto module loading failed. Defined in config? {}".format(e))
+
 
 
 def config_matplotlib_jupyter():
@@ -198,8 +202,11 @@ def add_conventional_information(experiment, qm_dict):
         qm_dict['ctr_single_sweeps'] = False
     if 'ctr_n_sweeps' not in qm_dict:
         qm_dict['ctr_n_sweeps'] = 0
+    if 'ctr_n_cycles' not in qm_dict:
+        qm_dict['ctr_n_cycles'] = 0
 
     return qm_dict
+
 
 def add_sequence_mode_info(experiment, qm_dict):
     qm_dict['experiment'] = experiment
@@ -212,6 +219,8 @@ def add_sequence_mode_info(experiment, qm_dict):
         qm_dict['ctr_single_sweeps'] = False
     if 'ctr_n_sweeps' not in qm_dict:
         qm_dict['ctr_n_sweeps'] = 0
+    if 'ctr_n_cycles' not in qm_dict:
+        qm_dict['ctr_n_cycles'] = 0
 
     return qm_dict
 
@@ -251,6 +260,9 @@ def customise_setup(dictionary):
     # get a subdictionary with the generation parameters and set them
     subdict = dict([(key, dictionary.get(key)) for key in pulsedmasterlogic.generation_parameters if key in dictionary])
     pulsedmasterlogic.set_generation_parameters(subdict)
+
+    logger.info("Setting sequence generation params: {}".format(subdict))
+
     return dictionary
 
 def generate_sample_upload(experiment, qm_dict):
@@ -424,7 +436,6 @@ def handle_abort():
 def conventional_measurement(qm_dict):
 
 
-    #set up
     set_up_conventional_measurement(qm_dict)
     # perform measurement
     pulsedmasterlogic.toggle_pulsed_measurement(True)
@@ -467,18 +478,29 @@ def set_up_conventional_measurement(qm_dict):
     from hardware.fast_counter_dummy import FastCounterDummy
 
     #if not isinstance(pulsedmeasurementlogic.fastcounter(), FastCounterDummy):
-    pulsedmeasurementlogic.fastcounter().change_sweep_mode(False, is_single_sweeps=qm_dict['ctr_single_sweeps'],
+    logger.info("Setting fastcounter to gated: {}, bin_width {}".format(setup['gated'], qm_dict['bin_width']))
+    pulsedmeasurementlogic.fastcounter().change_sweep_mode(setup['gated'], is_single_sweeps=qm_dict['ctr_single_sweeps'],
                                                            n_sweeps_preset=qm_dict['ctr_n_sweeps'])
-
+    # todo: this is only for gated mfl
     pulsedmasterlogic.set_fast_counter_settings({'bin_width': qm_dict['bin_width'],
-                                                 'record_length': qm_dict['params']['counting_length']})
+                                                 'record_length': qm_dict['params']['counting_length'],
+                                                 'number_of_gates': qm_dict['ctr_n_cycles'] if setup['gated'] else 0})
     time.sleep(0.2)
-    # add sequence length to measurement dictionary
-    #pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
-    #pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
+    # laser pulse extraction
+    laser_on = setup['laser_length']
+    extr_method = {'method': 'fixed_time_one_pulse', 't1': 0e-9, 't2': laser_on}  # mfl with gating adjusts for aom delay
+    #extr_method = {'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],'safety': setup['laser_safety']}
+
+    pulsedmasterlogic.set_extraction_settings(extr_method)
+    logger.info("Setting laser pulse extraction method: {}".format(extr_method))
+
+    # pulsedmasterlogic.set_extraction_settings({'method': 'conv_deriv', 'conv_std_dev': 20})
+    # pulsedmasterlogic.set_extraction_settings({'method': 'threshold', 'count_threshold':20, 'min_laser_length':100e-9, 'threshold_tolerance':10e-9})
+    # pulsedmasterlogic.set_extraction_settings({'method': 'gated_conv_deriv', 'delay': setup['laser_delay'],
     #                                            'safety': setup['laser_safety']})
-    pulsedmasterlogic.set_extraction_settings({'method': 'fixed_time_one_pulse', 't1': 560e-9,
-                                               't2': 1.6e-6})
+    # pulsedmasterlogic.set_extraction_settings({'method': 'fixed_time_one_pulse', 't1': 560e-9,
+    #                                           't2': 1.6e-6})
+
     pulsedmasterlogic.set_analysis_settings({'method': 'mean_norm', 'signal_start': 0, 'signal_end': 500e-9,
                                              'norm_start': 1.8e-6, 'norm_end': 2.8e-6})
 

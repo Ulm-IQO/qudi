@@ -280,7 +280,7 @@ class FastComtec(Base, FastCounterInterface):
 
         self.set_length(no_of_bins)
 
-        # sequences params
+        # cycles and sequences params
         if self.gated:
             self.set_cycles(number_of_gates)
             if n_sequences is not None:
@@ -630,11 +630,15 @@ class FastComtec(Base, FastCounterInterface):
         if gated:
             self.set_cycle_mode(mode=True, cycles=cycles)
             self.set_preset_mode(mode=prena, preset=n_sweeps_preset)
-            self.gated=True
+            self.gated = True
         else:
             self.set_cycle_mode(mode=False, cycles=cycles)
             self.set_preset_mode(mode=prena, preset=n_sweeps_preset)
-            self.gated=False
+            self.gated = False
+
+        self.log.debug("Setting sweep mode to gated: {}, single_sweeps: {}, sweeps_preset: {}".format(
+                        gated, is_single_sweeps, n_sweeps_preset))
+
         return gated
 
     def set_preset_mode(self, mode=16, preset=None):

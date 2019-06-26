@@ -56,7 +56,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         return self._jumptable_address
 
     def generate_mfl_ramsey_pjump(self, name="mfl_ramsey_pjump", n_seq_sweeps=1000, tau_start=10e-9, tau_step=10e-9,
-                            num_of_points=10, tau_first=50e-9,
+                            num_of_points=10, tau_first=50e-9, n_epochs=15,
                             laser_name='laser_wait', laser_length=1e-6, wait_length=1e-6, alternating=False):
 
         self.init_jumptable()
@@ -65,6 +65,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         tau_array = tau_start + np.arange(num_of_points) * tau_step
 
         general_params = locals()
+        is_gated = self.gate_channel is not None
 
         # generate special blocks for flow control of mfl
         cur_name = 'START'
@@ -113,17 +114,27 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         sequence = PulseSequence(name=general_params['name'], ensemble_list=ensemble_list, rotating_frame=False)
         # attention: relies on fact that last ramsey in list is longest!
-        fastcounter_count_length = 1.1 * self._get_ensemble_count_length(all_ensembles[-1], created_blocks=all_blocks)
+        if not is_gated:
+            fastcounter_count_length = 1.1 * self._get_ensemble_count_length(all_ensembles[-1], created_blocks=all_blocks)
+        else:
+            fastcounter_count_length = self.laser_length + 100e-9
+
         self.log.info("Setting comtech count length to {} us".format(fastcounter_count_length * 1e6))
 
-        # every epch of mfl has only single tau
+        # every epoch of mfl has only single tau
         # however, we need all taus sometimes somewhere else
         sequence.measurement_information['controlled_variable_virtual'] = tau_array
+        if not is_gated:
+            contr_var = [0]
+            n_lasers = 1
+        else:
+            contr_var = np.arange(n_epochs)
+            n_lasers = len(contr_var)
 
         self._add_metadata_to_settings(sequence, alternating=alternating, created_blocks=list(),
                                        laser_ignore_list=list(),
-                                       controlled_variable=[tau_array[0]], units=('s', ''), labels=('Tau', 'Signal'),
-                                       number_of_lasers=2 * 1 if alternating else 1,
+                                       controlled_variable=contr_var, units=('', ''), labels=('Epoch', 'Signal'),
+                                       number_of_lasers=2 * n_lasers if alternating else n_lasers,
                                        counting_length=fastcounter_count_length)
 
 
@@ -264,17 +275,24 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         tau_element = self._get_idle_element(length=tau - rabi_period / 2, increment=0.0)
 
         # laser readout after MW
-        laser_element = self._get_laser_gate_element(length=laser_length, increment=0)
+        aom_delay = self.laser_delay
+        # todo: consider ungated acq.
+        laser_gate_element = self._get_laser_gate_element(length=aom_delay - 20e-9, increment=0)
+        laser_element = self._get_laser_element(length=laser_length - aom_delay + 20e-9, increment=0)
         waiting_element = self._get_idle_element(length=wait_length, increment=0.0)
-        seq_trig_element = self._get_trigger_element(50e-9, 0.0, channels=['d_ch1'])
+
+        if self.sync_channel:
+            seq_trig_element = self._get_sync_element()
 
         block = PulseBlock(name=name)
         block.append(pi2_element)
         block.append(tau_element)
         block.append(pi2_element)
+        block.append(laser_gate_element)
         block.append(laser_element)
         block.append(waiting_element)
-        block.append(seq_trig_element)
+        if self.sync_channel:
+            block.append(seq_trig_element)
 
         self._extend_to_min_samples(block, prepend=True)
 
