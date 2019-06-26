@@ -88,11 +88,18 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         self.ftp_working_dir = 'waves'  # subfolder of FTP root dir on AWG disk to work in
 
+        # Query some constraints from the device and stash them in order to avoid redundant queries.
+        self.__max_seq_steps = -1
+        self.__max_seq_repetitions = -1
+        self.__min_waveform_length = -1
+        self.__max_waveform_length = -1
+        self.__has_sequence_mode = False
+
         # CW microwave attributes
         self.__mw_mode = MicrowaveMode.CW
-        self.__mw_cw_params = {'freq': 2.87e9, 'power': -30}
-        self.__mw_sweep_params = {'start': 2.82e9, 'stop': 2.92e9, 'step': 2e6, 'power': -30}
-        self.__mw_list_params = {'freq': list(np.linspace(2.82e9, 2.92e9, 101)), 'power': -30}
+        self.__mw_cw_params = dict()
+        self.__mw_sweep_params = dict()
+        self.__mw_list_params = dict()
         return
 
     def on_activate(self):
@@ -135,6 +142,20 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         self.__mw_cw_params = {'freq': 2.87e9, 'power': -30}
         self.__mw_sweep_params = {'start': 2.82e9, 'stop': 2.92e9, 'step': 2e6, 'power': -30}
         self.__mw_list_params = {'freq': list(np.linspace(2.82e9, 2.92e9, 101)), 'power': -30}
+
+        # Sanity checking for laser and microwave channel.
+        if self._laser_channel not in self._get_all_digital_channels():
+            self.log.error('Invalid laser_channel ConfigOption set: "{0}".\n'
+                           'Using default instead.("d_ch1").'.format(self._laser_channel))
+            self._laser_channel = 'd_ch1'
+        if self._microwave_channel not in self._get_all_analog_channels():
+            self.log.error('Invalid microwave_channel ConfigOption set: "{0}".\n'
+                           'Using default instead.("a_ch1").'.format(self._microwave_channel))
+            self._microwave_channel = 'a_ch1'
+        if self._microwave_trigger not in self.__event_triggers and self._microwave_trigger not in self.__event_triggers.values():
+            self.log.error('Invalid microwave_trigger ConfigOption set: "{0}".\n'
+                           'Using default instead.("A").'.format(self._microwave_trigger))
+            self._microwave_trigger = 'A'
 
         # Delete old assets related to the MicrowaveInterface
         self.delete_sequence('_mw_sweep')
