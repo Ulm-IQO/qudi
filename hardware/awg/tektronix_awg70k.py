@@ -139,9 +139,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         # CW microwave attributes
         self.__mw_mode = MicrowaveMode.CW
-        self.__mw_cw_params = {'freq': 2.87e9, 'power': -30}
-        self.__mw_sweep_params = {'start': 2.82e9, 'stop': 2.92e9, 'step': 2e6, 'power': -30}
-        self.__mw_list_params = {'freq': list(np.linspace(2.82e9, 2.92e9, 101)), 'power': -30}
+        self.__mw_cw_params = {'freq': 2.87e9, 'power': -30, 'generated': False}
+        self.__mw_sweep_params = {'start': 2.82e9, 'stop': 2.92e9, 'step': 2e6, 'power': -30, 'generated': False}
+        self.__mw_list_params = {'freq': list(np.linspace(2.82e9, 2.92e9, 101)), 'power': -30, 'generated': False}
 
         # Sanity checking for laser and microwave channel.
         if self._laser_channel not in self._get_all_digital_channels():
@@ -600,6 +600,13 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             if waveform in avail_waveforms:
                 self.write('WLIS:WAV:DEL "{0}"'.format(waveform))
                 deleted_waveforms.append(waveform)
+
+            # Necessary for CW microwave mode
+            if waveform.startswith('_mw_cw_ch'):
+                self.__mw_cw_params['generated'] = False
+            elif waveform.startswith('_mw_sweep_'):
+                self.__mw_list_params['generated'] = False
+                self.__mw_sweep_params['generated'] = False
         return deleted_waveforms
 
     def delete_sequence(self, sequence_name):
@@ -619,6 +626,8 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             if sequence in avail_sequences:
                 self.write('SLIS:SEQ:DEL "{0}"'.format(sequence))
                 deleted_sequences.append(sequence)
+            if sequence.startswith('_mw_sweep'):
+                self.__mw_sweep_params['generated'] = False
         return deleted_sequences
 
     def load_waveform(self, load_dict):
@@ -770,6 +779,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             self.write('SLIS:SEQ:DEL ALL')
             while int(self.query('*OPC?')) != 1:
                 time.sleep(0.25)
+        self.__mw_cw_params['generated'] = False
+        self.__mw_list_params['generated'] = False
+        self.__mw_sweep_params['generated'] = False
         return 0
 
     def get_status(self):
@@ -1514,6 +1526,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         """
         self.write('SOURCE{0:d}:JUMP:FORCE {1}'.format(channel, final_step))
+        self.query('*OPC?')
         return
 
     def _get_all_channels(self):
@@ -1806,8 +1819,13 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self.__mw_mode != MicrowaveMode.CW or not self._mw_mode_asset_loaded():
+        if self.__mw_mode != MicrowaveMode.CW or not self.__mw_cw_params['generated']:
             self.set_cw()
+        if not self._mw_mode_asset_loaded():
+            if self.awg_model.startswith('AWG70002'):
+                self.load_waveform({1: '_mw_cw_ch1', 2: '_mw_cw_ch2'})
+            else:
+                self.load_waveform({1: '_mw_cw_ch1'})
         return self.pulser_on()
 
     def set_cw(self, frequency=None, power=None):
@@ -1822,35 +1840,29 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             current power in dBm,
             current mode
         """
+        if frequency is not None:
+            frequency = float(frequency)
+        if power is not None:
+            power = float(power)
+
         self.__mw_mode = MicrowaveMode.CW
 
-        if frequency is not None:
-            self.__mw_cw_params['freq'] = float(frequency)
-        if power is not None:
-            self.__mw_cw_params['power'] = float(power)
+        if frequency is not None and frequency != self.__mw_cw_params['freq']:
+            self.__mw_cw_params['freq'] = frequency
+            self.__mw_cw_params['generated'] = False
+        if power is not None and power != self.__mw_cw_params['power']:
+            self.__mw_cw_params['power'] = power
+            self.__mw_cw_params['generated'] = False
 
-        if frequency is not None or power is not None:
+        if not self.__mw_cw_params['generated']:
             self._write_mw_cw_waveforms()
-            if self.awg_model.startswith('AWG70002'):
-                self.load_waveform({1: '_mw_cw_ch1', 2: '_mw_cw_ch2'})
-            else:
-                self.load_waveform({1: '_mw_cw_ch1'})
         else:
             waveforms = self.get_waveform_names()
             if '_mw_cw_ch1' not in waveforms:
                 self._write_mw_cw_waveforms()
-                if self.awg_model.startswith('AWG70002'):
-                    self.load_waveform({1: '_mw_cw_ch1', 2: '_mw_cw_ch2'})
-                else:
-                    self.load_waveform({1: '_mw_cw_ch1'})
-            elif self.awg_model.startswith('AWG70002'):
-                if '_mw_cw_ch2' not in waveforms:
-                    self._write_mw_cw_waveforms()
-                    self.load_waveform({1: '_mw_cw_ch1', 2: '_mw_cw_ch2'})
-                elif not self._mw_mode_asset_loaded():
-                    self.load_waveform({1: '_mw_cw_ch1', 2: '_mw_cw_ch2'})
-            elif not self._mw_mode_asset_loaded():
-                self.load_waveform({1: '_mw_cw_ch1'})
+            elif self.awg_model.startswith('AWG70002') and '_mw_cw_ch2' not in waveforms:
+                self._write_mw_cw_waveforms()
+        self.__mw_cw_params['generated'] = True
         return self.__mw_cw_params['freq'], self.__mw_cw_params['power'], self.__mw_mode.name.lower()
 
     def list_on(self):
@@ -1860,8 +1872,10 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self.__mw_mode != MicrowaveMode.LIST or not self._mw_mode_asset_loaded():
+        if self.__mw_mode != MicrowaveMode.LIST or not self.__mw_list_params['generated']:
             self.set_list()
+        if not self._mw_mode_asset_loaded():
+            self.load_sequence('_mw_sweep')
         return self.pulser_on()
 
     def set_list(self, frequency=None, power=None):
@@ -1873,25 +1887,25 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return list, float, str: current frequencies in Hz, current power in dBm, current mode
         """
+        if frequency is not None:
+            frequency = [float(freq) for freq in frequency]
+        if power is not None:
+            power = float(power)
+
         self.__mw_mode = MicrowaveMode.LIST
 
-        if frequency is not None:
-            self.__mw_list_params['freq'] = list(frequency)
-        if power is not None:
-            self.__mw_list_params['power'] = float(power)
+        if frequency is not None and any(
+                freq != frequency[ii] for ii, freq in enumerate(self.__mw_list_params['freq'])):
+            self.__mw_list_params['freq'] = frequency
+            self.__mw_list_params['generated'] = False
+        if power is not None and power != self.__mw_list_params['power']:
+            self.__mw_list_params['power'] = power
+            self.__mw_list_params['generated'] = False
 
-        if frequency is not None or power is not None:
+        if not self.__mw_list_params['generated'] or '_mw_sweep' not in self.get_sequence_names():
             self._create_mw_sweep_sequence(self.__mw_list_params['freq'],
                                            self.__mw_list_params['power'])
-            self.load_sequence('_mw_sweep')
-        else:
-            sequences = self.get_sequence_names()
-            if '_mw_sweep' not in sequences:
-                self._create_mw_sweep_sequence(self.__mw_list_params['freq'],
-                                               self.__mw_list_params['power'])
-                self.load_sequence('_mw_sweep')
-            elif not self._mw_mode_asset_loaded():
-                self.load_sequence('_mw_sweep')
+            self.__mw_list_params['generated'] = True
         return self.__mw_list_params['freq'], self.__mw_list_params['power'], self.__mw_mode.name.lower()
 
     def reset_listpos(self):
@@ -1900,8 +1914,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self.__mw_mode == MicrowaveMode.LIST:
-            self.force_jump_sequence('FIRST')
+        # if self.__mw_mode == MicrowaveMode.LIST:
+        #     self.force_jump_sequence('FIRST')
+        # print(self.read_error_register())
         return 0
 
     def sweep_on(self):
@@ -1909,8 +1924,10 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self.__mw_mode != MicrowaveMode.SWEEP or not self._mw_mode_asset_loaded():
+        if self.__mw_mode != MicrowaveMode.SWEEP or not self.__mw_sweep_params['generated']:
             self.set_sweep()
+        if not self._mw_mode_asset_loaded():
+            self.load_sequence('_mw_sweep')
         return self.pulser_on()
 
     def set_sweep(self, start=None, stop=None, step=None, power=None):
@@ -1924,36 +1941,44 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
+        if start is not None:
+            start = float(start)
+        if stop is not None:
+            stop = float(stop)
+        if step is not None:
+            step = float(step)
+        if power is not None:
+            power = float(power)
+
         self.__mw_mode = MicrowaveMode.SWEEP
 
-        if start is not None:
-            self.__mw_sweep_params['start'] = float(start)
+        if start is not None and start != self.__mw_sweep_params['start']:
+            self.__mw_sweep_params['start'] = start
+            self.__mw_sweep_params['generated'] = False
+        if step is not None and step != self.__mw_sweep_params['step']:
+            self.__mw_sweep_params['step'] = step
+            self.__mw_sweep_params['generated'] = False
+        if power is not None and power != self.__mw_sweep_params['power']:
+            self.__mw_sweep_params['power'] = power
+            self.__mw_sweep_params['generated'] = False
         if stop is not None:
-            self.__mw_sweep_params['stop'] = float(stop)
-        if step is not None:
-            self.__mw_sweep_params['step'] = float(step)
-        if power is not None:
-            self.__mw_sweep_params['power'] = float(power)
+            stop_freq = stop
+        else:
+            stop_freq = self.__mw_sweep_params['stop']
 
         # Adjust stop frequency to respect step size and include stop frequency
         start_freq = self.__mw_sweep_params['start']
-        stop_freq = self.__mw_sweep_params['stop']
         step_freq = self.__mw_sweep_params['step']
         freq_steps = int(round((stop_freq - start_freq) / step_freq))
         stop_freq = start_freq + freq_steps * step_freq
-        self.__mw_sweep_params['stop'] = stop_freq
+        if stop_freq != self.__mw_sweep_params['stop']:
+            self.__mw_sweep_params['stop'] = stop_freq
+            self.__mw_sweep_params['generated'] = False
 
-        if start is not None or stop is not None or step is not None or power is not None:
+        if not self.__mw_sweep_params['generated'] or '_mw_sweep' not in self.get_sequence_names():
             self._create_mw_sweep_sequence(np.linspace(start_freq, stop_freq, freq_steps),
                                            self.__mw_sweep_params['power'])
-            self.load_sequence('_mw_sweep')
-        else:
-            if '_mw_sweep' not in self.get_sequence_names():
-                self._create_mw_sweep_sequence(np.linspace(start_freq, stop_freq, freq_steps),
-                                               self.__mw_sweep_params['power'])
-                self.load_sequence('_mw_sweep')
-            elif not self._mw_mode_asset_loaded():
-                self.load_sequence('_mw_sweep')
+            self.__mw_sweep_params['generated'] = True
         return start_freq, stop_freq, step_freq, self.__mw_sweep_params['power'], self.__mw_mode.name.lower()
 
     def reset_sweeppos(self):
@@ -1962,8 +1987,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if self.__mw_mode == MicrowaveMode.SWEEP:
-            self.force_jump_sequence('FIRST')
+        # if self.__mw_mode == MicrowaveMode.SWEEP:
+        #     self.force_jump_sequence('FIRST')
+        # print(self.read_error_register())
         return 0
 
     def set_ext_trigger(self, pol, timing):
@@ -2071,6 +2097,12 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         self.write('BWAV:OFFS 0')
         self.write('*WAI')
         self.query('*OPC?')
+        for i in range(3):
+            err_list = self.read_error_register()
+            if len(err_list) > 1:
+                continue
+            if err_list[0][0] == 0 and err_list[0][1] == 'No error':
+                break
         return
 
     def _compile_sine_waveform(self, name, frequency, amplitude, cycles):
@@ -2094,7 +2126,9 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         set_cycles = int(float(self.query('BWAV:CYCL?')))
 
         # Try to set the values again if there has been an error. This is Tektronix bullsh..
-        if set_freq != frequency or set_cycles != cycles:
+        err = self.read_error_register()
+        if len(err) > 1 and err[0][0] != 0:
+            print(err)
             self.write('BWAV:FREQ {0:.9e}'.format(frequency))
             self.query('*OPC?')
             self.write('BWAV:CYCL {0:d}'.format(cycles))
@@ -2115,6 +2149,12 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
                                          datatype='B')
             self.write('*WAI')
             self.query('*OPC?')
+        for i in range(3):
+            err_list = self.read_error_register()
+            if len(err_list) > 1:
+                continue
+            if err_list[0][0] == 0 and err_list[0][1] == 'No error':
+                break
         return set_name, set_freq, set_amp, set_cycles
 
     def _write_mw_cw_waveforms(self):
@@ -2124,7 +2164,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         amp = self.dbm_to_volts(self.__mw_cw_params['power'])
         sample_rate = self.get_sample_rate()
         samples_per_period = sample_rate / freq
-        cycles = max(100, int(np.ceil(self.__min_waveform_length / samples_per_period)))
+        cycles = max(100, int(np.ceil(2 * self.__min_waveform_length / samples_per_period)))
 
         if self.awg_model.startswith('AWG70002'):
             a_ch = int(self._microwave_channel.rsplit('_ch', 1)[-1])
@@ -2154,7 +2194,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
         for ii, freq in enumerate(frequencies, 1):
             # Calculate waveform length (as number of periods) for this frequency step
             samples_per_period = sample_rate / freq
-            cycles = max(100, int(np.ceil(self.__min_waveform_length / samples_per_period)))
+            cycles = max(100, int(np.ceil(2 * self.__min_waveform_length / samples_per_period)))
 
             # Write waveform for channel 1 and add to sequence
             name = '_mw_sweep_{0:d}_ch1'.format(ii)
@@ -2202,8 +2242,11 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
                                              step=ii,
                                              trigger=self._microwave_trigger,
                                              jumpto=-1)
-        self.make_sequence_continuous('_mw_sweep')
-        self.awg.query('SYSTem:ERRor:ALL?')
+            elif ii == len(frequencies):
+                self.sequence_set_event_jump(sequence_name='_mw_sweep',
+                                             step=ii + 1,
+                                             trigger=self._microwave_trigger,
+                                             jumpto=1)
         return
 
     @staticmethod
