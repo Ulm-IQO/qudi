@@ -1441,13 +1441,23 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
         adiab = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length)
-        if adiab < 5:
+        # adiab >> 1 is needed for adiabatic evolution. Simulations show that adiab > 5 works very well,
+        # adiab > 2 will work but is on the edge, so we impose a check if adiab < 2.5 to give a warning.
+        if adiab < 2.5:
             self.log.error(
                 'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/pulse_length) = ' + str(
                     adiab))
         else:
             self.log.info(
                 'Adiabadicity conditions is Rabi**2/(pulse_freq_range/pulse_length) = {} >> 1'.format(adiab))
+
+        # Approximate expected transfer efficiency in case of perfect adiabaticity for a linear chirp
+        # this formula works very well for adiab = 5 and overestimates the efficiency by 5-10% for adiab = 2.5
+        approx_transfer_eff_perfect_adiab = 1 - 2 / (4 + (pulse_freq_range / expected_Rabi_frequency) ** 2)
+
+        self.log.info(
+            'Expected transfer efficiency in case of perfect adiabaticity = ' + str(
+                    approx_transfer_eff_perfect_adiab))
 
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
@@ -1496,7 +1506,12 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                 getattr(SamplingFunctions, sampling_function_name)(**kwargs)
         return mw_element
 
-        # Todo: Add description
+        # Chirped ODMR with a pulse, following the Allen-Eberly model: a sech amplitude shape and a tanh shaped detuning
+        # The AE pulse has very good properties in terms of adiabaticity and is often preferable to the standard
+        # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
+        # More information about the Allen-Eberly model can be found in:
+        # L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
+        # Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
 
     def generate_AEchirpedodmr(self, name='AllenEberlyChirpODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
                                freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9, tau_pulse=0.1,
@@ -1546,14 +1561,33 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
         pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
-        adiab = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length)
-        if adiab < 5:
+
+        # TODO: check if tau_pulse is in time units or it is just a ratio. Currently, we assume that it is a ratio.
+        adiabAE = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length / tau_pulse)
+        # tau_pulse/pulse_duration = 0.1 is perfect, the scheme will work for 0.2. Higher values reduce the frequency
+        # range of ODMR because they limit the expected transfer efficiency in the wings of the range.
+        # In comparison to adiab for linear chirp, we replace pulse_duration with tau_pulse
+        # adiabAE >> 1 is needed for adiabatic evolution. Simulations show adiabAE > 2 will work but is on the edge,
+        # so we impose a check if adiabAE < 2.5 to give a warning.
+
+        if adiabAE < 2.5:
             self.log.error(
-                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/pulse_length) = ' + str(
-                    adiab))
+                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/tau_pulse)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/tau_pulse) = ' + str(
+                    adiabAE))
         else:
             self.log.info(
-                'Adiabadicity conditions is Rabi**2/(pulse_freq_range/pulse_length) = {} >> 1'.format(adiab))
+                'Adiabadicity conditions is Rabi**2/(pulse_freq_range/tau_pulse) = {} >> 1'.format(adiabAE))
+
+        # TODO: check if tau_pulse is in time units or it is just a ratio. Currently, we assume that it is a ratio.
+        # Approximate expected transfer efficiency in case of perfect adiabaticity for a AE pulse
+        # this formula works very well for adiab > 2.5
+        approx_transfer_eff_perfect_adiab_AE = 1 - 2 / (4 + (pulse_freq_range * np.sinh(1 / 2 / tau_pulse) / expected_Rabi_frequency) ** 2)
+
+        self.log.info(
+            'Expected transfer efficiency in case of perfect adiabaticity = ' + str(
+                approx_transfer_eff_perfect_adiab_AE))
+
+
         # add metadata to invoke settings later on
         block_ensemble.measurement_information['alternating'] = False
         block_ensemble.measurement_information['laser_ignore_list'] = list()

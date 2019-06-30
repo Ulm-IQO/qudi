@@ -396,7 +396,8 @@ class TripleSinProduct(SamplingBase):
 
 
 class Chirp(SamplingBase):
-    # Todo: Add desctiption
+    # Todo: Add description
+    # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp
     """
     Object representing a chirp element
     """
@@ -439,7 +440,13 @@ class Chirp(SamplingBase):
         return samples_arr
 
 class AllenEberlyChirp(SamplingBase):
-    # Todo: Add desctiption
+    # Todo: Add description
+    # The Allen-Eberly model involves a sech amplitude shape and a tanh shaped detuning
+    # It has very good properties in terms of adiabaticity and is often preferable to the standard
+    # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
+    # More information about the Allen-Eberly model can be found in:
+    # L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
+    # Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
     """
     Object representing a chirp element
     """
