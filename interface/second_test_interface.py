@@ -2,7 +2,7 @@
 
 import abc
 from core.util.interfaces import InterfaceMetaclass
-from core.util.interfaces import interface_method
+from core.module import interface_method
 
 
 class SecondTestInterface(metaclass=InterfaceMetaclass):

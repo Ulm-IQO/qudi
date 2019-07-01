@@ -24,7 +24,7 @@ import time
 import numpy as np
 from interface.first_test_interface import FirstTestInterface
 from interface.second_test_interface import SecondTestInterface
-from core.util.interfaces import interface_method
+from core.module import interface_method
 
 
 class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):

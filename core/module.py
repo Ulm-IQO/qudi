@@ -26,6 +26,82 @@ from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
 from qtpy import QtCore
+from functools import partial
+
+
+class InterfaceMethod:
+
+    _latest_interface_method = None
+
+    def __init__(self, default_callable, obj=None):
+        self._obj = obj
+        self._default_callable = default_callable
+        self.registered = dict()
+        self.__isabstractmethod__ = True
+        InterfaceMethod._latest_interface_method = self
+
+    def __get__(self, obj=None, cls=None):
+        # It is executed when decorated func is referenced as a method: cls.func or obj.func.
+        # if self.obj == obj and self.cls == cls:
+        #     return self  # Use the same instance that is already processed by previous call to this __get__().
+
+        # method_type = (
+        #     'staticmethod' if isinstance(self._default_callable, staticmethod) else
+        #     'classmethod' if isinstance(self._default_callable, classmethod) else
+        #     'instancemethod'
+        #     # No branch for plain function - correct method_type for it is already set in __init__() defaults.
+        # )
+        if obj is not None and obj is not self._obj:
+            self._default_callable = self._default_callable.__get__(obj, cls)
+            for interface in self.registered:
+                self.registered[interface] = self.registered[interface].__get__(obj, cls)
+        self._obj = obj
+        # self.cls = cls
+        # self.method_type = method_type
+        return self
+        # return object.__getattribute__(self, '__class__')(
+        #     # Use specialized method_decorator (or descendant) instance, don't change current instance attributes - it leads to conflicts.
+        #     self._default_callable.__get__(obj, cls), obj, cls,
+        #     method_type)  # Use bound or unbound method with this underlying func.
+
+    def __call__(self, *args, **kwargs):
+        interface = kwargs.pop('interface', None)
+        if interface and interface in self.registered:
+            return self.registered[interface](*args, **kwargs)
+        return self._default_callable(*args, **kwargs)
+
+    # def __getattribute__(self, attr_name):  # Hiding traces of decoration.
+    #     if attr_name in (
+    #     '__init__', '__get__', '__call__', '__getattribute__', '_default_callable', 'registered', 'obj', 'cls', 'method_type', 'register'):  # Our known names. '__class__' is not included because is used only with explicit object.__getattribute__().
+    #         return object.__getattribute__(self, attr_name)  # Stopping recursion.
+    #     # All other attr_names, including auto-defined by system in self, are searched in decorated self.func, e.g.: __module__, __class__, __name__, __doc__, im_*, func_*, etc.
+    #     return getattr(self._default_callable,
+    #                    attr_name)  # Raises correct AttributeError if name is not found in decorated self.func.
+    #
+    def __repr__(self):  # Special case: __repr__ ignores __getattribute__.
+        return self._default_callable.__repr__()
+
+    @property
+    def __isabstractmethod__(self):
+        if hasattr(self._default_callable, '__isabstractmethod__'):
+            return self._default_callable.__isabstractmethod__
+        return False
+
+    @__isabstractmethod__.setter
+    def __isabstractmethod__(self, flag):
+        self._default_callable.__isabstractmethod__ = bool(flag)
+
+    @classmethod
+    def register(cls, interface):
+        def decorator(func):
+            cls._latest_interface_method.registered[interface] = func
+            cls._latest_interface_method.__isabstractmethod__ = False
+            return func
+        return decorator
+
+
+def interface_method(func):
+    return InterfaceMethod(func)
 
 
 class StatusVar:
@@ -188,6 +264,16 @@ class Connector:
                 'Connector {0} (interface {1}) is not connected.'
                 ''.format(self.name, self.interface))
         return self.obj
+
+    def __getattr__(self, item):
+        if self.is_connected:
+            attr = getattr(self.obj, item)
+            if isinstance(attr, InterfaceMethod):
+                return partial(attr, interface=self.interface)
+            else:
+                return attr
+        raise AttributeError('Connector "{0}" to interface "{1}" not connected.'
+                             ''.format(self.name, self.interface))
     
     @property
     def is_connected(self):
