@@ -41,7 +41,7 @@ class FitLogic(GenericLogic):
     """
     UNSTABLE:Jochen Scheuer
 
-    Documentation to add a new fit model/estimator/funciton can be found in
+    Documentation to add a new fit model/estimator/function can be found in
     documentation/how_to_use_fitting.md or in the online documentation at
     http://qosvn.physik.uni-ulm.de/qudi-docs/fit_logic.html
 
@@ -82,7 +82,6 @@ class FitLogic(GenericLogic):
         for files in filenames:
 
             mod = importlib.import_module('logic.fitmethods.{0}'.format(files))
-
             for method in dir(mod):
                 ref = getattr(mod, method)
                 if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
@@ -161,7 +160,7 @@ class FitLogic(GenericLogic):
 
     def validate_load_fits(self, fits):
         """ Take fit names and estimators from a dict and check if they are valid.
-            @param fits dict: dictionary conatining fit and estimator description
+            @param fits dict: dictionary containing fit and estimator description
 
             @return dict: checked dictionary with references to fit, model and estimator
 
@@ -259,6 +258,7 @@ class FitLogic(GenericLogic):
         This is a convenience function so you do not have to mess with an extra import in modules
         using FitLogic.
         """
+        print(FitContainer(self, container_name, dimension).__dict__)
         return FitContainer(self, container_name, dimension)
 
 
@@ -291,7 +291,6 @@ class FitContainer(QtCore.QObject):
             raise Exception('Invalid dimension {0}'.format(dimension))
         self.dimension = dimension
         self.fit_list = OrderedDict()
-
         # variables for fitting
         self.fit_granularity_fact = 10
         self.current_fit = 'No Fit'
