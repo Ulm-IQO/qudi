@@ -2,6 +2,7 @@
 
 import abc
 from core.util.interfaces import InterfaceMetaclass
+from core.util.interfaces import interface_method
 
 
 class SecondTestInterface(metaclass=InterfaceMetaclass):
@@ -11,7 +12,7 @@ class SecondTestInterface(metaclass=InterfaceMetaclass):
     _modclass = 'SecondTestInterface'
     _modtype = 'interface'
 
-    @abc.abstractmethod
+    @interface_method
     def test(self):
         """
         This is for testing
