@@ -50,7 +50,7 @@ class TestLogic(GenericLogic):
         return
 
     def call_test1(self):
-        return self.firsthardware.test()
+        return self.firsthardware().test()
 
     def call_test2(self):
-        return self.secondhardware.test()
+        return self.secondhardware().test()
