@@ -259,7 +259,9 @@ class Connector:
 
     def __call__(self):
         """ Return reference to the module that this connector is connected to. """
-        if self.obj is None and not self.optional:
+        if self.obj is None:
+            if self.optional:
+                return None
             raise Exception(
                 'Connector {0} (interface {1}) is not connected.'
                 ''.format(self.name, self.interface))
