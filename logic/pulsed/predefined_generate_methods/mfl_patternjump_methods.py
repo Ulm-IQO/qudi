@@ -103,9 +103,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             # MW with laser after each Ramsey
             cur_name = name + '_' + str(i)
             cur_blocks, cur_ensembles, _ = self._create_single_ramsey(name=cur_name, tau=tau,
-                                                                      mw_ampl=self.microwave_amplitude,
-                                                                      mw_f=self.microwave_frequency, mw_phase=0.0,
-                                                                      laser_length=laser_length, wait_length=wait_length)
+                                                mw_phase=0.0, laser_length=laser_length, wait_length=wait_length)
 
             cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_EPOCH_DONE_SEQMODE, 'repetitions': n_seq_sweeps-1})
             self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
@@ -119,7 +117,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         else:
             fastcounter_count_length = self.laser_length + 100e-9
 
-        self.log.info("Setting comtech count length to {} us".format(fastcounter_count_length * 1e6))
+        self.log.info("Setting fastcounter count length to {} us".format(fastcounter_count_length * 1e6))
 
         # every epoch of mfl has only single tau
         # however, we need all taus sometimes somewhere else
@@ -256,7 +254,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
 
-    def _create_single_ramsey(self, name='ramsey', rabi_period=20e-9, tau=500e-9, mw_ampl=0.1, mw_f=2.8e9, mw_phase=0.0,
+    def _create_single_ramsey(self, name='ramsey', tau=500e-9, mw_phase=0.0,
                               laser_length=1500e-9, wait_length=1000e-9):
 
         created_blocks = []
@@ -264,21 +262,22 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         created_sequences = []
 
         # prevent granularity problems
-        rabi_period = self._adjust_to_samplingrate(rabi_period, 8)  # s
+        rabi_period = self._adjust_to_samplingrate(self.rabi_period, 8)  # s
         tau = self._adjust_to_samplingrate(tau, 4)
 
         pi2_element = self._get_mw_element(length=rabi_period / 4,
                                               increment=0.0,
-                                              amp=mw_ampl,
-                                              freq=mw_f,
+                                              amp=self.microwave_amplitude,
+                                              freq=self.microwave_frequency,
                                               phase=0.0)
-        tau_element = self._get_idle_element(length=tau - rabi_period / 2, increment=0.0)
+        tau_element = self._get_idle_element(length=tau, increment=0.0)
 
         # laser readout after MW
         aom_delay = self.laser_delay
         # todo: consider ungated acq.
         laser_gate_element = self._get_laser_gate_element(length=aom_delay - 20e-9, increment=0)
         laser_element = self._get_laser_element(length=laser_length - aom_delay + 20e-9, increment=0)
+        delay_element = self._get_idle_element(length=aom_delay, increment=0)
         waiting_element = self._get_idle_element(length=wait_length, increment=0.0)
 
         if self.sync_channel:
@@ -290,6 +289,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         block.append(pi2_element)
         block.append(laser_gate_element)
         block.append(laser_element)
+        block.append(delay_element)
         block.append(waiting_element)
         if self.sync_channel:
             block.append(seq_trig_element)
@@ -297,7 +297,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         self._extend_to_min_samples(block, prepend=True)
 
         # prepare return vals
-        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=False)
+        block_ensemble = PulseBlockEnsemble(name=name, rotating_frame=True)
         block_ensemble.append((block.name, 0))
         created_blocks.append(block)
         block_ensemble = self._add_metadata_to_settings(block_ensemble, created_blocks=created_blocks,
