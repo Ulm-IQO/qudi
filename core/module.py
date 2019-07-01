@@ -263,7 +263,15 @@ class Connector:
             raise Exception(
                 'Connector {0} (interface {1}) is not connected.'
                 ''.format(self.name, self.interface))
-        return self.obj
+
+        class ConnectedInterfaceProxy:
+            def __getattribute__(*args):
+                attr = getattr(self.obj, args[1])
+                if isinstance(attr, InterfaceMethod):
+                    return partial(attr, interface=self.interface)
+                else:
+                    return attr
+        return ConnectedInterfaceProxy()
 
     def __getattr__(self, item):
         if self.is_connected:
