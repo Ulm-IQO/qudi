@@ -274,16 +274,6 @@ class Connector:
                 else:
                     return attr
         return ConnectedInterfaceProxy()
-
-    def __getattr__(self, item):
-        if self.is_connected:
-            attr = getattr(self.obj, item)
-            if isinstance(attr, InterfaceMethod):
-                return partial(attr, interface=self.interface)
-            else:
-                return attr
-        raise AttributeError('Connector "{0}" to interface "{1}" not connected.'
-                             ''.format(self.name, self.interface))
     
     @property
     def is_connected(self):
