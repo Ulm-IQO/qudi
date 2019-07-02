@@ -36,7 +36,7 @@ class OceanOptics(Base, SpectrometerInterface):
 
     myspectrometer:
         module.Class: 'spectrometer.oceanoptics_spectrometer.OceanOptics'
-        spectrometer_serial: 'QEP01583' #'HDX00471' insert here the right serial number.
+        spectrometer_serial: 'QEP01583' #insert here the right serial number.
 
     """
     _serial = ConfigOption('spectrometer_serial', missing='warn')
