@@ -289,7 +289,7 @@ class AWG7k(Base, PulserInterface):
         """
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        channel_numbers = natural_sort(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
                                  chnl.startswith('a') and chnl_activation[chnl])
         # do nothing if AWG is already running
         if not self._is_output_on():
@@ -413,9 +413,9 @@ class AWG7k(Base, PulserInterface):
         """
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        channel_numbers = natural_sort(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
-                                 chnl.startswith('a') and chnl_activation[chnl])
 
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+                                 chnl.startswith('a') and chnl_activation[chnl])
         # Get assets per channel
         loaded_assets = dict()
         current_type = None
