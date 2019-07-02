@@ -185,3 +185,6 @@ class LaserLogic(GenericLogic):
         """ Set laser diode current. """
         self._laser.set_current(current)
 
+    def get_power_setpoint(self):
+        """ Get the power setpoint """
+        return self.laser_power_setpoint
