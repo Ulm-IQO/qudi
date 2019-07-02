@@ -507,7 +507,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     # Sample Mode: Acquire or generate samples until you stop the task.
                     daq.DAQmx_Val_ContSamps,
                     # buffer length which stores  temporarily the number of generated samples
-                    1000)
+                    10000)
 
                 # Set the Read point Relative To an operation.
                 # Specifies the point in the buffer at which to begin a read operation.
