@@ -1868,8 +1868,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.save_to_npy("SPCM", line, counts[data_counter])
         data_counter += 1
         if not self._fast_scan:
-            self.save_to_npy("SPCM_back", line, np.flipud(counts[data_counter]))
-            self.stepping_raw_data_back[line] = np.flipud(counts[data_counter])
+            self.save_to_npy("SPCM_back", line, counts[data_counter])
+            self.stepping_raw_data_back[line] = counts[data_counter]
             data_counter += 1
 
         if self.map_scan_position or self._ai_counter:
@@ -1882,16 +1882,16 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._scan_pos_voltages[line, :, 0] = forward[0]
                 self._scan_pos_voltages[line, :, 1] = forward[1]
                 if not self._fast_scan:
-                    self.save_to_npy("scan_pos_voltages_back", line, np.flipud(backward[0:2]))
-                    self._scan_pos_voltages_back[line, :, 0] = np.flipud(backward[0])
-                    self._scan_pos_voltages_back[line, :, 1] = np.flipud(backward[1])
+                    self.save_to_npy("scan_pos_voltages_back", line, backward[0:2])
+                    self._scan_pos_voltages_back[line, :, 0] = backward[0]
+                    self._scan_pos_voltages_back[line, :, 1] = backward[1]
 
             if self._ai_scanner:
                 self.save_to_npy("APD", line, forward[-1])
                 self._ai_counter_voltages[line] = forward[-1]
                 if not self._fast_scan:
-                    self.save_to_npy("APD_back", line, np.flipud(backward[-1]))
-                    self._ai_counter_voltages_back[line] = np.flipud(backward[-1])
+                    self.save_to_npy("APD_back", line, backward[-1])
+                    self._ai_counter_voltages_back[line] = backward[-1]
 
         # self.log.info("2D finished sorting, line %s, time: %s", line,
         #                  datetime.datetime.now().strftime('%M-%S-%f'))
@@ -2124,25 +2124,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         """
         Initialises all numpy data arrays for the current stepper settings
         """
-        self._3D_stepping_raw_data = np.zeros(
-            (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
-        if not self._fast_scan:
-            self._3D_stepping_raw_data_back = np.zeros(
-                (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
-        if self.map_scan_position:
-            if self.axis_class[self._first_scan_axis].closed_loop and self.axis_class[
-                self._second_scan_axis].closed_loop:
-                self._3D_scan_pos_voltages = np.zeros(
-                    (self._steps_scan_second_line, self._steps_scan_first_line, 2, self._ramp_length))
-                if not self._fast_scan:
-                    self._3D_scan_pos_voltages_back = np.zeros(
-                        (self._steps_scan_second_line, self._steps_scan_first_line, 2, self._ramp_length))
-        if self._ai_scanner:
-            self._3D_ai_counter_voltages = np.zeros(
-                (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
-            if not self._fast_scan:
-                self._3D_ai_counter_voltages_back = np.zeros(
-                    (self._steps_scan_second_line, self._steps_scan_first_line, self._ramp_length))
 
         self._output_voltages_array = np.zeros(self._steps_scan_first_line * self._ramp_length)
         for i in range(0, self._steps_scan_first_line - 1, 2):
