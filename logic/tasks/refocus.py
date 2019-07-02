@@ -30,6 +30,7 @@ class Task(InterruptableTask):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._poi_manager = self.ref['poi_manager']
+        self._optimizer_logic = self.ref['optimizer_logic']
         self._laser = self.ref['laser']
         self._master = self.ref['pulsed_master']
         self._generator = self.ref['pulsed_master'].sequencegeneratorlogic()
@@ -60,7 +61,7 @@ class Task(InterruptableTask):
     def runTaskStep(self):
         """ Wait for refocus to finish. """
         time.sleep(0.1)
-        return self._poi_manager._optimizer_logic.module_state() != 'idle'
+        return self._optimizer_logic.module_state() != 'idle'
 
     def pauseTask(self):
         """ pausing a refocus is forbidden """
@@ -85,7 +86,7 @@ class Task(InterruptableTask):
 
     def checkExtraStartPrerequisites(self):
         """ Check whether anything we need is locked. """
-        return self._poi_manager._optimizer_logic.module_state() == 'idle'
+        return self._optimizer_logic.module_state() == 'idle'
 
     def checkExtraPausePrerequisites(self):
         """ pausing a refocus is forbidden """
