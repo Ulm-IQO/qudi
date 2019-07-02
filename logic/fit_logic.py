@@ -258,7 +258,7 @@ class FitLogic(GenericLogic):
         This is a convenience function so you do not have to mess with an extra import in modules
         using FitLogic.
         """
-        print(FitContainer(self, container_name, dimension).__dict__)
+      
         return FitContainer(self, container_name, dimension)
 
 
