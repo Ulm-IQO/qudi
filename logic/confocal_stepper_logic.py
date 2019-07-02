@@ -1390,7 +1390,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     return_value = -1
 
         # Todo: implement moving for hardware without feedback with amount of steps:
-        # self.log.info("Movement of attocubes to an absolute position no possible for steppers.\n"
+        # self.log.info("Movement of steppers to an absolute position no possible for steppers.\n"
         #              "The position moved to is the given of amount of steps, not a physical "
         #              "given range away")
         return return_value
@@ -1423,6 +1423,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if axis_name not in self.axis_class.keys():
             self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
             return -1
+
         if not in_range(position, self.axis_class[axis_name].step_range[0], self.axis_class[axis_name].step_range[1]):
             self.log.error("%s lies without the steppers range", position)
             return -1
@@ -1481,7 +1482,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         while counter < 5:  # do max 5 optimisation cycles per accuracy step
             # move steppers with given accuracy(steps)
             if 0 > self._stepping_device.move_attocube(axis_name, True, direction, steps=steps):
-                self.log.error("Moving the attocubes failed")
+                self.log.error("Moving the steppers failed")
                 self._position_feedback_device.module_state.unlock()
                 self._position_feedback_device.close_analogue_voltage_reader(axis_name)
                 self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
@@ -1716,7 +1717,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         if main_axis in self.axis_class.keys():
             if second_axis in self.axis_class.keys():
                 if self._stepping_device.move_attocube(main_axis, True, True, steps=steps - 1) < 0:
-                    self.log.error("moving of attocube failed")
+                    self.log.error("moving of steppers failed")
                     # Todo: repair return values
                     return [-1], []
                 if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
@@ -1732,7 +1733,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
                 # move on line up
                 # if self._stepping_device.move_attocube(secondaxis, True, True, 1) < 0:
-                #    self.log.error("moving of attocube failed")
+                #    self.log.error("moving of steppers failed")
                 #    return -1
 
                 # Todo: Check if there is a better way than this to adjust for the fact that a stepping
@@ -1776,7 +1777,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     if steps_offset > 0:
                         if self._stepping_device.move_attocube(main_axis, True, self._off_set_direction,
                                                                steps=steps_offset) < 0:
-                            self.log.error("moving of attocube failed (offset)")
+                            self.log.error("moving of steppers failed (offset)")
                             return [-1], []
                         else:
                             time.sleep(steps_offset / self.axis_class[self._first_scan_axis].step_freq)
@@ -1788,7 +1789,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                         return result[0], result_back[0], analog_result[0], analog_result_back[0]
                     return result[0], result_back[0]
                 if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
-                    self.log.error("moving of attocube failed")
+                    self.log.error("moving of steppers failed")
                     return [-1], []
 
                 if self._ai_scan_axes:  # this test if list is not empty
@@ -1807,7 +1808,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     def step_back_line(self, main_axis, second_axis, steps):
         # redo this now (not forever) in the other direction
         if self._stepping_device.move_attocube(main_axis, True, False, steps=steps - 1) < 0:
-            self.log.error("moving of attocube failed")
+            self.log.error("moving of steppers failed")
             return [-1], []
         if self._counting_device.start_finite_counter(start_clock=not self._3D_measurement) < 0:
             self.log.error("Starting the counter failed")
@@ -1836,7 +1837,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # move on line up
         if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
-            self.log.error("moving of attocube failed")
+            self.log.error("moving of steppers failed")
             return [-1], []
 
         retval = [-1], []
@@ -2204,9 +2205,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         parameters['Second Axis Frequency'] = self.axis_class[self._second_scan_axis].step_freq
         parameters['Second Axis Amplitude'] = self.axis_class[self._second_scan_axis].step_amplitude
         if self._3rd_direction_correction:
-            parameters["Z correction up (attocube axis)"] = self._lines_correct_3rd_axis
+            parameters["Z correction up (steppers axis)"] = self._lines_correct_3rd_axis
         else:
-            parameters["z correction down (attocube axis"] = self._lines_correct_3rd_axis
+            parameters["z correction down (steppers axis"] = self._lines_correct_3rd_axis
         if self._3D_measurement:
             parameters["Count frequency (Hz)"] = self._clock_frequency_3D
             parameters["Scan resolution (V/step)"] = self.scan_resolution_3D
@@ -2747,7 +2748,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         Calls itself until end of measurement
 
         @param bool direction: the direction of the (2nd) slow axis  (up is True or down is False), default True
-
         """
 
         # Todo: Make sure how to implement the thread locking here correctly.
@@ -2873,7 +2873,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                     if i < self._steps_scan_first_line - 1:
                         # this way we measure _steps_scan_first_line points but step one less.
                         if self._stepping_device.move_attocube(main_axis, True, direction, steps=1) < 0:
-                            self.log.error("Moving of attocube failed,x")
+                            self.log.error("Moving of steppers failed,x")
                             # Todo: repair return values
                             return [-1], []
 
@@ -2909,7 +2909,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
                 # move on line up
                 if self._stepping_device.move_attocube(second_axis, True, True, 1) < 0:
-                    self.log.error("Moving of attocube failed, y")
+                    self.log.error("Moving of steppers failed, y")
                     return -1
 
                 if self._ai_scan_axes:
