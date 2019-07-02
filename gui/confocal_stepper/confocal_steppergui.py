@@ -639,6 +639,11 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.scan_resolution_3D_spinBox.setValue(self._stepper_logic.scan_resolution_3D)
 
+        self._mw.smoothing_steps_3D_spinBox.setRange(0, 500) # todo: this needs to be adjusted according to the steps used for
+        # one scan it can not be higher than half the amount of steps for one scan ramp
+        self._mw.smoothing_steps_3D_spinBox.setValue(self._stepper_logic._3D_smoothing_steps)
+        self._mw.smoothing_steps_3D_spinBox.editingFinished.connect(self.smoothing_steps_3D_changed, QtCore.Qt.QueuedConnection)
+
         # setting up check box for the maximal scan resolution and cavity mode
         self._mw.max_scan_resolution_3D_checkBox.toggled.connect(self.toggle_scan_resolution_3D)
 
@@ -657,6 +662,8 @@ class ConfocalStepperGui(GUIBase):
         self._mw.startV_3D_spinBox.setEnabled(True)
         self._mw.stopV_3D_spinBox.setEnabled(True)
         self._mw.scan_resolution_3D_spinBox.setEnabled(True)
+        self._mw.smoothing_steps_3D_spinBox.setEnabled(True)
+
         # setting up check box for the maximal scan resolution and cavity mode
         self._mw.max_scan_resolution_3D_checkBox.toggled.connect(self.toggle_scan_resolution_3D)
 
@@ -1467,6 +1474,10 @@ class ConfocalStepperGui(GUIBase):
             self._stepper_logic._3D_use_maximal_resolution = False
             self._mw.scan_resolution_3D_spinBox.setEnabled(True)
             self.scan_resolution_3D_changed()
+
+    def smoothing_steps_3D_changed(self):
+        smoothing_steps = self._mw.smoothing_steps_3D_spinBox.value()
+        self._stepper_logic._3D_smoothing_steps = smoothing_steps
 
     def update_scan_speed_3D(self):
         scan_speed = np.abs(self._stepper_logic.end_voltage_3D -
