@@ -1397,7 +1397,15 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                              expected_Rabi_frequency=30e6, expected_T2=5e-6):
 
         """
+        @param float mw_freq_center: central frequency of the chirped ODMR in Hz
+        @param float freq_range: target frequency range of the whole ODMR scan in Hz
+        @param float freq_overlap: additional 'overlap' frequency range for each chirped pulse,
+        i.e. the frequency range of each single chirped pulse is (freq_range / num_points) + freq_overlap
+        @param float num_of_points: number of chirped pulses, used in the scan
+        @param float expected_Rabi_frequency: expected value of the Rabi frequency - used to calculate adiabaticity
+        @param float expected_T2: expected T2 time - used to check if the chirped pulse is shorter than T2
 
+        @return: created_blocks, created_ensembles, created_sequences for the generated pulse sequences
         """
         created_blocks = list()
         created_ensembles = list()
@@ -1417,7 +1425,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         freq_array = mw_freq_start + np.arange(num_of_points) * mw_freq_incr + mw_freq_incr / 2.
 
         if pulse_length > expected_T2:
-            self.log.error('Pulse length of chirp exceeds expected T2 time')
+            self.log.error('The duration of the chirped pulse exceeds expected the T2 time')
 
         for mw_freq in freq_array:
             mw_element = self._get_mw_element_linearchirp(length=pulse_length,
@@ -1439,10 +1447,17 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
+        # chirp range
         pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
-        adiab = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length)
+
+        # chirp rate
+        chirp_rate = pulse_freq_range / pulse_length
+
+        # adiabaticity condition
+        adiab = expected_Rabi_frequency ** 2 / chirp_rate
         # adiab >> 1 is needed for adiabatic evolution. Simulations show that adiab > 5 works very well,
         # adiab > 2 will work but is on the edge, so we impose a check if adiab < 2.5 to give a warning.
+
         if adiab < 2.5:
             self.log.error(
                 'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/pulse_length) = ' + str(
@@ -1474,7 +1489,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles, created_sequences
 
     def _get_mw_element_AEchirp(self, length, increment, amp=None, start_freq=None, stop_freq=None, phase=None,
-                                tau_pulse=0.1):
+                                truncation_ratio=0.1):
         """
         Creates a MW pulse PulseBlockElement
 
@@ -1500,24 +1515,38 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
             sampling_function_name = 'AllenEberlyChirp'
             kwargs = {'amplitude': amp, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase,
-                      'tau_pulse': tau_pulse * length}
+                      'tau_pulse': truncation_ratio * length}
 
             mw_element.pulse_function[self.microwave_channel] = \
                 getattr(SamplingFunctions, sampling_function_name)(**kwargs)
         return mw_element
 
-        # Chirped ODMR with a pulse, following the Allen-Eberly model: a sech amplitude shape and a tanh shaped detuning
-        # The AE pulse has very good properties in terms of adiabaticity and is often preferable to the standard
-        # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
-        # More information about the Allen-Eberly model can be found in:
-        # L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
-        # Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
-
     def generate_AEchirpedodmr(self, name='AllenEberlyChirpODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
-                               freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9, tau_pulse=0.1,
+                               freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9, truncation_ratio=0.1,
                                expected_Rabi_frequency=30e6, expected_T2=5e-6, peak_mw_amplitude=0.25):
         """
+        @param float mw_freq_center: central frequency of the chirped ODMR in Hz
+        @param float freq_range: target frequency range of the whole ODMR scan in Hz
+        @param float freq_overlap: additional 'overlap' frequency range for each chirped pulse,
+            i.e. the frequency range of each single chirped pulse is (freq_range / num_points) + freq_overlap
+            Truncation is usually negligible for values <0.2.
+        @param float num_of_points: number of chirped pulses, used in the scan
+        @param float truncation_ratio: ratio that characterizes the truncation of the chirped pulse
+            Specifically, the pulse shape is given by sech(t/ truncation ratio /pulse length)
+            truncation_ratio = 0.1 is excellent; the scheme will work for 0.2. Higher values truncate the sech pulse
+            and reduce the frequency range of ODMR as the transfer efficiency in the wings of the pulse range drops.
+        @param float expected_Rabi_frequency: expected value of the Rabi frequency - used to calculate adiabaticity
+        @param float expected_T2: expected T2 time - used to check if the chirped pulse is shorter than T2
 
+        @return: created_blocks, created_ensembles, created_sequences for the generated pulse sequences
+
+        Additional information about the Allen-Eberly chirped ODMR
+        Chirped ODMR with a pulse, following the Allen-Eberly model: a sech amplitude shape and a tanh shaped detuning
+        The AE pulse has very good properties in terms of adiabaticity and is often preferable to the standard
+        Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
+        More information about the Allen-Eberly model can be found in:
+        L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
+        Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
         """
         created_blocks = list()
         created_ensembles = list()
@@ -1537,7 +1566,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         freq_array = mw_freq_start + np.arange(num_of_points) * mw_freq_incr + mw_freq_incr / 2.
 
         if pulse_length > expected_T2:
-            self.log.error('Pulse length of chirp exceeds expected T2 time')
+            self.log.error('The duration of the chirped pulse exceeds the expected T2 time')
 
         for mw_freq in freq_array:
             mw_element = self._get_mw_element_AEchirp(length=pulse_length,
@@ -1546,7 +1575,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                       start_freq=mw_freq - mw_freq_incr / 2. - freq_overlap,
                                                       stop_freq=mw_freq + mw_freq_incr / 2. + freq_overlap,
                                                       phase=0,
-                                                      tau_pulse=tau_pulse)
+                                                      tau_pulse=truncation_ratio * pulse_length)
             chirpedodmr_block.append(mw_element)
             chirpedodmr_block.append(laser_element)
             chirpedodmr_block.append(delay_element)
@@ -1560,13 +1589,15 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # Create and append sync trigger block if needed
         self._add_trigger(created_blocks=created_blocks, block_ensemble=block_ensemble)
 
+        # chirp range
         pulse_freq_range = mw_freq + mw_freq_incr / 2. + freq_overlap - (mw_freq - mw_freq_incr / 2. - freq_overlap)
 
-        # TODO: check if tau_pulse is in time units or it is just a ratio. Currently, we assume that it is a ratio.
-        adiabAE = expected_Rabi_frequency ** 2 / (pulse_freq_range / pulse_length / tau_pulse)
-        # tau_pulse/pulse_duration = 0.1 is perfect, the scheme will work for 0.2. Higher values reduce the frequency
-        # range of ODMR because they limit the expected transfer efficiency in the wings of the range.
-        # In comparison to adiab for linear chirp, we replace pulse_duration with tau_pulse
+        # chirp rate for the AE model at the moment of level crossing
+        chirp_rate_AE = pulse_freq_range / pulse_length / truncation_ratio
+        # In comparison to linear chirp, the chirp rate is divided by the truncation_ratio
+
+        # adiabaticity condition for the AE model
+        adiabAE = expected_Rabi_frequency ** 2 / chirp_rate_AE
         # adiabAE >> 1 is needed for adiabatic evolution. Simulations show adiabAE > 2 will work but is on the edge,
         # so we impose a check if adiabAE < 2.5 to give a warning.
 
@@ -1578,10 +1609,10 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
             self.log.info(
                 'Adiabadicity conditions is Rabi**2/(pulse_freq_range/tau_pulse) = {} >> 1'.format(adiabAE))
 
-        # TODO: check if tau_pulse is in time units or it is just a ratio. Currently, we assume that it is a ratio.
         # Approximate expected transfer efficiency in case of perfect adiabaticity for a AE pulse
         # this formula works very well for adiab > 2.5
-        approx_transfer_eff_perfect_adiab_AE = 1 - 2 / (4 + (pulse_freq_range * np.sinh(1 / 2 / tau_pulse) / expected_Rabi_frequency) ** 2)
+        approx_transfer_eff_perfect_adiab_AE = 1 - 2 / (4 + (pulse_freq_range * np.sinh(1 / 2 / truncation_ratio)
+                                                             / expected_Rabi_frequency) ** 2)
 
         self.log.info(
             'Expected transfer efficiency in case of perfect adiabaticity = ' + str(
