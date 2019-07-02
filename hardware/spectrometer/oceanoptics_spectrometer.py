@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 """
 
-from core.module import Base
+from core.module import Base, ConfigOption
 from interface.spectrometer_interface import SpectrometerInterface
 import numpy as np
 import time
@@ -37,17 +37,21 @@ class OceanOptics(Base, SpectrometerInterface):
 
     Example config for copy-paste:
 
-    spectrometer_dummy:
-        module.Class: 'spectrometer.winspec_spectrometer.WinSpec32'
+    myspectrometer:
+        module.Class: 'spectrometer.oceanoptics.OceanOptics'
+        spectrometer_serial: 'QEP01583' #insert here the right serial number.
 
     """
+    _serial = ConfigOption('spectrometer_serial', missing='warn')
 
     def on_activate(self):
         """ Activate module.
         """
-        self.integration_time_micros = 100e3
-        self.spec = sb.Spectrometer.from_serial_number()
-        self.spec.integration_time_micros(self.integration_time_micros)
+        self.integration_time = 1e4
+
+        self.spec = sb.Spectrometer.from_serial_number(self._serial)
+        self.log.info(''.format(self.spec.model, self.spec.serial_number))
+        self.spec.integration_time_micros(self.integration_time)
 
     def on_deactivate(self):
         """ Deactivate module.
