@@ -20,8 +20,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.module import Base
-import time
-import numpy as np
 from interface.first_test_interface import FirstTestInterface
 from interface.second_test_interface import SecondTestInterface
 from core.module import interface_method
@@ -44,23 +42,50 @@ class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
     def on_deactivate(self):
         pass
 
-    # @interface_method
-    # def test(self):
-    #     return super().test()
-    #
-    @FirstTestInterface.test.register('FirstTestInterface')
+    ################################################################################################
+    # You can either use the interface method decorator concept like this:
+    ################################################################################################
+    @interface_method
+    def test(self):
+        print('Default implementation: test called', self.var)
+        return 0
+
+    @test.register('FirstTestInterface')
     def test1(self):
         """
         """
         print('FirstTestInterface: test called', self.var)
         return 1
 
-    @SecondTestInterface.test.register('SecondTestInterface')
+    @test.register('SecondTestInterface')
     def test2(self):
         """
         """
         print('SecondTestInterface: test called', self.var)
         return 2
 
-    def derp(self):
-        pass
+    ################################################################################################
+    # ... or like this:
+    ################################################################################################
+    # # @SecondTestInterface.test.register('FirstTestInterface') would also work
+    # @FirstTestInterface.test.register('FirstTestInterface')
+    # def test1(self):
+    #     """
+    #     """
+    #     print('FirstTestInterface: test called', self.var)
+    #     return 1
+    #
+    # # @FirstTestInterface.test.register('SecondTestInterface') would also work
+    # @SecondTestInterface.test.register('SecondTestInterface')
+    # def test2(self):
+    #     """
+    #     """
+    #     print('SecondTestInterface: test called', self.var)
+    #     return 2
+
+    ################################################################################################
+    # Or you can just override the interface method alltogether:
+    ################################################################################################
+    # def test(self):
+    #     print('I have taken over both interfaces... you have no power here!')
+    #     return 'YOU DIED!'
