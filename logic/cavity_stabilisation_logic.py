@@ -136,9 +136,9 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         # Todo: Add initialisation from _statusVariable
         # Connectors
-        self._feedback_device = self.get_connector('analoguereader')
-        self._output_device = self.get_connector('analogueoutput')
-        self._save_logic = self.get_connector('savelogic')
+        self._feedback_device = self.analoguereader()
+        self._output_device = self.analogueoutput()
+        self._save_logic = self.savelogic()
 
         # Fixme: This is very specific
         # first steps to get a to a better handling of axes parameters
@@ -854,7 +854,6 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
             return -1
         else:
             return 0
-
 
     def _initialise_data_matrix(self):
         """ Initializing the cavity scan plot. """
