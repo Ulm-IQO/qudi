@@ -295,6 +295,18 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """
         return self.interruptable and self.can('pause') and self.checkPausePrerequisites()
 
+    def check_config_key(self, key, default, possible_values=None):
+        """ Helper method to check is a key is defined in config and set a default value if not
+
+            @param string key: The key to get or set
+            @param object default: The default value if not set
+            @param list possible_values: If note None, use the default if the current value is not in this list
+
+            """
+        if key not in self.config or self.config[key] is None or \
+                (possible_values is not None and self.config[key] not in possible_values):
+            self.config[key] = default
+
     @abc.abstractmethod
     def startTask(self):
         """ Implement the operation to start your task here.
