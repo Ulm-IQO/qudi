@@ -24,37 +24,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import time
-import socket
+import visa
 from core.module import Base, ConfigOption
 import numpy as np
 
 from interface.process_interface import ProcessInterface
 from interface.process_control_interface import ProcessControlInterface
-
-
-class SocketInstrument:
-    """ General class for a socket instrument """
-    def __init__(self, host, port):
-        """ Initialise the connection with the instrument """
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((host, port))
-        self.sock = sock
-
-    def write(self, cmd):
-        """Sends a command over the socket"""
-        cmd_string = cmd + '\n'
-        sent = self.sock.sendall(cmd_string.encode())
-        if sent != None:
-            raise RuntimeError('Transmission failed')
-
-    def query(self, cmd):
-        """sends the question and receives the answer"""
-        self.write(cmd)
-        answer = self.sock.recv(2048)  # 2000
-        return answer.decode()[:-2]
-
-    def close(self):
-        self.sock.close()
 
 
 class Cryocon(Base, ProcessInterface, ProcessControlInterface):
@@ -75,29 +50,35 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
 
     _ip_address = ConfigOption('ip_address')
     _ip_port = ConfigOption('port', 5000)
+    _timeout = ConfigOption('timeout', 5)
     _main_channel = ConfigOption('main_channel', 'A')
 
-    _socket = None
+    _inst = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self._socket = SocketInstrument(self._ip_address, self._ip_port)
+        rm = visa.ResourceManager()
+        try:
+            self._inst = rm.open_resource(self._address, timeout=self._timeout)
+        except visa.VisaIOError:
+            self.log.error('Could not connect to hardware. Please check the wires and the address.')
+            raise
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
         """
         try:
-            if self._socket:
-                self._socket.close()
-        except:
+            self._inst.close()
+        except visa.VisaIOError:
             self.log.warning('Crycon connexion has not been closed properly.')
 
     def get_temperature(self, channel=None):
         """ Cryocon function to get one temperature """
         channel = channel if channel is not None else self._main_channel
         try:
-            temperature = float(self._socket.query('INPUT? {}'.format(channel)))
+            text = 'INPUT? {}'.format(channel)
+            temperature = float(self._inst.query(text))
         except:
             temperature = np.NaN
         return temperature
@@ -106,7 +87,8 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         """ Function to set the temperature setpoint """
         channel = channel if channel is not None else self._main_channel
         loop = 1 if channel == 'A' else 2
-        self._socket.query('loop {}:setp {}'.format(loop, temperature))
+        text = 'loop {}:setp {}'.format(loop, temperature)
+        self._inst.query(text)
         if turn_on:
             self.control()
 
@@ -115,18 +97,19 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         channel = channel if channel is not None else self._main_channel
         loop = 1 if channel == 'A' else 2
         try:
-            setpoint = float(self._socket.query('loop {}:setp?'.format(loop))[:-1])
+            text = 'loop {}:setp?'.format(loop)
+            setpoint = float(self._inst.query(text)[:-1])
         except:
             setpoint = np.NaN
         return setpoint
 
     def stop(self):
         """  Function to stop the heating of the Cryocon """""
-        self._socket.query('stop')
+        self._inst.query('stop')
 
     def control(self):
         """ Function to turn the heating on """
-        self._socket.query('control')
+        self._inst.query('control')
 
     # ProcessInterface methods
 
