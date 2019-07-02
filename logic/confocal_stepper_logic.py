@@ -117,6 +117,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     signal_draw_figure_completed = QtCore.Signal()
     signal_position_changed = QtCore.Signal()
     signal_step_scan_stopped = QtCore.Signal()
+    signal_compare_measured_positions_stepper = QtCore.Signal(int, bool)
 
     signal_sort_count_data = QtCore.Signal(tuple, int)
     signal_sort_count_data_3D = QtCore.Signal(tuple, int)
@@ -397,6 +398,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._save_logic = self.savelogic()
         self._cavitycontrol = self.cavcontrol()
 
+        self._max_step_size = 1e-3  # in mm
+
         # Initialises hardware values
         self.axis = self.get_stepper_axes_use()
         # first steps to get a to a better handling of axes parameters
@@ -413,6 +416,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self.get_position([i])
                 self.axis_class[i].feedback_precision_volt, self.axis_class[
                     i].feedback_precision_position = self.calculate_precision_feedback(i)
+                self.axis_class[i].max_step_size_voltage = self._max_step_size * (
+                        self.axis_class[i].voltage_range[1] - self.axis_class[i].voltage_range[0]) / (
+                                                                   self.axis_class[i].step_range[1] -
+                                                                   self.axis_class[i].step_range[0])
 
         # Initialise step image constraints
         self.stopRequested = False
@@ -479,6 +486,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.DirectConnection)
         self.signal_sort_count_data_3D.connect(self.sort_3D_count_data, QtCore.Qt.DirectConnection)
         self.signal_step_lines_finesse_next.connect(self._step_line_finesse, QtCore.Qt.QueuedConnection)
+        self.signal_compare_measured_positions_stepper.connect(self._compare_measured_positions_stepper,
+                                                               QtCore.Qt.QueuedConnection)
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -659,7 +668,6 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.axis_class[axes[counter]].absolute_position = position
 
         return position_result
-
 
     def convert_position_to_voltage(self, axis_name, position):
         """Converts a position to a voltage for a resistive readout of the axis
@@ -869,6 +877,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         self.generate_file_path()
         self.signal_step_lines_next.emit(True)
+        if self._steps_scan_first_line > 8:
+            self._check_movement_during_measurement()
 
     def _3D_use_maximal_resolution(self):
         """
@@ -1075,6 +1085,62 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         return 0
 
+    def _check_movement_during_measurement(self):
+        """Checks if the last and first point have significantly different positions so that an emergency stop can be
+        made if steppers are stuck and not moving.
+        This only works for axis which have position feedback
+        """
+        if not self._first_scan_axis in self.axis_class:
+            return -1
+
+        if not self.axis_class[self._first_scan_axis].closed_loop:
+            self.log.info(
+                "It cannot be checked if  the stepper moves during the measurement without a position feedback. "
+                "Please ensure that stepper moves correctly in another way.")
+            return 0
+        counter = 0
+        if self.stopRequested:
+            return 0
+        self.signal_compare_measured_positions_stepper.emit(counter, False)
+
+    def _compare_measured_positions_stepper(self, counter, problem):
+        """Compares the first and last position """
+        if self.stopRequested:
+            # if the stepping stops no safety to stop stepper needs to be implemented
+            return
+        if counter >= self._step_counter:
+            loop_counter = counter
+            while True:
+                if self.stopRequested:
+                    return
+                loop_counter += 1
+                if counter == self._steps_scan_second_line:
+                    # all lines have been checked
+                    return
+                else:
+                    time.sleep(self._steps_scan_first_line / self.axis_class[self._first_scan_axis].step_freq)
+                    if counter < self._step_counter:
+                        break
+                # if loop_counter is as big as the numbers as lines to be measured, it has waited enough time and
+                # measurement should be finished.
+                if loop_counter == self._steps_scan_second_line:
+                    return
+        # select data for first axis from line number "counter"
+        data = self._scan_pos_voltages[counter, :, 0]
+        smoothed_data = ndimage.filters.gaussian_filter(data, self._gaussian_smoothing_parameter)
+        gaussian_fit = norm.fit(data)
+        # check for significant change in position data
+        if abs(smoothed_data[-1] - smoothed_data[-1]) < 2 * gaussian_fit[1]:
+            problem = False
+        elif problem:
+            self.log.error("for two consecutive axis the stepper has not moved. Measurement will be stopped."
+                           "The lines with problems are #%s and #%s", counter - 1, counter)
+            self.stopRequested = True
+            return
+        else:
+            problem = True
+        self.signal_compare_measured_positions_stepper.emit(counter + 1, problem)
+
     def set_scan_axes(self, scan_axes):
         """"Sets the step scan axes for the stepper to the given direction
 
@@ -1244,6 +1310,8 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.generate_file_path()
 
         self.signal_step_lines_next.emit(True)
+        if self._steps_scan_first_line > 8:
+            self._check_movement_during_measurement()
 
     def stop_stepper(self):
         """"Stops the scan
@@ -1289,13 +1357,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-        if accuracy is not None:
-            if not isinstance(accuracy, int) or accuracy <= 0:
-                self.log.error("The optimisation accuracy must be an integer >0.\n The value passed was %s", accuracy)
-        else:
-            # Todo: generate a variable that makes accuracy a class variable
-            # that is to be set here adn that can be changed from the GUI
-            accuracy = 1
+        # Todo: Maybe it makes sense to open option to change freq and amplitude
 
         # check passed axes value
         if not isinstance(position, dict):
@@ -1320,10 +1382,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if abs(self.axis_class[key].absolute_position - value) >= self.axis_class[
                 key].feedback_precision_position:  # check if position differs from actual hardware position
 
-                # Todo: Maybe it makes sense to open option to change freq and amplitude
                 # actually move to the wanted position using an optimisation algorithm
                 if 0 > self.optimize_position(key, value, accuracy):
-                    self.log.warning("Moving attocube to desired position failed for axis %s.", key)
+                    # if 0 > self.optimize_position(key, additional_axis, value, accuracy):
+
+                    self.log.warning("Moving stepper to desired position failed for axis %s.", key)
                     return_value = -1
 
         # Todo: implement moving for hardware without feedback with amount of steps:
@@ -1332,12 +1395,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         #              "given range away")
         return return_value
 
-    def optimize_position(self, axis_name, position, steps=1):
-        """ Algorithms that uses an searching algorithm to move to the given position
+    def optimize_position(self, axis_name, position, steps=None):
+        """ Move to a given position using a searching algorithm
 
-        @param axis_name: the name of the axis for which the position is to be changed
-        @param position: The position the attocube axis should be moved
-        @param int steps: The maximum used amount of steps to reach the desired position in one movement
+        @param axis_name: The name of the axis for which the position is to be changed
+        @param position: The position the stepper axis should be moved
+        @param int steps:   The maximum used amount of steps to reach the desired position in one movement.
+                            If no value is given a sensible value will be calculated by the program
+                            Default: None
+
         @return int: error code (0:OK, -1:error)
         """
 
@@ -1349,9 +1415,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             return -1
 
         # check feasibility of passed values
-        if not isinstance(steps, int) or steps <= 0:
-            self.log.error("The movement accuracy steps has to be given as an integer!")
-            return -1
+        if steps is not None:
+            if not isinstance(steps, int) or steps <= 0:
+                self.log.error("The movement accuracy steps has to be given as an integer!")
+                return -1
+
         if axis_name not in self.axis_class.keys():
             self.log.error("%s is not a possible axis. Therefore it is not possible to change its position", axis_name)
             return -1
@@ -1359,12 +1427,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             self.log.error("%s lies without the steppers range", position)
             return -1
 
-        # check if optimisation is necessary
-        precision = self.axis_class[axis_name].feedback_precision_position
-        if abs(self.axis_class[axis_name].absolute_position - position) <= precision:
+        # convert to hardware voltage for faster execution and higher accuracy
+        desired_voltage = self.convert_position_to_voltage(axis_name, position)
+
+        # check if optimisation is necessary and determine necessary amount of steps for first optimisation round
+        max_step_size_voltage = self.axis_class[axis_name].max_step_size_voltage
+        current_position_voltage = self.get_position_voltage([axis_name])[0]
+
+        if steps is None:
+            steps = max(int(abs(desired_voltage - current_position_voltage) / max_step_size_voltage), 1)
+        precision = self.axis_class[axis_name].feedback_precision_volt
+        if abs(current_position_voltage - desired_voltage) <= precision:
             return 0
 
         direction = self.axis_class[axis_name].absolute_position < position  # find movement direction
+
+        # Todo: Here is exists already a method that checks that but only for specific axes.
+        #  Make this more flexible to reduce code duplication
         # check freq and amplitude
         status_freq = self.axis_class[axis_name]._check_freq()
         status_amp = self.axis_class[axis_name]._check_amplitude()
@@ -1374,24 +1453,22 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         # Initialise position readout:
         if self._position_feedback_device.set_up_analogue_voltage_reader_clock(axis_name, clock_frequency=100000) < 0:
-            return [-1]
+            return -1
         # read voltages from resistive read out for position feedback
         if self._position_feedback_device.set_up_analogue_voltage_reader_scanner(
                 100, axis_name) < 0:
-            return [-1]
+            return -1
         try:
             self._position_feedback_device.module_state.lock()
         except:
             self.log.warning("Position feedback device is already in use for another task")
             self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+            self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
             return -1
-
 
         # todo: kill counter
         # --- Do optimisation ---
 
-        # convert to hardware voltage for faster execution and higher accuracy
-        desired_voltage = self.convert_position_to_voltage(axis_name, position)
         counter = 0
         direction_change = 0
 
@@ -1399,12 +1476,15 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # distance = 0 This will be necessary to take care of the fact, that the stepper moves not equal steps sizes in
         # up and down direction (Feature for later)
         sleep = steps / self.axis_class[axis_name].step_freq
-        while counter < 20:  # do max 5 optimisation cycles per accuracy step
-            # move attocubes with given accuracy(steps)
+        same_direction_amounts = 0
+        old_voltage = current_position_voltage
+        while counter < 5:  # do max 5 optimisation cycles per accuracy step
+            # move steppers with given accuracy(steps)
             if 0 > self._stepping_device.move_attocube(axis_name, True, direction, steps=steps):
                 self.log.error("Moving the attocubes failed")
                 self._position_feedback_device.module_state.unlock()
                 self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+                self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
                 return -1
             time.sleep(sleep)
             # compare new position to desired one
@@ -1418,6 +1498,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 return -1
 
             voltage_result = norm.fit(result[0])[0]
+
             if 0 > self._position_feedback_device.stop_analogue_voltage_reader(axis_name):
                 self.log.error("Stopping the analog input failed")
                 return -1
@@ -1433,30 +1514,75 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
                 self._position_feedback_device.module_state.unlock()
                 return error
-            # check if direction movement has to changed
+
+            # check if stepper has moved depending on the step direction
             if direction:
-                if voltage_result < desired_voltage:
+                if voltage_result > old_voltage:  # stepper has moved correctly
+                    old_voltage = voltage_result
+                    if voltage_result < desired_voltage:  # stepper has moved behind desired position
+                        if steps > 1:
+                            same_direction_amounts += 1
+                        continue
+                else:  # stepper has either not moved or moved in the wrong direction
+                    if steps > 10:
+                        self.log.error(
+                            "The stepping did not move the stepper during the position optimisation process. "
+                            "Optimisation will be stopped. \n After %s steps the %s axis did not move with "
+                            "a frequency of % and a step amplitude of %s V",
+                            steps, axis_name, self.axis_class[axis_name].step_freq,
+                            self.axis_class[axis_name].step_amplitude)
+                        break
+                    same_direction_amounts -= 1
+                    counter += 1
+                    if same_direction_amounts > 5:
+                        counter = 0
                     continue
             else:
-                if voltage_result > desired_voltage:
+                if voltage_result < old_voltage:  # stepper has moved correctly
+                    old_voltage = voltage_result
+                    if voltage_result > desired_voltage:  # stepper has moved behind desired position
+                        if steps > 1:
+                            same_direction_amounts += 1
+                        continue
+                else:  # stepper has either not moved or moved in the wrong direction
+                    if steps > 10:
+                        self.log.error(
+                            "The stepping did not move the stepper during the position optimisation process. "
+                            "Optimisation will be stopped. \n After %s steps the %s axis did not move with "
+                            "a frequency of %s  Hz and a step amplitude of %s V",
+                            steps, axis_name, self.axis_class[axis_name].step_freq,
+                            self.axis_class[axis_name].step_amplitude)
+                        break
+                    same_direction_amounts -= 1
+                    counter += 1
+                    if same_direction_amounts > 3:
+                        counter = 0
                     continue
+
             # half the step size to go back
             if steps > 1:
-                steps = int(steps / 2)
+                a = max(int(abs(desired_voltage - voltage_result) / max_step_size_voltage), 1)
+                steps = min(a, int(steps / 2))
                 sleep = steps / self.axis_class[axis_name].step_freq
+                old_voltage = voltage_result
+                if steps == 1:
+                    same_direction_amounts = 0
             else:
                 counter += 1
                 direction_change = 0
+                old_voltage = voltage_result
             direction = not direction
-            direction_change +=1
+            direction_change += 1
 
         position_result = self.convert_voltage_to_position(axis_name, voltage_result)
+
         self.log.info("The best position that could be reached with the given freq. and voltage of the stepper has"
                       " been reached. \n It is %s, while the desired value was %s. If a higher accuracy is desired"
                       " please reduce the step voltage and redo the process.", position_result, position)
         self.axis_class[axis_name].absolute_position = position_result
         self._position_feedback_device.module_state.unlock()
         self._position_feedback_device.close_analogue_voltage_reader(axis_name)
+        self._position_feedback_device.close_analogue_voltage_reader_clock(axis_name)
         return 0
 
     def _step_line(self, direction):
@@ -1830,7 +1956,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.sort_counted_data(mean_counts, line)
 
     def go_to_start_position(self, steps, clock_frequency):
-        """Moves stepper to the first position measured for the last line measured.
+        """Moves stepper to the first position measured for the first line measured.
 
         @param int steps: the steps that are counted/scanned during one part of the measurement
         @param float clock_frequency: the frequency with which the data is acquired/generated during
@@ -1843,11 +1969,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             if not self._fast_scan:
                 new_position = [self.convert_voltage_to_position(self._first_scan_axis,
                                                                  self._scan_pos_voltages_back[
-                                                                     self._step_counter, 0, 0])]
+                                                                     0, 0, 0])]
             else:
                 new_position = [self.convert_voltage_to_position(self._first_scan_axis,
                                                                  self._scan_pos_voltages[
-                                                                     self._step_counter, -1, 0])]
+                                                                     0, -1, 0])]
             self.axis_class[self._first_scan_axis].absolute_position = new_position[0]
         else:
             if len(self._ai_scan_axes) > 0:
@@ -1862,38 +1988,27 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # check if end position differs from start position
         if abs(self._start_position[0] - new_position[0]) > self.axis_class[
             self._first_scan_axis].feedback_precision_position:
+            if len(self._ai_scan_axes) > 0 and not measurement_stopped:
+                self.kill_counter()
+                self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
+                if self._3D_measurement:
+                    self._analogue_output_device.close_analogue_output(self._ao_channel)
+                measurement_stopped = True
+
+            # go to start position
             if self._fast_scan:
-                steps_res = int(self._steps_scan_second_line / 10)
-                if steps_res == 0:
-                    steps_res = 3
-            else:
-                steps_res = int(
-                    self._steps_scan_first_line * 0.03)  # 3%offset is minimum to be expected so more
-            # steps would be over correcting
-            # stop readout for scanning so positions can be optimised
-            # Todo: Let user choose offset
-            if steps_res > 0:
-                if len(self._ai_scan_axes) > 0 and not measurement_stopped:
-                    self.kill_counter()
-                    self._position_feedback_device.close_analogue_voltage_reader(self._ai_scan_axes[0])
-                    if self._3D_measurement:
-                        self._analogue_output_device.close_analogue_output(self._ao_channel)
-                    measurement_stopped = True
+                step_freq = self.axis_class[self._first_scan_axis].step_freq
+                if step_freq < 300:
+                    self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq * 3)
+            if self.optimize_position(self._first_scan_axis, self._start_position[0]) < 0:
+                self.stopRequested = True
+                self.log.warning('Optimisation of position failed. Step Scan stopped.')
+                # restart position readout for scanning
+                # the second if ensures that the analogue scanner is  s not started when
+                # the stepping scan is already finished
 
-                # go to start position
-                if self._fast_scan:
-                    step_freq = self.axis_class[self._first_scan_axis].step_freq
-                    if step_freq < 300:
-                        self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq * 3)
-                if self.optimize_position(self._first_scan_axis, self._start_position[0], steps_res) < 0:
-                    self.stopRequested = True
-                    self.log.warning('Optimisation of position failed. Step Scan stopped.')
-                    # restart position readout for scanning
-                    # the second if ensures that the analogue scanner is  s not started when
-                    # the stepping scan is already finished
-
-                if self._fast_scan:
-                    self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq)
+            if self._fast_scan:
+                self.axis_class[self._first_scan_axis].set_stepper_frequency(step_freq)
 
         if measurement_stopped:
             self._initalize_measurement(steps, clock_frequency, ai_channels=self._ai_scan_axes)
