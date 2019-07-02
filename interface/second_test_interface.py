@@ -13,6 +13,7 @@ class SecondTestInterface(metaclass=InterfaceMetaclass):
     _modtype = 'interface'
 
     @interface_method
+    @abc.abstractmethod
     def test(self):
         """
         This is for testing
