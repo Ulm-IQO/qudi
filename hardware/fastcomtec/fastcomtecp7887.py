@@ -287,19 +287,26 @@ class FastComtec(Base, FastCounterInterface):
                 self.set_sequences(n_sequences)
             else:
                 n_seq_max = 2**31-1     # approx. infinite repetitions by max int value
-                self.set_sequences(n_seq_max)
+                n_sequences = n_seq_max
+                self.set_sequences(n_sequences)
 
         # preset param, typically used in gate mode, but also differently
         if n_sweeps_preset is not None:
             self.set_preset(n_sweeps_preset)
-        else:
-            if self.gated:
-                self.set_preset(1)  # appropriate for most gated scenarios
+        # don't set default value, since change_sweep_mode() might be called from script
+        #else:
+        #    if self.gated:
+        #        self.set_preset(1)  # appropriate for most gated scenarios
 
         record_length = self.get_length() * bin_width_new
 
         if filename is not None:
             self._change_filename(filename)
+
+        self.log.debug("Fastcomtec configuration written. "
+                       "Record length: {}, gated: {}, cycles: {}, sweeps_preset: {}, sequences: {}".format(
+                        record_length, self.gated, number_of_gates if self.gated else 0, n_sweeps_preset,
+                        n_sequences if self.gated else None))
 
         return self.get_binwidth(), record_length, number_of_gates
 
@@ -636,8 +643,8 @@ class FastComtec(Base, FastCounterInterface):
             self.set_preset_mode(mode=prena, preset=n_sweeps_preset)
             self.gated = False
 
-        self.log.debug("Setting sweep mode to gated: {}, single_sweeps: {}, sweeps_preset: {}".format(
-                        gated, is_single_sweeps, n_sweeps_preset))
+        self.log.debug("Changing sweep mode. Gated: {}, cycles: {}, n_sweeps: {}, single_sweeps: {}".format(
+                        gated, cycles, n_sweeps_preset, is_single_sweeps))
 
         return gated
 
@@ -762,6 +769,8 @@ class FastComtec(Base, FastCounterInterface):
         @return int mode: current cycles
         """
         # Check that no constraint is violated
+        self.log.debug("Setting sequences {}".format(sequences))
+
         cmd = 'sequences={0}'.format(sequences)
         self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         return sequences
