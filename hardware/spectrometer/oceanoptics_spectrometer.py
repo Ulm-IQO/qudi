@@ -3,7 +3,7 @@
 This module controls spectrometers from Ocean Optics Inc.
 All spectrometers supported by python-seabreeze should work.
 
-Do "conda install -c poehlmann python-seabreeze to install python-seabreeze"
+Do "conda install -c poehlmann python-seabreeze"
 before using this module.
 
 Qudi is distributed in the hope that it will be useful,
@@ -25,10 +25,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.module import Base, ConfigOption
 from interface.spectrometer_interface import SpectrometerInterface
 import numpy as np
-import time
 import seabreeze.spectrometers as sb
-
-import datetime
 
 
 
@@ -38,8 +35,8 @@ class OceanOptics(Base, SpectrometerInterface):
     Example config for copy-paste:
 
     myspectrometer:
-        module.Class: 'spectrometer.oceanoptics.OceanOptics'
-        spectrometer_serial: 'QEP01583' #insert here the right serial number.
+        module.Class: 'spectrometer.oceanoptics_spectrometer.OceanOptics'
+        spectrometer_serial: 'QEP01583' #'HDX00471' insert here the right serial number.
 
     """
     _serial = ConfigOption('spectrometer_serial', missing='warn')
