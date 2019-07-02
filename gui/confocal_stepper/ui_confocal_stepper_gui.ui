@@ -46,6 +46,7 @@
     </property>
     <addaction name="action_Settings"/>
     <addaction name="action_optimizer_settings"/>
+    <addaction name="action_show_labbook"/>
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -1207,6 +1208,7 @@
    <addaction name="action_step_stop"/>
    <addaction name="action_scan_3D_start"/>
    <addaction name="action_scan_3D_resume"/>
+   <addaction name="action_scan_Finesse_start"/>
    <addaction name="action_optimize_position"/>
   </widget>
   <widget class="QToolBar" name="util_ToolBar">
@@ -2817,8 +2819,11 @@
        <property name="decimals">
         <number>4</number>
        </property>
+       <property name="minimum">
+        <double>0.000100000000000</double>
+       </property>
        <property name="maximum">
-        <double>2000000.000000000000000</double>
+        <double>2000.000000000000000</double>
        </property>
        <property name="value">
         <double>2.500000000000000</double>
@@ -2896,6 +2901,100 @@
     <layout class="QGridLayout" name="gridLayout_7">
      <item row="0" column="0">
       <layout class="QGridLayout" name="gridLayout_5">
+       <item row="0" column="2">
+        <widget class="ScienDSpinBox" name="startV_3D_spinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="2">
+        <widget class="QLCDNumber" name="scan_frequency_3D_lcdNumber">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item row="10" column="1">
+        <widget class="QCheckBox" name="max_scan_resolution_3D_checkBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="layoutDirection">
+          <enum>Qt::RightToLeft</enum>
+         </property>
+         <property name="text">
+          <string>Use maximal scan resolution</string>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="2">
+        <widget class="QLCDNumber" name="scan_speed_3D_DisplayWidget">
+         <property name="enabled">
+          <bool>false</bool>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="2">
+        <widget class="QSpinBox" name="smoothing_steps_3D_spinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="maximum">
+          <number>1000</number>
+         </property>
+         <property name="value">
+          <number>0</number>
+         </property>
+        </widget>
+       </item>
+       <item row="5" column="2">
+        <widget class="ScienDSpinBox" name="scan_resolution_3D_spinBox">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="singleStep">
+          <double>0.001000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item row="9" column="1">
+        <widget class="QLabel" name="label_17">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Smoothing Steps</string>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="1">
         <widget class="QLabel" name="label_10">
          <property name="sizePolicy">
@@ -2917,47 +3016,14 @@
            <verstretch>0</verstretch>
           </sizepolicy>
          </property>
+         <property name="suffix">
+          <string>V</string>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
          <property name="value">
           <double>5.000000000000000</double>
-         </property>
-        </widget>
-       </item>
-       <item row="10" column="1">
-        <widget class="QCheckBox" name="max_scan_resolution_3D_checkBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="layoutDirection">
-          <enum>Qt::RightToLeft</enum>
-         </property>
-         <property name="text">
-          <string>Use maximal scan resolution</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="ScienDSpinBox" name="startV_3D_spinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="1">
-        <widget class="QLabel" name="label_17">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Smoothing Steps</string>
          </property>
         </widget>
        </item>
@@ -2974,29 +3040,6 @@
          </property>
         </widget>
        </item>
-       <item row="10" column="2">
-        <widget class="QLCDNumber" name="maximal_scan_resolution_3D_DisplayWidget">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="1">
-        <widget class="QLabel" name="label_14">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="text">
-          <string>Scan Resolution (V/ Step)</string>
-         </property>
-        </widget>
-       </item>
        <item row="4" column="1">
         <widget class="QLabel" name="label_13">
          <property name="sizePolicy">
@@ -3010,29 +3053,13 @@
          </property>
         </widget>
        </item>
-       <item row="5" column="2">
-        <widget class="ScienDSpinBox" name="scan_resolution_3D_spinBox">
+       <item row="10" column="2">
+        <widget class="QLCDNumber" name="maximal_scan_resolution_3D_DisplayWidget">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
-         </property>
-        </widget>
-       </item>
-       <item row="9" column="2">
-        <widget class="QSpinBox" name="smoothing_steps_3D_spinBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="maximum">
-          <number>1000</number>
-         </property>
-         <property name="value">
-          <number>1</number>
          </property>
         </widget>
        </item>
@@ -3049,26 +3076,36 @@
          </property>
         </widget>
        </item>
-       <item row="6" column="2">
-        <widget class="QLCDNumber" name="scan_speed_3D_DisplayWidget">
-         <property name="enabled">
-          <bool>false</bool>
-         </property>
+       <item row="5" column="1">
+        <widget class="QLabel" name="label_14">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
            <horstretch>0</horstretch>
            <verstretch>0</verstretch>
           </sizepolicy>
+         </property>
+         <property name="text">
+          <string>Scan Resolution (V/ Step)</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="2">
-        <widget class="QLCDNumber" name="scan_frequency_3D_lcdNumber">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+       <item row="11" column="1">
+        <widget class="QLabel" name="label_5">
+         <property name="text">
+          <string>Finesse Scan Fequency (Hz)</string>
+         </property>
+        </widget>
+       </item>
+       <item row="11" column="2">
+        <widget class="QDoubleSpinBox" name="finesse_scan_freq_doubleSpinBox">
+         <property name="decimals">
+          <number>3</number>
+         </property>
+         <property name="singleStep">
+          <double>0.100000000000000</double>
+         </property>
+         <property name="value">
+          <double>1.000000000000000</double>
          </property>
         </widget>
        </item>
@@ -3250,6 +3287,24 @@
     <string>Resume an interrupted 3D scan</string>
    </property>
   </action>
+  <action name="action_scan_Finesse_start">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</normaloff>../../artwork/icons/qudiTheme/22x22/scan-depth-start.png</iconset>
+   </property>
+   <property name="text">
+    <string>Scan depth</string>
+   </property>
+   <property name="iconText">
+    <string>Scan Finesse</string>
+   </property>
+   <property name="toolTip">
+    <string>Start a fresh Finesse scan</string>
+   </property>
+  </action>
   <action name="action_optimize_position">
    <property name="enabled">
     <bool>false</bool>
@@ -3428,6 +3483,11 @@
    </property>
    <property name="text">
     <string>Position Feedback View</string>
+   </property>
+  </action>
+  <action name="action_show_labbook">
+   <property name="text">
+    <string>Show Labbook</string>
    </property>
   </action>
  </widget>
