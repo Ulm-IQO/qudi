@@ -1894,8 +1894,7 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
 
         self.__mw_mode = MicrowaveMode.LIST
 
-        if frequency is not None and any(
-                freq != frequency[ii] for ii, freq in enumerate(self.__mw_list_params['freq'])):
+        if frequency is not None and tuple(frequency) != tuple(self.__mw_list_params['freq']):
             self.__mw_list_params['freq'] = frequency
             self.__mw_list_params['generated'] = False
         if power is not None and power != self.__mw_list_params['power']:
