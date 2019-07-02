@@ -106,6 +106,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
     signal_continue_stepping = QtCore.Signal()
     signal_step_lines_next = QtCore.Signal(bool)
     signal_start_3D_stepping = QtCore.Signal()
+    signal_start_Finesse_stepping = QtCore.Signal()
     signal_step_lines_finesse_next = QtCore.Signal(bool)
 
     signal_image_updated = QtCore.Signal()
@@ -473,6 +474,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_step_lines_next.connect(self._step_line, QtCore.Qt.QueuedConnection)
         self.signal_start_stepping.connect(self.start_stepper, QtCore.Qt.QueuedConnection)
         self.signal_start_3D_stepping.connect(self._start_3D_step_scan, QtCore.Qt.QueuedConnection)
+        self.signal_start_Finesse_stepping.connect(self.start_finesse_measurement, QtCore.Qt.QueuedConnection)
         self.signal_continue_stepping.connect(self.continue_stepper, QtCore.Qt.QueuedConnection)
         self.signal_sort_count_data.connect(self.sort_counted_data, QtCore.Qt.DirectConnection)
         self.signal_sort_count_data_3D.connect(self.sort_3D_count_data, QtCore.Qt.DirectConnection)

@@ -253,12 +253,15 @@ class ConfocalStepperGui(GUIBase):
         self._mw.action_step_resume.setEnabled(False)
         self._mw.action_scan_3D_start.setEnabled(True)
         self._mw.action_scan_3D_resume.setEnabled(False)
+        self._mw.action_scan_Finesse_start.setEnabled(True)
+
 
         # Connect other signals from the logic with an update of the gui
 
         self._stepper_logic.signal_start_stepping.connect(self.logic_started_stepping)
         self._stepper_logic.signal_continue_stepping.connect(self.logic_continued_stepping)
         self._stepper_logic.signal_start_3D_stepping.connect(self.logic_started_3D_stepping)
+        self._stepper_logic.signal_start_Finesse_stepping.connect(self.logic_started_3D_stepping)
 
         # Connect the 'File' Menu dialog and the Settings window in confocal
         # with the methods:
@@ -291,6 +294,11 @@ class ConfocalStepperGui(GUIBase):
             self._mw.action_scan_3D_resume.triggered,
             delay=0.1,
             slot=self.step_continued_clicked
+        )
+        self.action_scan_Finesse_start = pg.SignalProxy(
+            self._mw.action_scan_Finesse_start.triggered,
+            delay=0.1,
+            slot=self.step_start_Finesse_clicked
         )
         ###################################################################
         #               Icons for the scan actions                        #
@@ -641,6 +649,10 @@ class ConfocalStepperGui(GUIBase):
 
         self._mw.scan_resolution_3D_spinBox.valueChanged.connect(self.scan_resolution_3D_changed)
 
+        #Todo: is there a maximally possible scan freq?
+        self._mw.finesse_scan_freq_doubleSpinBox.setValue(self._stepper_logic.finesse_scan_freq)
+        self._mw.finesse_scan_freq_doubleSpinBox.editingFinished.connect(self.finesse_scan_freq_changed, QtCore.Qt.QueuedConnection)
+
         # setting GUI elements enabled
         self._mw.startV_3D_spinBox.setEnabled(True)
         self._mw.stopV_3D_spinBox.setEnabled(True)
@@ -655,8 +667,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.maximal_scan_resolution_3D_DisplayWidget.display(self._stepper_logic.calculate_resolution(
             16, [self._stepper_logic.start_voltage_3D,
                  self._stepper_logic.end_voltage_3D]))
-        self._mw.scan_frequency_3D_lcdNumber.display(self._stepper_logic.axis_class[self._stepper_logic._first_scan_axis].step_freq)
-
+        self._mw.finesse_scan_freq_doubleSpinBox.setEnabled(True)
         # todo: connect smoothing parameter
 
     def init_tilt_correction_UI(self):
@@ -899,6 +910,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.action_step_resume.setEnabled(False)
         self._mw.action_scan_3D_start.setEnabled(False)
         self._mw.action_scan_3D_resume.setEnabled(False)
+        self._mw.action_scan_Finesse_start.setEnabled(False)
 
         self._mw.x_piezo_min_InputWidget.setEnabled(False)
         self._mw.x_piezo_max_InputWidget.setEnabled(False)
@@ -941,6 +953,7 @@ class ConfocalStepperGui(GUIBase):
         # Enable the scan buttons
         self._mw.action_step_start.setEnabled(True)
         self._mw.action_scan_3D_start.setEnabled(True)
+        self._mw.action_scan_Finesse_start.setEnabled(True)
         #        self._mw.actionRotated_depth_scan.setEnabled(True)
 
         self._mw.action_optimize_position.setEnabled(True)
@@ -966,6 +979,7 @@ class ConfocalStepperGui(GUIBase):
         self._mw.scan_resolution_3D_spinBox.setEnabled(True)
         self._mw.smoothing_steps_3D_spinBox.setEnabled(True)
         self._mw.max_scan_resolution_3D_checkBox.setEnabled(True)
+        self._mw.finesse_scan_freq_doubleSpinBox.setEnabled(True)
 
         # self._mw.action_zoom.setEnabled(True)
 
@@ -1003,6 +1017,8 @@ class ConfocalStepperGui(GUIBase):
         self._mw.scan_resolution_3D_spinBox.setEnabled(False)
         self._mw.smoothing_steps_3D_spinBox.setEnabled(False)
         self._mw.max_scan_resolution_3D_checkBox.setEnabled(False)
+        self._mw.finesse_scan_freq_doubleSpinBox.setEnabled(False)
+
 
     def set_history_actions(self, enable):
         """ Enable or disable history arrows taking history state into account. """
@@ -1058,6 +1074,22 @@ class ConfocalStepperGui(GUIBase):
         self.update_stepper_hardware_values()
         self._stepper_logic._start_3D_step_scan()  # tag='gui')
 
+    def step_start_Finesse_clicked(self):
+        """ Manages what happens if the Finesse scan is started. """
+        self._stepper_logic.map_scan_position = self._mw.measure_pos_feedback_checkBox.isChecked()
+        # update axes (both for position feedback and plot display)
+        self._h_axis = self._stepper_logic._scan_axes[0]
+        self._v_axis = self._stepper_logic._scan_axes[1]
+        self._mw.ViewWidget.setLabel('bottom', units=self._h_axis + 'Steps')
+        self._mw.ViewWidget.setLabel('left', units=self._v_axis + 'Steps')
+        # as the program can only do one scan direction for the Finesse scan set fast scan state
+        self._mw._fast_scan_checkBox.setCheckState(True)
+        self.update_fast_scan_option()
+
+        self.disable_step_actions()
+        self.disable_3D_parameters()
+        self.update_stepper_hardware_values()
+        self._stepper_logic.start_finesse_measurement()  # tag='gui')
     def menu_settings(self):
         """ This method opens the settings menu. """
         self._sd.exec_()
@@ -1449,6 +1481,10 @@ class ConfocalStepperGui(GUIBase):
         maximal_scan_resolution = self._stepper_logic.calculate_resolution(16, [minV, maxV])
         self._mw.maximal_scan_resolution_3D_DisplayWidget.display(maximal_scan_resolution)
         return
+
+    def finesse_scan_freq_changed(self):
+        freq = self._mw.finesse_scan_freq_doubleSpinBox.value()
+        self._stepper_logic.finesse_scan_freq = freq
 
     ################## Tilt Correction ##################
     def _correct_3rd_axis_changed(self):
