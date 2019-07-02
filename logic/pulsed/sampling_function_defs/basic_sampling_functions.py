@@ -396,10 +396,9 @@ class TripleSinProduct(SamplingBase):
 
 
 class Chirp(SamplingBase):
-    # Todo: Add description
-    # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp
     """
     Object representing a chirp element
+    Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp
     """
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
@@ -440,15 +439,14 @@ class Chirp(SamplingBase):
         return samples_arr
 
 class AllenEberlyChirp(SamplingBase):
-    # Todo: Add description
-    # The Allen-Eberly model involves a sech amplitude shape and a tanh shaped detuning
-    # It has very good properties in terms of adiabaticity and is often preferable to the standard
-    # Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
-    # More information about the Allen-Eberly model can be found in:
-    # L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
-    # Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
+
     """
-    Object representing a chirp element
+    The Allen-Eberly model involves a sech amplitude shape and a tanh shaped detuning
+    It has very good properties in terms of adiabaticity and is often preferable to the standard
+    Landau-Zener-Stueckelberg-Majorana model with a constant amplitude and a linear chirp (see class Chirp)
+    More information about the Allen-Eberly model can be found in:
+    L. Allen and J. H. Eberly, Optical Resonance and Two-Level Atoms Dover, New York, 1987,
+    Analytical solution is given in: F. T. Hioe, Phys. Rev. A 30, 2100 (1984).
     """
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
@@ -489,7 +487,10 @@ class AllenEberlyChirp(SamplingBase):
         t_start = time_array[0]  # start time of the pulse
         pulse_duration = time_array[-1] - time_array[0]  # pulse duration
         freq_center = (self.stop_freq + self.start_freq) / 2  # central frequency
-        tau_run = self.tau_pulse  # tau to use for the sample generation
+        tau_run = self.tau_pulse  # tau to use for the sample generation, tau_pulse = truncation_ratio * pulse_duration
+        # tau_run characterizes the pulse shape, which is sech((t - mu)/tau_run) when mu is the center of the pulse
+        # tau_run also characterizes the detuning shape, which is tanh((t - mu)/tau_run)
+        # tau_run / pulse_duration = truncation ratio should ideally be 0.1 or <0.2. Higher values - worse truncation
 
         # conversion for AWG to actually output the specified voltage
         amp_conv = 2 * self.amplitude  # amplitude, corrected from parabola pulse estimation
