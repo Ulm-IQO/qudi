@@ -16,8 +16,6 @@ This can be used to specify the axis labels for the measurement (excluding units
 * POI manager keeps POIs as StatusVar across restarts and fixes to distance measurement
 * Various stability improvements and minor bug fixes
 * Update conda environment to more recent versions of packages
-* Added a joystick interface, logic and hardware module for xinput api
-* Added a joystick to confocal logic module
 * Fix installation procedure for the conda environment in windows by using powershell in the cmd and catch with that potential exceptions (e.g. if conda environment is not present).
 * Added .ico image to make a desktop shortcut on Windows with explanation in the documentation
 * Added a how-to-participate guide to the documentation
