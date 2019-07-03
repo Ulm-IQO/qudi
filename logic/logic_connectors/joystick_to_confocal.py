@@ -27,7 +27,7 @@ from qtpy import QtCore
 
 
 class JoystickToConfocal(GenericLogic):
-    """ This logic module get callbacks from joystick logic and interact with confocal logic based on theses events
+    """ This logic module get callbacks from joystick logic and interact with confocal logic based on these events
 
     This module needs joystick_logic to function
 
@@ -57,7 +57,7 @@ class JoystickToConfocal(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.joystick_logic().register(str(self), self.callback, trigger_keys={'right_up': True})
+        self.joystick_logic().register(str(self), self.callback, trigger_keys={str(self._button_interlock): True})
 
     def on_deactivate(self):
         """ Perform required deactivation.
