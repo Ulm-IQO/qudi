@@ -695,6 +695,17 @@ class ConfocalLogic(GenericLogic):
         """
         return self._scanning_device.get_scanner_position()
 
+    def get_position_dict(self):
+        """ Get position from scanning device in a dictionary format
+
+        @return dict: Dictionary with keys 'x', 'y', 'z' and eventually 'a'
+        """
+        pos = self._scanning_device.get_scanner_position()
+        dic = {'x': pos[0], 'y': pos[1], 'z': pos[2]}
+        if len(pos) == 4:
+            dic['a'] = pos[3]
+        return dic
+
     def get_scanner_axes(self):
         """ Get axes from scanning device.
           @return list(str): names of scanner axes
