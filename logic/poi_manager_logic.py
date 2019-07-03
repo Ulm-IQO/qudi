@@ -398,7 +398,8 @@ class PoiManagerLogic(GenericLogic):
         This is threaded, so it returns directly.
         The function _refocus_done handles the data when the optimisation returns.
         """
-
+        if poikey is None and self._current_poi_key is not None:
+            poikey = self._current_poi_key
         if poikey is not None and poikey in self.poi_list.keys():
             self.poi_list['crosshair'].add_position_to_history(position=self._confocal_logic.get_position()[:3])
             self._current_poi_key = poikey
