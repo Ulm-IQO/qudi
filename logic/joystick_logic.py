@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.module import Connector, ConfigOption
 from logic.generic_logic import GenericLogic
+from qtpy import QtCore
 import time
 
 
@@ -63,10 +64,10 @@ class JoystickLogic(GenericLogic):
         """ Initialisation performed during activation of the module.
         """
         self._module_list_listening = {}
-
-        self.enabled = True
-        self._last_state = self.hardware().get_state()
-        self.loop()
+        self.timer = QtCore.QTimer()
+        self.timer.setSingleShot(True)
+        self.timer.timeout.connect(self.loop)
+        self.start_loop()
 
     def on_deactivate(self):
         """ Perform required deactivation.
@@ -86,6 +87,14 @@ class JoystickLogic(GenericLogic):
         """ Stop the data recording loop.
         """
         self.enabled = False
+        self.timer.stop()
+
+    def start_loop(self):
+        """ Stop the data recording loop.
+        """
+        self.enabled = True
+        self._last_state = self.hardware().get_state()
+        self.timer.start(1000 * 1 / self._fps)
 
     def register(self, module_id, callback, trigger_keys={}):
         """ Function called by external modules to register to notifications based on a trigger configuration
@@ -137,14 +146,16 @@ class JoystickLogic(GenericLogic):
             module = self._module_list_listening[module_key]
 
             module_triggered = True
-            for trigger_key in module.trigger_keys:
-                if state['buttons'][trigger_key] != module.trigger_keys[trigger_key]:
+            for trigger_key in module['trigger_keys']:
+                if state['buttons'][trigger_key] != module['trigger_keys'][trigger_key]:
                     module_triggered = False
 
             if module_triggered:
                 module['callback'](state)
 
-        time.sleep(1/self._fps)
+        self.timer.start(1000 * 1 / self._fps)
+        # time.sleep(1/self._fps)
+        # self.loop()
 
     def get_last_state(self):
         """ Return last acquired state
