@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 QCheckBox with a callback function for acceptance or denial of state change.
 
@@ -19,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from qtpy.QtWidgets import QCheckBox
+
 
 class CheckBox(QCheckBox):
     """
@@ -79,8 +82,8 @@ class CheckBox(QCheckBox):
         """
         Protected functions that calls the callback.
         """
-        if (self._callback is not None):
-            if (self._callback(not self.isChecked())):
+        if self._callback is not None:
+            if self._callback(not self.isChecked()):
                 super().nextCheckState()
         else:
             super().nextCheckState()

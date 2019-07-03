@@ -46,6 +46,11 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
+        self._pulse_out_channel = 'dummy'
+        self._lock_in_active = False
+        self._oversampling = 10
+        self._odmr_length = 100
+
 
     def on_activate(self):
         """ Initialisation performed during activation of the module."""
@@ -71,7 +76,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         return self._sc_device.set_up_clock(clock_frequency=clock_frequency,
                                                    clock_channel=clock_channel)
 
-
     def set_up_odmr(self, counter_channel=None, photon_source=None,
                     clock_channel=None, odmr_trigger_channel=None):
         """ Configures the actual counter with a given clock.
@@ -93,7 +97,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
                                                 clock_channel=clock_channel,
                                                 counter_buffer=None)
 
-
     def set_odmr_length(self, length=100):
         """Set up the trigger sequence for the ODMR and the triggered microwave.
 
@@ -103,7 +106,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
         """
         self._odmr_length = length
         return 0
-
 
     def count_odmr(self, length = 100):
         """ Sweeps the microwave and returns the counts on that sweep.
@@ -119,7 +121,7 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
             self.trigger()
             counts[:, i] = self._sc_device.get_counter(samples=1)[0]
         self.trigger()
-        return counts
+        return False, counts
 
     def close_odmr(self):
         """ Close the odmr and clean up afterwards.
@@ -147,7 +149,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
     def trigger(self):
 
         return self._mw_device.trigger()
-
 
     def off(self):
         """
@@ -282,3 +283,27 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
           @return MicrowaveLimits: Microwave limits object
         """
         return self._mw_device.get_limits()
+
+    @property
+    def oversampling(self):
+        return self._oversampling
+
+    @oversampling.setter
+    def oversampling(self, val):
+        if not isinstance(val, (int, float)):
+            self.log.error('oversampling has to be int of float.')
+        else:
+            self._oversampling = int(val)
+
+    @property
+    def lock_in_active(self):
+        return self._lock_in_active
+
+    @lock_in_active.setter
+    def lock_in_active(self, val):
+        if not isinstance(val, bool):
+            self.log.error('lock_in_active has to be boolean.')
+        else:
+            self._lock_in_active = val
+            if self._lock_in_active:
+                self.log.warn('Lock-In is not implemented')

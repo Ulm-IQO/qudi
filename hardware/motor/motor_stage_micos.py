@@ -212,65 +212,60 @@ class MotorStageMicos(Base, MotorInterface):
         """
         constraints = OrderedDict()
 
-        axis0 = {}
-        axis0['label'] = self._first_axis_label
-        axis0['ID'] = self._first_axis_ID
-        axis0['unit'] = 'm'  # the SI units
-        axis0['ramp'] = None  # a possible list of ramps
-        axis0['pos_min'] = self._min_first
-        axis0['pos_max'] = self._max_first
-        axis0['pos_step'] = self.step_first_axis
-        axis0['vel_min'] = self._vel_min_first
-        axis0['vel_max'] = self._vel_max_first
-        axis0['vel_step'] = self._vel_step_first
-        axis0['acc_min'] = None
-        axis0['acc_max'] = None
-        axis0['acc_step'] = None
+        axis0 = {'label': self._first_axis_label,
+                 'ID': self._first_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_first,
+                 'pos_max': self._max_first,
+                 'pos_step': self.step_first_axis,
+                 'vel_min': self._vel_min_first,
+                 'vel_max': self._vel_max_first,
+                 'vel_step': self._vel_step_first,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis1 = {}
-        axis1['label'] = self._second_axis_label
-        axis1['ID'] = self._second_axis_ID
-        axis1['unit'] = 'm'  # the SI units
-        axis1['ramp'] = None  # a possible list of ramps
-        axis1['pos_min'] = self._min_second
-        axis1['pos_max'] = self._max_second
-        axis1['pos_step'] = self.step_second_axis
-        axis1['vel_min'] = self._vel_min_second
-        axis1['vel_max'] = self._vel_max_second
-        axis1['vel_step'] = self._vel_step_second
-        axis1['acc_min'] = None
-        axis1['acc_max'] = None
-        axis1['acc_step'] = None
+        axis1 = {'label': self._second_axis_label,
+                 'ID': self._second_axis_ID,
+                 'unit': 'm',
+                 'ramp': None,
+                 'pos_min': self._min_second,
+                 'pos_max': self._max_second,
+                 'pos_step': self.step_second_axis,
+                 'vel_min': self._vel_min_second,
+                 'vel_max': self._vel_max_second,
+                 'vel_step': self._vel_step_second,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis2 = {}
-        axis2['label'] = self._third_axis_label
-        axis2['ID'] = self._third_axis_ID
-        axis2['unit'] = 'm'  # the SI units
-        axis2['ramp'] = None  # a possible list of ramps
-        axis2['pos_min'] = self._min_third
-        axis2['pos_max'] = self._max_third
-        axis2['pos_step'] = self.step_third_axis
-        axis2['vel_min'] = self._vel_min_third
-        axis2['vel_max'] = self._vel_max_third
-        axis2['vel_step'] = self._vel_step_third
-        axis2['acc_min'] = None
-        axis2['acc_max'] = None
-        axis2['acc_step'] = None
+        axis2 = {'label': self._third_axis_label,
+                 'ID': self._third_axis_ID,
+                 'unit': 'm', 'ramp': None,
+                 'pos_min': self._min_third,
+                 'pos_max': self._max_third,
+                 'pos_step': self.step_third_axis,
+                 'vel_min': self._vel_min_third,
+                 'vel_max': self._vel_max_third,
+                 'vel_step': self._vel_step_third,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
 
-        axis3 = {}
-        axis3['label'] = self._fourth_axis_label
-        axis3['ID'] = self._fourth_axis_ID
-        axis3['unit'] = 'm'  # the SI units
-        axis3['ramp'] = None  # a possible list of ramps
-        axis3['pos_min'] = self._min_fourth
-        axis3['pos_max'] = self._max_fourth
-        axis3['pos_step'] = self.step_fourth_axis
-        axis3['vel_min'] = self._vel_min_fourth
-        axis3['vel_max'] = self._vel_max_fourth
-        axis3['vel_step'] = self._vel_step_fourth
-        axis3['acc_min'] = None
-        axis3['acc_max'] = None
-        axis3['acc_step'] = None
+        axis3 = {'label': self._fourth_axis_label,
+                 'ID': self._fourth_axis_ID,
+                 'unit': 'm', 'ramp': None,
+                 'pos_min': self._min_fourth,
+                 'pos_max': self._max_fourth,
+                 'pos_step': self.step_fourth_axis,
+                 'vel_min': self._vel_min_fourth,
+                 'vel_max': self._vel_max_fourth,
+                 'vel_step': self._vel_step_fourth,
+                 'acc_min': None,
+                 'acc_max': None,
+                 'acc_step': None}
+
         # assign the parameter container for x to a name which will identify it
         constraints[axis0['label']] = axis0
         constraints[axis1['label']] = axis1
@@ -747,7 +742,7 @@ class MotorStageMicos(Base, MotorInterface):
 
         still_reading = True
         answer = ''
-        while still_reading == True:
+        while still_reading:
             try:
                 if constraints[axis]['label'] == 'x' or constraints[axis]['label'] == 'y':
                     answer = answer + self._serial_connection_xy.read()[:-2]

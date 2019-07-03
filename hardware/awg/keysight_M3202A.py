@@ -27,6 +27,7 @@ import os
 import datetime
 import numpy as np
 from collections import OrderedDict
+from core.util.helpers import natural_sort
 
 import sys
 
@@ -136,7 +137,7 @@ class M3202A(Base, PulserInterface):
         constraints.repetitions.step = 1
         constraints.repetitions.default = 0
         # ToDo: Check how many external triggers are available
-        constraints.event_triggers = ['EXT', 'CYCLE']
+        constraints.event_triggers = ['SOFT', 'EXT', 'SOFT_CYCLE', 'EXT_CYCLE']
         constraints.flags = []
 
         constraints.sequence_steps.min = 1
@@ -145,7 +146,10 @@ class M3202A(Base, PulserInterface):
         constraints.sequence_steps.default = 1
 
         activation_config = OrderedDict()
-        activation_config['all'] = {'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'}
+        activation_config['all'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'})
+        activation_config['one'] = frozenset({'a_ch1'})
+        activation_config['two'] = frozenset({'a_ch1', 'a_ch2'})
+        activation_config['three'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
         # FIXME: additional constraint really necessary?
         constraints.dac_resolution = {'min': 14, 'max': 14, 'step': 1, 'unit': 'bit'}
@@ -224,8 +228,12 @@ class M3202A(Base, PulserInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
-        return 0
+        if self.last_sequence is None:
+            self.log.error('This AWG only supports sequences. Please put the waveform in a sequence and then load it.')
+            return -1
+        else:
+            self.log.debug('StartMultiple {}'.format(self.awg.AWGstartMultiple(0b1111)))
+            return 0
 
     def pulser_off(self):
         """ Switches the pulsing device off.
@@ -251,7 +259,7 @@ class M3202A(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Load waveforms into channels
@@ -478,7 +486,7 @@ class M3202A(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in active_channels if chnl.startswith('a'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -550,7 +558,7 @@ class M3202A(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 
@@ -563,13 +571,18 @@ class M3202A(Base, PulserInterface):
             # Set waveforms to play
             if num_tracks == len(wfm_tuple):
                 for track, waveform in enumerate(wfm_tuple, 1):
-                    # !!!
+                    # Triggers !!!
                     wfm_nr = self.written_waveforms[waveform]
-                    if seq_params['wait_for'] == 'EXT':
+                    if seq_params['wait_for'] == 'SOFT':
+                        trig = ksd1.SD_TriggerModes.SWHVITRIG
+                        self.log.debug('Ch{} Trig SOFT'.format(track))
+                    elif seq_params['wait_for'] == 'EXT':
                         trig = ksd1.SD_TriggerModes.EXTTRIG
                         self.log.debug('Ch{} Trig EXT'.format(track))
-
-                    elif seq_params['wait_for'] == 'CYCLE':
+                    elif seq_params['wait_for'] == 'SOFT_CYCLE':
+                        trig = ksd1.SD_TriggerModes.SWHVITRIG_CYCLE
+                        self.log.debug('Ch{} Trig SOFT_CYCLE'.format(track))
+                    elif seq_params['wait_for'] == 'EXT_CYCLE':
                         trig = ksd1.SD_TriggerModes.EXTTRIG_CYCLE
                         self.log.debug('Ch{} Trig EXT_CYCLE'.format(track))
                     else:
@@ -708,11 +721,11 @@ class M3202A(Base, PulserInterface):
         c_double_p = ctypes.POINTER(ctypes.c_double)
         if len(waveformDataA) > 0 and (waveformDataB is None or len(waveformDataA) == len(waveformDataB)):
             if isinstance(waveformDataA, np.ndarray):
-                print(type(waveformDataA), waveformDataA.dtype)
+                # print(type(waveformDataA), waveformDataA.dtype)
                 waveform_dataA_C = waveformDataA.ctypes.data_as(c_double_p)
                 length = len(waveformDataA)
             else:
-                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA);
+                waveform_dataA_C = (ctypes.c_double * len(waveformDataA))(*waveformDataA)
                 length = waveform_dataA_C._length_
 
             if waveformDataB is None:
@@ -733,15 +746,12 @@ class M3202A(Base, PulserInterface):
             return ksd1.SD_Error.INVALID_VALUE
 
     def set_channel_triggers(self, active_channels, sequence_parameter_list):
-        """
+        """ Set up triggers and markers according to configuration
 
-        :return:
-        """
-        err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_OUT)
-        if err < 0:
-            self.log.error('Error configuring triggers: {} {}'.format(
-                err, ksd1.SD_Error.getErrorMessage(err)))
+        @param list active_channels: active aeg channels
+        @param list sequence_parameter_list: liust with all sequence elements
 
+        """
         for ch in active_channels:
             if self.chcfg[ch].enable_trigger:
                 trig_err = self.awg.AWGtriggerExternalConfig(
@@ -750,6 +760,14 @@ class M3202A(Base, PulserInterface):
                     self.chcfg[ch].trig_behaviour,
                     self.chcfg[ch].trig_sync
                 )
+                # io is trigger in if trigger enabled
+                if self.chcfg[ch].trig_source == 0:
+                    self.log.info('IO IN for Ch{} '.format(self.__ch_map[ch]))
+                    err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_IN)
+                    if err < 0:
+                        self.log.error('Error configuring triggers: {} {}'.format(
+                            err, ksd1.SD_Error.getErrorMessage(err)))
+
                 self.log.info('Trig: Ch{} src: {} beh: {} sync: {}'.format(
                     self.__ch_map[ch],
                     self.chcfg[ch].trig_source,
@@ -768,6 +786,18 @@ class M3202A(Base, PulserInterface):
                 self.chcfg[ch].mark_length,
                 self.chcfg[ch].mark_delay
             )
+
+            # I/O connector is a marker *only* if it is not configured as a trigger
+            if self.chcfg[ch].mark_mode != ksd1.SD_MarkerModes.DISABLED and self.chcfg[ch].mark_io == 1:
+                self.log.info('IO OUT for Ch{} '.format(self.__ch_map[ch]))
+                if not (self.chcfg[ch].enable_trigger and self.chcfg[ch].trig_source == 0):
+                    err = self.awg.triggerIOconfig(ksd1.SD_TriggerDirections.AOU_TRG_OUT)
+                    if err < 0:
+                        self.log.error('Error configuring marker: {} {}'.format(
+                            err, ksd1.SD_Error.getErrorMessage(err)))
+                else:
+                    self.log.warning('IO Trigger cfg for ch {} overrides marker cfg!'.format(ch))
+
             self.log.info('Ch {} mm: {} pxi: {} io: {} val: {}, sync: {} len: {} delay: {} err: {}'.format(
                 self.__ch_map[ch],
                 self.chcfg[ch].mark_mode,

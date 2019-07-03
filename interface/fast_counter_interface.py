@@ -157,9 +157,15 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         The binning, specified by calling configure() in forehand, must be
         taken care of in this hardware class. A possible overflow of the
         histogram bins must be caught here and taken care of.
-        If the counter is NOT GATED it will return a 1D-numpy-array with
+        If the counter is NOT GATED it will return a tuple (1D-numpy-array, info_dict) with
             returnarray[timebin_index]
-        If the counter is GATED it will return a 2D-numpy-array with
+        If the counter is GATED it will return a tuple (2D-numpy-array, info_dict) with
             returnarray[gate_index, timebin_index]
+
+        info_dict is a dictionary with keys :
+            - 'elapsed_sweeps' : the elapsed number of sweeps
+            - 'elapsed_time' : the elapsed time in seconds
+
+        If the hardware does not support these features, the values should be None
         """
         pass

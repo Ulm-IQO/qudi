@@ -33,7 +33,7 @@ from interface.microwave_interface import MicrowaveMode
 from interface.microwave_interface import TriggerEdge
 
 
-class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
+class MicrowaveAnritsuMG369x(Base, MicrowaveInterface):
     """ Hardware control file for Anritsu 70GHz Devices.
         Tested for the model MG3696B.
 
@@ -103,12 +103,27 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         limits.min_power = -20
         limits.max_power = 10
 
+        if self.model == 'MG3696B':
+            limits.min_frequency = 10e6
+            limits.max_frequency = 70e9
+
+            limits.min_power = -20
+            limits.max_power = 10
+        elif self.model == 'MG3691C':
+            limits.min_frequency = 10e6  # only with Option 4 or 5
+            limits.max_frequency = 10e9
+
+            limits.min_power = -120
+            limits.max_power = 20  # could be up to 26 dBm for Option 15
+        else:
+            self.log.warning('Model string unknown, hardware limits may be wrong.')
+
         limits.list_minstep = 0.001
-        limits.list_maxstep = 70e9
+        limits.list_maxstep = limits.max_frequency
         limits.list_maxentries = 1999
 
         limits.sweep_minstep = 0.001
-        limits.sweep_maxstep = 70e9
+        limits.sweep_maxstep = limits.max_frequency
         limits.sweep_maxentries = 10001
         return limits
 
@@ -246,6 +261,9 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
         self._gpib_connection.write('LEA')
         # activate output
         self._gpib_connection.write('RF1')
+
+        if self.model == 'MG3691C':
+            time.sleep(10)  # for model MG3691C wait 5 seconds for the microwave to switch on
         self._is_running = True
         return 0
 
@@ -262,11 +280,11 @@ class MicrowaveAnritsu70GHz(Base, MicrowaveInterface):
 
         if is_running:
             self.off()
-        if mode != 'list':
-            self._gpib_connection.write('LST')
-            self._gpib_connection.write('ELN0')
-            self._gpib_connection.write('ELI0000')
-            self._current_mode = 'list'
+        #if mode != 'list':
+        self._gpib_connection.write('LST')
+        self._gpib_connection.write('ELN0')
+        self._gpib_connection.write('ELI0000')
+        self._current_mode = 'list'
 
         # if self.set_cw(freq[0], power) != 0:
         #     error = -1

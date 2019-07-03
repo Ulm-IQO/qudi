@@ -244,7 +244,6 @@ class NationalInstrumentsPulser(Base, PulserInterface):
 
         # add channels
         if len(a_channels) > 0:
-            print(self.a_names, a_channels)
             daq.DAQmxCreateAOVoltageChan(
                 self.pulser_task,
                 ', '.join(a_channels),
@@ -255,7 +254,6 @@ class NationalInstrumentsPulser(Base, PulserInterface):
                 '')
 
         if len(d_channels) > 0:
-            print(self.d_names, d_channels)
             daq.DAQmxCreateDOChan(
                 self.pulser_task,
                 ', '.join(d_channels),
