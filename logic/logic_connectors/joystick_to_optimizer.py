@@ -64,4 +64,4 @@ class JoystickToOptimizer(GenericLogic):
 
         if ('left_shoulder' in state['pressed_buttons'] and state['buttons']['right_shoulder']) or \
                 ('right_shoulder' in state['pressed_buttons'] and state['buttons']['left_shoulder']):
-            self.optimizer().start_refocus(caller_tag='joystick_to_optimizer')
+            self.optimizer().start_refocus()
