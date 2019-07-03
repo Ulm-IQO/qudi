@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.module import Connector, ConfigOption
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-import time
+import numpy as np
 
 
 class JoystickLogic(GenericLogic):
@@ -46,12 +46,16 @@ class JoystickLogic(GenericLogic):
 
     _max_fps = ConfigOption('max_fps', 100)
     _axis_threshold = ConfigOption('axis_threshold', 0.05)  # a smaller axis position will not trigger an event
+    _compensate_error = ConfigOption('compensate_error', True)  # activate if the threshold is not enough.
     _fps = _max_fps
 
     enabled = False
 
     _last_state = None
     _module_list_listening = None
+
+    _errors = {'left_vertical': 0, 'left_horizontal': 0, 'right_vertical': 0, 'right_horizontal': 0}
+    _error_count = 1
 
     _button_list = ['left_up', 'left_down', 'left_left', 'left_right', 'left_joystick',
                'right_up', 'right_down', 'right_left', 'right_right', 'right_joystick',
@@ -128,6 +132,9 @@ class JoystickLogic(GenericLogic):
         if not self.enabled:
             return
 
+        if self._compensate_error:
+            state = self._update_error_statistics(state)
+
         # First this look at button pressed/released and creates an easily accessible list
         state['pressed_buttons'] = []
         state['released_buttons'] = []
@@ -162,16 +169,33 @@ class JoystickLogic(GenericLogic):
         """
         return self._last_state
 
-    # def calibrate(self, calibration_time=1, calibration_fps=100):
-    #     """ Function to calibrate the axis zeros
-    #
-    #     Execute this function while not touching the controller to calibrate it.
-    #
-    #     """
-    #     elapsed_time = 0
-    #     n = 0
-    #     while elapsed_time < calibration_time:
-    #         state = self._hardware.get_state()
-    #         time.sleep(1/calibration_fps)
-    #         elapsed_time += 1/calibration_fps
-    #     #TODO
+    def _update_error_statistics(self, state):
+        """ Function  called internally when a new state is received to record the default value of the axis
+
+         The horizontal and vertical axis have a permanent error.
+         One way to reduce this effect is to use a threshold but this often is not enough because of a relativerly
+         large systematic error. This idea of the feature is to compute the mean value of the controller axis to
+         use this position as the zero.
+         """
+        axis = state['axis']
+        keys = ['left_vertical', 'left_horizontal', 'right_vertical', 'right_horizontal']
+        # if all the axis are zero, eithere the controller is perfect and this feature is not needed
+        # or the controller must be unplugged so we should not count it in the statistic
+        if axis['left_vertical'] == 0 and \
+                axis['left_horizontal'] == 0 and \
+                axis['right_vertical'] == 0 and \
+                axis['right_horizontal'] == 0:
+            return state
+
+        for key in keys:
+            self._errors[key] = self._errors[key]*((self._error_count-1)/self._error_count) + \
+                                axis[key] / self._error_count
+        self._error_count += 1
+
+        for key in keys:
+            delta = axis[key] - self._errors[key]
+            if np.abs(delta) < self._axis_threshold:
+                delta = 0
+            axis[key] = delta
+
+        return state
