@@ -66,10 +66,12 @@ class InterfaceMethod:
         return self
 
     def __call__(self, *args, **kwargs):
-        interface = kwargs.pop('interface', None)
-        if interface and interface in self.registered:
-            return self.registered[interface](*args, **kwargs)
         return self._default_callable(*args, **kwargs)
+
+    def __getitem__(self, key):
+        if key not in self.registered:
+            raise KeyError('No method registered for interface "{0}".')
+        return self.registered[key]
 
     def register(self, interface):
         """
@@ -294,7 +296,7 @@ class Connector:
             def __getattribute__(*args):
                 attr = getattr(self.obj, args[1])
                 if isinstance(attr, InterfaceMethod):
-                    return partial(attr, interface=self.interface)
+                    return attr[self.interface]
                 else:
                     return attr
         return ConnectedInterfaceProxy()
