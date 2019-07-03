@@ -48,6 +48,7 @@ class JoystickToConfocal(GenericLogic):
     confocal = Connector(interface='ConfocalLogic')
 
     _button_step_ratio = ConfigOption('button_step_ratio', .01)  # a button push mean 1% of total range displacement
+    _max_speed = ConfigOption('max_speed', 100e-6)  # the maximum speed in m/s
     _button_interlock = ConfigOption('button_trigger', 'right_up')  # if this button is not pushed, do nothing
     # this must be a button from logic _button_list
     _joystick_gamma_correction = ConfigOption('joystick_gamma_correction', 2.0)  # this button can be used to change the
@@ -73,9 +74,9 @@ class JoystickToConfocal(GenericLogic):
         self.do_step('z', -1) if 'left_shoulder' in state['pressed_buttons'] else None
         self.do_step('z', 1) if 'right_shoulder' in state['pressed_buttons'] else None
         if 'middle_left' in state['pressed_buttons']:
-            self._confocal.start_scanning(zscan=False, tag='joystick')
+            self.confocal().start_scanning(zscan=False, tag='joystick')
         if 'middle_right' in state['pressed_buttons']:
-            self._confocal.stop_scanning()
+            self.confocal().stop_scanning()
         if state['axis']['left_horizontal'] != 0:
             self.do_move('x', state['axis']['left_horizontal'])
         if state['axis']['left_vertical'] != 0:
@@ -86,19 +87,21 @@ class JoystickToConfocal(GenericLogic):
     def do_step(self, axis, direction=1):
         """ Function called when a button is pushed and should act on a position """
         step = self.get_step(axis, direction)
-        position = self._confocal.get_position()
+        position = self.confocal().get_position_dict()
         position[axis] += step
-        self._confocal.set_position('joystick_button', *position)
+        self.confocal().set_position('joystick_button', **position)
 
     def do_move(self, axis, value):
         """ Function called when a joystick is moved to move the scanner position """
-        position = self._confocal.get_position()
-        position[axis] += self.get_step(axis) / self.joystick_logic.fps() * value ** self._joystick_gamma_correction
-        self._confocal.set_position('joystick_axis', *position)
+        position = self.confocal().get_position_dict()
+        sign = value / abs(value)
+        move = abs(value) ** self._joystick_gamma_correction * sign
+        position[axis] += self._max_speed / self.joystick_logic().fps() * move
+        self.confocal().set_position('joystick_axis', **position)
 
     def get_step(self, axis, direction=1):
         """ Helper function do compute the step for a given axis and a given direction """
-        scanner_range = getattr(self._confocal, '{}_range'.format(axis))
+        scanner_range = getattr(self.confocal(), '{}_range'.format(axis))
         step = (scanner_range[1] - scanner_range[0]) * self._button_step_ratio
         step = step * direction
         return step
