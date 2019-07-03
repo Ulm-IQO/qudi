@@ -127,6 +127,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _RWTimeout = ConfigOption('read_write_timeout', default=10)
     _counting_edge_rising = ConfigOption('counting_edge_rising', default=True)
 
+
     def on_activate(self):
         """ Starts up the NI Card at activation.
         """
@@ -2284,7 +2285,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 ch_rising_name = channel_name
             else:
                 ch_rising_name = None
-            if edges[0]:
+            if edges[1]:
                 ch_falling_name = channel_name
             else:
                 ch_falling_name = None
