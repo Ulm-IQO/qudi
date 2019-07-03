@@ -31,6 +31,7 @@
     * [Confocal GUI](@ref confocalgui)
     * [ODMR GUI](@ref odmrgui)
     * [Pulsed Main GUI](@ref pulsed_maingui)
+    * [Joystick controller](@ref how_to_joystick)
 
 * Logic documentation
     * [Task Usage](@ref task-usage)
