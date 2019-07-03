@@ -64,4 +64,4 @@ class JoystickToPOI(GenericLogic):
 
         if ('left_shoulder' in state['pressed_buttons'] and state['buttons']['right_shoulder']) or \
                 ('right_shoulder' in state['pressed_buttons'] and state['buttons']['left_shoulder']):
-            self.poi_manager().optimise_poi()
+            self.poi_manager().optimise_poi_position()
