@@ -212,4 +212,7 @@ def natural_sort(iterable):
     """
     def conv(s):
         return int(s) if s.isdigit() else s
-    return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
+    try:
+        return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
+    except:
+        return sorted(iterable)
