@@ -1,12 +1,18 @@
 from logic.generic_logic import GenericLogic
-from hardware.national_instruments_x_series import NationalInstrumentsXSeries
-from core.module import Connector, StatusVar
+from core.module import Connector, StatusVar, Base
+from threading import Lock
 import time
 
 import imp
-mfl_lib = imp.load_source('packages', './jupyter/Timo/own/mfl_sensing_simplelib.py')
+path_mfl_lib = './jupyter/Timo/own/mfl_sensing_simplelib.py'
+if __name__ == '__main__':  # for debugging
+    path_mfl_lib = '../jupyter/Timo/own/mfl_sensing_simplelib.py'
+
+mfl_lib = imp.load_source('packages', path_mfl_lib)
 import qinfer as qi
 
+import line_profiler
+profile = line_profiler.LineProfiler()
 
 ARRAY_SIZE_MAX = 100
 
@@ -23,7 +29,9 @@ class MFL_IRQ_Driven(GenericLogic):
     _epoch_done_trig_ch = StatusVar('_epoch_done_trig_ch', 'dev1/port0/line0')
 
     def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
+        if not __name__ == '__main__':
+            super().__init__(config=config, **kwargs)
+
         self.sequence_name = None
         self.i_epoch = 0
         self.n_epochs = -1
@@ -33,6 +41,11 @@ class MFL_IRQ_Driven(GenericLogic):
         self.nolog_callback = False
         self.save_priors = False
         self.is_running = False
+        self.is_running_lock = Lock()       # released when all epochs done
+        self.wait_for_start_lock = Lock()
+        self.is_calibmode_lintau = False    # calibration mode
+        self.is_no_qudi = False             # run in own thread, avoid all calls to qudi
+
         self.jumptable = None
 
         # handles to hw
@@ -52,10 +65,47 @@ class MFL_IRQ_Driven(GenericLogic):
         self.bs = None
         self.dbs = None
 
-    def on_activate(self):
+        # how to get data from fastcounter
+        # in ungated mode: normal 1d array with counts
+        # in gated mode: 2d array, 2nd axis: epochs
+        self._pull_data_methods = {'gated_and_ungated_plogic': self.pull_data_gated_and_ungated_plogic,
+                                   'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts}
+        self._cur_pull_data_method = 'ungated_sum_up_cts'
+        self.log.info("Setting pull data method to '{}'".format(self._cur_pull_data_method))
+
+    def on_activate(self, logger_override=None):
         """ Initialisation performed during activation of the module.
         """
-        self.nicard = self.counter()
+
+        from hardware.national_instruments_x_series import NationalInstrumentsXSeries
+
+        if logger_override is not None:
+            self.log = logger_override
+
+        if not __name__ == '__main__':
+            self.nicard = self.counter()
+            self.fastcounter = self.pulsedmasterlogic().pulsedmeasurementlogic().fastcounter()
+        else:
+            # for debugging and profiling, qudi might not be available
+            from hardware.fastcomtec.fastcomtecp7887 import FastComtec
+
+            self.is_no_qudi = True
+
+            try:
+                kwarg = {'manager': None, 'name': None}
+                config = {'photon_sources': '', 'clock_channel': '', 'counter_channels': '',
+                          'scanner_ao_channels': '', 'scanner_voltage_ranges': '', 'scanner_position_ranges': '',
+                          'odmr_trigger_channel': '', 'gate_in_channel': ''}
+                self.nicard = NationalInstrumentsXSeries(**kwarg, config=config)
+            except Exception as e:
+                raise ImportError("Couldn't manually instantiate NI card. Remove inheritance from base. Error: {}".format(str(e)))
+            try:
+                kwarg = {'manager': None, 'name': None}
+                self.fastcounter = FastComtec(None, **kwarg)
+                self.fastcounter.on_activate()
+            except Exception as e:
+                raise ImportError("Couldn't manually instantiate fastcomtec. Error: {}".format(str(e)))
+
         if not isinstance(self.nicard, NationalInstrumentsXSeries):
             self.log.warning("Config defines not supported counter of type {} for MFL logic, not NI X Series.".format(
                              type(self.nicard)))
@@ -65,11 +115,26 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def on_deactivate(self):
         """ """
+        self.pulsedmasterlogic().pulsedmeasurementlogic().timer_interval = 1    # s, reset to normal value
         self.serial.stop_ni()
         self.end_run()
 
-    def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, z_thresh=0.5):
+    @property
+    def log(self):
+        """
+        Allows to override base logger in case not called from qudi.
+        """
+        return logging.getLogger("{0}.{1}".format(
+            self.__module__, self.__class__.__name__))
+
+    @log.setter
+    def log(self, logger):
+        self.__log = logger
+
+    def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, z_thresh=0.5, calibmode_lintau=False):
         self.i_epoch = 0
+        self.is_running = False
+        self.is_calibmode_lintau = calibmode_lintau
         self.n_epochs = n_epochs
         self.nolog_callback = nolog_callback
         self.sequence_name = name
@@ -79,20 +144,33 @@ class MFL_IRQ_Driven(GenericLogic):
         self.init_arrays(self.n_epochs)
         self.init_mfl_algo()
 
-    def setup_new_run(self, tau_first, tau_first_req):
+    def setup_new_run(self, tau_first, tau_first_req, cb_epoch_done=None):
 
         # Attention: may not run smoothly in debug mode
+
+        if cb_epoch_done is None:
+            cb_epoch_done = self.__cb_func_epoch_done
 
         # reset probability distris
         self.init_mfl_algo()
 
-        self.nicard.register_callback_on_change_detection(self._epoch_done_trig_ch,
-                                                          self.__cb_func_epoch_done, edges=[True, False])
-
-        mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
-        mes.timer_interval = 100  # basically disable analysis loop, pull manually instead
+        self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
+                                                          cb_epoch_done, edges=[True, False])
 
         self.save_estimates_before_first_run(tau_first, tau_first_req)
+
+        if not self.is_no_qudi:
+            mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
+            mes.timer_interval = 100  # basically disable analysis loop, pull manually instead
+
+    #@deprecated
+    def setup_new_run_no_qudi(self):
+        self.init_mfl_algo()
+
+        # run without qudi, so StatusVar not available
+        self.nicard.register_callback_on_change_detection('dev1/port0/line0',
+                                                          self.__cb_func_profile_algo_only, edges=[True, False])
+        self.save_estimates_before_first_run(100e-9, 101e-9)
 
     def init_arrays(self, n_epochs):
 
@@ -125,6 +203,12 @@ class MFL_IRQ_Driven(GenericLogic):
         self.mfl_updater.reset()
         self.mfl_tau_from_heuristic = mfl_lib.stdPGH(self.mfl_updater, inv_field='w_')
 
+    def get_epoch_done_trig_ch(self):
+        # qudi StatusVar is not available if not run as a qudi module
+        if self.is_no_qudi:
+            return 'dev1/port0/line0'       # todo: avoid hard coding
+        else:
+            return self._epoch_done_trig_ch
 
     def set_jumptable(self, jumptable_dict, tau_list, t_seqs_list):
         """
@@ -258,17 +342,19 @@ class MFL_IRQ_Driven(GenericLogic):
             return self.calc_tau_from_posterior()
         else:
             self.log.error("Can't get first tau if mfl already started.")
-            raise RuntimeError
+            raise RuntimeError("Can't get first tau if mfl already started.")
 
     def end_run(self):
-        self.nicard.register_callback_on_change_detection(self._epoch_done_trig_ch,
+        self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           None, edges=[True, False])
 
         if self.is_running:
-            self.pulsedmasterlogic().toggle_pulsed_measurement(False)
-            time.sleep(0.1)
+            if not self.is_no_qudi:
 
-            fastcounter = self.pulsedmasterlogic().pulsedmeasurementlogic().fastcounter()
+                self.pulsedmasterlogic().toggle_pulsed_measurement(False)
+                time.sleep(0.5)
+
+            fastcounter = self.fastcounter
             sweeps_done = fastcounter.get_current_sweeps()
             if sweeps_done != self.i_epoch * self.n_sweeps:
                 self.log.warn("Counted {} / {} expected sweeps. Did we miss some?".format(
@@ -294,6 +380,8 @@ class MFL_IRQ_Driven(GenericLogic):
             np.set_printoptions()
 
         self.is_running = False
+        self.is_running_lock.release()
+
 
     def output_jump_pattern(self, jump_address):
         try:
@@ -305,38 +393,76 @@ class MFL_IRQ_Driven(GenericLogic):
         self.i_epoch += 1
 
     def get_ramsey_result(self):
-        mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
 
         wait_for_data = True
-        timeout_cyc = 15
-        wait_s = 0.001
+        timeout_cyc = 20
+        wait_s = 0.001      # initial wait time, is increased
+        wait_total_s = 0
         i_wait = 0
 
         while wait_for_data and i_wait < timeout_cyc:
-            # get data at least once, even if timer to analyze not fired yet
-            mes.manually_pull_data()
 
-            x = mes.signal_data[0]
-            y = mes.signal_data[1]
+            x, y = self._pull_data_methods[self._cur_pull_data_method]()
 
-            # in gated mode we get results from the whole epoch array
-            if len(x) > 1:
-                x = x[self.i_epoch]
-                y = y[self.i_epoch]
-
-            if y <= 0.001:
-                self.log.warning("Zeros received from fastcounter.")
+            if abs(y) <= 1e-4:
+                #self.log.warning("Zeros received from fastcounter.")
                 time.sleep(wait_s)
+                wait_total_s += wait_s
                 i_wait += 1
+                if i_wait > 10:
+                    wait_s = wait_s*1.5
+                if not self.nolog_callback:
+                    self.log.debug("Zero data looks like: {}".format(y))
             else:
                 wait_for_data = False
 
+            #y = 0 # DEBUG only
+
         if i_wait > 0:
-            self.log.warn("Waited for data {}x {} ms".format(i_wait, wait_s*1e3))
+            self.log.warn("Waited for data from fastcounter for {} ms in epoch {}".format(
+                wait_total_s*1e3, self.i_epoch))
             if wait_for_data:
                 self.log.warn("Timed out while waiting for data.")
 
         return (x, y)
+
+    def pull_data_gated_and_ungated_plogic(self):
+
+        mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
+        mes.manually_pull_data()
+        mes._extract_laser_pulses()
+
+        x = mes.signal_data[0]
+        y = mes.signal_data[1]
+
+        # in gated mode we get results from the whole epoch array
+        if len(x) > 1:
+            x = x[self.i_epoch]
+            y = y[self.i_epoch]
+
+        return x, y
+
+    def pull_data_ungated_sum_up_cts(self):
+
+        fc_data = self.fastcounter.get_data_trace()
+        cts = np.sum(fc_data[0])
+
+        if self.i_epoch == 0:
+            y = cts
+            self._sum_cts = cts     # must create variable in first run
+        else:
+            y = cts - self._sum_cts
+
+        y = float(y)/self.n_sweeps
+        self._sum_cts = cts
+
+        if not self.nolog_callback:
+            self.log.debug("Epoch {}. pull_data_ungated_sum_up_cts. y= {}, cts= {}, sum= {}".format(
+                            self.i_epoch, y, cts, self._sum_cts))
+
+        x = None #mes.signal_data[0]
+
+        return x, y
 
     def calc_tau_from_posterior(self):
 
@@ -363,23 +489,28 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return tau_real, t_seq
 
-    def calc_jump_addr(self, tau, default_addr=1):
+    def calc_jump_addr(self, tau, last_tau=None):
 
-        addr = default_addr
-
-        # find closest tau in jumptable
+        # normal mode: find closest tau in jumptable
         idx_jumptable, val = self._find_nearest(self.jumptable['tau'], tau)
+        if self.is_calibmode_lintau:
+            # calibration mode: play taus linear after each other
+            idx_jumptable, val = self._find_next_greatest(self.jumptable['tau'], last_tau)
+            if idx_jumptable is -1:
+                self.log.warn("No next greatest tau. Repeating last tau.")
+                idx_jumptable, val = self._find_nearest(self.jumptable['tau'], last_tau)
+
         addr = self.jumptable['jump_address'][idx_jumptable]
         name_seqstep = self.jumptable['name'][idx_jumptable]
         if not self.nolog_callback:
-            self.log.info("Finding closest tau {} ns (req: {}) in {} at jump address {} (0b{:08b})".
+            self.log.info("Finding next tau {} ns (req: {}) in {} at jump address {} (0b{:08b})".
                           format(1e9*val,1e9*tau, name_seqstep, addr, addr))
 
         return idx_jumptable, addr
 
     def timestamp(self, i_epoch):
 
-        t_now = time.time()
+        t_now = time.perf_counter()
 
         if i_epoch == 0:
             t0 = t_now
@@ -410,13 +541,35 @@ class MFL_IRQ_Driven(GenericLogic):
         else:
             raise NotImplemented
 
+    def _find_nearest(self, array, value):
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return idx, array[idx]
+
+    def _find_next_greatest(self, array, value):
+
+        dif = np.asarray(array, dtype=float) - value
+        dif[dif <= 0] = np.inf
+        idx = np.argmin(dif)
+        val = array[idx]
+
+        if dif[idx] == np.inf:
+            idx = -1
+            val = -1
+
+        return idx, val
+
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
         # done here, because before mes uploaded info not available and mes directly starts after upload atm
         # ugly, because costs time in first epoch
         if self.i_epoch == 0:
-            self.pull_jumptable(seqname=self.sequence_name)
             self.is_running = True  # todo: should this be mutexed?
+            self.is_running_lock.acquire()
+            self.wait_for_start_lock.release()
+
+            self.pull_jumptable(seqname=self.sequence_name)
+            self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
 
         self.timestamp(self.i_epoch)
 
@@ -428,15 +581,107 @@ class MFL_IRQ_Driven(GenericLogic):
         if not self.nolog_callback:
             self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
 
-        # prior not updated yet
+        last_tau = self.taus[self.i_epoch, 0]
+        tau_and_x = self.get_tau_and_x(last_tau)
+        self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
+
+        # new tau
         tau_req = self.calc_tau_from_posterior()    # new tau
 
         #tau_req = 3500e-9
-        idx_jumptable, addr = self.calc_jump_addr(tau_req)
+        idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
         real_tau, t_seq = self.get_ts(idx_jumptable)
-        tau_and_x = self.get_tau_and_x(real_tau)
 
+        # save result after measuring of this epoch and updating priors
+        self.save_current_results(real_tau, tau_req, t_seq)
+        self.iterate_mfl()  # iterates i_epoch
+
+        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
+            self.end_run()
+            return 0
+            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
+
+        self.output_jump_pattern(addr)      # should directly before return
+
+        # todo:
+        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
+
+        return 0
+
+    def _cb_func_profile_algo_only(self, taskhandle, signalID, callbackData):
+        if self.i_epoch == 0:
+            self.is_running = True  # todo: should this be mutexed?
+      #
+        self.timestamp(self.i_epoch)
+
+        z = 0  # DEBUG
+        z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
+
+        if not self.nolog_callback:
+            self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
+
+        last_tau = self.taus[self.i_epoch, 0]
+        tau_and_x = self.get_tau_and_x(last_tau)
+        self.mfl_updater.update(z_binary, tau_and_x)  # updates prior
+
+        # new tau
+        tau_req = self.calc_tau_from_posterior()  # new tau
+
+        # tau_req = 3500e-9
+        #idx_jumptable, addr = self.calc_jump_addr(tau_req)
+        real_tau, t_seq = 0, 0
+
+        # save result after measuring of this epoch and updating priors
+        self.save_current_results(real_tau, tau_req, t_seq)
+        self.iterate_mfl()  # iterates i_epoch
+
+        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
+            self.end_run()
+            return 0
+            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
+
+        #time.sleep(0.01)
+        #ucmd.send_ttl_pulse(None, channel_name='/dev1/PFI9', t_wait=0.01)
+
+        #print("{}".format(self.i_epoch))
+
+        return 0
+
+    def _cb_func_profile_no_qudi(self, taskhandle, signalID, callbackData):
+
+        # done here, because before mes uploaded info not available and mes directly starts after upload atm
+        # ugly, because costs time in first epoch
+        if self.i_epoch == 0:
+            self.is_running = True  # todo: should this be mutexed?
+            self.is_running_lock.acquire()
+            self.wait_for_start_lock.release()
+
+            # atm: no jumptable available, since qudi not accessible
+            #self.pull_jumptable(seqname=self.sequence_name)
+            #self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
+
+        self.timestamp(self.i_epoch)
+
+        # we are after the mes -> prepare for next epoch
+        _, z = self.get_ramsey_result()
+        #z = 0  # DEBUG
+        z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
+
+        if not self.nolog_callback:
+            self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
+
+        last_tau = self.taus[self.i_epoch, 0]
+        tau_and_x = self.get_tau_and_x(last_tau)
         self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
+
+        # new tau
+        tau_req = self.calc_tau_from_posterior()    # new tau
+
+        #tau_req = 3500e-9
+        #idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
+        #real_tau, t_seq = self.get_ts(idx_jumptable)
+        idx_jumptable, addr = 4, 1
+        real_tau, t_seq = -1, -1
 
         # save result after measuring of this epoch and updating priors
         self.save_current_results(real_tau, tau_req, t_seq)
@@ -458,10 +703,35 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return 0
 
-    def _find_nearest(self, array, value):
-        array = np.asarray(array)
-        idx = (np.abs(array - value)).argmin()
-        return idx, array[idx]
+    def _setpriority_win(self, pid=None, priority=1):
+        """ Set The Priority of a Windows Process.  Priority is a value between 0-5 where
+            2 is normal priority.  Default sets the priority of the current
+            python process but can take any valid process ID. """
+
+        import win32api, win32process, win32con
+
+        priorityclasses = [win32process.IDLE_PRIORITY_CLASS,
+                           win32process.BELOW_NORMAL_PRIORITY_CLASS,
+                           win32process.NORMAL_PRIORITY_CLASS,
+                           win32process.ABOVE_NORMAL_PRIORITY_CLASS,
+                           win32process.HIGH_PRIORITY_CLASS,
+                           win32process.REALTIME_PRIORITY_CLASS]
+        if pid == None:
+            pid = win32api.GetCurrentProcessId()
+        handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pid)
+        win32process.SetPriorityClass(handle, priorityclasses[priority])
+
+        prio_new = win32process.GetPriorityClass(handle)
+
+        # https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-getpriorityclass
+        prio_switcher = {0x00008000: 3, # ABOVE_NORMAL_PRIORITY_CLASS
+                    0x00004000: 1, # BELOW_NORMAL_PRIORITY_CLASS
+                    0x00000080: 4, # HIGH_PRIORITY_CLASS
+                    0x00000040: 0, # IDLE_PRIORITY_CLASS
+                    0x00000020: 2, # NORMAL_PRIORITY_CLASS
+                    0x00000100: 5} # REALTIME_PRIORITY_CLASS
+
+        return prio_switcher.get(prio_new, 'invalid prio')
 
 
 import abc
@@ -492,7 +762,7 @@ class PatternJumpAdapter(SerialInterface):
     strobe_ch = '/dev1/port0/line25'
     data_ch = '/dev1/port0/line17:24'
 
-    def __init__(self, data_ch=None, strobe_ch=None):
+    def __init__(self, *args, **kwargs):
         super().__init__()
         self.nitask_serial_out = None
         self.nitask_strobe_out = None
@@ -502,20 +772,22 @@ class PatternJumpAdapter(SerialInterface):
         self.nitask_strobe_out = daq.TaskHandle()
 
         try:
-            daq.DAQmxCreateTask('', daq.byref(self.nitask_serial_out))
+            daq.DAQmxCreateTask('d_serial_out', daq.byref(self.nitask_serial_out))
         except daq.DuplicateTaskError:
-            self.recreate_nitask('', self.nitask_serial_out)
+            self.recreate_nitask(d_serial_out, self.nitask_serial_out)
 
         daq.DAQmxCreateDOChan(self.nitask_serial_out, self.data_ch, "", daq.DAQmx_Val_ChanForAllLines)
         daq.DAQmxStartTask(self.nitask_serial_out)
 
         try:
-            daq.DAQmxCreateTask('', daq.byref(self.nitask_strobe_out))
+            daq.DAQmxCreateTask('d_strobe_out', daq.byref(self.nitask_strobe_out))
         except daq.DuplicateTaskError:
-            self.recreate_nitask('', self.nitask_strobe_out)
+            self.recreate_nitask('d_strobe_out', self.nitask_strobe_out)
 
         daq.DAQmxCreateDOChan(self.nitask_strobe_out, self.strobe_ch, "", daq.DAQmx_Val_ChanForAllLines)
         daq.DAQmxStartTask(self.nitask_strobe_out)
+
+        #self.log.debug("Created ni tasks for outputting jump patterns.")
 
     def recreate_nitask(self, name, task):
         daq.DAQmxClearTask(task)
@@ -524,7 +796,6 @@ class PatternJumpAdapter(SerialInterface):
     def stop_ni(self):
         daq.DAQmxClearTask(self.nitask_serial_out)
         daq.DAQmxClearTask(self.nitask_strobe_out)
-
 
     def output_data(self, data):
         digital_data = daq.c_uint32(data << 17)
@@ -558,7 +829,6 @@ class PatternJumpAdapter(SerialInterface):
                                      0, daq.DAQmx_Val_GroupByChannel,
                                      np.array(digital_low), digital_read, None)
 
-
     def output_strobe(self):
         digital_strobe = daq.c_uint32(0xffffffff)
         digital_low = daq.c_uint32(0x0)
@@ -572,3 +842,131 @@ class PatternJumpAdapter(SerialInterface):
                                  0, daq.DAQmx_Val_GroupByChannel,
                                  np.array(digital_low), digital_read, None)
 
+
+if __name__ == '__main__':
+    from logic.user_logic import UserCommands as ucmd
+    import logging
+    import PyDAQmx as daq
+
+    logging.basicConfig(level=logging.DEBUG)
+    logger = logging.getLogger(__name__)
+
+    mfl_logic = MFL_IRQ_Driven(None)
+    mfl_logic.on_activate(logger_override=logger)
+
+    def profile_mfl_pj(n_epochs=1000):
+        """start this function with profiler
+           Must connect PFI9 to IRQ input!
+        """
+
+        n_sweeps = 10e3
+        z_thresh = 0.0
+
+        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
+
+        mfl_logic.save_priors = False
+
+        for i in range(0, n_epochs):
+            mfl_logic._cb_func_profile_algo_only(None, None, None)
+
+        # using IRQ logic, not possible to profile atm
+        """
+        mfl_logic.setup_new_run_no_qudi()
+
+        # send first interrupt
+        ucmd.send_ttl_pulse(None, channel_name='/dev1/PFI9')
+
+        timeout_cyc = 10000
+        i_wait = 0
+        while mfl_logic.is_running and i_wait < timeout_cyc:
+            time.sleep(0.1)
+            i_wait += 1
+
+        print("Run MFL {} / {} epochs".format(mfl_logic.i_epoch, mfl_logic.n_epochs))
+
+        # should end itself, but if user abort:
+        mfl_logic.end_run()
+        """
+
+    def profile_fastcounter_pull_data(n_reps=1e3):
+        mfl_logic.i_epoch = 0
+        mfl_logic.n_epochs = 1
+        mfl_logic.n_sweeps = 1
+
+        for i in range(0, int(n_reps)):
+            _, z = mfl_logic._pull_data_methods['ungated_sum_up_cts']()
+
+    """
+    Profile callback
+    """
+    """
+    daq.DAQmxResetDevice('dev1')
+    #profile_mfl_pj()
+    lp = line_profiler.LineProfiler()
+    lp.add_function(mfl_logic._cb_func_profile_algo_only)
+    lp.add_function(mfl_logic.save_current_results)
+
+    lp_wrapper = lp(profile_mfl_pj)
+
+    lp_wrapper()
+    lp.print_stats()
+    """
+
+    """
+    Profile fastcomtech read
+    """
+    """
+    lp = line_profiler.LineProfiler()
+    lp_wrapper = lp(profile_fastcounter_pull_data)
+
+    lp_wrapper()
+    lp.print_stats()
+    """
+
+    """
+    Run in sepearte thread
+    """
+    def setup_and_join_mfl_seperate_thread():
+
+        # todo:
+        # parse setup params from file written by jupyter notebook
+        n_sweeps = 10e3
+        n_epochs = 100
+        z_thresh = 0.7
+
+        logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
+
+        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
+        tau_first_req = mfl_logic.get_first_tau()
+        # tau_first_req = 3500e-9 # DEBUG
+        tau_first = tau_first_req  # PROBLEM would like to get from seqtable, but only created after run started
+        # shortest tau mfl algo may choose, problem: shorter than tau_first causes rounding issues
+        tau_start = 25e-9
+        logger.info("First tau from flat prior {} ns".format(1e9 * tau_first))
+
+        mfl_logic.setup_new_run(tau_first, tau_first_req, cb_epoch_done=mfl_logic._cb_func_profile_no_qudi)
+        prio = 5    # 2: normal 5: real time
+        prio_new = mfl_logic._setpriority_win(pid=None, priority=prio)
+
+        if prio != prio_new:
+            logger.warning("Couldn't set process priority to {} (is {}). Run as admin?".format(prio, prio_new))
+
+        mfl_logic.wait_for_start_lock.acquire()
+
+        # here: callback installed, ready to react on mes run by qudi / from jupyter notebook
+
+        #run_ramsey_pj(qmeas), called from jupyter scipt
+        # wait until start
+        logger.info("Waiting for mes to start...")
+        mfl_logic.wait_for_start_lock.acquire()
+        logger.info("Started. Waiting for all epochs done...")
+
+
+        # wait until all epochs done
+        mfl_logic.is_running_lock.acquire()
+        mfl_logic.is_running_lock.release()
+
+        logger.info("MFL thread done")
+
+
+    setup_and_join_mfl_seperate_thread()
