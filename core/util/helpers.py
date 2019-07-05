@@ -210,10 +210,9 @@ def natural_sort(iterable):
     @param str[] iterable: Iterable with str items to sort
     @return list: sorted list of strings
     """
-    # If first element of iterable is not a string, fall back to simple sorted()
-    if len(iterable) == 0 or not isinstance(iterable[0], str):
-        return sorted(iterable)
-
     def conv(s):
         return int(s) if s.isdigit() else s
-    return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
+    try:
+        return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
+    except:
+        return sorted(iterable)
