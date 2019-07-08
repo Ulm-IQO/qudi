@@ -255,8 +255,8 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
-        Either accept a settings dictionary as positional argument or keyword arguments.
-        If both are present both are being used by updating the settings_dict with kwargs.
+        Either accepts a settings dictionary as positional argument or keyword arguments.
+        If both are present, both are being used by updating the settings_dict with kwargs.
         The keyword arguments take precedence over the items in settings_dict if there are
         conflicting names.
 
