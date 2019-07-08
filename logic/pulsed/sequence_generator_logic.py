@@ -72,6 +72,8 @@ class SequenceGeneratorLogic(GenericLogic):
                                                    default=None,
                                                    missing='nothing')
 
+    _force_sequence_mode = ConfigOption(name='force_sequence_mode', default=False, missing='nothing')
+
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
     # generation for predefined methods.
@@ -1076,11 +1078,41 @@ class SequenceGeneratorLogic(GenericLogic):
         for ensemble in ensembles:
             ensemble.sampling_information = dict()
             self.save_ensemble(ensemble)
+
+        if self._force_sequence_mode and len(sequences) < 1:
+            self.log.info('Adding default sequence for: {0:s}'.format(kwargs_dict.get('name')))
+            self._add_default_sequence(ensembles, sequences)
+            self.log.debug('New default PulseSequence is: {0:s} length {1:d}'.format(sequences[0].name, len(sequences)))
+
         for sequence in sequences:
             sequence.sampling_information = dict()
             self.save_sequence(sequence)
         self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
         return
+
+    def _add_default_sequence(self, ensembles, sequences):
+        if not isinstance(ensembles, (list, tuple)) or len(ensembles) < 1:
+            self.log.error('It is not possible to create a default sequence, '
+                           'because there is no Ensemble to create it from.')
+            return
+        if len(ensembles) > 1:
+            self.log.warn('More then one Ensemble available for the default sequence. '
+                          'They will be chained together with one repetition each.')
+
+        measurement_info = ensembles[0].measurement_information.copy()
+        sequence = PulseSequence(name=ensembles[0].name, rotating_frame=False)
+        for ensemble in ensembles:
+            sequence.append(ensemble.name)
+            sequence[-1].repetitions = 0
+
+        sequence[-1].go_to = 1
+
+        # Trigger the calculation of parameters in the PulseSequence instance
+        sequence.refresh_parameters()
+        sequence.measurement_information = measurement_info
+
+        # Append PulseSequence to created_sequences list
+        sequences.append(sequence)
 
     # ---------------------------------------------------------------------------
     #                    END sequence/block generation
