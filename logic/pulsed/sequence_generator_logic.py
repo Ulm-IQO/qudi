@@ -25,6 +25,7 @@ import os
 import pickle
 import time
 import copy
+import traceback
 
 from qtpy import QtCore
 from collections import OrderedDict
@@ -170,16 +171,16 @@ class SequenceGeneratorLogic(GenericLogic):
         if isinstance(self._sampling_functions_import_path, str):
             if not os.path.exists(self._sampling_functions_import_path):
                 self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
-                               'does not exist.'.format(self._sampling_functions_import_path))
+                               'does not exist (str).'.format(self._sampling_functions_import_path))
             else:
                 sf_path_list.append(self._sampling_functions_import_path)
         elif isinstance(self._sampling_functions_import_path, (list, tuple, set)):
             for functions_import_path in self._sampling_functions_import_path:
                 if not os.path.exists(functions_import_path):
                     self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
-                                   'does not exist.'.format(functions_import_path))
+                                   'does not exist (list).'.format(functions_import_path))
                 else:
-                    self.sf_path_list.append(functions_import_path)
+                    sf_path_list.append(functions_import_path)
         SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
@@ -751,6 +752,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.log.error('Failed to de-serialize PulseBlock "{0}" from file.'
                                ''.format(block_name))
                 os.remove(filepath)
+            except ModuleNotFoundError:
+                self.log.error('Failed to de-serialize PulseBlock "{0}" from file because of missing dependencies.\n'
+                               'For better debugging I dumped the traceback to debug.'.format(block_name))
+                self.log.debug('{0!s}'.format(traceback.format_exc()))
         return block
 
     def _update_blocks_from_file(self):
