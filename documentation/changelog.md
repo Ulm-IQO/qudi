@@ -36,7 +36,8 @@ on an interpolated function
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
 * Added an option to the sequencegenerator logic to create a default sequence, 
 if the predefined method only returns a PulseEnsemble.
-* Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`
+* Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
+* Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 
 
 Config changes:
