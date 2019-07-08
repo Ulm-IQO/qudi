@@ -236,6 +236,8 @@ class FitLogic(GenericLogic):
             @return dict: validated fit dictionary with function references and parameter objects
         """
         user_fits = OrderedDict()
+        if filename is None or filename == '':
+            return {'1d': dict(), '2d': dict(), '3d': dict()}
         fits = load(filename)
         return self.validate_load_fits(fits)
 
