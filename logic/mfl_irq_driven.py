@@ -17,6 +17,11 @@ profile = line_profiler.LineProfiler()
 ARRAY_SIZE_MAX = 100
 
 
+from enum import IntEnum
+class TimestampEvent(IntEnum):
+    irq_start = 1
+    irq_end = 2
+
 class MFL_IRQ_Driven(GenericLogic):
 
     _modclass = 'mfl_irq_driven'
@@ -178,7 +183,8 @@ class MFL_IRQ_Driven(GenericLogic):
             n_epochs = ARRAY_SIZE_MAX
             self.log.warning("Setting array length for infinite epochs to {}".format(n_epochs))
 
-        self.timestamps = np.zeros((n_epochs, 3))
+        self.timestamps = np.zeros((2*n_epochs, 4))
+        self._idx_timestamps = 0
         # first estimate from flat prior is also in array
         self.taus = np.zeros((n_epochs + 1, 1))
         self.taus_requested = np.zeros((n_epochs + 1, 1))
@@ -369,10 +375,31 @@ class MFL_IRQ_Driven(GenericLogic):
             b, db, tau, tau_req = self.get_current_results()
 
             np.set_printoptions(formatter={'float': '{:0.6f}'.format})
-            self.log.info("Ending MFL run at epoch {0}/{1}. B= {4:.2f} +- {5:.2f} MHz. Total tau / t_seq: {3:.3f}, {6:.3f} us."
-                          " Timestamps: \n (i_epoch, t [s], t-t0 [s]){2}".format(
-                self.i_epoch, self.n_epochs, self.timestamps, 1e6*tau_total,
-                b, db, 1e6*t_seq_total))
+            self.log.info("Ending MFL run at epoch {0}/{1}. B= {3:.2f} +- {4:.2f} MHz. Total tau / t_seq: {2:.3f}, {5:.3f} us."
+                            .format(self.i_epoch, self.n_epochs, 1e6*tau_total,
+                            b, db, 1e6*t_seq_total))
+
+            timestamps_pretty = []
+            delta_list = []
+            for i, line in enumerate(self.timestamps):
+                # todo: get last irq_start event, instead relying on order (-1)
+                is_valid = True
+                is_t_end = False
+                try:
+                    is_t_end = TimestampEvent(int(line[3])) is TimestampEvent.irq_end
+                except ValueError:
+                    is_valid = False
+                if is_valid:
+                    if i == 0 or not is_t_end:
+                        t_delta = 0
+                    else:
+                        t_delta = line[2] - self.timestamps[i-1][2]
+                        delta_list.append(t_delta)
+                    timestamps_pretty.append([int(line[0]), TimestampEvent(int(line[3])).name, line[2], t_delta])
+
+            self.log.info("Timestamps (i_epoch, EventType, t-t0[s], t_irqend - t irqstart[s]): {}".format(timestamps_pretty))
+            self.log.info("IRQ Timing: avg: {} +- {} ms from {} events. Deltas: {}".format(
+                        np.mean(delta_list)*1e3, np.var(delta_list)*1e3, len(delta_list), (np.asarray(delta_list)*1e3).tolist()))
             self.log.info("In MFL run: taus, taus_requested, delta (ns): {}".format(
                 [(1e9*t, 1e9*self.taus_requested[i,0], 1e9*(t-self.taus_requested[i,0])) for (i, t) in enumerate(self.taus[:,0])]))
             self.log.info("In MFL run: B, dB (MHz): {}".format(
@@ -395,16 +422,19 @@ class MFL_IRQ_Driven(GenericLogic):
     def get_ramsey_result(self):
 
         wait_for_data = True
-        timeout_cyc = 20
+        timeout_cyc = 25
         wait_s = 0.001      # initial wait time, is increased
         wait_total_s = 0
         i_wait = 0
 
+        #time.sleep(1000e-3)
+
         while wait_for_data and i_wait < timeout_cyc:
 
-            x, y = self._pull_data_methods[self._cur_pull_data_method]()
+            x, y, sweeps = self._pull_data_methods[self._cur_pull_data_method]()
 
-            if abs(y) <= 1e-4:
+            #if sweeps < (self.i_epoch + 1) * self.n_sweeps:   # sweeps seems to be incremented after counts!
+            if abs(y) < 1e-6:
                 #self.log.warning("Zeros received from fastcounter.")
                 time.sleep(wait_s)
                 wait_total_s += wait_s
@@ -419,10 +449,10 @@ class MFL_IRQ_Driven(GenericLogic):
             #y = 0 # DEBUG only
 
         if i_wait > 0:
-            self.log.warn("Waited for data from fastcounter for {} ms in epoch {}".format(
+            self.log.warning("Waited for data from fastcounter for {} ms in epoch {}".format(
                 wait_total_s*1e3, self.i_epoch))
             if wait_for_data:
-                self.log.warn("Timed out while waiting for data.")
+                self.log.warning("Timed out while waiting for data.")
 
         return (x, y)
 
@@ -440,12 +470,13 @@ class MFL_IRQ_Driven(GenericLogic):
             x = x[self.i_epoch]
             y = y[self.i_epoch]
 
-        return x, y
+        return x, y, mes.elapsed_sweeps
 
     def pull_data_ungated_sum_up_cts(self):
 
-        fc_data = self.fastcounter.get_data_trace()
-        cts = np.sum(fc_data[0])
+        fc_data, info = self.fastcounter.get_data_trace()
+        sweeps = info['elapsed_sweeps']
+        cts = np.sum(fc_data)
 
         if self.i_epoch == 0:
             y = cts
@@ -454,15 +485,15 @@ class MFL_IRQ_Driven(GenericLogic):
             y = cts - self._sum_cts
 
         y = float(y)/self.n_sweeps
-        self._sum_cts = cts
 
         if not self.nolog_callback:
-            self.log.debug("Epoch {}. pull_data_ungated_sum_up_cts. y= {}, cts= {}, sum= {}".format(
-                            self.i_epoch, y, cts, self._sum_cts))
+            self.log.debug("Epoch {}, sweeps {}. pull_data_ungated_sum_up_cts. y= {}, cts= {}, sum= {}".format(
+                            self.i_epoch, sweeps, y, cts, self._sum_cts))
 
+        self._sum_cts = cts
         x = None #mes.signal_data[0]
 
-        return x, y
+        return x, y, sweeps
 
     def calc_tau_from_posterior(self):
 
@@ -508,7 +539,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return idx_jumptable, addr
 
-    def timestamp(self, i_epoch):
+    def timestamp(self, i_epoch, event_type):
 
         t_now = time.perf_counter()
 
@@ -521,9 +552,12 @@ class MFL_IRQ_Driven(GenericLogic):
 
         t_since_0 = t_now - t0
 
-        self.timestamps[self._arr_idx(i_epoch)][0] = i_epoch
-        self.timestamps[self._arr_idx(i_epoch)][1] = t_now
-        self.timestamps[self._arr_idx(i_epoch)][2] = t_since_0
+        self.timestamps[self._idx_timestamps][0] = i_epoch
+        self.timestamps[self._idx_timestamps][1] = t_now
+        self.timestamps[self._idx_timestamps][2] = t_since_0
+        self.timestamps[self._idx_timestamps][3] = float(event_type)
+
+        self._idx_timestamps += 1
 
     def majority_vote(self, z, z_thresh=0.5):
         if z > z_thresh:
@@ -540,6 +574,7 @@ class MFL_IRQ_Driven(GenericLogic):
             return i_epoch % ARRAY_SIZE_MAX
         else:
             raise NotImplemented
+
 
     def _find_nearest(self, array, value):
         array = np.asarray(array)
@@ -561,6 +596,10 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
+        # todo:
+        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
+
+
         # done here, because before mes uploaded info not available and mes directly starts after upload atm
         # ugly, because costs time in first epoch
         if self.i_epoch == 0:
@@ -571,7 +610,7 @@ class MFL_IRQ_Driven(GenericLogic):
             self.pull_jumptable(seqname=self.sequence_name)
             self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
 
-        self.timestamp(self.i_epoch)
+        self.timestamp(self.i_epoch, TimestampEvent.irq_start)
 
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result()
@@ -601,10 +640,8 @@ class MFL_IRQ_Driven(GenericLogic):
             return 0
             # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
 
+        self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
         self.output_jump_pattern(addr)      # should directly before return
-
-        # todo:
-        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
 
         return 0
 
@@ -656,13 +693,15 @@ class MFL_IRQ_Driven(GenericLogic):
             self.is_running_lock.acquire()
             self.wait_for_start_lock.release()
 
+            time.sleep(1)
             # atm: no jumptable available, since qudi not accessible
             #self.pull_jumptable(seqname=self.sequence_name)
             #self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
 
-        self.timestamp(self.i_epoch)
+        self.timestamp(self.i_epoch, TimestampEvent.irq_start)
 
         # we are after the mes -> prepare for next epoch
+
         _, z = self.get_ramsey_result()
         #z = 0  # DEBUG
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
@@ -692,14 +731,8 @@ class MFL_IRQ_Driven(GenericLogic):
             return 0
             # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
 
+        self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
         self.output_jump_pattern(addr)      # should directly before return
-
-        # todo:
-        # - results array indexing really correct?
-
-        # todo:
-        # - 300 ns laser + safety. counting photons instead normalization
-        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
 
         return 0
 
@@ -847,8 +880,14 @@ if __name__ == '__main__':
     from logic.user_logic import UserCommands as ucmd
     import logging
     import PyDAQmx as daq
+    import os
+
+    os.chdir('../')
+    print("Running mfl_irq_diven.py. Working dir: {}".format(os.getcwd()))
 
     logging.basicConfig(level=logging.DEBUG)
+    #logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
+
     logger = logging.getLogger(__name__)
 
     mfl_logic = MFL_IRQ_Driven(None)
@@ -930,8 +969,8 @@ if __name__ == '__main__':
 
         # todo:
         # parse setup params from file written by jupyter notebook
-        n_sweeps = 10e3
-        n_epochs = 100
+        n_sweeps = 1e4
+        n_epochs = 20
         z_thresh = 0.7
 
         logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
