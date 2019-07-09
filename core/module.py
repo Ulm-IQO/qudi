@@ -26,6 +26,7 @@ from fysom import Fysom  # provides a final state machine
 from collections import OrderedDict
 from enum import Enum
 from qtpy import QtCore
+from core.interfaces import InterfaceMethod
 
 
 class StatusVar:
