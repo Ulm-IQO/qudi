@@ -21,3 +21,13 @@ class FirstTestInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
+
+    @interface_method
+    @abc.abstractmethod
+    def third_method(self):
+        """
+        This is for testing
+
+        @return int: error code (0:OK, -1:error)
+        """
+        pass
