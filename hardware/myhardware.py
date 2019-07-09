@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.module import Base
 from interface.first_test_interface import FirstTestInterface
 from interface.second_test_interface import SecondTestInterface
-from core.module import interface_method
+from core.interfaces import interface_method
 
 
 class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
@@ -64,6 +64,30 @@ class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
         print('SecondTestInterface: test called', self.var)
         return 2
 
+    @interface_method
+    def another_method(self):
+        print('Default implementation: another_method called', self.var)
+        return 0
+
+    @another_method.register('FirstTestInterface')
+    def test3(self):
+        """
+        """
+        print('FirstTestInterface: another_method called', self.var)
+        return 1
+
+    @interface_method
+    def third_method(self):
+        print('Default implementation: third_method called', self.var)
+        return 0
+
+    @third_method.register('SecondTestInterface')
+    def test4(self):
+        """
+        """
+        print('SecondTestInterface: third_method called', self.var)
+        return 2
+
     ################################################################################################
     # ... or like this:
     ################################################################################################
@@ -82,6 +106,10 @@ class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
     #     """
     #     print('SecondTestInterface: test called', self.var)
     #     return 2
+
+    # @FirstTestInterface.something_else.register('FirstTestInterface')
+    # def derp(self):
+    #     print('YUPP!!!')
 
     ################################################################################################
     # Or you can just override the interface method alltogether:

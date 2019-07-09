@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import abc
-from core.util.interfaces import InterfaceMetaclass
-from core.module import interface_method
+from core.interfaces import InterfaceMetaclass, interface_method, abstract_interface_method
 
 
 class FirstTestInterface(metaclass=InterfaceMetaclass):
@@ -12,8 +11,7 @@ class FirstTestInterface(metaclass=InterfaceMetaclass):
     _modclass = 'FirstTestInterface'
     _modtype = 'interface'
 
-    @interface_method
-    @abc.abstractmethod
+    @abstract_interface_method
     def test(self):
         """
         This is for testing
@@ -22,8 +20,7 @@ class FirstTestInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @interface_method
-    @abc.abstractmethod
+    @abstract_interface_method
     def third_method(self):
         """
         This is for testing

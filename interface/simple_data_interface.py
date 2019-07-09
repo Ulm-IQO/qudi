@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interfaces import InterfaceMetaclass
 
 
 class SimpleDataInterface(metaclass=InterfaceMetaclass):
