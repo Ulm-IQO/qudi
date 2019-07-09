@@ -44,12 +44,14 @@ class InterfaceMethod:
     interface to count as "implemented".
     """
 
-    _latest_unregistered_instance = None
+    _latest_unregistered_instances = dict()
 
-    def __new__(cls, *args, **kwargs):
-        if cls._latest_unregistered_instance is None:
-            cls._latest_unregistered_instance = super(InterfaceMethod, cls).__new__(cls)
-        return cls._latest_unregistered_instance
+    def __new__(cls, default_callable, obj=None):
+        func_name = default_callable.__name__
+        print(func_name)
+        if func_name not in cls._latest_unregistered_instances:
+            cls._latest_unregistered_instances[func_name] = super(InterfaceMethod, cls).__new__(cls)
+        return cls._latest_unregistered_instances[func_name]
 
     def __init__(self, default_callable, obj=None):
         self._obj = obj
@@ -96,7 +98,7 @@ class InterfaceMethod:
         def decorator(func):
             self.registered[interface] = func
             self.__isabstractmethod__ = False
-            InterfaceMethod._latest_unregistered_instance = None
+            InterfaceMethod._latest_unregistered_instances.pop(func.__name__, None)
             return func
         return decorator
 
