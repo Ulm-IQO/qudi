@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import abc
-from core.util.interfaces import InterfaceMetaclass, ScalarConstraint
+from core.interfaces import InterfaceMetaclass, ScalarConstraint
 
 
 class PulserInterface(metaclass=InterfaceMetaclass):

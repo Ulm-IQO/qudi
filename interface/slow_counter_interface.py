@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import abc
 from enum import Enum
-from core.util.interfaces import InterfaceMetaclass
+from core.interfaces import InterfaceMetaclass
 
 
 class SlowCounterInterface(metaclass=InterfaceMetaclass):
