@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import abc
-from core.interfaces import InterfaceMetaclass
+from core.meta import InterfaceMetaclass
 
 
 class MotorInterface(metaclass=InterfaceMetaclass):

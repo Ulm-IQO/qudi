@@ -113,7 +113,7 @@ def find_pyfiles(path):
 
 def check_qudi_modules(filelist):
     from core.module import Base
-    from core.interfaces import InterfaceMetaclass
+    from core.meta import InterfaceMetaclass
     from gui.guibase import GUIBase
     from logic.generic_logic import GenericLogic
     from logic.generic_task import InterruptableTask, PrePostTask

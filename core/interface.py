@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Metaclass for interfaces.
+Decorators and objects used for qudi interfaces
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -20,19 +20,7 @@ top-level directory of this distribution and at
 <https://github.com/Ulm-IQO/qudi/>
 """
 
-
-import abc
-from qtpy.QtCore import QObject
-from core.module import ModuleMeta
-
-QObjectMeta = type(QObject)
-
-
-class InterfaceMetaclass(ModuleMeta, abc.ABCMeta):
-    """
-    Metaclass for interfaces.
-    """
-    pass
+from abc import abstractmethod
 
 
 class InterfaceMethod:
@@ -61,7 +49,7 @@ class InterfaceMethod:
     def __init__(self, default_callable, is_abstractmethod=False):
         self._obj = None
         if is_abstractmethod:
-            self._default_callable = abc.abstractmethod(default_callable)
+            self._default_callable = abstractmethod(default_callable)
         else:
             self._default_callable = default_callable
         self.registered = dict()
@@ -125,13 +113,6 @@ class InterfaceMethod:
     def __isabstractmethod__(self, flag):
         if hasattr(self, '__isabstractmethod__'):
             self._default_callable.__isabstractmethod__ = bool(flag)
-
-
-class TaskMetaclass(QObjectMeta, abc.ABCMeta):
-    """
-    Metaclass for interfaces.
-    """
-    pass
 
 
 class ScalarConstraint:

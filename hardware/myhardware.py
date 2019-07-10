@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.module import Base
 from interface.first_test_interface import FirstTestInterface
 from interface.second_test_interface import SecondTestInterface
-from core.interfaces import interface_method
+from core.interface import interface_method
 
 
 class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
