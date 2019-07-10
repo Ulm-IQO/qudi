@@ -133,6 +133,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         """
         # the tasks used on that hardware device:
         self._counter_daq_tasks = []
+        self._edgecounter_daq_tasks = []
         self._counter_analog_daq_task = None
         self._clock_daq_task = None
         self._scanner_clock_daq_task = None
@@ -2247,6 +2248,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         :param edges: rising / falling edge detection?
         :return:
         """
+        # todo: should store change detection task nicely as class var, like other task lists
+
         if not self._supports_change_detection(channel_name):
             self.log.error("NI device does not support change detection. No callback registered.")
             return
@@ -2313,6 +2316,70 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             daq.DAQmxClearTask(self.changedetection_task)
             raise e
 
+    def set_up_single_edge_counter(self, counter_ch):
+
+        task = daq.TaskHandle()
+        daq.DAQmxCreateTask('EdgeCounter{0}'.format(0), daq.byref(task))
+
+        # non clocked simple edge counter
+        daq.DAQmxCreateCICountEdgesChan(task, counter_ch, 'EdgeCounter Channel {0}'.format(0),
+                                    daq.DAQmx_Val_Rising, 0, daq.DAQmx_Val_CountUp)
+
+        # set input line, currently not used
+        #daq.DAQmxSetCICountEdgesTerm
+
+        self._edgecounter_daq_tasks.append(task)
+        try:
+            daq.DAQmxStartTask(task)
+        except Exception as e:
+            self.log.exception('Error while starting EdgeCounter: {}'.format(str(e)))
+            try:
+                self.close_edge_counters()
+            except:
+                self.log.exception('Could not close counter after error')
+            return -1
+        return 0
+
+    def close_edge_counters(self):
+
+        error = 0
+
+        for i, task in enumerate(self._edgecounter_daq_tasks):
+            try:
+                # stop the counter task
+                daq.DAQmxStopTask(task)
+                # after stopping delete all the configuration of the counter
+                daq.DAQmxClearTask(task)
+                # set the task handle to None as a safety
+            except:
+                self.log.exception('Could not close counter.')
+                error = -1
+
+        self._edgecounter_daq_tasks = []
+
+        return error
+
+    def get_edge_counters(self):
+
+        if len(self._edgecounter_daq_tasks) < 1:
+            self.log.error(
+                'No counter running, call set_up_single_edge_counter before reading it.')
+            return -1
+        try:
+            count_data = np.zeros((len(self._edgecounter_daq_tasks), 1), dtype=np.uint32(1))
+
+            for i, task in enumerate(self._edgecounter_daq_tasks):
+                val = daq.uInt32()
+                daq.DAQmxReadCounterScalarU32(task, self._RWTimeout, daq.byref(val), None)
+                count_data[i] = val
+
+        except Exception as e:
+            self.log.exception(
+                'Getting samples from counter failed: {}'.format(str(e)))
+            # in case of error return a lot of -1
+            return np.ones((len(self._edgecounter_daq_tasks), 1), dtype=np.uint32) * -1
+
+        return count_data
 
 
 _debug_cb_counter = 0
