@@ -74,8 +74,9 @@ class MFL_IRQ_Driven(GenericLogic):
         # in ungated mode: normal 1d array with counts
         # in gated mode: 2d array, 2nd axis: epochs
         self._pull_data_methods = {'gated_and_ungated_plogic': self.pull_data_gated_and_ungated_plogic,
-                                   'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts}
-        self._cur_pull_data_method = 'ungated_sum_up_cts'
+                                   'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts,
+                                   'ungated_sum_up_cts_nicard': self.pull_data_ungated_sum_up_cts_nicard}
+        self._cur_pull_data_method = 'ungated_sum_up_cts_nicard'
         self.log.info("Setting pull data method to '{}'".format(self._cur_pull_data_method))
 
     def on_activate(self, logger_override=None):
@@ -102,6 +103,7 @@ class MFL_IRQ_Driven(GenericLogic):
                           'scanner_ao_channels': '', 'scanner_voltage_ranges': '', 'scanner_position_ranges': '',
                           'odmr_trigger_channel': '', 'gate_in_channel': ''}
                 self.nicard = NationalInstrumentsXSeries(**kwarg, config=config)
+                self.nicard.on_activate()
             except Exception as e:
                 raise ImportError("Couldn't manually instantiate NI card. Remove inheritance from base. Error: {}".format(str(e)))
             try:
@@ -162,6 +164,9 @@ class MFL_IRQ_Driven(GenericLogic):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           cb_epoch_done, edges=[True, False])
 
+        if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
+            self.nicard.set_up_single_edge_counter('dev1/ctr1')
+
         self.save_estimates_before_first_run(tau_first, tau_first_req)
 
         if not self.is_no_qudi:
@@ -176,6 +181,8 @@ class MFL_IRQ_Driven(GenericLogic):
         self.nicard.register_callback_on_change_detection('dev1/port0/line0',
                                                           self.__cb_func_profile_algo_only, edges=[True, False])
         self.save_estimates_before_first_run(100e-9, 101e-9)
+
+
 
     def init_arrays(self, n_epochs):
 
@@ -278,7 +285,6 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return t_seq_list
 
-
     def _get_ensemble_count_length(self, ensemble, created_blocks):
         """
 
@@ -353,6 +359,8 @@ class MFL_IRQ_Driven(GenericLogic):
     def end_run(self):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           None, edges=[True, False])
+        if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
+            self.nicard.close_edge_counters()
 
         if self.is_running:
             if not self.is_no_qudi:
@@ -363,7 +371,7 @@ class MFL_IRQ_Driven(GenericLogic):
             fastcounter = self.fastcounter
             sweeps_done = fastcounter.get_current_sweeps()
             if sweeps_done != self.i_epoch * self.n_sweeps:
-                self.log.warn("Counted {} / {} expected sweeps. Did we miss some?".format(
+                self.log.warning("Counted {} / {} expected sweeps. Did we miss some?".format(
                             sweeps_done, self.i_epoch * self.n_sweeps))
 
             # assumes:
@@ -487,13 +495,35 @@ class MFL_IRQ_Driven(GenericLogic):
         y = float(y)/self.n_sweeps
 
         if not self.nolog_callback:
-            self.log.debug("Epoch {}, sweeps {}. pull_data_ungated_sum_up_cts. y= {}, cts= {}, sum= {}".format(
-                            self.i_epoch, sweeps, y, cts, self._sum_cts))
+            self.log.debug("Epoch {}, sweeps {}. pull_data_ungated_sum_up_cts. y= {}, cts= {}, sum= {} \n array= {}".format(
+                            self.i_epoch, sweeps, y, cts, self._sum_cts, fc_data))
 
         self._sum_cts = cts
         x = None #mes.signal_data[0]
 
         return x, y, sweeps
+
+    def pull_data_ungated_sum_up_cts_nicard(self):
+
+        cts = mfl_logic.nicard.get_edge_counters()[0]
+
+        if self.i_epoch == 0:
+            y = cts
+            self._sum_cts = cts     # must create variable in first run
+        else:
+            y = cts - self._sum_cts
+
+        y = float(y)/self.n_sweeps
+
+        if not self.nolog_callback:
+            self.log.debug("Epoch {}. pull_data_ungated_sum_up_cts_nicard. y= {}, cts= {}, sum= {}".format(
+                            self.i_epoch, y, cts, self._sum_cts))
+
+        self._sum_cts = cts
+        x = None #mes.signal_data[0]
+
+        return x, y, -1
+
 
     def calc_tau_from_posterior(self):
 
@@ -935,36 +965,6 @@ if __name__ == '__main__':
         for i in range(0, int(n_reps)):
             _, z = mfl_logic._pull_data_methods['ungated_sum_up_cts']()
 
-    """
-    Profile callback
-    """
-    """
-    daq.DAQmxResetDevice('dev1')
-    #profile_mfl_pj()
-    lp = line_profiler.LineProfiler()
-    lp.add_function(mfl_logic._cb_func_profile_algo_only)
-    lp.add_function(mfl_logic.save_current_results)
-
-    lp_wrapper = lp(profile_mfl_pj)
-
-    lp_wrapper()
-    lp.print_stats()
-    """
-
-    """
-    Profile fastcomtech read
-    """
-    """
-    lp = line_profiler.LineProfiler()
-    lp_wrapper = lp(profile_fastcounter_pull_data)
-
-    lp_wrapper()
-    lp.print_stats()
-    """
-
-    """
-    Run in sepearte thread
-    """
     def setup_and_join_mfl_seperate_thread():
 
         # todo:
@@ -975,7 +975,7 @@ if __name__ == '__main__':
 
         logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
 
-        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
+        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=False, z_thresh=z_thresh)
         tau_first_req = mfl_logic.get_first_tau()
         # tau_first_req = 3500e-9 # DEBUG
         tau_first = tau_first_req  # PROBLEM would like to get from seqtable, but only created after run started
@@ -1007,5 +1007,70 @@ if __name__ == '__main__':
 
         logger.info("MFL thread done")
 
+    """
+    Profile callback
+    """
+    """
+    daq.DAQmxResetDevice('dev1')
+    #profile_mfl_pj()
+    lp = line_profiler.LineProfiler()
+    lp.add_function(mfl_logic._cb_func_profile_algo_only)
+    lp.add_function(mfl_logic.save_current_results)
+
+    lp_wrapper = lp(profile_mfl_pj)
+
+    lp_wrapper()
+    lp.print_stats()
+    """
+
+    """
+    Profile fastcomtech read
+    """
+    """
+    lp = line_profiler.LineProfiler()
+    lp_wrapper = lp(profile_fastcounter_pull_data)
+
+    lp_wrapper()
+    lp.print_stats()
+    """
+
+    """
+    Run in sepearte thread
+    """
 
     setup_and_join_mfl_seperate_thread()
+
+
+    """
+    Test counting with ni counter
+    """
+    def setup_ni_counter():
+        mfl_logic.nicard.set_up_single_edge_counter('dev1/ctr1')    # PFI 3 on breakout
+
+
+    def test_edge_counter():
+        t0 = time.perf_counter()
+        for i in range(0, 10):
+            t0_read = time.perf_counter()
+            cts = mfl_logic.nicard.get_edge_counters()[0]
+            t1_read = time.perf_counter()
+            time.sleep(0.2)
+            t1 = time.perf_counter()
+
+            logger.info("Counted {}, in {} s -> {} kHz. Count took {} ms".format(
+                cts, t1 - t0, 1e3 * float(cts) / (t1 - t0), (t1_read - t0_read)*1e3))
+
+
+        for i in range(0, 10):
+            t0 = time.perf_counter()
+            cts = mfl_logic.nicard.get_edge_counters()[0]
+            mfl_logic.nicard.close_edge_counters()
+            setup_ni_counter()
+            t1 = time.perf_counter()
+
+            logger.info("Counted {}. Count & Reset took {} ms -> {} kHz".format(cts, (t1 - t0)*1e3, 1e3 / (t1 - t0)))
+
+
+    #setup_ni_counter()
+    #test_edge_counter()
+
