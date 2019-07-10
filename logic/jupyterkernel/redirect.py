@@ -21,6 +21,7 @@ class _RedirectStream:
 
     def __exit__(self, exctype, excinst, exctb):
         setattr(sys, self._stream, self._old_targets.pop())
+        self._new_target.close()
 
 
 class RedirectedStdOut(_RedirectStream):

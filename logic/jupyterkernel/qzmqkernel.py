@@ -261,7 +261,7 @@ class QZMQKernel(QtCore.QObject):
                 except Exception as e:
                     res = ExecutionResult()
                     tb = traceback.format_exc()
-                    print('{}\n{}'.format(e, tb))
+                    print('{}\n{}'.format(e, tb), file=sys.stderr)
 
         # send captured result if there is any
         if len(res.result) > 0:

@@ -25,6 +25,10 @@ import json
 import uuid
 import errno
 import datetime
+from io import StringIO
+from threading import Thread, Lock, Event
+import time
+from core.util.mutex import Mutex
 
 
 class QZMQStream(QtCore.QObject):
@@ -127,6 +131,7 @@ class NetworkStream(QZMQStream):
 
         self.DELIM = b"<IDS|MSG>"
         self._parent_header = dict()
+        self._threadlock = Mutex()
 
     def close(self):
         super().close()
@@ -178,34 +183,35 @@ class NetworkStream(QZMQStream):
         }
 
     def send(self, msg_type, content=None, parent_header=None, metadata=None, identities=None):
-        header = self.new_header(msg_type)
-        if content is None:
-            content = dict()
-        if parent_header is None:
-            parent_header = self._parent_header
-        if metadata is None:
-            metadata = dict()
+        with self._threadlock:
+            header = self.new_header(msg_type)
+            if content is None:
+                content = dict()
+            if parent_header is None:
+                parent_header = self._parent_header
+            if metadata is None:
+                metadata = dict()
 
-        def jencode(msg):
-            return json.dumps(msg).encode('ascii')
+            def jencode(msg):
+                return json.dumps(msg).encode('ascii')
 
-        msg_lst = [
-            jencode(header),
-            jencode(parent_header),
-            jencode(metadata),
-            jencode(content),
-        ]
-        signature = self.sign(msg_lst)
-        parts = [self.DELIM,
-                 signature,
-                 msg_lst[0],
-                 msg_lst[1],
-                 msg_lst[2],
-                 msg_lst[3]]
-        if identities:
-            parts = identities + parts
-        logging.debug('{0!s} send parts: {1!s}'.format(self.name, parts))
-        self.socket.send_multipart(parts)
+            msg_lst = [
+                jencode(header),
+                jencode(parent_header),
+                jencode(metadata),
+                jencode(content),
+            ]
+            signature = self.sign(msg_lst)
+            parts = [self.DELIM,
+                     signature,
+                     msg_lst[0],
+                     msg_lst[1],
+                     msg_lst[2],
+                     msg_lst[3]]
+            if identities:
+                parts = identities + parts
+            logging.debug('{0!s} send parts: {1!s}'.format(self.name, parts))
+            self.socket.send_multipart(parts)
 
     def deserialize_wire_msg(self, wire_msg):
         """split the routing prefix and message frames from a message on the wire"""
@@ -226,30 +232,64 @@ class NetworkStream(QZMQStream):
         return identities, m
 
 
-class IOStdoutNetworkStream:
-    _output_channel = 'stdout'
+class IOStdoutNetworkStream(StringIO):
+    """
+    This class extends the StringIO to redirect the data via network stream.
+    It uses a thread (not Qt but a normal python thread) to regularly query the buffer and send it off.
+    By using locks thread safety should be guaranteed for the write operation.
+    """
 
-    def __init__(self, network_stream):
+    def __init__(self, network_stream, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._output_channel = 'stdout'
         self._network_stream = network_stream
 
+        self._lock = Lock()
+        self._stop = Event()
+        self._stop.clear()
+        # initialize the thread for the hardware query
+        self._network_thread = Thread(target=self._run_network_loop)
+
+        # start the threads
+        self._network_thread.start()
+
     def write(self, s):
-        content = {
-            'name': self._output_channel,
-            'text': s,
-        }
-        self._network_stream.send(msg_type='stream', content=content)
+        self._lock.acquire()
+        super().write(s)
+        self._lock.release()
 
-    def flush(self):
-        pass
+    def _run_network_loop(self):
+        while not self._stop.is_set():
+            self._dump_stream_to_network()
+            # one query every 10 ms should be more than enough
+            time.sleep(0.01)
 
-    @property
-    def readable(self):
-        return False
+        # clean up the buffer
+        self._dump_stream_to_network()
+        super().close()
 
-    @property
-    def writable(self):
-        return True
+    def _dump_stream_to_network(self):
+        if self.tell() > 0:
+            # get the data and reset the stream
+            self._lock.acquire()
+            s = self.getvalue()
+            self.truncate(0)
+            self.seek(0)
+            self._lock.release()
+
+            # send off the data
+            content = {
+                'name': self._output_channel,
+                'text': s,
+            }
+            self._network_stream.send(msg_type='stream', content=content)
+
+    def close(self):
+        self._stop.set()
 
 
 class IOStderrNetworkStream(IOStdoutNetworkStream):
-    _output_channel = 'stderr'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._output_channel = 'stderr'
