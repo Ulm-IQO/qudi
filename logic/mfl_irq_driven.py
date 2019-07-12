@@ -74,6 +74,7 @@ class MFL_IRQ_Driven(GenericLogic):
         # in ungated mode: normal 1d array with counts
         # in gated mode: 2d array, 2nd axis: epochs
         self._pull_data_methods = {'gated_and_ungated_plogic': self.pull_data_gated_and_ungated_plogic,
+                                   'gated_2d': self.pull_data_gated,
                                    'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts,
                                    'ungated_sum_up_cts_nicard': self.pull_data_ungated_sum_up_cts_nicard}
         self._cur_pull_data_method = 'ungated_sum_up_cts_nicard'
@@ -360,7 +361,10 @@ class MFL_IRQ_Driven(GenericLogic):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           None, edges=[True, False])
         if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
+            cts = mfl_logic.nicard.get_edge_counters()[0]
             self.nicard.close_edge_counters()
+            self.log.info("summed_up_cts from nicard: {} per epoch / {} total from {} epochs".format(
+                            float(cts)/self.i_epoch, float(cts), self.i_epoch))
 
         if self.is_running:
             if not self.is_no_qudi:
@@ -464,8 +468,12 @@ class MFL_IRQ_Driven(GenericLogic):
 
         return (x, y)
 
-    def pull_data_gated_and_ungated_plogic(self):
 
+    def pull_data_gated_and_ungated_plogic(self):
+        """
+        uses qudi pulsedmeasurement logic
+        :return:
+        """
         mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
         mes.manually_pull_data()
         mes._extract_laser_pulses()
@@ -479,6 +487,17 @@ class MFL_IRQ_Driven(GenericLogic):
             y = y[self.i_epoch]
 
         return x, y, mes.elapsed_sweeps
+
+    def pull_data_gated(self):
+
+        fc_data, info = self.fastcounter.get_data_trace()
+        sweeps = info['elapsed_sweeps']
+        cts = fc_data
+
+        x = None  # mes.signal_data[0]
+        y = np.sum(cts[self.i_epoch])
+
+        return x, y, sweeps
 
     def pull_data_ungated_sum_up_cts(self):
 
@@ -975,7 +994,7 @@ if __name__ == '__main__':
 
         logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
 
-        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=False, z_thresh=z_thresh)
+        mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
         tau_first_req = mfl_logic.get_first_tau()
         # tau_first_req = 3500e-9 # DEBUG
         tau_first = tau_first_req  # PROBLEM would like to get from seqtable, but only created after run started
@@ -984,9 +1003,14 @@ if __name__ == '__main__':
         logger.info("First tau from flat prior {} ns".format(1e9 * tau_first))
 
         mfl_logic.setup_new_run(tau_first, tau_first_req, cb_epoch_done=mfl_logic._cb_func_profile_no_qudi)
+
+        if mfl_logic._cur_pull_data_method is 'gated_2d':
+            mfl_logic.fastcounter.change_sweep_mode(gated=True, is_single_sweeps=False,
+                                                    n_sweeps_preset=int(n_sweeps))
+
+        # prio of this thread
         prio = 5    # 2: normal 5: real time
         prio_new = mfl_logic._setpriority_win(pid=None, priority=prio)
-
         if prio != prio_new:
             logger.warning("Couldn't set process priority to {} (is {}). Run as admin?".format(prio, prio_new))
 
@@ -1058,8 +1082,7 @@ if __name__ == '__main__':
             t1 = time.perf_counter()
 
             logger.info("Counted {}, in {} s -> {} kHz. Count took {} ms".format(
-                cts, t1 - t0, 1e3 * float(cts) / (t1 - t0), (t1_read - t0_read)*1e3))
-
+                cts, t1 - t0, float(cts) / (1e3*(t1 - t0)), (t1_read - t0_read)*1e3))
 
         for i in range(0, 10):
             t0 = time.perf_counter()
@@ -1068,7 +1091,7 @@ if __name__ == '__main__':
             setup_ni_counter()
             t1 = time.perf_counter()
 
-            logger.info("Counted {}. Count & Reset took {} ms -> {} kHz".format(cts, (t1 - t0)*1e3, 1e3 / (t1 - t0)))
+            logger.info("Counted {}. Count & Reset took {} ms -> {} kHz".format(cts, (t1 - t0)*1e3, 1e-3 / (t1 - t0)))
 
 
     #setup_ni_counter()
