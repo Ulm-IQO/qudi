@@ -2195,6 +2195,11 @@ class AWG70K(Base, PulserInterface, MicrowaveInterface):
             samples_per_period = sample_rate / freq
             cycles = max(100, int(np.ceil(2 * self.__min_waveform_length / samples_per_period)))
 
+            samples = np.round(cycles * samples_per_period)
+
+            while samples % 2 != 0:
+                cycles += 1
+                samples = np.round(cycles * samples_per_period)
             # Write waveform for channel 1 and add to sequence
             name = '_mw_sweep_{0:d}_ch1'.format(ii)
             if a_ch == 1:
