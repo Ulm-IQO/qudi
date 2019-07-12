@@ -57,7 +57,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
     def generate_mfl_ramsey_pjump(self, name="mfl_ramsey_pjump", n_seq_sweeps=1000, tau_start=10e-9, tau_step=10e-9,
                             num_of_points=10, tau_first=50e-9, n_epochs=15,
-                            laser_name='laser_wait', laser_length=1e-6, wait_length=1e-6, alternating=False):
+                            laser_name='laser_wait', laser_length=1e-6, wait_length=1e-6, ni_gate_length=-1e-9, alternating=False):
 
         self.init_jumptable()
         self.init_seqtable()
@@ -89,10 +89,9 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_IDLE_SEQMODE, 'repetitions': 1000, 'flag_high': ['A']})
         self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
 
-
         # generate ramseys for every tau
         for i, tau in enumerate(tau_array):
-            # laser init before first MW in every epoch
+            # laser init before first MW in every epoch. No readout!
             cur_name = 'laser_wait_0_' + str(i)
             cur_blocks, cur_ensembles = self._create_init_laser_pulses(general_params, name=cur_name)
             cur_seq_params = self._get_default_seq_params({'go_to': 0, 'repetitions': 0,
@@ -103,7 +102,8 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
             # MW with laser after each Ramsey
             cur_name = name + '_' + str(i)
             cur_blocks, cur_ensembles, _ = self._create_single_ramsey(name=cur_name, tau=tau,
-                                                mw_phase=0.0, laser_length=laser_length, wait_length=wait_length)
+                                                mw_phase=0.0, laser_length=laser_length, wait_length=wait_length,
+                                                ni_gate_length=ni_gate_length)
 
             cur_seq_params = self._get_default_seq_params({'go_to': SEG_I_EPOCH_DONE_SEQMODE, 'repetitions': n_seq_sweeps-1})
             self._add_to_seqtable(cur_name, cur_blocks, cur_ensembles, cur_seq_params)
@@ -111,9 +111,13 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         all_blocks, all_ensembles, ensemble_list = self._seqtable_to_result()
 
         sequence = PulseSequence(name=general_params['name'], ensemble_list=ensemble_list, rotating_frame=False)
-        # attention: relies on fact that last ramsey in list is longest!
+
         if not is_gated:
-            fastcounter_count_length = 1.1 * self._get_ensemble_count_length(all_ensembles[-1], created_blocks=all_blocks)
+            # new: in non gated mode works like gated -> sync pulse with aom.
+            # works, since only a single tau
+            fastcounter_count_length = self.laser_length + 100e-9
+            # attention: relies on fact that last ramsey in list is longest!
+            #fastcounter_count_length = 1.1 * self._get_ensemble_count_length(all_ensembles[-1], created_blocks=all_blocks)
         else:
             fastcounter_count_length = self.laser_length + 100e-9
 
@@ -156,7 +160,7 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
         return created_blocks, created_ensembles
 
     # todo: inherit shared methods
-    def _create_laser_wait(self, name='laser_wait', laser_length=500e-9, wait_length = 1e-6):
+    def _create_laser_wait(self, name='laser_wait', laser_length=500e-9, wait_length=1e-6):
         """ Generates Laser pulse and waiting (idle) time.
 
         @param str name: Name of the PulseBlockEnsemble
@@ -255,7 +259,13 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
 
     def _create_single_ramsey(self, name='ramsey', tau=500e-9, mw_phase=0.0,
-                              laser_length=1500e-9, wait_length=1000e-9):
+                              laser_length=1500e-9, wait_length=1000e-9, ni_gate_length=-1e-9):
+
+        use_ni_counter = False
+        if ni_gate_length > 0.:
+            use_ni_counter = True
+            if self.gate_channel:
+                self.logger.warning("Gated mode sensible with fastcounter, but found nicard counting enabled.")
 
         created_blocks = []
         created_ensembles = []
@@ -274,25 +284,51 @@ class MFLPatternJump_Generator(PredefinedGeneratorBase):
 
         # laser readout after MW
         aom_delay = self.laser_delay
-        # todo: consider ungated acq.
+
+        # note: fastcomtec triggers only on falling edge
         laser_gate_element = self._get_laser_gate_element(length=aom_delay - 20e-9, increment=0)
         laser_element = self._get_laser_element(length=laser_length - aom_delay + 20e-9, increment=0)
         delay_element = self._get_idle_element(length=aom_delay, increment=0)
         waiting_element = self._get_idle_element(length=wait_length, increment=0.0)
 
+        # only a single tau, so we can operate sync_channel just like in gating mode
         if self.sync_channel:
-            seq_trig_element = self._get_sync_element()
+            laser_gate_channels = [self.sync_channel, self.laser_channel]
+            laser_sync_element = self._get_trigger_element(length=aom_delay - 20e-9, increment=0, channels=laser_gate_channels)
 
         block = PulseBlock(name=name)
         block.append(pi2_element)
         block.append(tau_element)
         block.append(pi2_element)
-        block.append(laser_gate_element)
-        block.append(laser_element)
+        if not use_ni_counter:  # normal, fastcounter acquisition
+            if self.gate_channel:
+                block.append(laser_gate_element)
+            if self.sync_channel:
+                block.append(laser_sync_element)
+
+            block.append(laser_element)
+        else:   # use nicard counter and gate away dark counts
+            laser_element_1 = self._get_laser_element(length=aom_delay - 10e-9, increment=0)
+            laser_gate_channels = [self.sync_channel, self.laser_channel]
+            laser_gate_element = self._get_trigger_element(length=ni_gate_length + 20e-9, increment=0, channels=laser_gate_channels)
+            gate_after_length = ni_gate_length + aom_delay - laser_length
+            if aom_delay > gate_after_length:
+                gate_after_length = aom_delay
+            gate_element_after_laser = self._get_trigger_element(length=gate_after_length, increment=0, channels=[self.sync_channel])
+            # negative length values allowed: cut back laser_gate_element
+            laser_element_2 = self._get_laser_element(length=laser_length - ni_gate_length - aom_delay - 10e-9, increment=0)
+
+            if self.sync_channel:
+                block.append(laser_element_1)
+                block.append(laser_gate_element)
+                block.append(laser_element_2) # may cut back laser_gate, st laser length correct
+                if ni_gate_length + aom_delay >= laser_length:
+                    block.append(gate_element_after_laser)
+
+
         block.append(delay_element)
         block.append(waiting_element)
-        if self.sync_channel:
-            block.append(seq_trig_element)
+
 
         self._extend_to_min_samples(block, prepend=True)
 
