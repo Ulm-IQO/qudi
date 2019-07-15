@@ -42,29 +42,42 @@ class MicrowaveDummy(Base, MicrowaveInterface):
     _modclass = 'MicrowaveDummy'
     _modtype = 'mwsource'
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self._output_active = False
+
+        self._current_output_mode = None
+        self._current_trig_pol = None
+        self._timing = 1e-3
+        
+        self._mw_cw_power = -120.0
+        self._mw_cw_frequency = 2.87e9
+
+        self._mw_frequency_list = list()
+        self._mw_power_list = list()
+
+        self._mw_sweep_power = 0.0
+        self._mw_start_freq = 2.5e9
+        self._mw_stop_freq = 3.1e9
+        self._mw_step_freq = 2.0e6
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.mw_cw_power = -120.0
-        self.mw_sweep_power = 0.0
-        self.mw_cw_frequency = 2.87e9
-        self.mw_frequency_list = list()
-        self.mw_start_freq = 2.5e9
-        self.mw_stop_freq = 3.1e9
-        self.mw_step_freq = 2.0e6
 
         # frequency switching speed by a program in a list mode:
         self._FREQ_SWITCH_SPEED = 0.008  # Frequency switching speed in s
 
-        self.current_output_mode = MicrowaveMode.CW     # Can be MicrowaveMode.CW, MicrowaveMode.LIST or
+        self._current_output_mode = MicrowaveMode.CW     # Can be MicrowaveMode.CW, MicrowaveMode.LIST or
                                                         # MicrowaveMode.SWEEP
-        self.current_trig_pol = TriggerEdge.RISING      # Can be TriggerEdge.RISING or
+        self._current_trig_pol = TriggerEdge.RISING      # Can be TriggerEdge.RISING or
                                                         # TriggerEdge.FALLING
-        self.output_active = False
+        self._output_active = False
         return
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
+        """ De-initialisation performed during deactivation of the module.
         """
         pass
 
@@ -93,51 +106,23 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
         the output state (stopped, running)
 
-        @return str, bool: mode ['cw', 'list', 'sweep'], is_running [True, False]
+        @return dict: A dict containing the mode and output state but also information about the class
         """
-        if self.current_output_mode == MicrowaveMode.CW:
-            mode = 'cw'
-        elif self.current_output_mode == MicrowaveMode.LIST:
-            mode = 'list'
-        elif self.current_output_mode == MicrowaveMode.SWEEP:
-            mode = 'sweep'
-        return mode, self.output_active
+        statusdict = {
+            'mode': str(self._current_output_mode),
+            'output_active': self._output_active,
+            'module_state': self.module_state(),
+        }
+        return statusdict
 
     def off(self):
         """ Switches off any microwave output.
 
         @return int: error code (0:OK, -1:error)
         """
-        self.output_active = False
+        self._output_active = False
         self.log.info('MicrowaveDummy>off')
         return 0
-
-    def get_power(self):
-        """ Gets the microwave output power.
-
-        @return float: the power set at the device in dBm
-        """
-        self.log.debug('MicrowaveDummy>get_power')
-        if self.current_output_mode == MicrowaveMode.CW:
-            return self.mw_cw_power
-        else:
-            return self.mw_sweep_power
-
-    def get_frequency(self):
-        """
-        Gets the frequency of the microwave output.
-        Returns single float value if the device is in cw mode.
-        Returns list if the device is in either list or sweep mode.
-
-        @return [float, list]: frequency(s) currently set for this device in Hz
-        """
-        self.log.debug('MicrowaveDummy>get_frequency')
-        if self.current_output_mode == MicrowaveMode.CW:
-            return self.mw_cw_frequency
-        elif self.current_output_mode == MicrowaveMode.LIST:
-            return self.mw_frequency_list
-        elif self.current_output_mode == MicrowaveMode.SWEEP:
-            return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq
 
     def cw_on(self):
         """
@@ -146,33 +131,38 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.current_output_mode = MicrowaveMode.CW
+        self._current_output_mode = MicrowaveMode.CW
         time.sleep(0.5)
-        self.output_active = True
+        self._output_active = True
         self.log.info('MicrowaveDummy>CW output on')
         return 0
+    
+    def get_parameters_cw(self):
+        """
+        Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-    def set_cw(self, frequency=None, power=None):
+        @return tuple(float, float, str): frequency in Hz, the output power in dBm, current mode
+        """
+        return self._mw_cw_frequency, self._mw_cw_power
+
+    def set_parameters_cw(self, frequency=None, power=None):
         """
         Configures the device for cw-mode and optionally sets frequency and/or power
 
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
-        @param bool useinterleave: If this mode exists you can choose it.
 
-        @return float, float, str: current frequency in Hz, current power in dBm, current mode
-
-        Interleave option is used for arbitrary waveform generator devices.
+        @return int: error code (0:OK, -1:error)
         """
         self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(frequency,
                                                                                       power))
-        self.output_active = False
-        self.current_output_mode = MicrowaveMode.CW
+        self.off()
+        self._current_output_mode = MicrowaveMode.CW
         if frequency is not None:
-            self.mw_cw_frequency = frequency
+            self._mw_cw_frequency = frequency
         if power is not None:
-            self.mw_cw_power = power
-        return self.mw_cw_frequency, self.mw_cw_power, 'cw'
+            self._mw_cw_power = power
+        return 0
 
     def list_on(self):
         """
@@ -181,32 +171,40 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.current_output_mode = MicrowaveMode.LIST
+        self._current_output_mode = MicrowaveMode.LIST
         time.sleep(1)
-        self.output_active = True
+        self._output_active = True
         self.log.info('MicrowaveDummy>List mode output on')
         return 0
 
-    def set_list(self, frequency=None, power=None):
+    def get_parameters_list(self):
+        """
+        Gets the current parameters of the list mode: microwave output power and frequency as lists.
+
+        @return tuple(list, list, str): list of frequency in Hz, list of output powers in dBm, current mode
+        """
+        return self._mw_frequency_list, self._mw_power_list, str(self._current_output_mode)
+
+    def set_parameters_list(self, frequency=None, power=None):
         """
         Configures the device for list-mode and optionally sets frequencies and/or power
 
         @param list frequency: list of frequencies in Hz
-        @param float power: MW power of the frequency list in dBm
+        @param list power: MW power of the frequency list in dBm
 
-        @return list, float, str: current frequencies in Hz, current power in dBm, current mode
+        @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1:f}'
+        self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1}'
                        ''.format(frequency, power))
-        self.output_active = False
-        self.current_output_mode = MicrowaveMode.LIST
+        self.off()
+        self._current_output_mode = MicrowaveMode.LIST
         if frequency is not None:
-            self.mw_frequency_list = frequency
+            self._mw_frequency_list = frequency
         if power is not None:
-            self.mw_cw_power = power
-        return self.mw_frequency_list, self.mw_cw_power, 'list'
+            self._mw_power_list = power
+        return 0
 
-    def reset_listpos(self):
+    def reset_list_pos(self):
         """
         Reset of MW list mode position to start (first frequency step)
 
@@ -219,16 +217,15 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.current_output_mode = MicrowaveMode.SWEEP
+        self._current_output_mode = MicrowaveMode.SWEEP
         time.sleep(1)
-        self.output_active = True
+        self._output_active = True
         self.log.info('MicrowaveDummy>Sweep mode output on')
         return 0
-
-    def set_sweep(self, start=None, stop=None, step=None, power=None):
+    
+    def get_parameters_sweep(self):
         """
-        Configures the device for sweep-mode and optionally sets frequency start/stop/step
-        and/or power
+        Gets the current parameters of the sweep mode: parameters of the sweep and a single power.
 
         @return float, float, float, float, str: current start frequency in Hz,
                                                  current stop frequency in Hz,
@@ -236,20 +233,29 @@ class MicrowaveDummy(Base, MicrowaveInterface):
                                                  current power in dBm,
                                                  current mode
         """
+        return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power, \
+               str(self._current_output_mode)
+
+    def set_parameters_sweep(self, start=None, stop=None, step=None, power=None):
+        """
+        Configures the device for sweep-mode and optionally sets frequency start/stop/step
+        and/or power
+
+        @return int: error code (0:OK, -1:error)
+        """
         self.log.debug('MicrowaveDummy>set_sweep, start: {0:f}, stop: {1:f}, step: {2:f}, '
                        'power: {3:f}'.format(start, stop, step, power))
-        self.output_active = False
-        self.current_output_mode = MicrowaveMode.SWEEP
+        self.off()
+        self._current_output_mode = MicrowaveMode.SWEEP
         if (start is not None) and (stop is not None) and (step is not None):
-            self.mw_start_freq = start
-            self.mw_stop_freq = stop
-            self.mw_step_freq = step
+            self._mw_start_freq = start
+            self._mw_stop_freq = stop
+            self._mw_step_freq = step
         if power is not None:
-            self.mw_sweep_power = power
-        return self.mw_start_freq, self.mw_stop_freq, self.mw_step_freq, self.mw_sweep_power, \
-               'sweep'
+            self._mw_sweep_power = power
+        return 0
 
-    def reset_sweeppos(self):
+    def reset_sweep_pos(self):
         """
         Reset of MW sweep mode position to start (start frequency)
 
@@ -257,17 +263,26 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         return 0
 
+    def get_ext_trigger(self):
+        """ Get the external trigger for this device with proper polarization.
+
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing as queried from device
+        """
+        return self._current_trig_pol, self._timing
+
     def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
-        @param float timing: estimated time between triggers
+        @param timing: estimated time between triggers
 
-        @return object: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING]
+        @return int: error code (0:OK, -1:error)
         """
         self.log.info('MicrowaveDummy>ext_trigger set')
-        self.current_trig_pol = pol
-        return self.current_trig_pol, timing
+        self._current_trig_pol = pol
+        self._timing = timing
+        return 0
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
@@ -279,4 +294,4 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
 
         time.sleep(self._FREQ_SWITCH_SPEED)  # that is the switching speed
-        return
+        return 0
