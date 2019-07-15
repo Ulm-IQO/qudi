@@ -249,6 +249,8 @@ class PoiManagerGui(GUIBase):
 
     # declare signals
     sigTrackPeriodChanged = QtCore.Signal(float)
+    sigPoiThresholdChanged = QtCore.Signal(float)
+    sigPoiDiameterChanged = QtCore.Signal(float)
     sigPoiNameChanged = QtCore.Signal(str)
     sigPoiNameTagChanged = QtCore.Signal(str)
     sigRoiNameChanged = QtCore.Signal(str)
@@ -281,9 +283,7 @@ class PoiManagerGui(GUIBase):
 
         self._mw = PoiManagerMainWindow()
         # Configuring the dock widgets.
-        # All our gui elements are dockable, so there should be no "central" widget.
-        self._mw.centralwidget.hide()
-        self._mw.setDockNestingEnabled(True)
+        self.restore_dockwidgets_default()
 
         # Add validator to LineEdits
         self._mw.roi_name_LineEdit.setValidator(NameValidator())
@@ -304,7 +304,10 @@ class PoiManagerGui(GUIBase):
         self._update_roi_name(self.poimanagerlogic().roi_name)
         # Initialize POI nametag
         self._update_poi_nametag(self.poimanagerlogic().poi_nametag)
-
+        # Initialize Auto POI threshold
+        self._update_poi_threshold(self.poimanagerlogic().poi_threshold)
+        # Initialize Auto POI diameter
+        self._update_poi_diameter(self.poimanagerlogic().poi_diameter)
         # Distance Measurement:
         # Introducing a SignalProxy will limit the rate of signals that get fired.
         self._mouse_moved_proxy = pg.SignalProxy(signal=self.roi_image.scene().sigMouseMoved,
@@ -328,6 +331,43 @@ class PoiManagerGui(GUIBase):
         self.__disconnect_update_signals_from_logic()
         self.__disconnect_internal_signals()
         self._mw.close()
+
+    @QtCore.Slot()
+    def restore_dockwidgets_default(self):
+        self._mw.centralwidget.hide()
+        self._mw.setDockNestingEnabled(True)
+
+        self._mw.roi_map_dockWidget.setFloating(False)
+        self._mw.auto_pois_dockWidget.setFloating(False)
+        self._mw.poi_editor_dockWidget.setFloating(False)
+        self._mw.poi_tracker_dockWidget.setFloating(False)
+        self._mw.sample_shift_dockWidget.setFloating(False)
+
+        self._mw.roi_map_dockWidget.show()
+        self._mw.auto_pois_dockWidget.show()
+        self._mw.poi_editor_dockWidget.show()
+        self._mw.poi_tracker_dockWidget.show()
+        self._mw.sample_shift_dockWidget.show()
+
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._mw.roi_map_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.poi_editor_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.poi_tracker_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.auto_pois_dockWidget)
+        self._mw.splitDockWidget(
+            self._mw.poi_tracker_dockWidget, self._mw.auto_pois_dockWidget, QtCore.Qt.Vertical)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.sample_shift_dockWidget)
+
+        if not self._mw.roi_map_view_Action.isChecked():
+            self._mw.roi_map_view_Action.trigger()
+        if not self._mw.poi_editor_view_Action.isChecked():
+            self._mw.poi_editor_view_Action.trigger()
+        if not self._mw.poi_tracker_view_Action.isChecked():
+            self._mw.poi_tracker_view_Action.trigger()
+        if not self._mw.auto_pois_view_Action.isChecked():
+            self._mw.auto_pois_view_Action.trigger()
+        if not self._mw.sample_shift_view_Action.isChecked():
+            self._mw.sample_shift_view_Action.trigger()
+        return
 
     def __init_roi_scan_image(self):
         # Get the color scheme
@@ -401,6 +441,10 @@ class PoiManagerGui(GUIBase):
         self.poimanagerlogic().sigRoiUpdated.connect(self.update_roi, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigRefocusStateUpdated.connect(
             self.update_refocus_state, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigThresholdUpdated.connect(
+            self._update_poi_threshold, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigDiameterUpdated.connect(
+            self._update_poi_diameter, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_update_signals_from_logic(self):
@@ -414,6 +458,10 @@ class PoiManagerGui(GUIBase):
     def __connect_control_signals_to_logic(self):
         self._mw.new_poi_Action.triggered.connect(
             self.poimanagerlogic().add_poi, QtCore.Qt.QueuedConnection)
+        self._mw.auto_pois_PushButton.clicked.connect(
+            self.poimanagerlogic().auto_catch_poi, QtCore.Qt.QueuedConnection)
+        self._mw.del_all_pois_PushButton.clicked.connect(
+            self.delete_all_pois_clicked, QtCore.Qt.QueuedConnection)
         self._mw.goto_poi_Action.triggered.connect(
             self.poimanagerlogic().go_to_poi, QtCore.Qt.QueuedConnection)
         self._mw.new_roi_Action.triggered.connect(
@@ -440,6 +488,10 @@ class PoiManagerGui(GUIBase):
             self.poimanagerlogic().toggle_periodic_refocus, QtCore.Qt.QueuedConnection)
         self.sigTrackPeriodChanged.connect(
             self.poimanagerlogic().set_refocus_period, QtCore.Qt.QueuedConnection)
+        self.sigPoiThresholdChanged.connect(
+            self.poimanagerlogic().set_poi_threshold)
+        self.sigPoiDiameterChanged.connect(
+            self.poimanagerlogic().set_poi_diameter)
         self.sigRoiNameChanged.connect(
             self.poimanagerlogic().rename_roi, QtCore.Qt.QueuedConnection)
         self.sigPoiNameChanged.connect(
@@ -464,6 +516,8 @@ class PoiManagerGui(GUIBase):
         self._mw.goto_poi_after_update_checkBox.stateChanged.disconnect()
         self._mw.track_poi_Action.triggered.disconnect()
         self.sigTrackPeriodChanged.disconnect()
+        self.sigPoiThresholdChanged.disconnect()
+        self.sigPoiDiameterChanged.disconnect()
         self.sigRoiNameChanged.disconnect()
         self.sigPoiNameChanged.disconnect()
         self.sigPoiNameTagChanged.disconnect()
@@ -474,6 +528,8 @@ class PoiManagerGui(GUIBase):
 
     def __connect_internal_signals(self):
         self._mw.track_period_SpinBox.editingFinished.connect(self.track_period_changed)
+        self._mw.poi_threshold_doubleSpinBox.editingFinished.connect(self.poi_threshold_changed)
+        self._mw.poi_diameter_doubleSpinBox.editingFinished.connect(self.poi_diameter_changed)
         self._mw.roi_name_LineEdit.editingFinished.connect(self.roi_name_changed)
         self._mw.poi_name_LineEdit.returnPressed.connect(self.poi_name_changed)
         self._mw.poi_nametag_LineEdit.editingFinished.connect(self.poi_nametag_changed)
@@ -487,6 +543,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.update_cb_absolute)
         self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.update_cb_centiles)
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.update_cb_centiles)
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_dockwidgets_default)
         return
 
     def __disconnect_internal_signals(self):
@@ -504,6 +561,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_max_SpinBox.valueChanged.disconnect()
         self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
+        self._mw.restore_default_view_Action.triggered.disconnect()
         return
 
     def show(self):
@@ -562,7 +620,7 @@ class PoiManagerGui(GUIBase):
         self.__poi_selector_active = is_active
         return
 
-    @QtCore.Slot(QtCore.Qt.MouseButton, QtCore.QPointF)
+    @QtCore.Slot(object, QtCore.QPointF)
     def create_poi_from_click(self, button, pos):
         # Only create new POI if the mouse click event has not been accepted by some other means
         # In our case this is most likely the POI marker to select the active POI from.
@@ -691,6 +749,16 @@ class PoiManagerGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def poi_threshold_changed(self):
+        self.sigPoiThresholdChanged.emit(self._mw.poi_threshold_doubleSpinBox.value())
+        return
+
+    @QtCore.Slot()
+    def poi_diameter_changed(self):
+        self.sigPoiDiameterChanged.emit(self._mw.poi_diameter_doubleSpinBox.value())
+        return
+
+    @QtCore.Slot()
     def roi_name_changed(self):
         """ Set the name of the current ROI."""
         self.sigRoiNameChanged.emit(self._mw.roi_name_LineEdit.text())
@@ -761,6 +829,16 @@ class PoiManagerGui(GUIBase):
         self.roi_cb.refresh_colorbar(*cb_range)
         return
 
+    @QtCore.Slot()
+    def delete_all_pois_clicked(self):
+        result = QtWidgets.QMessageBox.question(self._mw, 'Qudi: Delete all POIs?',
+                                                'Are you sure to delete all POIs?',
+                                                QtWidgets.QMessageBox.Yes,
+                                                QtWidgets.QMessageBox.No)
+        if result == QtWidgets.QMessageBox.Yes:
+            self.poimanagerlogic().delete_all_pois()
+        return
+
     def _update_scan_image(self, scan_image, image_extent):
         """
 
@@ -792,6 +870,14 @@ class PoiManagerGui(GUIBase):
         self._mw.poi_nametag_LineEdit.blockSignals(True)
         self._mw.poi_nametag_LineEdit.setText(tag)
         self._mw.poi_nametag_LineEdit.blockSignals(False)
+        return
+
+    def _update_poi_threshold(self, threshold):
+        self._mw.poi_threshold_doubleSpinBox.setValue(threshold)
+        return
+
+    def _update_poi_diameter(self, diameter):
+        self._mw.poi_diameter_doubleSpinBox.setValue(diameter)
         return
 
     def _update_roi_history(self, history=None):
