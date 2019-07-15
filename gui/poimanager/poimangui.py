@@ -283,9 +283,7 @@ class PoiManagerGui(GUIBase):
 
         self._mw = PoiManagerMainWindow()
         # Configuring the dock widgets.
-        # All our gui elements are dockable, so there should be no "central" widget.
-        self._mw.centralwidget.hide()
-        self._mw.setDockNestingEnabled(True)
+        self.restore_dockwidgets_default()
 
         # Add validator to LineEdits
         self._mw.roi_name_LineEdit.setValidator(NameValidator())
@@ -333,6 +331,43 @@ class PoiManagerGui(GUIBase):
         self.__disconnect_update_signals_from_logic()
         self.__disconnect_internal_signals()
         self._mw.close()
+
+    @QtCore.Slot()
+    def restore_dockwidgets_default(self):
+        self._mw.centralwidget.hide()
+        self._mw.setDockNestingEnabled(True)
+
+        self._mw.roi_map_dockWidget.setFloating(False)
+        self._mw.auto_pois_dockWidget.setFloating(False)
+        self._mw.poi_editor_dockWidget.setFloating(False)
+        self._mw.poi_tracker_dockWidget.setFloating(False)
+        self._mw.sample_shift_dockWidget.setFloating(False)
+
+        self._mw.roi_map_dockWidget.show()
+        self._mw.auto_pois_dockWidget.show()
+        self._mw.poi_editor_dockWidget.show()
+        self._mw.poi_tracker_dockWidget.show()
+        self._mw.sample_shift_dockWidget.show()
+
+        self._mw.addDockWidget(QtCore.Qt.TopDockWidgetArea, self._mw.roi_map_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.poi_editor_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.poi_tracker_dockWidget)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.auto_pois_dockWidget)
+        self._mw.splitDockWidget(
+            self._mw.poi_tracker_dockWidget, self._mw.auto_pois_dockWidget, QtCore.Qt.Vertical)
+        self._mw.addDockWidget(QtCore.Qt.BottomDockWidgetArea, self._mw.sample_shift_dockWidget)
+
+        if not self._mw.roi_map_view_Action.isChecked():
+            self._mw.roi_map_view_Action.trigger()
+        if not self._mw.poi_editor_view_Action.isChecked():
+            self._mw.poi_editor_view_Action.trigger()
+        if not self._mw.poi_tracker_view_Action.isChecked():
+            self._mw.poi_tracker_view_Action.trigger()
+        if not self._mw.auto_pois_view_Action.isChecked():
+            self._mw.auto_pois_view_Action.trigger()
+        if not self._mw.sample_shift_view_Action.isChecked():
+            self._mw.sample_shift_view_Action.trigger()
+        return
 
     def __init_roi_scan_image(self):
         # Get the color scheme
@@ -506,6 +541,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_max_SpinBox.valueChanged.connect(self.update_cb_absolute)
         self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.update_cb_centiles)
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.update_cb_centiles)
+        self._mw.restore_default_view_Action.triggered.connect(self.restore_dockwidgets_default)
         return
 
     def __disconnect_internal_signals(self):
@@ -523,6 +559,7 @@ class PoiManagerGui(GUIBase):
         self._mw.roi_cb_max_SpinBox.valueChanged.disconnect()
         self._mw.roi_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
         self._mw.roi_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
+        self._mw.restore_default_view_Action.triggered.disconnect()
         return
 
     def show(self):
@@ -581,7 +618,7 @@ class PoiManagerGui(GUIBase):
         self.__poi_selector_active = is_active
         return
 
-    @QtCore.Slot(QtCore.Qt.MouseButton, QtCore.QPointF)
+    @QtCore.Slot(object, QtCore.QPointF)
     def create_poi_from_click(self, button, pos):
         # Only create new POI if the mouse click event has not been accepted by some other means
         # In our case this is most likely the POI marker to select the active POI from.
