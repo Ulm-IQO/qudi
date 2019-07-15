@@ -429,7 +429,7 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         @param str name: the name of the waveform to be created/append to
         @param dict analog_samples: keys are the generic analog channel names (i.e. 'a_ch1') and
                                     values are 1D numpy arrays of type float32 containing the
-                                    voltage samples.
+                                    voltage samples normalized to half Vpp (between -1 and 1).
         @param dict digital_samples: keys are the generic digital channel names (i.e. 'd_ch1') and
                                      values are 1D numpy arrays of type bool containing the marker
                                      states.
