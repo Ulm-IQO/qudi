@@ -441,8 +441,10 @@ class PoiManagerGui(GUIBase):
         self.poimanagerlogic().sigRoiUpdated.connect(self.update_roi, QtCore.Qt.QueuedConnection)
         self.poimanagerlogic().sigRefocusStateUpdated.connect(
             self.update_refocus_state, QtCore.Qt.QueuedConnection)
-        self.poimanagerlogic().sigThresholdUpdated.connect(self._update_poi_threshold, QtCore.Qt.QueuedConnection)
-        self.poimanagerlogic().sigDiameterUpdated.connect(self._update_poi_diameter, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigThresholdUpdated.connect(
+            self._update_poi_threshold, QtCore.Qt.QueuedConnection)
+        self.poimanagerlogic().sigDiameterUpdated.connect(
+            self._update_poi_diameter, QtCore.Qt.QueuedConnection)
         return
 
     def __disconnect_update_signals_from_logic(self):

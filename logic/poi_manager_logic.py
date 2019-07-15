@@ -1187,7 +1187,7 @@ class PoiManagerLogic(GenericLogic):
         pixel_num = len(scan)
         x_range = self.roi_scan_image_extent[0]
         pixel_size = (x_range[1] - x_range[0]) / pixel_num
-        spot_size = self._poi_diameter/1e6
+        spot_size = self._poi_diameter
         arr_size = int(spot_size / pixel_size)
         return arr_size
 

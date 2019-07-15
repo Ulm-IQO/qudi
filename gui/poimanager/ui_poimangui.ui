@@ -820,12 +820,16 @@
         </spacer>
        </item>
        <item row="1" column="2">
-        <widget class="QDoubleSpinBox" name="poi_diameter_doubleSpinBox"/>
+        <widget class="ScienDSpinBox" name="poi_diameter_doubleSpinBox">
+         <property name="suffix">
+          <string>m</string>
+         </property>
+        </widget>
        </item>
        <item row="1" column="1">
         <widget class="QLabel" name="label_10">
          <property name="text">
-          <string>POI Diameter (μm)</string>
+          <string>POI Diameter:</string>
          </property>
          <property name="alignment">
           <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
