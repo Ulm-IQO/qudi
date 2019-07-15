@@ -521,7 +521,6 @@ class PoiManagerLogic(GenericLogic):
     @poi_threshold.setter
     def poi_threshold(self, new_threshold):
         self.set_poi_threshold(new_threshold)
-        self.sigThresholdUpdated.emit(new_threshold)
         return
 
     @property
@@ -531,7 +530,6 @@ class PoiManagerLogic(GenericLogic):
     @poi_diameter.setter
     def poi_diameter(self, new_diameter):
         self.set_poi_diameter(new_diameter)
-        self.sigDiameterUpdated.emit(new_diameter)
         return
 
     @property
