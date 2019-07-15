@@ -2,6 +2,7 @@ from logic.generic_logic import GenericLogic
 from core.module import Connector, StatusVar, Base
 from threading import Lock
 import time
+import pickle
 
 import imp
 path_mfl_lib = './jupyter/Timo/own/mfl_sensing_simplelib.py'
@@ -132,12 +133,27 @@ class MFL_IRQ_Driven(GenericLogic):
         """
         Allows to override base logger in case not called from qudi.
         """
+        import logging
         return logging.getLogger("{0}.{1}".format(
             self.__module__, self.__class__.__name__))
 
     @log.setter
     def log(self, logger):
         self.__log = logger
+
+    def dump(self, filename):
+
+        def to_dict(obj):
+            mdict = {}
+            accept_types = [np.ndarray, str, bool, float, int, list, tuple]
+            for key, var in obj.__dict__.items():
+                if type(var) in accept_types:
+                    mdict[key] = var
+
+            return mdict
+
+        with open(filename, 'wb') as file:
+            pickle.dump(to_dict(self), file)
 
     def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, z_thresh=0.5, calibmode_lintau=False):
         self.i_epoch = 0
@@ -199,6 +215,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.t_seqs = np.zeros((n_epochs + 1, 1))
         self.bs = np.zeros((n_epochs + 1, 1))   # MHz
         self.dbs = np.zeros((n_epochs + 1, 1))
+        self.zs = np.zeros((n_epochs + 1, 1))
         self.priors = []
 
 
@@ -235,7 +252,31 @@ class MFL_IRQ_Driven(GenericLogic):
 
         self.jumptable = jumptable_dict
 
-    def pull_jumptable(self, seqname, step_name='mfl_ramsey_pjump', jumpseq_name='laser_wait_0'):
+    def load_qudi_vars_for_jumptable(self, meta_file):
+        """
+        Corresponding variable names are defined in jupyter notebook.
+        :param meta_file:
+        :return:
+        """
+        loaded_dict = {}
+
+        with open(meta_file, 'rb') as file:
+            meta_file = pickle.load(file)
+
+        filenames_dict = meta_file['files']
+        vars = [key for key, el in filenames_dict.items()]
+
+        for var_name in vars:
+
+            filename = filenames_dict[var_name]
+            with open(filename, 'rb') as file:
+                loaded_dict[var_name] = pickle.load(file)
+
+        self.log.debug("Loaded qudi vars from {}: {}".format(filenames_dict, loaded_dict.keys()))
+
+        return loaded_dict
+
+    def pull_jumptable(self, seqname, step_name='mfl_ramsey_pjump', jumpseq_name='laser_wait_0', load_vars_metafile=None):
         """
         :param seqname: name of the whole sequence in pulser
         :param step_name: common string of all seq elements.
@@ -244,9 +285,19 @@ class MFL_IRQ_Driven(GenericLogic):
                              which is typically played right after the jumpseq element.
         :return:
         """
-        seq = self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_sequences[seqname]
+        if load_vars_metafile is None:
+            seq = self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_sequences[seqname]
+            ens = {key: val for key, val in self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_block_ensembles.items() if
+                 step_name in key}
+            pg_settting = self.pulsedmasterlogic().pulse_generator_settings
+        else:
+            loaded_qudi_vars = self.load_qudi_vars_for_jumptable(load_vars_metafile)
+            seq = loaded_qudi_vars['pulse_sequence']
+            ens = loaded_qudi_vars['pulse_ensembles']
+            pg_settting = loaded_qudi_vars['pulse_generator_settings']
+
         taus = seq.measurement_information['controlled_variable_virtual']   # needs to be added in generation method
-        t_seqs = self.pull_t_seq_list(seq.ensemble_list, step_name)
+        t_seqs = self.pull_t_seq_list(ens, seq.ensemble_list, pg_settting)
 
         # get all sequence steps that correspond to a tau
         seqsteps = [(i, el) for (i, el) in enumerate(seq.ensemble_list) if jumpseq_name in el['ensemble']]
@@ -263,24 +314,20 @@ class MFL_IRQ_Driven(GenericLogic):
 
         self.set_jumptable(jumptable, taus, t_seqs)
 
-    def pull_t_seq_list(self, active_ensembles, step_name):
+    def pull_t_seq_list(self, ens_dict_all, active_ensembles, pulse_generator_settings):
         """
         Gets a list of all sequences lengths of block ensembles that share the given step name.
         :param step_name:  common string of all seq elements
         :return:
         """
 
-        sample_rate = self.pulsedmasterlogic().pulse_generator_settings['sample_rate']
-
-        # all ensembles in sequencer logic
-        ens_dict = {key: val for key, val in self.pulsedmasterlogic().sequencegeneratorlogic().saved_pulse_block_ensembles.items() if
-             step_name in key}
+        sample_rate = pulse_generator_settings['sample_rate']
 
         # ensembles in the active sequence of the AWG
         active_steps = [el.ensemble for el in active_ensembles]
 
         t_seq_list = []
-        for key, ensemble in ens_dict.items():
+        for key, ensemble in ens_dict_all.items():
             if key in active_steps:
                 t_seq_list.append(ensemble.sampling_information['number_of_samples'] / sample_rate)
 
@@ -322,7 +369,7 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.save_priors:
             self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles)/(2*np.pi))
 
-    def save_current_results(self, real_tau_s, requested_tau_s, t_seq_s):
+    def save_current_results(self, real_tau_s, requested_tau_s, t_seq_s, z):
 
         b_mhz_rad = self.mfl_updater.est_mean()[0]
         db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[0,0])
@@ -334,6 +381,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
         self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
         self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
+        self.zs[self._arr_idx(self.i_epoch) + 1, 0] = z
 
         if self.save_priors:
             self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi))
@@ -360,17 +408,19 @@ class MFL_IRQ_Driven(GenericLogic):
     def end_run(self):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           None, edges=[True, False])
-        if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
-            cts = mfl_logic.nicard.get_edge_counters()[0]
-            self.nicard.close_edge_counters()
-            self.log.info("summed_up_cts from nicard: {} per epoch / {} total from {} epochs".format(
-                            float(cts)/self.i_epoch, float(cts), self.i_epoch))
 
         if self.is_running:
             if not self.is_no_qudi:
 
                 self.pulsedmasterlogic().toggle_pulsed_measurement(False)
                 time.sleep(0.5)
+
+            if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
+                cts = self.nicard.get_edge_counters()[0]
+                self.nicard.close_edge_counters()
+                if self.i_epoch > 0:
+                    self.log.info("summed_up_cts from nicard: {} per epoch / {} total from {} epochs".format(
+                        float(cts) / self.i_epoch, float(cts), self.i_epoch))
 
             fastcounter = self.fastcounter
             sweeps_done = fastcounter.get_current_sweeps()
@@ -386,6 +436,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
             b, db, tau, tau_req = self.get_current_results()
 
+            # log output
             np.set_printoptions(formatter={'float': '{:0.6f}'.format})
             self.log.info("Ending MFL run at epoch {0}/{1}. B= {3:.2f} +- {4:.2f} MHz. Total tau / t_seq: {2:.3f}, {5:.3f} us."
                             .format(self.i_epoch, self.n_epochs, 1e6*tau_total,
@@ -418,8 +469,12 @@ class MFL_IRQ_Driven(GenericLogic):
                 [(b[0], self.dbs[i,0]) for (i, b) in enumerate(self.bs)]))
             np.set_printoptions()
 
-        self.is_running = False
-        self.is_running_lock.release()
+            # save
+            self.dump('temp/mfl_mes_result.pkl')
+            # save to qudi pulsed mes?
+
+            self.is_running = False
+            self.is_running_lock.release()
 
 
     def output_jump_pattern(self, jump_address):
@@ -524,7 +579,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def pull_data_ungated_sum_up_cts_nicard(self):
 
-        cts = mfl_logic.nicard.get_edge_counters()[0]
+        cts = self.nicard.get_edge_counters()[0]
 
         if self.i_epoch == 0:
             y = cts
@@ -577,7 +632,7 @@ class MFL_IRQ_Driven(GenericLogic):
             # calibration mode: play taus linear after each other
             idx_jumptable, val = self._find_next_greatest(self.jumptable['tau'], last_tau)
             if idx_jumptable is -1:
-                self.log.warn("No next greatest tau. Repeating last tau.")
+                self.log.warning("No next greatest tau. Repeating last tau.")
                 idx_jumptable, val = self._find_nearest(self.jumptable['tau'], last_tau)
 
         addr = self.jumptable['jump_address'][idx_jumptable]
@@ -654,7 +709,6 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.i_epoch == 0:
             self.is_running = True  # todo: should this be mutexed?
             self.is_running_lock.acquire()
-            self.wait_for_start_lock.release()
 
             self.pull_jumptable(seqname=self.sequence_name)
             self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
@@ -681,7 +735,7 @@ class MFL_IRQ_Driven(GenericLogic):
         real_tau, t_seq = self.get_ts(idx_jumptable)
 
         # save result after measuring of this epoch and updating priors
-        self.save_current_results(real_tau, tau_req, t_seq)
+        self.save_current_results(real_tau, tau_req, t_seq, z)
         self.iterate_mfl()  # iterates i_epoch
 
         if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
@@ -718,7 +772,7 @@ class MFL_IRQ_Driven(GenericLogic):
         real_tau, t_seq = 0, 0
 
         # save result after measuring of this epoch and updating priors
-        self.save_current_results(real_tau, tau_req, t_seq)
+        self.save_current_results(real_tau, tau_req, t_seq, z)
         self.iterate_mfl()  # iterates i_epoch
 
         if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
@@ -743,9 +797,9 @@ class MFL_IRQ_Driven(GenericLogic):
             self.wait_for_start_lock.release()
 
             time.sleep(1)
-            # atm: no jumptable available, since qudi not accessible
-            #self.pull_jumptable(seqname=self.sequence_name)
-            #self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
+
+            self.pull_jumptable(seqname=self.sequence_name, load_vars_metafile='temp/mfl_meta.pkl')
+            self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
 
         self.timestamp(self.i_epoch, TimestampEvent.irq_start)
 
@@ -766,13 +820,13 @@ class MFL_IRQ_Driven(GenericLogic):
         tau_req = self.calc_tau_from_posterior()    # new tau
 
         #tau_req = 3500e-9
-        #idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
-        #real_tau, t_seq = self.get_ts(idx_jumptable)
-        idx_jumptable, addr = 4, 1
-        real_tau, t_seq = -1, -1
+        idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
+        real_tau, t_seq = self.get_ts(idx_jumptable)
+        #idx_jumptable, addr = 4, 1     # DEBUG, deterministically jump to first tau
+        #real_tau, t_seq = -1, -1
 
         # save result after measuring of this epoch and updating priors
-        self.save_current_results(real_tau, tau_req, t_seq)
+        self.save_current_results(real_tau, tau_req, t_seq, z)
         self.iterate_mfl()  # iterates i_epoch
 
         if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
@@ -856,7 +910,7 @@ class PatternJumpAdapter(SerialInterface):
         try:
             daq.DAQmxCreateTask('d_serial_out', daq.byref(self.nitask_serial_out))
         except daq.DuplicateTaskError:
-            self.recreate_nitask(d_serial_out, self.nitask_serial_out)
+            self.recreate_nitask('d_serial_out', self.nitask_serial_out)
 
         daq.DAQmxCreateDOChan(self.nitask_serial_out, self.data_ch, "", daq.DAQmx_Val_ChanForAllLines)
         daq.DAQmxStartTask(self.nitask_serial_out)
@@ -984,7 +1038,7 @@ if __name__ == '__main__':
         for i in range(0, int(n_reps)):
             _, z = mfl_logic._pull_data_methods['ungated_sum_up_cts']()
 
-    def setup_and_join_mfl_seperate_thread():
+    def setup_mfl_seperate_thread():
 
         # todo:
         # parse setup params from file written by jupyter notebook
@@ -1008,6 +1062,8 @@ if __name__ == '__main__':
             mfl_logic.fastcounter.change_sweep_mode(gated=True, is_single_sweeps=False,
                                                     n_sweeps_preset=int(n_sweeps))
 
+
+    def join_mfl_seperate_thread():
         # prio of this thread
         prio = 5    # 2: normal 5: real time
         prio_new = mfl_logic._setpriority_win(pid=None, priority=prio)
@@ -1062,7 +1118,9 @@ if __name__ == '__main__':
     Run in sepearte thread
     """
 
-    setup_and_join_mfl_seperate_thread()
+    #setup_mfl_seperate_thread()
+    #mfl_logic.dump("temp/mfl_mes.pkl")
+    #join_mfl_seperate_thread()
 
 
     """
@@ -1093,7 +1151,9 @@ if __name__ == '__main__':
 
             logger.info("Counted {}. Count & Reset took {} ms -> {} kHz".format(cts, (t1 - t0)*1e3, 1e-3 / (t1 - t0)))
 
+        mfl_logic.nicard.close_edge_counters()
 
-    #setup_ni_counter()
-    #test_edge_counter()
+
+    setup_ni_counter()
+    test_edge_counter()
 
