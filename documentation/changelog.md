@@ -12,6 +12,9 @@ new POIs will be named after this tag together with a consecutive integer index.
 * If using the POI manager, the currently selected active POI name will be added to savelogic as 
 global parameter. All saved data files will include this POI name in the header.
 * bug fix to how the flags are set for AWG70k
+* New POI automatic search tool added. If you click on the 'Auto POIs' tool button, POIs will be 
+automatically added in your scan image. This makes fluorescent emitter selections much faster and
+more accurately.
 * Replaced the old `pg.PlotWidget` subclass `PlotWidgetModified` with new subclasses 
 `ScanPlotWidget`, `ScanViewBox` (`pg.ViewBox`) and `ScanImageItem` (`pg.ImageItem`) to handle 
 coordinate transformations upon mouse click/drag and zooming internally. Also integrates the 
