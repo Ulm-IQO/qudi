@@ -232,8 +232,8 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     def parameters_sweep(self):
         return self.get_parameters_sweep()
 
-    @parameters_list.setter
-    def parameters_list(self, value):
+    @parameters_sweep.setter
+    def parameters_sweep(self, value):
         if isinstance(value, dict):
             start = value['start'] if 'start' in value else None
             stop = value['stop'] if 'stop' in value else None
@@ -245,9 +245,9 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
                 start, stop, step, power = value
                 self.set_parameters_sweep(start=start, stop=stop, step=step, power=power)
             else:
-                self.log.error('parameters_list need to be specified as a list of start, stop, step and power.')
+                self.log.error('parameters_sweep need to be specified as a list of start, stop, step and power.')
         else:
-            self.log.error('parameters_list need to be either specified as dict with the optional keywords '
+            self.log.error('parameters_sweep need to be either specified as dict with the optional keywords '
                            'start, stop, step and power or by specifying a list of start, stop, step and power.')
 
     @abc.abstractmethod

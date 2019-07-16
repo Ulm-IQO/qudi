@@ -141,7 +141,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-        @return tuple(float, float, str): frequency in Hz, the output power in dBm, current mode
+        @return tuple(float, float, str): frequency in Hz, the output power in dBm
         """
         return self._mw_cw_frequency, self._mw_cw_power
 
@@ -154,8 +154,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(frequency,
-                                                                                      power))
+        self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {1:f}'.format(frequency, power))
         self.off()
         self._current_output_mode = MicrowaveMode.CW
         if frequency is not None:
@@ -181,9 +180,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the list mode: microwave output power and frequency as lists.
 
-        @return tuple(list, list, str): list of frequency in Hz, list of output powers in dBm, current mode
+        @return tuple(list, list, str): list of frequency in Hz, list of output powers in dBm
         """
-        return self._mw_frequency_list, self._mw_power_list, str(self._current_output_mode)
+        return self._mw_frequency_list, self._mw_power_list
 
     def set_parameters_list(self, frequency=None, power=None):
         """
@@ -194,8 +193,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1}'
-                       ''.format(frequency, power))
+        self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1}'.format(frequency, power))
         self.off()
         self._current_output_mode = MicrowaveMode.LIST
         if frequency is not None:
@@ -230,11 +228,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return float, float, float, float, str: current start frequency in Hz,
                                                  current stop frequency in Hz,
                                                  current frequency step in Hz,
-                                                 current power in dBm,
-                                                 current mode
+                                                 current power in dBm
         """
-        return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power, \
-               str(self._current_output_mode)
+        return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power
 
     def set_parameters_sweep(self, start=None, stop=None, step=None, power=None):
         """
@@ -279,7 +275,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        self.log.info('MicrowaveDummy>ext_trigger set')
+        self.log.info('MicrowaveDummy>ext_trigger set pol:{0!s}, timing:{1:f}'.format(pol, timing))
         self._current_trig_pol = pol
         self._timing = timing
         return 0

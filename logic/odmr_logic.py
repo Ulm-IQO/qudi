@@ -44,7 +44,7 @@ class ODMRLogic(GenericLogic):
     # declare connectors
     odmrcounter = Connector(interface='ODMRCounterInterface')
     fitlogic = Connector(interface='FitLogic')
-    microwave1 = Connector(interface='mwsourceinterface')
+    microwave = Connector(interface='mwsourceinterface')
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 
@@ -88,7 +88,7 @@ class ODMRLogic(GenericLogic):
         Initialisation performed during activation of the module.
         """
         # Get connectors
-        self._mw_device = self.microwave1()
+        self._mw_device = self.microwave()
         self._fit_logic = self.fitlogic()
         self._odmr_counter = self.odmrcounter()
         self._save_logic = self.savelogic()
@@ -227,7 +227,8 @@ class ODMRLogic(GenericLogic):
             frequency = frequency / self._oversampling
 
         if self.module_state() != 'locked':
-            self.mw_trigger_pol, triggertime = self._mw_device.set_ext_trigger(trigger_pol, 1/frequency)
+            self._mw_device.ext_trigger = trigger_pol, 1/frequency
+            self.mw_trigger_pol, triggertime = self._mw_device.ext_trigger
         else:
             self.log.warning('set_trigger failed. Logic is locked.')
 
@@ -379,8 +380,8 @@ class ODMRLogic(GenericLogic):
             constraints = self.get_hw_constraints()
             frequency_to_set = constraints.frequency_in_range(frequency)
             power_to_set = constraints.power_in_range(power)
-            self.cw_mw_frequency, self.cw_mw_power, dummy = self._mw_device.set_cw(frequency_to_set,
-                                                                                   power_to_set)
+            self._mw_device.parameters_cw = frequency_to_set, power_to_set
+            self.cw_mw_frequency, self.cw_mw_power = self._mw_device.parameters_cw
         else:
             self.log.warning('set_cw_frequency failed. Logic is either locked or input value is '
                              'no integer or float.')
@@ -419,6 +420,7 @@ class ODMRLogic(GenericLogic):
 
         param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop, 'mw_step': self.mw_step,
                       'sweep_mw_power': self.sweep_mw_power}
+        print('set_sweep called', param_dict)
         self.sigParameterUpdated.emit(param_dict)
         return self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
 
@@ -431,21 +433,19 @@ class ODMRLogic(GenericLogic):
         if self.module_state() == 'locked':
             self.log.error('Can not start microwave in CW mode. ODMRLogic is already locked.')
         else:
-            self.cw_mw_frequency, \
-            self.cw_mw_power, \
-            mode = self._mw_device.set_cw(self.cw_mw_frequency, self.cw_mw_power)
+            self._mw_device.parameters_cw = self.cw_mw_frequency, self.cw_mw_power
+            self.cw_mw_frequency, self.cw_mw_power = self._mw_device.parameters_cw
             param_dict = {'cw_mw_frequency': self.cw_mw_frequency, 'cw_mw_power': self.cw_mw_power}
             self.sigParameterUpdated.emit(param_dict)
-            if mode != 'cw':
+            if self._mw_device.status['mode'] != 'cw':
                 self.log.error('Switching to CW microwave output mode failed.')
             else:
                 err_code = self._mw_device.cw_on()
                 if err_code < 0:
                     self.log.error('Activation of microwave output failed.')
 
-        mode, is_running = self._mw_device.get_status()
-        self.sigOutputStateUpdated.emit(mode, is_running)
-        return mode, is_running
+        self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
+        return self._mw_device.status['mode'], self._mw_device.status['output_active']
 
     def mw_sweep_on(self):
         """
@@ -469,8 +469,10 @@ class ODMRLogic(GenericLogic):
             num_steps = int(np.rint((self.mw_stop - self.mw_start) / self.mw_step))
             end_freq = self.mw_start + num_steps * self.mw_step
             freq_list = np.linspace(self.mw_start, end_freq, num_steps + 1)
-            freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(freq_list,
-                                                                            self.sweep_mw_power)
+            power_list = np.full(len(freq_list), self.sweep_mw_power)
+            self._mw_device.parameters_list = freq_list, power_list
+            freq_list, power_list = self._mw_device.parameters_list
+            self.sweep_mw_power = power_list[0]
             self.mw_start = freq_list[0]
             self.mw_stop = freq_list[-1]
             self.mw_step = (self.mw_stop - self.mw_start) / (len(freq_list) - 1)
@@ -485,9 +487,8 @@ class ODMRLogic(GenericLogic):
                 self.mw_step = np.abs(self.mw_stop - self.mw_start) / (limits.list_maxentries - 1)
                 self.sigParameterUpdated.emit({'mw_step': self.mw_step})
 
-            sweep_return = self._mw_device.set_sweep(
-                self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power)
-            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power, mode = sweep_return
+            self._mw_device.parameters_sweep = self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power
+            self.mw_start, self.mw_stop, self.mw_step, self.sweep_mw_power = self._mw_device.parameters_sweep
 
             param_dict = {'mw_start': self.mw_start, 'mw_stop': self.mw_stop,
                           'mw_step': self.mw_step, 'sweep_mw_power': self.sweep_mw_power}
@@ -497,7 +498,7 @@ class ODMRLogic(GenericLogic):
 
         self.sigParameterUpdated.emit(param_dict)
 
-        if mode != 'list' and mode != 'sweep':
+        if self._mw_device.status['mode'] not in ('list', 'sweep'):
             self.log.error('Switching to list/sweep microwave output mode failed.')
         elif self.mw_scanmode == MicrowaveMode.SWEEP:
             err_code = self._mw_device.sweep_on()
@@ -508,18 +509,17 @@ class ODMRLogic(GenericLogic):
             if err_code < 0:
                 self.log.error('Activation of microwave output failed.')
 
-        mode, is_running = self._mw_device.get_status()
-        self.sigOutputStateUpdated.emit(mode, is_running)
-        return mode, is_running
+        self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
+        return self._mw_device.status['mode'], self._mw_device.status['output_active']
 
     def reset_sweep(self):
         """
         Resets the list/sweep mode of the microwave source to the first frequency step.
         """
         if self.mw_scanmode == MicrowaveMode.SWEEP:
-            self._mw_device.reset_sweeppos()
+            self._mw_device.reset_sweep_pos()
         elif self.mw_scanmode == MicrowaveMode.LIST:
-            self._mw_device.reset_listpos()
+            self._mw_device.reset_list_pos()
         return
 
     def mw_off(self):
@@ -531,9 +531,8 @@ class ODMRLogic(GenericLogic):
         if error_code < 0:
             self.log.error('Switching off microwave source failed.')
 
-        mode, is_running = self._mw_device.get_status()
-        self.sigOutputStateUpdated.emit(mode, is_running)
-        return mode, is_running
+        self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
+        return self._mw_device.status['mode'], self._mw_device.status['output_active']
 
     def _start_odmr_counter(self):
         """
@@ -594,14 +593,14 @@ class ODMRLogic(GenericLogic):
 
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
-                mode, is_running = self._mw_device.get_status()
-                self.sigOutputStateUpdated.emit(mode, is_running)
+                self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
                 self.module_state.unlock()
                 return -1
 
-            mode, is_running = self.mw_sweep_on()
-            if not is_running:
+            self.mw_sweep_on()
+            if not self._mw_device.status['output_active']:
                 self._stop_odmr_counter()
+                self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
                 self.module_state.unlock()
                 return -1
 
@@ -642,8 +641,7 @@ class ODMRLogic(GenericLogic):
 
             odmr_status = self._start_odmr_counter()
             if odmr_status < 0:
-                mode, is_running = self._mw_device.get_status()
-                self.sigOutputStateUpdated.emit(mode, is_running)
+                self.sigOutputStateUpdated.emit(self._mw_device.status['mode'], self._mw_device.status['output_active'])
                 self.module_state.unlock()
                 return -1
 
@@ -676,6 +674,7 @@ class ODMRLogic(GenericLogic):
                 self._clearOdmrData = True
         return
 
+    @QtCore.Slot()
     def _scan_odmr_line(self):
         """ Scans one line in ODMR
 
@@ -768,7 +767,7 @@ class ODMRLogic(GenericLogic):
         """ Return the names of all ocnfigured fit functions.
         @return object: Hardware constraints object
         """
-        constraints = self._mw_device.get_limits()
+        constraints = self._mw_device.limits
         return constraints
 
     def get_fit_functions(self):
