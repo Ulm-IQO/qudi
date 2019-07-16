@@ -37,7 +37,8 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
-
+* Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* 
 
 Config changes:
 
