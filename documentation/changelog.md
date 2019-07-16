@@ -37,6 +37,13 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Removed the method `has_sequence_mode` from the `PulserInterface` 
+and rather added a `sequence_option` to the `PulserConstraints`.
+In `FORCED` mode the `SequenceGeneratorLogic` will create a default sequence around each stand-alone Ensemble.
+The potential sequence_options are: 
+  * `NON` (no sequence mode)
+  * `OPTIONAL` (sequence mode possible)
+  * `FORCED` (only output as sequence possible)
 
 
 Config changes:
