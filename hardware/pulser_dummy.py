@@ -25,7 +25,7 @@ from collections import OrderedDict
 
 from core.module import Base, StatusVar, ConfigOption
 from core.util.helpers import natural_sort
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class PulserDummy(Base, PulserInterface):
@@ -220,6 +220,8 @@ class PulserDummy(Base, PulserInterface):
         # Usage of only the analog channels:
         activation_config['config9'] = frozenset({'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
+
+        constraints.sequence_option = SequenceOption.OPTIONAL
 
         return constraints
 
@@ -917,10 +919,3 @@ class PulserDummy(Base, PulserInterface):
         self.connected = True
         self.log.info('Dummy reset!')
         return 0
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return True

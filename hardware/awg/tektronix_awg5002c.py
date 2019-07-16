@@ -30,7 +30,7 @@ from fnmatch import fnmatch
 import re
 
 from core.module import Base, ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class AWG5002C(Base, PulserInterface):
@@ -70,10 +70,6 @@ class AWG5002C(Base, PulserInterface):
         super().__init__(config=config, **kwargs)
 
         self.connected = False
-
-        # AWG5002C has possibility for sequence output
-        # self.use_sequencer = True
-        self.sequence_mode = True
 
         self._marker_byte_dict = { 0:b'\x00',1:b'\x01', 2:b'\x02', 3:b'\x03'}
         self.current_loaded_asset = ''
@@ -250,6 +246,9 @@ class AWG5002C(Base, PulserInterface):
             {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
         activation_config['config2'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
         activation_config['config3'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
+
+        # AWG5002C has possibility for sequence output
+        constraints.sequence_option = SequenceOption.OPTIONAL
         constraints.activation_config = activation_config
 
         return constraints
@@ -1034,14 +1033,6 @@ class AWG5002C(Base, PulserInterface):
         """
 
         return self.asset_directory
-
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return self.sequence_mode
 
     def get_interleave(self):
         """ Check whether Interleave is on in AWG.

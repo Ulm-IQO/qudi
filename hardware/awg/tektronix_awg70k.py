@@ -33,7 +33,7 @@ from lxml import etree as ET
 from core.module import Base, ConfigOption
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class AWG70K(Base, PulserInterface):
@@ -116,6 +116,8 @@ class AWG70K(Base, PulserInterface):
         self.__max_seq_repetitions = int(self.query('SLIS:SEQ:STEP:RCO:MAX?'))
         self.__min_waveform_length = int(self.query('WLIS:WAV:LMIN?'))
         self.__max_waveform_length = int(self.query('WLIS:WAV:LMAX?'))
+
+        self.installed_options = self.query('*OPT?').split(',')
         return
 
     def on_deactivate(self):
@@ -265,6 +267,7 @@ class AWG70K(Base, PulserInterface):
             activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
 
         constraints.activation_config = activation_config
+        constraints.sequence_option = SequenceOption.OPTIONAL if '03' in self.installed_options else SequenceOption.NON
 
         # FIXME: additional constraint really necessary?
         constraints.dac_resolution = {'min': 8, 'max': 10, 'step': 1, 'unit': 'bit'}
@@ -430,7 +433,7 @@ class AWG70K(Base, PulserInterface):
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
         # Check if device has sequencer option installed
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
@@ -510,7 +513,7 @@ class AWG70K(Base, PulserInterface):
         """
         sequence_list = list()
 
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             return sequence_list
 
         try:
@@ -704,7 +707,7 @@ class AWG70K(Base, PulserInterface):
         self.write('WLIS:WAV:DEL ALL')
         while int(self.query('*OPC?')) != 1:
             time.sleep(0.25)
-        if self.has_sequence_mode():
+        if not self.get_constraints().sequence_option == SequenceOption.NON:
             self.write('SLIS:SEQ:DEL ALL')
             while int(self.query('*OPC?')) != 1:
                 time.sleep(0.25)
@@ -1206,14 +1209,6 @@ class AWG70K(Base, PulserInterface):
                              'Method call will be ignored.')
         return False
 
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        options = self.query('*OPT?').split(',')
-        return '03' in options
-
     def reset(self):
         """Reset the device.
 
@@ -1252,7 +1247,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1274,7 +1269,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1296,7 +1291,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1313,7 +1308,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1333,7 +1328,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1361,7 +1356,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1388,7 +1383,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1417,7 +1412,7 @@ class AWG70K(Base, PulserInterface):
 
         @return int last_step: The step number which 'jump to' has to be set to 'First'
         """
-        if not self.has_sequence_mode():
+        if self.get_constraints().sequence_option == SequenceOption.NON:
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
