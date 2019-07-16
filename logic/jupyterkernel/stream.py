@@ -285,6 +285,7 @@ class IOStdoutNetworkStream(StringIO):
             self._network_stream.send(msg_type='stream', content=content)
 
     def close(self):
+        self._dump_stream_to_network()
         self._stop.set()
 
 
