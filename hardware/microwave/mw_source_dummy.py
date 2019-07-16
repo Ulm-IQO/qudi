@@ -141,7 +141,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-        @return tuple(float, float, str): frequency in Hz, the output power in dBm
+        @return tuple(float, float): frequency in Hz, the output power in dBm
         """
         return self._mw_cw_frequency, self._mw_cw_power
 
@@ -180,7 +180,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the list mode: microwave output power and frequency as lists.
 
-        @return tuple(list, list, str): list of frequency in Hz, list of output powers in dBm
+        @return tuple(list, list): list of frequency in Hz, list of output powers in dBm
         """
         return self._mw_frequency_list, self._mw_power_list
 
@@ -225,10 +225,10 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the sweep mode: parameters of the sweep and a single power.
 
-        @return float, float, float, float, str: current start frequency in Hz,
-                                                 current stop frequency in Hz,
-                                                 current frequency step in Hz,
-                                                 current power in dBm
+        @return float, float, float, float: current start frequency in Hz,
+                                            current stop frequency in Hz,
+                                            current frequency step in Hz,
+                                            current power in dBm
         """
         return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power
 

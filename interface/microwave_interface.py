@@ -117,7 +117,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-        @return tuple(float, float, str): frequency in Hz, the output power in dBm, current mode
+        @return tuple(float, float): frequency in Hz, the output power in dBm
         """
         pass
 
@@ -158,7 +158,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         Gets the current parameters of the list mode: microwave output power and frequency as lists.
 
-        @return tuple(list, list, str): list of frequency in Hz, list of output powers in dBm, current mode
+        @return tuple(list, list): list of frequency in Hz, list of output powers in dBm
         """
         pass
 
@@ -210,11 +210,10 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         Gets the current parameters of the sweep mode: parameters of the sweep and a single power.
 
-        @return float, float, float, float, str: current start frequency in Hz,
-                                                 current stop frequency in Hz,
-                                                 current frequency step in Hz,
-                                                 current power in dBm,
-                                                 current mode
+        @return float, float, float, float: current start frequency in Hz,
+                                            current stop frequency in Hz,
+                                            current frequency step in Hz,
+                                            current power in dBm
         """
         pass
 
