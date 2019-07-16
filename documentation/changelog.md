@@ -34,16 +34,12 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
-* Added an option to the sequencegenerator logic to create a default sequence, 
-if the predefined method only returns a PulseEnsemble.
 * Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
 * Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 
 
 Config changes:
 
-* The `SequenceGeneratorLogic` has an optional parameter `force_sequence_mode` 
-that will create a default sequence for all predefined PulseEnsembles that do not have a sequence.
 * The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
