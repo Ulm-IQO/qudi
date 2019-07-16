@@ -376,12 +376,15 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.mfl_updater.est_covariance_mtx().shape != (1,1):
             raise NotImplementedError("Never thought about >1 dimensional estimation, sorry.")
 
+        # row 0: before first epoch, start values for algorithm
+        # todo: double check what belongs into which epoch
+        self.zs[self._arr_idx(self.i_epoch) + 1, 0] = z
         self.bs[self._arr_idx(self.i_epoch) + 1, 0] = b_mhz_rad / (2 * np.pi)   # MHz
         self.dbs[self._arr_idx(self.i_epoch) + 1, 0] = db_mhz_rad / (2 * np.pi)
+        # values belonging logically to next epoch
         self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
         self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
         self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
-        self.zs[self._arr_idx(self.i_epoch) + 1, 0] = z
 
         if self.save_priors:
             self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi))
@@ -462,7 +465,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
             self.log.info("Timestamps (i_epoch, EventType, t-t0[s], t_irqend - t irqstart[s]): {}".format(timestamps_pretty))
             self.log.info("IRQ Timing: avg: {} +- {} ms from {} events. Deltas: {}".format(
-                        np.mean(delta_list)*1e3, np.var(delta_list)*1e3, len(delta_list), (np.asarray(delta_list)*1e3).tolist()))
+                        np.mean(delta_list)*1e3, np.nanstd(delta_list)*1e3, len(delta_list), (np.asarray(delta_list)*1e3).tolist()))
             self.log.info("In MFL run: taus, taus_requested, delta (ns): {}".format(
                 [(1e9*t, 1e9*self.taus_requested[i,0], 1e9*(t-self.taus_requested[i,0])) for (i, t) in enumerate(self.taus[:,0])]))
             self.log.info("In MFL run: B, dB (MHz): {}".format(
@@ -731,6 +734,7 @@ class MFL_IRQ_Driven(GenericLogic):
         tau_req = self.calc_tau_from_posterior()    # new tau
 
         #tau_req = 3500e-9
+        # for next epoch
         idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
         real_tau, t_seq = self.get_ts(idx_jumptable)
 
@@ -1042,18 +1046,20 @@ if __name__ == '__main__':
 
         # todo:
         # parse setup params from file written by jupyter notebook
-        n_sweeps = 1e4
-        n_epochs = 20
-        z_thresh = 0.7
+        n_sweeps = 1e5
+        n_epochs = 75
+        z_thresh = 36.5e-3
+        tau_start = 25e-9
 
         logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
 
         mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
+        mfl_logic.save_priors = True     # DEBUG only
         tau_first_req = mfl_logic.get_first_tau()
         # tau_first_req = 3500e-9 # DEBUG
         tau_first = tau_first_req  # PROBLEM would like to get from seqtable, but only created after run started
         # shortest tau mfl algo may choose, problem: shorter than tau_first causes rounding issues
-        tau_start = 25e-9
+
         logger.info("First tau from flat prior {} ns".format(1e9 * tau_first))
 
         mfl_logic.setup_new_run(tau_first, tau_first_req, cb_epoch_done=mfl_logic._cb_func_profile_no_qudi)
@@ -1118,9 +1124,8 @@ if __name__ == '__main__':
     Run in sepearte thread
     """
 
-    #setup_mfl_seperate_thread()
-    #mfl_logic.dump("temp/mfl_mes.pkl")
-    #join_mfl_seperate_thread()
+    setup_mfl_seperate_thread()
+    join_mfl_seperate_thread()
 
 
     """
@@ -1154,6 +1159,6 @@ if __name__ == '__main__':
         mfl_logic.nicard.close_edge_counters()
 
 
-    setup_ni_counter()
-    test_edge_counter()
+    #setup_ni_counter()
+    #test_edge_counter()
 
