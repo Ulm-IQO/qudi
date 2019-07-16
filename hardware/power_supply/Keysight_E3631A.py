@@ -80,32 +80,32 @@ class E3631A(Base, ProcessControlInterface):
         """ Function to query hardware"""
         return self._inst.query(cmd)
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set control value, here heating power.
 
             @param flaot value: control value
         """
-        mini, maxi = self.getControlLimits()
+        mini, maxi = self.get_control_limit()
         if mini <= value <= maxi:
             self._write("VOLT {}".format(value))
         else:
             self.log.error('Voltage value {} out of range'.format(value))
 
-    def getControlValue(self):
+    def get_control_value(self):
         """ Get current control value, here heating power
 
             @return float: current control value
         """
         return float(self._query("VOLT?").split('\r')[0])
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Get unit of control value.
 
             @return tuple(str): short and text unit of control value
         """
         return 'V', 'Volt'
 
-    def getControlLimits(self):
+    def get_control_limit(self):
         """ Get minimum and maximum of control value.
 
             @return tuple(float, float): minimum and maximum of control value

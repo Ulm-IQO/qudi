@@ -233,33 +233,36 @@ class AWG70K(Base, PulserInterface):
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
         if self.awg_model == 'AWG70002A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['all'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of both channels but reduced markers (higher analog resolution)
-            activation_config['ch1_2mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_2mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'}
-            activation_config['ch1_1mrk_ch2_2mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_0mrk_ch2_2mrk'] = {'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_1mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_0mrk_ch2_1mrk'] = {'a_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_1mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'a_ch2'}
+            activation_config['ch1_2mrk_ch2_1mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_2mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'})
+            activation_config['ch1_1mrk_ch2_2mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_0mrk_ch2_2mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_1mrk_ch2_1mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_0mrk_ch2_1mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_1mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2'})
             # Usage of channel 1 only:
-            activation_config['ch1_2mrk'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['ch1_2mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of channel 2 only:
-            activation_config['ch2_2mrk'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['ch2_2mrk'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 2 with one marker:
-            activation_config['ch2_1mrk'] = {'a_ch2', 'd_ch3'}
+            activation_config['ch2_1mrk'] = frozenset({'a_ch2', 'd_ch3'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
             # Usage of only channel 2 with no marker:
-            activation_config['ch2_0mrk'] = {'a_ch2'}
+            activation_config['ch2_0mrk'] = frozenset({'a_ch2'})
         elif self.awg_model == 'AWG70001A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
 
         constraints.activation_config = activation_config
 

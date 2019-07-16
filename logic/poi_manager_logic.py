@@ -366,6 +366,8 @@ class PoiManagerLogic(GenericLogic):
     _refocus_period = StatusVar(default=120)
     _active_poi = StatusVar(default=None)
     _move_scanner_after_optimization = StatusVar(default=True)
+    _poi_threshold = StatusVar(default=5)
+    _poi_diameter = StatusVar(default=1.5)
 
     # Signals for connecting modules
     sigRefocusStateUpdated = QtCore.Signal(bool)  # is_active
@@ -373,6 +375,8 @@ class PoiManagerLogic(GenericLogic):
     sigPoiUpdated = QtCore.Signal(str, str, np.ndarray)  # old_name, new_name, current_position
     sigActivePoiUpdated = QtCore.Signal(str)
     sigRoiUpdated = QtCore.Signal(dict)  # Dict containing ROI parameters to update
+    sigThresholdUpdated = QtCore.Signal(float)
+    sigDiameterUpdated = QtCore.Signal(float)
 
     # Internal signals
     __sigStartPeriodicRefocus = QtCore.Signal()
@@ -511,6 +515,24 @@ class PoiManagerLogic(GenericLogic):
         return
 
     @property
+    def poi_threshold(self):
+        return float(self._poi_threshold)
+
+    @poi_threshold.setter
+    def poi_threshold(self, new_threshold):
+        self.set_poi_threshold(new_threshold)
+        return
+
+    @property
+    def poi_diameter(self):
+        return float(self._poi_diameter)
+
+    @poi_diameter.setter
+    def poi_diameter(self, new_diameter):
+        self.set_poi_diameter(new_diameter)
+        return
+
+    @property
     def time_until_refocus(self):
         if not self.__timer.isActive():
             return -1
@@ -609,6 +631,14 @@ class PoiManagerLogic(GenericLogic):
 
         # Notify about a changed set of POIs if necessary
         self.sigPoiUpdated.emit(name, '', np.zeros(3))
+        return
+
+    @QtCore.Slot()
+    def delete_all_pois(self):
+        self.active_poi = None
+        for name in self.poi_names:
+            self._roi.delete_poi(name)
+            self.sigPoiUpdated.emit(name, '', np.zeros(3))
         return
 
     @QtCore.Slot(str)
@@ -833,6 +863,20 @@ class PoiManagerLogic(GenericLogic):
                 self.sigRefocusTimerUpdated.emit(True, self.refocus_period, self.time_until_refocus)
             else:
                 self.sigRefocusTimerUpdated.emit(False, self.refocus_period, self.refocus_period)
+        return
+
+    @QtCore.Slot(float)
+    def set_poi_threshold(self, threshold):
+        if not threshold > 1:
+            self.log.error('threshold must > 1!')
+        self._poi_threshold = float(threshold)
+        self.sigThresholdUpdated.emit(threshold)
+        return
+
+    @QtCore.Slot(float)
+    def set_poi_diameter(self, diameter):
+        self._poi_diameter = float(diameter)
+        self.sigDiameterUpdated.emit(diameter)
         return
 
     def start_periodic_refocus(self, name=None):
@@ -1136,3 +1180,80 @@ class PoiManagerLogic(GenericLogic):
             return
         self.log.error('Tranformation of all POI positions not implemented yet.')
         return
+
+    def _spot_filter(self, scan):
+        pixel_num = len(scan)
+        x_range = self.roi_scan_image_extent[0]
+        pixel_size = (x_range[1] - x_range[0]) / pixel_num
+        spot_size = self._poi_diameter
+        arr_size = int(spot_size / pixel_size)
+        return arr_size
+
+    def _is_spot_shape(self, local_arr):
+        unspot_e = 0
+        ensem_e = 0
+        len_arr = len(local_arr)
+        mid_f = int(0.5 * len_arr)
+        hm_local_arr = local_arr[mid_f].mean()
+        vm_local_arr = local_arr[:, mid_f].mean()
+        for i in range(0, len_arr):
+            if local_arr[i].mean() > hm_local_arr:
+                ensem_e += 1
+            if local_arr[:, i].mean() > vm_local_arr:
+                ensem_e += 1
+            if hm_local_arr > vm_local_arr * 1.2:
+                unspot_e += 1
+            if vm_local_arr > hm_local_arr * 1.2:
+                unspot_e += 1
+        if ensem_e > 4:
+            return False
+        elif unspot_e > 1:
+            return False
+        else:
+            return True
+
+    def _local_max(self, scan):
+        scan = np.asarray(scan, order="C")  # scan has to be a 2-D array
+        filter_size = self._spot_filter(scan)
+        scan_m = scan.mean()
+        mid_f = int(filter_size / 2)
+        xc = []
+        yc = []
+        for i in range(0, len(scan) - filter_size):
+            for j in range(0, len(scan[i]) - filter_size):
+                local_arr = scan[i:i + filter_size, j:j + filter_size]
+                local_arr = np.asarray(local_arr)
+                arr_threshold = scan_m * self._poi_threshold * 0.5
+                if scan[i + mid_f][j + mid_f] == local_arr.max() and self._is_spot_shape(local_arr) and local_arr.mean() > arr_threshold:
+                    xc.append(i + mid_f)
+                    yc.append(j + mid_f)
+        return xc, yc
+
+    def auto_catch_poi(self):
+        scan_image = self.roi_scan_image.T
+        x_range = self.roi_scan_image_extent[0]
+        y_range = self.roi_scan_image_extent[1]
+        x_axis = np.arange(x_range[0], x_range[1], (x_range[1] - x_range[0]) / len(scan_image))
+        y_axis = np.arange(y_range[0], y_range[1], (y_range[1] - y_range[0]) / len(scan_image[0]))
+
+        for i in range(0, len(scan_image)):
+            for j in range(0, len(scan_image[i])):
+                scan_image[i][j] = int(scan_image[i][j])  # data here somehow needs to be reset, otherwise shit happens.
+
+        threshold = scan_image.mean() * self._poi_threshold
+
+        xc1, yc1 = self._local_max(scan_image)
+        xc2 = []
+        yc2 = []
+        for i in range(0, len(xc1)):
+            if scan_image[xc1[i], yc1[i]] > threshold:
+                xc2.append(xc1[i])
+                yc2.append(yc1[i])
+
+        pois = np.zeros((len(xc2), 3))
+        z = self.scanner_position[2]
+        for i in range(0, len(pois)):
+            pois[i] = [x_axis[xc2[i]], y_axis[yc2[i]], z]
+            self.add_poi(pois[i])
+            if self.poi_nametag is None:
+                time.sleep(0.1)

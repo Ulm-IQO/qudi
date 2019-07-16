@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>691</width>
+    <width>935</width>
     <height>864</height>
    </rect>
   </property>
@@ -30,7 +30,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>691</width>
+     <width>935</width>
      <height>21</height>
     </rect>
    </property>
@@ -58,7 +58,9 @@
     <addaction name="poi_editor_view_Action"/>
     <addaction name="poi_tracker_view_Action"/>
     <addaction name="sample_shift_view_Action"/>
+    <addaction name="auto_pois_view_Action"/>
     <addaction name="blink_correction_view_Action"/>
+    <addaction name="restore_default_view_Action"/>
     <addaction name="separator"/>
     <addaction name="menuToolbars"/>
    </widget>
@@ -92,8 +94,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>197</width>
-     <height>330</height>
+     <width>233</width>
+     <height>389</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -295,8 +297,8 @@
    </property>
    <property name="minimumSize">
     <size>
-     <width>216</width>
-     <height>161</height>
+     <width>253</width>
+     <height>188</height>
     </size>
    </property>
    <property name="floating">
@@ -696,7 +698,7 @@
    <property name="minimumSize">
     <size>
      <width>250</width>
-     <height>119</height>
+     <height>137</height>
     </size>
    </property>
    <property name="windowTitle">
@@ -742,6 +744,102 @@
    <addaction name="goto_poi_Action"/>
    <addaction name="refind_poi_Action"/>
    <addaction name="track_poi_Action"/>
+   <addaction name="del_all_pois_Action"/>
+   <addaction name="auto_find_POIs_Action"/>
+  </widget>
+  <widget class="QDockWidget" name="auto_pois_dockWidget">
+   <property name="sizePolicy">
+    <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+     <horstretch>0</horstretch>
+     <verstretch>0</verstretch>
+    </sizepolicy>
+   </property>
+   <property name="minimumSize">
+    <size>
+     <width>197</width>
+     <height>250</height>
+    </size>
+   </property>
+   <property name="windowTitle">
+    <string>Auto POIs</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_2">
+    <layout class="QGridLayout" name="gridLayout_6">
+     <item row="0" column="0">
+      <layout class="QGridLayout" name="gridLayout_5" rowstretch="0,0,0,0,0" columnstretch="0,0,0">
+       <item row="0" column="1">
+        <widget class="QLabel" name="label_7">
+         <property name="layoutDirection">
+          <enum>Qt::RightToLeft</enum>
+         </property>
+         <property name="text">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;right&quot;&gt;S/N ratio:&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1" colspan="2">
+        <widget class="QPushButton" name="del_all_pois_PushButton">
+         <property name="toolTip">
+          <string>Delete all POIs.</string>
+         </property>
+         <property name="text">
+          <string>Delete All POIs</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QDoubleSpinBox" name="poi_threshold_doubleSpinBox"/>
+       </item>
+       <item row="2" column="1" colspan="2">
+        <widget class="QPushButton" name="auto_pois_PushButton">
+         <property name="toolTip">
+          <string>Find POIs automatically with user-set POI diameter and S/N ratio.</string>
+         </property>
+         <property name="statusTip">
+          <string/>
+         </property>
+         <property name="text">
+          <string>Auto Find POIs</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="1" colspan="2">
+        <spacer name="verticalSpacer_3">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="1" column="2">
+        <widget class="ScienDSpinBox" name="poi_diameter_doubleSpinBox">
+         <property name="suffix">
+          <string>m</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QLabel" name="label_10">
+         <property name="text">
+          <string>POI Diameter:</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="new_roi_Action">
    <property name="icon">
@@ -950,6 +1048,52 @@
    </property>
    <property name="toolTip">
     <string>Filter the scan image to remove blinking. Raw data unchanged.</string>
+   </property>
+  </action>
+  <action name="auto_pois_view_Action">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Auto POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>To show Auto POIs window</string>
+   </property>
+  </action>
+  <action name="auto_find_POIs_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</normaloff>../../artwork/icons/qudiTheme/22x22/auto_pois.png</iconset>
+   </property>
+   <property name="text">
+    <string>Auto find POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>Use this magic fairy bar to find POIs automatically according to user-set S/N ratio</string>
+   </property>
+  </action>
+  <action name="del_all_pois_Action">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</normaloff>../../artwork/icons/oxygen/22x22/dialog-warning.png</iconset>
+   </property>
+   <property name="text">
+    <string>Delete all POIs</string>
+   </property>
+   <property name="toolTip">
+    <string>click here to delete all POIs</string>
+   </property>
+  </action>
+  <action name="restore_default_view_Action">
+   <property name="text">
+    <string>Restore default</string>
+   </property>
+   <property name="toolTip">
+    <string>Restore default view of the POI manager GUI</string>
    </property>
   </action>
  </widget>
@@ -1177,6 +1321,70 @@
     <hint type="destinationlabel">
      <x>-1</x>
      <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_pois_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>auto_pois_dockWidget</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>863</x>
+     <y>264</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_pois_view_Action</sender>
+   <signal>triggered(bool)</signal>
+   <receiver>auto_find_POIs_Action</receiver>
+   <slot>setVisible(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>auto_find_POIs_Action</sender>
+   <signal>triggered()</signal>
+   <receiver>auto_pois_PushButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>649</x>
+     <y>166</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>del_all_pois_Action</sender>
+   <signal>triggered()</signal>
+   <receiver>del_all_pois_PushButton</receiver>
+   <slot>click()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>649</x>
+     <y>201</y>
     </hint>
    </hints>
   </connection>
