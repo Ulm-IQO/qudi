@@ -70,6 +70,10 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
+    def status(self):
+        return self.get_status()
+
     @abc.abstractmethod
     def off(self):
         """
@@ -147,7 +151,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
                 self.log.error('parameters_cw need to be specified as a list of frequency and power.')
         else:
             self.log.error('parameters_cw need to be either specified as dict with the optional keywords '
-                           'frequency and power of by specifying a list of frequency and power.')
+                           'frequency and power or by specifying a list of frequency and power.')
 
     @abc.abstractmethod
     def get_parameters_list(self):
@@ -169,6 +173,28 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         @return int: error code (0:OK, -1:error)
         """
         pass
+
+    @property
+    def parameters_list(self):
+        return self.get_parameters_list()
+
+    @parameters_list.setter
+    def parameters_list(self, value):
+        if isinstance(value, dict):
+            frequency = value['frequency'] if 'frequency' in value else None
+            power = value['power'] if 'power' in value else None
+            self.set_parameters_list(frequency=frequency, power=power)
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 2:
+                frequency, power = value
+                self.set_parameters_list(frequency=frequency, power=power)
+            else:
+                self.log.error('parameters_list need to be specified as a list of frequency and power '
+                               '(each a list on their own).')
+        else:
+            self.log.error('parameters_list need to be either specified as dict with the optional keywords '
+                           'frequency and power or by specifying a list of frequency and power '
+                           '(each a list on their own).')
 
     @abc.abstractmethod
     def reset_list_pos(self):
@@ -202,6 +228,28 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
+    def parameters_sweep(self):
+        return self.get_parameters_sweep()
+
+    @parameters_list.setter
+    def parameters_list(self, value):
+        if isinstance(value, dict):
+            start = value['start'] if 'start' in value else None
+            stop = value['stop'] if 'stop' in value else None
+            step = value['step'] if 'step' in value else None
+            power = value['power'] if 'power' in value else None
+            self.set_parameters_sweep(start=start, stop=stop, step=step, power=power)
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 4:
+                start, stop, step, power = value
+                self.set_parameters_sweep(start=start, stop=stop, step=step, power=power)
+            else:
+                self.log.error('parameters_list need to be specified as a list of start, stop, step and power.')
+        else:
+            self.log.error('parameters_list need to be either specified as dict with the optional keywords '
+                           'start, stop, step and power or by specifying a list of start, stop, step and power.')
+
     @abc.abstractmethod
     def reset_sweep_pos(self):
         """
@@ -231,6 +279,26 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
+    def ext_trigger(self):
+        return self.get_ext_trigger()
+
+    @ext_trigger.setter
+    def ext_trigger(self, value):
+        if isinstance(value, dict):
+            pol = value['pol'] if 'pol' in value else None
+            timing = value['timing'] if 'timing' in value else None
+            self.set_ext_trigger(pol=pol, timing=timing)
+        elif isinstance(value, (list, tuple)):
+            if len(value) == 2:
+                pol, timing = value
+                self.set_ext_trigger(pol=pol, timing=timing)
+            else:
+                self.log.error('ext_trigger need to be specified as a list of pol (polarization) and timing.')
+        else:
+            self.log.error('ext_trigger need to be either specified as dict with the optional keywords '
+                           'pol (polarization) and timing or by specifying a list of pol (polarization) and timing.')
+
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
 
@@ -249,6 +317,10 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
           @return MicrowaveLimits: Microwave limits object
         """
         pass
+
+    @property
+    def limits(self):
+        return self.get_limits()
 
 
 class MicrowaveLimits:
