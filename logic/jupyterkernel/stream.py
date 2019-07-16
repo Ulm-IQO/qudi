@@ -36,7 +36,6 @@ class QZMQStream(QtCore.QObject):
         QSignal based notifications about arriving ZMQ messages.
     """
     sigMsgRecvd = QtCore.Signal(object)
-    name = None
 
     def __init__(self, zmqsocket):
         """ Make a stream from a socket.
@@ -44,6 +43,7 @@ class QZMQStream(QtCore.QObject):
         @param zmqsocket: ZMQ socket
         """
         super().__init__()
+        self.name = None
         self.socket = zmqsocket
         self.readnotifier = QtCore.QSocketNotifier(
             self.socket.get(zmq.FD),
