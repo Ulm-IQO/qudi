@@ -31,6 +31,7 @@ from collections import OrderedDict
 from core.module import StatusVar, Connector, ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
+from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
@@ -264,11 +265,11 @@ class SequenceGeneratorLogic(GenericLogic):
 
     @property
     def sampled_waveforms(self):
-        return self.pulsegenerator().get_waveform_names()
+        return netobtain(self.pulsegenerator().get_waveform_names())
 
     @property
     def sampled_sequences(self):
-        return self.pulsegenerator().get_sequence_names()
+        return netobtain(self.pulsegenerator().get_sequence_names())
 
     @property
     def analog_channels(self):
@@ -1734,7 +1735,7 @@ class SequenceGeneratorLogic(GenericLogic):
                         for chnl in pulse_function:
                             analog_samples[chnl][array_write_index:array_write_index + samples_to_add] = pulse_function[
                                                                                                              chnl].get_samples(
-                                time_arr) / self.__analog_levels[0][chnl]
+                                time_arr) / (self.__analog_levels[0][chnl] / 2)
 
                         # Free memory
                         if pulse_function:

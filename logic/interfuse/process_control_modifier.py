@@ -93,41 +93,41 @@ class ProcessControlModifier(GenericLogic, ProcessControlInterface):
             self._interpolated_function = interp1d(self._calibration[:, 0], self._calibration[:, 1])
             self._interpolated_function_reversed = interp1d(self._calibration[:, 1], self._calibration[:, 0])
         if self._last_control_value is not None:
-            self.setControlValue(self._last_control_value)
+            self.set_control_value(self._last_control_value)
 
     def reset_to_identity(self):
         """ Reset the calibration data to use identity """
         self._calibration = None
         self.update_calibration()
 
-    def getControlValue(self):
+    def get_control_value(self):
         """ Return the original control value
         """
         if self._interpolated_function_reversed is not None:
-            return self._interpolated_function_reversed(self._hardware.getControlValue())
+            return self._interpolated_function_reversed(self._hardware.get_control_value())
         else:
             self.log.error('No calibration was found, please set the control value modifier data first.')
 
-    def setControlValue(self, value):
+    def set_control_value(self, value):
         """ Set the control value modified
         """
         if self._interpolated_function is not None:
-            self._hardware.setControlValue(self._interpolated_function(value))
+            self._hardware.set_control_value(self._interpolated_function(value))
         else:
             self.log.error('No calibration was found, please set the control value modifier data first.')
 
-    def getControlUnit(self):
+    def get_control_unit(self):
         """ Return the process unit
         """
         if self._new_unit is not None:
             return self._new_unit
         else:
-            return self._hardware.getControlUnit()
+            return self._hardware.get_control_unit()
 
-    def getControlLimits(self):
+    def get_control_limit(self):
         """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
-        mini, maxi = self._hardware.getControlLimits()
+        mini, maxi = self._hardware.get_control_limit()
         mini = float(self._interpolated_function_reversed(mini))
         maxi = float(self._interpolated_function_reversed(maxi))
         return mini, maxi

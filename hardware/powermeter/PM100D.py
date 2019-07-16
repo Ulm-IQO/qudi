@@ -78,11 +78,11 @@ class PM100D(Base, SimpleDataInterface, ProcessInterface):
         """ Return the power read from the ThorlabsPM100 package """
         return self._power_meter.read
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Return a measured value """
         return self.get_power()
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
         return ('W', 'watt')
 

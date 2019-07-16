@@ -186,6 +186,9 @@ class PulsedMeasurementLogic(GenericLogic):
         if self.__fast_counter_record_length <= 0:
             self.__fast_counter_record_length = 3e-6
         self.fast_counter_off()
+        # Set default number of gates to a reasonable number for gated counters (>0 if gated)
+        if self.fastcounter().is_gated() and self.__fast_counter_gates < 1:
+            self.__fast_counter_gates = max(1, self._number_of_lasers)
         self.set_fast_counter_settings()
 
         # Check and configure external microwave

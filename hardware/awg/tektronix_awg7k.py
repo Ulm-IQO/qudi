@@ -266,17 +266,17 @@ class AWG7k(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
         # Usage of channel 1 only:
-        activation_config['A1_M1_M2'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+        activation_config['A1_M1_M2'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
         # Usage of channel 2 only:
-        activation_config['A2_M3_M4'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+        activation_config['A2_M3_M4'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         # Only both analog channels
-        activation_config['Two_Analog'] = {'a_ch1', 'a_ch2'}
+        activation_config['Two_Analog'] = frozenset({'a_ch1', 'a_ch2'})
         # Usage of one analog channel without digital channel
-        activation_config['Analog1'] = {'a_ch1'}
+        activation_config['Analog1'] = frozenset({'a_ch1'})
         # Usage of one analog channel without digital channel
-        activation_config['Analog2'] = {'a_ch2'}
+        activation_config['Analog2'] = frozenset({'a_ch2'})
         constraints.activation_config = activation_config
         return constraints
 
@@ -289,7 +289,7 @@ class AWG7k(Base, PulserInterface):
         """
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        channel_numbers = natural_sort(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
                                  chnl.startswith('a') and chnl_activation[chnl])
         # do nothing if AWG is already running
         if not self._is_output_on():
@@ -413,9 +413,9 @@ class AWG7k(Base, PulserInterface):
         """
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        channel_numbers = natural_sort(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
-                                 chnl.startswith('a') and chnl_activation[chnl])
 
+        channel_numbers = sorted(int(chnl.split('_ch')[1]) for chnl in chnl_activation if
+                                 chnl.startswith('a') and chnl_activation[chnl])
         # Get assets per channel
         loaded_assets = dict()
         current_type = None

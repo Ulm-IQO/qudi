@@ -246,9 +246,10 @@ class AWG5002C(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['config1'] = ['a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4']
-        activation_config['config2'] = ['a_ch1', 'd_ch1', 'd_ch2']
-        activation_config['config3'] = ['a_ch2', 'd_ch3', 'd_ch4']
+        activation_config['config1'] = frozenset(
+            {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
+        activation_config['config2'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
+        activation_config['config3'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
         constraints.activation_config = activation_config
 
         return constraints

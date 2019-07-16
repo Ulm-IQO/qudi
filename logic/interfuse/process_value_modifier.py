@@ -98,20 +98,20 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
         self._calibration = None
         self.update_calibration()
 
-    def getProcessValue(self):
+    def get_process_value(self):
         """ Return the process value modified
         """
         if self._interpolated_function is not None:
-            return float(self._interpolated_function(self._hardware.getProcessValue()))
+            return float(self._interpolated_function(self._hardware.get_process_value()))
         else:
             self.log.error('No calibration was found, please set the process value modifier data first.')
             return 0
 
-    def getProcessUnit(self):
+    def get_process_unit(self):
         """ Return the process unit
         """
         if self._new_unit is not None:
             return self._new_unit
         else:
-            return self._hardware.getProcessUnit()
+            return self._hardware.get_process_unit()
 
