@@ -262,7 +262,7 @@ class IOStdoutNetworkStream(StringIO):
         while not self._stop.is_set():
             self._dump_stream_to_network()
             # one query every 10 ms should be more than enough
-            time.sleep(0.01)
+            time.sleep(0.1)
 
         # clean up the buffer
         self._dump_stream_to_network()
