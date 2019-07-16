@@ -36,6 +36,7 @@ from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
+from interface.pulser_interface import SequenceOption
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -71,8 +72,6 @@ class SequenceGeneratorLogic(GenericLogic):
     _sampling_functions_import_path = ConfigOption(name='additional_sampling_functions_path',
                                                    default=None,
                                                    missing='nothing')
-
-    _force_sequence_mode = ConfigOption(name='force_sequence_mode', default=False, missing='nothing')
 
     # status vars
     # Global parameters describing the channel usage and common parameters used during pulsed object
@@ -1079,7 +1078,7 @@ class SequenceGeneratorLogic(GenericLogic):
             ensemble.sampling_information = dict()
             self.save_ensemble(ensemble)
 
-        if self._force_sequence_mode and len(sequences) < 1:
+        if self.pulse_generator_constraints.sequence_option == SequenceOption.FORCED and len(sequences) < 1:
             self.log.info('Adding default sequence for: {0:s}'.format(kwargs_dict.get('name')))
             self._add_default_sequence(ensembles, sequences)
             self.log.debug('New default PulseSequence is: {0:s} length {1:d}'.format(sequences[0].name, len(sequences)))
