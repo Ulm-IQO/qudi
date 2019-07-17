@@ -19,7 +19,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -27,14 +27,14 @@ class SpectrometerInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
     optical spectrometer.
     """
-    @abc.abstractmethod
+    @abstract_interface_method
     def recordSpectrum(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def setExposure(self, exposureTime):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def getExposure(self):
         pass

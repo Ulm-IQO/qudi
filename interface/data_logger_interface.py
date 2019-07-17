@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -28,15 +28,15 @@ class DataLoggerInterface(metaclass=InterfaceMetaclass):
     """
     """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_log_channels(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_log_channels(self, channelspec):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def log_to_channel(self, channel, value):
         pass
 
