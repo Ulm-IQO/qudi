@@ -1454,7 +1454,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         chirp_rate = pulse_freq_range / pulse_length
 
         # adiabaticity condition
-        adiab = expected_Rabi_frequency ** 2 / chirp_rate
+        adiab = 2 * np.pi * expected_Rabi_frequency ** 2 / chirp_rate
         # adiab >> 1 is needed for adiabatic evolution. Simulations show that adiab > 5 works very well,
         # adiab > 2 will work but is on the edge, so we impose a check if adiab < 2.5 to give a warning.
 
@@ -1597,7 +1597,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # In comparison to linear chirp, the chirp rate is divided by the truncation_ratio
 
         # adiabaticity condition for the AE model
-        adiabAE = expected_Rabi_frequency ** 2 / chirp_rate_AE
+        adiabAE = 2 * np.pi * expected_Rabi_frequency ** 2 / chirp_rate_AE
         # adiabAE >> 1 is needed for adiabatic evolution. Simulations show adiabAE > 2 will work but is on the edge,
         # so we impose a check if adiabAE < 2.5 to give a warning.
 
