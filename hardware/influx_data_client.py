@@ -43,9 +43,6 @@ class InfluxDataClient(Base, ProcessInterface):
 
     """
 
-    _modclass = 'InfluxDataClient'
-    _modtype = 'hardware'
-
     user = ConfigOption('user', missing='error')
     pw = ConfigOption('password', missing='error')
     dbname = ConfigOption('dbname', missing='error')

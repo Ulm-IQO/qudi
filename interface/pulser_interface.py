@@ -31,9 +31,6 @@ class PulserInterface(metaclass=InterfaceMetaclass):
     communication with all pulsing devices.
     """
 
-    _modtype = 'PulserInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_constraints(self):
         """

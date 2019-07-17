@@ -33,9 +33,6 @@ class OptimizerLogic(GenericLogic):
     """This is the Logic class for optimizing scanner position on bright features.
     """
 
-    _modclass = 'optimizerlogic'
-    _modtype = 'logic'
-
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     fitlogic = Connector(interface='FitLogic')

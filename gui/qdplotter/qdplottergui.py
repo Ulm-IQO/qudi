@@ -47,11 +47,8 @@ class QdplotMainWindow(QtWidgets.QMainWindow):
 
 
 class QdplotterGui(GUIBase):
-
     """ FIXME: Please document
     """
-    _modclass = 'qdplotgui'
-    _modtype = 'gui'
 
     # declare connectors
     qdplotlogic1 = Connector(interface='QdplotLogic')

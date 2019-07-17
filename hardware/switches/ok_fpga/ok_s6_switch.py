@@ -48,8 +48,6 @@ class HardwareSwitchFpga(Base, SwitchInterface):
         fpga_type: 'XEM6310_LX45'
 
     """
-    _modclass = 'HardwareSwitchFpga'
-    _modtype = 'hardware'
 
     # config options
     _serial = ConfigOption('fpga_serial', missing='error')

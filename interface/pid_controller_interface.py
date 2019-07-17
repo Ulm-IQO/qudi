@@ -24,8 +24,8 @@ from core.meta import InterfaceMetaclass
 
 
 class PIDControllerInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'PIDControllerInterface'
-    _modclass = 'interface'
+    """
+    """
 
     @abc.abstractmethod
     def get_kp(self):

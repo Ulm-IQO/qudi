@@ -29,9 +29,6 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     microwave hardware.
     """
 
-    _modtype = 'ConfocalScannerInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs

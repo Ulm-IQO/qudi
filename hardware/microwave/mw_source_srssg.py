@@ -42,9 +42,6 @@ class MicrowaveSRSSG(Base, MicrowaveInterface):
 
     """
 
-    _modclass = 'MicrowaveSRSSG'
-    _modtype = 'hardware'
-
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 

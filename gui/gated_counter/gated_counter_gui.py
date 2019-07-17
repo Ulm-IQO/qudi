@@ -47,13 +47,11 @@ class GatedCounterMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
+
 class GatedCounterGui(GUIBase):
     """ Main GUI for the Gated Counting. """
 
-    _modclass = 'GatedCounterGui'
-    _modtype = 'gui'
-
-    ## declare connectors
+    # declare connectors
     gatedcounterlogic1 = Connector(interface='GatedCounterLogic')
     traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
 

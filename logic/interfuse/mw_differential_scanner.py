@@ -30,8 +30,6 @@ class ConfocalScannerInterfaceDummy(Base, ConfocalScannerInterface):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-    _modclass = 'confocalscannerinterface'
-    _modtype = 'hardware'
 
     # connectors
     fitlogic = Connector(interface='FitLogic')

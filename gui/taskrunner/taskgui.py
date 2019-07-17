@@ -31,9 +31,8 @@ from qtpy import uic
 class TaskGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
     """
-    _modclass = 'TaskGui'
-    _modtype = 'gui'
-    ## declare connectors
+
+    # declare connectors
     tasklogic = Connector(interface='TaskRunner')
 
     sigRunTaskFromList = QtCore.Signal(object)

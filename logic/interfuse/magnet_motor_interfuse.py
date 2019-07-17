@@ -26,15 +26,13 @@ from interface.magnet_interface import MagnetInterface
 
 
 class MagnetMotorInterfuse(GenericLogic, MagnetInterface):
-
-    _modclass = 'MagnetMotorInterfuse'
-    _modtype = 'interfuse'
+    """
+    """
 
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can
     # connect to the in connector of the logic.
     motorstage = Connector(interface='MotorInterface')
-
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)

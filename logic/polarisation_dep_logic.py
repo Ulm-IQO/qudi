@@ -29,10 +29,7 @@ class PolarisationDepLogic(GenericLogic):
 
     """
 
-    _modclass = 'polarisationdeplogic'
-    _modtype = 'logic'
-
-    ## declare connectors
+    # declare connectors
     counterlogic = Connector(interface='CounterLogic')
     savelogic = Connector(interface='SaveLogic')
     motor = Connector(interface='MotorInterface')

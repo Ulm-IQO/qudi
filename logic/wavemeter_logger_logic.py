@@ -100,9 +100,6 @@ class WavemeterLoggerLogic(GenericLogic):
     sig_new_data_point = QtCore.Signal(list)
     sig_fit_updated = QtCore.Signal()
 
-    _modclass = 'laserscanninglogic'
-    _modtype = 'logic'
-
     # declare connectors
     wavemeter1 = Connector(interface='WavemeterInterface')
     counterlogic = Connector(interface='CounterLogic')

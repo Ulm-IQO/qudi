@@ -43,9 +43,6 @@ class FastCounterFGAPiP3(Base, FastCounterInterface):
 
     """
 
-    _modclass = 'FastCounterFGAPiP3'
-    _modtype = 'hardware'
-
     # config options
     _fpgacounter_serial = ConfigOption('fpgacounter_serial', missing='error')
     _channel_apd_0 = ConfigOption('fpgacounter_channel_apd_0', 1, missing='warn')

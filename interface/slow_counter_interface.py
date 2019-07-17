@@ -28,9 +28,6 @@ from core.meta import InterfaceMetaclass
 class SlowCounterInterface(metaclass=InterfaceMetaclass):
     """ Define the controls for a slow counter."""
 
-    _modtype = 'SlowCounterInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the counter device.

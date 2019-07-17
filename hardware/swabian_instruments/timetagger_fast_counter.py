@@ -40,8 +40,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         timetagger_sum_channels: 4
 
     """
-    _modclass = 'TimeTaggerFastCounter'
-    _modtype = 'hardware'
 
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='error')

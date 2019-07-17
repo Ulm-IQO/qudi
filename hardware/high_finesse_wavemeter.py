@@ -86,9 +86,6 @@ class HighFinesseWavemeter(Base,WavemeterInterface):
 
     """
 
-    _modclass = 'HighFinesseWavemeter'
-    _modtype = 'hardware'
-
     # config options
     _measurement_timing = ConfigOption('measurement_timing', default=10.)
 

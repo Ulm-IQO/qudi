@@ -45,9 +45,6 @@ class SpectrumLogic(GenericLogic):
             fitlogic: 'fitlogic'
     """
 
-    _modclass = 'spectrumlogic'
-    _modtype = 'logic'
-
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
     odmrlogic = Connector(interface='ODMRLogic', optional=True)

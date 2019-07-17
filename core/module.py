@@ -127,9 +127,6 @@ class BaseMixin(metaclass=ModuleMeta):
     * Get status variables
     * Reload module data (from saved variables)
     """
-
-    _modclass = 'base'
-    _modtype = 'base'
     _threaded = False
     _connectors = dict()
 

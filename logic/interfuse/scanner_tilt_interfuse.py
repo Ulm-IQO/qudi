@@ -29,9 +29,6 @@ class ScannerTiltInterfuse(GenericLogic, ConfocalScannerInterface):
     """ This interfuse produces a Z correction corresponding to a tilted surface.
     """
 
-    _modclass = 'ScannerTiltInterfuse'
-    _modtype = 'interfuse'
-
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
 
     def __init__(self, **kwargs):

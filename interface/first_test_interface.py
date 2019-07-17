@@ -9,9 +9,6 @@ class FirstTestInterface(metaclass=InterfaceMetaclass):
     """
     """
 
-    _modclass = 'FirstTestInterface'
-    _modtype = 'interface'
-
     @abstract_interface_method
     def test(self):
         """

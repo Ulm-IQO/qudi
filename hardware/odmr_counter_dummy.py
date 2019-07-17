@@ -39,9 +39,6 @@ class ODMRCounterDummy(Base, ODMRCounterInterface):
 
     """
 
-    _modclass = 'ODMRCounterDummy'
-    _modtype = 'hardware'
-
     # connectors
     fitlogic = Connector(interface='FitLogic')
 

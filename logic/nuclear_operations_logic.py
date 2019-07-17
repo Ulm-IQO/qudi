@@ -56,11 +56,8 @@ class NuclearOperationsLogic(GenericLogic):
 
     """
 
-    _modclass = 'NuclearOperationsLogic'
-    _modtype = 'logic'
-
     # declare connectors
-    #TODO: Use rather the task runner instead directly the module!
+    # TODO: Use rather the task runner instead directly the module!
 
     sequencegenerationlogic = Connector(interface='SequenceGenerationLogic')
     traceanalysislogic = Connector(interface='TraceAnalysisLogic')

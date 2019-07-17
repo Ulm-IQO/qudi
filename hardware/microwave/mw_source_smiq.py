@@ -51,8 +51,6 @@ class MicrowaveSmiq(Base, MicrowaveInterface):
         power_max: 13  # optional, in dBm
     """
 
-    _modclass = 'MicrowaveSmiq'
-    _modtype = 'hardware'
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
     _gpib_baud_rate = ConfigOption('gpib_baud_rate', None)

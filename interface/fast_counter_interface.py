@@ -27,9 +27,6 @@ from core.meta import InterfaceMetaclass
 class FastCounterInterface(metaclass=InterfaceMetaclass):
     """ Interface class to define the controls for fast counting devices. """
 
-    _modtype = 'FastCounterInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.

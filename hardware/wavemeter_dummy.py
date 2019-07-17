@@ -77,9 +77,6 @@ class WavemeterDummy(Base, WavemeterInterface):
         measurement_timing: 10.0
 
     """
-    _modclass = 'WavemeterDummy'
-    _modtype = 'hardware'
-
     # config opts
     _measurement_timing = ConfigOption('measurement_timing', 10.)
 

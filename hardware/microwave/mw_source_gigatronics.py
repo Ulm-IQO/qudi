@@ -46,9 +46,6 @@ class MicrowaveGigatronics(Base, MicrowaveInterface):
 
     """
 
-    _modclass = 'MicrowaveInterface'
-    _modtype = 'hardware'
-
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')
 

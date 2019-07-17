@@ -237,11 +237,7 @@ class PoiManagerMainWindow(QtWidgets.QMainWindow):
 
 
 class PoiManagerGui(GUIBase):
-
     """ This is the GUI Class for PoiManager """
-
-    _modclass = 'PoiManagerGui'
-    _modtype = 'gui'
 
     # declare connectors
     poimanagerlogic = Connector(interface='PoiManagerLogic')

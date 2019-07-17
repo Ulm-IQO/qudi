@@ -48,9 +48,6 @@ class CameraThorlabs(Base, CameraInterface):
 
     """
 
-    _modtype = 'camera'
-    _modclass = 'hardware'
-
     _default_exposure = ConfigOption('default_exposure', 0.1)
     _default_gain = ConfigOption('default_gain', 1.0)
     _id_camera = ConfigOption('id_camera', 0)  # if more than one camera is present

@@ -37,8 +37,6 @@ class CameraLogic(GenericLogic):
     """
     Control a camera.
     """
-    _modclass = 'cameralogic'
-    _modtype = 'logic'
 
     # declare connectors
     hardware = Connector(interface='CameraInterface')

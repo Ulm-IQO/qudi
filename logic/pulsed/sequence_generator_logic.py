@@ -53,9 +53,6 @@ class SequenceGeneratorLogic(GenericLogic):
     waveform/sequence playback (pp-amplitude, sample rate, active channels etc.).
     """
 
-    _modclass = 'sequencegeneratorlogic'
-    _modtype = 'logic'
-
     # declare connectors
     pulsegenerator = Connector(interface='PulserInterface')
 

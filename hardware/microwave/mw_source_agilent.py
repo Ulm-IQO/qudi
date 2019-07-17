@@ -49,9 +49,6 @@ class MicrowaveAgilent(Base, MicrowaveInterface):
 
     """
 
-    _modclass = 'MicrowaveAgilent'
-    _modtype = 'hardware'
-
     _usb_address = ConfigOption('usb_address', missing='error')
     _usb_timeout = ConfigOption('usb_timeout', 100, missing='warn')
 

@@ -40,9 +40,6 @@ class CameraDummy(Base, CameraInterface):
         gain: 1.0
     """
 
-    _modtype = 'DummyCamera'
-    _modclass = 'hardware'
-
     _support_live = ConfigOption('support_live', True)
     _camera_name = ConfigOption('camera_name', 'Dummy camera')
     _resolution = ConfigOption('resolution', (1280, 720))  # High-definition !

@@ -118,9 +118,6 @@ class IxonUltra(Base, CameraInterface):
 
     """
 
-    _modtype = 'camera'
-    _modclass = 'hardware'
-
     _dll_location = ConfigOption('dll_location', missing='error')
     _default_exposure = ConfigOption('default_exposure', 1.0)
     _default_read_mode = ConfigOption('default_read_mode', 'IMAGE')

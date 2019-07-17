@@ -46,8 +46,6 @@ class PulsedMasterLogic(GenericLogic):
     are decoupled from the calling thread via Qt queued connections.
     This ensures a more intuitive and less error prone use of scripting.
     """
-    _modclass = 'pulsedmasterlogic'
-    _modtype = 'logic'
 
     # declare connectors
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')

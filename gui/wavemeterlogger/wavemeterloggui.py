@@ -52,10 +52,9 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
 
 
 class WavemeterLogGui(GUIBase):
-    _modclass = 'WavemeterLogGui'
-    _modtype = 'gui'
-
-    ## declare connectors
+    """
+    """
+    # declare connectors
     wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
     savelogic = Connector(interface='SaveLogic')
 

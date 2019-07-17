@@ -29,9 +29,6 @@ class MagnetInterface(metaclass=InterfaceMetaclass):
         controlling the magnetic field.
     """
 
-    _modtype = 'MagnetInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the magnet driving device.

@@ -38,9 +38,6 @@ class SingleShotLogic(GenericLogic):
         into trace form processable by the trace_analysis_logic.
     """
 
-    _modclass = 'SingleShotLogic'
-    _modtype = 'logic'
-
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')

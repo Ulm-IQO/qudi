@@ -41,9 +41,8 @@ from interface.magnet_interface import MagnetInterface
 
 
 class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
-
-    _modclass = 'MagnetMotorXYZROTInterfuse'
-    _modtype = 'interfuse'
+    """
+    """
 
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can

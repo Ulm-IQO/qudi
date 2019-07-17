@@ -25,8 +25,8 @@ from core.meta import InterfaceMetaclass
 
 
 class DataLoggerInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'DataLoggerInterface'
-    _modclass = 'interface'
+    """
+    """
 
     @abc.abstractmethod
     def get_log_channels(self):

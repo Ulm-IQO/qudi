@@ -38,10 +38,6 @@ class PiPWM(Base, ProcessControlInterface):
         frequency: 100 # in Hz
 
     """
-
-    _modclass = 'ProcessControlInterface'
-    _modtype = 'hardware'
-
     channel = ConfigOption('channel', 0, missing='warn')
     freq = ConfigOption('frequency', 100)
 

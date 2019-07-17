@@ -44,9 +44,6 @@ class NationalInstrumentsPulser(Base, PulserInterface):
 
     """
 
-    _modtype = 'PulserInterface'
-    _modclass = 'hardware'
-
     device = ConfigOption('device', default='Dev0', missing='warn')
 
     def on_activate(self):

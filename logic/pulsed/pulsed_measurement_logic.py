@@ -41,10 +41,8 @@ class PulsedMeasurementLogic(GenericLogic):
     """
     This is the Logic class for the control of pulsed measurements.
     """
-    _modclass = 'PulsedMeasurementLogic'
-    _modtype = 'logic'
 
-    ## declare connectors
+    # declare connectors
     fitlogic = Connector(interface='FitLogic')
     savelogic = Connector(interface='SaveLogic')
     fastcounter = Connector(interface='FastCounterInterface')

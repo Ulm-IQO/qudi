@@ -41,8 +41,6 @@ class MicrowaveSynthHDPro(Base, MicrowaveInterface):
         output_channel: 0 # either 0 or 1
 
     """
-    _modclass = 'MicrowaveSynthHDPro'
-    _modtype = 'mwsource'
 
     _serial_port = ConfigOption('serial_port', missing='error')
     _serial_timeout = ConfigOption('serial_timeout', 10, missing='warn')

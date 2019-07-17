@@ -41,9 +41,10 @@ class LaserState(Enum):
     LOCKED = 2
     UNKNOWN = 3
 
+
 class SimpleLaserInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'SimpleLaserInterface'
-    _modclass = 'interface'
+    """
+    """
 
     @abc.abstractmethod
     def get_power_range(self):

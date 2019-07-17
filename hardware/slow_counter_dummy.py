@@ -46,9 +46,6 @@ class SlowCounterDummy(Base, SlowCounterInterface):
 
     """
 
-    _modclass = 'SlowCounterDummy'
-    _modtype = 'hardware'
-
     # config
     _clock_frequency = ConfigOption('clock_frequency', 100, missing='warn')
     _samples_number = ConfigOption('samples_number', 10, missing='warn')

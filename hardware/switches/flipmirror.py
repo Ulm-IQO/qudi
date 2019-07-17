@@ -37,8 +37,6 @@ class FlipMirror(Base, SwitchInterface):
         interface: 'ASRL1::INSTR'
 
     """
-    _modclass = 'switchinterface'
-    _modtype = 'hardware'
 
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
 
