@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import abc
 from core.meta import InterfaceMetaclass
-from core.util.units import in_range
+from core.util.helpers import in_range
 from enum import Enum
 
 class TriggerEdge(Enum):
