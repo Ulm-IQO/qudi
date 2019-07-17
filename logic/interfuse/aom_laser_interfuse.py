@@ -41,9 +41,6 @@ class LaserAomInterfuse(GenericLogic, SimpleLaserInterface):
     This data is interpolated to define the power/voltage function
     """
 
-    _modclass = 'LaserAomInterfuse'
-    _modtype = 'interfuse'
-
     # connector to the confocal scanner hardware that has analog output feature
     scanner = Connector(interface='ConfocalScannerInterface')
 

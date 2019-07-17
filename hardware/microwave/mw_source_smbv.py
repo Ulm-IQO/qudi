@@ -47,9 +47,6 @@ class MicrowaveSmbv(Base, MicrowaveInterface):
 
     """
 
-    _modclass = 'MicrowaveSmbv'
-    _modtype = 'hardware'
-
     # visa address of the hardware : this can be over ethernet, the name is here for
     # backward compatibility
     _address = ConfigOption('gpib_address', missing='error')

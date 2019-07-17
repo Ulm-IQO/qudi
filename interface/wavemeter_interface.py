@@ -27,9 +27,6 @@ from core.meta import InterfaceMetaclass
 class WavemeterInterface(metaclass=InterfaceMetaclass):
     """ Define the controls for a wavemeter hardware."""
 
-    _modclass = 'WavemeterInterface'
-    _modtype = 'interface'
-
     @abc.abstractmethod
     def start_acqusition(self):
         """ Method to start the wavemeter software.

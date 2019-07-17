@@ -33,8 +33,6 @@ class E3631A(Base, ProcessControlInterface):
             address: 'ASRL9::INSTR'
 
     """
-    _modclass = 'powersupply'
-    _modtype = 'hardware'
 
     _address = ConfigOption('address', missing='error')
 

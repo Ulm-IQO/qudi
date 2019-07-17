@@ -37,10 +37,6 @@ class EdwardsVacuumController(Base):
         interface: 'ASRL1::INSTR'
 
     """
-
-    _modclass = 'edwards_pump'
-    _modtype = 'hardware'
-
     # config options
     _interface = ConfigOption('interface', missing='error')
 

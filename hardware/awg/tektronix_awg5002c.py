@@ -53,9 +53,6 @@ class AWG5002C(Base, PulserInterface):
         # default_sample_rate: 600.0e6 # optional, the default sampling rate
     """
 
-    _modclass = 'awg5002c'
-    _modtype = 'hardware'
-
     # config options
     ip_address = ConfigOption('awg_ip_address', missing='error')
     port = ConfigOption('awg_port', missing='error')

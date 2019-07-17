@@ -42,8 +42,6 @@ class DTG5334(Base, PulserInterface):
         visa_address: 'GPIB0::12::INSTR'
 
     """
-    _modclass = 'dtg5334'
-    _modtype = 'hardware'
 
     visa_address = ConfigOption('visa_address', missing='error')
 

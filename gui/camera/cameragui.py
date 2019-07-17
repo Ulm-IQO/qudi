@@ -69,8 +69,6 @@ class CameraWindow(QtWidgets.QMainWindow):
 class CameraGUI(GUIBase):
     """ Main spectrometer camera class.
     """
-    _modclass = 'CameraGui'
-    _modtype = 'gui'
 
     camera_logic = Connector(interface='CameraLogic')
     savelogic = Connector(interface='SaveLogic')

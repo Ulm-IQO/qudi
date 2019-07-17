@@ -353,8 +353,6 @@ class PoiManagerLogic(GenericLogic):
     """
     This is the Logic class for mapping and tracking bright features in the confocal scan.
     """
-    _modclass = 'poimanagerlogic'
-    _modtype = 'logic'
 
     # declare connectors
     optimiserlogic = Connector(interface='OptimizerLogic')

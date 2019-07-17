@@ -24,8 +24,8 @@ from core.meta import InterfaceMetaclass
 
 
 class VacuumPumpInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'PumpInterface'
-    _modclass = 'interface'
+    """
+    """
 
     @abc.abstractmethod
     def get_extra_info(self):

@@ -44,8 +44,6 @@ class PM100D(Base, SimpleDataInterface, ProcessInterface):
     pip install ThorlabsPM100
     in the Anaconda prompt after having activated qudi environment
     """
-    _modclass = 'powermeter'
-    _modtype = 'hardware'
 
     _address = ConfigOption('address', missing='error')
     _timeout = ConfigOption('timeout', 1)

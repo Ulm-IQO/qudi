@@ -29,9 +29,6 @@ class ProcessInterface(metaclass=InterfaceMetaclass):
         Used for PID controll.
     """
 
-    _modtype = 'ProcessInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_process_value(self):
         """ Return a measured value """

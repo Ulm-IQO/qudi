@@ -38,9 +38,6 @@ class ConfocalScannerDummy(Base, ConfocalScannerInterface):
 
     """
 
-    _modclass = 'ConfocalScannerDummy'
-    _modtype = 'hardware'
-
     # connectors
     fitlogic = Connector(interface='FitLogic')
 

@@ -43,9 +43,6 @@ class LaserScannerLogic(GenericLogic):
 
     sig_data_updated = QtCore.Signal()
 
-    _modclass = 'laserscannerlogic'
-    _modtype = 'logic'
-
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')
     savelogic = Connector(interface='SaveLogic')

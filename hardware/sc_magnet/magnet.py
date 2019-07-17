@@ -53,10 +53,6 @@ class Magnet(Base, MagnetInterface):
         magnet_rho_constr: 1.2
 
     """
-
-    _modtype = 'Magnet'
-    _modclass = 'hardware'
-
     # config opts
     port = ConfigOption('magnet_port', missing='error')
 

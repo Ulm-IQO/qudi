@@ -45,8 +45,6 @@ class MotorNewportConexAGP(Base, MotorInterface):
         axis_label: 'phi'
 
     """
-    _modclass = 'MotorRotation'
-    _modtype = 'hardware'
 
     _com_port = ConfigOption('com_port', missing='error')
     _controller_address = ConfigOption('controller_address', 1, missing='warn')

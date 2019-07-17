@@ -30,9 +30,6 @@ from logic.generic_logic import GenericLogic
 class TraceAnalysisLogic(GenericLogic):
     """ Perform a gated counting measurement with the hardware.  """
 
-    _modclass = 'TraceAnalysisLogic'
-    _modtype = 'logic'
-
     # declare connectors
     counterlogic1 = Connector(interface='CounterLogic')
     savelogic = Connector(interface='SaveLogic')

@@ -40,10 +40,6 @@ class TSYS01SPI(Base, ProcessInterface):
         device: 0
 
     """
-
-    _modclass = 'TSYS01'
-    _modtype = 'hardware'
-
     # config opts
     bus = ConfigOption('bus', default=0, missing='warn')
     device = ConfigOption('device', default=0, missing='warn')

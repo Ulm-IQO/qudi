@@ -42,9 +42,6 @@ class QdplotLogic(GenericLogic):
     sigPlotDataUpdated = QtCore.Signal()
     sigPlotParamsUpdated = QtCore.Signal()
 
-    _modclass = 'QdplotLogic'
-    _modtype = 'logic'
-
     # declare connectors
     savelogic = Connector(interface='SaveLogic')
 

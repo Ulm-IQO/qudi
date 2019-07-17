@@ -48,10 +48,7 @@ class SimpleMainWindow(QtWidgets.QMainWindow):
 class SimpleDataGui(GUIBase):
     """ FIXME: Please document
     """
-    _modclass = 'simplegui'
-    _modtype = 'gui'
-
-    ## declare connectors
+    # declare connectors
     simplelogic = Connector(interface='SimpleDataLogic')
 
     sigStart = QtCore.Signal()

@@ -31,8 +31,6 @@ from interface.simple_laser_interface import ControlMode, ShutterState, LaserSta
 class LaserLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
-    _modclass = 'laser'
-    _modtype = 'logic'
 
     # waiting time between queries im milliseconds
     laser = Connector(interface='SimpleLaserInterface')

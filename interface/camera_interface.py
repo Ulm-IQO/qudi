@@ -29,9 +29,6 @@ class CameraInterface(metaclass=InterfaceMetaclass):
     """ This interface is used to manage and visualize a simple camera
     """
 
-    _modtype = 'CameraInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_name(self):
         """ Retrieve an identifier of the camera that the GUI can print

@@ -29,9 +29,6 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
         Used for PID control.
     """
 
-    _modtype = 'ProcessControlInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def set_control_value(self, value):
         """ Set the value of the controlled process variable """

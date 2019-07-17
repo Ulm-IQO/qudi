@@ -32,10 +32,8 @@ class PIDLogic(GenericLogic):
     """
     Control a process via software PID.
     """
-    _modclass = 'pidlogic'
-    _modtype = 'logic'
 
-    ## declare connectors
+    # declare connectors
     controller = Connector(interface='PIDControllerInterface')
     savelogic = Connector(interface='SaveLogic')
 

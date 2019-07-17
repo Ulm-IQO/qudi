@@ -50,8 +50,6 @@ class LaserQuantumLaser(Base, SimpleLaserInterface):
         psu: 'SMD6000'
 
     """
-    _modclass = 'lqlaser'
-    _modtype = 'hardware'
 
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
     maxpower = ConfigOption('maxpower', 0.250, missing='warn')

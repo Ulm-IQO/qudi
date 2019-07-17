@@ -39,8 +39,6 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         module.Class: 'microwave.mw_source_dummy.MicrowaveDummy'
 
     """
-    _modclass = 'MicrowaveDummy'
-    _modtype = 'mwsource'
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.

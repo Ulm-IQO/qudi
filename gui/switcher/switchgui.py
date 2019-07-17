@@ -31,9 +31,8 @@ from qtpy import uic
 class SwitchGui(GUIBase):
     """ A grephical interface to mofe switches by hand and change their calibration.
     """
-    _modclass = 'SwitchGui'
-    _modtype = 'gui'
-    ## declare connectors
+
+    # declare connectors
     switchlogic = Connector(interface='SwitchLogic')
 
     def on_activate(self):

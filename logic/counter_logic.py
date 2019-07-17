@@ -54,11 +54,7 @@ class CounterLogic(GenericLogic):
     sigCountStatusChanged = QtCore.Signal(bool)
     sigCountingModeChanged = QtCore.Signal(CountingMode)
 
-
-    _modclass = 'CounterLogic'
-    _modtype = 'logic'
-
-    ## declare connectors
+    # declare connectors
     counter1 = Connector(interface='SlowCounterInterface')
     savelogic = Connector(interface='SaveLogic')
 

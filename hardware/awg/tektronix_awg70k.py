@@ -53,8 +53,6 @@ class AWG70K(Base, PulserInterface):
         # ftp_passwd: 'anonymous@' # optional, the password for ftp login
 
     """
-    _modclass = 'awg70k'
-    _modtype = 'hardware'
 
     # config options
     _visa_address = ConfigOption(name='awg_visa_address', missing='error')

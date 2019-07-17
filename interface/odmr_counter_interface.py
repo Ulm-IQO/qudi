@@ -26,9 +26,6 @@ from core.meta import InterfaceMetaclass
 class ODMRCounterInterface(metaclass=InterfaceMetaclass):
     """ This is the Interface class supplies the controls for a simple ODMR."""
 
-    _modtype = 'ODMRCounterInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def set_up_odmr_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.

@@ -36,10 +36,7 @@ from core.module import Connector, ConfigOption, StatusVar
 
 
 class ODMRLogic(GenericLogic):
-
     """This is the Logic class for ODMR."""
-    _modclass = 'odmrlogic'
-    _modtype = 'logic'
 
     # declare connectors
     odmrcounter = Connector(interface='ODMRCounterInterface')

@@ -29,8 +29,6 @@ class MyHardwareClass(Base, SecondTestInterface, FirstTestInterface):
     """
     This is just a dummy hardware class to be used with SimpleDataReaderLogic.
     """
-    _modclass = 'MyHardwareClass'
-    _modtype = 'hardware'
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

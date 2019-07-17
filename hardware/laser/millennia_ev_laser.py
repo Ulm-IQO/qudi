@@ -45,8 +45,6 @@ class MillenniaeVLaser(Base, SimpleLaserInterface):
         maxpower: 25 # in Watt
 
     """
-    _modclass = 'millenniaevlaser'
-    _modtype = 'hardware'
 
     serial_interface = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
     maxpower = ConfigOption('maxpower', 25.0, missing='warn')

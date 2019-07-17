@@ -29,8 +29,6 @@ from qtpy import QtCore
 class SimpleDataLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
-    _modclass = 'smple_data'
-    _modtype = 'logic'
 
     simpledata = Connector(interface='SimpleDataInterface')
 

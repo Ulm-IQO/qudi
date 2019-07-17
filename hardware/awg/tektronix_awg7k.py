@@ -52,9 +52,6 @@ class AWG7k(Base, PulserInterface):
 
     """
 
-    _modclass = 'awg7k'
-    _modtype = 'hardware'
-
     # config options
     _tmp_work_dir = ConfigOption(name='tmp_work_dir',
                                  default=os.path.join(get_home_dir(), 'pulsed_files'),

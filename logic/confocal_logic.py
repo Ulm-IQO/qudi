@@ -252,8 +252,6 @@ class ConfocalLogic(GenericLogic):
     """
     This is the Logic class for confocal scanning.
     """
-    _modclass = 'confocallogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')

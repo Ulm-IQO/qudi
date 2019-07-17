@@ -31,9 +31,6 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         methods for the hardware class, which get called by the general method.
     """
 
-    _modtype = 'MotorInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.

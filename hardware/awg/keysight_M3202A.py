@@ -54,8 +54,6 @@ class M3202A(Base, PulserInterface):
         awg_serial: 0000000000 # here the serial number of current AWG
 
     """
-    _modclass = 'M3202A'
-    _modtype = 'hardware'
 
     # config options
     serial = ConfigOption(name='awg_serial', missing='error')

@@ -39,9 +39,6 @@ class OBISLaser(Base, SimpleLaserInterface):
 
     """
 
-    _modclass = 'laser'
-    _modtype = 'hardware'
-
     eol = '\r'
     _model_name = 'UNKNOWN'
 

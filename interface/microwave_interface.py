@@ -46,13 +46,11 @@ class MicrowaveMode(Enum):
     SWEEP = 3
     ASWEEP = 4
 
+
 class MicrowaveInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
-
-    _modclass = 'MicrowaveInterface'
-    _modtype = 'interface'
 
     @abc.abstractmethod
     def off(self):

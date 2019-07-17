@@ -27,9 +27,6 @@ from core.module import Connector
 class TestLogic(GenericLogic):
     """ This is the Logic class for testing. """
 
-    _modclass = 'testlogic'
-    _modtype = 'logic'
-
     # connectors
     firsthardware = Connector(interface='FirstTestInterface')
     secondhardware = Connector(interface='SecondTestInterface')

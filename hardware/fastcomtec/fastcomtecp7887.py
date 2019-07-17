@@ -145,7 +145,6 @@ class ACQDATA(ctypes.Structure):
                 ('hct', ctypes.c_int), ]
 
 
-
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
@@ -162,8 +161,6 @@ class FastComtec(Base, FastCounterInterface):
 
     """
 
-    _modclass = 'FastComtec'
-    _modtype = 'hardware'
     gated = ConfigOption('gated', False, missing='warn')
     trigger_safety = ConfigOption('trigger_safety', 200e-9, missing='warn')
     aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')

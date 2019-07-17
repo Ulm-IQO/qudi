@@ -92,10 +92,7 @@ class MagnetSettingsWindow(QtWidgets.QDialog):
 class MagnetGui(GUIBase):
     """ Main GUI for the magnet. """
 
-    _modclass = 'MagnetGui'
-    _modtype = 'gui'
-
-    ## declare connectors
+    # declare connectors
     magnetlogic1 = Connector(interface='MagnetLogic')
     savelogic = Connector(interface='SaveLogic')
 

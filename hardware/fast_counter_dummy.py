@@ -40,8 +40,6 @@ class FastCounterDummy(Base, FastCounterInterface):
         #load_trace: None # path to the saved dummy trace
 
     """
-    _modclass = 'fastcounterinterface'
-    _modtype = 'hardware'
 
     # config option
     _gated = ConfigOption('gated', False, missing='warn')

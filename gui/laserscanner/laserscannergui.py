@@ -50,10 +50,8 @@ class VoltScanGui(GUIBase):
     """
 
     """
-    _modclass = 'VoltScanGui'
-    _modtype = 'gui'
     
-    ## declare connectors
+    # declare connectors
     voltagescannerlogic1 = Connector(interface='VoltageScannerLogic')
     savelogic = Connector(interface='SaveLogic')
 

@@ -25,9 +25,8 @@ from core.meta import InterfaceMetaclass
 
 
 class SimpleDataInterface(metaclass=InterfaceMetaclass):
-
-    _modtype = 'SimpleDataInterface'
-    _modclass = 'interface'
+    """
+    """
 
     @abc.abstractmethod
     def getData(self):

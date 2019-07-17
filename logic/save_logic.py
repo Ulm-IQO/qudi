@@ -121,9 +121,6 @@ class SaveLogic(GenericLogic):
     A general class which saves all kinds of data in a general sense.
     """
 
-    _modclass = 'savelogic'
-    _modtype = 'logic'
-
     _win_data_dir = ConfigOption('win_data_directory', 'C:/Data/')
     _unix_data_dir = ConfigOption('unix_data_directory', 'Data')
     log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')

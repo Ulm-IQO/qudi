@@ -49,8 +49,8 @@ class SpectrometerWindow(QtWidgets.QMainWindow):
 
 
 class SpectrometerGui(GUIBase):
-    _modclass = 'SpectrometerGui'
-    _modtype = 'gui'
+    """
+    """
 
     # declare connectors
     spectrumlogic = Connector(interface='SpectrumLogic')

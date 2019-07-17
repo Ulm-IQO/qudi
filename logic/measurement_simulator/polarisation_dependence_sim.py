@@ -30,12 +30,8 @@ from qtpy import QtCore
 
 
 class PolarizationDependenceSim(Base, SlowCounterInterface, MotorInterface):
-
     """ This class wraps the slow-counter dummy and adds polarisation angle dependence in order to simulate dipole polarisation measurements.
     """
-
-    _modclass = 'polarizationdepsim'
-    _modtype = 'hardware'
 
     # Connectors
     counter1 = Connector(interface='SlowCounterInterface')

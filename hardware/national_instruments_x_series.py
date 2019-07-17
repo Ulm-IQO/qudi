@@ -88,9 +88,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
 
     """
 
-    _modtype = 'NICard'
-    _modclass = 'hardware'
-
     # config options
     _photon_sources = ConfigOption('photon_sources', missing='error')
 

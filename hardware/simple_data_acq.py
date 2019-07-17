@@ -36,10 +36,6 @@ class SimpleAcq(Base, SimpleDataInterface):
         baudrate: 115200
 
     """
-
-    _modclass = 'simple'
-    _modtype = 'hardware'
-
     resource = ConfigOption('interface', 'ASRL1::INSTR', missing='warn')
     baudrate = ConfigOption('baudrate', 115200, missing='warn')
 

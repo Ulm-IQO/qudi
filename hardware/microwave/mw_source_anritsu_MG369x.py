@@ -45,8 +45,6 @@ class MicrowaveAnritsuMG369x(Base, MicrowaveInterface):
         gpib_timeout: 10 # in seconds
 
     """
-    _modclass = 'MicrowaveAanritsu70GHz'
-    _modtype = 'hardware'
 
     _gpib_address = ConfigOption('gpib_address', missing='error')
     _gpib_timeout = ConfigOption('gpib_timeout', 10, missing='warn')

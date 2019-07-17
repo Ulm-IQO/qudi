@@ -93,8 +93,6 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
     """
-    _modclass = 'ConfocalGui'
-    _modtype = 'gui'
 
     # declare connectors
     confocallogic1 = Connector(interface='ConfocalLogic')

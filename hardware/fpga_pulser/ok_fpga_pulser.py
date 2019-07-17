@@ -51,10 +51,6 @@ class OkFpgaPulser(Base, PulserInterface):
         fpga_type: 'XEM6310_LX150'
 
     """
-
-    _modclass = 'pulserinterface'
-    _modtype = 'hardware'
-
     _fpga_serial = ConfigOption(name='fpga_serial', missing='error')
     _fpga_type = ConfigOption(name='fpga_type', default='XEM6310_LX150', missing='warn')
 

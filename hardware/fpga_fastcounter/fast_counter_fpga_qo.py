@@ -63,9 +63,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
 
     """
 
-    _modclass = 'FastCounterFPGAQO'
-    _modtype = 'hardware'
-
     _serial = ConfigOption('fpgacounter_serial', missing='error')
     # 'No parameter "fpgacounter_serial" specified in the config! Set the '
     # 'serial number for the currently used fpga counter!\n'

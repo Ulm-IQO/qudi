@@ -38,9 +38,6 @@ class ODMRCounterMicrowaveInterfuse(GenericLogic, ODMRCounterInterface,
     device.
     """
 
-    _modclass = 'ODMRCounterMicrowaveInterfuse'
-    _modtype = 'interfuse'
-
     slowcounter = Connector(interface='SlowCounterInterface')
     microwave = Connector(interface='MicrowaveInterface')
 

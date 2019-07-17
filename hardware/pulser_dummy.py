@@ -41,8 +41,6 @@ class PulserDummy(Base, PulserInterface):
         module.Class: 'pulser_dummy.PulserDummy'
 
     """
-    _modclass = 'PulserDummy'
-    _modtype = 'hardware'
 
     activation_config = StatusVar(default=None)
 

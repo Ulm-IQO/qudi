@@ -65,8 +65,6 @@ class LaserWindow(QtWidgets.QMainWindow):
 class LaserGUI(GUIBase):
     """ FIXME: Please document
     """
-    _modclass = 'lasergui'
-    _modtype = 'gui'
 
     ## declare connectors
     laserlogic = Connector(interface='LaserLogic')

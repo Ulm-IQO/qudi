@@ -100,9 +100,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                          The first line is 0 and the last is 20.
     """
 
-    _modclass = 'PulseBlasterESRPRO'
-    _modtype = 'hardware'
-
     _library_path = ConfigOption('library_path', default='', missing='info')
 
     # The clock freqency which is necessary for the board.

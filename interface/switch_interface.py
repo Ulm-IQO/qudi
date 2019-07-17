@@ -27,9 +27,6 @@ from core.meta import InterfaceMetaclass
 class SwitchInterface(metaclass=InterfaceMetaclass):
     """ Methods to control slow (mechaincal) laser switching devices. """
 
-    _modtype = 'SwitchInterface'
-    _modclass = 'interface'
-
     @abc.abstractmethod
     def getNumberOfSwitches(self):
         """ Gives the number of switches connected to this hardware.

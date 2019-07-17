@@ -261,11 +261,10 @@ class TreeModel(QtCore.QAbstractItemModel):
         else:
             return parent.itemData[0]
 
+
 class AutomationLogic(GenericLogic):
     """ Logic module agreggating multiple hardware switches.
     """
-    _modclass = 'AutomationLogic'
-    _modtype = 'logic'
     
     taskrunner = Connector(interface='TaskRunner')
 

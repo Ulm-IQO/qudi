@@ -48,9 +48,6 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
     1   10
     """
 
-    _modclass = 'ProcessValueModifier'
-    _modtype = 'interfuse'
-
     hardware = Connector(interface='ProcessInterface')
 
     _calibration = StatusVar(default=None)

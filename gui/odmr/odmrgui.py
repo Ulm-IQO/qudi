@@ -68,9 +68,6 @@ class ODMRGui(GUIBase):
     This is the GUI Class for ODMR measurements
     """
 
-    _modclass = 'ODMRGui'
-    _modtype = 'gui'
-
     # declare connectors
     odmrlogic1 = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
