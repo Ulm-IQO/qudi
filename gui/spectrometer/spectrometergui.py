@@ -23,7 +23,7 @@ import os
 import pyqtgraph as pg
 import numpy as np
 
-from core.module import Connector
+from core.connector import Connector
 from core.util import units
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase

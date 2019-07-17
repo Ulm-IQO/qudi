@@ -27,7 +27,7 @@ from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
 
-from core.module import Connector
+from core.connector import Connector
 from gui.guibase import GUIBase
 
 

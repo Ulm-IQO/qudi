@@ -45,7 +45,8 @@ try:
     from .remote import RemoteObjectManager
 except ImportError:
     RemoteObjectManager = None
-from .module import BaseMixin, Connector
+from .module import BaseMixin
+from .connector import Connector
 
 
 class Manager(QtCore.QObject):

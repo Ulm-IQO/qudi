@@ -27,7 +27,7 @@ import pylab as pb
 import time
 
 from collections import OrderedDict
-from core.module import Connector
+from core.connector import Connector
 from core.util.network import netobtain
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore

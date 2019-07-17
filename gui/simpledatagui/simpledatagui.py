@@ -23,7 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import os
 
-from core.module import Connector
+from core.connector import Connector
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
 from qtpy import QtWidgets

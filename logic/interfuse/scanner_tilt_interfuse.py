@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import copy
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 

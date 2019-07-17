@@ -24,7 +24,7 @@ import os
 import pyqtgraph as pg
 
 from collections import OrderedDict
-from core.module import Connector
+from core.connector import Connector
 from gui.colordefs import ColorScaleInferno
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar

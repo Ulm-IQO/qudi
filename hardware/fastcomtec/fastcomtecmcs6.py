@@ -25,7 +25,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time

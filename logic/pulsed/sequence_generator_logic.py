@@ -28,7 +28,9 @@ import copy
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar, Connector, ConfigOption
+from core.statusvariable import StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
 from core.util.network import netobtain

@@ -23,7 +23,7 @@ import os
 import pyqtgraph.configfile as configfile
 
 from collections import OrderedDict
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 

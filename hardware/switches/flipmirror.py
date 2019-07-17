@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import visa
 import time
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.mutex import Mutex
 from interface.switch_interface import SwitchInterface
 

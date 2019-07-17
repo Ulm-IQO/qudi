@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as tt
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import os
 
 

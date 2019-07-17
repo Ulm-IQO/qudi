@@ -30,7 +30,7 @@ import sys
 import time
 
 from collections import OrderedDict
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from core.util import units
 from core.util.mutex import Mutex
 from core.util.network import netobtain

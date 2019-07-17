@@ -29,7 +29,8 @@ import datetime
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 
-from core.module import Connector, ConfigOption
+from core.connector import Connector
+from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 

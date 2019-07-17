@@ -23,7 +23,8 @@ import numpy as np
 import os
 import thirdparty.stuttgart_counter.TimeTagger as tt
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 

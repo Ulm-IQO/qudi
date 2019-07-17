@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 

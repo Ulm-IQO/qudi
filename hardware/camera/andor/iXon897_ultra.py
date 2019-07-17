@@ -28,7 +28,8 @@ from enum import Enum
 from ctypes import *
 import numpy as np
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 from interface.camera_interface import CameraInterface
 

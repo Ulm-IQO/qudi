@@ -25,7 +25,7 @@ from collections import OrderedDict
 import numpy as np
 import matplotlib.pyplot as plt
 
-from core.module import Connector
+from core.connector import Connector
 from core.util.mutex import Mutex
 from logic.generic_logic import GenericLogic
 

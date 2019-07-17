@@ -23,7 +23,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import serial
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.motor_interface import MotorInterface
 
 

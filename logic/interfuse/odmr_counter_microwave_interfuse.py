@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import numpy as np
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from interface.odmr_counter_interface import ODMRCounterInterface
 from interface.microwave_interface import MicrowaveInterface
