@@ -15,7 +15,8 @@ import qinfer as qi
 import line_profiler
 profile = line_profiler.LineProfiler()
 
-ARRAY_SIZE_MAX = 100
+ARRAY_SIZE_MAX = 300
+GAMMA_NV_MHZ_GAUSS = 2.8e6  # Hz per Gauss
 
 
 from enum import IntEnum
@@ -35,7 +36,15 @@ class MFL_IRQ_Driven(GenericLogic):
     _epoch_done_trig_ch = StatusVar('_epoch_done_trig_ch', 'dev1/port0/line0')
 
     def __init__(self, config, **kwargs):
-        if not __name__ == '__main__':
+        # if not run as a qudi module, we might not want to call Base constructor
+        call_to_super = True
+        if __name__ == '__main__':
+            call_to_super = False
+        if kwargs is not None:
+            for key, val in kwargs.items():
+                if key == 'no_super' and val is True:
+                    call_to_super = False
+        if call_to_super:
             super().__init__(config=config, **kwargs)
 
         self.sequence_name = None
@@ -182,6 +191,7 @@ class MFL_IRQ_Driven(GenericLogic):
                                                           cb_epoch_done, edges=[True, False])
 
         if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
+            self.log.debug("Setting up edge counter for nicard acquisition.")
             self.nicard.set_up_single_edge_counter('dev1/ctr1')
 
         self.save_estimates_before_first_run(tau_first, tau_first_req)
@@ -190,22 +200,14 @@ class MFL_IRQ_Driven(GenericLogic):
             mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
             mes.timer_interval = 100  # basically disable analysis loop, pull manually instead
 
-    #@deprecated
-    def setup_new_run_no_qudi(self):
-        self.init_mfl_algo()
-
-        # run without qudi, so StatusVar not available
-        self.nicard.register_callback_on_change_detection('dev1/port0/line0',
-                                                          self.__cb_func_profile_algo_only, edges=[True, False])
-        self.save_estimates_before_first_run(100e-9, 101e-9)
-
-
-
     def init_arrays(self, n_epochs):
 
         if n_epochs == -1:
             n_epochs = ARRAY_SIZE_MAX
             self.log.warning("Setting array length for infinite epochs to {}".format(n_epochs))
+        if n_epochs > ARRAY_SIZE_MAX:
+            n_epochs = ARRAY_SIZE_MAX
+            self.log.warning("Setting array length for too many epochs to {}".format(n_epochs))
 
         self.timestamps = np.zeros((2*n_epochs, 4))
         self._idx_timestamps = 0
@@ -359,7 +361,7 @@ class MFL_IRQ_Driven(GenericLogic):
     def save_estimates_before_first_run(self, tau_first_real, tau_first_req):
         self.taus_requested[0] = tau_first_req
         self.taus[0] = tau_first_real
-        self.t_seqs[0] = 0
+        self.t_seqs[0] = 0   # todo: this is not correct, but unknown
 
         b_mhz_rad = self.mfl_updater.est_mean()
         self.bs[0] = b_mhz_rad / (2*np.pi)
@@ -389,11 +391,15 @@ class MFL_IRQ_Driven(GenericLogic):
         if self.save_priors:
             self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi))
 
-    def get_current_results(self):
-        b = self.bs[self._arr_idx(self.i_epoch), 0]  # MHz
-        db = self.dbs[self._arr_idx(self.i_epoch), 0]
-        tau = self.taus[self._arr_idx(self.i_epoch), 0] # s
-        tau_req = self.taus_requested[self._arr_idx(self.i_epoch), 0]
+    def get_current_results(self, i_epoch=None):
+
+        if i_epoch is None:
+            i_epoch = self.i_epoch
+
+        b = self.bs[self._arr_idx(i_epoch), 0]  # MHz
+        db = self.dbs[self._arr_idx(i_epoch), 0]
+        tau = self.taus[self._arr_idx(i_epoch), 0] # s
+        tau_req = self.taus_requested[self._arr_idx(i_epoch), 0]
 
         return b, db, tau, tau_req
 
@@ -407,6 +413,95 @@ class MFL_IRQ_Driven(GenericLogic):
         else:
             self.log.error("Can't get first tau if mfl already started.")
             raise RuntimeError("Can't get first tau if mfl already started.")
+
+    def calc_epoch_runtime(self, is_start_to_end=False):
+        """
+        :param mfl_mes: MFL_IRQ_Driven() object that holds measurement results
+        :param is_start_to_end:
+        :return:
+        """
+        ts = self.timestamps
+
+        if is_start_to_end:
+            idx_delta = 1
+        else:  # end_to_end
+            idx_delta = 2
+
+        delta_list = []
+        for i, line in enumerate(ts):
+            # todo: get last irq_start/end event, instead relying on order (-1)
+            is_valid = True
+            is_t_end = False
+            try:
+                is_t_end = TimestampEvent(int(line[3])) is TimestampEvent.irq_end
+            except ValueError:
+                is_valid = False
+            if is_valid:
+                if not is_t_end:
+                    continue
+                if i - idx_delta < 0:   # first epoch, can't calc dif
+                    t_delta = np.nan
+                else:
+                    t_delta = line[2] - ts[i - idx_delta][2]
+                delta_list.append(t_delta)
+
+        return delta_list
+
+    def calc_total_runtime(self, t_per_epoch):
+        t_total = np.zeros(len(t_per_epoch))
+        for i, val in enumerate(t_per_epoch):
+            if t_per_epoch[i] is np.nan:
+                self.log.warning("NaN in array summed up as 0.")
+                t_per_epoch[i] = 0
+            t_total[i] = np.sum(t_per_epoch[0:i + 1])
+
+        return t_total
+
+    def calc_sensitivity(self):
+        """
+        return: phase: no overhead, just phase accumulation
+                seq:  incl. overheads in waveform (eg. lasers)
+                real: incl. all overheads
+        """
+
+        n_sweeps = self.n_sweeps
+        dB_mhz = self.dbs[:, 0]
+        tau_ns = self.taus[:, 0] * 1e9
+        taus_req = self.taus_requested[:, 0] * 1e9
+        t_seq_ns = self.t_seqs[:, 0] * 1e9
+        t_epoch_s = self.calc_epoch_runtime(is_start_to_end=False)
+        # first value: before run, initial mfl estimate
+
+        dB_tesla = dB_mhz / (GAMMA_NV_MHZ_GAUSS * 1e-2)
+        eta_seq_t_s = dB_tesla * np.sqrt(n_sweeps * t_seq_ns * 1e-9)  # Tesla per root Hz
+        eta_real_t_s = dB_tesla * np.pad(np.sqrt(t_epoch_s), (0, len(dB_tesla) - len(t_epoch_s)), mode='constant',
+                                         constant_values=np.nan)
+        eta_phase_t_s = dB_tesla * np.sqrt(n_sweeps * tau_ns * 1e-9)
+
+        return eta_phase_t_s, eta_seq_t_s, eta_real_t_s
+
+    def timestamps_pretty(self):
+
+        # todo: reduce shared code with calc_epoch_runtime
+
+        ts = self.timestamps
+        timestamps_pretty = []
+        for i, line in enumerate(ts):
+                is_valid = True
+                is_t_end = False
+                try:
+                    is_t_end = TimestampEvent(int(line[3])) is TimestampEvent.irq_end
+                except ValueError:
+                    is_valid = False
+                if is_valid:
+                    if i == 0 or not is_t_end:
+                        t_delta = 0
+                    else:
+                        t_delta = line[2] - self.timestamps[i-1][2]
+                    timestamps_pretty.append([int(line[0]), TimestampEvent(int(line[3])).name, line[2], t_delta])
+
+        return timestamps_pretty
+
 
     def end_run(self):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
@@ -437,7 +532,7 @@ class MFL_IRQ_Driven(GenericLogic):
             tau_total = np.sum(self.taus * self.n_sweeps)
             t_seq_total = np.sum(self.t_seqs * self.n_sweeps)
 
-            b, db, tau, tau_req = self.get_current_results()
+            b, db, tau, tau_req = self.get_current_results(i_epoch=self.i_epoch-1)
 
             # log output
             np.set_printoptions(formatter={'float': '{:0.6f}'.format})
@@ -445,23 +540,8 @@ class MFL_IRQ_Driven(GenericLogic):
                             .format(self.i_epoch, self.n_epochs, 1e6*tau_total,
                             b, db, 1e6*t_seq_total))
 
-            timestamps_pretty = []
-            delta_list = []
-            for i, line in enumerate(self.timestamps):
-                # todo: get last irq_start event, instead relying on order (-1)
-                is_valid = True
-                is_t_end = False
-                try:
-                    is_t_end = TimestampEvent(int(line[3])) is TimestampEvent.irq_end
-                except ValueError:
-                    is_valid = False
-                if is_valid:
-                    if i == 0 or not is_t_end:
-                        t_delta = 0
-                    else:
-                        t_delta = line[2] - self.timestamps[i-1][2]
-                        delta_list.append(t_delta)
-                    timestamps_pretty.append([int(line[0]), TimestampEvent(int(line[3])).name, line[2], t_delta])
+            timestamps_pretty = self.timestamps_pretty()
+            delta_list = self.calc_epoch_runtime(is_start_to_end=True)
 
             self.log.info("Timestamps (i_epoch, EventType, t-t0[s], t_irqend - t irqstart[s]): {}".format(timestamps_pretty))
             self.log.info("IRQ Timing: avg: {} +- {} ms from {} events. Deltas: {}".format(
@@ -703,17 +783,20 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
-        # todo:
-        # - The fastcomtec has a minimum range, need to check that the fastcounterlength is not less than this
-
-
         # done here, because before mes uploaded info not available and mes directly starts after upload atm
         # ugly, because costs time in first epoch
         if self.i_epoch == 0:
             self.is_running = True  # todo: should this be mutexed?
             self.is_running_lock.acquire()
+            try:
+                self.wait_for_start_lock.release()      # only needed if run as seperate thread
+            except RuntimeError:
+                pass
 
-            self.pull_jumptable(seqname=self.sequence_name)
+            if self.is_no_qudi:
+                self.pull_jumptable(seqname=self.sequence_name, load_vars_metafile='temp/mfl_meta.pkl')
+            else:
+                self.pull_jumptable(seqname=self.sequence_name)
             self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
 
         self.timestamp(self.i_epoch, TimestampEvent.irq_start)
@@ -728,7 +811,10 @@ class MFL_IRQ_Driven(GenericLogic):
 
         last_tau = self.taus[self.i_epoch, 0]
         tau_and_x = self.get_tau_and_x(last_tau)
-        self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
+        try:
+            self.mfl_updater.update(z_binary, tau_and_x)  # updates prior
+        except RuntimeError as e:
+            self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
 
         # new tau
         tau_req = self.calc_tau_from_posterior()    # new tau
@@ -737,17 +823,19 @@ class MFL_IRQ_Driven(GenericLogic):
         # for next epoch
         idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
         real_tau, t_seq = self.get_ts(idx_jumptable)
+        #idx_jumptable, addr = 4, 1     # DEBUG, deterministically jump to first tau
+        #real_tau, t_seq = -1, -1
 
         # save result after measuring of this epoch and updating priors
         self.save_current_results(real_tau, tau_req, t_seq, z)
         self.iterate_mfl()  # iterates i_epoch
 
+        self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
         if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
             self.end_run()
             return 0
             # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
 
-        self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
         self.output_jump_pattern(addr)      # should directly before return
 
         return 0
@@ -788,58 +876,6 @@ class MFL_IRQ_Driven(GenericLogic):
         #ucmd.send_ttl_pulse(None, channel_name='/dev1/PFI9', t_wait=0.01)
 
         #print("{}".format(self.i_epoch))
-
-        return 0
-
-    def _cb_func_profile_no_qudi(self, taskhandle, signalID, callbackData):
-
-        # done here, because before mes uploaded info not available and mes directly starts after upload atm
-        # ugly, because costs time in first epoch
-        if self.i_epoch == 0:
-            self.is_running = True  # todo: should this be mutexed?
-            self.is_running_lock.acquire()
-            self.wait_for_start_lock.release()
-
-            time.sleep(1)
-
-            self.pull_jumptable(seqname=self.sequence_name, load_vars_metafile='temp/mfl_meta.pkl')
-            self.taus[0,0] = self._find_nearest(self.jumptable['tau'], self.taus[0,0])[1]   # todo: ugly. problem: atm, we don't now before first run started
-
-        self.timestamp(self.i_epoch, TimestampEvent.irq_start)
-
-        # we are after the mes -> prepare for next epoch
-
-        _, z = self.get_ramsey_result()
-        #z = 0  # DEBUG
-        z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
-
-        if not self.nolog_callback:
-            self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
-
-        last_tau = self.taus[self.i_epoch, 0]
-        tau_and_x = self.get_tau_and_x(last_tau)
-        self.mfl_updater.update(z_binary, tau_and_x)        # updates prior
-
-        # new tau
-        tau_req = self.calc_tau_from_posterior()    # new tau
-
-        #tau_req = 3500e-9
-        idx_jumptable, addr = self.calc_jump_addr(tau_req, last_tau)
-        real_tau, t_seq = self.get_ts(idx_jumptable)
-        #idx_jumptable, addr = 4, 1     # DEBUG, deterministically jump to first tau
-        #real_tau, t_seq = -1, -1
-
-        # save result after measuring of this epoch and updating priors
-        self.save_current_results(real_tau, tau_req, t_seq, z)
-        self.iterate_mfl()  # iterates i_epoch
-
-        if self.n_epochs is not -1 and self.i_epoch >= self.n_epochs:
-            self.end_run()
-            return 0
-            # make sure thath i_epoch + 1 is never reached, if i_epoch == n_epochs
-
-        self.timestamp(self.i_epoch - 1, TimestampEvent.irq_end)
-        self.output_jump_pattern(addr)      # should directly before return
 
         return 0
 
@@ -994,10 +1030,9 @@ if __name__ == '__main__':
 
     logging.basicConfig(level=logging.DEBUG)
     #logging.basicConfig(filename='logfile.log', filemode='w', level=logging.DEBUG)
-
     logger = logging.getLogger(__name__)
 
-    mfl_logic = MFL_IRQ_Driven(None)
+    mfl_logic = MFL_IRQ_Driven(None, no_super=True)
     mfl_logic.on_activate(logger_override=logger)
 
     def profile_mfl_pj(n_epochs=1000):
@@ -1042,16 +1077,72 @@ if __name__ == '__main__':
         for i in range(0, int(n_reps)):
             _, z = mfl_logic._pull_data_methods['ungated_sum_up_cts']()
 
-    def setup_mfl_seperate_thread():
+    def import_mfl_params(meta_filename):
+        with open(meta_filename, 'rb') as file:
+            meta = pickle.load(file)
 
-        # todo:
-        # parse setup params from file written by jupyter notebook
-        n_sweeps = 1e5
-        n_epochs = 75
-        z_thresh = 36.5e-3
-        tau_start = 25e-9
+        params = meta['mfl_params']
+        t_start_str = meta['t_start']
+        lock = meta['lock_file']
 
-        logger.info("Setting up mfl irq driven in own thread. Start mes from qudi. Will wait until all epochs done.")
+        #logger.debug("Found params for mes started at {} with lock {}".format(t_start_str, lock))
+
+        return params, lock
+
+    def lockfile_aquire(filename, timeout_s=0):
+        """
+        Lockfile is deleted aa soon as mes starts.
+        -> Don't start mes from old meta file.
+        :param filename:
+        :param timeout_s: 0: return immediately, -1: wait infinitely
+        :return:
+        """
+        t_start = time.time()
+        timeout = False
+        success = False
+
+        while not timeout and not success:
+
+            t_now = time.time()
+            if t_now - t_start > timeout_s:
+                if not timeout_s < 0:
+                    timeout = True
+            try:
+                with open(filename, 'rb') as file:
+                    lock = pickle.load(file)
+                success = True
+                logger.info("Sucessfully aquired lock {}".format(filename))
+            except Exception as e:
+                success = False
+
+        if success:
+            os.remove(filename)
+
+        return success
+
+    def wait_for_correct_metafile(meta_filename, timeout_s=-1):
+        """
+        Continously load metafile. Could be old, not belonging to current mes.
+        So wait until correct lock to be obtained.
+        """
+        t_start = time.time()
+        timeout = False
+        success = False
+
+        while not timeout and not success:
+            t_now = time.time()
+            if t_now - t_start > timeout_s:
+                if not timeout_s < 0:
+                    timeout = True
+
+            _, lock = import_mfl_params(meta_filename)
+            success = lockfile_aquire(lock, 1)
+
+        return success
+
+    def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh):
+
+        #tau_start = 25e-9
 
         mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=True, z_thresh=z_thresh)
         mfl_logic.save_priors = True     # DEBUG only
@@ -1060,9 +1151,10 @@ if __name__ == '__main__':
         tau_first = tau_first_req  # PROBLEM would like to get from seqtable, but only created after run started
         # shortest tau mfl algo may choose, problem: shorter than tau_first causes rounding issues
 
-        logger.info("First tau from flat prior {} ns".format(1e9 * tau_first))
+        logger.info("Setting up mfl. n_sweeps= {}, n_epochs={}, z_thresh={}, First tau from flat prior {} ns".format(
+                n_sweeps, n_epochs, z_thresh, 1e9 * tau_first))
 
-        mfl_logic.setup_new_run(tau_first, tau_first_req, cb_epoch_done=mfl_logic._cb_func_profile_no_qudi)
+        mfl_logic.setup_new_run(tau_first, tau_first_req)
 
         if mfl_logic._cur_pull_data_method is 'gated_2d':
             mfl_logic.fastcounter.change_sweep_mode(gated=True, is_single_sweeps=False,
@@ -1124,7 +1216,12 @@ if __name__ == '__main__':
     Run in sepearte thread
     """
 
-    setup_mfl_seperate_thread()
+    logger.info("Setting up mfl irq driven in own thread.")
+    logger.info("Waiting for new mes params. Now start mfl from qudi/jupyter notebook.")
+    wait_for_correct_metafile('temp/mfl_meta.pkl')
+    params, _ = import_mfl_params('temp/mfl_meta.pkl')
+
+    setup_mfl_seperate_thread(n_epochs=params['n_epochs'], n_sweeps=params['n_sweeps'], z_thresh=params['z_thresh'])
     join_mfl_seperate_thread()
 
 
