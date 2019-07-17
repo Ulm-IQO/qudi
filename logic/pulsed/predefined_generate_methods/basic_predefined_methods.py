@@ -1575,7 +1575,7 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
                                                       start_freq=mw_freq - mw_freq_incr / 2. - freq_overlap,
                                                       stop_freq=mw_freq + mw_freq_incr / 2. + freq_overlap,
                                                       phase=0,
-                                                      tau_pulse=truncation_ratio * pulse_length)
+                                                      truncation_ratio=truncation_ratio)
             chirpedodmr_block.append(mw_element)
             chirpedodmr_block.append(laser_element)
             chirpedodmr_block.append(delay_element)
@@ -1603,11 +1603,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
 
         if adiabAE < 2.5:
             self.log.error(
-                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/tau_pulse)>>1 is not fulfilled,  Rabi**2/(pulse_freq_range/tau_pulse) = ' + str(
+                'Adiabadicity conditions not matched. Rabi**2/(pulse_freq_range/pulse_length/truncation_ratio)>>1 is '
+                'not fulfilled,  Rabi**2/(pulse_freq_range / pulse_length / truncation_ratio) = ' + str(
                     adiabAE))
         else:
             self.log.info(
-                'Adiabadicity conditions is Rabi**2/(pulse_freq_range/tau_pulse) = {} >> 1'.format(adiabAE))
+                'Adiabadicity conditions is Rabi**2/'
+                '(pulse_freq_range / pulse_length / truncation_ratio) = {} >> 1'.format(adiabAE))
 
         # Approximate expected transfer efficiency in case of perfect adiabaticity for a AE pulse
         # this formula works very well for adiab > 2.5
