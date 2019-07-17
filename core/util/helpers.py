@@ -28,6 +28,8 @@ import os
 import re
 import sys
 import atexit
+import importlib
+import logging
 
 # use setuptools parse_version if available and use distutils LooseVersion as
 # fallback
@@ -43,13 +45,10 @@ try:
 except ImportError:
     pass
 
-import importlib
-import logging
 logger = logging.getLogger(__name__)
 
+
 # Optional function for exiting immediately (with some manual teardown)
-
-
 def exit(exitcode=0):
     """
     Causes python to exit without garbage-collecting any objects, and thus
@@ -126,11 +125,11 @@ def import_check():
     missing. Make a warning about missing packages. Check versions.
     """
     # encode like: (python-package-name, repository-name, version)
-    vital_pkg = [('ruamel.yaml','ruamel.yaml', None),
-                 ('fysom','fysom', '2.1.4')]
-    opt_pkg = [('rpyc','rpyc', None),
-               ('pyqtgraph','pyqtgraph', None),
-               ('git','gitpython', None)]
+    vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
+                 ('fysom', 'fysom', '2.1.4')]
+    opt_pkg = [('rpyc', 'rpyc', None),
+               ('pyqtgraph', 'pyqtgraph', None),
+               ('git', 'gitpython', None)]
 
     def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
         """
