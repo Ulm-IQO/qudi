@@ -25,7 +25,7 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector
+from core.connector import Connector
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState

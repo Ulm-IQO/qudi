@@ -20,7 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import visa
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 from interface.simple_data_interface import SimpleDataInterface
 from interface.process_interface import ProcessInterface

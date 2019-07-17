@@ -24,7 +24,7 @@ import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
 
-from core.module import Connector
+from core.connector import Connector
 from gui.guibase import GUIBase
 from qtpy import QtGui, QtWidgets, QtCore, uic
 

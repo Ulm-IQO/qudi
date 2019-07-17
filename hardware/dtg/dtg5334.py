@@ -29,7 +29,8 @@ import visa
 from core.util.helpers import natural_sort
 
 from interface.pulser_interface import PulserInterface, PulserConstraints
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 
 class DTG5334(Base, PulserInterface):

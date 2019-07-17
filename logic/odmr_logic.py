@@ -28,11 +28,12 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
-import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 
 
 class ODMRLogic(GenericLogic):

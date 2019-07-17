@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 import pyqtgraph as pg
 
-from core.module import Connector
+from core.connector import Connector
 from gui.colordefs import QudiPalettePale as Palette
 from gui.guibase import GUIBase
 from gui.colordefs import ColorScaleInferno

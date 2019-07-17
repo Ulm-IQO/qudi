@@ -23,7 +23,8 @@ import time
 import numpy as np
 from qtpy import QtCore
 
-from core.module import Connector, ConfigOption
+from core.connector import Connector
+from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from interface.simple_laser_interface import ControlMode, ShutterState, LaserState
 

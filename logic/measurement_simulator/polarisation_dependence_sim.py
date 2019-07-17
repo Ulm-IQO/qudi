@@ -23,7 +23,8 @@ import numpy as np
 import random
 import time
 
-from core.module import Base, Connector
+from core.module import Base
+from core.connector import Connector
 from interface.motor_interface import MotorInterface
 from interface.slow_counter_interface import SlowCounterInterface
 from qtpy import QtCore

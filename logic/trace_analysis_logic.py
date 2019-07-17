@@ -23,7 +23,7 @@ import scipy.integrate as integrate
 from scipy.interpolate import InterpolatedUnivariateSpline
 from collections import OrderedDict
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 
 

@@ -25,7 +25,8 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 from interface.slow_counter_interface import CountingMode
 from core.util.mutex import Mutex

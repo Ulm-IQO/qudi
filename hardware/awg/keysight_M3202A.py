@@ -40,7 +40,8 @@ else:
 
 import keysightSD1 as ksd1
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 

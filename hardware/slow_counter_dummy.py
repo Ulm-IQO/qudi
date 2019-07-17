@@ -24,7 +24,8 @@ import numpy as np
 import random
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode

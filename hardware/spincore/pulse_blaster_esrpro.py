@@ -29,8 +29,8 @@ from interface.switch_interface import SwitchInterface
 from interface.pulser_interface import PulserInterface
 from interface.pulser_interface import PulserConstraints
 
-from core.module import Base, ConfigOption
-from core.util.modules import get_main_dir
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.mutex import Mutex
 
 

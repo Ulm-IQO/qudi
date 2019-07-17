@@ -26,7 +26,9 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from interface.pid_controller_interface import PIDControllerInterface
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 
 
 class SoftPIDController(GenericLogic, PIDControllerInterface):

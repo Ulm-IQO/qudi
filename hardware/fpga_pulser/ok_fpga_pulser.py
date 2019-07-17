@@ -19,7 +19,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, ConfigOption, StatusVar
+from core.module import Base
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from interface.pulser_interface import PulserInterface, PulserConstraints
 import okfrontpanel as ok

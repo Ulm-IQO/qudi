@@ -29,7 +29,8 @@ import ctypes   # is a foreign function library for Python. It provides C
                 # in pure Python.
 
 from interface.wavemeter_interface import WavemeterInterface
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.mutex import Mutex
 
 

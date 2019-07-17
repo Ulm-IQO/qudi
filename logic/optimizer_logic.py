@@ -24,7 +24,8 @@ import numpy as np
 import time
 
 from logic.generic_logic import GenericLogic
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 
 

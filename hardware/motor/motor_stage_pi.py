@@ -25,8 +25,10 @@ import time
 
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.motor_interface import MotorInterface
+
 
 class MotorStagePI(Base, MotorInterface):
     """unstable: Christoph Müller, Simon Schmitt

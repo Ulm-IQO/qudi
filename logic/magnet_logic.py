@@ -25,7 +25,8 @@ import numpy as np
 import time
 
 from collections import OrderedDict
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 from interface.slow_counter_interface import CountingMode

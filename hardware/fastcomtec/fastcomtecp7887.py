@@ -24,7 +24,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #TODO: What does get status do or need as return?
 #TODO: Check if there are more modules which are missing, and more settings for FastComtec which need to be put, should we include voltage threshold?
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time

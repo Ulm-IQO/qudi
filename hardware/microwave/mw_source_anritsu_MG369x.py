@@ -26,7 +26,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import visa
 import time
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.microwave_interface import MicrowaveInterface
 from interface.microwave_interface import MicrowaveLimits
 from interface.microwave_interface import MicrowaveMode

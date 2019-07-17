@@ -27,7 +27,8 @@ import pyqtgraph as pg
 import pyqtgraph.exporters
 from qtpy import uic
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from gui.colordefs import ColorScaleInferno
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar

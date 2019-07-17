@@ -24,7 +24,8 @@ import time
 import os
 import numpy as np
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 
