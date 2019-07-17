@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import abc
+from core.interface import abstract_interface_method
 from core.interface import interface_method, abstract_interface_method
 from core.meta import InterfaceMetaclass
 

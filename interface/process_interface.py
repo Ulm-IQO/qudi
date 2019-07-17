@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 
 
@@ -29,12 +29,12 @@ class ProcessInterface(metaclass=InterfaceMetaclass):
         Used for PID controll.
     """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_process_value(self):
         """ Return a measured value """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_process_unit(self):
         """ Return the unit that hte value is measured in as a tuple of ('abreviation', 'full unit name') """
         pass
