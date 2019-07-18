@@ -992,7 +992,7 @@ class PulsedMeasurementLogic(GenericLogic):
             update_fit_data = False
 
         if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
-            self.debug.error('The data you are trying to fit does not contain enough data for a fit.')
+            self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
             return
 
         x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
