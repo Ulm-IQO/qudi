@@ -21,6 +21,8 @@ top-level directory of this distribution and at
 """
 
 import copy
+import sys
+import inspect
 from .interface import InterfaceMethod
 
 
@@ -65,15 +67,27 @@ class Connector:
 
     def connect(self, target):
         """ Check if target is connectable this connector and connect."""
-        if not isinstance(self.interface, str):
+        if isinstance(self.interface, str):
+            bases = list(map(str, inspect.getmro(target.__class__)))
+
+            interface_base = None
+            for base in bases:
+                if self.interface in base:
+                    interface_base = base
+                    break
+            if interface_base is None:
+                print('Warning: Incorrect interface "{0}" in the bases for connector "{1}". '
+                      'Bases found: {2!s}'.format(self.interface, self.name, bases),
+                      file=sys.stderr)
+
+            self.obj = target
+        else:
             if isinstance(target, self.interface):
                 self.obj = target
             else:
                 raise Exception(
                     'Module {0} connected to connector {1} does not implement interface {2}.'
                     ''.format(target, self.name, self.interface))
-        else:
-            self.obj = target
 
     def disconnect(self):
         """ Disconnect connector. """
