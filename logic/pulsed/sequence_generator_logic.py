@@ -118,11 +118,10 @@ class SequenceGeneratorLogic(GenericLogic):
         # directory for additional generate methods to import
         # (other than logic.predefined_generate_methods)
         if 'additional_methods_dir' in config.keys():
-            if isinstance(config['additional_methods_dir'], str) and not os.path.exists(config['additional_methods_dir']):
-                self.log.error('Specified path "{0}" for import of additional generate methods '
-                               'does not exist.'.format(config['additional_methods_dir']))
-                self.additional_methods_dir = None
-            elif isinstance(config['additional_methods_dir'], (list, tuple, set)):
+            if isinstance(config['additional_methods_dir'], str):
+                config['additional_methods_dir'] = [config['additional_methods_dir']]
+
+            if isinstance(config['additional_methods_dir'], (list, tuple, set)):
                 self.additional_methods_dir = list()
                 for methods_dir in config['additional_methods_dir']:
                     if not os.path.exists(methods_dir):
@@ -130,7 +129,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                        'does not exist.'.format(methods_dir))
                     else:
                         self.additional_methods_dir.append(methods_dir)
-
+            else:
+                self.log.error('ConfigOption additional_predefined_methods_path needs to either be a string or '
+                               'a list of strings.')
 
         # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
@@ -167,18 +168,18 @@ class SequenceGeneratorLogic(GenericLogic):
         # sampling functions from.
         sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_function_defs')]
         if isinstance(self._sampling_functions_import_path, str):
-            if not os.path.exists(self._sampling_functions_import_path):
-                self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
-                               'does not exist (str).'.format(self._sampling_functions_import_path))
-            else:
-                sf_path_list.append(self._sampling_functions_import_path)
-        elif isinstance(self._sampling_functions_import_path, (list, tuple, set)):
+            self._sampling_functions_import_path = [self._sampling_functions_import_path]
+
+        if isinstance(self._sampling_functions_import_path, (list, tuple, set)):
             for functions_import_path in self._sampling_functions_import_path:
                 if not os.path.exists(functions_import_path):
                     self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
-                                   'does not exist (list).'.format(functions_import_path))
+                                   'does not exist.'.format(functions_import_path))
                 else:
                     sf_path_list.append(functions_import_path)
+        else:
+            self.log.error('ConfigOption additional_sampling_functions_path needs to either be a string or '
+                           'a list of strings.')
         SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
