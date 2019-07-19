@@ -42,7 +42,7 @@ class ODMRLogic(GenericLogic):
     # declare connectors
     odmrcounter = Connector(interface='ODMRCounterInterface')
     fitlogic = Connector(interface='FitLogic')
-    microwave1 = Connector(interface='mwsourceinterface')
+    microwave1 = Connector(interface='MicrowaveInterface')
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 
