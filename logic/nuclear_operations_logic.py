@@ -60,7 +60,7 @@ class NuclearOperationsLogic(GenericLogic):
     # declare connectors
     # TODO: Use rather the task runner instead directly the module!
 
-    sequencegenerationlogic = Connector(interface='SequenceGenerationLogic')
+    sequencegenerationlogic = Connector(interface='SequenceGeneratorLogic')
     traceanalysislogic = Connector(interface='TraceAnalysisLogic')
     gatedcounterlogic = Connector(interface='CounterLogic')
     odmrlogic = Connector(interface='ODMRLogic')

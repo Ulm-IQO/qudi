@@ -24,7 +24,6 @@ import time
 from collections import OrderedDict
 
 from core.module import Base
-from core.configoption import ConfigOption
 from core.statusvariable import StatusVar
 from core.util.helpers import natural_sort
 from interface.pulser_interface import PulserInterface, PulserConstraints
