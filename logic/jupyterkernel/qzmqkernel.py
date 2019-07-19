@@ -53,6 +53,7 @@ from warnings import warn
 import ast
 import traceback
 import jedi
+import threading
 
 # zmq specific imports:
 import zmq
@@ -185,6 +186,12 @@ class QZMQKernel(QtCore.QObject):
         self.displayhook = DisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
+        threading.current_thread().notebook_thread = True
+        self.stderr = RedirectedStdErr()
+        self.stderr.open(IOStderrNetworkStream(self.iopub_stream, sys.stderr))
+        self.stdout = RedirectedStdOut()
+        self.stdout.open(IOStdoutNetworkStream(self.iopub_stream, sys.stdout))
+
         setup_matplotlib(self)
 
     @QtCore.Slot()
@@ -197,6 +204,8 @@ class QZMQKernel(QtCore.QObject):
         self.heartbeat_stream.close()
 
         self.hb_thread.quit()
+        self.stdout.close()
+        self.stderr.close()
         self.sigShutdownFinished.emit(self.engine_id)
 
     def display_data(self, mimetype, fmt_dict, metadata=None):
@@ -251,17 +260,22 @@ class QZMQKernel(QtCore.QObject):
         }
         self.iopub_stream.send('execute_input', content)
 
+        # redirect Thread module to have a marker for the notebook
+        old_thread = sys.modules['threading'].Thread
+        sys.modules['threading'].Thread = ThreadFixer
+
         # capture output
         self.displaydata = list()
-        with RedirectedStdErr(IOStderrNetworkStream(self.iopub_stream)):
-            with RedirectedStdOut(IOStdoutNetworkStream(self.iopub_stream)):
-                # actual execution
-                try:
-                    res = self.run_cell(msg['content']['code'])
-                except Exception as e:
-                    res = ExecutionResult()
-                    tb = traceback.format_exc()
-                    print('{}\n{}'.format(e, tb), file=sys.stderr)
+        # actual execution
+        try:
+            res = self.run_cell(msg['content']['code'])
+        except Exception as e:
+            res = ExecutionResult()
+            tb = traceback.format_exc()
+            print('{}\n{}'.format(e, tb), file=sys.stderr)
+
+        # reverse the redirect for the Thread module
+        sys.modules['threading'].Thread = old_thread
 
         # send captured result if there is any
         if len(res.result) > 0:

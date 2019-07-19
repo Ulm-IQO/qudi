@@ -29,6 +29,11 @@ distributed as part of this software.
 import sys
 import builtins
 from base64 import encodebytes
+import threading
+
+
+class ThreadFixer(threading.Thread):
+    notebook_thread = True
 
 
 class ExecutionResult:
