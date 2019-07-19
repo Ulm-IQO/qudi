@@ -336,7 +336,9 @@ class M3202A(Base, PulserInterface):
 
         @return float: the sample rate returned from the device (in Hz).
         """
-        return self.awg.clockSetFrequency(sample_rate, ksd1.SD)
+        if self.awg.clockSetFrequency(sample_rate, 0) < 0:
+            self.log.error('Error while setting clock frequency.')
+        return self.get_sample_rate()
 
     def get_analog_level(self, amplitude=None, offset=None):
         """ Retrieve the analog amplitude and offset of the provided channels.
