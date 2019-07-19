@@ -26,6 +26,7 @@ import uuid
 import errno
 import datetime
 from io import StringIO
+import threading
 from threading import Thread, Lock, Event
 import time
 from core.util.mutex import Mutex
@@ -239,23 +240,27 @@ class IOStdoutNetworkStream(StringIO):
     By using locks thread safety should be guaranteed for the write operation.
     """
 
-    def __init__(self, network_stream, *args, **kwargs):
+    def __init__(self, network_stream, old_stdout, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._output_channel = 'stdout'
         self._network_stream = network_stream
+        self._old_stdout = old_stdout
 
         self._lock = Lock()
         self._stop = Event()
         self._stop.clear()
         # initialize the thread for the hardware query
-        self._network_thread = Thread(target=self._run_network_loop)
+        self._network_thread = Thread(target=self._run_network_loop, name='redirect ' + self._output_channel)
 
         # start the threads
         self._network_thread.start()
 
     def write(self, s):
         self._lock.acquire()
-        super().write(s)
+        if hasattr(threading.current_thread(), 'notebook_thread'):
+            super().write(s)
+        else:
+            self._old_stdout.write(s)
         self._lock.release()
 
     def _run_network_loop(self):
