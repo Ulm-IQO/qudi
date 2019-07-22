@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 """
 
-from core.module import Base, ConfigOption
+from core.module import Base, ConfigOption, StatusVar
 from interface.spectrometer_interface import SpectrometerInterface
 import numpy as np
 import seabreeze.spectrometers as sb
@@ -30,7 +30,7 @@ import seabreeze.spectrometers as sb
 
 
 class OceanOptics(Base, SpectrometerInterface):
-    """ Hardware module for reading spectra from the WinSpec32 spectrometer software.
+    """ Hardware module for reading spectra from the Ocean Optics spectrometer software.
 
     Example config for copy-paste:
 
@@ -40,15 +40,15 @@ class OceanOptics(Base, SpectrometerInterface):
 
     """
     _serial = ConfigOption('spectrometer_serial', missing='warn')
+    _integration_time = StatusVar('integration_time', default=1e4)
 
     def on_activate(self):
         """ Activate module.
         """
-        self.integration_time = 1e4
-
         self.spec = sb.Spectrometer.from_serial_number(self._serial)
         self.log.info(''.format(self.spec.model, self.spec.serial_number))
-        self.spec.integration_time_micros(self.integration_time)
+        self.spec.integration_time_micros(self._integration_time)
+
 
     def on_deactivate(self):
         """ Deactivate module.
@@ -73,7 +73,7 @@ class OceanOptics(Base, SpectrometerInterface):
 
             Not implemented.
         """
-        return self.integration_time_micros
+        return self._integration_time
 
     def setExposure(self, exposureTime):
         """ Set exposure.
@@ -81,5 +81,5 @@ class OceanOptics(Base, SpectrometerInterface):
             @param float exposureTime: exposure time in microseconds
 
         """
-        self.integration_time_micros = exposureTime
-        self.spec.integration_time_micros(self.integration_time_micros)
+        self._integration_time = exposureTime
+        self.spec.integration_time_micros(self._integration_time)
