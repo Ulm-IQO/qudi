@@ -31,7 +31,7 @@ on an interpolated function
 * Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
 * Added an optional parameter to connectors so that dependencies can be optional
 * Made ODMR logic an optional dependency in SpectrumLogic
-*
+* Adding Ocean optics spectrometer hardware module.
 
 Config changes:
 
