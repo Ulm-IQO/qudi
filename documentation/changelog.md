@@ -33,6 +33,7 @@ on an interpolated function
 * Made ODMR logic an optional dependency in SpectrumLogic
 * Adding Ocean optics spectrometer hardware module.
 
+
 Config changes:
 
 * 
