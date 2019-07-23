@@ -53,7 +53,7 @@ class OceanOptics(Base, SpectrometerInterface):
         self.spec.close()
 
     def recordSpectrum(self):
-        """ Record spectrum from WinSpec32 software.
+        """ Record spectrum from Ocean Optics spectrometer.
 
             @return []: spectrum data
         """
