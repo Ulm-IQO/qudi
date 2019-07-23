@@ -18,7 +18,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 #  Authors:
 #
 #  * Brian Granger
@@ -30,33 +30,40 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 #
 #  Complete license in the file documentation/BSDLicense_IPython.md,
 #  distributed with this software.
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 # Imports
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 import builtins as builtin_mod
 
-#-----------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Classes and functions
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 
 class __BuiltinUndefined:
     """ Empty class.
     """
     pass
+
+
 BuiltinUndefined = __BuiltinUndefined()
+
 
 class __HideBuiltin:
     """ Empty class.
     """
     pass
+
+
 HideBuiltin = __HideBuiltin()
 
 
 class BuiltinTrap:
     """ Protect builtins from code in some environment. """
+
     def __init__(self):
         self._orig_builtins = {}
         # We define this to track if a single BuiltinTrap is nested.
@@ -94,7 +101,7 @@ class BuiltinTrap:
         bdict = builtin_mod.__dict__
         orig = bdict.get(key, BuiltinUndefined)
         if value is HideBuiltin:
-            if orig is not BuiltinUndefined: #same as 'key in bdict'
+            if orig is not BuiltinUndefined:  # same as 'key in bdict'
                 self._orig_builtins[key] = orig
                 del bdict[key]
         else:
@@ -110,7 +117,6 @@ class BuiltinTrap:
 
     def activate(self):
         """Store ipython references in the __builtin__ namespace."""
-
         add_builtin = self.add_builtin
         for name, func in iter(self.auto_builtins.items()):
             add_builtin(name, func)
