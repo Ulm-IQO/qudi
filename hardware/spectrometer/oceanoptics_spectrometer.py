@@ -25,7 +25,6 @@ import numpy as np
 import seabreeze.spectrometers as sb
 
 
-
 class OceanOptics(Base, SpectrometerInterface):
     """ Hardware module for reading spectra from the Ocean Optics spectrometer software.
 
@@ -43,12 +42,10 @@ class OceanOptics(Base, SpectrometerInterface):
         """ Activate module.
         """
 
-
         self.spec = sb.Spectrometer.from_serial_number(self._serial)
         self.log.info(''.format(self.spec.model, self.spec.serial_number))
         self.spec.integration_time_micros(self._integration_time)
         self.log.info('Exposure set to {} microseconds'.format(self._integration_time))
-
 
     def on_deactivate(self):
         """ Deactivate module.
