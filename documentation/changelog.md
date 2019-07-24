@@ -38,6 +38,7 @@ on an interpolated function
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
 * Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Add two different chirp functions to sampling functions and predefined methods
 * 
 
 Config changes:
