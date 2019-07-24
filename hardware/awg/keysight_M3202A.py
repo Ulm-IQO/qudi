@@ -147,9 +147,6 @@ class M3202A(Base, PulserInterface):
 
         activation_config = OrderedDict()
         activation_config['all'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3', 'a_ch4'})
-        activation_config['one'] = frozenset({'a_ch1'})
-        activation_config['two'] = frozenset({'a_ch1', 'a_ch2'})
-        activation_config['three'] = frozenset({'a_ch1', 'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
         # FIXME: additional constraint really necessary?
         constraints.dac_resolution = {'min': 14, 'max': 14, 'step': 1, 'unit': 'bit'}
