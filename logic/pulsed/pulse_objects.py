@@ -1403,18 +1403,9 @@ class PulseObjectGenerator(PredefinedGeneratorBase):
         # dictionary containing all keyword arguments as keys with their default value
         self._generate_method_parameters = dict()
 
-        # import path for generator modules from default dir (logic.predefined_generate_methods)
-        path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'predefined_generate_methods')]
-        # import path for generator modules from non-default directory if a path has been given
-        if isinstance(sequencegeneratorlogic.additional_methods_dir, str):
-            path_list.append(sequencegeneratorlogic.additional_methods_dir)
-        elif isinstance(sequencegeneratorlogic.additional_methods_dir, (list, tuple, set)):
-            for method_dir in sequencegeneratorlogic.additional_methods_dir:
-                if isinstance(method_dir, str):
-                    path_list.append(method_dir)
-
         # Import predefined generator modules and get a list of generator classes
-        generator_classes = self.__import_external_generators(paths=path_list)
+        generator_classes = self.__import_external_generators(
+            paths=sequencegeneratorlogic.predefined_methods_import_path)
 
         # create an instance of each class and put them in a temporary list
         generator_instances = [cls(sequencegeneratorlogic) for cls in generator_classes]
