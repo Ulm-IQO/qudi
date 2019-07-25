@@ -21,7 +21,6 @@ import numpy as np
 from core.module import Connector
 from gui.guibase import GUIBase
 from qtpy import QtWidgets, QtGui, QtCore
-from logic.pulsed.sampling_functions import SamplingFunctions
 
 
 class RenderArea(QtWidgets.QWidget):
@@ -147,6 +146,7 @@ class XAxisArea(QtWidgets.QWidget):
         self._pen_width = 2
         self._pen_color = QtGui.QColor('white')
         self.setBackgroundRole(QtGui.QPalette.Base)
+        self.setMinimumSize(100, 25)
 
     def setPenWidth(self, width):
         if width <= 0:
@@ -165,20 +165,20 @@ class XAxisArea(QtWidgets.QWidget):
     def render_axis(self, width):
         self._orig_size = QtCore.QSize(width, 20)
         # Create empty QPainterPath to construct the waveform
-        path_list = list()
-        path = QtGui.QPainterPath()
-        path.moveTo(0, 5)
-        path.lineTo(0, 0)
-        path.lineTo(width, 0)
-        path.lineTo(width, 5)
-        path_list.append((path, False))
+        # path_list = list()
+        # path = QtGui.QPainterPath()
+        # path.moveTo(0.5, 5.5)
+        # path.lineTo(0.5, 0.5)
+        # path.lineTo(width-0.5, 0.5)
+        # path.lineTo(width-0.5, 5)
+        # path_list.append((path, False))
 
         # path = QtGui.QPainterPath()
         # path.addText(1, 15, QtGui.QFont('Helvetica', 10), '0')
         # path.addText(width - 1 - 10, 15, QtGui.QFont('Helvetica', 10), str(width))
         # path_list.append((path, True))
 
-        self._painter_paths = path_list
+        self._painter_paths = True
         self.update()
         return
 
@@ -186,12 +186,15 @@ class XAxisArea(QtWidgets.QWidget):
         if not self._painter_paths:
             return
         painter = QtGui.QPainter(self)
-        painter.drawText(0, int(self.height() / 2), '0')
-        painter.drawText(int(self.width() - self.width()/20), int(self.height()/2), str(self._orig_size.width()))
+        painter.drawText(QtCore.QRectF(0, 0, self.width() / 2, self.height()), '0',
+                         QtGui.QTextOption(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter))
+        painter.drawText(QtCore.QRectF(self.width() / 2, 0, self.width() / 2, self.height()),
+                         str(self._orig_size.width()),
+                         QtGui.QTextOption(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter))
 
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.scale(self.width() / self._orig_size.width(),
-                      self.height() / self._orig_size.height())
+        # painter.setRenderHint(QtGui.QPainter.Antialiasing)
+        # painter.scale(self.width() / self._orig_size.width(),
+        #               self.height() / self._orig_size.height())
         pen = QtGui.QPen(self._pen_color,
                          self._pen_width,
                          QtCore.Qt.SolidLine,
@@ -199,13 +202,10 @@ class XAxisArea(QtWidgets.QWidget):
                          QtCore.Qt.MiterJoin)
         pen.setCosmetic(True)
         painter.setPen(pen)
-        for path, fill in self._painter_paths:
-            if fill:
-                painter.setBrush(self._pen_color)
-            else:
-                painter.setBrush(QtGui.QBrush())
-            painter.drawPath(path)
-        painter.setBrush(self._pen_color)
+
+        painter.drawLine(QtCore.QLineF(0.5, 5.5, 0.5, 0))
+        painter.drawLine(QtCore.QLineF(0.5, 0.5, self.width() - 1, 0.5))
+        painter.drawLine(QtCore.QLineF(self.width() - 1, 0, self.width() - 1, 5.5))
         return
 
 
@@ -220,6 +220,7 @@ class YAxisArea(QtWidgets.QWidget):
         self._pen_width = 2
         self._pen_color = QtGui.QColor('white')
         self.setBackgroundRole(QtGui.QPalette.Base)
+        self.setMinimumSize(25, 100)
 
     def setPenWidth(self, width):
         if width <= 0:
@@ -238,20 +239,8 @@ class YAxisArea(QtWidgets.QWidget):
     def render_axis(self):
         # Create empty QPainterPath to construct the waveform
         self._orig_size = QtCore.QSize(int(self.width()), int(self.height()))
-        path_list = list()
-        path = QtGui.QPainterPath()
-        path.moveTo(self.width()-5, 0)
-        path.lineTo(self.width(), 0)
-        path.lineTo(self.width(), self.height())
-        path.lineTo(self.width()-5, self.height())
-        path_list.append((path, False))
 
-        # path = QtGui.QPainterPath()
-        # path.addText(1, 15, QtGui.QFont('Helvetica', 10), '0')
-        # path.addText(width - 1 - 10, 15, QtGui.QFont('Helvetica', 10), str(width))
-        # path_list.append((path, True))
-
-        self._painter_paths = path_list
+        self._painter_paths = True
         self.update()
         return
 
@@ -259,12 +248,14 @@ class YAxisArea(QtWidgets.QWidget):
         if not self._painter_paths:
             return
         painter = QtGui.QPainter(self)
-        # painter.drawText(0, int(self.height() / 2), '0')
-        # painter.drawText(int(self.width() - self.width()/20), int(self.height()/2), str(self._orig_size.width()))
+        painter.drawText(QtCore.QRectF(0, 0, self.width(), self.height()), '1',
+                         QtGui.QTextOption(QtCore.Qt.AlignTop | QtCore.Qt.AlignHCenter))
+        painter.drawText(QtCore.QRectF(0, 0, self.width(), self.height()), '0',
+                         QtGui.QTextOption(QtCore.Qt.AlignCenter))
+        painter.drawText(QtCore.QRectF(0, 0, self.width(), self.height()), '-1',
+                         QtGui.QTextOption(QtCore.Qt.AlignBottom | QtCore.Qt.AlignHCenter))
 
-        painter.setRenderHint(QtGui.QPainter.Antialiasing)
-        painter.scale(self.width() / self._orig_size.width(),
-                      self.height() / self._orig_size.height())
+        # painter.setRenderHint(QtGui.QPainter.Antialiasing)
         pen = QtGui.QPen(self._pen_color,
                          self._pen_width,
                          QtCore.Qt.SolidLine,
@@ -272,13 +263,13 @@ class YAxisArea(QtWidgets.QWidget):
                          QtCore.Qt.MiterJoin)
         pen.setCosmetic(True)
         painter.setPen(pen)
-        for path, fill in self._painter_paths:
-            if fill:
-                painter.setBrush(self._pen_color)
-            else:
-                painter.setBrush(QtGui.QBrush())
-            painter.drawPath(path)
-        painter.setBrush(self._pen_color)
+        painter.drawLine(QtCore.QLineF(self.width() - 5.5, 0.5, self.width(), 0.5))
+        painter.drawLine(QtCore.QLineF(self.width() - 5.5, self.height() - 1, self.width(),
+                                       self.height() - 1))
+        painter.drawLine(QtCore.QLineF(self.width() - 5.5, self.height() / 2, self.width(),
+                                       self.height() / 2))
+        painter.drawLine(
+            QtCore.QLineF(self.width() - 1, 0.5, self.width() - 1, self.height() - 1))
         return
 
 
@@ -311,9 +302,9 @@ class WfmView(GUIBase):
         self._render_button = QtWidgets.QPushButton('Render Waveform')
         self._waveform_combobox = QtWidgets.QComboBox()
         self._y_axis_widget = YAxisArea()
-        self._y_axis_widget.setMinimumSize(50, 100)
+        # self._y_axis_widget.setMinimumSize(50, 100)
         self._x_axis_widget = XAxisArea()
-        self._x_axis_widget.setMinimumSize(100, 50)
+        # self._x_axis_widget.setMinimumSize(100, 50)
         self._waveform_widget = RenderArea()
         self._waveform_widget.setMinimumSize(100, 100)
         central_layout = QtWidgets.QGridLayout()
