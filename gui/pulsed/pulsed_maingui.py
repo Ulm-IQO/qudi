@@ -2428,9 +2428,6 @@ class PulsedMeasurementGui(GUIBase):
     @QtCore.Slot()
     def microwave_settings_changed(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
-        if not self.pulsedmasterlogic().ext_microwave_connected:
-            self._pa.ext_control_use_mw_CheckBox.setEnabled(False)
-
         if self._mw.action_run_stop.isChecked():
             return
 
