@@ -745,7 +745,8 @@ class PulsedMeasurementGui(GUIBase):
             for label, widget1, widget2 in self._digital_chnl_setting_widgets.values():
                 widget1.setEnabled(True)
                 widget2.setEnabled(True)
-            self._pa.ext_control_use_mw_CheckBox.setEnabled(True)
+            if self.pulsedmasterlogic().ext_microwave_connected:
+                self._pa.ext_control_use_mw_CheckBox.setEnabled(True)
             self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
             self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
             self._pa.ana_param_fc_bins_ComboBox.setEnabled(True)
@@ -2219,17 +2220,17 @@ class PulsedMeasurementGui(GUIBase):
 
         # Configure the second pulse analysis plot display:
         self.second_plot_image = pg.PlotDataItem(pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-                                            style=QtCore.Qt.DotLine,
-                                            symbol='o',
-                                            symbolPen=palette.c1,
-                                            symbolBrush=palette.c1,
-                                            symbolSize=7)
+                                                 style=QtCore.Qt.DotLine,
+                                                 symbol='o',
+                                                 symbolPen=palette.c1,
+                                                 symbolBrush=palette.c1,
+                                                 symbolSize=7)
         self.second_plot_image2 = pg.PlotDataItem(pen=pg.mkPen(palette.c4, style=QtCore.Qt.DotLine),
-                                             style=QtCore.Qt.DotLine,
-                                             symbol='o',
-                                             symbolPen=palette.c4,
-                                             symbolBrush=palette.c4,
-                                             symbolSize=7)
+                                                  style=QtCore.Qt.DotLine,
+                                                  symbol='o',
+                                                  symbolPen=palette.c4,
+                                                  symbolBrush=palette.c4,
+                                                  symbolSize=7)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image)
         self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_plot_image2)
         self._pa.pulse_analysis_second_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
@@ -2427,30 +2428,21 @@ class PulsedMeasurementGui(GUIBase):
     @QtCore.Slot()
     def microwave_settings_changed(self):
         """ Shows or hides input widgets which are necessary if an external mw is turned on"""
+        if not self.pulsedmasterlogic().ext_microwave_connected:
+            self._pa.ext_control_use_mw_CheckBox.setEnabled(False)
+
         if self._mw.action_run_stop.isChecked():
             return
 
-        use_ext_microwave = self._pa.ext_control_use_mw_CheckBox.isChecked()
+        use_ext_microwave = self.pulsedmasterlogic().ext_microwave_connected and \
+                            self._pa.ext_control_use_mw_CheckBox.isChecked()
 
         settings_dict = dict()
         settings_dict['use_ext_microwave'] = use_ext_microwave
         settings_dict['frequency'] = self._pa.ext_control_mw_freq_DoubleSpinBox.value()
         settings_dict['power'] = self._pa.ext_control_mw_power_DoubleSpinBox.value()
 
-        if use_ext_microwave and not self._pa.ext_control_mw_freq_DoubleSpinBox.isVisible():
-            self._pa.ext_control_mw_freq_Label.setVisible(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
-            self._pa.ext_control_mw_power_Label.setVisible(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
-        elif not use_ext_microwave and self._pa.ext_control_mw_freq_DoubleSpinBox.isVisible():
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_freq_Label.setVisible(False)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
-            self._pa.ext_control_mw_power_Label.setVisible(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(False)
+        self.toggle_microwave_settings_editor(use_ext_microwave)
 
         self.pulsedmasterlogic().set_ext_microwave_settings(settings_dict)
         return
@@ -2467,10 +2459,9 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.ext_control_use_mw_CheckBox.blockSignals(True)
 
         if 'use_ext_microwave' in settings_dict:
-            use_ext_microwave = settings_dict['use_ext_microwave']
-            self._pa.ext_control_use_mw_CheckBox.setChecked(use_ext_microwave)
+            use_ext_microwave = settings_dict['use_ext_microwave'] and self.pulsedmasterlogic().ext_microwave_connected
             # Set visibility
-            self.toggle_microwave_settings_editor(settings_dict['use_ext_microwave'])
+            self.toggle_microwave_settings_editor(use_ext_microwave)
         if 'frequency' in settings_dict:
             self._pa.ext_control_mw_freq_DoubleSpinBox.setValue(settings_dict['frequency'])
         if 'power' in settings_dict:
@@ -2488,20 +2479,16 @@ class PulsedMeasurementGui(GUIBase):
         @param show_editor:
         @return:
         """
-        if show_editor:
-            self._pa.ext_control_mw_freq_Label.setVisible(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(True)
-            self._pa.ext_control_mw_power_Label.setVisible(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(True)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(True)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(True)
-        else:
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(False)
-            self._pa.ext_control_mw_freq_Label.setVisible(False)
-            self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(False)
-            self._pa.ext_control_mw_power_Label.setVisible(False)
-            self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(False)
+        show_editor = bool(show_editor)
+        self._pa.ext_control_use_mw_CheckBox.setChecked(show_editor)
+        self._pa.ext_control_use_mw_CheckBox.setEnabled(self.pulsedmasterlogic().ext_microwave_connected)
+
+        self._pa.ext_control_mw_freq_Label.setVisible(show_editor)
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setVisible(show_editor)
+        self._pa.ext_control_mw_power_Label.setVisible(show_editor)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setVisible(show_editor)
+        self._pa.ext_control_mw_freq_DoubleSpinBox.setEnabled(show_editor)
+        self._pa.ext_control_mw_power_DoubleSpinBox.setEnabled(show_editor)
         return
 
     @QtCore.Slot(bool)
