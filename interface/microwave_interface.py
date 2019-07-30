@@ -27,17 +27,21 @@ from enum import Enum
 
 
 class TriggerEdge(Enum):
-    """ On which electrical signal edge does a trigger occur?
-      So edgy!
+    """
+    On which electrical signal edge does a trigger occur? Options: RISING, FALLING, NON, UNKNOWN
     """
     RISING = 0
     FALLING = 1
     NONE = 3
     UNKNOWN = 4
 
+    def __str__(self):
+        return self.name.lower()
+
 
 class MicrowaveMode(Enum):
-    """ Modes for microwave generators:
+    """
+    Modes for microwave generators:
         CW: continuous wave
         LIST: output list of arbitrary frequencies, each step triggered by electrical input
         SWEEP: frequency sweep from f1 to f2, each step triggered by electrical input
@@ -69,10 +73,6 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         @return dict: A dict containing the mode and output state but also information about the class
         """
         pass
-
-    @property
-    def status(self):
-        return self.get_status()
 
     @abc.abstractmethod
     def off(self):
@@ -117,7 +117,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-        @return tuple(float, float): frequency in Hz, the output power in dBm
+        @return tuple(float, float, MicrowaveMode): frequency in Hz, the output power in dBm, output mode
         """
         pass
 
@@ -129,36 +129,16 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
 
-        @return int: error code (0:OK, -1:error)
+        @return tuple(float, float, MicrowaveMode): frequency in Hz, the output power in dBm, output mode
         """
         pass
-
-    @property
-    def parameters_cw(self):
-        return self.get_parameters_cw()
-
-    @parameters_cw.setter
-    def parameters_cw(self, value):
-        if isinstance(value, dict):
-            frequency = value['frequency'] if 'frequency' in value else None
-            power = value['power'] if 'power' in value else None
-            self.set_parameters_cw(frequency=frequency, power=power)
-        elif isinstance(value, (list, tuple)):
-            if len(value) == 2:
-                frequency, power = value
-                self.set_parameters_cw(frequency=frequency, power=power)
-            else:
-                self.log.error('parameters_cw need to be specified as a list of frequency and power.')
-        else:
-            self.log.error('parameters_cw need to be either specified as dict with the optional keywords '
-                           'frequency and power or by specifying a list of frequency and power.')
 
     @abc.abstractmethod
     def get_parameters_list(self):
         """
         Gets the current parameters of the list mode: microwave output power and frequency as lists.
 
-        @return tuple(list, list): list of frequency in Hz, list of output powers in dBm
+        @return tuple(list, list, MicrowaveMode): list of frequency in Hz, list of output powers in dBm, output mode
         """
         pass
 
@@ -170,31 +150,9 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         @param list frequency: list of frequencies in Hz
         @param list power: MW power of the frequency list in dBm
 
-        @return int: error code (0:OK, -1:error)
+        @return tuple(list, list, MicrowaveMode): list of frequency in Hz, list of output powers in dBm, output mode
         """
         pass
-
-    @property
-    def parameters_list(self):
-        return self.get_parameters_list()
-
-    @parameters_list.setter
-    def parameters_list(self, value):
-        if isinstance(value, dict):
-            frequency = value['frequency'] if 'frequency' in value else None
-            power = value['power'] if 'power' in value else None
-            self.set_parameters_list(frequency=frequency, power=power)
-        elif isinstance(value, (list, tuple)):
-            if len(value) == 2:
-                frequency, power = value
-                self.set_parameters_list(frequency=frequency, power=power)
-            else:
-                self.log.error('parameters_list need to be specified as a list of frequency and power '
-                               '(each a list on their own).')
-        else:
-            self.log.error('parameters_list need to be either specified as dict with the optional keywords '
-                           'frequency and power or by specifying a list of frequency and power '
-                           '(each a list on their own).')
 
     @abc.abstractmethod
     def reset_list_pos(self):
@@ -210,10 +168,11 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         Gets the current parameters of the sweep mode: parameters of the sweep and a single power.
 
-        @return float, float, float, float: current start frequency in Hz,
-                                            current stop frequency in Hz,
-                                            current frequency step in Hz,
-                                            current power in dBm
+        @return float, float, float, float, MicrowaveMode: current start frequency in Hz,
+                                                           current stop frequency in Hz,
+                                                           current frequency step in Hz,
+                                                           current power in dBm
+                                                           output mode
         """
         pass
 
@@ -223,47 +182,18 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         Configures the device for sweep-mode and optionally sets frequency start/stop/step
         and/or power
 
-        @return int: error code (0:OK, -1:error)
+        @return float, float, float, float, MicrowaveMode: current start frequency in Hz,
+                                                           current stop frequency in Hz,
+                                                           current frequency step in Hz,
+                                                           current power in dBm
+                                                           output mode
         """
         pass
-
-    @property
-    def parameters_sweep(self):
-        return self.get_parameters_sweep()
-
-    @parameters_sweep.setter
-    def parameters_sweep(self, value):
-        if isinstance(value, dict):
-            start = value['start'] if 'start' in value else None
-            stop = value['stop'] if 'stop' in value else None
-            step = value['step'] if 'step' in value else None
-            power = value['power'] if 'power' in value else None
-            self.set_parameters_sweep(start=start, stop=stop, step=step, power=power)
-        elif isinstance(value, (list, tuple)):
-            if len(value) == 4:
-                start, stop, step, power = value
-                self.set_parameters_sweep(start=start, stop=stop, step=step, power=power)
-            else:
-                self.log.error('parameters_sweep need to be specified as a list of start, stop, step and power.')
-        else:
-            self.log.error('parameters_sweep need to be either specified as dict with the optional keywords '
-                           'start, stop, step and power or by specifying a list of start, stop, step and power.')
 
     @abc.abstractmethod
     def reset_sweep_pos(self):
         """
         Reset of MW sweep mode position to start (start frequency)
-
-        @return int: error code (0:OK, -1:error)
-        """
-        pass
-
-    @abc.abstractmethod
-    def set_ext_trigger(self, pol, timing):
-        """ Set the external trigger for this device with proper polarization.
-
-        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
-        @param timing: estimated time between triggers
 
         @return int: error code (0:OK, -1:error)
         """
@@ -278,25 +208,17 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @property
-    def ext_trigger(self):
-        return self.get_ext_trigger()
+    @abc.abstractmethod
+    def set_ext_trigger(self, pol, timing):
+        """ Set the external trigger for this device with proper polarization.
 
-    @ext_trigger.setter
-    def ext_trigger(self, value):
-        if isinstance(value, dict):
-            pol = value['pol'] if 'pol' in value else None
-            timing = value['timing'] if 'timing' in value else None
-            self.set_ext_trigger(pol=pol, timing=timing)
-        elif isinstance(value, (list, tuple)):
-            if len(value) == 2:
-                pol, timing = value
-                self.set_ext_trigger(pol=pol, timing=timing)
-            else:
-                self.log.error('ext_trigger need to be specified as a list of pol (polarization) and timing.')
-        else:
-            self.log.error('ext_trigger need to be either specified as dict with the optional keywords '
-                           'pol (polarization) and timing or by specifying a list of pol (polarization) and timing.')
+        @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
+        @param timing: estimated time between triggers
+
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing as queried from device
+        """
+        pass
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.
@@ -313,13 +235,9 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 
-          @return MicrowaveLimits: Microwave limits object
+        @return MicrowaveLimits: Microwave limits object
         """
         pass
-
-    @property
-    def limits(self):
-        return self.get_limits()
 
 
 class MicrowaveLimits:

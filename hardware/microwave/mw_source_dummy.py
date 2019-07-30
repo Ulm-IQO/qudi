@@ -109,7 +109,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @return dict: A dict containing the mode and output state but also information about the class
         """
         statusdict = {
-            'mode': str(self._current_output_mode),
+            'mode': self._current_output_mode,
             'output_active': self._output_active,
             'module_state': self.module_state(),
         }
@@ -141,9 +141,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the cw mode: microwave output power and frequency as single values.
 
-        @return tuple(float, float): frequency in Hz, the output power in dBm
+        @return tuple(float, float, MicrowaveMode): frequency in Hz, the output power in dBm, output mode
         """
-        return self._mw_cw_frequency, self._mw_cw_power
+        return self._mw_cw_frequency, self._mw_cw_power, self._current_output_mode
 
     def set_parameters_cw(self, frequency=None, power=None):
         """
@@ -152,7 +152,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @param float frequency: frequency to set in Hz
         @param float power: power to set in dBm
 
-        @return int: error code (0:OK, -1:error)
+        @return tuple(float, float, MicrowaveMode): frequency in Hz, the output power in dBm, output mode
         """
         self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {1:f}'.format(frequency, power))
         self.off()
@@ -161,7 +161,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
             self._mw_cw_frequency = frequency
         if power is not None:
             self._mw_cw_power = power
-        return 0
+        return self.get_parameters_cw()
 
     def list_on(self):
         """
@@ -180,9 +180,9 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the list mode: microwave output power and frequency as lists.
 
-        @return tuple(list, list): list of frequency in Hz, list of output powers in dBm
+        @return tuple(list, list, MicrowaveMode): list of frequency in Hz, list of output powers in dBm, output mode
         """
-        return self._mw_frequency_list, self._mw_power_list
+        return self._mw_frequency_list, self._mw_power_list, self._current_output_mode
 
     def set_parameters_list(self, frequency=None, power=None):
         """
@@ -191,7 +191,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @param list frequency: list of frequencies in Hz
         @param list power: MW power of the frequency list in dBm
 
-        @return int: error code (0:OK, -1:error)
+        @return tuple(list, list, MicrowaveMode): list of frequency in Hz, list of output powers in dBm, output mode
         """
         self.log.debug('MicrowaveDummy>set_list, frequency_list: {0}, power: {1}'.format(frequency, power))
         self.off()
@@ -200,7 +200,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
             self._mw_frequency_list = frequency
         if power is not None:
             self._mw_power_list = power
-        return 0
+        return self.get_parameters_list()
 
     def reset_list_pos(self):
         """
@@ -225,19 +225,25 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         """
         Gets the current parameters of the sweep mode: parameters of the sweep and a single power.
 
-        @return float, float, float, float: current start frequency in Hz,
-                                            current stop frequency in Hz,
-                                            current frequency step in Hz,
-                                            current power in dBm
+        @return float, float, float, float, MicrowaveMode: current start frequency in Hz,
+                                                           current stop frequency in Hz,
+                                                           current frequency step in Hz,
+                                                           current power in dBm
+                                                           output mode
         """
-        return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power
+        return self._mw_start_freq, self._mw_stop_freq, self._mw_step_freq, self._mw_sweep_power, \
+               self._current_output_mode
 
     def set_parameters_sweep(self, start=None, stop=None, step=None, power=None):
         """
         Configures the device for sweep-mode and optionally sets frequency start/stop/step
         and/or power
 
-        @return int: error code (0:OK, -1:error)
+        @return float, float, float, float, MicrowaveMode: current start frequency in Hz,
+                                                           current stop frequency in Hz,
+                                                           current frequency step in Hz,
+                                                           current power in dBm
+                                                           output mode
         """
         self.log.debug('MicrowaveDummy>set_sweep, start: {0:f}, stop: {1:f}, step: {2:f}, '
                        'power: {3:f}'.format(start, stop, step, power))
@@ -249,7 +255,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
             self._mw_step_freq = step
         if power is not None:
             self._mw_sweep_power = power
-        return 0
+        return self.get_parameters_sweep()
 
     def reset_sweep_pos(self):
         """
@@ -273,12 +279,13 @@ class MicrowaveDummy(Base, MicrowaveInterface):
         @param TriggerEdge pol: polarisation of the trigger (basically rising edge or falling edge)
         @param timing: estimated time between triggers
 
-        @return int: error code (0:OK, -1:error)
+        @return object, float: current trigger polarity [TriggerEdge.RISING, TriggerEdge.FALLING],
+            trigger timing as queried from device
         """
         self.log.info('MicrowaveDummy>ext_trigger set pol:{0!s}, timing:{1:f}'.format(pol, timing))
         self._current_trig_pol = pol
         self._timing = timing
-        return 0
+        return self.get_ext_trigger()
 
     def trigger(self):
         """ Trigger the next element in the list or sweep mode programmatically.

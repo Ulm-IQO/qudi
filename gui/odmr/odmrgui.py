@@ -449,7 +449,7 @@ class ODMRGui(GUIBase):
             self._mw.action_resume_odmr.setEnabled(False)
             self._mw.cw_power_DoubleSpinBox.setEnabled(False)
             self._mw.cw_frequency_DoubleSpinBox.setEnabled(False)
-            if mw_mode != 'cw':
+            if str(mw_mode) != 'cw':
                 self._mw.clear_odmr_PushButton.setEnabled(True)
                 self._mw.action_run_stop.setEnabled(True)
                 self._mw.action_toggle_cw.setEnabled(False)
