@@ -1478,7 +1478,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         sleep = steps / self.axis_class[axis_name].step_freq
         same_direction_amounts = 0
         old_voltage = current_position_voltage
-        while counter < 5:  # do max 5 optimisation cycles per accuracy step
+        while counter < 2:  # do max 5 optimisation cycles per accuracy step
             # move steppers with given accuracy(steps)
             if 0 > self._stepping_device.move_attocube(axis_name, True, direction, steps=steps):
                 self.log.error("Moving the steppers failed")
@@ -1864,10 +1864,12 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         #              datetime.datetime.now().strftime('%M-%S-%f'))
         data_counter = 0
         self.stepping_raw_data[line] = counts[data_counter]
-        self.save_to_npy("SPCM", line, counts[data_counter])
+        if not self._3D_measurement:
+            self.save_to_npy("SPCM", line, counts[data_counter])
         data_counter += 1
         if not self._fast_scan:
-            self.save_to_npy("SPCM_back", line, counts[data_counter])
+            if not self._3D_measurement:
+                self.save_to_npy("SPCM_back", line, counts[data_counter])
             self.stepping_raw_data_back[line] = counts[data_counter]
             data_counter += 1
 
@@ -1877,19 +1879,23 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
                 backward = np.split(counts[data_counter], 2 * self.map_scan_position + self._ai_scanner)
 
             if self.map_scan_position:
-                self.save_to_npy("scan_pos_voltages", line, forward[0:2])
+                if not self._3D_measurement:
+                    self.save_to_npy("scan_pos_voltages", line, forward[0:2])
                 self._scan_pos_voltages[line, :, 0] = forward[0]
                 self._scan_pos_voltages[line, :, 1] = forward[1]
                 if not self._fast_scan:
-                    self.save_to_npy("scan_pos_voltages_back", line, backward[0:2])
+                    if not self._3D_measurement:
+                        self.save_to_npy("scan_pos_voltages_back", line, backward[0:2])
                     self._scan_pos_voltages_back[line, :, 0] = backward[0]
                     self._scan_pos_voltages_back[line, :, 1] = backward[1]
 
             if self._ai_scanner:
-                self.save_to_npy("APD", line, forward[-1])
+                if not self._3D_measurement:
+                    self.save_to_npy("APD", line, forward[-1])
                 self._ai_counter_voltages[line] = forward[-1]
                 if not self._fast_scan:
-                    self.save_to_npy("APD_back", line, backward[-1])
+                    if not self._3D_measurement:
+                        self.save_to_npy("APD_back", line, backward[-1])
                     self._ai_counter_voltages_back[line] = backward[-1]
 
         # self.log.info("2D finished sorting, line %s, time: %s", line,
