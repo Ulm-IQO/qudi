@@ -3677,6 +3677,11 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 if i not in self._clock_channel_new.values():
                     my_clock_channel = i
                     break
+            else:
+                self.log.error(
+                    "There is no clock channel free to be used for this task. Stop another clock channel first to"
+                    " free the necessary resources.")
+                return -1
 
         if my_clock_channel in self._clock_channel_new.values():
             self.log.warn("This clock channel (%s) is already being used. This might lead to clashes. "
