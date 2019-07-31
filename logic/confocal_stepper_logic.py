@@ -1180,16 +1180,10 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
 
         a, b = self._scan_axes[0], self._scan_axes[1]
         if a in self.axis_class.keys() and b in self.axis_class.keys():
-            if self._inverted_scan:
-                self._first_scan_axis = b
-                self._second_scan_axis = a
-                self._steps_scan_first_line = self.axis_class[b].steps_direction
-                self._steps_scan_second_line = self.axis_class[a].steps_direction
-            else:
-                self._first_scan_axis = a
-                self._second_scan_axis = b
-                self._steps_scan_first_line = self.axis_class[a].steps_direction
-                self._steps_scan_second_line = self.axis_class[b].steps_direction
+            self._first_scan_axis = a
+            self._second_scan_axis = b
+            self._steps_scan_first_line = self.axis_class[a].steps_direction
+            self._steps_scan_second_line = self.axis_class[b].steps_direction
         else:
             self.log.error(
                 "One of the chosen axes {} are not defined for the stepper hardware.".format(
