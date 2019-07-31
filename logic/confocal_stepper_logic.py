@@ -474,6 +474,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._initalize_data_arrays_3D_stepper()  #
 
         self.finesse_scan_freq = 1.0
+        self._finesse_measurement = False
 
         # Step values definitions
 
@@ -812,6 +813,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._step_counter = 0
         self.module_state.lock()
         self._3D_measurement = True
+        self._finesse_measurement = False
 
         if self._get_scan_axes() < 0:
             return -1
@@ -876,6 +878,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_image_updated.emit()
 
         self.generate_file_path()
+        self.generate_file_info()
         self.signal_step_lines_next.emit(True)
         if self._steps_scan_first_line > 8:
             self._check_movement_during_measurement()
@@ -1307,7 +1310,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_image_updated.emit()
 
         self._3D_measurement = False
+        self._finesse_measurement = False
         self.generate_file_path()
+        self.generate_file_info()
 
         self.signal_step_lines_next.emit(True)
         if self._steps_scan_first_line > 8:
@@ -2195,6 +2200,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
             parameters["Start Voltage Scan (V)"] = self.start_voltage_3D
             parameters["End Voltage scan (V)"] = self.end_voltage_3D
             parameters["Points per Ramp"] = self._ramp_length
+            parameters["Scan Frequency(Hz)"] = self._clock_frequency_3D*1.0/self._ramp_length
             if self.smoothing:
                 parameters["Smoothing Steps"] = self._3D_smoothing_steps
 
@@ -2369,6 +2375,9 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         return
 
     def _save_3D_measurement(self, parameters):
+        # Todo: This function will not work,
+        # because  3D data can not be stored in the ram, as it becomes to big too quickly
+
         filepath = self._save_logic.get_path_for_module('ConfocalStepper')
         timestamp = datetime.datetime.now()
         # Prepare the meta data parameters (common to both saved files):
@@ -2602,8 +2611,11 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         # Todo Probably the function from confocal logic, that already exists need to be chaned only slightly
 
     def generate_file_path(self):
+        """Generate the file path for the step scan measurement based on the time the measurement is started."""
         timestamp = datetime.datetime.now()
-        if self._3D_measurement:
+        if self._finesse_measurement:
+            path_addition = "_finesse"
+        elif self._3D_measurement:
             path_addition = "_3D"
         else:
             path_addition = ""
@@ -2614,12 +2626,29 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.filename = "confocal_stepper_data"
 
     def generate_file_info(self):
-        pass
+        """Saves the scan parameters set at the beginning of the scan"""
+
+        file_info = self.generate_save_parameters()
+        fake_data = OrderedDict()
+        fake_data["no data, as this is an info file"] = [0]
+
+        self._save_logic.save_data(fake_data, filepath=self.filepath, parameters=file_info,
+                                   filelabel=self.filename + "_experiment_parameters", delimiter='\t')
 
     def save_to_npy(self, name, line, data):
+        """ saves data passed into a numpy file using the past name and line number to name the file
+            filename in which data is stored: intrinsicfilename+ _name_line_str(line)
+
+            @param str name: the name which can be given to the file additionally to the naming convention
+            @param int line: the line number of the measurement for which the data is to be saved. It is part of the file name☻
+            @param numpy array data: the data to be saved, has to be given in form of a np array
+        """
+
         if line < 10:
-            addition = "00"
+            addition = "000"
         elif line < 100:
+            addition = "00"
+        elif line < 1000:
             addition = "0"
         else:
             addition = ""
@@ -2653,6 +2682,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self._step_counter = 0
         self.module_state.lock()
         self._3D_measurement = True
+        self._finesse_measurement = True
         self._fast_scan = True
 
         if self._get_scan_axes() < 0:
@@ -2719,6 +2749,7 @@ class ConfocalStepperLogic(GenericLogic):  # Todo connect to generic logic
         self.signal_image_updated.emit()
 
         self.generate_file_path()
+        self.generate_file_info()
         self.signal_step_lines_finesse_next.emit(True)
 
     def _step_line_finesse(self, direction=True):
