@@ -32,6 +32,7 @@ from lxml import etree as ET
 
 from core.module import Base, ConfigOption
 from core.util.modules import get_home_dir
+from core.util.helpers import natural_sort
 from interface.pulser_interface import PulserInterface, PulserConstraints
 
 
@@ -232,33 +233,36 @@ class AWG70K(Base, PulserInterface):
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
         if self.awg_model == 'AWG70002A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['all'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of both channels but reduced markers (higher analog resolution)
-            activation_config['ch1_2mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_2mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'}
-            activation_config['ch1_1mrk_ch2_2mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_0mrk_ch2_2mrk'] = {'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'}
-            activation_config['ch1_1mrk_ch2_1mrk'] = {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_0mrk_ch2_1mrk'] = {'a_ch1', 'a_ch2', 'd_ch3'}
-            activation_config['ch1_1mrk_ch2_0mrk'] = {'a_ch1', 'd_ch1', 'a_ch2'}
+            activation_config['ch1_2mrk_ch2_1mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_2mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2', 'a_ch2'})
+            activation_config['ch1_1mrk_ch2_2mrk'] = frozenset(
+                {'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_0mrk_ch2_2mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3', 'd_ch4'})
+            activation_config['ch1_1mrk_ch2_1mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_0mrk_ch2_1mrk'] = frozenset({'a_ch1', 'a_ch2', 'd_ch3'})
+            activation_config['ch1_1mrk_ch2_0mrk'] = frozenset({'a_ch1', 'd_ch1', 'a_ch2'})
             # Usage of channel 1 only:
-            activation_config['ch1_2mrk'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['ch1_2mrk'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of channel 2 only:
-            activation_config['ch2_2mrk'] = {'a_ch2', 'd_ch3', 'd_ch4'}
+            activation_config['ch2_2mrk'] = frozenset({'a_ch2', 'd_ch3', 'd_ch4'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 2 with one marker:
-            activation_config['ch2_1mrk'] = {'a_ch2', 'd_ch3'}
+            activation_config['ch2_1mrk'] = frozenset({'a_ch2', 'd_ch3'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
             # Usage of only channel 2 with no marker:
-            activation_config['ch2_0mrk'] = {'a_ch2'}
+            activation_config['ch2_0mrk'] = frozenset({'a_ch2'})
         elif self.awg_model == 'AWG70001A':
-            activation_config['all'] = {'a_ch1', 'd_ch1', 'd_ch2'}
+            activation_config['all'] = frozenset({'a_ch1', 'd_ch1', 'd_ch2'})
             # Usage of only channel 1 with one marker:
-            activation_config['ch1_1mrk'] = {'a_ch1', 'd_ch1'}
+            activation_config['ch1_1mrk'] = frozenset({'a_ch1', 'd_ch1'})
             # Usage of only channel 1 with no marker:
-            activation_config['ch1_0mrk'] = {'a_ch1'}
+            activation_config['ch1_0mrk'] = frozenset({'a_ch1'})
 
         constraints.activation_config = activation_config
 
@@ -340,7 +344,7 @@ class AWG70K(Base, PulserInterface):
         # determine active channels
         activation_dict = self.get_active_channels()
         active_channels = {chnl for chnl in activation_dict if activation_dict[chnl]}
-        active_analog = sorted(chnl for chnl in active_channels if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in active_channels if chnl.startswith('a'))
 
         # Sanity check of channel numbers
         if active_channels != set(analog_samples.keys()).union(set(digital_samples.keys())):
@@ -439,7 +443,7 @@ class AWG70K(Base, PulserInterface):
                                'present in device memory.'.format(name, waveform_tuple))
                 return -1
 
-        active_analog = sorted(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
+        active_analog = natural_sort(chnl for chnl in self.get_active_channels() if chnl.startswith('a'))
         num_tracks = len(active_analog)
         num_steps = len(sequence_parameter_list)
 
@@ -479,10 +483,7 @@ class AWG70K(Base, PulserInterface):
                                    '"{1}".'.format(seq_step.go_to, num_steps))
                     return -1
             # Set flag states
-            if len(seq_step.flag_trigger) > 0:
-                self.sequence_set_flags(name, step, seq_step.flag_trigger, True)
-            if len(seq_step.flag_high) > 0:
-                self.sequence_set_flags(name, step, seq_step.flag_high, False)
+            self.sequence_set_flags(name, step, seq_step.flag_trigger, seq_step.flag_high)
 
         # Wait for everything to complete
         while int(self.query('*OPC?')) != 1:
@@ -499,7 +500,7 @@ class AWG70K(Base, PulserInterface):
         except visa.VisaIOError:
             query_return = None
             self.log.error('Unable to read waveform list from device. VisaIOError occured.')
-        waveform_list = sorted(query_return.split(',')) if query_return else list()
+        waveform_list = natural_sort(query_return.split(',')) if query_return else list()
         return waveform_list
 
     def get_sequence_names(self):
@@ -587,7 +588,7 @@ class AWG70K(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Check if all channels to load to are active
@@ -629,7 +630,7 @@ class AWG70K(Base, PulserInterface):
 
         # Get all active channels
         chnl_activation = self.get_active_channels()
-        analog_channels = sorted(
+        analog_channels = natural_sort(
             chnl for chnl in chnl_activation if chnl.startswith('a') and chnl_activation[chnl])
 
         # Check if number of sequence tracks matches the number of analog channels
@@ -1374,16 +1375,16 @@ class AWG70K(Base, PulserInterface):
         self.write('SLIS:SEQ:STEP{0:d}:WINP "{1}", {2}'.format(step, sequence_name, trigger))
         return 0
 
-    def sequence_set_flags(self, sequence_name, step, flags=None, trigger=False):
+    def sequence_set_flags(self, sequence_name, step, flags_t=None, flags_h=None):
         """
         Set the flags in "flags" to HIGH (trigger=False) during the sequence step or let the flags
         send out a fixed duration trigger pulse (trigger=True). All other flags are set to LOW.
 
         @param str sequence_name: Name of the sequence to be edited
         @param int step: Sequence step to be edited
-        @param list flags: List of flag specifiers to be active during this sequence step
-        @param bool trigger: Whether the flag should be HIGH during the step (False) or send out a
-                             fixed length trigger pulse when starting to play the step (True).
+        @param list flags_t: List of flag trigger specifiers to be active during this sequence step, if both options are
+                             selected, the flag is set to trigger (PULS)
+        @param list flags_h: List of flag high specifiers to be active during this sequence step
 
         @return int: error code
         """
@@ -1393,8 +1394,10 @@ class AWG70K(Base, PulserInterface):
             return -1
 
         for flag in ('A', 'B', 'C', 'D'):
-            if flag in flags:
-                state = 'PULS' if trigger else 'HIGH'
+            if flag in flags_t:
+                state = 'PULS'
+            elif flag in flags_h:
+                state = 'HIGH'
             else:
                 state = 'LOW'
 
@@ -1462,7 +1465,7 @@ class AWG70K(Base, PulserInterface):
             for config in configs.values():
                 if len(largest_config) < len(config):
                     largest_config = config
-        return sorted(largest_config)
+        return natural_sort(largest_config)
 
     def _get_all_analog_channels(self):
         """
