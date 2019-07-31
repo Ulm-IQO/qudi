@@ -124,22 +124,12 @@ class CavityStabilisationGui(GUIBase):
 
         # Add the display item ViewWidget, which was defined in the UI file.
         self._mw.cavity_scan_PlotWidget.setLabel(axis='left', text='Input Voltage', units='V')
-        #self._mw.cavity_scan_PlotWidget.setLabel(axis='right', text='Output Voltage', units='V')
         self._mw.cavity_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
         self._mw.cavity_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.4)
 
         self._mw.ramp_scan_PlotWidget.setLabel(axis='left', text='Output Voltage', units='V')
-        #self._mw.ramp_scan_PlotWidget.setLabel(axis='right', text='Output Voltage', units='V')
         self._mw.ramp_scan_PlotWidget.setLabel(axis='bottom', text='Time', units='s')
         self._mw.ramp_scan_PlotWidget.showGrid(x=True, y=True, alpha=0.4)
-
-        #self.cavity_scan_image = pg.PlotDataItem(self._cavity_stabilisation_logic.scan_raw_data[0],
-        #                                  self._cavity_stabilisation_logic.scan_raw_data[1],
-        #                                  pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
-        #                                  symbol='o',
-        #                                  symbolPen=palette.c1,
-        #                                  symbolBrush=palette.c1,
-        #                                  symbolSize=7)
 
         self.cavity_scan_image = pg.PlotDataItem(
                                           pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
@@ -158,7 +148,38 @@ class CavityStabilisationGui(GUIBase):
         self._mw.cavity_scan_PlotWidget.addItem(self.cavity_scan_image)
         self._mw.ramp_scan_PlotWidget.addItem(self.cavity_ramp_image)
 
+        ###############################################################################################################
+        #                                                General Parameters                                           #
+        ###############################################################################################################
+        self._mw.position_spinBox.setValue(self._cavity_stabilisation_logic._start_voltage)
+        self._mw.position_spinBox.editingFinished.connect(self.update_from_pos_spinBox, QtCore.Qt.QueuedConnection)
+        self._mw.position_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
+                                           self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
 
+        # setting up the slider
+        self.slider_res = 0.001
+
+        # number of points needed for the slider
+        num_of_points_slider = (self._cavity_stabilisation_logic.axis_class[
+                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[1] -
+                                self._cavity_stabilisation_logic.axis_class[
+                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/\
+                               self.slider_res
+        # setting range for the slider
+        self._mw.position_slider.setRange(0, num_of_points_slider)
+        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage-
+                                           self._cavity_stabilisation_logic.axis_class[
+                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/
+                                          self.slider_res)
+
+        # handle slider movement
+        self._mw.position_slider.sliderMoved.connect(self.update_from_pos_slider, QtCore.Qt.QueuedConnection)
+
+        ###############################################################################################################
+        #                                                Cavity Scan                                                  #
+        ###############################################################################################################
         # setting default parameters
         self._mw.start_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
                                             self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
@@ -174,42 +195,10 @@ class CavityStabilisationGui(GUIBase):
         self._mw.stop_spinBox.setValue(self._cavity_stabilisation_logic._end_voltage)
         self._mw.stop_spinBox.editingFinished.connect(self.stop_value_changed, QtCore.Qt.QueuedConnection)
 
-        self._mw.position_spinBox.setRange(self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0],
-                                           self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[1])
-        self._mw.position_spinBox.setValue(self._cavity_stabilisation_logic._start_voltage)
-        self._mw.position_spinBox.editingFinished.connect(self.update_from_pos_spinBox, QtCore.Qt.QueuedConnection)
 
         self._mw.scan_frequency_spinBox.setValue(self._cavity_stabilisation_logic._scan_frequency)
         self._mw.scan_resolution_spinBox.setValue(self._cavity_stabilisation_logic._scan_resolution)
-        self._mw.threshold_spinBox.setValue(self._cavity_stabilisation_logic.threshold)
-        self._mw.voltage_adjustment_steps_spinBox.setValue(self._cavity_stabilisation_logic.voltage_adjustment_steps)
-        self._mw.average_number_spinBox.setValue(self._cavity_stabilisation_logic._average_number)
-
-        # setting up the slider
-        self.slider_res = 0.001
-
-        # number of points needed for the slider
-        num_of_points_slider = (self._cavity_stabilisation_logic.axis_class[
-                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[1] -
-                                self._cavity_stabilisation_logic.axis_class[
-                                    self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/\
-                               self.slider_res
-
-        # setting range for the slider
-        self._mw.position_slider.setRange(0, num_of_points_slider)
-        self._mw.position_slider.setValue((self._cavity_stabilisation_logic._start_voltage-
-                                           self._cavity_stabilisation_logic.axis_class[
-                                               self._cavity_stabilisation_logic.control_axis].output_voltage_range[0])/
-                                          self.slider_res)
-
-        # handle slider movement
-        self._mw.position_slider.sliderMoved.connect(self.update_from_pos_slider, QtCore.Qt.QueuedConnection)
-
-        # setting up check box for the maximal scan resolution and cavity mode
         self._mw.max_scan_resolution_checkBox.toggled.connect(self.toggle_scan_resolution)
-        self._mw.cavity_mode_checkBox.toggled.connect(self.toggle_cavity_mode)
 
         # setting up the LCD Displays for the scan speed (V/s) and the maximal scan resolution
         self._mw.scan_speed_DisplayWidget.display(np.abs(self._cavity_stabilisation_logic._end_voltage -
@@ -218,6 +207,13 @@ class CavityStabilisationGui(GUIBase):
         self._mw.maximal_scan_resolution_DisplayWidget.display(self._cavity_stabilisation_logic.calculate_resolution(
                                                                    16, [self._cavity_stabilisation_logic._start_voltage,
                                                                        self._cavity_stabilisation_logic._end_voltage]))
+        ###############################################################################################################
+        #                                                Cavity Stabilisation                                         #
+        ###############################################################################################################
+        self._mw.threshold_spinBox.setValue(self._cavity_stabilisation_logic.threshold)
+        self._mw.voltage_adjustment_steps_spinBox.setValue(self._cavity_stabilisation_logic.voltage_adjustment_steps)
+        self._mw.average_number_spinBox.setValue(self._cavity_stabilisation_logic._average_number)
+        self._mw.cavity_mode_checkBox.toggled.connect(self.toggle_cavity_mode)
 
 
         # connecting user interactions
@@ -225,14 +221,18 @@ class CavityStabilisationGui(GUIBase):
         self._mw.action_stop_scanning.triggered.connect(self.stop_clicked)
         self._mw.action_Save.triggered.connect(self.save_clicked)
 
+        self._mw.action_stabilize_cavity.triggered.connect(self.stabilize_clicked)
+        self._mw.action_stop_stabilization.triggered.connect(self.stop_stabilize_clicked)
+
 
         self._mw.scan_frequency_spinBox.valueChanged.connect(self.scan_frequency_changed)
         self._mw.scan_resolution_spinBox.valueChanged.connect(self.scan_resolution_changed)
+
         self._mw.threshold_spinBox.valueChanged.connect(self.threshold_changed)
         self._mw.voltage_adjustment_steps_spinBox.valueChanged.connect(self.voltage_adjustment_steps_changed)
         self._mw.average_number_spinBox.valueChanged.connect(self.average_number_changed)
 
-
+        # connecting signals
         self._cavity_stabilisation_logic.sigCavityScanPlotUpdated.connect(self.update_plot, QtCore.Qt.QueuedConnection)
         self._cavity_stabilisation_logic.sigScanFinished.connect(self.update_gui, QtCore.Qt.QueuedConnection)
         self.sigUpdateGotoPos.connect(self.update_goto_pos, QtCore.Qt.QueuedConnection)
@@ -261,25 +261,87 @@ class CavityStabilisationGui(GUIBase):
         self._mw.activateWindow()
         self._mw.raise_()
 
+    #################   Actions   #########
 
     def start_clicked(self):
         """ Handling the Start button to start the scan
         """
         self.disable_scan_actions()
         self._cavity_stabilisation_logic._initialise_scanner()
-        self._cavity_stabilisation_logic._do_next_line()
 
     def stop_clicked(self):
         """ Stop the scan if the state has switched to ready.
         """
         self._cavity_stabilisation_logic.stopRequested = True
         self.disable_stop_action()
+        self.enable_scan_actions()
+
+    def stabilize_clicked(self):
+        """ Handling the stabilize cavity button to start the resonance stabilization
+        """
+        self.disable_scan_actions()
+        self._cavity_stabilisation_logic.start_cavity_stabilisation()
+
+    def stop_stabilize_clicked(self):
+        """ Handling the stop stabilize cavity button to stop the resonance stabilization
+        """
+        self._cavity_stabilisation_logic.stop_cavity_stabilisation()
+        self.enable_scan_actions()
+
+
 
     def save_clicked(self):
         """ Handling the save button to save the data into a file.
         """
         self._cavity_stabilisation_logic.save_data()
 
+    def disable_scan_actions(self):
+        """ Disables the button for scanning.
+        """
+        # Enable the stop scanning button
+        self._mw.action_stop_scanning.setEnabled(True)
+        self._mw.action_stop_stabilization.setEnabled(True)
+
+        # Disable the start scan button
+        self._mw.action_start_scanning.setEnabled(False)
+        self._mw.action_stabilize_cavity.setEnabled(False)
+
+        self._mw.start_spinBox.setEnabled(False)
+        self._mw.stop_spinBox.setEnabled(False)
+        self._mw.position_spinBox.setEnabled(False)
+        self._mw.position_slider.setEnabled(False)
+        self._mw.scan_frequency_spinBox.setEnabled(False)
+        self._mw.scan_resolution_spinBox.setEnabled(False)
+        self._mw.threshold_spinBox.setEnabled(False)
+        self._mw.voltage_adjustment_steps_spinBox.setEnabled(False)
+        self._mw.average_number_spinBox.setEnabled(False)
+
+    def enable_scan_actions(self):
+        """ Enables the button for scanning.
+        """
+        # Ensable the start scanning button
+        self._mw.action_start_scanning.setEnabled(True)
+        self._mw.action_stabilize_cavity.setEnabled(True)
+
+        # Disable the stop scan button
+        self._mw.action_stop_scanning.setEnabled(False)
+        self._mw.action_stop_stabilization.setEnabled(False)
+
+        self._mw.start_spinBox.setEnabled(True)
+        self._mw.stop_spinBox.setEnabled(True)
+        self._mw.position_spinBox.setEnabled(True)
+        self._mw.position_slider.setEnabled(True)
+        self._mw.scan_frequency_spinBox.setEnabled(True)
+        self._mw.scan_resolution_spinBox.setEnabled(True)
+        self._mw.threshold_spinBox.setEnabled(True)
+        self._mw.voltage_adjustment_steps_spinBox.setEnabled(True)
+        self._mw.average_number_spinBox.setEnabled(True)
+
+    def disable_stop_action(self):
+
+        self._mw.action_stop_scanning.setEnabled(False)
+
+    ##########   Update after GUI change   ########
 
     def update_pos_slider(self, output_value):
         """ Update position_slider if other GUI elements are changed.
@@ -312,6 +374,8 @@ class CavityStabilisationGui(GUIBase):
     def update_goto_pos(self, output_value):
         self._cavity_stabilisation_logic.signal_change_analogue_output_voltage.emit(output_value)
 
+    #########   Update GUI   ######
+
     def update_plot(self, cavity_scan_data_x, cavity_scan_data_y, cavity_scan_data_y2):
         """ Refresh the plot widget with new data.
         """
@@ -334,6 +398,7 @@ class CavityStabilisationGui(GUIBase):
         self.toggle_scan_resolution()
         self.toggle_cavity_mode()
 
+    ##########   Cavity Scan Parameters   ########
 
     def scan_frequency_changed(self):
         frequency = self._mw.scan_frequency_spinBox.value()
@@ -352,18 +417,6 @@ class CavityStabilisationGui(GUIBase):
         else:
             self._cavity_stabilisation_logic._scan_resolution = resolution
 
-    def threshold_changed(self):
-        threshold = self._mw.threshold_spinBox.value()
-        self._cavity_stabilisation_logic.threshold = threshold
-
-    def voltage_adjustment_steps_changed(self):
-        voltageadjustmentsteps = self._mw.voltage_adjustment_steps_spinBox.value()
-        self._cavity_stabilisation_logic.voltage_adjustment_steps = voltageadjustmentsteps
-
-    def average_number_changed(self):
-        averagenumber = self._mw.average_number_spinBox.value()
-        self._cavity_stabilisation_logic._average_number = averagenumber
-
     def start_value_changed(self):
         start = self._mw.start_spinBox.value()
         self._cavity_stabilisation_logic._start_voltage = start
@@ -376,6 +429,13 @@ class CavityStabilisationGui(GUIBase):
         self.update_scan_speed()
         self.update_maximal_scan_resolution()
 
+    def update_scan_speed(self):
+        scan_speed = np.abs(self._cavity_stabilisation_logic._end_voltage -
+                            self._cavity_stabilisation_logic._start_voltage) * \
+                     self._cavity_stabilisation_logic._scan_frequency
+        self._mw.scan_speed_DisplayWidget.display(scan_speed)
+        return
+
     def toggle_scan_resolution(self):
         if self._mw.max_scan_resolution_checkBox.isChecked():
             self._cavity_stabilisation_logic._use_maximal_resolution = True
@@ -385,19 +445,6 @@ class CavityStabilisationGui(GUIBase):
             self._mw.scan_resolution_spinBox.setEnabled(True)
             self.scan_resolution_changed()
 
-    def toggle_cavity_mode(self):
-        if self._mw.cavity_mode_checkBox.isChecked():
-            self._cavity_stabilisation_logic.reflection = True
-        else:
-            self._cavity_stabilisation_logic.reflection = False
-
-    def update_scan_speed(self):
-        scan_speed = np.abs(self._cavity_stabilisation_logic._end_voltage -
-                            self._cavity_stabilisation_logic._start_voltage) * \
-                     self._cavity_stabilisation_logic._scan_frequency
-        self._mw.scan_speed_DisplayWidget.display(scan_speed)
-        return
-
     def update_maximal_scan_resolution(self):
         minV = min(self._cavity_stabilisation_logic._start_voltage, self._cavity_stabilisation_logic._end_voltage)
         maxV = max(self._cavity_stabilisation_logic._start_voltage, self._cavity_stabilisation_logic._end_voltage)
@@ -405,46 +452,27 @@ class CavityStabilisationGui(GUIBase):
         self._mw.maximal_scan_resolution_DisplayWidget.display(maximal_scan_resolution)
         return
 
+    ########### Stabilisation Parameters ########
 
-    def disable_scan_actions(self):
-        """ Disables the button for scanning.
-        """
-        # Enable the stop scanning button
-        self._mw.action_stop_scanning.setEnabled(True)
+    def threshold_changed(self):
+        threshold = self._mw.threshold_spinBox.value()
+        self._cavity_stabilisation_logic.threshold = threshold
 
-        # Disable the start scan button
-        self._mw.action_start_scanning.setEnabled(False)
+    def voltage_adjustment_steps_changed(self):
+        voltageadjustmentsteps = self._mw.voltage_adjustment_steps_spinBox.value()
+        self._cavity_stabilisation_logic.voltage_adjustment_steps = voltageadjustmentsteps
 
-        self._mw.start_spinBox.setEnabled(False)
-        self._mw.stop_spinBox.setEnabled(False)
-        self._mw.position_spinBox.setEnabled(False)
-        self._mw.position_slider.setEnabled(False)
-        self._mw.scan_frequency_spinBox.setEnabled(False)
-        self._mw.scan_resolution_spinBox.setEnabled(False)
-        self._mw.threshold_spinBox.setEnabled(False)
-        self._mw.voltage_adjustment_steps_spinBox.setEnabled(False)
-        self._mw.average_number_spinBox.setEnabled(False)
+    def average_number_changed(self):
+        averagenumber = self._mw.average_number_spinBox.value()
+        self._cavity_stabilisation_logic._average_number = averagenumber
 
-    def enable_scan_actions(self):
-        """ Enables the button for scanning.
-        """
-        # Ensable the start scanning button
-        self._mw.action_start_scanning.setEnabled(True)
+    def toggle_cavity_mode(self):
+        if self._mw.cavity_mode_checkBox.isChecked():
+            self._cavity_stabilisation_logic.reflection = True
+        else:
+            self._cavity_stabilisation_logic.reflection = False
 
-        # Disable the stop scan button
-        self._mw.action_stop_scanning.setEnabled(False)
-
-        self._mw.start_spinBox.setEnabled(True)
-        self._mw.stop_spinBox.setEnabled(True)
-        self._mw.position_spinBox.setEnabled(True)
-        self._mw.position_slider.setEnabled(True)
-        self._mw.scan_frequency_spinBox.setEnabled(True)
-        self._mw.scan_resolution_spinBox.setEnabled(True)
-        self._mw.threshold_spinBox.setEnabled(True)
-        self._mw.voltage_adjustment_steps_spinBox.setEnabled(True)
-        self._mw.average_number_spinBox.setEnabled(True)
-
-    def disable_stop_action(self):
+    ##########   Options  #######
 
         self._mw.action_stop_scanning.setEnabled(False)
 

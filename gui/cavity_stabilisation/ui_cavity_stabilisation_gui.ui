@@ -31,7 +31,14 @@
     <addaction name="restore_default_view_Action"/>
     <addaction name="actionClose"/>
    </widget>
+   <widget class="QMenu" name="menuOptions">
+    <property name="title">
+     <string>Options</string>
+    </property>
+    <addaction name="action_show_labbook"/>
+   </widget>
    <addaction name="menuView"/>
+   <addaction name="menuOptions"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <widget class="QDockWidget" name="cavity_scan_DockWidget">
@@ -559,6 +566,9 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    </property>
   </action>
   <action name="action_stop_stabilization">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</normaloff>../../artwork/icons/qudiTheme/22x22/stop-scan.png</iconset>
@@ -602,6 +612,11 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
     <string>Stop Ramp Scan</string>
    </property>
   </action>
+  <action name="action_show_labbook">
+   <property name="text">
+    <string>Show Labbook</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
@@ -610,6 +625,21 @@ Timestamps in oversampling interval are all equal to the averaging time.</string
    <header>pyqtgraph</header>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>scan_frequency_spinBox</tabstop>
+  <tabstop>scan_resolution_spinBox</tabstop>
+  <tabstop>max_scan_resolution_checkBox</tabstop>
+  <tabstop>threshold_spinBox</tabstop>
+  <tabstop>voltage_adjustment_steps_spinBox</tabstop>
+  <tabstop>average_number_spinBox</tabstop>
+  <tabstop>cavity_mode_checkBox</tabstop>
+  <tabstop>cavity_scan_PlotWidget</tabstop>
+  <tabstop>ramp_scan_PlotWidget</tabstop>
+  <tabstop>position_slider</tabstop>
+  <tabstop>position_spinBox</tabstop>
+  <tabstop>start_spinBox</tabstop>
+  <tabstop>stop_spinBox</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>

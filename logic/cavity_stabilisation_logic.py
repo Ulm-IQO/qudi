@@ -205,6 +205,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.stop_time = time.time()
         self._use_maximal_resolution = False
         self.image_array_reducing_factor = 0
+        self.filepath = self._save_logic.get_path_for_module(module_name='CavityScan')
 
     def on_deactivate(self):
         """ Reverse steps of activation
@@ -223,11 +224,12 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         if self._feedback_device.set_up_analogue_voltage_reader_clock(self.feedback_axis,
                                                                                clock_frequency=self.max_clock_freq) < 0:
-            return [-1]
+            return -1
         # read voltages from resistive read out for position feedback
         if self._feedback_device.set_up_analogue_voltage_reader_scanner(
                 self._average_number, self.feedback_axis) < 0:
-            return [-1]
+            self._feedback_device.close_analogue_voltage_reader_clock(self.feedback_axis)
+            return -1
         try:
             self._feedback_device.module_state.lock()
         except:
@@ -648,6 +650,8 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
         self.elapsed_sweeps = 0
         self.histo_count = 0
         self._initialise_data_matrix()
+        self.filepath = self._save_logic.get_path_for_module(module_name='CavityScan')
+        self.signal_scan_next_line.emit()
 
         return 0
 
@@ -882,8 +886,7 @@ class CavityStabilisationLogic(GenericLogic):  # Todo connect to generic logic
 
         @return int: error code (0:OK, -1:error)
         """
-
-        filepath = self._save_logic.get_path_for_module(module_name='CavityScan')
+        filepath = self.filepath
         filelabel = 'cavity_scan'
         # filelabel2 = 'pi_scan_histo'
         timestamp = datetime.datetime.now()
