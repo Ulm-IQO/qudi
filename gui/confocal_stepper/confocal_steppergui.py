@@ -35,6 +35,7 @@ from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from core.util import units
+from qtwidgets.scan_plotwidget import ScanImageItem
 
 
 class CrossROI(pg.ROI):

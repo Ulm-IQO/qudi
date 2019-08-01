@@ -995,7 +995,7 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_2" stretch="0,0">
          <item>
-          <widget class="PlotWidgetModified" name="ViewWidget">
+          <widget class="ScanPlotWidget" name="ViewWidget">
            <property name="sizePolicy">
             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
              <horstretch>0</horstretch>
@@ -3503,9 +3503,9 @@
    <header>pyqtgraph</header>
   </customwidget>
   <customwidget>
-   <class>PlotWidgetModified</class>
+   <class>ScanPlotWidget</class>
    <extends>QGraphicsView</extends>
-   <header>qtwidgets.plotwidget_modified.h</header>
+   <header>qtwidgets.scan_plotwidget.h</header>
   </customwidget>
  </customwidgets>
  <tabstops>
