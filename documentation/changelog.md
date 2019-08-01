@@ -37,6 +37,8 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Added calculation tool in ODMR GUI, to calculate the field and its alignment to N-V axis after
+ a two-dip fitting is done.
 
 
 Config changes:

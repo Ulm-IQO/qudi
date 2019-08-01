@@ -266,6 +266,7 @@ class ODMRGui(GUIBase):
         self.sigContinueOdmrScan.connect(self._odmr_logic.continue_odmr_scan,
                                          QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._odmr_logic.do_fit, QtCore.Qt.QueuedConnection)
+        self._mw.field_info_PushButton.clicked.connect(self._odmr_logic.cal_alignment, QtCore.Qt.QueuedConnection)
         self.sigMwCwParamsChanged.connect(self._odmr_logic.set_cw_parameters,
                                           QtCore.Qt.QueuedConnection)
         self.sigMwSweepParamsChanged.connect(self._odmr_logic.set_sweep_parameters,
@@ -288,6 +289,7 @@ class ODMRGui(GUIBase):
                                                        QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrPlotsUpdated.connect(self.update_plots, QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrFitUpdated.connect(self.update_fit, QtCore.Qt.QueuedConnection)
+        self._odmr_logic.sigFieldCalUpdated.connect(self.update_field, QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrElapsedTimeUpdated.connect(self.update_elapsedtime,
                                                            QtCore.Qt.QueuedConnection)
 
@@ -342,6 +344,7 @@ class ODMRGui(GUIBase):
         self._mw.action_toggle_cw.triggered.disconnect()
         self._mw.action_RestoreDefault.triggered.disconnect()
         self._mw.do_fit_PushButton.clicked.disconnect()
+        self._mw.field_info_PushButton.clicked.disconnect()
         self._mw.cw_frequency_DoubleSpinBox.editingFinished.disconnect()
         self._mw.start_freq_DoubleSpinBox.editingFinished.disconnect()
         self._mw.step_freq_DoubleSpinBox.editingFinished.disconnect()
@@ -648,6 +651,11 @@ class ODMRGui(GUIBase):
                 self._mw.odmr_PlotWidget.removeItem(self.odmr_fit_image)
 
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
+        return
+
+    def update_field(self, b_field, angle):
+        """Update calculated magnetic field and the NV-B angle"""
+        self._mw.field_alignment_DisplayWidget.setPlainText('Magnetic field: {0} Gauss\nNV-B angle: {1} degree'.format(b_field, angle))
         return
 
     def update_parameter(self, param_dict):

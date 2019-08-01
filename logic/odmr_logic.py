@@ -33,6 +33,7 @@ import lmfit
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.module import Connector, ConfigOption, StatusVar
+from scipy.constants import physical_constants
 
 
 class ODMRLogic(GenericLogic):
@@ -77,6 +78,7 @@ class ODMRLogic(GenericLogic):
     sigOutputStateUpdated = QtCore.Signal(str, bool)
     sigOdmrPlotsUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
     sigOdmrFitUpdated = QtCore.Signal(np.ndarray, np.ndarray, dict, str)
+    sigFieldCalUpdated = QtCore.Signal(str, str)
     sigOdmrElapsedTimeUpdated = QtCore.Signal(float, int)
 
     def __init__(self, config, **kwargs):
@@ -1039,3 +1041,28 @@ class ODMRLogic(GenericLogic):
             self.save_odmr_data(tag=name_tag)
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
+
+    def cal_alignment(self):  # from Balasubramanian2008 paper
+        '''calculates the alignment theta and the magn. field out of the two
+        transition frequencies freq1 and freq2
+
+        Attention: If the field is higher than 1000 Gauss the -1 transition frequency
+        has to be inserted as a negative value'''
+        D_zerofield = 2870
+        zeroField_E = 0.
+        freq1 = self.fc.current_fit_param['l0_center'].value/1e6
+        freq2 = self.fc.current_fit_param['l1_center'].value/1e6
+
+        delta = ((7 * D_zerofield ** 3 + 2 * (freq1 + freq2) * (
+                    2 * (freq1 ** 2 + freq2 ** 2) - 5 * freq1 * freq2 - 9 * zeroField_E ** 2) -
+                  3 * D_zerofield * (freq1 ** 2 + freq2 ** 2 - freq1 * freq2 + 9 * zeroField_E ** 2)) /
+                 (9 * (freq1 ** 2 + freq2 ** 2 - freq1 * freq2 - D_zerofield ** 2 - 3 * zeroField_E ** 2)))
+
+        angle = np.arccos(delta / D_zerofield - 1e-9) / 2. / (np.pi) * 180.
+        beta = np.sqrt((freq1 ** 2 + freq2 ** 2 - freq1 * freq2 - D_zerofield ** 2) / 3. - zeroField_E ** 2.)
+
+        b_field = beta / physical_constants['Bohr magneton in Hz/T'][0] / (
+                    -1 * physical_constants['electron g factor'][0]) * 1e10
+
+        self.sigFieldCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)   # in Gauss and degrees
+        return
