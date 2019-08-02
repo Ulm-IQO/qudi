@@ -93,6 +93,8 @@ class ODMRGui(GUIBase):
     sigDoFit = QtCore.Signal(str, object, object, int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
     sigAverageLinesChanged = QtCore.Signal(int)
+    sigCalParamsChanged = QtCore.Signal(float, float)
+    sigManualDipsChanged = QtCore.Signal(float, float)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -219,6 +221,11 @@ class ODMRGui(GUIBase):
         self._mw.elapsed_sweeps_DisplayWidget.display(self._odmr_logic.elapsed_sweeps)
         self._mw.average_level_SpinBox.setValue(self._odmr_logic.lines_to_average)
 
+        self._mw.zfs_DoubleSpinBox.setValue(self._odmr_logic.zero_field_D)
+        self._mw.e_DoubleSpinBox.setValue(self._odmr_logic.diamond_strain)
+        self._mw.freq1_DoubleSpinBox.setValue(self._odmr_logic.freq1)
+        self._mw.freq2_DoubleSpinBox.setValue(self._odmr_logic.freq2)
+
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
         self._sd.oversampling_SpinBox.setValue(self._odmr_logic.oversampling)
@@ -246,6 +253,10 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
         self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.connect(self.colorscale_changed)
         self._mw.average_level_SpinBox.valueChanged.connect(self.average_level_changed)
+        self._mw.zfs_DoubleSpinBox.editingFinished.connect(self.change_field_param)
+        self._mw.e_DoubleSpinBox.editingFinished.connect(self.change_field_param)
+        self._mw.freq1_DoubleSpinBox.editingFinished.connect(self.change_dip_values)
+        self._mw.freq2_DoubleSpinBox.editingFinished.connect(self.change_dip_values)
         # Internal trigger signals
         self._mw.odmr_cb_manual_RadioButton.clicked.connect(self.colorscale_changed)
         self._mw.odmr_cb_centiles_RadioButton.clicked.connect(self.colorscale_changed)
@@ -266,7 +277,10 @@ class ODMRGui(GUIBase):
         self.sigContinueOdmrScan.connect(self._odmr_logic.continue_odmr_scan,
                                          QtCore.Qt.QueuedConnection)
         self.sigDoFit.connect(self._odmr_logic.do_fit, QtCore.Qt.QueuedConnection)
-        self._mw.field_info_PushButton.clicked.connect(self._odmr_logic.cal_alignment, QtCore.Qt.QueuedConnection)
+        self._mw.a_field_PushButton.clicked.connect(self._odmr_logic.auto_dips, QtCore.Qt.QueuedConnection)
+        self._mw.m_field_PushButton.clicked.connect(self._odmr_logic.manual_dips, QtCore.Qt.QueuedConnection)
+        self.sigCalParamsChanged.connect(self._odmr_logic.set_field_params, QtCore.Qt.QueuedConnection)
+        self.sigManualDipsChanged.connect(self._odmr_logic.set_manual_dip_values, QtCore.Qt.QueuedConnection)
         self.sigMwCwParamsChanged.connect(self._odmr_logic.set_cw_parameters,
                                           QtCore.Qt.QueuedConnection)
         self.sigMwSweepParamsChanged.connect(self._odmr_logic.set_sweep_parameters,
@@ -289,9 +303,11 @@ class ODMRGui(GUIBase):
                                                        QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrPlotsUpdated.connect(self.update_plots, QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrFitUpdated.connect(self.update_fit, QtCore.Qt.QueuedConnection)
-        self._odmr_logic.sigFieldCalUpdated.connect(self.update_field, QtCore.Qt.QueuedConnection)
+        self._odmr_logic.sigFieldaCalUpdated.connect(self.a_update_field, QtCore.Qt.QueuedConnection)
+        self._odmr_logic.sigFieldmCalUpdated.connect(self.m_update_field, QtCore.Qt.QueuedConnection)
         self._odmr_logic.sigOdmrElapsedTimeUpdated.connect(self.update_elapsedtime,
                                                            QtCore.Qt.QueuedConnection)
+        self._odmr_logic.sigFieldParamsUpdated.connect(self.update_field_params, QtCore.Qt.QueuedConnection)
 
         # connect settings signals
         self._mw.action_Settings.triggered.connect(self._menu_settings)
@@ -335,6 +351,7 @@ class ODMRGui(GUIBase):
         self.sigLockInChanged.disconnect()
         self.sigSaveMeasurement.disconnect()
         self.sigAverageLinesChanged.disconnect()
+        self.sigCalParamsChanged.disconnect()
         self._mw.odmr_cb_manual_RadioButton.clicked.disconnect()
         self._mw.odmr_cb_centiles_RadioButton.clicked.disconnect()
         self._mw.clear_odmr_PushButton.clicked.disconnect()
@@ -344,7 +361,8 @@ class ODMRGui(GUIBase):
         self._mw.action_toggle_cw.triggered.disconnect()
         self._mw.action_RestoreDefault.triggered.disconnect()
         self._mw.do_fit_PushButton.clicked.disconnect()
-        self._mw.field_info_PushButton.clicked.disconnect()
+        self._mw.a_field_PushButton.clicked.disconnect()
+        self._mw.m_field_PushButton.clicked.disconnect()
         self._mw.cw_frequency_DoubleSpinBox.editingFinished.disconnect()
         self._mw.start_freq_DoubleSpinBox.editingFinished.disconnect()
         self._mw.step_freq_DoubleSpinBox.editingFinished.disconnect()
@@ -356,6 +374,10 @@ class ODMRGui(GUIBase):
         self._mw.odmr_cb_min_DoubleSpinBox.valueChanged.disconnect()
         self._mw.odmr_cb_high_percentile_DoubleSpinBox.valueChanged.disconnect()
         self._mw.odmr_cb_low_percentile_DoubleSpinBox.valueChanged.disconnect()
+        self._mw.zfs_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.e_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.freq1_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.freq2_DoubleSpinBox.editingFinished.disconnect()
         self._mw.average_level_SpinBox.valueChanged.disconnect()
         self._fsd.sigFitsUpdated.disconnect()
         self._mw.action_FitSettings.triggered.disconnect()
@@ -653,9 +675,40 @@ class ODMRGui(GUIBase):
         self._mw.odmr_PlotWidget.getViewBox().updateAutoRange()
         return
 
-    def update_field(self, b_field, angle):
-        """Update calculated magnetic field and the NV-B angle"""
-        self._mw.field_alignment_DisplayWidget.setPlainText('Magnetic field: {0} Gauss\nNV-B angle: {1} degree'.format(b_field, angle))
+    def a_update_field(self, b_field, angle):
+        """Update calculated magnetic field and the NV-B angle, from a 2-dip fitting"""
+        self._mw.a_field_alignment_DisplayWidget.setPlainText('Magnetic field: {0} Gauss\nNV-B angle: {1} degree'.format(b_field, angle))
+        return
+
+    def m_update_field(self, b_field, angle):
+        """Update calculated magnetic field and the NV-B angle, from user input values"""
+        self._mw.m_field_alignment_DisplayWidget.setPlainText('Magnetic field: {0} Gauss\nNV-B angle: {1} degree'.format(b_field, angle))
+        return
+
+    def update_field_params(self, param_dict):
+        param = param_dict.get('ZFS')
+        if param is not None:
+            self._mw.zfs_DoubleSpinBox.blockSignals(True)
+            self._mw.zfs_DoubleSpinBox.setValue(param)
+            self._mw.zfs_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('strain')
+        if param is not None:
+            self._mw.e_DoubleSpinBox.blockSignals(True)
+            self._mw.e_DoubleSpinBox.setValue(param)
+            self._mw.e_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('freq1')
+        if param is not None:
+            self._mw.freq1_DoubleSpinBox.blockSignals(True)
+            self._mw.freq1_DoubleSpinBox.setValue(param)
+            self._mw.freq1_DoubleSpinBox.blockSignals(False)
+
+        param = param_dict.get('freq2')
+        if param is not None:
+            self._mw.freq2_DoubleSpinBox.blockSignals(True)
+            self._mw.freq2_DoubleSpinBox.setValue(param)
+            self._mw.freq2_DoubleSpinBox.blockSignals(False)
         return
 
     def update_parameter(self, param_dict):
@@ -780,4 +833,18 @@ class ODMRGui(GUIBase):
             pcile_range = [low_centile, high_centile]
 
         self.sigSaveMeasurement.emit(filetag, cb_range, pcile_range)
+        return
+
+    def change_field_param(self):
+        """ Change the zero-field-splitting value of NV center, for the calculation of field"""
+        zfs = self._mw.zfs_DoubleSpinBox.value()
+        e = self._mw.e_DoubleSpinBox.value()
+        self.sigCalParamsChanged.emit(zfs, e)
+        return
+
+    def change_dip_values(self):
+        """ Change the dip values manuly for field calculation"""
+        freq1 = self._mw.freq1_DoubleSpinBox.value()
+        freq2 = self._mw.freq2_DoubleSpinBox.value()
+        self.sigManualDipsChanged.emit(freq1, freq2)
         return

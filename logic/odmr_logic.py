@@ -69,6 +69,10 @@ class ODMRLogic(GenericLogic):
     lines_to_average = StatusVar('lines_to_average', 0)
     _oversampling = StatusVar('oversampling', default=10)
     _lock_in_active = StatusVar('lock_in_active', default=False)
+    zero_field_D = StatusVar('ZFS', 2870e6)
+    diamond_strain = StatusVar('strain', 0)
+    freq1 = StatusVar('freq1', 2800e6)
+    freq2 = StatusVar('freq2', 2900e6)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -78,7 +82,9 @@ class ODMRLogic(GenericLogic):
     sigOutputStateUpdated = QtCore.Signal(str, bool)
     sigOdmrPlotsUpdated = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray)
     sigOdmrFitUpdated = QtCore.Signal(np.ndarray, np.ndarray, dict, str)
-    sigFieldCalUpdated = QtCore.Signal(str, str)
+    sigFieldaCalUpdated = QtCore.Signal(str, str)
+    sigFieldmCalUpdated = QtCore.Signal(str, str)
+    sigFieldParamsUpdated = QtCore.Signal(dict)
     sigOdmrElapsedTimeUpdated = QtCore.Signal(float, int)
 
     def __init__(self, config, **kwargs):
@@ -1042,16 +1048,28 @@ class ODMRLogic(GenericLogic):
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
 
-    def cal_alignment(self):  # from Balasubramanian2008 paper
+    def set_field_params(self, zfs, e):
+        self.zero_field_D = zfs
+        self.diamond_strain = e
+        param_dict = {'ZFS': self.zero_field_D, 'strain': self.diamond_strain}
+        self.sigFieldParamsUpdated.emit(param_dict)
+        return self.zero_field_D, self.diamond_strain
+
+    def set_manual_dip_values(self, freq1, freq2):
+        self.freq1 = freq1
+        self.freq2 = freq2
+        param_dict = {'freq1': self.freq1, 'freq2': self.freq2}
+        self.sigFieldParamsUpdated.emit(param_dict)
+        return self.freq1, self.freq2
+
+    def cal_alignment(self, freq1, freq2):  # from Balasubramanian2008 paper
         '''calculates the alignment theta and the magn. field out of the two
         transition frequencies freq1 and freq2
 
         Attention: If the field is higher than 1000 Gauss the -1 transition frequency
         has to be inserted as a negative value'''
-        D_zerofield = 2870
-        zeroField_E = 0.
-        freq1 = self.fc.current_fit_param['l0_center'].value/1e6
-        freq2 = self.fc.current_fit_param['l1_center'].value/1e6
+        D_zerofield = self.zero_field_D/1e6
+        zeroField_E = self.diamond_strain/1e6
 
         delta = ((7 * D_zerofield ** 3 + 2 * (freq1 + freq2) * (
                     2 * (freq1 ** 2 + freq2 ** 2) - 5 * freq1 * freq2 - 9 * zeroField_E ** 2) -
@@ -1063,6 +1081,16 @@ class ODMRLogic(GenericLogic):
 
         b_field = beta / physical_constants['Bohr magneton in Hz/T'][0] / (
                     -1 * physical_constants['electron g factor'][0]) * 1e10
+        return b_field, angle  # in Gauss and degrees
 
-        self.sigFieldCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)   # in Gauss and degrees
+    def manual_dips(self):
+        b_field, angle = self.cal_alignment(self.freq1/1e6, self.freq2/1e6)
+        self.sigFieldmCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
+        return
+
+    def auto_dips(self):
+        freq1 = self.fc.current_fit_param['l0_center'].value/1e6
+        freq2 = self.fc.current_fit_param['l1_center'].value/1e6
+        b_field, angle = self.cal_alignment(freq1, freq2)
+        self.sigFieldaCalUpdated.emit('%.3f'% b_field, '%.3f'% angle)
         return

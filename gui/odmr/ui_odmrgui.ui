@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>986</width>
-    <height>687</height>
+    <width>1031</width>
+    <height>890</height>
    </rect>
   </property>
   <property name="contextMenuPolicy">
@@ -213,7 +213,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>986</width>
+     <width>1031</width>
      <height>21</height>
     </rect>
    </property>
@@ -657,6 +657,29 @@
      </sizepolicy>
     </property>
     <layout class="QGridLayout" name="gridLayout_2">
+     <item row="0" column="1">
+      <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_9">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="text">
+        <string>Fit Function :</string>
+       </property>
+      </widget>
+     </item>
      <item row="1" column="0">
       <widget class="QLabel" name="label_12">
        <property name="enabled">
@@ -686,29 +709,6 @@
        </property>
       </widget>
      </item>
-     <item row="0" column="1">
-      <widget class="FitSettingsComboBox" name="fit_methods_ComboBox">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="0">
-      <widget class="QLabel" name="label_9">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="text">
-        <string>Fit Function :</string>
-       </property>
-      </widget>
-     </item>
      <item row="1" column="1" colspan="2">
       <widget class="QTextBrowser" name="odmr_fit_results_DisplayWidget">
        <property name="sizePolicy">
@@ -728,26 +728,6 @@
        </property>
        <property name="tabChangesFocus">
         <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1" colspan="2">
-      <widget class="QTextBrowser" name="field_alignment_DisplayWidget">
-       <property name="sizeAdjustPolicy">
-        <enum>QAbstractScrollArea::AdjustToContents</enum>
-       </property>
-       <property name="tabChangesFocus">
-        <bool>true</bool>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="0">
-      <widget class="QPushButton" name="field_info_PushButton">
-       <property name="toolTip">
-        <string>Click to calculate the magnetic field and the alignment to N-V axis, after a two-dip fitting is done.</string>
-       </property>
-       <property name="text">
-        <string>B Field Cal</string>
        </property>
       </widget>
      </item>
@@ -777,6 +757,254 @@
     <bool>false</bool>
    </attribute>
    <addaction name="action_toggle_cw"/>
+  </widget>
+  <widget class="QDockWidget" name="field_cal_DockWidget">
+   <property name="windowTitle">
+    <string>Field Calculation</string>
+   </property>
+   <attribute name="dockWidgetArea">
+    <number>4</number>
+   </attribute>
+   <widget class="QWidget" name="dockWidgetContents_6">
+    <layout class="QFormLayout" name="formLayout">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_14">
+       <property name="text">
+        <string>Zero-Field-Splitting :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="ScienDSpinBox" name="zfs_DoubleSpinBox">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="suffix">
+        <string>Hz</string>
+       </property>
+       <property name="decimals">
+        <number>6</number>
+       </property>
+       <property name="maximum">
+        <double>4000000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="0">
+      <widget class="QLabel" name="label_15">
+       <property name="text">
+        <string>Strain :</string>
+       </property>
+      </widget>
+     </item>
+     <item row="1" column="1">
+      <widget class="ScienDSpinBox" name="e_DoubleSpinBox">
+       <property name="minimumSize">
+        <size>
+         <width>120</width>
+         <height>0</height>
+        </size>
+       </property>
+       <property name="suffix">
+        <string>Hz</string>
+       </property>
+       <property name="decimals">
+        <number>6</number>
+       </property>
+       <property name="maximum">
+        <double>10000000000.000000000000000</double>
+       </property>
+      </widget>
+     </item>
+     <item row="2" column="0">
+      <widget class="QTabWidget" name="tabWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>20</horstretch>
+         <verstretch>40</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>180</width>
+         <height>140</height>
+        </size>
+       </property>
+       <property name="currentIndex">
+        <number>1</number>
+       </property>
+       <widget class="QWidget" name="auto_Cal_tab">
+        <attribute name="title">
+         <string>Auto Freqs</string>
+        </attribute>
+        <widget class="QPushButton" name="a_field_PushButton">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>2</y>
+           <width>75</width>
+           <height>23</height>
+          </rect>
+         </property>
+         <property name="toolTip">
+          <string>Click to calculate the magnetic field and the alignment to N-V axis, after a two-dip fitting is done.</string>
+         </property>
+         <property name="text">
+          <string>Calculate</string>
+         </property>
+        </widget>
+        <widget class="QTextBrowser" name="a_field_alignment_DisplayWidget">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>30</y>
+           <width>170</width>
+           <height>71</height>
+          </rect>
+         </property>
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="maximumSize">
+          <size>
+           <width>120</width>
+           <height>16777215</height>
+          </size>
+         </property>
+         <property name="sizeAdjustPolicy">
+          <enum>QAbstractScrollArea::AdjustToContents</enum>
+         </property>
+         <property name="tabChangesFocus">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </widget>
+       <widget class="QWidget" name="manual_Cal_tab">
+        <attribute name="title">
+         <string>Manual Freqs</string>
+        </attribute>
+        <widget class="ScienDSpinBox" name="freq1_DoubleSpinBox">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>0</y>
+           <width>100</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>22</height>
+          </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
+         </property>
+         <property name="decimals">
+          <number>6</number>
+         </property>
+         <property name="maximum">
+          <double>100000000000.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="ScienDSpinBox" name="freq2_DoubleSpinBox">
+         <property name="geometry">
+          <rect>
+           <x>60</x>
+           <y>22</y>
+           <width>100</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>100</width>
+           <height>0</height>
+          </size>
+         </property>
+         <property name="suffix">
+          <string>Hz</string>
+         </property>
+         <property name="decimals">
+          <number>6</number>
+         </property>
+         <property name="maximum">
+          <double>100000000000.000000000000000</double>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_11">
+         <property name="geometry">
+          <rect>
+           <x>5</x>
+           <y>0</y>
+           <width>45</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Freq 1 :</string>
+         </property>
+        </widget>
+        <widget class="QLabel" name="label_13">
+         <property name="geometry">
+          <rect>
+           <x>5</x>
+           <y>22</y>
+           <width>45</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Freq 2 :</string>
+         </property>
+        </widget>
+        <widget class="QPushButton" name="m_field_PushButton">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>44</y>
+           <width>75</width>
+           <height>22</height>
+          </rect>
+         </property>
+         <property name="text">
+          <string>Calculate</string>
+         </property>
+        </widget>
+        <widget class="QTextBrowser" name="m_field_alignment_DisplayWidget">
+         <property name="geometry">
+          <rect>
+           <x>0</x>
+           <y>66</y>
+           <width>170</width>
+           <height>40</height>
+          </rect>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>170</width>
+           <height>0</height>
+          </size>
+         </property>
+        </widget>
+       </widget>
+      </widget>
+     </item>
+    </layout>
+   </widget>
   </widget>
   <action name="action_Settings">
    <property name="icon">
