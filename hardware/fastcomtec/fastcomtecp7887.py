@@ -175,8 +175,9 @@ class FastComtec(Base, FastCounterInterface):
         self.log.debug('The following configuration was found.')
 
         # checking for the right configuration
-        for key in config.keys():
-            self.log.info('{0}: {1}'.format(key,config[key]))
+        if config:
+            for key in config.keys():
+                self.log.info('{0}: {1}'.format(key,config[key]))
         #this variable has to be added because there is no difference
         #in the fastcomtec it can be on "stopped" or "halt"
         self.stopped_or_halt = "stopped"
@@ -186,6 +187,7 @@ class FastComtec(Base, FastCounterInterface):
         """ Initialisation performed during activation of the module.
         """
         self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
+        #self.dll = ctypes.windll.LoadLibrary('p7887lib_no_server')
         if self.gated:
             self.change_sweep_mode(gated=True)
         else:
@@ -304,8 +306,8 @@ class FastComtec(Base, FastCounterInterface):
             self._change_filename(filename)
 
         self.log.debug("Fastcomtec configuration written. "
-                       "Record length: {}, gated: {}, cycles: {}, sweeps_preset: {}, sequences: {}".format(
-                        record_length, self.gated, number_of_gates if self.gated else 0, n_sweeps_preset,
+                       "Record length: {}, binwidth: {}, gated: {}, cycles: {}, sweeps_preset: {}, sequences: {}".format(
+                        record_length, bin_width_new, self.gated, number_of_gates if self.gated else 0, n_sweeps_preset,
                         n_sequences if self.gated else None))
 
         return self.get_binwidth(), record_length, number_of_gates
@@ -364,16 +366,31 @@ class FastComtec(Base, FastCounterInterface):
     def start_measure(self):
         """Start the measurement. """
         status = self.dll.Start(0)
-        while self.get_status() != 2:
+
+        i_wait = 0
+        n_wait_max = 20
+        while self.get_status() != 2 and i_wait < n_wait_max:
             time.sleep(0.05)
+            i_wait += 1
+
+        if i_wait >= n_wait_max:
+            self.log.warning("Starting fastcomtec timed out.")
+
         return status
 
     def stop_measure(self):
         """Stop the measurement. """
         self.stopped_or_halt = "stopped"
         status = self.dll.Halt(0)
-        while self.get_status() != 1:
+
+        i_wait = 0
+        n_wait_max = 20
+        while self.get_status() != 1 and i_wait < n_wait_max:
             time.sleep(0.05)
+            i_wait += 1
+
+        if i_wait >= n_wait_max:
+            self.log.warning("Stopping fastcomtec timed out.")
 
         if self.gated:
             self.timetrace_tmp = []
@@ -692,7 +709,7 @@ class FastComtec(Base, FastCounterInterface):
         preset = bsetting.swpreset
         return int(preset)
 
-    def set_cycle_mode(self, mode=True, cycles=None):
+    def set_cycle_mode(self, mode=True, cycles=None, dma=False):
         """ Turns on or off the sequential cycle mode
 
         @param bool mode: Set or unset cycle mode
@@ -700,21 +717,31 @@ class FastComtec(Base, FastCounterInterface):
 
         @return: just the input
         """
+        # todo: enabling dma breaks gated mode. Remove again?
+
         # First set cycles to 1 to prevent crashes
         if cycles == None:
             cycles_old = self.get_cycles()
         #self.set_cycles(1)
         # Turn on or off sequential cycle mode
         if mode:
-            if not self.get_cycle_mode() == 35528836:
+            #if not self.get_cycle_mode() == 35528836:
             #cmd = 'sweepmode={0}'.format(hex(1978500))
             #cmd = 'sweepmode={0}'.format(hex(1974404))
-                cmd = 'sweepmode={0}'.format(hex(35528836))
-                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            int_mode = 35528836
+            if dma:
+                int_mode += 32
+            cmd = 'sweepmode={0}'.format(hex(int_mode))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
         else:
-            if not self.get_cycle_mode() == 1978496:
-                cmd = 'sweepmode={0}'.format(hex(1978496))
-                self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+            #if not self.get_cycle_mode() == 1978496:
+            int_mode = 1978496
+            if dma:
+                int_mode += 32
+            cmd = 'sweepmode={0}'.format(hex(int_mode))
+            self.dll.RunCmd(0, bytes(cmd, 'ascii'))
+
+        self.log.debug("Setting sweepmode to {}".format(int_mode))
 
         if not cycles == None:
             #self.set_cycles(cycles_old)
