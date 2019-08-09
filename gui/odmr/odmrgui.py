@@ -93,7 +93,7 @@ class ODMRGui(GUIBase):
     sigDoFit = QtCore.Signal(str, object, object, int)
     sigSaveMeasurement = QtCore.Signal(str, list, list)
     sigAverageLinesChanged = QtCore.Signal(int)
-    sigCalParamsChanged = QtCore.Signal(float, float)
+    sigCalParamsChanged = QtCore.Signal(float, float, bool)
     sigManualDipsChanged = QtCore.Signal(float, float)
 
     def __init__(self, config, **kwargs):
@@ -225,6 +225,7 @@ class ODMRGui(GUIBase):
         self._mw.e_DoubleSpinBox.setValue(self._odmr_logic.diamond_strain)
         self._mw.freq1_DoubleSpinBox.setValue(self._odmr_logic.freq1)
         self._mw.freq2_DoubleSpinBox.setValue(self._odmr_logic.freq2)
+        self._mw.lac_CheckBox.setChecked(self._odmr_logic.lac)
 
         self._sd.matrix_lines_SpinBox.setValue(self._odmr_logic.number_of_lines)
         self._sd.clock_frequency_DoubleSpinBox.setValue(self._odmr_logic.clock_frequency)
@@ -255,6 +256,7 @@ class ODMRGui(GUIBase):
         self._mw.average_level_SpinBox.valueChanged.connect(self.average_level_changed)
         self._mw.zfs_DoubleSpinBox.editingFinished.connect(self.change_field_param)
         self._mw.e_DoubleSpinBox.editingFinished.connect(self.change_field_param)
+        self._mw.lac_CheckBox.stateChanged.connect(self.change_field_param)
         self._mw.freq1_DoubleSpinBox.editingFinished.connect(self.change_dip_values)
         self._mw.freq2_DoubleSpinBox.editingFinished.connect(self.change_dip_values)
         # Internal trigger signals
@@ -839,7 +841,8 @@ class ODMRGui(GUIBase):
         """ Change the zero-field-splitting value of NV center, for the calculation of field"""
         zfs = self._mw.zfs_DoubleSpinBox.value()
         e = self._mw.e_DoubleSpinBox.value()
-        self.sigCalParamsChanged.emit(zfs, e)
+        lac = self._mw.lac_CheckBox.isChecked()
+        self.sigCalParamsChanged.emit(zfs, e, lac)
         return
 
     def change_dip_values(self):

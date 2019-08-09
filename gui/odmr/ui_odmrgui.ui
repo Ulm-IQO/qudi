@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1031</width>
+    <width>1264</width>
     <height>890</height>
    </rect>
   </property>
@@ -213,7 +213,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1031</width>
+     <width>1264</width>
      <height>21</height>
     </rect>
    </property>
@@ -759,6 +759,9 @@
    <addaction name="action_toggle_cw"/>
   </widget>
   <widget class="QDockWidget" name="field_cal_DockWidget">
+   <property name="toolTip">
+    <string>Check if your field is larger than 1028 Gauss</string>
+   </property>
    <property name="windowTitle">
     <string>Field Calculation</string>
    </property>
@@ -990,7 +993,7 @@
            <x>0</x>
            <y>66</y>
            <width>170</width>
-           <height>40</height>
+           <height>41</height>
           </rect>
          </property>
          <property name="minimumSize">
@@ -1001,6 +1004,13 @@
          </property>
         </widget>
        </widget>
+      </widget>
+     </item>
+     <item row="2" column="1">
+      <widget class="QCheckBox" name="lac_CheckBox">
+       <property name="text">
+        <string>Level anti-Crossing</string>
+       </property>
       </widget>
      </item>
     </layout>

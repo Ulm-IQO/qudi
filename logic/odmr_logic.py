@@ -73,6 +73,7 @@ class ODMRLogic(GenericLogic):
     diamond_strain = StatusVar('strain', 0)
     freq1 = StatusVar('freq1', 2800e6)
     freq2 = StatusVar('freq2', 2900e6)
+    lac = StatusVar('level_anti_crossing', default=False)
 
     # Internal signals
     sigNextLine = QtCore.Signal()
@@ -1048,12 +1049,13 @@ class ODMRLogic(GenericLogic):
 
         return self.odmr_plot_x, self.odmr_plot_y, fit_params
 
-    def set_field_params(self, zfs, e):
+    def set_field_params(self, zfs, e, lac):
         self.zero_field_D = zfs
         self.diamond_strain = e
-        param_dict = {'ZFS': self.zero_field_D, 'strain': self.diamond_strain}
+        self.lac = lac
+        param_dict = {'ZFS': self.zero_field_D, 'strain': self.diamond_strain, 'level_anti_crossing': self.lac}
         self.sigFieldParamsUpdated.emit(param_dict)
-        return self.zero_field_D, self.diamond_strain
+        return self.zero_field_D, self.diamond_strain, self.lac
 
     def set_manual_dip_values(self, freq1, freq2):
         self.freq1 = freq1
@@ -1070,6 +1072,9 @@ class ODMRLogic(GenericLogic):
         has to be inserted as a negative value'''
         D_zerofield = self.zero_field_D/1e6
         zeroField_E = self.diamond_strain/1e6
+
+        if self.lac:
+            freq1 = -freq1   # In case of level anti-crossing, freq1 transforms to be negative value
 
         delta = ((7 * D_zerofield ** 3 + 2 * (freq1 + freq2) * (
                     2 * (freq1 ** 2 + freq2 ** 2) - 5 * freq1 * freq2 - 9 * zeroField_E ** 2) -
