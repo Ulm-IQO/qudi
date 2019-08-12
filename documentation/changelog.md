@@ -37,7 +37,9 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
-
+* Introduced support of interface sensitive overloading of interface methods. This resolves 
+namespace conflicts within a hardware module inheriting multiple interfaces. See 
+_how_to_hardware_module_with_multiple_interfaces.md_ for detailed documentation.
 
 Config changes:
 
