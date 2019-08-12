@@ -64,11 +64,17 @@ class InterfaceMethod:
         return self
 
     def __call__(self, *args, **kwargs):
+        if self.__isabstractmethod__:
+            raise NotImplementedError('No methods registered on abstractmethod {0}.'
+                                      ''.format(self.default_callable.__name__))
+        elif self.registered:
+            raise Exception('No keyword given for call to overloaded interface method. '
+                            'Valid keywords are: {0}'.format(tuple(self.registered)))
         return self._default_callable(*args, **kwargs)
 
     def __getitem__(self, key):
         if key not in self.registered:
-            raise KeyError('No method registered for interface "{0}".')
+            raise KeyError('No method registered for interface "{0}".'.format(key))
         return self.registered[key]
 
     def register(self, interface):
