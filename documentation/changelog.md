@@ -39,7 +39,7 @@ on an interpolated function
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
 * Introduced support of interface sensitive overloading of interface methods. This resolves 
 namespace conflicts within a hardware module inheriting multiple interfaces. See 
-_how_to_hardware_module_with_multiple_interfaces.md_ for detailed documentation.
+_how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
 
 Config changes:
 
