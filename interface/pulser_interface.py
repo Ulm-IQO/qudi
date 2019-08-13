@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 from core.interface import ScalarConstraint
+from enum import Enum
 
 
 class PulserInterface(metaclass=InterfaceMetaclass):
@@ -531,13 +532,14 @@ class PulserInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abstract_interface_method
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
 
-        @return: bool, True for yes, False for no.
-        """
-        pass
+class SequenceOption(Enum):
+    """
+    Different options of the sequence mode in the pulser device.
+    """
+    NON = 0  # No sequence mode, only waveforms can be used
+    OPTIONAL = 1  # Pulser can either work with waveforms directly or use sequences for the output
+    FORCED = 2  # Output is only allowed for sequences. Waveforms might still be uploaded but not played.
 
 
 class PulserConstraints:
@@ -563,3 +565,4 @@ class PulserConstraints:
         self.flags = list()
 
         self.activation_config = dict()
+        self.sequence_option = SequenceOption.OPTIONAL

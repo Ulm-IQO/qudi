@@ -101,7 +101,7 @@ Depending on the default argument type the GUI will automatically create the pro
 4. Place the module containing your class definition in the default directory to import from 
 (`./logic/pulsed/predefined_generate_methods/`) or put it in a custom directory and specify the path
 in your config for the `SequenceGeneratorLogic` as ConfigOption 
-"additional_predefined_methods_path".
+"additional_predefined_methods_path". **Notice:** You can either specify a single path as string or multiple paths as list of strings.
 
 You can also simply add your analysis method to an already existing `PredefinedGeneratorBase` child 
 class. In that case you just need to follow step 3. 
@@ -148,7 +148,7 @@ To do so, you will have to access the sampling function and grab the Enum subcla
 and you have to make sure, that the Enum subclass you are wanting to access really exists. 
 If you access an Enum subclass that does not exist without checking, the loading of qudi will fail!
 
-The following example is requiring the template from the [sampling functions](@ref sampling_functions):
+The following example is requiring the template from the [sampling functions](@ref sampling_functions). If the required sampling function is not found, qudi will show an error for the missing dependencies. The full traceback can be found in the debug.
 
 
 ```python
