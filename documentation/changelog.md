@@ -37,6 +37,10 @@ on an interpolated function
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
+* Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
+* Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
+* Adding Ocean optics spectrometer hardware module.
 * Removed the method `has_sequence_mode` from the `PulserInterface` 
 and rather added a `sequence_option` to the `PulserConstraints`.
 In `FORCED` mode the `SequenceGeneratorLogic` will create a default sequence around each stand-alone Ensemble.
@@ -44,11 +48,14 @@ The potential sequence_options are:
   * `NON` (no sequence mode)
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
+* 
 
 
 Config changes:
 
-* 
+* The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
+of the `SequenceGeneratorLogic` can now either be a string for a single path 
+or a list of strings for multiple paths.
 
 ## Release 0.10
 Released on 14 Mar 2019
