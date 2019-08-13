@@ -52,9 +52,6 @@ class AWG7k(Base, PulserInterface):
 
     """
 
-    _modclass = 'awg7k'
-    _modtype = 'hardware'
-
     # config options
     _tmp_work_dir = ConfigOption(name='tmp_work_dir',
                                  default=os.path.join(get_home_dir(), 'pulsed_files'),
@@ -129,6 +126,7 @@ class AWG7k(Base, PulserInterface):
         ))
         # Set current directory on AWG
         self.write('MMEM:CDIR "{0}"'.format(os.path.join(self._ftp_dir, self.ftp_working_dir)))
+        return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -999,7 +997,7 @@ class AWG7k(Base, PulserInterface):
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
         # Check if device has sequencer option installed
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
@@ -1223,7 +1221,7 @@ class AWG7k(Base, PulserInterface):
         variable output_as_int sets if the returned value should be either an
         integer number or string.
         """
-        if not self.get_constraints().sequence_option == SequenceOption.NON:
+        if self._has_sequence_mode():
             message = self.query('AWGC:SEQ:TYPE?')
             if 'HARD' in message:
                 return 0 if output_as_int else 'Hardware-Sequencer'
@@ -1435,7 +1433,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1453,7 +1451,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1472,7 +1470,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1495,7 +1493,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1515,7 +1513,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1543,7 +1541,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int last_step: The step number which 'jump to' has to be set to 'First'
         """
-        if self.get_constraints().sequence_option == SequenceOption.NON:
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1594,3 +1592,5 @@ class AWG7k(Base, PulserInterface):
 
         return has_error
 
+    def _has_sequence_mode(self):
+        return '08' in self.installed_options
