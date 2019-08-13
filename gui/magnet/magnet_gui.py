@@ -39,7 +39,6 @@ from qtwidgets.scientific_spinbox import ScienDSpinBox
 from qtwidgets.scan_plotwidget import ScanImageItem
 
 
-
 class CrossLine(pg.InfiniteLine):
 
     """ Construct one line for the Crosshair in the plot.
@@ -66,6 +65,7 @@ class CrossLine(pg.InfiniteLine):
         if self.angle == 90:
             self.setValue(extroi.pos()[0] + extroi.size()[0] * 0.5)
 
+
 class MagnetMainWindow(QtWidgets.QMainWindow):
     """ Create the Main Window based on the *.ui file. """
 
@@ -78,6 +78,7 @@ class MagnetMainWindow(QtWidgets.QMainWindow):
         super(MagnetMainWindow, self).__init__()
         uic.loadUi(ui_file, self)
         self.show()
+
 
 class MagnetSettingsWindow(QtWidgets.QDialog):
     def __init__(self):
@@ -105,12 +106,10 @@ class MagnetGui(GUIBase):
     _alignment_2d_cb_label = StatusVar('alignment_2d_cb_GraphicsView_text', 'Fluorescence')
     _alignment_2d_cb_units = StatusVar('alignment_2d_cb_GraphicsView_units', 'counts/s')
 
-
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
         self._continue_2d_fluorescence_alignment = False
-
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -179,13 +178,10 @@ class MagnetGui(GUIBase):
 
         self._magnet_logic.sigMeasurementFinished.connect(self._change_display_to_stop_2d_alignment)
 
-
-
         self._mw.align_2d_axis0_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis0)
         self._mw.align_2d_axis1_name_ComboBox.currentIndexChanged.connect(self._update_limits_axis1)
         self._mw.align_2d_axis0_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis0)
         self._mw.align_2d_axis1_set_vel_CheckBox.stateChanged.connect(self._set_vel_display_axis1)
-
 
         self._mw.alignment_2d_cb_min_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
         self._mw.alignment_2d_cb_max_centiles_DSpinBox.valueChanged.connect(self._update_2d_graph_data)
@@ -202,8 +198,8 @@ class MagnetGui(GUIBase):
         axis0, axis1 = self._magnet_logic.get_2d_axis_arrays()
         step0 = axis0[1] - axis0[0]
         step1 = axis1[1] - axis1[0]
-        self._2d_alignment_ImageItem.set_image_extent((axis0[0]-step0/2, axis0[-1]+step0/2),
-                                                      (axis1[0]-step1/2, axis1[-1]+step1/2))
+        self._2d_alignment_ImageItem.set_image_extent([[axis0[0]-step0/2, axis0[-1]+step0/2],
+                                                       [axis1[0]-step1/2, axis1[-1]+step1/2]])
         # Get the colorscales at set LUT
         my_colors = ColorScaleInferno()
         self._2d_alignment_ImageItem.setLookupTable(my_colors.lut)
@@ -234,7 +230,6 @@ class MagnetGui(GUIBase):
         self._mw.alignment_2d_cb_GraphicsView.setLabel('right',
             self._alignment_2d_cb_label,
             units=self._alignment_2d_cb_units)
-
 
         #FIXME: that should be actually set in the logic
         if 'measurement_type' in self._statusVariables:
@@ -277,8 +272,6 @@ class MagnetGui(GUIBase):
             self.get_ref_move_rel_ScienDSpinBox(axis_label).editingFinished.connect(self.move_rel_para_changed)
             #print('self.get_ref_move_rel_ScienDSpinBox('+axis_label+').valueChanged.connect(lambda: self.move_rel_changed('+axis_label+'))')
 
-
-
         # General 2d alignment:
         index = self._mw.align_2d_axis0_name_ComboBox.findText(self._magnet_logic.align_2d_axis0_name)
         self._mw.align_2d_axis0_name_ComboBox.setCurrentIndex(index)
@@ -301,7 +294,6 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis1_step_DSpinBox.editingFinished.connect(self.align_2d_axis1_step_changed)
         self._mw.align_2d_axis1_vel_DSpinBox.setValue(self._magnet_logic.align_2d_axis1_vel)
         self._mw.align_2d_axis1_vel_DSpinBox.editingFinished.connect(self.align_2d_axis1_vel_changed)
-
 
         # for fluorescence alignment:
         self._mw.align_2d_fluorescence_optimize_freq_SpinBox.setValue(self._magnet_logic.get_optimize_pos_freq())
@@ -342,8 +334,6 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis0_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_peak_axis0_move_ratio/1e12)
         self._mw.align_2d_axis1_shift_DSpinBox.setValue(self._magnet_logic.odmr_2d_peak_axis1_move_ratio/1e12)
 
-
-
         # for single shot alignment of a nuclear spin:
         self._mw.align_2d_nuclear_rabi_periode_DSpinBox.setValue(self._magnet_logic.nuclear_2d_rabi_periode)
         self._mw.align_2d_nuclear_mw_freq_DSpinBox.setValue(self._magnet_logic.nuclear_2d_mw_freq)
@@ -373,9 +363,7 @@ class MagnetGui(GUIBase):
         self._magnet_logic.sigOptPosFreqChanged.connect(self.update_optimize_pos_freq)
         self._magnet_logic.sigFluoIntTimeChanged.connect(self.update_fluorescence_integration_time)
 
-
         return 0
-
 
     def _activate_magnet_settings(self):
         """ Activate magnet settings.
@@ -396,8 +384,6 @@ class MagnetGui(GUIBase):
         self.keep_former_magnet_settings()
         return
 
-
-
     def trig_wrapper_normal_mode(self):
         if not self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
             self._ms.z_mode_checkBox.toggle()
@@ -410,16 +396,12 @@ class MagnetGui(GUIBase):
         elif self._ms.normal_mode_checkBox.isChecked() and self._ms.z_mode_checkBox.isChecked():
             self._ms.normal_mode_checkBox.toggle()
 
-
-
-
     def on_deactivate(self):
         """ Deactivate the module properly.
         """
         self._statusVariables['measurement_type'] = self.measurement_type
         self._alignment_2d_cb_label =  self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelText
         self._alignment_2d_cb_units = self._mw.alignment_2d_cb_GraphicsView.plotItem.axes['right']['item'].labelUnits
-
 
         self._mw.close()
 
@@ -428,7 +410,6 @@ class MagnetGui(GUIBase):
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
-
 
     def set_default_view_main_window(self):
         """ Establish the default dock Widget configuration. """
@@ -473,7 +454,6 @@ class MagnetGui(GUIBase):
 
         if self._ms.normal_mode_checkBox.isChecked() and not self._ms.z_mode_checkBox.isChecked():
             self.log.warning("dam dam")
-
 
         if self._ms.interactive_mode_CheckBox.isChecked():
             self._interactive_mode = True
@@ -521,7 +501,6 @@ class MagnetGui(GUIBase):
         self._mw.meas_type_nuclear_spin_RadioButton.setText('Nuclear Spin')
 
         self._mw.meas_type_fluorescence_RadioButton.setChecked(True)
-
 
     def _create_axis_pos_disp(self):
         """ Create the axis position display.
@@ -621,7 +600,6 @@ class MagnetGui(GUIBase):
 
             self._mw.move_rel_GridLayout.addWidget(dspinbox_ref, index, 1, 1, 1)
 
-
             # this is the name prototype for the relative movement minus button
             func_name = 'move_rel_axis_{0}_m'.format(axis_label)
             # create a method and assign it as attribute:
@@ -707,7 +685,6 @@ class MagnetGui(GUIBase):
             # prevents really ugly rounding error behaviours in display.
             # Set precision to nanometer scale, which is actually never reached.
             max_steps = int(max_val/smallest_step_slider)
-
 
             slider_obj.setMaximum(max_steps)
             slider_obj.setMinimum(0)
@@ -925,7 +902,6 @@ class MagnetGui(GUIBase):
         #     self.update_pos()
             return param_dict
 
-
     def get_ref_curr_pos_ScienDSpinBox(self, label):
         """ Get the reference to the double spin box for the passed label. """
 
@@ -1103,7 +1079,6 @@ class MagnetGui(GUIBase):
              curr_pos[self._magnet_logic.align_2d_axis1_name]])
         return curr_pos
 
-
     def run_stop_2d_alignment(self, is_checked):
         """ Manage what happens if 2d magnet scan is started/stopped
 
@@ -1195,7 +1170,6 @@ class MagnetGui(GUIBase):
 
             self._mw.alignment_2d_cb_GraphicsView.setLabel('right', 'Single shot readout fidelity', units='%')
 
-
         # constraints = self._magnet_logic.get_hardware_constraints()
 
         # axis0_name = self._mw.align_2d_axis0_name_ComboBox.currentText()
@@ -1240,12 +1214,10 @@ class MagnetGui(GUIBase):
         else:
             self.abort_2d_alignment_clicked()
 
-
     def continue_2d_alignment_clicked(self):
 
         self._continue_2d_fluorescence_alignment = True
         self.start_2d_alignment_clicked()
-
 
     def abort_2d_alignment_clicked(self):
         """ Stops the current Fluorescence alignment. """
@@ -1337,9 +1309,9 @@ class MagnetGui(GUIBase):
 
         step0 = axis0_array[1] - axis0_array[0]
         step1 = axis1_array[1] - axis1_array[0]
-        self._2d_alignment_ImageItem.set_image_extent(
-            (axis0_array[0]-step0/2, axis0_array[-1]+step0/2),
-            (axis1_array[0]-step1/2, axis1_array[-1]+step1/2))
+
+        self._2d_alignment_ImageItem.set_image_extent([[axis0_array[0]-step0/2, axis0_array[-1]+step0/2],
+                                                       [axis1_array[0]-step1/2, axis1_array[-1]+step1/2]])
 
         self._mw.alignment_2d_GraphicsView.setLabel('bottom', 'Absolute Position, Axis0: ' + axis0_name, units=axis0_unit)
         self._mw.alignment_2d_GraphicsView.setLabel('left', 'Absolute Position, Axis1: '+ axis1_name, units=axis1_unit)
@@ -1415,7 +1387,6 @@ class MagnetGui(GUIBase):
 
         # get data from logic
 
-
     def save_2d_plots_and_data(self):
         """ Save the sum plot, the scan marix plot and the scan data """
         timestamp = datetime.datetime.now()
@@ -1447,6 +1418,7 @@ class MagnetGui(GUIBase):
             self.measurement_type = '2d_nuclear'
         else:
             self.log.error('No measurement type specified in Magnet GUI!')
+
     def _odmr_single_trans_alignment_changed(self):
         """ Adjust the GUI display if only one ODMR transition is used. """
 
@@ -1610,7 +1582,6 @@ class MagnetGui(GUIBase):
         self._mw.align_2d_axis1_vel_DSpinBox.setValue(vel)
         self._mw.align_2d_axis1_vel_DSpinBox.blockSignals(False)
         return vel
-
 
     def update_optimize_pos_freq(self, freq):
         """ The GUT is updated taking freq into account. Thereby no signal is triggered!
