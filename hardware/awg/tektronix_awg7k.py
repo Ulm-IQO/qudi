@@ -276,7 +276,11 @@ class AWG7k(Base, PulserInterface):
         # Usage of one analog channel without digital channel
         activation_config['Analog2'] = frozenset({'a_ch2'})
         constraints.activation_config = activation_config
-        constraints.sequence_option = SequenceOption.OPTIONAL if '08' in self.installed_options else SequenceOption.NON
+
+        if self._has_sequence_mode():
+            constraints.sequence_option = SequenceOption.OPTIONAL
+        else:
+            constraints.sequence_option = SequenceOption.NON
 
         return constraints
 
