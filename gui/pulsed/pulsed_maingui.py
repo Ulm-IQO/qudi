@@ -2622,15 +2622,20 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 self._pa.ana_param_ignore_last_CheckBox.setChecked(False)
         if 'controlled_variable' in settings_dict:
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
-                settings_dict['controlled_variable'][0])
-            if len(settings_dict['controlled_variable']) > 1:
+            if len(settings_dict['controlled_variable']) < 1:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(0)
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(0)
+            elif len(settings_dict['controlled_variable']) == 1:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
+            else:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
                 self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
                     settings_dict['controlled_variable'][1] - settings_dict['controlled_variable'][
                         0])
-            else:
-                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
-                    settings_dict['controlled_variable'][0])
         if 'invoke_settings' in settings_dict:
             self._pa.ana_param_invoke_settings_CheckBox.setChecked(settings_dict['invoke_settings'])
             self.toggle_measurement_settings_editor(settings_dict['invoke_settings'])
