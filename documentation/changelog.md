@@ -41,6 +41,13 @@ The entire normalization to pulse generator analog voltage range (Vpp) is done d
 * Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 * Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
 * Adding Ocean optics spectrometer hardware module.
+* Removed the method `has_sequence_mode` from the `PulserInterface` 
+and rather added a `sequence_option` to the `PulserConstraints`.
+In `FORCED` mode the `SequenceGeneratorLogic` will create a default sequence around each stand-alone Ensemble.
+The potential sequence_options are: 
+  * `NON` (no sequence mode)
+  * `OPTIONAL` (sequence mode possible)
+  * `FORCED` (only output as sequence possible)
 * 
 
 
