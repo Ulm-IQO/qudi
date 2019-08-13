@@ -25,6 +25,7 @@ import os
 import pickle
 import time
 import copy
+import traceback
 
 from qtpy import QtCore
 from collections import OrderedDict
@@ -38,6 +39,7 @@ from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PulseObjectGenerator, PulseBlockElement
 from logic.pulsed.sampling_functions import SamplingFunctions
+from interface.pulser_interface import SequenceOption
 
 
 class SequenceGeneratorLogic(GenericLogic):
@@ -64,9 +66,9 @@ class SequenceGeneratorLogic(GenericLogic):
                                        missing='warn')
     _overhead_bytes = ConfigOption(name='overhead_bytes', default=0, missing='nothing')
     # Optional additional paths to import from
-    additional_methods_dir = ConfigOption(name='additional_predefined_methods_path',
-                                          default=None,
-                                          missing='nothing')
+    _additional_methods_import_path = ConfigOption(name='additional_predefined_methods_path',
+                                                   default=None,
+                                                   missing='nothing')
     _sampling_functions_import_path = ConfigOption(name='additional_sampling_functions_path',
                                                    default=None,
                                                    missing='nothing')
@@ -113,14 +115,6 @@ class SequenceGeneratorLogic(GenericLogic):
         for key in config.keys():
             self.log.debug('{0}: {1}'.format(key, config[key]))
 
-        # directory for additional generate methods to import
-        # (other than logic.predefined_generate_methods)
-        if 'additional_methods_dir' in config.keys():
-            if not os.path.exists(config['additional_methods_dir']):
-                self.log.error('Specified path "{0}" for import of additional generate methods '
-                               'does not exist.'.format(config['additional_methods_dir']))
-                self.additional_methods_dir = None
-
         # current pulse generator settings that are frequently used by this logic.
         # Save them here since reading them from device every time they are used may take some time.
         self.__activation_config = ('', set())  # Activation config name and set of active channels
@@ -152,11 +146,42 @@ class SequenceGeneratorLogic(GenericLogic):
         if not os.path.exists(self._assets_storage_dir):
             os.makedirs(self._assets_storage_dir)
 
+        # directory for additional generate methods to import
+        # import path for generator modules from default dir (logic.predefined_generate_methods)
+        self._predefined_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'predefined_generate_methods')]
+
+        if self._additional_methods_import_path:
+            if isinstance(self._additional_methods_import_path, str):
+                self._additional_methods_import_path = [self._additional_methods_import_path]
+
+            if isinstance(self._additional_methods_import_path, (list, tuple, set)):
+                for method_import_path in self._additional_methods_import_path:
+                    if not os.path.exists(method_import_path):
+                        self.log.error('Specified path "{0}" for import of additional generate methods '
+                                       'does not exist.'.format(method_import_path))
+                    else:
+                        self._predefined_path_list.append(method_import_path)
+            else:
+                self.log.error('ConfigOption additional_predefined_methods_path needs to either be a string or '
+                               'a list of strings.')
+
         # Initialize SamplingFunctions class by handing over a list of paths to import
         # sampling functions from.
         sf_path_list = [os.path.join(get_main_dir(), 'logic', 'pulsed', 'sampling_function_defs')]
-        if isinstance(self._sampling_functions_import_path, str):
-            sf_path_list.append(self._sampling_functions_import_path)
+        if self._sampling_functions_import_path:
+            if isinstance(self._sampling_functions_import_path, str):
+                self._sampling_functions_import_path = [self._sampling_functions_import_path]
+
+            if isinstance(self._sampling_functions_import_path, (list, tuple, set)):
+                for functions_import_path in self._sampling_functions_import_path:
+                    if not os.path.exists(functions_import_path):
+                        self.log.error('Specified path "{0}" for import of additional_sampling_functions_path '
+                                       'does not exist.'.format(functions_import_path))
+                    else:
+                        sf_path_list.append(functions_import_path)
+            else:
+                self.log.error('ConfigOption additional_sampling_functions_path needs to either be a string or '
+                               'a list of strings.')
         SamplingFunctions.import_sampling_functions(sf_path_list)
 
         # Read back settings from device and update instance variables accordingly
@@ -241,6 +266,10 @@ class SequenceGeneratorLogic(GenericLogic):
     ############################################################################
     # Pulse generator control methods and properties
     ############################################################################
+    @property
+    def predefined_methods_import_path(self):
+        return self._predefined_path_list
+
     @property
     def pulse_generator_settings(self):
         settings_dict = dict()
@@ -728,6 +757,10 @@ class SequenceGeneratorLogic(GenericLogic):
                 self.log.error('Failed to de-serialize PulseBlock "{0}" from file.'
                                ''.format(block_name))
                 os.remove(filepath)
+            except ModuleNotFoundError:
+                self.log.error('Failed to de-serialize PulseBlock "{0}" from file because of missing dependencies.\n'
+                               'For better debugging I dumped the traceback to debug.'.format(block_name))
+                self.log.debug('{0!s}'.format(traceback.format_exc()))
         return block
 
     def _update_blocks_from_file(self):
@@ -1075,11 +1108,41 @@ class SequenceGeneratorLogic(GenericLogic):
         for ensemble in ensembles:
             ensemble.sampling_information = dict()
             self.save_ensemble(ensemble)
+
+        if self.pulse_generator_constraints.sequence_option == SequenceOption.FORCED and len(sequences) < 1:
+            self.log.info('Adding default sequence for: {0:s}'.format(kwargs_dict.get('name')))
+            self._add_default_sequence(ensembles, sequences)
+            self.log.debug('New default PulseSequence is: {0:s} length {1:d}'.format(sequences[0].name, len(sequences)))
+
         for sequence in sequences:
             sequence.sampling_information = dict()
             self.save_sequence(sequence)
         self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
         return
+
+    def _add_default_sequence(self, ensembles, sequences):
+        if not isinstance(ensembles, (list, tuple)) or len(ensembles) < 1:
+            self.log.error('It is not possible to create a default sequence, '
+                           'because there is no Ensemble to create it from.')
+            return
+        if len(ensembles) > 1:
+            self.log.warn('More then one Ensemble available for the default sequence. '
+                          'They will be chained together with one repetition each.')
+
+        measurement_info = ensembles[0].measurement_information.copy()
+        sequence = PulseSequence(name=ensembles[0].name, rotating_frame=False)
+        for ensemble in ensembles:
+            sequence.append(ensemble.name)
+            sequence[-1].repetitions = 0
+
+        sequence[-1].go_to = 1
+
+        # Trigger the calculation of parameters in the PulseSequence instance
+        sequence.refresh_parameters()
+        sequence.measurement_information = measurement_info
+
+        # Append PulseSequence to created_sequences list
+        sequences.append(sequence)
 
     # ---------------------------------------------------------------------------
     #                    END sequence/block generation

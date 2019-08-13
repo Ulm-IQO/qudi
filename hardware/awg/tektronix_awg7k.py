@@ -32,7 +32,7 @@ from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
 from core.module import Base
 from core.configoption import ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class AWG7k(Base, PulserInterface):
@@ -127,6 +127,7 @@ class AWG7k(Base, PulserInterface):
         ))
         # Set current directory on AWG
         self.write('MMEM:CDIR "{0}"'.format(os.path.join(self._ftp_dir, self.ftp_working_dir)))
+        return
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -276,6 +277,12 @@ class AWG7k(Base, PulserInterface):
         # Usage of one analog channel without digital channel
         activation_config['Analog2'] = frozenset({'a_ch2'})
         constraints.activation_config = activation_config
+
+        if self._has_sequence_mode():
+            constraints.sequence_option = SequenceOption.OPTIONAL
+        else:
+            constraints.sequence_option = SequenceOption.NON
+
         return constraints
 
     def pulser_on(self):
@@ -995,7 +1002,7 @@ class AWG7k(Base, PulserInterface):
         @return: int, number of sequence steps written (-1 indicates failed process)
         """
         # Check if device has sequencer option installed
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
                            'installed.')
             return -1
@@ -1165,15 +1172,6 @@ class AWG7k(Base, PulserInterface):
         self.write('*WAI')
         return 0
 
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        if '08' in self.installed_options:
-            return True
-        return False
-
     def set_lowpass_filter(self, a_ch, cutoff_freq):
         """ Set a lowpass filter to the analog channels of the AWG.
 
@@ -1228,7 +1226,7 @@ class AWG7k(Base, PulserInterface):
         variable output_as_int sets if the returned value should be either an
         integer number or string.
         """
-        if self.has_sequence_mode():
+        if self._has_sequence_mode():
             message = self.query('AWGC:SEQ:TYPE?')
             if 'HARD' in message:
                 return 0 if output_as_int else 'Hardware-Sequencer'
@@ -1440,7 +1438,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1458,7 +1456,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1477,7 +1475,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1500,7 +1498,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1520,7 +1518,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int: error code
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1548,7 +1546,7 @@ class AWG7k(Base, PulserInterface):
 
         @return int last_step: The step number which 'jump to' has to be set to 'First'
         """
-        if not self.has_sequence_mode():
+        if not self._has_sequence_mode():
             self.log.error('Direct sequence generation in AWG not possible. '
                            'Sequencer option not installed.')
             return -1
@@ -1599,3 +1597,5 @@ class AWG7k(Base, PulserInterface):
 
         return has_error
 
+    def _has_sequence_mode(self):
+        return '08' in self.installed_options
