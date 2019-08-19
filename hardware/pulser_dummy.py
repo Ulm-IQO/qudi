@@ -221,7 +221,7 @@ class PulserDummy(Base, PulserInterface):
         activation_config['config9'] = frozenset({'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
 
-        constraints.sequence_option = SequenceOption.OPTIONAL
+        constraints.sequence_option = SequenceOption.FORCED
 
         return constraints
 
