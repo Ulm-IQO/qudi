@@ -90,10 +90,10 @@ And this is where the ominous `@abstract_interface_method` decorator comes into 
 The decorator `@abstract_interface_method` has two purposes. 
 
 One is to make the decorated method an 
-_abstractmethod_ (see _abc_ module for more information), so that Python will raise an exception 
+_abstractmethod_ (see [_abc_](https://docs.python.org/3/library/abc.html) module for more information), so that Python will raise an exception 
 upon import if your derived hardware module does not implement this method.
 
-The other one enables you to "overload" the decorated method inside your derived hardware module.
+The other functionality enables you to "overload" the decorated method inside your derived hardware module.
 
 Let's look at an example on how this can be used in a hardware module based on the example classes 
 presented in the previous section:
