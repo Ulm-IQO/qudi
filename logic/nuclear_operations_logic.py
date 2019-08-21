@@ -65,7 +65,7 @@ class NuclearOperationsLogic(GenericLogic):
     gatedcounterlogic = Connector(interface='CounterLogic')
     odmrlogic = Connector(interface='ODMRLogic')
     optimizerlogic = Connector(interface='OptimizerLogic')
-    scannerlogic = Connector(interface='ScannerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
 
     # status vars

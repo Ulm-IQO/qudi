@@ -46,7 +46,7 @@ class SingleShotLogic(GenericLogic):
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
     traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
     pulsegenerator = Connector(interface='PulserInterface')
-    scannerlogic = Connector(interface='ScannerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
     optimizerlogic = Connector(interface='OptimizerLogic')
     pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
     odmrlogic = Connector(interface='ODMRLogic')

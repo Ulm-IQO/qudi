@@ -52,7 +52,7 @@ class GatedCounterGui(GUIBase):
     """ Main GUI for the Gated Counting. """
 
     # declare connectors
-    gatedcounterlogic1 = Connector(interface='GatedCounterLogic')
+    gatedcounterlogic1 = Connector(interface='CounterLogic')
     traceanalysislogic1 = Connector(interface='TraceAnalysisLogic')
 
 
