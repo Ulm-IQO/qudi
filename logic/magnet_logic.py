@@ -70,9 +70,9 @@ class MagnetLogic(GenericLogic):
     counterlogic = Connector(interface='CounterLogic')
     odmrlogic = Connector(interface='ODMRLogic')
     savelogic = Connector(interface='SaveLogic')
-    scannerlogic = Connector(interface='ScannerLogic')
+    scannerlogic = Connector(interface='ConfocalLogic')
     traceanalysis = Connector(interface='TraceAnalysisLogic')
-    gatedcounterlogic = Connector(interface='GatedCounterLogic')
+    gatedcounterlogic = Connector(interface='CounterLogic')
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     align_2d_axis0_range = StatusVar('align_2d_axis0_range', 10e-3)
