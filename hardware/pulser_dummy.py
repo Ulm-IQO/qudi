@@ -45,6 +45,7 @@ class PulserDummy(Base, PulserInterface):
     _modtype = 'hardware'
 
     activation_config = StatusVar(default=None)
+    force_sequence_option = ConfigOption('force_sequence_option', default=False)
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -221,7 +222,7 @@ class PulserDummy(Base, PulserInterface):
         activation_config['config9'] = frozenset({'a_ch2', 'a_ch3'})
         constraints.activation_config = activation_config
 
-        constraints.sequence_option = SequenceOption.OPTIONAL
+        constraints.sequence_option = SequenceOption.FORCED if self.force_sequence_option else SequenceOption.OPTIONAL
 
         return constraints
 

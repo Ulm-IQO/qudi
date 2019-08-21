@@ -1103,6 +1103,7 @@ class SequenceGeneratorLogic(GenericLogic):
                            ''.format(predefined_sequence_name))
             self.sigPredefinedSequenceGenerated.emit(None, False)
             raise
+
         # Save objects
         for block in blocks:
             self.save_block(block)
@@ -1111,9 +1112,11 @@ class SequenceGeneratorLogic(GenericLogic):
             self.save_ensemble(ensemble)
 
         if self.pulse_generator_constraints.sequence_option == SequenceOption.FORCED and len(sequences) < 1:
-            self.log.info('Adding default sequence for: {0:s}'.format(kwargs_dict.get('name')))
+            self.log.info('Adding default sequence for: {0:s}'.format(predefined_sequence_name))
             self._add_default_sequence(ensembles, sequences)
-            self.log.debug('New default PulseSequence is: {0:s} length {1:d}'.format(sequences[0].name, len(sequences)))
+            if len(sequences) > 0:
+                self.log.debug('New default PulseSequence is: {0:s} length {1:d}'
+                               ''.format(sequences[0].name, len(sequences)))
 
         for sequence in sequences:
             sequence.sampling_information = dict()
