@@ -48,6 +48,7 @@ The potential sequence_options are:
   * `NON` (no sequence mode)
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
+* Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * 
 
 
