@@ -196,6 +196,6 @@ class ScannerAberrationInterfuse(GenericLogic, ConfocalScannerInterface):
 
     def _convert_point(self, x, y):
         """ Convert one point or an array of point from input coordinate to output coordinate """
-        res_x = np.polynomial.polynomial.polyval2d(x, y, self._poly2d_x)
-        res_y = np.polynomial.polynomial.polyval2d(x, y, self._poly2d_y)
+        res_x = np.polynomial.polynomial.polyval2d(x, y, self._poly2d_x.T)
+        res_y = np.polynomial.polynomial.polyval2d(x, y, self._poly2d_y.T)
         return res_x, res_y
