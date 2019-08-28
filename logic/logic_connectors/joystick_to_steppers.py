@@ -83,12 +83,19 @@ class JoystickToSteppers(GenericLogic):
         self.discrete_movement((0, 0, 1)) if 'right_shoulder' in state['pressed_buttons'] else None
 
         x, y, z = state['axis']['left_horizontal'], state['axis']['left_vertical'], state['axis']['trigger']
-        power = self._joystick_gamma_correction
         fps = self.joystick_logic().fps()
-        x = x**power / fps * self._xy_max_velocity
-        y = y**power / fps * self._xy_max_velocity
-        z = z**power / fps * self._z_max_velocity
+        x = self._to_relative_distance(x) / fps * self._xy_max_velocity
+        y = self._to_relative_distance(y) / fps * self._xy_max_velocity
+        z = self._to_relative_distance(z) / fps * self._z_max_velocity
         self.discrete_movement((x, y, z))
+
+    def _to_relative_distance(self, value):
+        """ Helper function to compute gamma correction """
+        if value == 0:
+            return 0
+        sign = value / abs(value)
+        move = abs(value) ** self._joystick_gamma_correction * sign
+        return move
 
     def discrete_movement(self, relative_movement):
         """ Function to do a discrete relative movement """
