@@ -62,12 +62,12 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
         if not self.process.is_connected:
             self.log.warning('Reader not connected. Can not calibrate')
             return
-        back_up = self._control.get_control_value()
-        mini, maxi = self._control.get_control_limits()
-        self._control.set_control_value(maxi)
+        back_up = self.control().get_control_value()
+        mini, maxi = self.control().get_control_limits()
+        self.control().set_control_value(maxi)
         time.sleep(0.5)
-        self._max_power = self._process.get_process_value()
-        self._control.set_control_value(back_up)
+        self._max_power = self.process().get_process_value()
+        self.control().set_control_value(back_up)
 
     def get_power_range(self):
         """ Return optical power range
@@ -96,9 +96,9 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
     def _set_power(self, power):
         """ Function that set the control value no matter what """
         if self._max_power != 0:
-            self._control.set_control_value(power/self._max_power)
+            self.control().set_control_value(power/self._max_power)
         else:
-            self._control.set_control_value(0)
+            self.control().set_control_value(0)
 
     def set_power(self, power):
         """ Set power setpoint.
@@ -110,7 +110,7 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
         mini, maxi = self.get_power_range()
         if mini <= power <= maxi:
             self._power = power
-            if self._laser_on:
+            if self._laser_state:
                 self._set_power(power)
             else:
                 self._set_power(0)
@@ -135,14 +135,14 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
 
             @return float: laser current in current curent units
         """
-        pass
+        return 0
 
     def get_current_setpoint(self):
         """ Get laser curent setpoint
 
             @return float: laser current setpoint
         """
-        pass
+        return 0
 
     def set_current(self, current):
         """ Set laser current setpoint
@@ -151,7 +151,7 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
 
             @return float: actual laser current setpoint
         """
-        pass
+        return 0
 
     def allowed_control_modes(self):
         """ Get supported control modes
@@ -195,7 +195,7 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        return LaserState.ON if self._laser_on else LaserState.OFF
+        return LaserState.ON if self._laser_state else LaserState.OFF
 
     def set_laser_state(self, state):
         """ Set laser state.
@@ -204,8 +204,9 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
 
             @return LaserState: actual laser state
         """
-        self._laser_state = True if state == LaserState.ON else LaserState.OFF
+        self._laser_state = True if state == LaserState.ON else False
         self.set_power(self._power)
+        return self.get_laser_state()
 
     def get_shutter_state(self):
         """ Get laser shutter state
