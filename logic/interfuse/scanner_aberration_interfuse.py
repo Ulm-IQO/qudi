@@ -166,7 +166,7 @@ class ScannerAberrationInterfuse(GenericLogic, ConfocalScannerInterface):
         @return float[]: current position in (x, y, z, a)
         """
         scanner_position = np.array(self.scanner().get_scanner_position())
-        return np.array([*self._position, *scanner_position[2:]])
+        return list(np.array([*self._position, *scanner_position[2:]]))
 
     def set_up_line(self, length=100):
         """ Sets up the analogue output for scanning a line. """
