@@ -60,7 +60,9 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         """
         rm = visa.ResourceManager()
         try:
-            self._inst = rm.open_resource(self._address, timeout=self._timeout)
+            address = 'TCPIP::{}::{}::SOCKET'.format(self._ip_address, self._ip_port)
+            self._inst = rm.open_resource(address, timeout=self._timeout*1000,
+                                          write_termination='\n', read_termination='\n')
         except visa.VisaIOError:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
             raise
