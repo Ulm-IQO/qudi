@@ -69,7 +69,7 @@ class Sin(SamplingBase):
     params = OrderedDict()
     params['amplitude'] = {'unit': 'V', 'init': 0.0, 'min': 0.0, 'max': np.inf, 'type': float}
     params['frequency'] = {'unit': 'Hz', 'init': 2.87e9, 'min': 0.0, 'max': np.inf, 'type': float}
-    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -360, 'max': 360, 'type': float}
+    params['phase'] = {'unit': '°', 'init': 0.0, 'min': -np.inf, 'max': np.inf, 'type': float}
 
     def __init__(self, amplitude=None, frequency=None, phase=None):
         if amplitude is None:
@@ -93,9 +93,7 @@ class Sin(SamplingBase):
 
     def get_samples(self, time_array):
         phase_rad = np.pi * self.phase / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency, phase_rad)
+        samples_arr = self._get_sine(time_array, self.amplitude, self.frequency, phase_rad)
         return samples_arr
 
 
@@ -149,15 +147,11 @@ class DoubleSinSum(SamplingBase):
     def get_samples(self, time_array):
         # First sine wave
         phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
+        samples_arr = self._get_sine(time_array, self.amplitude_1, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
         phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr += self._get_sine(time_array, self.amplitude_2, self.frequency_2, phase_rad)
         return samples_arr
 
 
@@ -211,15 +205,11 @@ class DoubleSinProduct(SamplingBase):
     def get_samples(self, time_array):
         # First sine wave
         phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
+        samples_arr = self._get_sine(time_array, self.amplitude_1, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
         phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr *= self._get_sine(time_array, self.amplitude_2, self.frequency_2, phase_rad)
         return samples_arr
 
 
@@ -291,21 +281,15 @@ class TripleSinSum(SamplingBase):
     def get_samples(self, time_array):
         # First sine wave
         phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
+        samples_arr = self._get_sine(time_array, self.amplitude_1, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
         phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr += self._get_sine(time_array, self.amplitude_2, self.frequency_2, phase_rad)
 
         # Second sine wave (add on sum of first and second)
         phase_rad = np.pi * self.phase_3 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_3
-        samples_arr += self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
+        samples_arr += self._get_sine(time_array, self.amplitude_3, self.frequency_3, phase_rad)
         return samples_arr
 
 
@@ -377,21 +361,15 @@ class TripleSinProduct(SamplingBase):
     def get_samples(self, time_array):
         # First sine wave
         phase_rad = np.pi * self.phase_1 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_1
-        samples_arr = self._get_sine(time_array, amp_conv, self.frequency_1, phase_rad)
+        samples_arr = self._get_sine(time_array, self.amplitude_1, self.frequency_1, phase_rad)
 
         # Second sine wave (add on first sine)
         phase_rad = np.pi * self.phase_2 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_2
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_2, phase_rad)
+        samples_arr *= self._get_sine(time_array, self.amplitude_2, self.frequency_2, phase_rad)
 
         # Second sine wave (add on sum of first and second)
         phase_rad = np.pi * self.phase_3 / 180
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude_3
-        samples_arr *= self._get_sine(time_array, amp_conv, self.frequency_3, phase_rad)
+        samples_arr *= self._get_sine(time_array, self.amplitude_3, self.frequency_3, phase_rad)
         return samples_arr
 
 
@@ -430,9 +408,7 @@ class Chirp(SamplingBase):
         phase_rad = np.deg2rad(self.phase)
         freq_diff = self.stop_freq - self.start_freq
         time_diff = time_array[-1] - time_array[0]
-        # conversion for AWG to actually output the specified voltage
-        amp_conv = 2 * self.amplitude
-        samples_arr = amp_conv * np.sin(2 * np.pi * time_array * (
+        samples_arr = self.amplitude * np.sin(2 * np.pi * time_array * (
                     self.start_freq + freq_diff * (
                         time_array - time_array[0]) / time_diff / 2) + phase_rad)
         return samples_arr
