@@ -647,11 +647,11 @@ class PulsedMasterLogic(GenericLogic):
 
     @property
     def generate_methods(self):
-        return self.sequencegeneratorlogic().generate_methods
+        return getattr(self.sequencegeneratorlogic(), 'generate_methods', dict())
 
     @property
     def generate_method_params(self):
-        return self.sequencegeneratorlogic().generate_method_params
+        return getattr(self.sequencegeneratorlogic(), 'generate_method_params', dict())
 
     #######################################################################
     ###             Sequence generator methods                          ###

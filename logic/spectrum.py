@@ -33,6 +33,16 @@ from logic.generic_logic import GenericLogic
 class SpectrumLogic(GenericLogic):
 
     """This logic module gathers data from the spectrometer.
+
+    Demo config:
+
+    spectrumlogic:
+        module.Class: 'spectrum.SpectrumLogic'
+        connect:
+            spectrometer: 'myspectrometer'
+            savelogic: 'savelogic'
+            odmrlogic: 'odmrlogic' # optional
+            fitlogic: 'fitlogic'
     """
 
     _modclass = 'spectrumlogic'
@@ -40,7 +50,7 @@ class SpectrumLogic(GenericLogic):
 
     # declare connectors
     spectrometer = Connector(interface='SpectrometerInterface')
-    odmrlogic = Connector(interface='ODMRLogic')
+    odmrlogic = Connector(interface='ODMRLogic', optional=True)
     savelogic = Connector(interface='SaveLogic')
     fitlogic = Connector(interface='FitLogic')
 
@@ -247,7 +257,8 @@ class SpectrumLogic(GenericLogic):
     def toggle_modulation(self, on):
         """ Toggle the modulation.
         """
-
+        if self._odmr_logic is None:
+            return
         if on:
             self._odmr_logic.mw_cw_on()
         elif not on:
