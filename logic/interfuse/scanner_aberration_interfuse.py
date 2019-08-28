@@ -181,9 +181,9 @@ class ScannerAberrationInterfuse(GenericLogic, ConfocalScannerInterface):
         @return float[]: the photon counts per second
         """
         transformed = line_path.copy()
-        points_x, points_y = self._convert_point(line_path[:, 0], line_path[:, 1])
-        transformed[:, 0] = points_x
-        transformed[:, 1] = points_y
+        points_x, points_y = self._convert_point(line_path[0, :], line_path[1, :])
+        transformed[0, :] = points_x
+        transformed[1, :] = points_y
         return self.scanner().scan_line(transformed, pixel_clock)
 
     def close_scanner(self):
