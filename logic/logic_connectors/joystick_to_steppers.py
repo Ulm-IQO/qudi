@@ -43,7 +43,7 @@ class JoystickToSteppers(GenericLogic):
 
     # declare connectors
     joystick_logic = Connector(interface='JoystickLogic')
-    hardware = Connector()
+    hardware = Connector(interface='SteppersInterface')
 
     _button_interlock = ConfigOption('button_trigger', 'right_left')  # if this button is not pushed, do nothing
     # this must be a button from logic _button_list
