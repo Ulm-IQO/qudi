@@ -41,7 +41,7 @@ else:
 import keysightSD1 as ksd1
 
 from core.module import Base, ConfigOption
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
 class M3202A(Base, PulserInterface):
@@ -153,6 +153,8 @@ class M3202A(Base, PulserInterface):
         constraints.activation_config = activation_config
         # FIXME: additional constraint really necessary?
         constraints.dac_resolution = {'min': 14, 'max': 14, 'step': 1, 'unit': 'bit'}
+        constraints.sequence_option = SequenceOption.FORCED
+
         self._constraints = constraints
 
         self.awg = ksd1.SD_AOU()
@@ -544,11 +546,6 @@ class M3202A(Base, PulserInterface):
         """
         steps_written = 0
         wfms_added = {}
-        # Check if device has sequencer option installed
-        if not self.has_sequence_mode():
-            self.log.error('Direct sequence generation in AWG not possible. Sequencer option not '
-                           'installed.')
-            return -1
 
         # Check if all waveforms are present on device memory
         avail_waveforms = set(self.get_waveform_names())
@@ -697,13 +694,6 @@ class M3202A(Base, PulserInterface):
         @return string: the answer of the device to the 'question' in a string
         """
         return ''
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return True
 
     def _fast_newFromArrayDouble(self, wfm, waveformType, waveformDataA, waveformDataB=None):
         """ Reimplement newArrayFromDouble() for numpy arrays for massive speed gains.

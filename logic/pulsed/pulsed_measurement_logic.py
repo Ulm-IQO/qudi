@@ -255,8 +255,8 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
-        Either accept a settings dictionary as positional argument or keyword arguments.
-        If both are present both are being used by updating the settings_dict with kwargs.
+        Either accepts a settings dictionary as positional argument or keyword arguments.
+        If both are present, both are being used by updating the settings_dict with kwargs.
         The keyword arguments take precedence over the items in settings_dict if there are
         conflicting names.
 
@@ -990,6 +990,10 @@ class PulsedMeasurementLogic(GenericLogic):
             update_fit_data = True
         else:
             update_fit_data = False
+
+        if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
+            self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
+            return
 
         x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
 

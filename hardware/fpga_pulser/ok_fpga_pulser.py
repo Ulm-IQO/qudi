@@ -21,7 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from core.module import Base, ConfigOption, StatusVar
 from core.util.modules import get_main_dir
-from interface.pulser_interface import PulserInterface, PulserConstraints
+from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 import okfrontpanel as ok
 import numpy as np
 import time
@@ -156,6 +156,8 @@ class OkFpgaPulser(Base, PulserInterface):
         activation_config['all'] = frozenset(
             {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         constraints.activation_config = activation_config
+
+        constraints.sequence_option = SequenceOption.NON
         return constraints
 
     def pulser_on(self):
@@ -725,13 +727,6 @@ class OkFpgaPulser(Base, PulserInterface):
         self.write(0x04)
         self.write(0x00)
         return 0
-
-    def has_sequence_mode(self):
-        """ Asks the pulse generator whether sequence mode exists.
-
-        @return: bool, True for yes, False for no.
-        """
-        return False
 
     def _connect_fpga(self):
         # connect to FPGA by serial number
