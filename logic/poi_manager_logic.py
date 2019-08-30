@@ -361,6 +361,7 @@ class PoiManagerLogic(GenericLogic):
     scannerlogic = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
     odmrlogic = Connector(interface='ODMRLogic', optional=True)
+    pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic', optional=True)
 
     # status vars
     _roi = StatusVar(default=dict())  # Notice constructor and representer further below
@@ -403,6 +404,7 @@ class PoiManagerLogic(GenericLogic):
         self._last_refocus = 0
         self._periodic_refocus_poi = None
         self._odmr_was_paused = False
+        self._pulsed_was_paused = False
 
         # Connect callback for a finished refocus
         self.optimiserlogic().sigRefocusFinished.connect(
@@ -981,8 +983,14 @@ class PoiManagerLogic(GenericLogic):
             if self.odmrlogic.is_connected and self.odmrlogic().module_state() == 'locked':
                 self.odmrlogic().stop_odmr_scan()
                 self._odmr_was_paused = True
+            if self.pulsedmeasurementlogic.is_connected and self.pulsedmeasurementlogic().module_state() == 'locked':
+                self.pulsedmeasurementlogic().pause_pulsed_measurement()
+                self._pulsed_was_paused = True
             while self._odmr_was_paused and self.odmrlogic().module_state() != 'idle':
                 time.sleep(0.1)
+            while self._pulsed_was_paused and not self.pulsedmeasurementlogic().is_paused:
+                time.sleep(0.1)
+
             self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name),
                                                 caller_tag=tag)
             self.sigRefocusStateUpdated.emit(True)
@@ -1017,6 +1025,10 @@ class PoiManagerLogic(GenericLogic):
         if self._odmr_was_paused:
             self._odmr_was_paused = False
             self.odmrlogic().continue_odmr_scan()
+        if self._pulsed_was_paused:
+            self._pulsed_was_paused = False
+            self.pulsedmeasurementlogic().continue_pulsed_measurement()
+
         return
 
     def update_poi_tag_in_savelogic(self):

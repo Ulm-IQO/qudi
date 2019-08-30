@@ -58,6 +58,9 @@ class PulsedMeasurementLogic(GenericLogic):
     # Optional file type descriptor for saving raw data to file
     _raw_data_save_type = ConfigOption(name='raw_data_save_type', default='text')
 
+    _stop_generator_on_pause = ConfigOption(name='stop_generator_on_pause', default=True)
+    _stop_mw_on_pause = ConfigOption(name='stop_mw_on_pause', default=True)
+
     # status variables
     # ext. microwave settings
     __microwave_power = StatusVar(default=-30.0)
@@ -359,6 +362,10 @@ class PulsedMeasurementLogic(GenericLogic):
     @property
     def elapsed_time(self):
         return self.__elapsed_time
+
+    @property
+    def is_paused(self):
+        return self.__is_paused
     ############################################################################
 
     ############################################################################
@@ -874,8 +881,9 @@ class PulsedMeasurementLogic(GenericLogic):
                     self.sigStopTimer.emit()
 
                 self.fast_counter_pause()
-                self.pulse_generator_off()
-                if self.__use_ext_microwave:
+                if self._stop_generator_on_pause:
+                    self.pulse_generator_off()
+                if self.__use_ext_microwave and self._stop_mw_on_pause:
                     self.microwave_off()
 
                 # Set measurement paused flag
@@ -895,10 +903,11 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self._threadlock:
             if self.module_state() == 'locked':
-                if self.__use_ext_microwave:
+                if self.__use_ext_microwave and self._stop_mw_on_pause:
                     self.microwave_on()
                 self.fast_counter_continue()
-                self.pulse_generator_on()
+                if self._stop_generator_on_pause:
+                    self.pulse_generator_on()
 
                 # un-pausing the timer
                 if not self.__analysis_timer.isActive():

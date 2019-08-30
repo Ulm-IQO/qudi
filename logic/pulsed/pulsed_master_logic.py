@@ -325,6 +325,10 @@ class PulsedMasterLogic(GenericLogic):
         return self.pulsedmeasurementlogic().elapsed_time
 
     @property
+    def is_paused(self):
+        return self.pulsedmeasurementlogic().is_paused
+
+    @property
     def ext_microwave_constraints(self):
         return self.pulsedmeasurementlogic().ext_microwave_constraints
 
