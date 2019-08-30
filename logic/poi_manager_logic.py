@@ -360,6 +360,7 @@ class PoiManagerLogic(GenericLogic):
     optimiserlogic = Connector(interface='OptimizerLogic')
     scannerlogic = Connector(interface='ConfocalLogic')
     savelogic = Connector(interface='SaveLogic')
+    odmrlogic = Connector(interface='ODMRLogic', optional=True)
 
     # status vars
     _roi = StatusVar(default=dict())  # Notice constructor and representer further below
@@ -401,6 +402,7 @@ class PoiManagerLogic(GenericLogic):
         self.__timer.setSingleShot(False)
         self._last_refocus = 0
         self._periodic_refocus_poi = None
+        self._odmr_was_paused = False
 
         # Connect callback for a finished refocus
         self.optimiserlogic().sigRefocusFinished.connect(
@@ -976,6 +978,11 @@ class PoiManagerLogic(GenericLogic):
             tag = 'poimanager_{0}'.format(name)
 
         if self.optimiserlogic().module_state() == 'idle':
+            if self.odmrlogic.is_connected and self.odmrlogic().module_state() == 'locked':
+                self.odmrlogic().stop_odmr_scan()
+                self._odmr_was_paused = True
+            while self._odmr_was_paused and self.odmrlogic().module_state() != 'idle':
+                time.sleep(0.1)
             self.optimiserlogic().start_refocus(initial_pos=self.get_poi_position(name),
                                                 caller_tag=tag)
             self.sigRefocusStateUpdated.emit(True)
@@ -1007,6 +1014,9 @@ class PoiManagerLogic(GenericLogic):
                 if self._move_scanner_after_optimization:
                     self.move_scanner(position=optimal_pos)
         self.sigRefocusStateUpdated.emit(False)
+        if self._odmr_was_paused:
+            self._odmr_was_paused = False
+            self.odmrlogic().continue_odmr_scan()
         return
 
     def update_poi_tag_in_savelogic(self):
