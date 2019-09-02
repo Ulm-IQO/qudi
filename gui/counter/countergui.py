@@ -131,9 +131,9 @@ class CounterGui(GUIBase):
         self._mw.start_counter_Action.triggered.connect(self.start_clicked)
         self._mw.record_counts_Action.triggered.connect(self.save_clicked)
 
-        self._mw.count_length_SpinBox.valueChanged.connect(self.count_length_changed)
-        self._mw.count_freq_SpinBox.valueChanged.connect(self.count_frequency_changed)
-        self._mw.oversampling_SpinBox.valueChanged.connect(self.oversampling_changed)
+        self._mw.count_length_SpinBox.editingFinished.connect(self.count_length_changed)
+        self._mw.count_freq_SpinBox.editingFinished.connect(self.count_frequency_changed)
+        self._mw.oversampling_SpinBox.editingFinished.connect(self.oversampling_changed)
 
         if len(self.curves) >= 2:
             self._mw.trace_1_checkbox.setChecked(True)
@@ -212,9 +212,9 @@ class CounterGui(GUIBase):
         # disconnect signals
         self._mw.start_counter_Action.triggered.disconnect()
         self._mw.record_counts_Action.triggered.disconnect()
-        self._mw.count_length_SpinBox.valueChanged.disconnect()
-        self._mw.count_freq_SpinBox.valueChanged.disconnect()
-        self._mw.oversampling_SpinBox.valueChanged.disconnect()
+        self._mw.count_length_SpinBox.editingFinished.disconnect()
+        self._mw.count_freq_SpinBox.editingFinished.disconnect()
+        self._mw.oversampling_SpinBox.editingFinished.disconnect()
         self._mw.trace_1_checkbox.stateChanged.disconnect()
         self._mw.trace_2_checkbox.stateChanged.disconnect()
         self._mw.trace_3_checkbox.stateChanged.disconnect()
@@ -251,7 +251,7 @@ class CounterGui(GUIBase):
             for i, ch in enumerate(self._counting_logic.counter_channels):
                 self.curves[2 * i].setData(y=self._counting_logic.count_data[i], x=x_vals)
                 self.curves[2 * i + 1].setData(y=self._counting_logic.count_data_smoothed[i],
-                                               x=x_vals[:len(self._counting_logic.count_data_smoothed[i])])
+                                               x=x_vals[-len(self._counting_logic.count_data_smoothed[i]):])
                 if ymax < self._counting_logic.count_data[i].max() and self._trace_selection[i]:
                     ymax = self._counting_logic.count_data[i].max()
                 if ymin > self._counting_logic.count_data[i].min() and self._trace_selection[i]:

@@ -21,11 +21,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
-import re
-
+import ctypes
 import nidaqmx as ni
-from nidaqmx.stream_readers import AnalogSingleChannelReader, AnalogMultiChannelReader
-from nidaqmx.stream_readers import CounterReader
+from nidaqmx._lib import lib_importer
+from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 
 from core.module import Base, ConfigOption
 # from core.configoption import ConfigOption
@@ -362,9 +361,10 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                 self.terminate_all_tasks()
                 return -1
             for i, chnl in enumerate(digital_sources):
+                chnl_name = '/{0}/{1}'.format(self._device_name, chnl)
                 for ctr in self.__all_counters:
                     try:
-                        task = ni.Task('EdgeCounter_{0}'.format(ctr))
+                        task = ni.Task('PeriodCounter_{0}'.format(ctr))
                     except ni.DaqError:
                         if ctr == self.__all_counters[-1]:
                             self.log.error('Could not find a free counter resource. '
@@ -375,19 +375,38 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                             continue
 
                     try:
-                        task.ci_channels.add_ci_count_edges_chan(
-                            '/{0}/{1}'.format(self._device_name, ctr),
-                            initial_count=0,
-                            edge=ni.constants.Edge.RISING,
-                            count_direction=ni.constants.CountDirection.COUNT_UP)
-                        task.ci_channels.all.ci_count_edges_count_reset_enable = True
-                        task.ci_channels.all.ci_count_edges_term = '/{0}/{1}'.format(
-                            self._device_name, chnl)
-                        task.ci_channels.all.ci_count_edges_count_reset_term = clock_channel
-                        task.timing.cfg_samp_clk_timing(
-                            sample_freq,
-                            source=clock_channel,
-                            active_edge=ni.constants.Edge.FALLING,
+                        ctr_name = '/{0}/{1}'.format(self._device_name, ctr)
+                        task.ci_channels.add_ci_period_chan(
+                            ctr_name,
+                            min_val=0,
+                            max_val=100000000,
+                            units=ni.constants.TimeUnits.TICKS,
+                            edge=ni.constants.Edge.RISING)
+                        # NOTE: The following two direct calls to C-function wrappers are a
+                        # workaround due to a bug in some NIDAQmx.lib property getters. If one of
+                        # these getters is called, it will mess up the task timing.
+                        # This behaviour has been confirmed using pure C code.
+                        # nidaqmx will call these getters and so the C function is called directly.
+                        try:
+                            lib_importer.windll.DAQmxSetCIPeriodTerm(
+                                task._handle,
+                                ctypes.c_char_p(ctr_name.encode('ascii')),
+                                ctypes.c_char_p(clock_channel.encode('ascii')))
+                            lib_importer.windll.DAQmxSetCICtrTimebaseSrc(
+                                task._handle,
+                                ctypes.c_char_p(ctr_name.encode('ascii')),
+                                ctypes.c_char_p(chnl_name.encode('ascii')))
+                        except:
+                            lib_importer.cdll.DAQmxSetCIPeriodTerm(
+                                task._handle,
+                                ctypes.c_char_p(ctr_name.encode('ascii')),
+                                ctypes.c_char_p(clock_channel.encode('ascii')))
+                            lib_importer.cdll.DAQmxSetCICtrTimebaseSrc(
+                                task._handle,
+                                ctypes.c_char_p(ctr_name.encode('ascii')),
+                                ctypes.c_char_p(chnl_name.encode('ascii')))
+
+                        task.timing.cfg_implicit_timing(
                             sample_mode=ni.constants.AcquisitionType.CONTINUOUS,
                             samps_per_chan=buffer_samples)
                     except ni.DaqError:
@@ -554,6 +573,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             self.log.error('No task running, call set_up_counter before reading it.')
             return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
 
+        print('hardware:', self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - self._di_task_handles[0].in_stream.curr_read_pos)
         if samples is None:
             if self._ai_task_handle is not None:
                 samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
@@ -583,11 +603,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         except ni.DaqError:
             self.log.exception('Getting samples from counter failed.')
             return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
-
-        # Correct half-period counting for digital channels
-        if self._di_readers:
-            np.multiply(self._data_buffer[:len(self._di_readers), :], 2,
-                        out=self._data_buffer[:len(self._di_readers), :])
         return self._data_buffer[:, :samples]
 
     def close_counter(self, throw_errors=True):

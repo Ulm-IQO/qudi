@@ -105,9 +105,9 @@ class CounterLogic(GenericLogic):
 
         # initialize data arrays
         self._count_data = np.zeros(
-            [self.counter_channel_number, self._count_length + self._smooth_window_length // 2 - 1])
+            [self.counter_channel_number, self._count_length + self._smooth_window_length // 2])
         self.count_data_smoothed = np.zeros(
-            [self.counter_channel_number, self._count_length - self._smooth_window_length // 2 - 1])
+            [self.counter_channel_number, self._count_length - self._smooth_window_length // 2])
         self._data_to_save = list()
 
         # Flag to stop the loop
@@ -250,7 +250,7 @@ class CounterLogic(GenericLogic):
 
     @property
     def count_data(self):
-        return self._count_data[:, :-(self._smooth_window_length // 2 - 1)]
+        return self._count_data[:, :-(self._smooth_window_length // 2)]
 
     def start_recording(self, resume=False):
         """
@@ -400,7 +400,7 @@ class CounterLogic(GenericLogic):
 
             # initialising the data arrays
             self._count_data = np.zeros((self.counter_channel_number,
-                                         self._count_length + self._smooth_window_length // 2 - 1))
+                                         self._count_length + self._smooth_window_length // 2))
             self.count_data_smoothed = np.zeros(
                 (self.counter_channel_number,
                  self._count_length - self._smooth_window_length // 2 - 1))
@@ -465,7 +465,7 @@ class CounterLogic(GenericLogic):
 
                 # Estimate read length from elapsed time.
                 curr_time = time.time()
-                samples_to_read = int(max((curr_time - self.__last_data_update) * self.sample_rate,
+                samples_to_read = int(max(#(curr_time - self.__last_data_update) * self.sample_rate,
                                           self._data_update_rate * self.sample_rate,
                                           1))
                 print(samples_to_read)
@@ -551,32 +551,40 @@ class CounterLogic(GenericLogic):
         """
         Processes the raw data from the counting device
         """
-        # Downsample and average according to oversampling factor
+        # Down-sample and average according to oversampling factor
         if self._oversampling > 1:
             if data.shape[1] % self._oversampling != 0:
                 self.log.error('Number of samples per counter channel not an integer multiple of '
                                'the oversampling factor.')
                 return -1
+            print('oversampling:', np.mean(data[0]), max(data[0]), len(data[0]))
             tmp = data.reshape(
                 (data.shape[0], data.shape[1] // self._oversampling, self._oversampling))
             data = np.mean(tmp, axis=2)
+            print('oversampling:', np.mean(data[0]), max(data[0]), len(data[0]))
 
-        new_samples = data.shape[1]
-        if new_samples <= self._count_data.shape[1]:
-            # Roll data array to have a continuously running time trace
-            self._count_data = np.roll(self._count_data, -new_samples, axis=1)
-            # Insert new data
-            self._count_data[:, :new_samples] = data
-
-            # cumsum = np.cumsum(self._count_data, axis=1)
-            # n = self._smooth_window_length
-            # self.count_data_smoothed = (cumsum[:, n:] - cumsum[:, :-n]) / n
-        else:
-            self.log.error('AAAAAAAAAAAHHHH')
+        # FIXME: Currently all digital count data is converted into a frequency.
+        #  This needs to be more generally handled (maybe selectable?)
+        digital_channels = [chnl for chnl in self.counter_channels if 'ai' not in chnl.lower()]
+        if digital_channels:
+            data[:len(digital_channels)] *= self.count_frequency * self.oversampling
 
         # save the data if necessary
         if self._cumulative_acquisition:
             self._data_to_save.append(data)
+
+        data = data[:, -self._count_data.shape[1]:]
+        new_samples = data.shape[1]
+
+        # Roll data array to have a continuously running time trace
+        self._count_data = np.roll(self._count_data, -new_samples, axis=1)
+        # Insert new data
+        self._count_data[:, -new_samples:] = data
+
+        # Calculate moving average
+        cumsum = np.cumsum(self._count_data, axis=1)
+        n = self._smooth_window_length
+        self.count_data_smoothed = (cumsum[:, n:] - cumsum[:, :-n]) / n
         return
 
     def _process_data_gated(self, data):
@@ -584,6 +592,7 @@ class CounterLogic(GenericLogic):
         Processes the raw data from the counting device
         @return:
         """
+        self.log.warning('Counting mode GATED not implemented, yet.')
         # # remember the new count data in circular array
         # self.countdata[0] = np.average(self.rawdata[0])
         # # move the array to the left to make space for the new data
@@ -615,6 +624,7 @@ class CounterLogic(GenericLogic):
         Processes the raw data from the counting device
         @return:
         """
+        self.log.warning('Counting mode FINITE_GATED not implemented, yet.')
         # if self._already_counted_samples+len(self.rawdata[0]) >= len(self.countdata):
         #     needed_counts = len(self.countdata) - self._already_counted_samples
         #     self.countdata[0:needed_counts] = self.rawdata[0][0:needed_counts]
@@ -629,7 +639,7 @@ class CounterLogic(GenericLogic):
         #     # increment the index counter:
         #     self._already_counted_samples += len(self.rawdata[0])
         # return
-        pass
+        return
 
     def _stop_counting_wait(self, timeout=5.0):
         """
