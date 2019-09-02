@@ -81,9 +81,9 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         self._ai_task_handle = None
         self._ai_reader = None
         self._clk_task_handle = None
+        self.__current_clk_frequency = -1.0
 
         self._data_buffer = dict()
-        self.__free_counters = list()
         self.__all_counters = tuple()
 
         self._constraints = None
@@ -181,6 +181,8 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
                                                         self._constraints.max_count_frequency)
             self._external_sample_clock_frequency = max(self._external_sample_clock_frequency,
                                                         self._constraints.min_count_frequency)
+        if self._external_sample_clock_frequency is not None:
+            self.__current_clk_frequency = float(self._external_sample_clock_frequency)
 
         self.terminate_all_tasks()
         self._di_task_handles = list()
@@ -202,7 +204,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
         self.__all_counters = tuple(
             ctr.split('/')[-1] for ctr in self._device_handle.co_physical_chans.channel_names if
             'ctr' in ctr.lower())
-        self.__free_counters = [ctr for ctr in self.__all_counters]
         return
 
     def on_deactivate(self):
@@ -317,6 +318,7 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             return -1
 
         self._clk_task_handle = task
+        self.__current_clk_frequency = clock_frequency
         return 0
 
     def set_up_counter(self, sources=None, clock_channel=None, counter_buffer=None):
@@ -573,7 +575,6 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             self.log.error('No task running, call set_up_counter before reading it.')
             return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
 
-        print('hardware:', self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - self._di_task_handles[0].in_stream.curr_read_pos)
         if samples is None:
             if self._ai_task_handle is not None:
                 samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
@@ -592,17 +593,22 @@ class NationalInstrumentsXSeriesCounter(Base, SlowCounterInterface):
             # Read digital channels
             for i, reader in enumerate(self._di_readers):
                 # read the counter value. This function is blocking.
-                reader.read_many_sample_double(self._data_buffer[i, :],
+                reader.read_many_sample_double(self._data_buffer[i, :samples],
                                                number_of_samples_per_channel=samples,
                                                timeout=self._rw_timeout)
             # Read analog channels
             if self._ai_reader is not None:
-                self._ai_reader.read_many_sample(self._data_buffer[len(self._di_readers):, :],
-                                                 number_of_samples_per_channel=samples,
-                                                 timeout=self._rw_timeout)
+                self._ai_reader.read_many_sample(
+                    self._data_buffer[len(self._di_readers):, :samples],
+                    number_of_samples_per_channel=samples,
+                    timeout=self._rw_timeout)
         except ni.DaqError:
             self.log.exception('Getting samples from counter failed.')
             return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
+
+        # FIXME: For now convert the digital count values to frequencies since the logic is dumb
+        if self._di_readers:
+            self._data_buffer[:, :samples] *= self.__current_clk_frequency
         return self._data_buffer[:, :samples]
 
     def close_counter(self, throw_errors=True):
