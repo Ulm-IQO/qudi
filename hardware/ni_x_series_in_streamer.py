@@ -363,7 +363,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         return copy.deepcopy(self.__channel_props)
 
     @property
-    @abc.abstractmethod
     def available_samples(self):
         """
         Read-only property to return the currently available number of samples per channel ready
@@ -371,7 +370,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return int: Number of available samples per channel
         """
-        pass
+        if not self.is_running:
+            return 0
+
+        if self._ai_task_handle is None:
+            avail_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - \
+                            self._di_task_handles[0].in_stream.curr_read_pos
+        else:
+            avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
+                            self._ai_task_handle.in_stream.curr_read_pos
+        return avail_samples
 
     @property
     def is_running(self):
@@ -452,10 +460,13 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # Handle data type change
         if data_type is not None:
-            try:
-                self._data_buffer = np.empty((0, 0), dtype=data_type)
-            except TypeError:
+            if data_type != np.uint32 and data_type != np.float64:
                 self.log.error('data_type must be a valid numpy dtype.')
+                return self.all_settings
+            if data_type == np.uint32 and self._analog_sources:
+                self.log.error('Data type numpy.uint32 only allowed for pure digital counting. If '
+                               'you are using analog input channels, you must set this to '
+                               'numpy.float64.')
                 return self.all_settings
             self.__data_type = data_type
 
@@ -517,6 +528,15 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         if self._init_sample_clock() != 0 or self._init_digital_tasks() != 0 or self._init_analog_task() != 0:
             return -1
 
+        self._init_buffer()
+
+        try:
+            self._clk_task_handle.start()
+        except ni.DaqError:
+            self.log.exception('Error while starting sample clock task.')
+            self.terminate_all_tasks()
+            return -1
+
         if self._ai_task_handle is not None:
             try:
                 self._ai_task_handle.start()
@@ -533,16 +553,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return -1
         return 0
 
-    @abc.abstractmethod
     def stop_stream(self):
         """
         Stop the data acquisition and data stream.
 
         @return int: error code (0: OK, -1: Error)
         """
-        pass
+        if self.is_running:
+            self.terminate_all_tasks()
+        return 0
 
-    @abc.abstractmethod
     def read_data_into_buffer(self, buffer, number_of_samples=None):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -562,9 +582,50 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return int: Number of samples read into buffer; negative value indicates error
                      (e.g. read timeout)
         """
-        pass
+        if not self.is_running:
+            self.log.error('Unable to read data. Device is not running.')
+            return -1
 
-    @abc.abstractmethod
+        if not isinstance(buffer, np.ndarray) or buffer.dtype != self.__data_type:
+            self.log.error('buffer must be numpy.ndarray with dtype {0}. Read failed.'
+                           ''.format(self.__data_type))
+            return -1
+        if number_of_samples is None:
+            number_of_samples = buffer.shape[1]
+
+        # Check for buffer overflow
+        if self.available_samples > self.buffer_size:
+            self._has_overflown = True
+
+        try:
+            # Read digital channels
+            for i, reader in enumerate(self._di_readers):
+                # read the counter value. This function is blocking.
+                if self.__data_type == np.float64:
+                    read_samples = reader.read_many_sample_double(
+                        buffer[i],
+                        number_of_samples_per_channel=number_of_samples,
+                        timeout=self._rw_timeout)
+                else:
+                    read_samples = reader.read_many_sample_uint32(
+                        buffer[i],
+                        number_of_samples_per_channel=number_of_samples,
+                        timeout=self._rw_timeout)
+                if read_samples != number_of_samples:
+                    return -1
+            # Read analog channels
+            if self._ai_reader is not None:
+                read_samples = self._ai_reader.read_many_sample(
+                    buffer[len(self._di_readers):],
+                    number_of_samples_per_channel=number_of_samples,
+                    timeout=self._rw_timeout)
+            if read_samples != number_of_samples:
+                return -1
+        except ni.DaqError:
+            self.log.exception('Getting samples from counter failed.')
+            return -1
+        return read_samples
+
     def read_available_data_into_buffer(self, buffer):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -582,9 +643,13 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return int: Number of samples read into buffer; negative value indicates error
                      (e.g. read timeout)
         """
-        pass
+        if not self.is_running:
+            self.log.error('Unable to read data. Device is not running.')
+            return -1
 
-    @abc.abstractmethod
+        avail_samples = min(buffer.size // self.number_of_channels, self.available_samples)
+        return self.read_data_into_buffer(buffer=buffer, number_of_samples=avail_samples)
+
     def read_data(self, number_of_samples=None):
         """
         Read data from the stream buffer into a 2D numpy array and return it.
@@ -601,9 +666,22 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return numpy.ndarray: The read samples
         """
-        pass
+        if not self.is_running:
+            self.log.error('Unable to read data. Device is not running.')
+            return -1
 
-    @abc.abstractmethod
+        if number_of_samples is None:
+            if self._ai_task_handle is None:
+                number_of_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - self._di_task_handles[0].in_stream.curr_read_pos
+            else:
+                number_of_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
+
+        buffer = np.zeros((self.number_of_channels, number_of_samples), dtype=self.data_type)
+        read_samples = self.read_data_into_buffer(buffer, number_of_samples=number_of_samples)
+        if read_samples != number_of_samples:
+            return np.empty((0, 0), dtype=self.data_type)
+        return buffer
+
     def read_single_point(self):
         """
         This method will initiate a single sample read on each configured data channel.
@@ -616,7 +694,8 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return numpy.ndarray: 1D array containing one sample for each channel. Empty array
                                indicates error.
         """
-        pass
+        self.log.error('"read_single_point" not implemented yet.')
+        return np.empty((0, 0), dtype=self.data_type)
 
     # =============================================================================================
 
@@ -665,6 +744,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             # Try to reserve resources for the task
             try:
                 task.control(ni.constants.TaskMode.TASK_RESERVE)
+                task.control(ni.constants.TaskMode.TASK_UNRESERVE)
             except ni.DaqError:
                 # Try to clean up task handle
                 try:
@@ -683,26 +763,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
                     return -1
                 continue
             break
-
-        # Try to start task
-        try:
-            task.start()
-        except ni.DaqError:
-            self.log.exception('Error while starting sample clock task.')
-            try:
-                task.stop()
-            except ni.DaqError:
-                pass
-            try:
-                task.close()
-            except ni.DaqError:
-                pass
-            try:
-                del task
-            except NameError:
-                pass
-            self._clk_task_handle = None
-            return -1
 
         self._clk_task_handle = task
         return 0
@@ -795,6 +855,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
                 try:
                     task.control(ni.constants.TaskMode.TASK_RESERVE)
+                    task.control(ni.constants.TaskMode.TASK_UNRESERVE)
                 except ni.DaqError:
                     try:
                         task.close()
@@ -894,6 +955,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         try:
             ai_task.control(ni.constants.TaskMode.TASK_RESERVE)
+            ai_task.control(ni.constants.TaskMode.TASK_UNRESERVE)
         except ni.DaqError:
             try:
                 ai_task.close()
@@ -910,7 +972,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         try:
             self._ai_reader = AnalogMultiChannelReader(ai_task.in_stream)
-            self._ai_reader.verify_array_shape = False
+            # self._ai_reader.verify_array_shape = False
         except ni.DaqError:
             try:
                 ai_task.close()
@@ -925,120 +987,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return -1
 
         self._ai_task_handle = ai_task
-        return 0
-
-    def get_counter_channels(self):
-        """ Returns the list of counter channel names.
-
-        @return tuple(str): channel names
-
-        Most methods calling this might just care about the number of channels, though.
-        """
-        return self._digital_sources + self._analog_sources
-
-    def get_counter(self, samples=None):
-        """ Returns the current counts per second of the counter.
-
-        @param int samples: if defined, number of samples to read in one go.
-                            How many samples are read per readout cycle. The
-                            readout frequency was defined in the counter setup.
-                            That sets also the length of the readout array.
-
-        @return float [samples]: array with entries as photon counts per second
-        """
-        if not self._di_task_handles and self._ai_task_handle is None:
-            self.log.error('No task running, call set_up_counter before reading it.')
-            return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
-
-        if samples is None:
-            if self._ai_task_handle is not None:
-                samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
-            else:
-                samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - self._di_task_handles[0].in_stream.curr_read_pos
-        else:
-            samples = int(samples)
-
-        if samples < 1:
-            return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
-        if samples > self._data_buffer.shape[1]:
-            self.log.warning('Number of samples to read exceeds data buffer size.')
-            self._data_buffer = np.zeros((self._data_buffer.shape[0], samples), dtype=np.float64)
-
-        try:
-            # Read digital channels
-            for i, reader in enumerate(self._di_readers):
-                # read the counter value. This function is blocking.
-                reader.read_many_sample_double(self._data_buffer[i, :samples],
-                                               number_of_samples_per_channel=samples,
-                                               timeout=self._rw_timeout)
-            # Read analog channels
-            if self._ai_reader is not None:
-                self._ai_reader.read_many_sample(
-                    self._data_buffer[len(self._di_readers):, :samples],
-                    number_of_samples_per_channel=samples,
-                    timeout=self._rw_timeout)
-        except ni.DaqError:
-            self.log.exception('Getting samples from counter failed.')
-            return np.full((len(self.get_counter_channels()), 1), -1, dtype=np.float64)
-
-        # FIXME: For now convert the digital count values to frequencies since the logic is dumb
-        if self._di_readers:
-            self._data_buffer[:, :samples] *= self.__sample_rate
-        return self._data_buffer[:, :samples]
-
-    def close_counter(self, throw_errors=True):
-        """ Closes the counter and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        err = 0
-
-        self._di_readers = list()
-        self._ai_reader = None
-
-        for i in range(len(self._di_task_handles)):
-            try:
-                if not self._di_task_handles[i].is_task_done():
-                    self._di_task_handles[i].stop()
-                self._di_task_handles[i].close()
-            except ni.DaqError:
-                if throw_errors:
-                    self.log.exception('Error while trying to terminate digital counter task.')
-                err = -1
-            finally:
-                del self._di_task_handles[i]
-        self._di_task_handles = list()
-
-        if self._ai_task_handle is not None:
-            try:
-                if not self._ai_task_handle.is_task_done():
-                    self._ai_task_handle.stop()
-                self._ai_task_handle.close()
-            except ni.DaqError:
-                if throw_errors:
-                    self.log.exception('Error while trying to terminate analog input task.')
-                err = -1
-        self._ai_task_handle = None
-        return err
-
-    def close_clock(self, throw_errors=True):
-        """ Closes the clock and cleans up afterwards.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        if self._clk_task_handle is None:
-            return 0
-
-        try:
-            if not self._clk_task_handle.is_task_done():
-                self._clk_task_handle.stop()
-            self._clk_task_handle.close()
-        except ni.DaqError:
-            if throw_errors:
-                self.log.exception('Error while trying to terminate clock task.')
-            return -1
-
-        self._clk_task_handle = None
         return 0
 
     def reset_hardware(self):
@@ -1056,9 +1004,44 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         return 0
 
     def terminate_all_tasks(self):
-        self.close_counter(throw_errors=False)
-        self.close_clock(throw_errors=False)
-        return
+        err = 0
+
+        self._di_readers = list()
+        self._ai_reader = None
+
+        for i in range(len(self._di_task_handles)):
+            try:
+                if not self._di_task_handles[i].is_task_done():
+                    self._di_task_handles[i].stop()
+                self._di_task_handles[i].close()
+            except ni.DaqError:
+                self.log.exception('Error while trying to terminate digital counter task.')
+                err = -1
+            finally:
+                del self._di_task_handles[i]
+        self._di_task_handles = list()
+
+        if self._ai_task_handle is not None:
+            try:
+                if not self._ai_task_handle.is_task_done():
+                    self._ai_task_handle.stop()
+                self._ai_task_handle.close()
+            except ni.DaqError:
+                self.log.exception('Error while trying to terminate analog input task.')
+                err = -1
+        self._ai_task_handle = None
+
+        if self._clk_task_handle is not None:
+            try:
+                if not self._clk_task_handle.is_task_done():
+                    self._clk_task_handle.stop()
+                self._clk_task_handle.close()
+            except ni.DaqError:
+                self.log.exception('Error while trying to terminate clock task.')
+                err = -1
+
+        self._clk_task_handle = None
+        return err
 
     def _clk_frequency_valid(self, frequency):
         if self._analog_sources:
