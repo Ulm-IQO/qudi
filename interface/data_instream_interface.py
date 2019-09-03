@@ -27,7 +27,7 @@ from core.util.interfaces import InterfaceMetaclass
 from core.util.interfaces import ScalarConstraint
 
 
-class SimpleDataInterface(metaclass=InterfaceMetaclass):
+class DataInStreamInterface(metaclass=InterfaceMetaclass):
     """
     Interface for a generic input stream of data points with fixed sampling rate and data type.
 
@@ -91,6 +91,17 @@ class SimpleDataInterface(metaclass=InterfaceMetaclass):
 
     @property
     @abc.abstractmethod
+    def all_settings(self):
+        """
+        Read-only property to return a dict containing all current settings and values that can be
+        configured using the method "configure". Basically returns the same as "configure".
+
+        @return dict: Dictionary containing all configurable settings
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
     def number_of_channels(self):
         """
         Read-only property to return the currently configured number of data channels.
@@ -124,14 +135,49 @@ class SimpleDataInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
+    @property
     @abc.abstractmethod
-    def configure(self, sample_rate=None, data_type=None, total_number_of_samples=None,
-                  buffer_size=None, use_circular_buffer=None):
+    def available_samples(self):
+        """
+        Read-only property to return the currently available number of samples per channel ready
+        to read from buffer.
+
+        @return int: Number of available samples per channel
+        """
+
+    @property
+    @abc.abstractmethod
+    def buffer_overflown(self):
+        """
+        Read-only flag to check if the read buffer has overflown.
+        In case of a circular buffer it indicates data loss.
+        In case of a non-circular buffer the data acquisition should have stopped if this flag is
+        coming up.
+        Flag will only be reset after starting a new data acquisition.
+
+        @return bool: Flag indicates if buffer has overflown (True) or not (False)
+        """
+        pass
+
+    @property
+    @abc.abstractmethod
+    def is_running(self):
+        """
+        Read-only flag indicating if the data acquisition is running.
+
+        @return bool: Data acquisition is running (True) or not (False)
+        """
+        pass
+
+    @abc.abstractmethod
+    def configure(self, sample_rate=None, data_type=None, streaming_mode=None,
+                  total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
 
         @param float sample_rate: The sample rate in Hz at which data points are acquired
         @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
+        @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
         @param int total_number_of_samples: In case of a finite data stream, the total number of
                                             samples to read per channel
         @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
@@ -243,6 +289,7 @@ class SimpleDataInterface(metaclass=InterfaceMetaclass):
         @return numpy.ndarray: 1D array containing one sample for each channel. Empty array
                                indicates error.
         """
+        pass
 
 
 class StreamChannelType(Enum):
@@ -262,10 +309,12 @@ class DataInStreamConstraints:
     def __init__(self):
         self.digital_channels = tuple()
         self.analog_channels = tuple()
-        self.max_simultaneous_channels = 0
-        self.max_analog_sample_rate = np.nan
-        self.max_digital_sample_rate = np.nan
-        self.max_combined_sample_rate = np.nan
+        self.max_simultaneous_analog_channels = 0
+        self.max_simultaneous_digital_channels = 0
+        self.analog_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+        self.digital_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+        self.combined_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
         self.read_block_size = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
         self.streaming_modes = (StreamingMode.CONTINUOUS, StreamingMode.FINITE)
+        self.data_types = (np.uint32, np.float64)
         self.allow_circular_buffer = False
