@@ -184,7 +184,7 @@ class ExpDecoKnownPrecessionModel():
     
     ## INITIALIZER ##
 
-    def __init__(self, min_freq=0, invT2 = 0.):
+    def __init__(self, min_freq=0, invT2=0.):
         super(ExpDecoKnownPrecessionModel, self).__init__()
 
         self._min_freq = min_freq
@@ -444,7 +444,67 @@ class stdPGH(qi.Heuristic):
         
         return eps
         
-        
+class T2RandPenalty_PGH(stdPGH):
+    def __init__(self, updater, tau_thresh_rescale, inv_field='x_', t_field='t',
+                 inv_func=qi.expdesign.identity,
+                 t_func=qi.expdesign.identity,
+                 maxiters=10,
+                 other_fields=None, scale_f=2.0):
+        """
+        Apply a penalty on taus calculated from stdPGH and rescale them to lower values.
+        :param tau_thresh_rescale: values above will be rescaled
+        :param scale_f: controls the cut off tau. tau_cut = tau_thresh_rescale + scale_f * tau_thresh_rescale
+                        = 2 -> tau_max = 3*tau_thresh_rescale
+        """
+
+        super().__init__(updater, inv_field, t_field, inv_func, t_func, maxiters, other_fields)
+        self.tau_thresh_rescale = tau_thresh_rescale
+        self.scale_f = scale_f
+
+    def __call__(self):
+        eps = super().__call__()
+        tau = float(eps['t'][0])  # us
+
+        if self.should_correct(tau):
+            eps['t'] = self.apply_penalty_randomized(tau * 1e-6) * 1e6
+
+        return eps
+
+    def should_correct(self, taus_s):
+        return True
+
+    def should_correct_randomized(self, tau_s):
+
+        if tau_s > self.tau_thresh_rescale:
+            rand = np.random.rand() # [0, 1)
+            if rand > - np.exp(- tau_s/self.tau_thresh_rescale) + 1:      # -exp(-x)+1 < 1
+                return True
+
+        return False
+
+    def apply_penalty(self, tau_s):
+
+        if tau_s <= self.tau_thresh_rescale:
+            return tau_s
+
+        # rescale tau-t2* to 0... T2* (*scale_f)
+        tau_corrected_s = self.tau_thresh_rescale + (1 - np.exp(- (tau_s/self.tau_thresh_rescale-1))) * self.scale_f * self.tau_thresh_rescale      # 0 < -exp(-(x-1))+1 < 1
+
+        return tau_corrected_s
+
+    def apply_penalty_randomized(self, tau_s):
+        # randomly multiply scale with [0, 1)
+        # avoid that all very big taus get mapped to a single value
+
+        save_scale_f = self.scale_f
+        rand = np.random.rand()
+        self.scale_f *= rand
+        tau_corrected_s = self.apply_penalty(tau_s)
+        self.scale_f = save_scale_f
+
+        return tau_corrected_s
+
+
 
 ####################################################
 ########## SMC updater  (from Qinfer)  ##############
