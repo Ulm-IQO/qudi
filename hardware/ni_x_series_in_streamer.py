@@ -182,8 +182,12 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self._constraints.read_block_size.max = int(self._max_channel_samples_buffer)
         self._constraints.read_block_size.step = 1
 
-        self._constraints.streaming_modes = (StreamingMode.CONTINUOUS, StreamingMode.FINITE)
-        self._constraints.data_types = (np.uint32, np.float64)
+        # TODO: Implement FINITE streaming mode
+        self._constraints.streaming_modes = (StreamingMode.CONTINUOUS,)  # , StreamingMode.FINITE)
+        if self._analog_sources:
+            self._constraints.data_types = (np.float64,)
+        else:
+            self._constraints.data_types = (np.uint32, np.float64)
         self._constraints.allow_circular_buffer = True
 
         # Check external sample clock source
@@ -374,12 +378,13 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return 0
 
         if self._ai_task_handle is None:
-            avail_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - \
-                            self._di_task_handles[0].in_stream.curr_read_pos
+            # avail_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - \
+            #                 self._di_task_handles[0].in_stream.curr_read_pos
+            return self._di_task_handles[0].in_stream.avail_samp_per_chan
         else:
-            avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
-                            self._ai_task_handle.in_stream.curr_read_pos
-        return avail_samples
+            # avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
+            #                 self._ai_task_handle.in_stream.curr_read_pos
+            return self._ai_task_handle.in_stream.avail_samp_per_chan
 
     @property
     def is_running(self):
@@ -744,7 +749,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             # Try to reserve resources for the task
             try:
                 task.control(ni.constants.TaskMode.TASK_RESERVE)
-                task.control(ni.constants.TaskMode.TASK_UNRESERVE)
             except ni.DaqError:
                 # Try to clean up task handle
                 try:
@@ -799,9 +803,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         for i, chnl in enumerate(self._digital_sources):
             chnl_name = '/{0}/{1}'.format(self._device_name, chnl)
             task_name = 'PeriodCounter_{0}'.format(chnl)
-            ctr_name = '/{0}/{1}'.format(self._device_name, ctr)
             # Try to find available counter
             for ctr in self.__all_counters:
+                ctr_name = '/{0}/{1}'.format(self._device_name, ctr)
                 try:
                     task = ni.Task(task_name)
                 except ni.DaqError:
@@ -855,7 +859,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
                 try:
                     task.control(ni.constants.TaskMode.TASK_RESERVE)
-                    task.control(ni.constants.TaskMode.TASK_UNRESERVE)
                 except ni.DaqError:
                     try:
                         task.close()
@@ -955,7 +958,6 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         try:
             ai_task.control(ni.constants.TaskMode.TASK_RESERVE)
-            ai_task.control(ni.constants.TaskMode.TASK_UNRESERVE)
         except ni.DaqError:
             try:
                 ai_task.close()
