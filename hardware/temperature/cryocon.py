@@ -25,7 +25,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 import visa
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import numpy as np
 
 from interface.process_interface import ProcessInterface
