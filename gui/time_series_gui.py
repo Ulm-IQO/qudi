@@ -25,7 +25,7 @@ import os
 import time
 import pyqtgraph as pg
 
-from core.module import Connector
+from core.connector import Connector
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtGui
@@ -53,7 +53,7 @@ class TimeSeriesGui(GUIBase):
     """
 
     # declare connectors
-    _time_series_logic_con = Connector(interface='CounterLogic')
+    _time_series_logic_con = Connector(interface='TimeSeriesReaderLogic')
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()

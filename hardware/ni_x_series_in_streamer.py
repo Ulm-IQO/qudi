@@ -25,11 +25,11 @@ import copy
 import numpy as np
 import ctypes
 import nidaqmx as ni
-from nidaqmx._lib import lib_importer
+from nidaqmx._lib import lib_importer  # Due to NIDAQmx C-API bug needed to bypass property getter
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
 
-from core.module import Base, ConfigOption
-# from core.configoption import ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
 from interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
 from interface.data_instream_interface import StreamingMode, StreamChannelType

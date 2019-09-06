@@ -24,7 +24,9 @@ import numpy as np
 import datetime as dt
 import matplotlib.pyplot as plt
 
-from core.module import Connector, StatusVar, ConfigOption
+from core.connector import Connector
+from core.statusvariable import StatusVar
+from core.configoption import ConfigOption
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
 from core.util.units import ScaledFloat
