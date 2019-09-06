@@ -86,7 +86,7 @@ class TimeSeriesGui(GUIBase):
         self._mw.setDockNestingEnabled(True)
 
         # Plot labels.
-        self._pw = self._mw.counter_trace_PlotWidget
+        self._pw = self._mw.data_trace_PlotWidget
 
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='s')
@@ -133,11 +133,11 @@ class TimeSeriesGui(GUIBase):
 
         #####################
         # Connecting user interactions
-        self._mw.start_counter_Action.triggered.connect(self.start_clicked)
-        self._mw.record_counts_Action.triggered.connect(self.save_clicked)
+        self._mw.start_trace_Action.triggered.connect(self.start_clicked)
+        self._mw.record_trace_Action.triggered.connect(self.record_clicked)
 
-        self._mw.count_length_DoubleSpinBox.editingFinished.connect(self.data_window_changed)
-        self._mw.count_freq_DoubleSpinBox.editingFinished.connect(self.data_rate_changed)
+        self._mw.trace_length_DoubleSpinBox.editingFinished.connect(self.data_window_changed)
+        self._mw.data_rate_DoubleSpinBox.editingFinished.connect(self.data_rate_changed)
         self._mw.oversampling_SpinBox.editingFinished.connect(self.oversampling_changed)
 
         # Connect the default view action
@@ -178,10 +178,10 @@ class TimeSeriesGui(GUIBase):
         """ Deactivate the module
         """
         # disconnect signals
-        self._mw.start_counter_Action.triggered.disconnect()
-        self._mw.record_counts_Action.triggered.disconnect()
-        self._mw.count_length_DoubleSpinBox.editingFinished.disconnect()
-        self._mw.count_freq_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.start_trace_Action.triggered.disconnect()
+        self._mw.record_trace_Action.triggered.disconnect()
+        self._mw.trace_length_DoubleSpinBox.editingFinished.disconnect()
+        self._mw.data_rate_DoubleSpinBox.editingFinished.disconnect()
         self._mw.oversampling_SpinBox.editingFinished.disconnect()
         self._mw.restore_default_view_Action.triggered.disconnect()
         self.sigStartCounter.disconnect()
@@ -196,112 +196,111 @@ class TimeSeriesGui(GUIBase):
         self._mw.close()
         return
 
-    def update_data(self):
+    @QtCore.Slot()
+    @QtCore.Slot(np.ndarray, np.ndarray)
+    @QtCore.Slot(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    def update_data(self, data_time=None, data=None, smooth_time=None, smooth_data=None):
         """ The function that grabs the data and sends it to the plot.
         """
+        if data_time is None and data is None and smooth_data is None and smooth_time is None:
+            data = self._time_series_logic.trace_data
+            data_time = self._time_series_logic.trace_time_axis
+            smooth_data = self._time_series_logic.trace_data_averaged
+            smooth_time = self._time_series_logic.averaged_trace_time_axis
+        elif (data_time is None) ^ (data is None) or (smooth_time is None) ^ (smooth_data is None):
+            self.log.error('Must provide a full data set of x and y values. update_data failed.')
+            return
+
         start = time.perf_counter()
-        data = self._time_series_logic.trace_data
-        data_time = self._time_series_logic.trace_time_axis
-        smooth_data = self._time_series_logic.trace_data_averaged
-        smooth_time = self._time_series_logic.averaged_trace_time_axis
-
-        # curr_x_min, curr_x_max = self.curves[0].dataBounds(0)
-        # x_min, x_max = data_time.min(), data_time.max()
-        # if curr_x_max < x_max or curr_x_min > x_min:
-        #     self._pw.setLimits(xMin=x_min - 0.01 * np.abs(x_min), xMax=x_max + 0.01 * np.abs(x_max))
-
-        x_min, x_max = data_time.min(), data_time.max()
-        y_min, y_max = data.min(), data.max()
-        self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
-        # view_range = self._pw.visibleRange()
-        # if view_range.left() > x_min or view_range.right() < x_max:
-        #     self._pw.setXRange(x_min, x_max)
-        # elif view_range.width() > (x_max - x_min) * 0.7:
-        #     self._pw.setXRange(x_min, x_max)
-        #
-        # if view_range.top() > y_min or view_range.bottom() < y_max:
-        #     self._pw.setYRange(y_min, y_max)
-        # elif view_range.height() > (y_max - y_min) * 0.7:
-        #     self._pw.setYRange(y_min, y_max)
+        if data is not None:
+            x_min, x_max = data_time.min(), data_time.max()
+            y_min, y_max = data.min(), data.max()
+            self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
         # if update_all:
         for i, ch in enumerate(self._time_series_logic.channel_names):
-            self.curves[2 * i].setData(y=data[i], x=data_time)
-            self.curves[2 * i + 1].setData(y=smooth_data[i], x=smooth_time)
+            if data is not None:
+                self.curves[2 * i].setData(y=data[i], x=data_time)
+            if smooth_data is not None:
+                self.curves[2 * i + 1].setData(y=smooth_data[i], x=smooth_time)
 
         # QtWidgets.QApplication.processEvents()
         # self._pw.autoRange()
         print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
         return 0
 
+    @QtCore.Slot()
     def start_clicked(self):
         """ Handling the Start button to stop and restart the counter.
         """
-        self._mw.start_counter_Action.setEnabled(False)
-        if self._time_series_logic.module_state() == 'locked':
-            self.sigStopCounter.emit()
-        else:
+        self._mw.start_trace_Action.setEnabled(False)
+        self._mw.record_trace_Action.setEnabled(False)
+        if self._mw.start_trace_Action.isChecked():
             self.sigStartCounter.emit()
+        else:
+            self.sigStopCounter.emit()
         return
 
-    def save_clicked(self):
+    @QtCore.Slot()
+    def record_clicked(self):
         """ Handling the save button to save the data into a file.
         """
-        self._mw.record_counts_Action.setEnabled(False)
-        self._mw.count_freq_DoubleSpinBox.setEnabled(False)
+        self._mw.record_trace_Action.setEnabled(False)
+        self._mw.data_rate_DoubleSpinBox.setEnabled(False)
         self._mw.oversampling_SpinBox.setEnabled(False)
-        self._mw.count_length_DoubleSpinBox.setEnabled(False)
-        if self._time_series_logic.data_recording_active:
-            self.sigStopRecording.emit()
-        else:
+        self._mw.trace_length_DoubleSpinBox.setEnabled(False)
+        if self._mw.record_trace_Action.isChecked():
             self.sigStartRecording.emit()
+        else:
+            self.sigStopRecording.emit()
         return
 
-    def update_status(self, running, recording):
+    @QtCore.Slot()
+    @QtCore.Slot(bool, bool)
+    def update_status(self, running=None, recording=None):
         """
         Function to ensure that the GUI displays the current measurement status
 
         @param bool running: True if the data trace streaming is running
         @param bool recording: True if the data trace recording is active
         """
-        if running:
-            self._mw.start_counter_Action.setText('Stop trace')
-        else:
-            self._mw.start_counter_Action.setText('Start trace')
+        if running is None:
+            running = self._time_series_logic.module_state() == 'locked'
+        if recording is None:
+            recording = self._time_series_logic.data_recording_active
 
-        if recording:
-            self._mw.record_counts_Action.setText('Save recorded')
-            self._mw.count_freq_DoubleSpinBox.setEnabled(False)
-            self._mw.oversampling_SpinBox.setEnabled(False)
-            self._mw.count_length_DoubleSpinBox.setEnabled(False)
-        else:
-            self._mw.record_counts_Action.setText('Start recording')
-            self._mw.count_freq_DoubleSpinBox.setEnabled(True)
-            self._mw.oversampling_SpinBox.setEnabled(True)
-            self._mw.count_length_DoubleSpinBox.setEnabled(True)
+        self._mw.start_trace_Action.setChecked(running)
+        self._mw.start_trace_Action.setText('Stop trace' if running else 'Start trace')
 
-        self._mw.start_counter_Action.setEnabled(True)
-        self._mw.record_counts_Action.setEnabled(True)
+        self._mw.record_trace_Action.setChecked(recording)
+        self._mw.record_trace_Action.setText('Save recorded' if recording else 'Start recording')
+        self._mw.data_rate_DoubleSpinBox.setEnabled(not recording)
+        self._mw.oversampling_SpinBox.setEnabled(not recording)
+        self._mw.trace_length_DoubleSpinBox.setEnabled(not recording)
+
+        self._mw.start_trace_Action.setEnabled(True)
+        self._mw.record_trace_Action.setEnabled(True)
         return
 
-    ########
-    # Input parameters changed via GUI
+    @QtCore.Slot()
     def data_window_changed(self):
         """ Handling the change of the count_length and sending it to the measurement.
         """
-        val = self._mw.count_length_DoubleSpinBox.value()
+        val = self._mw.trace_length_DoubleSpinBox.value()
         self.sigSettingsChanged.emit({'trace_window_size': val})
         # self._pw.setXRange(0,
         #                    self._counting_logic.count_length / self._counting_logic.count_frequency)
         return
 
+    @QtCore.Slot()
     def data_rate_changed(self):
         """ Handling the change of the count_frequency and sending it to the measurement.
         """
-        val = self._mw.count_freq_DoubleSpinBox.value()
+        val = self._mw.data_rate_DoubleSpinBox.value()
         self.sigSettingsChanged.emit({'data_rate': val})
         return
 
+    @QtCore.Slot()
     def oversampling_changed(self):
         """ Handling the change of the oversampling and sending it to the measurement.
         """
@@ -309,46 +308,52 @@ class TimeSeriesGui(GUIBase):
         self.sigSettingsChanged.emit({'oversampling_factor': val})
         return
 
-    ########
-    # Restore default values
+    @QtCore.Slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
         """
         # Show any hidden dock widgets
-        self._mw.counter_trace_DockWidget.show()
+        self._mw.data_trace_DockWidget.show()
         # self._mw.slow_counter_control_DockWidget.show()
-        self._mw.slow_counter_parameters_DockWidget.show()
+        self._mw.trace_settings_DockWidget.show()
 
         # re-dock any floating dock widgets
-        self._mw.counter_trace_DockWidget.setFloating(False)
-        self._mw.slow_counter_parameters_DockWidget.setFloating(False)
+        self._mw.data_trace_DockWidget.setFloating(False)
+        self._mw.trace_settings_DockWidget.setFloating(False)
 
         # Arrange docks widgets
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(1),
-                               self._mw.counter_trace_DockWidget
+                               self._mw.data_trace_DockWidget
                                )
         self._mw.addDockWidget(QtCore.Qt.DockWidgetArea(8),
-                               self._mw.slow_counter_parameters_DockWidget
+                               self._mw.trace_settings_DockWidget
                                )
 
         # Set the toolbar to its initial top area
         self._mw.addToolBar(QtCore.Qt.TopToolBarArea,
-                            self._mw.counting_control_ToolBar)
+                            self._mw.trace_control_ToolBar)
+
+        # Restore status if something went wrong
+        self.update_status(self._time_series_logic.module_state() == 'locked',
+                           self._time_series_logic.data_recording_active)
         return 0
 
-    ##########
-    # Handle signals from logic
-    def update_settings(self, settings_dict):
+    @QtCore.Slot()
+    @QtCore.Slot(dict)
+    def update_settings(self, settings_dict=None):
+        if settings_dict is None:
+            settings_dict = self._time_series_logic.all_settings
+
         if 'oversampling_factor' in settings_dict:
             self._mw.oversampling_SpinBox.blockSignals(True)
             self._mw.oversampling_SpinBox.setValue(settings_dict['oversampling_factor'])
             self._mw.oversampling_SpinBox.blockSignals(False)
         if 'trace_window_size' in settings_dict:
-            self._mw.count_length_DoubleSpinBox.blockSignals(True)
-            self._mw.count_length_DoubleSpinBox.setValue(settings_dict['trace_window_size'])
-            self._mw.count_length_DoubleSpinBox.blockSignals(False)
+            self._mw.trace_length_DoubleSpinBox.blockSignals(True)
+            self._mw.trace_length_DoubleSpinBox.setValue(settings_dict['trace_window_size'])
+            self._mw.trace_length_DoubleSpinBox.blockSignals(False)
         if 'data_rate' in settings_dict:
-            self._mw.count_freq_DoubleSpinBox.blockSignals(True)
-            self._mw.count_freq_DoubleSpinBox.setValue(settings_dict['data_rate'])
-            self._mw.count_freq_DoubleSpinBox.blockSignals(False)
+            self._mw.data_rate_DoubleSpinBox.blockSignals(True)
+            self._mw.data_rate_DoubleSpinBox.setValue(settings_dict['data_rate'])
+            self._mw.data_rate_DoubleSpinBox.blockSignals(False)
         return

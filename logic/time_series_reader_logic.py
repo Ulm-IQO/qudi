@@ -20,10 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from qtpy import QtCore
-from collections import OrderedDict
 import numpy as np
 import datetime as dt
-import time
 import matplotlib.pyplot as plt
 
 from core.module import Connector, StatusVar, ConfigOption
@@ -38,10 +36,10 @@ class TimeSeriesReaderLogic(GenericLogic):
     This logic module gathers data from a hardware streaming device.
     """
     # declare signals
-    sigDataChanged = QtCore.Signal()
+    sigDataChanged = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
     sigStatusChanged = QtCore.Signal(bool, bool)
     sigSettingsChanged = QtCore.Signal(dict)
-    _sigNextDataFrame = QtCore.Signal()
+    _sigNextDataFrame = QtCore.Signal()  # internal signal
 
     # declare connectors
     _streamer_con = Connector(interface='DataInStreamInterface')
@@ -232,6 +230,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 'trace_window_size': self._trace_window_size,
                 'data_rate': self._data_rate}
 
+    @QtCore.Slot(dict)
     def configure_settings(self, settings_dict=None, **kwargs):
         """
         Sets the number of samples to average per data point, i.e. the oversampling factor.
@@ -355,11 +354,15 @@ class TimeSeriesReaderLogic(GenericLogic):
             settings = self.all_settings
             self.sigSettingsChanged.emit(settings)
             if not restart:
-                self.sigDataChanged.emit()
+                self.sigDataChanged.emit(self.trace_time_axis,
+                                         self.trace_data,
+                                         self.averaged_trace_time_axis,
+                                         self.trace_data_averaged)
         if restart:
             self.start_reading()
         return settings
 
+    @QtCore.Slot()
     def start_reading(self):
         """
         Start data acquisition loop.
@@ -399,6 +402,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             self._sigNextDataFrame.emit()
         return 0
 
+    @QtCore.Slot()
     def stop_reading(self):
         """
         Send a request to stop counting.
@@ -410,6 +414,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self._stop_requested = True
         return 0
 
+    @QtCore.Slot()
     def acquire_data_block(self):
         """
         This method gets the available data from the hardware.
@@ -425,7 +430,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                         self.log.error(
                             'Error while trying to stop streaming device data acquisition.')
                     if self._data_recording_active:
-                        self.save_recorded_data(to_file=True, save_figure=True)
+                        self._save_recorded_data(to_file=True, save_figure=True)
                         self._recorded_data = list()
                     self._data_recording_active = False
                     self.module_state.unlock()
@@ -450,7 +455,10 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self._process_trace_data(data)
 
                 # Emit update signal
-                self.sigDataChanged.emit()
+                self.sigDataChanged.emit(self.trace_time_axis,
+                                         self.trace_data,
+                                         self.averaged_trace_time_axis,
+                                         self.trace_data_averaged)
                 self._sigNextDataFrame.emit()
         return
 
@@ -492,6 +500,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         self.trace_data_averaged = (cumsum[:, n:] - cumsum[:, :-n]) / n
         return
 
+    @QtCore.Slot()
     def start_recording(self):
         """
         Sets up start-time and initializes data array, if not resuming, and changes saving state.
@@ -513,6 +522,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self.start_reading()
         return 0
 
+    @QtCore.Slot()
     def stop_recording(self):
         """
         Stop the accumulative data recording and save data to file. Will not stop the data stream.
@@ -527,12 +537,12 @@ class TimeSeriesReaderLogic(GenericLogic):
 
             self._data_recording_active = False
             if self.module_state() == 'locked':
-                self.save_recorded_data(to_file=True, save_figure=True)
+                self._save_recorded_data(to_file=True, save_figure=True)
                 self._recorded_data = list()
                 self.sigStatusChanged.emit(True, False)
         return 0
 
-    def save_recorded_data(self, to_file=True, name_tag='', save_figure=True):
+    def _save_recorded_data(self, to_file=True, name_tag='', save_figure=True):
         """ Save the counter trace data and writes it to a file.
 
         @param bool to_file: indicate, whether data have to be saved to file
@@ -585,7 +595,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             self.log.info('Time series saved to: {0}'.format(filepath))
         return data_arr, parameters
 
-    def draw_figure(self, data, timebase):
+    def _draw_figure(self, data, timebase):
         """ Draw figure to save with data file.
 
         @param: nparray data: a numpy array containing counts vs time for all detectors
@@ -610,6 +620,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         ax.set_ylabel('Signal ({0}arb.u.)'.format(max_abs_value.scale))
         return fig
 
+    @QtCore.Slot()
     def save_trace_snapshot(self, to_file=True, name_tag='', save_figure=True):
         """
         The currently displayed data trace will be saved.
@@ -665,7 +676,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self.log.error(
                     'Error while trying to stop streaming device data acquisition.')
             if self._data_recording_active:
-                self.save_recorded_data(to_file=True, save_figure=True)
+                self._save_recorded_data(to_file=True, save_figure=True)
                 self._recorded_data = list()
             self._data_recording_active = False
             self.module_state.unlock()
