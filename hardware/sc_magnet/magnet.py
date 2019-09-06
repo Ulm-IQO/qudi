@@ -21,9 +21,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 import socket
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import numpy as np
-import time
 from interface.magnet_interface import MagnetInterface
 from collections import OrderedDict
 import re
@@ -53,10 +53,6 @@ class Magnet(Base, MagnetInterface):
         magnet_rho_constr: 1.2
 
     """
-
-    _modtype = 'Magnet'
-    _modclass = 'hardware'
-
     # config opts
     port = ConfigOption('magnet_port', missing='error')
 

@@ -26,7 +26,8 @@ import os
 import time
 
 from interface.fast_counter_interface import FastCounterInterface
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 import okfrontpanel as ok
 from core.util.mutex import Mutex
@@ -62,9 +63,6 @@ class FastCounterFPGAQO(Base, FastCounterInterface):
         #threshV_ch8: 0.5   # optional, threshold voltage for detection
 
     """
-
-    _modclass = 'FastCounterFPGAQO'
-    _modtype = 'hardware'
 
     _serial = ConfigOption('fpgacounter_serial', missing='error')
     # 'No parameter "fpgacounter_serial" specified in the config! Set the '

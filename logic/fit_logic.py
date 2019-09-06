@@ -37,10 +37,7 @@ from core.config import load, save
 
 
 class FitLogic(GenericLogic):
-
     """
-    UNSTABLE:Jochen Scheuer
-
     Documentation to add a new fit model/estimator/function can be found in
     documentation/how_to_use_fitting.md or in the online documentation at
     http://qosvn.physik.uni-ulm.de/qudi-docs/fit_logic.html
@@ -51,9 +48,6 @@ class FitLogic(GenericLogic):
     For clarity reasons the fit function are imported from different files
     seperated by function type, e.g. gaussianlikemethods, sinemethods, generalmethods
     """
-    _modclass = 'fitlogic'
-    _modtype = 'logic'
-
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # locking for thread safety

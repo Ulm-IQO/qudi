@@ -24,7 +24,7 @@ import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
 
-from core.module import Connector
+from core.connector import Connector
 from gui.guibase import GUIBase
 from qtpy import QtGui, QtWidgets, QtCore, uic
 
@@ -40,11 +40,9 @@ class NuclearOperationsMainWindow(QtWidgets.QMainWindow):
         uic.loadUi(ui_file, self)
         self.show()
 
+
 class NuclearOperationsGui(GUIBase):
     """ This is the main GUI Class for Nuclear Operations. """
-
-    _modclass = 'NuclearOperationsGui'
-    _modtype = 'gui'
 
     # declare connectors
     nuclearoperationslogic = Connector(interface='NuclearOperationsLogic')

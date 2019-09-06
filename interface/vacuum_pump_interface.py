@@ -19,15 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class VacuumPumpInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'PumpInterface'
-    _modclass = 'interface'
+    """
+    """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_extra_info(self):
         """ Present extra information about pump controller/device.
 
@@ -35,7 +35,7 @@ class VacuumPumpInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_pressures(self):
         """All available pressures in Pascal.
 
@@ -43,11 +43,11 @@ class VacuumPumpInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_pump_speeds(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_pump_powers(self):
         """ All available pump powers in watts.
 
@@ -55,7 +55,7 @@ class VacuumPumpInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_pump_states(self):
         """All available pump states.
 
@@ -63,20 +63,20 @@ class VacuumPumpInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_pump_states(self, states):
         """Control the pump state.
           @param dict states: dict of pump name and desired state
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_system_state(self):
         """Get overall system state.
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_system_state(self, state):
         """Control the system state.
         """
