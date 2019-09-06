@@ -68,6 +68,7 @@ class TimeSeriesGui(GUIBase):
         self._mw = None
         self._pw = None
         self.curves = None
+        self.averaged_curves = None
         self._display_trace = None
         self._trace_selection = None
 
@@ -97,32 +98,25 @@ class TimeSeriesGui(GUIBase):
         self._pw.hideButtons()
 
         self.curves = list()
+        self.averaged_curves = list()
         for i, ch in enumerate(self._time_series_logic.channel_names):
             if i % 2 == 0:
-                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c2, 'width': 4},
-                                                    clipToView=True,
-                                                    downsampleMethod='subsample',
-                                                    autoDownsample=True))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c1, 'width': 2},
-                                                    clipToView=True,
-                                                    downsampleMethod='subsample',
-                                                    autoDownsample=True))
-                self._pw.addItem(self.curves[-1])
+                pen1 = {'color': palette.c2, 'width': 4}
+                pen2 = {'color': palette.c1, 'width': 2}
             else:
-                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c4, 'width': 4},
-                                                    clipToView=True,
-                                                    downsampleMethod='subsample',
-                                                    autoDownsample=True))
-                self._pw.addItem(self.curves[-1])
-                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c3, 'width': 2},
-                                                    clipToView=True,
-                                                    downsampleMethod='subsample',
-                                                    autoDownsample=True))
-                self._pw.addItem(self.curves[-1])
-
-        # setting the x axis length correctly
-        # self._pw.setXRange(0, self._time_series_logic.trace_window_size)
+                pen1 = {'color': palette.c4, 'width': 4}
+                pen2 = {'color': palette.c3, 'width': 2}
+            self.averaged_curves.append(pg.PlotCurveItem(pen=pen1,
+                                                         clipToView=True,
+                                                         downsampleMethod='subsample',
+                                                         autoDownsample=True))
+            self._pw.addItem(self.averaged_curves[-1])
+            self.curves.append(pg.PlotCurveItem(pen=pen2,
+                                                clipToView=True,
+                                                downsampleMethod='subsample',
+                                                autoDownsample=True))
+        for curve in self.curves:
+            self._pw.addItem(curve)
 
         #####################
         # Setting default parameters
@@ -141,6 +135,7 @@ class TimeSeriesGui(GUIBase):
         self._mw.trace_length_DoubleSpinBox.editingFinished.connect(self.data_window_changed)
         self._mw.data_rate_DoubleSpinBox.editingFinished.connect(self.data_rate_changed)
         self._mw.oversampling_SpinBox.editingFinished.connect(self.oversampling_changed)
+        self._mw.moving_average_spinBox.editingFinished.connect(self.moving_average_changed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -186,6 +181,7 @@ class TimeSeriesGui(GUIBase):
         self._mw.trace_length_DoubleSpinBox.editingFinished.disconnect()
         self._mw.data_rate_DoubleSpinBox.editingFinished.disconnect()
         self._mw.oversampling_SpinBox.editingFinished.disconnect()
+        self._mw.moving_average_spinBox.editingFinished.disconnect()
         self._mw.restore_default_view_Action.triggered.disconnect()
         self.sigStartCounter.disconnect()
         self.sigStopCounter.disconnect()
@@ -220,12 +216,11 @@ class TimeSeriesGui(GUIBase):
             y_min, y_max = data.min(), data.max()
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
-        # if update_all:
         for i, ch in enumerate(self._time_series_logic.channel_names):
             if data is not None:
-                self.curves[2 * i].setData(y=data[i], x=data_time)
+                self.curves[i].setData(y=data[i], x=data_time)
             if smooth_data is not None:
-                self.curves[2 * i + 1].setData(y=smooth_data[i], x=smooth_time)
+                self.averaged_curves[i].setData(y=smooth_data[i], x=smooth_time)
 
         # QtWidgets.QApplication.processEvents()
         # self._pw.autoRange()
@@ -312,6 +307,13 @@ class TimeSeriesGui(GUIBase):
         return
 
     @QtCore.Slot()
+    def moving_average_changed(self):
+        """
+        """
+        val = self._mw.moving_average_spinBox.value()
+        self.sigSettingsChanged.emit({'moving_average_width': val})
+
+    @QtCore.Slot()
     def restore_default_view(self):
         """ Restore the arrangement of DockWidgets to the default
         """
@@ -359,4 +361,22 @@ class TimeSeriesGui(GUIBase):
             self._mw.data_rate_DoubleSpinBox.blockSignals(True)
             self._mw.data_rate_DoubleSpinBox.setValue(settings_dict['data_rate'])
             self._mw.data_rate_DoubleSpinBox.blockSignals(False)
+        if 'moving_average_width' in settings_dict:
+            val = settings_dict['moving_average_width']
+            self._mw.moving_average_spinBox.blockSignals(True)
+            self._mw.moving_average_spinBox.setValue(val)
+            self._mw.moving_average_spinBox.blockSignals(False)
+            if self.curves and self.averaged_curves:
+                items = self._pw.items()
+                if val > 1 and not all(curve in items for curve in self.averaged_curves):
+                    for ii, curve in enumerate(self.averaged_curves):
+                        if curve not in items:
+                            self._pw.addItem(curve)
+                        if self.curves[ii] in items:
+                            self._pw.removeItem(self.curves[ii])
+                        self._pw.addItem(self.curves[ii])
+                elif val <= 1 and any(curve in items for curve in self.averaged_curves):
+                    for ii, curve in enumerate(self.averaged_curves):
+                        if curve in items:
+                            self._pw.removeItem(curve)
         return

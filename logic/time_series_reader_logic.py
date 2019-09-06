@@ -36,7 +36,7 @@ class TimeSeriesReaderLogic(GenericLogic):
     This logic module gathers data from a hardware streaming device.
     """
     # declare signals
-    sigDataChanged = QtCore.Signal(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    sigDataChanged = QtCore.Signal(np.ndarray, np.ndarray, object, object)
     sigStatusChanged = QtCore.Signal(bool, bool)
     sigSettingsChanged = QtCore.Signal(dict)
     _sigNextDataFrame = QtCore.Signal()  # internal signal
@@ -46,7 +46,7 @@ class TimeSeriesReaderLogic(GenericLogic):
     _savelogic_con = Connector(interface='SaveLogic')
 
     # config options
-    _max_frame_rate = ConfigOption('max_frame_rate', default=5, missing='warn')
+    _max_frame_rate = ConfigOption('max_frame_rate', default=10, missing='warn')
 
     # status vars
     _trace_window_size = StatusVar('trace_window_size', default=6)
@@ -217,6 +217,8 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     @property
     def trace_data(self):
+        if self._moving_average_width == 1:
+            return self._trace_data
         return self._trace_data[:, :-(self._moving_average_width // 2)]
 
     @property
@@ -253,6 +255,10 @@ class TimeSeriesReaderLogic(GenericLogic):
         if not settings_dict:
             return self.all_settings
 
+        # Return early if no values are about to change
+        if all(val == getattr(self, key, None) for key, val in settings_dict.items()):
+            return
+
         restart = self.module_state() == 'locked'
         if restart:
             self._stop_reader_wait()
@@ -288,6 +294,11 @@ class TimeSeriesReaderLogic(GenericLogic):
                 if new_val < 1:
                     self.log.error('Moving average width must be integer value >= 1 '
                                    '(received: {0:d}).'.format(new_val))
+                elif new_val % 2 == 0:
+                    new_val += 1
+                    self.log.warning('Moving average window must be odd integer number in order to '
+                                     'ensure perfect data alignment. Will increase value to {0:d}.'
+                                     ''.format(new_val))
                 elif new_val / self._data_rate > self._trace_window_size:
                     if 'data_rate' in settings_dict or 'trace_window_size' in settings_dict:
                         self._moving_average_width = new_val
@@ -354,10 +365,16 @@ class TimeSeriesReaderLogic(GenericLogic):
             settings = self.all_settings
             self.sigSettingsChanged.emit(settings)
             if not restart:
-                self.sigDataChanged.emit(self.trace_time_axis,
-                                         self.trace_data,
-                                         self.averaged_trace_time_axis,
-                                         self.trace_data_averaged)
+                if self._moving_average_width > 1:
+                    self.sigDataChanged.emit(self.trace_time_axis,
+                                             self.trace_data,
+                                             self.averaged_trace_time_axis,
+                                             self.trace_data_averaged)
+                else:
+                    self.sigDataChanged.emit(self.trace_time_axis,
+                                             self.trace_data,
+                                             None,
+                                             None)
         if restart:
             self.start_reading()
         return settings
@@ -455,10 +472,16 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self._process_trace_data(data)
 
                 # Emit update signal
-                self.sigDataChanged.emit(self.trace_time_axis,
-                                         self.trace_data,
-                                         self.averaged_trace_time_axis,
-                                         self.trace_data_averaged)
+                if self._moving_average_width > 1:
+                    self.sigDataChanged.emit(self.trace_time_axis,
+                                             self.trace_data,
+                                             self.averaged_trace_time_axis,
+                                             self.trace_data_averaged)
+                else:
+                    self.sigDataChanged.emit(self.trace_time_axis,
+                                             self.trace_data,
+                                             None,
+                                             None)
                 self._sigNextDataFrame.emit()
         return
 
@@ -495,9 +518,10 @@ class TimeSeriesReaderLogic(GenericLogic):
         self._trace_data[:, -new_samples:] = data
 
         # Calculate moving average
-        cumsum = np.cumsum(self._trace_data, axis=1)
-        n = self._moving_average_width
-        self.trace_data_averaged = (cumsum[:, n:] - cumsum[:, :-n]) / n
+        if self._moving_average_width > 1:
+            cumsum = np.cumsum(self._trace_data, axis=1)
+            n = self._moving_average_width
+            self.trace_data_averaged = (cumsum[:, n:] - cumsum[:, :-n]) / n
         return
 
     @QtCore.Slot()
