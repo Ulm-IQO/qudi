@@ -41,8 +41,7 @@ class TimeSeriesReaderLogic(GenericLogic):
     sigDataChanged = QtCore.Signal()
     sigStatusChanged = QtCore.Signal(bool, bool)
     sigSettingsChanged = QtCore.Signal(dict)
-    _sigStartFrameTimer = QtCore.Signal()
-    _sigStopFrameTimer = QtCore.Signal()
+    _sigNextDataFrame = QtCore.Signal()
 
     # declare connectors
     _streamer_con = Connector(interface='DataInStreamInterface')
@@ -67,7 +66,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         # locking for thread safety
         self.threadlock = Mutex()
-        self.__frame_timer = None
+        self._samples_per_frame = None
         self._stop_requested = True
 
         # Data arrays
@@ -95,6 +94,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         self._stop_requested = True
         self._data_recording_active = False
         self._record_start_time = None
+        self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
 
         # Check for odd moving averaging window
         if self._moving_average_width % 2 == 0:
@@ -104,12 +104,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             self._moving_average_width += 1
 
         # set up timer
-        self.__frame_timer = QtCore.QTimer()
-        self.__frame_timer.setInterval(1000 / self._max_frame_rate)
-        self.__frame_timer.setSingleShot(False)
-        self.__frame_timer.timeout.connect(self.acquire_data_block)
-        self._sigStartFrameTimer.connect(self.__frame_timer.start)
-        self._sigStopFrameTimer.connect(self.__frame_timer.stop)
+        self._sigNextDataFrame.connect(self.acquire_data_block, QtCore.Qt.QueuedConnection)
         return
 
     def on_deactivate(self):
@@ -119,9 +114,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         if self.module_state() == 'locked':
             self._stop_reader_wait()
 
-        self.__frame_timer.timeout.disconnect()
-        self._sigStartFrameTimer.disconnect()
-        self._sigStopFrameTimer.disconnect()
+        self._sigNextDataFrame.disconnect()
         return
 
     def _init_data_arrays(self):
@@ -357,6 +350,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                         data_points = self._moving_average_width
                     self._trace_window_size = new_val
 
+            self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
             self._init_data_arrays()
             settings = self.all_settings
             self.sigSettingsChanged.emit(settings)
@@ -402,7 +396,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self.sigStatusChanged.emit(False, False)
                 return -1
 
-            self._sigStartFrameTimer.emit()
+            self._sigNextDataFrame.emit()
         return 0
 
     def stop_reading(self):
@@ -411,9 +405,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         @return int: error code (0: OK, -1: error)
         """
-        print('Stop called')
         with self.threadlock:
-            print('Stop in lock')
             if self.module_state() == 'locked':
                 self._stop_requested = True
         return 0
@@ -428,8 +420,6 @@ class TimeSeriesReaderLogic(GenericLogic):
             if self.module_state() == 'locked':
                 # check for break condition
                 if self._stop_requested:
-                    # Stop QTimer
-                    self._sigStopFrameTimer.emit()
                     # terminate the hardware streaming
                     if self._streamer.stop_stream() < 0:
                         self.log.error(
@@ -442,10 +432,10 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.sigStatusChanged.emit(False, False)
                     return
 
-                start = time.perf_counter()
-                samples_to_read = self._streamer.available_samples
+                samples_to_read = max(self._streamer.available_samples, self._samples_per_frame)
                 samples_to_read -= samples_to_read % self._oversampling_factor
                 if samples_to_read < 1:
+                    self._sigNextDataFrame.emit()
                     return
 
                 # read the current counter values
@@ -455,20 +445,19 @@ class TimeSeriesReaderLogic(GenericLogic):
                                    'killing the stream with next data frame.')
                     self._stop_requested = True
                     return
-                print('data read time: {0:.3e}s'.format(time.perf_counter() - start))
 
                 # Process data
                 self._process_trace_data(data)
 
                 # Emit update signal
                 self.sigDataChanged.emit()
+                self._sigNextDataFrame.emit()
         return
 
     def _process_trace_data(self, data):
         """
         Processes raw data from the streaming device
         """
-        start = time.perf_counter()
         # Down-sample and average according to oversampling factor
         if self._oversampling_factor > 1:
             if data.shape[1] % self._oversampling_factor != 0:
@@ -501,7 +490,6 @@ class TimeSeriesReaderLogic(GenericLogic):
         cumsum = np.cumsum(self._trace_data, axis=1)
         n = self._moving_average_width
         self.trace_data_averaged = (cumsum[:, n:] - cumsum[:, :-n]) / n
-        print('data processing time: {0:.3e}s'.format(time.perf_counter() - start))
         return
 
     def start_recording(self):
@@ -672,7 +660,6 @@ class TimeSeriesReaderLogic(GenericLogic):
         """
         with self.threadlock:
             self._stop_requested = True
-            self._sigStopFrameTimer.emit()
             # terminate the hardware streaming
             if self._streamer.stop_stream() < 0:
                 self.log.error(

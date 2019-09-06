@@ -28,7 +28,7 @@ import pyqtgraph as pg
 from core.module import Connector
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
-from qtpy import QtCore
+from qtpy import QtCore, QtGui
 from qtpy import QtWidgets
 from qtpy import uic
 
@@ -90,20 +90,35 @@ class TimeSeriesGui(GUIBase):
 
         self._pw.setLabel('left', 'Fluorescence', units='counts/s')
         self._pw.setLabel('bottom', 'Time', units='s')
-        # self._pw.disableAutoRange()
+        self._pw.disableAutoRange()
+        self._pw.setMouseEnabled(x=False, y=False)
+        self._pw.setMouseTracking(False)
+        self._pw.setMenuEnabled(False)
+        self._pw.hideButtons()
 
         self.curves = list()
-
         for i, ch in enumerate(self._time_series_logic.channel_names):
             if i % 2 == 0:
-                self.curves.append(pg.PlotDataItem(pen={'color': palette.c2, 'width': 4}, symbol=None))
+                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c2, 'width': 4},
+                                                    clipToView=True,
+                                                    downsampleMethod='subsample',
+                                                    autoDownsample=True))
                 self._pw.addItem(self.curves[-1])
-                self.curves.append(pg.PlotDataItem(pen={'color': palette.c1, 'width': 2}, symbol=None))
+                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c1, 'width': 2},
+                                                    clipToView=True,
+                                                    downsampleMethod='subsample',
+                                                    autoDownsample=True))
                 self._pw.addItem(self.curves[-1])
             else:
-                self.curves.append(pg.PlotDataItem(pen={'color': palette.c4, 'width': 4}, symbol=None))
+                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c4, 'width': 4},
+                                                    clipToView=True,
+                                                    downsampleMethod='subsample',
+                                                    autoDownsample=True))
                 self._pw.addItem(self.curves[-1])
-                self.curves.append(pg.PlotDataItem(pen={'color': palette.c3, 'width': 2}, symbol=None))
+                self.curves.append(pg.PlotCurveItem(pen={'color': palette.c3, 'width': 2},
+                                                    clipToView=True,
+                                                    downsampleMethod='subsample',
+                                                    autoDownsample=True))
                 self._pw.addItem(self.curves[-1])
 
         # setting the x axis length correctly
@@ -186,10 +201,18 @@ class TimeSeriesGui(GUIBase):
         """
         start = time.perf_counter()
         data = self._time_series_logic.trace_data
+        data_time = self._time_series_logic.trace_time_axis
         smooth_data = self._time_series_logic.trace_data_averaged
+        smooth_time = self._time_series_logic.averaged_trace_time_axis
 
-        # x_min, x_max = x_vals.min(), x_vals.max()
-        # y_min, y_max = data.min(), data.max()
+        # curr_x_min, curr_x_max = self.curves[0].dataBounds(0)
+        # x_min, x_max = data_time.min(), data_time.max()
+        # if curr_x_max < x_max or curr_x_min > x_min:
+        #     self._pw.setLimits(xMin=x_min - 0.01 * np.abs(x_min), xMax=x_max + 0.01 * np.abs(x_max))
+
+        x_min, x_max = data_time.min(), data_time.max()
+        y_min, y_max = data.min(), data.max()
+        self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
         # view_range = self._pw.visibleRange()
         # if view_range.left() > x_min or view_range.right() < x_max:
         #     self._pw.setXRange(x_min, x_max)
@@ -201,9 +224,13 @@ class TimeSeriesGui(GUIBase):
         # elif view_range.height() > (y_max - y_min) * 0.7:
         #     self._pw.setYRange(y_min, y_max)
 
+        # if update_all:
         for i, ch in enumerate(self._time_series_logic.channel_names):
-            self.curves[2 * i].setData(y=self._time_series_logic.trace_data[i], x=self._time_series_logic.trace_time_axis)
-            self.curves[2 * i + 1].setData(y=self._time_series_logic.trace_data_averaged[i], x=self._time_series_logic.averaged_trace_time_axis)
+            self.curves[2 * i].setData(y=data[i], x=data_time)
+            self.curves[2 * i + 1].setData(y=smooth_data[i], x=smooth_time)
+
+        # QtWidgets.QApplication.processEvents()
+        # self._pw.autoRange()
         print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
         return 0
 
