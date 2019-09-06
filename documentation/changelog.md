@@ -32,11 +32,15 @@ Purely for displaying purposes; raw data is not affected by this filter.
 * Added two interfuses for interfaces process value and process control to modify the values based
 on an interpolated function
 * Changed ProcessInterface and ProcessControlInterface to use underscore case instead of CamelCase
+* Added hardware module to interface temperature controller Cryocon 22C
 * Added an optional parameter to connectors so that dependencies can be optional
 * Made ODMR logic an optional dependency in SpectrumLogic
 * Made some changes in the AWG7k file for sorting integers without natural sort
 * Removed additional scaling from sampling functions. They now return samples as as expected. 
 The entire normalization to pulse generator analog voltage range (Vpp) is done during sampling.
+* Introduced support of interface sensitive overloading of interface methods. This resolves 
+namespace conflicts within a hardware module inheriting multiple interfaces. See 
+_how_to_hardware_with_multiple_interfaces.md_ for detailed documentation.
 * Used the new (already existing) helper function _add_trigger in the shipped `predefined_methods`.
 * Added more extraction and analysis methods for extraction and/or analysis that is done directly on hardware.
 * Improved the jupyter kernel: prints are now printed live and not only after the cell is finished. Also code cleanup.
@@ -49,6 +53,7 @@ The potential sequence_options are:
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
 * 
+
 
 
 Config changes:

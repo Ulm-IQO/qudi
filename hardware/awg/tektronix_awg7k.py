@@ -30,7 +30,8 @@ from collections import OrderedDict
 
 from core.util.modules import get_home_dir
 from core.util.helpers import natural_sort
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 

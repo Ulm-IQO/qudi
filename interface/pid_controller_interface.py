@@ -19,78 +19,78 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class PIDControllerInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'PIDControllerInterface'
-    _modclass = 'interface'
+    """
+    """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_kp(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_kp(self, kp):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_ki(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_ki(self, ki):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_kd(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_kd(self, kd):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_setpoint(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_setpoint(self, setpoint):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_manual_value(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_manual_value(self, manualvalue):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_enabled(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_enabled(self, enabled):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_control_limits(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_control_limits(self, limits):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_process_value(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_control_value(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_extra(self):
         pass

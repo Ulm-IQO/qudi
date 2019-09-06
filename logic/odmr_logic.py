@@ -28,23 +28,21 @@ import numpy as np
 import time
 import datetime
 import matplotlib.pyplot as plt
-import lmfit
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 
 
 class ODMRLogic(GenericLogic):
-
     """This is the Logic class for ODMR."""
-    _modclass = 'odmrlogic'
-    _modtype = 'logic'
 
     # declare connectors
     odmrcounter = Connector(interface='ODMRCounterInterface')
     fitlogic = Connector(interface='FitLogic')
-    microwave1 = Connector(interface='mwsourceinterface')
+    microwave1 = Connector(interface='MicrowaveInterface')
     savelogic = Connector(interface='SaveLogic')
     taskrunner = Connector(interface='TaskRunner')
 

@@ -24,7 +24,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import random
 from qtpy import QtCore
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.wavemeter_interface import WavemeterInterface
 from core.util.mutex import Mutex
 
@@ -77,9 +78,6 @@ class WavemeterDummy(Base, WavemeterInterface):
         measurement_timing: 10.0
 
     """
-    _modclass = 'WavemeterDummy'
-    _modtype = 'hardware'
-
     # config opts
     _measurement_timing = ConfigOption('measurement_timing', 10.)
 

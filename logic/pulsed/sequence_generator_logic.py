@@ -29,7 +29,9 @@ import traceback
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar, Connector, ConfigOption
+from core.statusvariable import StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
 from core.util.network import netobtain
@@ -54,9 +56,6 @@ class SequenceGeneratorLogic(GenericLogic):
     This logic is also responsible to manipulate and read back hardware settings for
     waveform/sequence playback (pp-amplitude, sample rate, active channels etc.).
     """
-
-    _modclass = 'sequencegeneratorlogic'
-    _modtype = 'logic'
 
     # declare connectors
     pulsegenerator = Connector(interface='PulserInterface')

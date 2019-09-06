@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class ProcessControlInterface(metaclass=InterfaceMetaclass):
@@ -29,25 +29,22 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
         Used for PID control.
     """
 
-    _modtype = 'ProcessControlInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_control_value(self, value):
         """ Set the value of the controlled process variable """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_control_value(self):
         """ Get the value of the controlled process variable """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_control_unit(self):
         """ Return the unit that the value is set in as a tuple of ('abreviation', 'full unit name') """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_control_limit(self):
         """ Return limits within which the controlled value can be set as a tuple of (low limit, high limit)
         """
