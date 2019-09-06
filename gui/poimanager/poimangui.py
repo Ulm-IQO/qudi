@@ -25,7 +25,7 @@ import os
 import pyqtgraph as pg
 import re
 
-from core.module import Connector
+from core.connector import Connector
 from core.util.units import ScaledFloat
 from core.util.helpers import natural_sort
 from gui.guibase import GUIBase
@@ -237,11 +237,7 @@ class PoiManagerMainWindow(QtWidgets.QMainWindow):
 
 
 class PoiManagerGui(GUIBase):
-
     """ This is the GUI Class for PoiManager """
-
-    _modclass = 'PoiManagerGui'
-    _modtype = 'gui'
 
     # declare connectors
     poimanagerlogic = Connector(interface='PoiManagerLogic')

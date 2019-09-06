@@ -25,7 +25,7 @@ import numpy as np
 import os
 
 from collections import OrderedDict
-from core.module import StatusVar
+from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from .errordialog import ErrorDialog
 from gui.guibase import GUIBase

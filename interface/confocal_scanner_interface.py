@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
@@ -29,10 +29,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
     microwave hardware.
     """
 
-    _modtype = 'ConfocalScannerInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_hardware(self):
         """ Resets the hardware, so the connection is lost and other programs
             can access it.
@@ -41,7 +38,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_position_range(self):
         """ Returns the physical range of the scanner.
 
@@ -50,7 +47,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_position_range(self, myrange=None):
         """ Sets the physical range of the scanner.
 
@@ -61,7 +58,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_voltage_range(self, myrange=None):
         """ Sets the voltage range of the NI Card.
 
@@ -71,7 +68,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_scanner_axes(self):
         """ Find out how many axes the scanning device is using for confocal and their names.
  
@@ -87,7 +84,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_scanner_count_channels(self):
         """ Returns the list of channels that are recorded while scanning an image.
 
@@ -97,7 +94,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_scanner_clock(self, clock_frequency=None, clock_channel=None):
         """ Configures the hardware clock of the NiDAQ card to give the timing.
 
@@ -110,7 +107,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_up_scanner(self,
                        counter_channels=None,
                        sources=None,
@@ -130,7 +127,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def scanner_set_position(self, x=None, y=None, z=None, a=None):
         """Move stage to x, y, z, a (where a is the fourth voltage channel).
 
@@ -143,7 +140,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_scanner_position(self):
         """ Get the current position of the scanner hardware.
 
@@ -151,7 +148,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def scan_line(self, line_path=None, pixel_clock=False):
         """ Scans a line and returns the counts on that line.
 
@@ -162,7 +159,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_scanner(self):
         """ Closes the scanner and cleans up afterwards.
 
@@ -170,7 +167,7 @@ class ConfocalScannerInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def close_scanner_clock(self, power=0):
         """ Closes the clock and cleans up afterwards.
 
