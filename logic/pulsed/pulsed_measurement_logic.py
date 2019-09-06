@@ -33,6 +33,7 @@ from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
+from core.util.math import compute_ft
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_extractor import PulseExtractor
 from logic.pulsed.pulse_analyzer import PulseAnalyzer
@@ -1596,22 +1597,22 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_alt_data[0] = self.signal_data[0]
             self.signal_alt_data[1] = self.signal_data[1] - self.signal_data[2]
         elif self._alternative_data_type == 'FFT' and self.signal_data.shape[1] >= 2:
-            fft_x, fft_y = units.compute_ft(x_val=self.signal_data[0],
-                                            y_val=self.signal_data[1],
-                                            zeropad_num=self.zeropad,
-                                            window=self.window,
-                                            base_corr=self.base_corr,
-                                            psd=self.psd)
+            fft_x, fft_y = compute_ft(x_val=self.signal_data[0],
+                                      y_val=self.signal_data[1],
+                                      zeropad_num=self.zeropad,
+                                      window=self.window,
+                                      base_corr=self.base_corr,
+                                      psd=self.psd)
             self.signal_alt_data = np.empty((len(self.signal_data), len(fft_x)), dtype=float)
             self.signal_alt_data[0] = fft_x
             self.signal_alt_data[1] = fft_y
             for dim in range(2, len(self.signal_data)):
-                dummy, self.signal_alt_data[dim] = units.compute_ft(x_val=self.signal_data[0],
-                                                                    y_val=self.signal_data[dim],
-                                                                    zeropad_num=self.zeropad,
-                                                                    window=self.window,
-                                                                    base_corr=self.base_corr,
-                                                                    psd=self.psd)
+                dummy, self.signal_alt_data[dim] = compute_ft(x_val=self.signal_data[0],
+                                                              y_val=self.signal_data[dim],
+                                                              zeropad_num=self.zeropad,
+                                                              window=self.window,
+                                                              base_corr=self.base_corr,
+                                                              psd=self.psd)
         else:
             self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
             self.signal_alt_data[0] = self.signal_data[0]
