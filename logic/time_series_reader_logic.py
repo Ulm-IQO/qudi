@@ -633,31 +633,32 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         This method saves the already displayed counts to file and does not accumulate them.
         """
-        timestamp = dt.datetime.now()
+        with self.threadlock:
+            timestamp = dt.datetime.now()
 
-        # write the parameters:
-        parameters = dict()
-        parameters['Time stamp'] = timestamp.strftime('%d.%m.%Y, %H:%M:%S.%f')
-        parameters['Data rate (Hz)'] = self._data_rate
-        parameters['Oversampling factor (samples)'] = self._oversampling_factor
-        parameters['Sampling rate (Hz)'] = self.sampling_rate
+            # write the parameters:
+            parameters = dict()
+            parameters['Time stamp'] = timestamp.strftime('%d.%m.%Y, %H:%M:%S.%f')
+            parameters['Data rate (Hz)'] = self._data_rate
+            parameters['Oversampling factor (samples)'] = self._oversampling_factor
+            parameters['Sampling rate (Hz)'] = self.sampling_rate
 
-        header = ', '.join('{0} ({1})'.format(ch, prop['unit']) for ch, prop in
-                           self._streamer.channel_properties.items())
-        data = {header: self.trace_data}
+            header = ', '.join('{0} ({1})'.format(ch, prop['unit']) for ch, prop in
+                               self._streamer.channel_properties.items())
+            data = {header: self.trace_data}
 
-        if to_file:
-            # time_arr = np.arange(self._trace_window_size) / self._data_rate
-            filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
-            filelabel = 'data_trace_snapshot_{0}'.format(
-                name_tag) if name_tag else 'data_trace_snapshot'
-            self._savelogic.save_data(data=data,
-                                      filepath=filepath,
-                                      parameters=parameters,
-                                      filelabel=filelabel,
-                                      timestamp=timestamp,
-                                      delimiter='\t')
-            self.log.info('Time series snapshot saved to: {0}'.format(filepath))
+            if to_file:
+                # time_arr = np.arange(self._trace_window_size) / self._data_rate
+                filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
+                filelabel = 'data_trace_snapshot_{0}'.format(
+                    name_tag) if name_tag else 'data_trace_snapshot'
+                self._savelogic.save_data(data=data,
+                                          filepath=filepath,
+                                          parameters=parameters,
+                                          filelabel=filelabel,
+                                          timestamp=timestamp,
+                                          delimiter='\t')
+                self.log.info('Time series snapshot saved to: {0}'.format(filepath))
         return data, parameters
 
     def _stop_reader_wait(self):
