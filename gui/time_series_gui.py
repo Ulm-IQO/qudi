@@ -89,7 +89,7 @@ class TimeSeriesGui(GUIBase):
         # Plot labels.
         self._pw = self._mw.data_trace_PlotWidget
 
-        self._pw.setLabel('left', 'Fluorescence', units='counts/s')
+        self._pw.setLabel('left', 'Not quite sure...', units='#')
         self._pw.setLabel('bottom', 'Time', units='s')
         self._pw.disableAutoRange()
         self._pw.setMouseEnabled(x=False, y=False)

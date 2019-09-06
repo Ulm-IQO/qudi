@@ -91,6 +91,9 @@
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
       <widget class="QLabel" name="label">
+       <property name="toolTip">
+        <string>Length of the time window showing the data trace.</string>
+       </property>
        <property name="text">
         <string>Trace length:</string>
        </property>
@@ -129,6 +132,10 @@
      </item>
      <item>
       <widget class="QLabel" name="label_2">
+       <property name="toolTip">
+        <string>Rate at which data points occur within the data trace.
+The physical sampling rate is this value times the oversampling factor.</string>
+       </property>
        <property name="text">
         <string>Data rate:</string>
        </property>
@@ -169,9 +176,9 @@ The physical sampling rate is this value times the oversampling factor.</string>
      <item>
       <widget class="QLabel" name="label_3">
        <property name="toolTip">
-        <string>If bigger than 1, the number of samples is averaged over the given number and then displayed. 
-Use for extremely fast counting, since all the raw data is saved. 
-Timestamps in oversampling interval are all equal to the averaging time.</string>
+        <string>If bigger than 1, this number of samples is acquired for each period of data rate.
+The average over these samples is giving the value of the data point.
+In other words, the physical sampling rate is oversampling factor times data rate.</string>
        </property>
        <property name="text">
         <string>Oversampling factor:</string>
@@ -213,6 +220,10 @@ In other words, the physical sampling rate is oversampling factor times data rat
      </item>
      <item>
       <widget class="QLabel" name="label_4">
+       <property name="toolTip">
+        <string>The window size in samples of the moving average for each data trace.
+Must be an odd number to ensure perfect trace data alignment.</string>
+       </property>
        <property name="text">
         <string>Moving average window:</string>
        </property>
@@ -283,7 +294,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
     <string>Start trace</string>
    </property>
    <property name="toolTip">
-    <string>Start continuous reading of the data trace.</string>
+    <string>Start/Stop continuous reading of the data trace.</string>
    </property>
   </action>
   <action name="record_trace_Action">
