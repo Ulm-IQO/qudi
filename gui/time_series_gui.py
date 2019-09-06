@@ -135,6 +135,8 @@ class TimeSeriesGui(GUIBase):
         # Connecting user interactions
         self._mw.start_trace_Action.triggered.connect(self.start_clicked)
         self._mw.record_trace_Action.triggered.connect(self.record_clicked)
+        self._mw.trace_snapshot_Action.triggered.connect(
+            self._time_series_logic.save_trace_snapshot, QtCore.Qt.QueuedConnection)
 
         self._mw.trace_length_DoubleSpinBox.editingFinished.connect(self.data_window_changed)
         self._mw.data_rate_DoubleSpinBox.editingFinished.connect(self.data_rate_changed)
@@ -180,6 +182,7 @@ class TimeSeriesGui(GUIBase):
         # disconnect signals
         self._mw.start_trace_Action.triggered.disconnect()
         self._mw.record_trace_Action.triggered.disconnect()
+        self._mw.trace_snapshot_Action.triggered.disconnect()
         self._mw.trace_length_DoubleSpinBox.editingFinished.disconnect()
         self._mw.data_rate_DoubleSpinBox.editingFinished.disconnect()
         self._mw.oversampling_SpinBox.editingFinished.disconnect()
