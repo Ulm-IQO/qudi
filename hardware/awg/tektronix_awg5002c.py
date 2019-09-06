@@ -29,7 +29,8 @@ from collections import OrderedDict
 from fnmatch import fnmatch
 import re
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
@@ -52,9 +53,6 @@ class AWG5002C(Base, PulserInterface):
         # ftp_passwd: 'anonymous@' # optional, the password for ftp login
         # default_sample_rate: 600.0e6 # optional, the default sampling rate
     """
-
-    _modclass = 'awg5002c'
-    _modtype = 'hardware'
 
     # config options
     ip_address = ConfigOption('awg_ip_address', missing='error')

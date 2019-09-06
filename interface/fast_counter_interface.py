@@ -20,17 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class FastCounterInterface(metaclass=InterfaceMetaclass):
     """ Interface class to define the controls for fast counting devices. """
 
-    _modtype = 'FastCounterInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
 
@@ -75,7 +72,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def configure(self, bin_width_s, record_length_s, number_of_gates=0):
         """ Configuration of the fast counter.
 
@@ -93,7 +90,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self):
         """ Receives the current status of the Fast Counter and outputs it as
             return value.
@@ -106,17 +103,17 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_measure(self):
         """ Start the fast counter. """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_measure(self):
         """ Stop the fast counter. """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def pause_measure(self):
         """ Pauses the current measurement.
 
@@ -124,7 +121,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def continue_measure(self):
         """ Continues the current measurement.
 
@@ -132,7 +129,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def is_gated(self):
         """ Check the gated counting possibility.
 
@@ -141,7 +138,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_binwidth(self):
         """ Returns the width of a single timebin in the timetrace in seconds.
 
@@ -149,7 +146,7 @@ class FastCounterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_data_trace(self):
         """ Polls the current timetrace data from the fast counter.
 

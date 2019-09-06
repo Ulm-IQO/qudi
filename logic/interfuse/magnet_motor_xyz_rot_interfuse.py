@@ -35,15 +35,14 @@ Reimplement each call from the magnet interface and use only the motor interface
 command to talk to a xyz motor hardware and a rotational motor hardware.
 """
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from interface.magnet_interface import MagnetInterface
 
 
 class MagnetMotorXYZROTInterfuse(GenericLogic, MagnetInterface):
-
-    _modclass = 'MagnetMotorXYZROTInterfuse'
-    _modtype = 'interfuse'
+    """
+    """
 
     # declare connectors, here you can see the interfuse action: the in
     # connector will cope a motor hardware, that means a motor device can

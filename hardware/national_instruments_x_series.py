@@ -25,7 +25,8 @@ import re
 
 import PyDAQmx as daq
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.slow_counter_interface import SlowCounterInterface
 from interface.slow_counter_interface import SlowCounterConstraints
 from interface.slow_counter_interface import CountingMode
@@ -87,9 +88,6 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         counting_edge_rising: True
 
     """
-
-    _modtype = 'NICard'
-    _modclass = 'hardware'
 
     # config options
     _photon_sources = ConfigOption('photon_sources', missing='error')

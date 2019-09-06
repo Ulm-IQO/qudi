@@ -28,8 +28,6 @@ import warnings
 class GUIBaseMixin(BaseMixin):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
-    _modclass = 'GUIBase'
-    _modtype = 'Gui'
 
     def show(self):
         warnings.warn('Every GUI module needs to reimplement the show() '

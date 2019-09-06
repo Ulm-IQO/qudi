@@ -28,6 +28,9 @@ import os
 import re
 import sys
 import atexit
+import importlib
+import logging
+import numpy as np
 
 # use setuptools parse_version if available and use distutils LooseVersion as
 # fallback
@@ -43,13 +46,10 @@ try:
 except ImportError:
     pass
 
-import importlib
-import logging
 logger = logging.getLogger(__name__)
 
+
 # Optional function for exiting immediately (with some manual teardown)
-
-
 def exit(exitcode=0):
     """
     Causes python to exit without garbage-collecting any objects, and thus
@@ -126,11 +126,11 @@ def import_check():
     missing. Make a warning about missing packages. Check versions.
     """
     # encode like: (python-package-name, repository-name, version)
-    vital_pkg = [('ruamel.yaml','ruamel.yaml', None),
-                 ('fysom','fysom', '2.1.4')]
-    opt_pkg = [('rpyc','rpyc', None),
-               ('pyqtgraph','pyqtgraph', None),
-               ('git','gitpython', None)]
+    vital_pkg = [('ruamel.yaml', 'ruamel.yaml', None),
+                 ('fysom', 'fysom', '2.1.4')]
+    opt_pkg = [('rpyc', 'rpyc', None),
+               ('pyqtgraph', 'pyqtgraph', None),
+               ('git', 'gitpython', None)]
 
     def check_package(check_pkg_name, check_repo_name, check_version, optional=False):
         """
@@ -216,3 +216,62 @@ def natural_sort(iterable):
         return sorted(iterable, key=lambda key: [conv(i) for i in re.split(r'(\d+)', key)])
     except:
         return sorted(iterable)
+
+
+def is_number(test_value):
+    """ Check whether passed value is a number
+
+    @return: bool, True if the passed value is a number, otherwise false.
+    """
+    return is_integer(test_value) or is_float(test_value) or is_complex(test_value)
+
+
+def is_integer(test_value):
+    """ Check all available integer representations.
+
+    @return: bool, True if the passed value is a integer, otherwise false.
+    """
+
+    return type(test_value) in [np.int, np.int8, np.int16, np.int32, np.int64,
+                                np.uint, np.uint8, np.uint16, np.uint32,
+                                np.uint64]
+
+
+def is_float(test_value):
+    """ Check all available float representations.
+
+    @return: bool, True if the passed value is a float, otherwise false.
+    """
+    return type(test_value) in [np.float, np.float16, np.float32, np.float64]
+
+
+def is_complex(test_value):
+    """ Check all available complex representations.
+
+    @return: bool, True if the passed value is a complex value, otherwise false.
+    """
+
+    return type(test_value) in [np.complex, np.complex64, np.complex128]
+
+
+def in_range(value, lower_limit, upper_limit):
+    """ Check if a value is in a given range an return closest possible value in range.
+    Also check the range.
+
+    @param value: value to be checked
+    @param lower_limit: lowest allowed value
+    @param upper_limit: highest allowed value
+    @return: value closest to value in range
+    """
+    if upper_limit > lower_limit:
+        u_limit = upper_limit
+        l_limit = lower_limit
+    else:
+        l_limit = upper_limit
+        u_limit = lower_limit
+
+    if value > u_limit:
+        return upper_limit
+    if value < l_limit:
+        return lower_limit
+    return value
