@@ -101,21 +101,25 @@ class TimeSeriesGui(GUIBase):
         self.averaged_curves = list()
         for i, ch in enumerate(self._time_series_logic.channel_names):
             if i % 2 == 0:
-                pen1 = {'color': palette.c2, 'width': 4}
-                pen2 = {'color': palette.c1, 'width': 2}
+                # pen1 = {'color': palette.c2, 'width': 2}
+                # pen2 = {'color': palette.c1, 'width': 1}
+                pen1 = pg.mkPen(palette.c2, cosmetic=True)
+                pen2 = pg.mkPen(palette.c1, cosmetic=True)
             else:
-                pen1 = {'color': palette.c4, 'width': 4}
-                pen2 = {'color': palette.c3, 'width': 2}
+                # pen1 = {'color': palette.c4, 'width': 2}
+                # pen2 = {'color': palette.c3, 'width': 1}
+                pen1 = pg.mkPen(palette.c4, cosmetic=True)
+                pen2 = pg.mkPen(palette.c3, cosmetic=True)
             self.averaged_curves.append(pg.PlotCurveItem(pen=pen1,
                                                          clipToView=True,
                                                          downsampleMethod='subsample',
                                                          autoDownsample=True))
-            self._pw.addItem(self.averaged_curves[-1])
             self.curves.append(pg.PlotCurveItem(pen=pen2,
                                                 clipToView=True,
                                                 downsampleMethod='subsample',
                                                 autoDownsample=True))
-        for curve in self.curves:
+            self._pw.addItem(self.curves[-1])
+        for curve in self.averaged_curves:
             self._pw.addItem(curve)
 
         #####################
@@ -210,7 +214,7 @@ class TimeSeriesGui(GUIBase):
             self.log.error('Must provide a full data set of x and y values. update_data failed.')
             return
 
-        start = time.perf_counter()
+        # start = time.perf_counter()
         if data is not None:
             x_min, x_max = data_time.min(), data_time.max()
             y_min, y_max = data.min(), data.max()
@@ -224,7 +228,7 @@ class TimeSeriesGui(GUIBase):
 
         # QtWidgets.QApplication.processEvents()
         # self._pw.autoRange()
-        print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
+        # print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
         return 0
 
     @QtCore.Slot()
@@ -370,11 +374,11 @@ class TimeSeriesGui(GUIBase):
                 items = self._pw.items()
                 if val > 1 and not all(curve in items for curve in self.averaged_curves):
                     for ii, curve in enumerate(self.averaged_curves):
-                        if curve not in items:
-                            self._pw.addItem(curve)
                         if self.curves[ii] in items:
                             self._pw.removeItem(self.curves[ii])
                         self._pw.addItem(self.curves[ii])
+                        if curve not in items:
+                            self._pw.addItem(curve)
                 elif val <= 1 and any(curve in items for curve in self.averaged_curves):
                     for ii, curve in enumerate(self.averaged_curves):
                         if curve in items:

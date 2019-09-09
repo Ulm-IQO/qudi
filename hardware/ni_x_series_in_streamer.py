@@ -24,6 +24,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import copy
 import numpy as np
 import ctypes
+import time
 import nidaqmx as ni
 from nidaqmx._lib import lib_importer  # Due to NIDAQmx C-API bug needed to bypass property getter
 from nidaqmx.stream_readers import AnalogMultiChannelReader, CounterReader
@@ -598,6 +599,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         if number_of_samples is None:
             number_of_samples = buffer.shape[1]
 
+        if number_of_samples < 1:
+            return 0
+
         # Check for buffer overflow
         if self.available_samples > self.buffer_size:
             self._has_overflown = True
@@ -619,11 +623,15 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
                 if read_samples != number_of_samples:
                     return -1
             # Read analog channels
+            # start = time.perf_counter()
             if self._ai_reader is not None:
                 read_samples = self._ai_reader.read_many_sample(
                     buffer[len(self._di_readers):],
                     number_of_samples_per_channel=number_of_samples,
                     timeout=self._rw_timeout)
+            # print('===================================================')
+            # print((time.perf_counter() - start) / number_of_samples)
+            # print(buffer[len(self._di_readers):])
             if read_samples != number_of_samples:
                 return -1
         except ni.DaqError:
@@ -683,6 +691,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         buffer = np.zeros((self.number_of_channels, number_of_samples), dtype=self.data_type)
         read_samples = self.read_data_into_buffer(buffer, number_of_samples=number_of_samples)
+
         if read_samples != number_of_samples:
             return np.empty((0, 0), dtype=self.data_type)
         return buffer
