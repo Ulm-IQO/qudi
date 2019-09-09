@@ -22,6 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from qtpy import QtCore
 import numpy as np
 import datetime as dt
+import time
 import matplotlib.pyplot as plt
 
 from core.connector import Connector
@@ -418,6 +419,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                 self.sigStatusChanged.emit(False, False)
                 return -1
 
+            self.last_update = time.perf_counter()
             self._sigNextDataFrame.emit()
         return 0
 
@@ -462,6 +464,9 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self._sigNextDataFrame.emit()
                     return
 
+                curr_time = time.perf_counter()
+                print('FPS:', 1 / (curr_time - self.last_update))
+                self.last_update = curr_time
                 # read the current counter values
                 data = self._streamer.read_data(number_of_samples=samples_to_read)
                 if data.shape[1] != samples_to_read:
