@@ -263,8 +263,10 @@ class QZMQKernel(QtCore.QObject):
 
         # redirect Thread module to have a marker for the notebook
         old_thread = sys.modules['threading'].Thread
+
+        class ThreadFixer(threading.Thread):
+            notebook_thread = self.engine_id
         sys.modules['threading'].Thread = ThreadFixer
-        sys.modules['threading'].Thread.notebook_thread = self.engine_id
 
         # capture output
         self.displaydata = list()
