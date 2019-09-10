@@ -186,7 +186,7 @@ class QZMQKernel(QtCore.QObject):
         self.displayhook = DisplayHook()
         self.display_trap = DisplayTrap(self.displayhook)
         self.builtin_trap = BuiltinTrap()
-        threading.current_thread().notebook_thread = True
+        threading.current_thread().notebook_thread = self.engine_id
         self.stderr = RedirectedStdErr()
         self.stderr.open(IOStderrNetworkStream(self.iopub_stream, sys.stderr))
         self.stdout = RedirectedStdOut()
@@ -263,6 +263,7 @@ class QZMQKernel(QtCore.QObject):
         # redirect Thread module to have a marker for the notebook
         old_thread = sys.modules['threading'].Thread
         sys.modules['threading'].Thread = ThreadFixer
+        sys.modules['threading'].Thread.notebook_thread = self.engine_id
 
         # capture output
         self.displaydata = list()
