@@ -150,6 +150,10 @@ class NetworkStream(QZMQStream):
     def port(self):
         return self._port
 
+    @property
+    def engine_id(self):
+        return self._engine_id
+
     @staticmethod
     def bind(socket, connection, port):
         if port <= 0:
@@ -247,20 +251,27 @@ class IOStdoutNetworkStream(StringIO):
         self._old_stdout = old_stdout
 
         self._lock = Lock()
-        self._stop = Event()
-        self._stop.clear()
-        # initialize the thread for the hardware query
-        self._network_thread = Thread(target=self._run_network_loop, name='redirect ' + self._output_channel)
 
-        # start the threads
-        self._network_thread.start()
+        if hasattr(self._network_stream, 'engine_id'):
+            self._stream_active = True
+            self._stop = Event()
+            self._stop.clear()
+            # initialize the thread for the hardware query
+            self._network_thread = Thread(target=self._run_network_loop, name='redirect ' + self._output_channel)
+
+            # start the threads
+            self._network_thread.start()
+        else:
+            self._stream_active = False
 
     def write(self, s):
         self._lock.acquire()
-        if hasattr(threading.current_thread(), 'notebook_thread'):
-            super().write(s)
-        else:
+        if not self._stream_active or not hasattr(threading.current_thread(), 'notebook_thread'):
             self._old_stdout.write(s)
+        elif threading.current_thread().notebook_thread != self._network_stream.engine_id:
+            self._old_stdout.write(s)
+        else:
+            super().write(s)
         self._lock.release()
 
     def _run_network_loop(self):
@@ -282,12 +293,13 @@ class IOStdoutNetworkStream(StringIO):
             self.seek(0)
             self._lock.release()
 
-            # send off the data
-            content = {
-                'name': self._output_channel,
-                'text': s,
-            }
-            self._network_stream.send(msg_type='stream', content=content)
+            if self._stream_active:
+                # send off the data
+                content = {
+                    'name': self._output_channel,
+                    'text': s,
+                }
+                self._network_stream.send(msg_type='stream', content=content)
 
     def close(self):
         self._dump_stream_to_network()
