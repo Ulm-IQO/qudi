@@ -20,9 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
 import numpy as np
 from enum import Enum
+from core.interface import abstract_interface_method
 from core.meta import InterfaceMetaclass
 from core.interface import ScalarConstraint
 
@@ -35,30 +35,31 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     are acquired continuously into a (circular) read buffer.
     """
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def sample_rate(self):
         """
-        Read-only property to return the currently set sample rate
+        The currently set sample rate
 
         @return float: current sample rate in Hz
         """
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def data_type(self):
         """
-        Read-only property to return the currently set data type
+        The currently set data type
 
         @return type: current data type
         """
         pass
 
+
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def buffer_size(self):
         """
-        Read-only property to return the currently buffer size.
+        The currently set buffer size.
         Buffer size corresponds to the number of samples per channel that can be buffered. So the
         actual buffer size in bytes can be estimated by:
             buffer_size * number_of_channels * size_in_bytes(data_type)
@@ -68,21 +69,20 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def use_circular_buffer(self):
         """
-        Read-only property to return a flag indicating if circular sample buffering is being used
-        or not.
+        A flag indicating if circular sample buffering is being used or not.
 
         @return bool: indicate if circular sample buffering is used (True) or not (False)
         """
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def streaming_mode(self):
         """
-        Read-only property to return the currently configured streaming mode Enum.
+        The currently configured streaming mode Enum.
 
         @return StreamingMode: Finite (StreamingMode.FINITE) or continuous
                                (StreamingMode.CONTINUOUS) data acquisition
@@ -90,7 +90,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def all_settings(self):
         """
         Read-only property to return a dict containing all current settings and values that can be
@@ -101,7 +101,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def number_of_channels(self):
         """
         Read-only property to return the currently configured number of data channels.
@@ -111,18 +111,23 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abc.abstractmethod
-    def channel_names(self):
+    @abstract_interface_method
+    def active_channels(self):
         """
-        Read-only property to return the currently used data channel names.
+        The currently configured data channel properties.
+        The channel properties are a dict of the following form:
+            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
+            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
+            ...
 
-        @return tuple: current data channel names
+        @return dict: currently active data channel properties with keys being the channel names
+                      and values being the corresponding property dicts.
         """
         pass
 
     @property
-    @abc.abstractmethod
-    def channel_properties(self):
+    @abstract_interface_method
+    def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
         The channel properties are a dict of the following form:
@@ -131,12 +136,12 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
             ...
 
         @return dict: current data channel properties with keys being the channel names and values
-        being the corresponding property dicts.
+                      being the corresponding property dicts.
         """
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def available_samples(self):
         """
         Read-only property to return the currently available number of samples per channel ready
@@ -144,9 +149,10 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
 
         @return int: Number of available samples per channel
         """
+        pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def buffer_overflown(self):
         """
         Read-only flag to check if the read buffer has overflown.
@@ -160,7 +166,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @property
-    @abc.abstractmethod
+    @abstract_interface_method
     def is_running(self):
         """
         Read-only flag indicating if the data acquisition is running.
@@ -169,8 +175,8 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
-    def configure(self, sample_rate=None, data_type=None, streaming_mode=None,
+    @abstract_interface_method
+    def configure(self, sample_rate=None, data_type=None, streaming_mode=None, active_channels=None,
                   total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
@@ -178,6 +184,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         @param float sample_rate: The sample rate in Hz at which data points are acquired
         @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
         @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
+        @param iterable active_channels: Iterable of channel names (str) to be read from.
         @param int total_number_of_samples: In case of a finite data stream, the total number of
                                             samples to read per channel
         @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
@@ -188,7 +195,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_constraints(self):
         """
         Return the constraints on the settings for this data streamer.
@@ -197,7 +204,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_stream(self):
         """
         Start the data acquisition and data stream.
@@ -206,7 +213,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_stream(self):
         """
         Stop the data acquisition and data stream.
@@ -215,7 +222,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def read_data_into_buffer(self, buffer, number_of_samples=None):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -237,7 +244,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def read_available_data_into_buffer(self, buffer):
         """
         Read data from the stream buffer into a 1D/2D numpy array given as parameter.
@@ -257,7 +264,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def read_data(self, number_of_samples=None):
         """
         Read data from the stream buffer into a 2D numpy array and return it.
@@ -276,7 +283,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def read_single_point(self):
         """
         This method will initiate a single sample read on each configured data channel.
@@ -306,15 +313,60 @@ class DataInStreamConstraints:
     """
     Collection of constraints for hardware modules implementing SimpleDataInterface.
     """
-    def __init__(self):
-        self.digital_channels = tuple()
-        self.analog_channels = tuple()
-        self.max_simultaneous_analog_channels = 0
-        self.max_simultaneous_digital_channels = 0
-        self.analog_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
-        self.digital_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
-        self.combined_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
-        self.read_block_size = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
-        self.streaming_modes = (StreamingMode.CONTINUOUS, StreamingMode.FINITE)
-        self.data_types = (np.uint32, np.float64)
-        self.allow_circular_buffer = False
+    def __init__(self, digital_channels=None, analog_channels=None, analog_sample_rate=None,
+                 digital_sample_rate=None, combined_sample_rate=None, read_block_size=None,
+                 streaming_modes=None, data_types=None, allow_circular_buffer=None):
+        if digital_channels is None:
+            self.digital_channels = dict()
+        else:
+            self.digital_channels = {c: p.copy() for c, p in digital_channels.items()}
+
+        if analog_channels is None:
+            self.analog_channels = dict()
+        else:
+            self.analog_channels = {c: p.copy() for c, p in analog_channels.items()}
+
+        if isinstance(analog_sample_rate, ScalarConstraint):
+            self.analog_sample_rate = ScalarConstraint(**vars(analog_sample_rate))
+        elif isinstance(analog_sample_rate, dict):
+            self.analog_sample_rate = ScalarConstraint(**analog_sample_rate)
+        else:
+            self.analog_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+
+        if isinstance(digital_sample_rate, ScalarConstraint):
+            self.digital_sample_rate = ScalarConstraint(**vars(digital_sample_rate))
+        elif isinstance(digital_sample_rate, dict):
+            self.digital_sample_rate = ScalarConstraint(**digital_sample_rate)
+        else:
+            self.digital_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+
+        if isinstance(combined_sample_rate, ScalarConstraint):
+            self.combined_sample_rate = ScalarConstraint(**vars(combined_sample_rate))
+        elif isinstance(combined_sample_rate, dict):
+            self.combined_sample_rate = ScalarConstraint(**combined_sample_rate)
+        else:
+            self.combined_sample_rate = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+
+        if isinstance(read_block_size, ScalarConstraint):
+            self.read_block_size = ScalarConstraint(**vars(read_block_size))
+        elif isinstance(read_block_size, dict):
+            self.read_block_size = ScalarConstraint(**read_block_size)
+        else:
+            self.read_block_size = ScalarConstraint(min=1, max=np.inf, step=1, default=1)
+
+        if streaming_modes is None:
+            self.streaming_modes = (StreamingMode.CONTINUOUS, StreamingMode.FINITE)
+        else:
+            self.streaming_modes = (mode for mode in streaming_modes if
+                                    isinstance(mode, StreamingMode))
+
+        if data_types is None:
+            self.data_types = (np.uint32, np.float64)
+        else:
+            self.data_types = tuple(data_types)
+
+        self.allow_circular_buffer = bool(allow_circular_buffer)
+        return
+
+    def copy(self):
+        return DataInStreamConstraints(**vars(self))
