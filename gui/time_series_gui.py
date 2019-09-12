@@ -34,7 +34,6 @@ from qtpy import uic
 
 
 class TimeSeriesMainWindow(QtWidgets.QMainWindow):
-
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self, **kwargs):
@@ -46,6 +45,19 @@ class TimeSeriesMainWindow(QtWidgets.QMainWindow):
         super().__init__(**kwargs)
         uic.loadUi(ui_file, self)
         self.show()
+
+
+class TimeSeriesSelectionDialog(QtWidgets.QDialog):
+    """ Create the trace selection dialog based on the *.ui file. """
+
+    def __init__(self, **kwargs):
+        # Get the path to the *.ui file
+        this_dir = os.path.dirname(__file__)
+        ui_file = os.path.join(this_dir, 'time_series_selector_dialog.ui')
+
+        # Load it
+        super().__init__(**kwargs)
+        uic.loadUi(ui_file, self)
 
 
 class TimeSeriesGui(GUIBase):
@@ -67,10 +79,15 @@ class TimeSeriesGui(GUIBase):
         self._time_series_logic = None
         self._mw = None
         self._pw = None
-        self.curves = None
-        self.averaged_curves = None
-        self._display_trace = None
-        self._trace_selection = None
+        self._vsd = None
+        self._vsd_widgets = dict()
+        self._csd = None
+        self._csd_widgets = dict()
+        self.curves = dict()
+        self.averaged_curves = dict()
+
+        self._hidden_data_traces = None
+        self._hidden_averaged_traces = None
 
     def on_activate(self):
         """ Definition and initialisation of the GUI.
@@ -86,6 +103,9 @@ class TimeSeriesGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
+        # Get hardware constraints
+        hw_constr = self._time_series_logic.streamer_constraints
+
         # Plot labels.
         self._pw = self._mw.data_trace_PlotWidget
 
@@ -97,9 +117,10 @@ class TimeSeriesGui(GUIBase):
         self._pw.setMenuEnabled(False)
         self._pw.hideButtons()
 
-        self.curves = list()
-        self.averaged_curves = list()
-        for i, ch in enumerate(self._time_series_logic.channel_names):
+        self.curves = dict()
+        self.averaged_curves = dict()
+        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        for i, ch in enumerate(all_channels):
             if i % 2 == 0:
                 # pen1 = {'color': palette.c2, 'width': 2}
                 # pen2 = {'color': palette.c1, 'width': 1}
@@ -110,17 +131,65 @@ class TimeSeriesGui(GUIBase):
                 # pen2 = {'color': palette.c3, 'width': 1}
                 pen1 = pg.mkPen(palette.c4, cosmetic=True)
                 pen2 = pg.mkPen(palette.c3, cosmetic=True)
-            self.averaged_curves.append(pg.PlotCurveItem(pen=pen1,
-                                                         clipToView=True,
-                                                         downsampleMethod='subsample',
-                                                         autoDownsample=True))
-            self.curves.append(pg.PlotCurveItem(pen=pen2,
-                                                clipToView=True,
-                                                downsampleMethod='subsample',
-                                                autoDownsample=True))
-            self._pw.addItem(self.curves[-1])
-        for curve in self.averaged_curves:
+            self.averaged_curves[ch] = pg.PlotCurveItem(pen=pen1,
+                                                        clipToView=True,
+                                                        downsampleMethod='subsample',
+                                                        autoDownsample=True)
+            self.curves[ch] = pg.PlotCurveItem(pen=pen2,
+                                               clipToView=True,
+                                               downsampleMethod='subsample',
+                                               autoDownsample=True)
+            self._pw.addItem(self.curves[ch])
+        for curve in self.averaged_curves.values():
             self._pw.addItem(curve)
+
+        #####################
+        # Set up channel settings dialog
+        self._csd = TimeSeriesSelectionDialog()
+        self._csd_widgets = dict()
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
+        layout.addWidget(QtWidgets.QLabel('Is Active?'), 0, 1)
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        layout.addWidget(line, 1, 0, 1, 2)
+        for i, chnl in enumerate(all_channels, 2):
+            widget_dict = dict()
+            widget_dict['label'] = QtWidgets.QLabel(chnl)
+            widget_dict['checkbox'] = QtWidgets.QCheckBox()
+            layout.addWidget(widget_dict['label'], i, 0)
+            layout.addWidget(widget_dict['checkbox'], i, 1)
+            widget_dict['checkbox'].setChecked(True)
+            self._csd_widgets[chnl] = widget_dict
+        layout.setRowStretch(i + 1, 1)
+        self._csd.trace_selection_scrollArea.setLayout(layout)
+
+        #####################
+        # Set up trace view selection dialog
+        self._vsd = TimeSeriesSelectionDialog()
+        self._vsd_widgets = list()
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
+        layout.addWidget(QtWidgets.QLabel('Hide Data?'), 0, 1)
+        layout.addWidget(QtWidgets.QLabel('Hide Average?'), 0, 2)
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        layout.addWidget(line, 1, 0, 1, 3)
+        for i, chnl in enumerate(all_channels, 2):
+            widget_dict = dict()
+            widget_dict['label'] = QtWidgets.QLabel(chnl)
+            widget_dict['checkbox1'] = QtWidgets.QCheckBox()
+            widget_dict['checkbox2'] = QtWidgets.QCheckBox()
+            layout.addWidget(widget_dict['label'], i, 0)
+            layout.addWidget(widget_dict['checkbox1'], i, 1)
+            layout.addWidget(widget_dict['checkbox2'], i, 2)
+            widget_dict['checkbox1'].setChecked(False)
+            widget_dict['checkbox2'].setChecked(False)
+            self._vsd_widgets[chnl] = widget_dict
+        layout.setRowStretch(i + 1, 1)
+        self._vsd.trace_selection_scrollArea.setLayout(layout)
 
         #####################
         # Setting default parameters
@@ -215,18 +284,17 @@ class TimeSeriesGui(GUIBase):
             return
 
         # start = time.perf_counter()
-        if data is not None:
+        if data is not None and data.size > 0:
             x_min, x_max = data_time.min(), data_time.max()
             y_min, y_max = data.min(), data.max()
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
         for i, ch in enumerate(self._time_series_logic.channel_names):
             if data is not None:
-                self.curves[i].setData(y=data[i], x=data_time)
+                self.curves[ch].setData(y=data[i], x=data_time)
             if smooth_data is not None:
-                self.averaged_curves[i].setData(y=smooth_data[i], x=smooth_time)
+                self.averaged_curves[ch].setData(y=smooth_data[i], x=smooth_time)
 
-        # QtWidgets.QApplication.processEvents()
         # self._pw.autoRange()
         # print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
         return 0
@@ -373,14 +441,14 @@ class TimeSeriesGui(GUIBase):
             if self.curves and self.averaged_curves:
                 items = self._pw.items()
                 if val > 1 and not all(curve in items for curve in self.averaged_curves):
-                    for ii, curve in enumerate(self.averaged_curves):
-                        if self.curves[ii] in items:
-                            self._pw.removeItem(self.curves[ii])
-                        self._pw.addItem(self.curves[ii])
+                    for ii, (ch, curve) in enumerate(self.averaged_curves.items()):
+                        if self.curves[ch] in items:
+                            self._pw.removeItem(self.curves[ch])
+                        self._pw.addItem(self.curves[ch])
                         if curve not in items:
                             self._pw.addItem(curve)
-                elif val <= 1 and any(curve in items for curve in self.averaged_curves):
-                    for ii, curve in enumerate(self.averaged_curves):
+                elif val <= 1 and any(curve in items for curve in self.averaged_curves.values()):
+                    for ii, curve in enumerate(self.averaged_curves.values()):
                         if curve in items:
                             self._pw.removeItem(curve)
         return

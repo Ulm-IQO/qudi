@@ -103,7 +103,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # List of all available counters for this device
         self.__all_counters = tuple()
-        self.__channel_props = dict()
+
+        # currently active channels
+        self.__active_channels = tuple()
 
         # Stored hardware constraints
         self._constraints = None
@@ -158,6 +160,14 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
                                          ', '.join(channel_names)))
             self._analog_sources = natural_sort(set(new_source_names).difference(invalid_sources))
 
+        # Check if all input channels fit in the device
+        if len(self._digital_sources) > 3:
+            raise Exception(
+                'Too many digital channels specified. Maximum number of digital channels is 3.')
+        if len(self._analog_sources) > 16:
+            raise Exception(
+                'Too many analog channels specified. Maximum number of analog channels is 16.')
+
         # Check if there are any valid input channels left
         if not self._analog_sources and not self._digital_sources:
             raise Exception('No valid analog or digital sources defined in config. '
@@ -165,8 +175,10 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # Create constraints
         self._constraints = DataInStreamConstraints()
-        self._constraints.max_simultaneous_analog_channels = 16
-        self._constraints.max_simultaneous_digital_channels = 3
+        self._constraints.digital_channels = {
+            c: {'unit': 'counts', 'type': StreamChannelType.DIGITAL} for c in self._digital_sources}
+        self._constraints.analog_channels = {
+            c: {'unit': 'V', 'type': StreamChannelType.ANALOG} for c in self._analog_sources}
 
         self._constraints.analog_sample_rate.min = self._device_handle.ai_min_rate
         self._constraints.analog_sample_rate.max = self._device_handle.ai_max_multi_chan_rate
@@ -254,27 +266,11 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self.__buffer_size = min(self._max_channel_samples_buffer, 1000000)
         self.__use_circular_buffer = False
         self.__streaming_mode = StreamingMode.CONTINUOUS
-
-        # Check if all input channels fit in the device
-        if self._constraints.max_simultaneous_digital_channels < len(self._digital_sources):
-            raise Exception('Too many digital channels specified. Maximum number of digital '
-                            'channels is {0:d}.'
-                            ''.format(self._constraints.max_simultaneous_digital_channels))
-        if self._constraints.max_simultaneous_analog_channels < len(self._analog_sources):
-            raise Exception('Too many analog channels specified. Maximum number of analog '
-                            'channels is {0:d}.'
-                            ''.format(self._constraints.max_simultaneous_analog_channels))
+        self.__active_channels = tuple()
 
         # Reset data buffer
         self._data_buffer = np.empty((0, 0), dtype=self.__data_type)
         self._has_overflown = False
-
-        # Create channel properties
-        self.__channel_props = dict()
-        for chnl in self._digital_sources:
-            self.__channel_props[chnl] = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-        for chnl in self._analog_sources:
-            self.__channel_props[chnl] = {'unit': 'V', 'type': StreamChannelType.ANALOG}
         return
 
     def on_deactivate(self):
@@ -342,19 +338,25 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return int: the currently set number of channels
         """
-        return len(self._analog_sources) + len(self._digital_sources)
+        return len(self.__active_channels)
 
     @property
-    def channel_names(self):
+    def active_channels(self):
         """
-        Read-only property to return the currently used data channel names.
+        The currently configured data channel properties.
+        The channel properties are a dict of the following form:
+            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
+            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
+            ...
 
-        @return tuple: current data channel names
+        @return dict: currently active data channel properties with keys being the channel names
+                      and values being the corresponding property dicts.
         """
-        return tuple(self._digital_sources + self._analog_sources)
+        return {c: p.copy() for c, p in self.available_channels.items() if
+                c in self.__active_channels}
 
     @property
-    def channel_properties(self):
+    def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
         The channel properties are a dict of the following form:
@@ -365,7 +367,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return dict: current data channel properties with keys being the channel names and values
         being the corresponding property dicts.
         """
-        return copy.deepcopy(self.__channel_props)
+        ch_dict = {c: p.copy() for c, p in self._constraints.digital_channels.items()}
+        ch_dict.update({c: p.copy() for c, p in self._constraints.analog_channels.items()})
+        return ch_dict
 
     @property
     def available_samples(self):
@@ -419,11 +423,13 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         return {'sample_rate': self.__sample_rate,
                 'data_type': self.__data_type,
+                'streaming_mode': self.__streaming_mode,
+                'active_channels': self.__active_channels,
                 'total_number_of_samples': self.__total_number_of_samples,
                 'buffer_size': self.__buffer_size,
                 'use_circular_buffer': self.__use_circular_buffer}
 
-    def configure(self, sample_rate=None, data_type=None, streaming_mode=None,
+    def configure(self, sample_rate=None, data_type=None, streaming_mode=None, active_channels=None,
                   total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
@@ -431,6 +437,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @param float sample_rate: The sample rate in Hz at which data points are acquired
         @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
         @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
+        @param iterable active_channels: Iterable of channel names (str) to be read from.
         @param int total_number_of_samples: In case of a finite data stream, the total number of
                                             samples to read per channel
         @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
@@ -482,6 +489,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
                 self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
                                ''.format(streaming_mode, self._constraints.streaming_modes))
                 return self.all_settings
+            self.__streaming_mode = streaming_mode
+
+        # Handle active channels
+        if active_channels is not None:
+            if any(chnl not in self.available_channels for chnl in active_channels):
+                self.log.error('Invalid channel to stream from encountered ({0}).\nValid channels '
+                               'are: {1}'
+                               ''.format(tuple(active_channels), tuple(self.available_channels)))
+                return self.all_settings
+            self.__active_channels = tuple(active_channels)
 
         # Handle total number of samples
         if total_number_of_samples is not None:
@@ -519,7 +536,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return DataInStreamConstraints: Instance of DataInStreamConstraints containing constraints
         """
-        return self._constraints
+        return self._constraints.copy()
 
     def start_stream(self):
         """
@@ -681,7 +698,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         if not self.is_running:
             self.log.error('Unable to read data. Device is not running.')
-            return -1
+            return np.empty((0, 0), dtype=self.data_type)
 
         if number_of_samples is None:
             if self._ai_task_handle is None:
@@ -786,7 +803,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if not self._digital_sources:
+        digital_channels = tuple(
+            ch for ch, p in self.active_channels.items() if p['type'] == StreamChannelType.DIGITAL)
+        if not digital_channels:
             return 0
         if self._di_task_handles:
             self.log.error('Digital counting tasks have already been generated. '
@@ -809,7 +828,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             sample_freq = float(self._clk_task_handle.co_channels.all.co_pulse_freq)
 
         # Set up digital counting tasks
-        for i, chnl in enumerate(self._digital_sources):
+        for i, chnl in enumerate(digital_channels):
             chnl_name = '/{0}/{1}'.format(self._device_name, chnl)
             task_name = 'PeriodCounter_{0}'.format(chnl)
             # Try to find available counter
@@ -914,7 +933,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return int: error code (0:OK, -1:error)
         """
-        if not self._analog_sources:
+        analog_channels = tuple(
+            ch for ch, p in self.active_channels.items() if p['type'] == StreamChannelType.ANALOG)
+        if not analog_channels:
             return 0
         if self._ai_task_handle:
             self.log.error(
@@ -945,8 +966,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return -1
 
         try:
-            ai_ch_str = ','.join(
-                ['/{0}/{1}'.format(self._device_name, chnl) for chnl in self._analog_sources])
+            ai_ch_str = ','.join(['/{0}/{1}'.format(self._device_name, c) for c in analog_channels])
             ai_task.ai_channels.add_ai_voltage_chan(ai_ch_str,
                                                     max_val=max(self._adc_voltage_range),
                                                     min_val=min(self._adc_voltage_range))
