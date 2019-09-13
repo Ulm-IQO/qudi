@@ -145,51 +145,11 @@ class TimeSeriesGui(GUIBase):
 
         #####################
         # Set up channel settings dialog
-        self._csd = TimeSeriesSelectionDialog()
-        self._csd_widgets = dict()
-        layout = QtWidgets.QGridLayout()
-        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
-        layout.addWidget(QtWidgets.QLabel('Is Active?'), 0, 1)
-        line = QtWidgets.QFrame()
-        line.setFrameShape(QtWidgets.QFrame.HLine)
-        line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(line, 1, 0, 1, 2)
-        for i, chnl in enumerate(all_channels, 2):
-            widget_dict = dict()
-            widget_dict['label'] = QtWidgets.QLabel(chnl)
-            widget_dict['checkbox'] = QtWidgets.QCheckBox()
-            layout.addWidget(widget_dict['label'], i, 0)
-            layout.addWidget(widget_dict['checkbox'], i, 1)
-            widget_dict['checkbox'].setChecked(True)
-            self._csd_widgets[chnl] = widget_dict
-        layout.setRowStretch(i + 1, 1)
-        self._csd.trace_selection_scrollArea.setLayout(layout)
+        self._init_channel_settings_dialog()
 
         #####################
         # Set up trace view selection dialog
-        self._vsd = TimeSeriesSelectionDialog()
-        self._vsd_widgets = list()
-        layout = QtWidgets.QGridLayout()
-        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
-        layout.addWidget(QtWidgets.QLabel('Hide Data?'), 0, 1)
-        layout.addWidget(QtWidgets.QLabel('Hide Average?'), 0, 2)
-        line = QtWidgets.QFrame()
-        line.setFrameShape(QtWidgets.QFrame.HLine)
-        line.setFrameShadow(QtWidgets.QFrame.Sunken)
-        layout.addWidget(line, 1, 0, 1, 3)
-        for i, chnl in enumerate(all_channels, 2):
-            widget_dict = dict()
-            widget_dict['label'] = QtWidgets.QLabel(chnl)
-            widget_dict['checkbox1'] = QtWidgets.QCheckBox()
-            widget_dict['checkbox2'] = QtWidgets.QCheckBox()
-            layout.addWidget(widget_dict['label'], i, 0)
-            layout.addWidget(widget_dict['checkbox1'], i, 1)
-            layout.addWidget(widget_dict['checkbox2'], i, 2)
-            widget_dict['checkbox1'].setChecked(False)
-            widget_dict['checkbox2'].setChecked(False)
-            self._vsd_widgets[chnl] = widget_dict
-        layout.setRowStretch(i + 1, 1)
-        self._vsd.trace_selection_scrollArea.setLayout(layout)
+        self._init_trace_view_selection_dialog()
 
         #####################
         # Setting default parameters
@@ -212,6 +172,18 @@ class TimeSeriesGui(GUIBase):
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
+
+        self._mw.trace_view_selection_Action.triggered.connect(self._vsd.show)
+        self._mw.channel_settings_Action.triggered.connect(self._csd.show)
+
+        self._vsd.accepted.connect(self.apply_trace_view_selection)
+        self._vsd.rejected.connect(self.keep_former_trace_view_selection)
+        self._vsd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_trace_view_selection)
+        self._csd.accepted.connect(self.apply_channel_settings)
+        self._csd.rejected.connect(self.keep_former_channel_settings)
+        self._csd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.connect(
+            self.apply_channel_settings)
 
         #####################
         # starting the physical measurement
@@ -248,6 +220,13 @@ class TimeSeriesGui(GUIBase):
         """ Deactivate the module
         """
         # disconnect signals
+        self._vsd.accepted.disconnect()
+        self._vsd.rejected.disconnect()
+        self._vsd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+        self._csd.accepted.disconnect()
+        self._csd.rejected.disconnect()
+        self._csd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
+
         self._mw.start_trace_Action.triggered.disconnect()
         self._mw.record_trace_Action.triggered.disconnect()
         self._mw.trace_snapshot_Action.triggered.disconnect()
@@ -268,6 +247,126 @@ class TimeSeriesGui(GUIBase):
         self._mw.close()
         return
 
+    def _init_trace_view_selection_dialog(self):
+        hw_constr = self._time_series_logic.streamer_constraints
+        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        self._vsd = TimeSeriesSelectionDialog()
+        self._vsd.setWindowTitle('View Trace Selection')
+        self._vsd_widgets = dict()
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
+        layout.addWidget(QtWidgets.QLabel('Hide Data?'), 0, 1)
+        layout.addWidget(QtWidgets.QLabel('Hide Average?'), 0, 2)
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        layout.addWidget(line, 1, 0, 1, 3)
+        for i, chnl in enumerate(all_channels, 2):
+            widget_dict = dict()
+            widget_dict['label'] = QtWidgets.QLabel(chnl)
+            widget_dict['checkbox1'] = QtWidgets.QCheckBox()
+            widget_dict['checkbox2'] = QtWidgets.QCheckBox()
+            layout.addWidget(widget_dict['label'], i, 0)
+            layout.addWidget(widget_dict['checkbox1'], i, 1)
+            layout.addWidget(widget_dict['checkbox2'], i, 2)
+            widget_dict['checkbox1'].setChecked(False)
+            widget_dict['checkbox2'].setChecked(False)
+            self._vsd_widgets[chnl] = widget_dict
+        layout.setRowStretch(i + 1, 1)
+        self._vsd.trace_selection_scrollArea.setLayout(layout)
+
+    def _init_channel_settings_dialog(self):
+        hw_constr = self._time_series_logic.streamer_constraints
+        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        self._csd = TimeSeriesSelectionDialog()
+        self._csd.setWindowTitle('Data Channel Settings')
+        self._csd_widgets = dict()
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(QtWidgets.QLabel('Channel Name'), 0, 0)
+        layout.addWidget(QtWidgets.QLabel('Is Active?'), 0, 1)
+        layout.addWidget(QtWidgets.QLabel('Moving Average?'), 0, 2)
+        line = QtWidgets.QFrame()
+        line.setFrameShape(QtWidgets.QFrame.HLine)
+        line.setFrameShadow(QtWidgets.QFrame.Sunken)
+        layout.addWidget(line, 1, 0, 1, 3)
+        for i, chnl in enumerate(all_channels, 2):
+            widget_dict = dict()
+            widget_dict['label'] = QtWidgets.QLabel(chnl)
+            widget_dict['checkbox1'] = QtWidgets.QCheckBox()
+            widget_dict['checkbox2'] = QtWidgets.QCheckBox()
+            layout.addWidget(widget_dict['label'], i, 0)
+            layout.addWidget(widget_dict['checkbox1'], i, 1)
+            layout.addWidget(widget_dict['checkbox2'], i, 2)
+            widget_dict['checkbox1'].setChecked(True)
+            widget_dict['checkbox2'].setChecked(True)
+            self._csd_widgets[chnl] = widget_dict
+        layout.setRowStretch(i + 1, 1)
+        self._csd.trace_selection_scrollArea.setLayout(layout)
+
+    @QtCore.Slot()
+    def apply_trace_view_selection(self):
+        """
+        """
+        for chnl, widgets in self._csd_widgets.items():
+            data_active = widgets['checkbox1'].isChecked()
+            average_active = widgets['checkbox2'].isChecked()
+
+            self._toggle_channel_data_plot(chnl, data_active, average_active)
+        return
+
+    @QtCore.Slot()
+    def keep_former_trace_view_selection(self):
+        """
+        """
+        curr_items = self._pw.items()
+        for chnl, widgets in self._vsd_widgets.items():
+            widgets['checkbox1'].setChecked(self.curves[chnl] not in curr_items)
+            widgets['checkbox2'].setChecked(self.averaged_curves[chnl] not in curr_items)
+        return
+
+    @QtCore.Slot()
+    def apply_channel_settings(self):
+        """
+        """
+        channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox1'].isChecked())
+        av_channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox2'].isChecked())
+        average_active = self._time_series_logic.moving_average_width > 1
+        for chnl, widgets in self._vsd_widgets.items():
+            # Hide corresponding view selection
+            visible = chnl in channels
+            av_visible = chnl in av_channels
+            widgets['label'].setVisible(visible)
+            widgets['checkbox1'].setVisible(visible)
+            widgets['checkbox2'].setVisible(visible)
+            widgets['checkbox2'].setEnabled(av_visible and average_active)
+            # hide/show corresponding plot curves
+            self._toggle_channel_data_plot(chnl, visible, av_visible)
+
+        # for ch, curve in self.curves.items():
+        #     if ch not in channels and curve in self._pw.items():
+        #         self._pw.removeItem(curve)
+        #     elif ch in channels and curve not in self._pw.items():
+        #         self._pw.addItem(curve)
+        # for ch, curve in self.averaged_curves.items():
+        #     if (ch not in channels or ch not in av_channels) and curve in self._pw.items():
+        #         self._pw.removeItem(curve)
+        #     elif (ch in channels and ch in av_channels) and curve not in self._pw.items():
+        #         self._pw.addItem(curve)
+        self.sigSettingsChanged.emit(
+            {'active_channels': channels, 'averaged_channels': av_channels})
+        return
+
+    @QtCore.Slot()
+    def keep_former_channel_settings(self):
+        """
+        """
+        curr_channels = self._time_series_logic.channel_names
+        curr_av_channels = self._time_series_logic.averaged_channels
+        for chnl, widgets in self._csd_widgets.items():
+            widgets['checkbox1'].setChecked(chnl in curr_channels)
+            widgets['checkbox2'].setChecked(chnl in curr_av_channels)
+        return
+
     @QtCore.Slot()
     @QtCore.Slot(np.ndarray, np.ndarray)
     @QtCore.Slot(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
@@ -283,20 +382,17 @@ class TimeSeriesGui(GUIBase):
             self.log.error('Must provide a full data set of x and y values. update_data failed.')
             return
 
-        # start = time.perf_counter()
         if data is not None and data.size > 0:
             x_min, x_max = data_time.min(), data_time.max()
             y_min, y_max = data.min(), data.max()
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
-        for i, ch in enumerate(self._time_series_logic.channel_names):
-            if data is not None:
+        if data is not None:
+            for i, ch in enumerate(self._time_series_logic.channel_names):
                 self.curves[ch].setData(y=data[i], x=data_time)
-            if smooth_data is not None:
+        if smooth_data is not None:
+            for i, ch in enumerate(self._time_series_logic.averaged_channels):
                 self.averaged_curves[ch].setData(y=smooth_data[i], x=smooth_time)
-
-        # self._pw.autoRange()
-        # print('Plot time: {0:.3e}s'.format(time.perf_counter() - start))
         return 0
 
     @QtCore.Slot()
@@ -305,7 +401,17 @@ class TimeSeriesGui(GUIBase):
         """
         self._mw.start_trace_Action.setEnabled(False)
         self._mw.record_trace_Action.setEnabled(False)
+        self._mw.data_rate_DoubleSpinBox.setEnabled(False)
+        self._mw.oversampling_SpinBox.setEnabled(False)
+        self._mw.trace_length_DoubleSpinBox.setEnabled(False)
+        self._mw.moving_average_spinBox.setEnabled(False)
+        self._mw.channel_settings_Action.setEnabled(False)
         if self._mw.start_trace_Action.isChecked():
+            settings = {'trace_window_size': self._mw.trace_length_DoubleSpinBox.value(),
+                        'data_rate': self._mw.data_rate_DoubleSpinBox.value(),
+                        'oversampling_factor': self._mw.oversampling_SpinBox.value(),
+                        'moving_average_width': self._mw.moving_average_spinBox.value()}
+            self.sigSettingsChanged.emit(settings)
             self.sigStartCounter.emit()
         else:
             self.sigStopCounter.emit()
@@ -315,10 +421,8 @@ class TimeSeriesGui(GUIBase):
     def record_clicked(self):
         """ Handling the save button to save the data into a file.
         """
+        self._mw.start_trace_Action.setEnabled(False)
         self._mw.record_trace_Action.setEnabled(False)
-        self._mw.data_rate_DoubleSpinBox.setEnabled(False)
-        self._mw.oversampling_SpinBox.setEnabled(False)
-        self._mw.trace_length_DoubleSpinBox.setEnabled(False)
         if self._mw.record_trace_Action.isChecked():
             self.sigStartRecording.emit()
         else:
@@ -344,12 +448,15 @@ class TimeSeriesGui(GUIBase):
 
         self._mw.record_trace_Action.setChecked(recording)
         self._mw.record_trace_Action.setText('Save recorded' if recording else 'Start recording')
-        self._mw.data_rate_DoubleSpinBox.setEnabled(not recording)
-        self._mw.oversampling_SpinBox.setEnabled(not recording)
-        self._mw.trace_length_DoubleSpinBox.setEnabled(not recording)
+
+        self._mw.data_rate_DoubleSpinBox.setEnabled(not running)
+        self._mw.oversampling_SpinBox.setEnabled(not running)
+        self._mw.trace_length_DoubleSpinBox.setEnabled(not running)
+        self._mw.moving_average_spinBox.setEnabled(not running)
+        self._mw.channel_settings_Action.setEnabled(not running)
 
         self._mw.start_trace_Action.setEnabled(True)
-        self._mw.record_trace_Action.setEnabled(True)
+        self._mw.record_trace_Action.setEnabled(running)
         return
 
     @QtCore.Slot()
@@ -358,8 +465,6 @@ class TimeSeriesGui(GUIBase):
         """
         val = self._mw.trace_length_DoubleSpinBox.value()
         self.sigSettingsChanged.emit({'trace_window_size': val})
-        # self._pw.setXRange(0,
-        #                    self._counting_logic.count_length / self._counting_logic.count_frequency)
         return
 
     @QtCore.Slot()
@@ -411,8 +516,7 @@ class TimeSeriesGui(GUIBase):
                             self._mw.trace_control_ToolBar)
 
         # Restore status if something went wrong
-        self.update_status(self._time_series_logic.module_state() == 'locked',
-                           self._time_series_logic.data_recording_active)
+        self.update_status()
         return 0
 
     @QtCore.Slot()
@@ -439,16 +543,38 @@ class TimeSeriesGui(GUIBase):
             self._mw.moving_average_spinBox.setValue(val)
             self._mw.moving_average_spinBox.blockSignals(False)
             if self.curves and self.averaged_curves:
-                items = self._pw.items()
-                if val > 1 and not all(curve in items for curve in self.averaged_curves):
-                    for ii, (ch, curve) in enumerate(self.averaged_curves.items()):
-                        if self.curves[ch] in items:
-                            self._pw.removeItem(self.curves[ch])
-                        self._pw.addItem(self.curves[ch])
-                        if curve not in items:
-                            self._pw.addItem(curve)
-                elif val <= 1 and any(curve in items for curve in self.averaged_curves.values()):
-                    for ii, curve in enumerate(self.averaged_curves.values()):
-                        if curve in items:
-                            self._pw.removeItem(curve)
+                if val > 1:
+                    for chnl, w in self._vsd_widgets.items():
+                        average_active = self._csd_widgets[chnl]['checkbox2'].isChecked()
+                        data_active = self._csd_widgets[chnl]['checkbox1'].isChecked()
+                        if not w['checkbox2'].isEnabled() and average_active:
+                            w['checkbox2'].setEnabled(True)
+                            w['checkbox2'].setChecked(False)
+                        self._toggle_channel_data_plot(chnl, data_active, average_active)
+                else:
+                    for chnl, w in self._vsd_widgets.items():
+                        w['checkbox2'].setEnabled(False)
+                        w['checkbox2'].setChecked(True)
+                        data_active = self._csd_widgets[chnl]['checkbox1'].isChecked()
+                        self._toggle_channel_data_plot(chnl, data_active, False)
+        return
+
+    def _toggle_channel_data_plot(self, channel, show_data, show_average):
+        """
+        """
+        if channel not in self.curves or channel not in self.averaged_curves:
+            return
+
+        data_visible = self.curves[channel] in self._pw.items()
+        average_visible = self.averaged_curves[channel] in self._pw.items()
+
+        if data_visible:
+            self._pw.removeItem(self.curves[channel])
+        if average_visible:
+            self._pw.removeItem(self.averaged_curves[channel])
+
+        if show_data and not self._vsd_widgets[channel]['checkbox1'].isChecked():
+            self._pw.addItem(self.curves[channel])
+        if show_average and not self._vsd_widgets[channel]['checkbox2'].isChecked():
+            self._pw.addItem(self.averaged_curves[channel])
         return
