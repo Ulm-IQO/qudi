@@ -562,9 +562,9 @@ class MFL_IRQ_Driven(GenericLogic):
         eta_seq_t_s = dB_tesla * np.sqrt(t_seq_s)  # Tesla per root Hz
         eta_real_t_s = dB_tesla * np.sqrt(t_epoch_s)
 
-        eta_phase_total_t_s = dB_tesla * np.sqrt(t_total_real_s)
-        eta_seq_total_t_s = dB_tesla * np.sqrt(t_total_phase_s)  # Tesla per root Hz
-        eta_real_total_t_s = dB_tesla * np.sqrt(t_total_seq_s)
+        eta_phase_total_t_s = dB_tesla * np.sqrt(t_total_phase_s)
+        eta_seq_total_t_s = dB_tesla * np.sqrt(t_total_seq_s)  # Tesla per root Hz
+        eta_real_total_t_s = dB_tesla * np.sqrt(t_total_real_s)
 
         if use_total_time:
             return eta_phase_total_t_s, eta_seq_total_t_s, eta_real_total_t_s
