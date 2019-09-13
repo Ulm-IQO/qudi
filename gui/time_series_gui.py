@@ -31,6 +31,7 @@ from gui.guibase import GUIBase
 from qtpy import QtCore, QtGui
 from qtpy import QtWidgets
 from qtpy import uic
+from interface.data_instream_interface import StreamChannelType
 
 
 class TimeSeriesMainWindow(QtWidgets.QMainWindow):
@@ -123,6 +124,7 @@ class TimeSeriesGui(GUIBase):
         self._mw.curr_value_comboBox.addItem('None')
         self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in all_channels])
         self._mw.curr_value_comboBox.addItems(all_channels)
+        self.current_value_channel_changed()
         for i, ch in enumerate(all_channels):
             if i % 2 == 0:
                 # pen1 = {'color': palette.c2, 'width': 2}
@@ -172,6 +174,7 @@ class TimeSeriesGui(GUIBase):
         self._mw.data_rate_DoubleSpinBox.editingFinished.connect(self.data_rate_changed)
         self._mw.oversampling_SpinBox.editingFinished.connect(self.oversampling_changed)
         self._mw.moving_average_spinBox.editingFinished.connect(self.moving_average_changed)
+        self._mw.curr_value_comboBox.currentIndexChanged.connect(self.current_value_channel_changed)
 
         # Connect the default view action
         self._mw.restore_default_view_Action.triggered.connect(self.restore_default_view)
@@ -391,20 +394,28 @@ class TimeSeriesGui(GUIBase):
             y_min, y_max = data.min(), data.max()
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
-        curr_value_channel = self._mw.curr_value_comboBox.currentText()
+        av_channels = self._time_series_logic.averaged_channels
+        d_channels = self._time_series_logic.channel_names
         if data is not None:
-            for i, ch in enumerate(self._time_series_logic.channel_names):
-                if curr_value_channel == ch:
-                    value = data[i, -1]
+            for i, ch in enumerate(d_channels):
                 self.curves[ch].setData(y=data[i], x=data_time)
         if smooth_data is not None:
-            for i, ch in enumerate(self._time_series_logic.averaged_channels):
-                if curr_value_channel == 'average {0}'.format(ch):
-                    value = smooth_data[i, -1]
+            for i, ch in enumerate(av_channels):
                 self.averaged_curves[ch].setData(y=smooth_data[i], x=smooth_time)
 
+        curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if curr_value_channel != 'None':
-            self._mw.curr_value_Label.setText('{0}'.format(value))
+            chnl = curr_value_channel.split('average ', 1)[-1]
+            if curr_value_channel.startswith('average '):
+                val = smooth_data[av_channels.index(chnl), -1]
+            else:
+                val = data[d_channels.index(chnl), -1]
+            ch_type = self._time_series_logic.channel_types[chnl]
+            ch_unit = self._time_series_logic.channel_units[chnl]
+            if ch_type == StreamChannelType.ANALOG:
+                self._mw.curr_value_Label.setText('{0:.3f} {1}'.format(val, ch_unit))
+            else:
+                self._mw.curr_value_Label.setText('{0:,d} {1}'.format(int(round(val)), ch_unit))
         return 0
 
     @QtCore.Slot()
@@ -501,6 +512,13 @@ class TimeSeriesGui(GUIBase):
         """
         val = self._mw.moving_average_spinBox.value()
         self.sigSettingsChanged.emit({'moving_average_width': val})
+
+    @QtCore.Slot()
+    def current_value_channel_changed(self):
+        """
+        """
+        val = self._mw.curr_value_comboBox.currentText()
+        self._mw.curr_value_Label.setVisible(val != 'None')
 
     @QtCore.Slot()
     def restore_default_view(self):

@@ -50,6 +50,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     # config options
     _max_frame_rate = ConfigOption('max_frame_rate', default=10, missing='warn')
+    _calc_digital_freq = ConfigOption('calc_digital_freq', default=True, missing='warn')
 
     # status vars
     _trace_window_size = StatusVar('trace_window_size', default=6)
@@ -244,7 +245,13 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     @property
     def channel_units(self):
-        return {ch: prop['unit'] for ch, prop in self._streamer.active_channels.items()}
+        unit_dict = dict()
+        for ch, prop in self._streamer.active_channels.items():
+            if self._calc_digital_freq and prop['type'] == StreamChannelType.DIGITAL:
+                unit_dict[ch] = 'Hz'
+            else:
+                unit_dict[ch] = prop['unit']
+        return unit_dict
 
     @property
     def channel_types(self):
@@ -585,7 +592,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         digital_channels = [c for c, p in self._streamer.active_channels.items() if
                             p['type'] == StreamChannelType.DIGITAL]
-        if digital_channels:
+        if self._calc_digital_freq and digital_channels:
             data[:len(digital_channels)] *= self.sampling_rate
 
         # save the data if necessary
