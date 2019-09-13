@@ -120,6 +120,9 @@ class TimeSeriesGui(GUIBase):
         self.curves = dict()
         self.averaged_curves = dict()
         all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        self._mw.curr_value_comboBox.addItem('None')
+        self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in all_channels])
+        self._mw.curr_value_comboBox.addItems(all_channels)
         for i, ch in enumerate(all_channels):
             if i % 2 == 0:
                 # pen1 = {'color': palette.c2, 'width': 2}
@@ -330,6 +333,17 @@ class TimeSeriesGui(GUIBase):
         """
         channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox1'].isChecked())
         av_channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox2'].isChecked())
+        # Update combobox
+        old_value = self._mw.curr_value_comboBox.currentText()
+        self._mw.curr_value_comboBox.clear()
+        self._mw.curr_value_comboBox.addItem('None')
+        self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in av_channels])
+        self._mw.curr_value_comboBox.addItems(channels)
+        index = self._mw.curr_value_comboBox.findText(old_value)
+        if index < 0:
+            self._mw.curr_value_comboBox.setCurrentIndex(index)
+        else:
+            self._mw.curr_value_comboBox.setCurrentIndex(1)
         average_active = self._time_series_logic.moving_average_width > 1
         for chnl, widgets in self._vsd_widgets.items():
             # Hide corresponding view selection
@@ -342,16 +356,6 @@ class TimeSeriesGui(GUIBase):
             # hide/show corresponding plot curves
             self._toggle_channel_data_plot(chnl, visible, av_visible)
 
-        # for ch, curve in self.curves.items():
-        #     if ch not in channels and curve in self._pw.items():
-        #         self._pw.removeItem(curve)
-        #     elif ch in channels and curve not in self._pw.items():
-        #         self._pw.addItem(curve)
-        # for ch, curve in self.averaged_curves.items():
-        #     if (ch not in channels or ch not in av_channels) and curve in self._pw.items():
-        #         self._pw.removeItem(curve)
-        #     elif (ch in channels and ch in av_channels) and curve not in self._pw.items():
-        #         self._pw.addItem(curve)
         self.sigSettingsChanged.emit(
             {'active_channels': channels, 'averaged_channels': av_channels})
         return
@@ -387,12 +391,20 @@ class TimeSeriesGui(GUIBase):
             y_min, y_max = data.min(), data.max()
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
+        curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if data is not None:
             for i, ch in enumerate(self._time_series_logic.channel_names):
+                if curr_value_channel == ch:
+                    value = data[i, -1]
                 self.curves[ch].setData(y=data[i], x=data_time)
         if smooth_data is not None:
             for i, ch in enumerate(self._time_series_logic.averaged_channels):
+                if curr_value_channel == 'average {0}'.format(ch):
+                    value = smooth_data[i, -1]
                 self.averaged_curves[ch].setData(y=smooth_data[i], x=smooth_time)
+
+        if curr_value_channel != 'None':
+            self._mw.curr_value_Label.setText('{0}'.format(value))
         return 0
 
     @QtCore.Slot()
