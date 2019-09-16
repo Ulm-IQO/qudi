@@ -304,6 +304,7 @@ class TimeSeriesGui(GUIBase):
             layout.addWidget(widget_dict['checkbox1'], i, 1)
             layout.addWidget(widget_dict['checkbox2'], i, 2)
             widget_dict['checkbox1'].setChecked(True)
+            widget_dict['checkbox1'].stateChanged.connect(widget_dict['checkbox2'].setEnabled)
             widget_dict['checkbox2'].setChecked(True)
             self._csd_widgets[chnl] = widget_dict
         layout.setRowStretch(i + 1, 1)
@@ -402,6 +403,12 @@ class TimeSeriesGui(GUIBase):
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
 
         if data is not None or smooth_data is not None:
+            if x_min == x_max:
+                x_min = x_min - 1
+                x_max = x_max + 1
+            if y_min == y_max:
+                y_min = y_min - 1
+                y_max = y_max + 1
             self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
