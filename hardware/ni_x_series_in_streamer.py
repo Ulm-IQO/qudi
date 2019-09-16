@@ -706,17 +706,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return np.empty((0, 0), dtype=self.data_type)
 
         if number_of_samples is None:
-            if self._ai_task_handle is None:
-                number_of_samples = self._di_task_handles[0].in_stream.total_samp_per_chan_acquired - self._di_task_handles[0].in_stream.curr_read_pos
-            else:
-                number_of_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
+            read_samples = self.read_available_data_into_buffer(self._data_buffer)
+            if read_samples < 0:
+                return np.empty((0, 0), dtype=self.data_type)
+        else:
+            read_samples = self.read_data_into_buffer(self._data_buffer,
+                                                      number_of_samples=number_of_samples)
+            if read_samples != number_of_samples:
+                return np.empty((0, 0), dtype=self.data_type)
 
-        read_samples = self.read_data_into_buffer(self._data_buffer,
-                                                  number_of_samples=number_of_samples)
-
-        if read_samples != number_of_samples:
-            return np.empty((0, 0), dtype=self.data_type)
-        total_samples = self.number_of_channels * number_of_samples
+        total_samples = self.number_of_channels * read_samples
         return self._data_buffer[:total_samples].reshape((self.number_of_channels,
                                                           number_of_samples))
 
@@ -732,11 +731,28 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return numpy.ndarray: 1D array containing one sample for each channel. Empty array
                                indicates error.
         """
-        self.log.error('"read_single_point" not implemented yet.')
-        return np.empty((0, 0), dtype=self.data_type)
+        if not self.is_running:
+            self.log.error('Unable to read data. Device is not running.')
+            return np.empty(0, dtype=self.__data_type)
+
+        try:
+            # Read digital channels
+            for i, reader in enumerate(self._di_readers):
+                # read the counter value. This function is blocking.
+                if self.__data_type == np.float64:
+                    self._data_buffer[i] = reader.read_one_sample_double(timeout=self._rw_timeout)
+                else:
+                    self._data_buffer[i] = reader.read_one_sample_uint32(timeout=self._rw_timeout)
+            # Read analog channels
+            if self._ai_reader is not None:
+                self._ai_reader.read_one_sample(self._data_buffer[len(self._di_readers):],
+                                                timeout=self._rw_timeout)
+        except ni.DaqError:
+            self.log.exception('Getting samples from data stream failed.')
+            return np.empty(0, dtype=self.__data_type)
+        return self._data_buffer[:self.number_of_channels]
 
     # =============================================================================================
-
     def _init_sample_clock(self):
         """
         If no external clock is given, configures a counter to provide the sample clock for all
