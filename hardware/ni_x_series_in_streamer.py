@@ -98,7 +98,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self.__streaming_mode = None
 
         # Data buffer
-        self._data_buffer = np.empty((0, 0), dtype=self.__data_type)
+        self._data_buffer = np.empty(0, dtype=self.__data_type)
         self._has_overflown = False
 
         # List of all available counters for this device
@@ -269,7 +269,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self.__active_channels = tuple()
 
         # Reset data buffer
-        self._data_buffer = np.empty((0, 0), dtype=self.__data_type)
+        self._data_buffer = np.empty(0, dtype=self.__data_type)
         self._has_overflown = False
         return
 
@@ -278,7 +278,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         self.terminate_all_tasks()
         # Free memory if possible while module is inactive
-        self._data_buffer = np.empty((0, 0), dtype=self.__data_type)
+        self._data_buffer = np.empty(0, dtype=self.__data_type)
         return
 
     @property
@@ -613,8 +613,15 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             self.log.error('buffer must be numpy.ndarray with dtype {0}. Read failed.'
                            ''.format(self.__data_type))
             return -1
-        if number_of_samples is None:
-            number_of_samples = buffer.shape[1]
+
+        if buffer.ndim == 2:
+            number_of_samples = buffer.shape[1] if number_of_samples is None else number_of_samples
+            buffer = buffer.flatten()
+        elif buffer.ndim == 1:
+            number_of_samples = (buffer.size // self.number_of_channels) if number_of_samples is None else number_of_samples
+        else:
+            self.log.error('Buffer must be a 1D or 2D numpy.ndarray.')
+            return -1
 
         if number_of_samples < 1:
             return 0
@@ -624,31 +631,29 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             self._has_overflown = True
 
         try:
+            write_offset = 0
             # Read digital channels
             for i, reader in enumerate(self._di_readers):
                 # read the counter value. This function is blocking.
                 if self.__data_type == np.float64:
                     read_samples = reader.read_many_sample_double(
-                        buffer[i],
+                        buffer[write_offset:],
                         number_of_samples_per_channel=number_of_samples,
                         timeout=self._rw_timeout)
                 else:
                     read_samples = reader.read_many_sample_uint32(
-                        buffer[i],
+                        buffer[write_offset:],
                         number_of_samples_per_channel=number_of_samples,
                         timeout=self._rw_timeout)
                 if read_samples != number_of_samples:
                     return -1
+                write_offset += number_of_samples
             # Read analog channels
-            # start = time.perf_counter()
             if self._ai_reader is not None:
                 read_samples = self._ai_reader.read_many_sample(
-                    buffer[len(self._di_readers):],
+                    buffer[write_offset:],
                     number_of_samples_per_channel=number_of_samples,
                     timeout=self._rw_timeout)
-            # print('===================================================')
-            # print((time.perf_counter() - start) / number_of_samples)
-            # print(buffer[len(self._di_readers):])
             if read_samples != number_of_samples:
                 return -1
         except ni.DaqError:
@@ -706,12 +711,14 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             else:
                 number_of_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - self._ai_task_handle.in_stream.curr_read_pos
 
-        buffer = np.zeros((self.number_of_channels, number_of_samples), dtype=self.data_type)
-        read_samples = self.read_data_into_buffer(buffer, number_of_samples=number_of_samples)
+        read_samples = self.read_data_into_buffer(self._data_buffer,
+                                                  number_of_samples=number_of_samples)
 
         if read_samples != number_of_samples:
             return np.empty((0, 0), dtype=self.data_type)
-        return buffer
+        total_samples = self.number_of_channels * number_of_samples
+        return self._data_buffer[:total_samples].reshape((self.number_of_channels,
+                                                          number_of_samples))
 
     def read_single_point(self):
         """
@@ -1003,7 +1010,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         try:
             self._ai_reader = AnalogMultiChannelReader(ai_task.in_stream)
-            # self._ai_reader.verify_array_shape = False
+            self._ai_reader.verify_array_shape = False
         except ni.DaqError:
             try:
                 ai_task.close()
@@ -1086,7 +1093,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     def _init_buffer(self):
         if not self.is_running:
             self._data_buffer = np.zeros(
-                (self.number_of_channels, self.buffer_size),
+                self.number_of_channels * self.buffer_size,
                 dtype=self.data_type)
             self._has_overflown = False
         return
