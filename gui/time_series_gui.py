@@ -340,18 +340,19 @@ class TimeSeriesGui(GUIBase):
         old_value = self._mw.curr_value_comboBox.currentText()
         self._mw.curr_value_comboBox.clear()
         self._mw.curr_value_comboBox.addItem('None')
-        self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in av_channels])
+        self._mw.curr_value_comboBox.addItems(
+            ['average {0}'.format(ch) for ch in av_channels if ch in channels])
         self._mw.curr_value_comboBox.addItems(channels)
         index = self._mw.curr_value_comboBox.findText(old_value)
         if index < 0:
-            self._mw.curr_value_comboBox.setCurrentIndex(index)
-        else:
             self._mw.curr_value_comboBox.setCurrentIndex(1)
+        else:
+            self._mw.curr_value_comboBox.setCurrentIndex(index)
         average_active = self._time_series_logic.moving_average_width > 1
         for chnl, widgets in self._vsd_widgets.items():
             # Hide corresponding view selection
             visible = chnl in channels
-            av_visible = chnl in av_channels
+            av_visible = visible and chnl in av_channels
             widgets['label'].setVisible(visible)
             widgets['checkbox1'].setVisible(visible)
             widgets['checkbox2'].setVisible(visible)
@@ -375,41 +376,42 @@ class TimeSeriesGui(GUIBase):
         return
 
     @QtCore.Slot()
-    @QtCore.Slot(np.ndarray, np.ndarray)
-    @QtCore.Slot(np.ndarray, np.ndarray, np.ndarray, np.ndarray)
+    @QtCore.Slot(np.ndarray, dict)
+    @QtCore.Slot(np.ndarray, dict, object, object)
     def update_data(self, data_time=None, data=None, smooth_time=None, smooth_data=None):
         """ The function that grabs the data and sends it to the plot.
         """
         if data_time is None and data is None and smooth_data is None and smooth_time is None:
-            data = self._time_series_logic.trace_data
-            data_time = self._time_series_logic.trace_time_axis
-            smooth_data = self._time_series_logic.trace_data_averaged
-            smooth_time = self._time_series_logic.averaged_trace_time_axis
+            data_time, data = self._time_series_logic.trace_data
+            smooth_time, smooth_data = self._time_series_logic.averaged_trace_data
         elif (data_time is None) ^ (data is None) or (smooth_time is None) ^ (smooth_data is None):
             self.log.error('Must provide a full data set of x and y values. update_data failed.')
             return
 
-        if data is not None and data.size > 0:
-            x_min, x_max = data_time.min(), data_time.max()
-            y_min, y_max = data.min(), data.max()
-            self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
-
-        av_channels = self._time_series_logic.averaged_channels
-        d_channels = self._time_series_logic.channel_names
+        x_min, x_max = np.inf, -np.inf
+        y_min, y_max = np.inf, -np.inf
         if data is not None:
-            for i, ch in enumerate(d_channels):
-                self.curves[ch].setData(y=data[i], x=data_time)
+            x_min, x_max = min(x_min, data_time.min()), max(x_max, data_time.max())
+            for channel, y_arr in data.items():
+                y_min, y_max = min(y_min, y_arr.min()), max(y_max, y_arr.max())
+                self.curves[channel].setData(y=y_arr, x=data_time)
         if smooth_data is not None:
-            for i, ch in enumerate(av_channels):
-                self.averaged_curves[ch].setData(y=smooth_data[i], x=smooth_time)
+            x_min, x_max = min(x_min, smooth_time.min()), max(x_max, smooth_time.max())
+            for channel, y_arr in smooth_data.items():
+                y_min, y_max = min(y_min, y_arr.min()), max(y_max, y_arr.max())
+                self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
+
+        if data is not None or smooth_data is not None:
+            self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if curr_value_channel != 'None':
-            chnl = curr_value_channel.split('average ', 1)[-1]
             if curr_value_channel.startswith('average '):
-                val = smooth_data[av_channels.index(chnl), -1]
+                chnl = curr_value_channel.split('average ', 1)[-1]
+                val = smooth_data[chnl][-1]
             else:
-                val = data[d_channels.index(chnl), -1]
+                chnl = curr_value_channel
+                val = data[chnl][-1]
             ch_type = self._time_series_logic.channel_types[chnl]
             ch_unit = self._time_series_logic.channel_units[chnl]
             if ch_type == StreamChannelType.ANALOG:
