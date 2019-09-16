@@ -54,19 +54,21 @@ class PowerSupply(Base, ProcessControlInterface):
 
         rm = visa.ResourceManager()
         try:
-            self._inst = rm.open_resource(self._address)
+            self._inst = rm.open_resource(self._address, write_termination='\n', read_termination='\n')
         except visa.VisaIOError:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
 
         self.model = self._query('*IDN?').split(',')[2]
 
-        self._write("OUTPut: TRACK 0")  # independent mode
+        self._write("OUTPut:TRACK 0")  # independent mode
 
         self._write("CH1:VOLTage 0")
         self._write("CH2:VOLTage 0")
 
-        self._write("CH1:CURRent {}".format(self._current_max))
-        self._write("CH1:CURRent {}".format(self._current_max))
+        self._write("CH1:CURRent {}".format(self._current_max_1))
+        self._write("CH2:CURRent {}".format(self._current_max_2))
+
+        time.sleep(0.1)
 
         self._write("OUTPut CH1,ON")
         self._write("OUTPut CH2,ON")
@@ -80,7 +82,6 @@ class PowerSupply(Base, ProcessControlInterface):
     def _write(self, cmd):
         """ Function to write command to hardware"""
         self._inst.write(cmd)
-        # time.sleep(.01)
 
     def _query(self, cmd):
         """ Function to query hardware"""
@@ -102,7 +103,7 @@ class PowerSupply(Base, ProcessControlInterface):
 
             @return float: current control value
         """
-        return float(self._query("MEASure: VOLTage? CH1").split('\r')[0])
+        return float(self._query("MEASure:VOLTage? CH1").split('\r')[0])
 
     def get_control_unit(self):
         """ Get unit of control value.
