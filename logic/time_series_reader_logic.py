@@ -673,10 +673,10 @@ class TimeSeriesReaderLogic(GenericLogic):
             header = ', '.join('{0} ({1})'.format(ch, prop['unit']) for ch, prop in
                                self._streamer.active_channels.items())
 
-            data = {header: data_arr}
+            data = {header: data_arr.transpose()}
             filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
 
-            fig = self.draw_figure(data_arr, self._data_rate) if save_figure else None
+            fig = self._draw_figure(data_arr, self._data_rate) if save_figure else None
 
             self._savelogic.save_data(data=data,
                                       filepath=filepath,
@@ -736,9 +736,10 @@ class TimeSeriesReaderLogic(GenericLogic):
             parameters['Oversampling factor (samples)'] = self._oversampling_factor
             parameters['Sampling rate (Hz)'] = self.sampling_rate
 
-            header = ', '.join('{0} ({1})'.format(ch, prop['unit']) for ch, prop in
-                               self._streamer.active_channels.items())
-            data = {header: self.trace_data}
+            header = ', '.join('{0} ({1})'.format(ch, unit) for ch, unit in
+                               self.channel_units.items())
+            data_offset = self._trace_data.shape[1] - self._moving_average_width // 2
+            data = {header: self._trace_data[:, :data_offset].transpose()}
 
             if to_file:
                 filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
