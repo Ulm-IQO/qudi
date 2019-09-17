@@ -350,7 +350,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.log.warning('Moving average window must be odd integer number in order to '
                                      'ensure perfect data alignment. Will increase value to {0:d}.'
                                      ''.format(new_val))
-                elif new_val / self._data_rate > self._trace_window_size:
+                if new_val / self._data_rate > self._trace_window_size:
                     if 'data_rate' in settings_dict or 'trace_window_size' in settings_dict:
                         self._moving_average_width = new_val
                         self.__moving_filter = np.full(shape=self._moving_average_width,
