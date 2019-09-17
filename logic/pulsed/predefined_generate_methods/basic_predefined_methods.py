@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
+from core.util.helpers import csv_2_list
 
 """
 General Pulse Creation Procedure:
@@ -338,30 +339,13 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
     def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating=True):
         """
         """
-
-        def string_2_list(csv_string):
-            """
-            Cast a list given as string containing comma-separated float values to a python list.
-            (blanks before and after commas are handled)
-            :param csv_string: Eg. '[1e-6, 2e-6]'. Square brackets are optional.
-            :return: list of float values
-            """
-
-            if not isinstance(csv_string, str):
-                raise TypeError('string_2_list accepts only str type input.')
-            csv_string = csv_string.replace("[", "")
-            csv_string = csv_string.replace("]", "")
-            csv_string = csv_string.strip().strip(',')
-
-            return [float(num_str) for num_str in csv_string.split(',')]
-
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
         # get tau array for measurement ticks
         try:
-            tau_array = string_2_list(tau_list)
+            tau_array = csv_2_list(tau_list)
         except TypeError:
             tau_array = tau_list
 
