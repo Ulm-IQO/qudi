@@ -62,7 +62,15 @@ class TimeSeriesSelectionDialog(QtWidgets.QDialog):
 
 
 class TimeSeriesGui(GUIBase):
-    """ FIXME: Please document
+    """
+    GUI module to be used in conjunction with TimeSeriesReaderLogic.
+
+    Example config for copy-paste:
+
+    time_series_gui:
+        module.Class: 'time_series_gui.TimeSeriesGui'
+        connect:
+            _time_series_logic_con: <TimeSeriesReaderLogic_name>
     """
 
     # declare connectors
