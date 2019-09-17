@@ -53,6 +53,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         digital_sources:  # optional
             - 'PFI15'
         analog_sources:  # optional
+            - 'ai0'
             - 'ai1'
         # external_sample_clock_source: 'PFI0'  # optional
         # external_sample_clock_frequency: 1000  # optional
