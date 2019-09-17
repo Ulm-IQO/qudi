@@ -525,6 +525,7 @@ class TimeSeriesGui(GUIBase):
         """
         """
         val = self._mw.moving_average_spinBox.value()
+        old_val = self._time_series_logic.moving_average_width
         self.sigSettingsChanged.emit({'moving_average_width': val})
 
     @QtCore.Slot()
@@ -596,14 +597,7 @@ class TimeSeriesGui(GUIBase):
             self._mw.moving_average_spinBox.blockSignals(True)
             self._mw.moving_average_spinBox.setValue(val)
             self._mw.moving_average_spinBox.blockSignals(False)
-            if val > 1:
-                for chnl, w in self._vsd_widgets.items():
-                    average_active = self._csd_widgets[chnl]['checkbox2'].isChecked()
-                    if average_active:
-                        w['checkbox2'].setEnabled(True)
-            else:
-                for chnl, w in self._vsd_widgets.items():
-                    w['checkbox2'].setEnabled(False)
+
         self.apply_channel_settings(update_logic=False)
         return
 
@@ -625,6 +619,6 @@ class TimeSeriesGui(GUIBase):
             self._pw.addItem(self.curves[channel])
         checkbox = self._vsd_widgets[channel]['checkbox2']
         average_enabled = not checkbox.isChecked() and checkbox.isEnabled()
-        if show_average and average_enabled:
+        if show_average and average_enabled and self._time_series_logic.moving_average_width > 1:
             self._pw.addItem(self.averaged_curves[channel])
         return
