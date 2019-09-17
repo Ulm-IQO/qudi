@@ -495,7 +495,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             if self._streamer.start_stream() < 0:
                 self.log.error('Error while starting streaming device data acquisition.')
                 self._stop_requested = True
-                self.sigStatusChanged.emit(False, False)
+                self._sigNextDataFrame.emit()
                 return -1
 
             self._sigNextDataFrame.emit()
