@@ -335,17 +335,38 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating = True):
+    def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating=True):
+        """
         """
 
-        """
+        def string_2_list(save_str):
+            """
+            Cast a list given as string to a python list.
+            Do nothing and return input unaltered, if not a string.
+            :param save_str: Eg. '[1e-6, 2e-6]'. Don't put evil strings from untrusted sources.
+            :return:
+            """
+            # ast is not completely safe (better than eval) and may crash the interpreter on malicious input
+            import ast
+
+            if type(save_str) is not str:
+                return save_str
+
+            val_list = ast.literal_eval(save_str)
+            # if list of strings, strip whitespaces
+            try:
+                val_list = [str.strip() for str in val_list]
+            except AttributeError:
+                pass
+
+            return val_list
 
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
         # get tau array for measurement ticks
-        tau_array = [n.strip() for n in tau_list]
+        tau_array = string_2_list(tau_list)
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
