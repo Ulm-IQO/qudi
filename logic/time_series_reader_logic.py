@@ -303,10 +303,6 @@ class TimeSeriesReaderLogic(GenericLogic):
         if not settings_dict:
             return self.all_settings
 
-        # Return early if no values are about to change
-        if all(val == getattr(self, key, None) for key, val in settings_dict.items()):
-            return
-
         restart = self.module_state() == 'locked'
         if restart:
             self._stop_reader_wait()
@@ -480,7 +476,18 @@ class TimeSeriesReaderLogic(GenericLogic):
                                                      active_channels=self._active_channels,
                                                      buffer_size=10000000,
                                                      use_circular_buffer=True)
+            # update actually set values
+            self._data_type = curr_settings['data_type']
+            self._active_channels = tuple(curr_settings['active_channels'])
+            self._averaged_channels = tuple(
+                ch for ch in self._averaged_channels if ch in self._active_channels)
+            self._data_rate = curr_settings['sample_rate'] / self._oversampling_factor
+
+            self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
             self._init_data_arrays()
+            settings = self.all_settings
+            self.sigSettingsChanged.emit(settings)
+
             if self._data_recording_active:
                 self._record_start_time = dt.datetime.now()
                 self._recorded_data = list()
