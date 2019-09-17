@@ -316,7 +316,7 @@ class TimeSeriesGui(GUIBase):
         """
         for chnl, widgets in self._csd_widgets.items():
             data_active = widgets['checkbox1'].isChecked()
-            average_active = widgets['checkbox2'].isChecked()
+            average_active = widgets['checkbox2'].isChecked() and data_active
 
             self._toggle_channel_data_plot(chnl, data_active, average_active)
         return
@@ -327,42 +327,47 @@ class TimeSeriesGui(GUIBase):
         """
         curr_items = self._pw.items()
         for chnl, widgets in self._vsd_widgets.items():
+            if not widgets['checkbox1'].isVisible():
+                continue
             widgets['checkbox1'].setChecked(self.curves[chnl] not in curr_items)
-            widgets['checkbox2'].setChecked(self.averaged_curves[chnl] not in curr_items)
+            if widgets['checkbox2'].isEnabled():
+                widgets['checkbox2'].setChecked(self.averaged_curves[chnl] not in curr_items)
         return
 
     @QtCore.Slot()
-    def apply_channel_settings(self):
+    def apply_channel_settings(self, update_logic=True):
         """
         """
         channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox1'].isChecked())
-        av_channels = tuple(ch for ch, w in self._csd_widgets.items() if w['checkbox2'].isChecked())
+        av_channels = tuple(ch for ch, w in self._csd_widgets.items() if
+                            w['checkbox2'].isChecked() and ch in channels)
         # Update combobox
         old_value = self._mw.curr_value_comboBox.currentText()
         self._mw.curr_value_comboBox.clear()
         self._mw.curr_value_comboBox.addItem('None')
-        self._mw.curr_value_comboBox.addItems(
-            ['average {0}'.format(ch) for ch in av_channels if ch in channels])
+        self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in av_channels])
         self._mw.curr_value_comboBox.addItems(channels)
         index = self._mw.curr_value_comboBox.findText(old_value)
         if index < 0:
             self._mw.curr_value_comboBox.setCurrentIndex(1)
         else:
             self._mw.curr_value_comboBox.setCurrentIndex(index)
-        average_active = self._time_series_logic.moving_average_width > 1
+
+        # Update view selection dialog
         for chnl, widgets in self._vsd_widgets.items():
             # Hide corresponding view selection
             visible = chnl in channels
-            av_visible = visible and chnl in av_channels
+            av_visible = chnl in av_channels
             widgets['label'].setVisible(visible)
             widgets['checkbox1'].setVisible(visible)
             widgets['checkbox2'].setVisible(visible)
-            widgets['checkbox2'].setEnabled(av_visible and average_active)
+            widgets['checkbox2'].setEnabled(av_visible)
             # hide/show corresponding plot curves
             self._toggle_channel_data_plot(chnl, visible, av_visible)
 
-        self.sigSettingsChanged.emit(
-            {'active_channels': channels, 'averaged_channels': av_channels})
+        if update_logic:
+            self.sigSettingsChanged.emit(
+                {'active_channels': channels, 'averaged_channels': av_channels})
         return
 
     @QtCore.Slot()
@@ -576,26 +581,30 @@ class TimeSeriesGui(GUIBase):
             self._mw.data_rate_DoubleSpinBox.blockSignals(True)
             self._mw.data_rate_DoubleSpinBox.setValue(settings_dict['data_rate'])
             self._mw.data_rate_DoubleSpinBox.blockSignals(False)
+        if 'active_channels' in settings_dict:
+            val = settings_dict['active_channels']
+            for chnl, w in self._csd_widgets.items():
+                enabled = chnl in val
+                w['checkbox1'].setChecked(enabled)
+        if 'averaged_channels' in settings_dict:
+            val = settings_dict['averaged_channels']
+            for chnl, w in self._csd_widgets.items():
+                enabled = chnl in val
+                w['checkbox2'].setChecked(enabled)
         if 'moving_average_width' in settings_dict:
             val = settings_dict['moving_average_width']
             self._mw.moving_average_spinBox.blockSignals(True)
             self._mw.moving_average_spinBox.setValue(val)
             self._mw.moving_average_spinBox.blockSignals(False)
-            if self.curves and self.averaged_curves:
-                if val > 1:
-                    for chnl, w in self._vsd_widgets.items():
-                        average_active = self._csd_widgets[chnl]['checkbox2'].isChecked()
-                        data_active = self._csd_widgets[chnl]['checkbox1'].isChecked()
-                        if not w['checkbox2'].isEnabled() and average_active:
-                            w['checkbox2'].setEnabled(True)
-                            w['checkbox2'].setChecked(False)
-                        self._toggle_channel_data_plot(chnl, data_active, average_active)
-                else:
-                    for chnl, w in self._vsd_widgets.items():
-                        w['checkbox2'].setEnabled(False)
-                        w['checkbox2'].setChecked(True)
-                        data_active = self._csd_widgets[chnl]['checkbox1'].isChecked()
-                        self._toggle_channel_data_plot(chnl, data_active, False)
+            if val > 1:
+                for chnl, w in self._vsd_widgets.items():
+                    average_active = self._csd_widgets[chnl]['checkbox2'].isChecked()
+                    if average_active:
+                        w['checkbox2'].setEnabled(True)
+            else:
+                for chnl, w in self._vsd_widgets.items():
+                    w['checkbox2'].setEnabled(False)
+        self.apply_channel_settings(update_logic=False)
         return
 
     def _toggle_channel_data_plot(self, channel, show_data, show_average):
@@ -614,6 +623,8 @@ class TimeSeriesGui(GUIBase):
 
         if show_data and not self._vsd_widgets[channel]['checkbox1'].isChecked():
             self._pw.addItem(self.curves[channel])
-        if show_average and not self._vsd_widgets[channel]['checkbox2'].isChecked():
+        checkbox = self._vsd_widgets[channel]['checkbox2']
+        average_enabled = not checkbox.isChecked() and checkbox.isEnabled()
+        if show_average and average_enabled:
             self._pw.addItem(self.averaged_curves[channel])
         return
