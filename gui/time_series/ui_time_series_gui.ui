@@ -332,8 +332,8 @@ Must be an odd number to ensure perfect trace data alignment.</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
-     <normalon>../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start trace</string>
@@ -348,8 +348,8 @@ Must be an odd number to ensure perfect trace data alignment.</string>
    </property>
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>
-     <normalon>../artwork/icons/qudiTheme/22x22/stop-record-counter.png</normalon>../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/record-counter.png</normaloff>
+     <normalon>../../artwork/icons/qudiTheme/22x22/stop-record-counter.png</normalon>../../artwork/icons/qudiTheme/22x22/record-counter.png</iconset>
    </property>
    <property name="text">
     <string>Start recording</string>
@@ -411,7 +411,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="trace_snapshot_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/qudiTheme/22x22/trace-snapshot.png</normaloff>../artwork/icons/qudiTheme/22x22/trace-snapshot.png</iconset>
+     <normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</normaloff>../../artwork/icons/qudiTheme/22x22/trace-snapshot.png</iconset>
    </property>
    <property name="text">
     <string>Take snapshot</string>
@@ -423,7 +423,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="trace_view_selection_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/oxygen/22x22/configure.png</normaloff>../artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Trace view selection</string>
@@ -435,7 +435,7 @@ Must be an odd number to ensure perfect trace data alignment.</string>
   <action name="channel_settings_Action">
    <property name="icon">
     <iconset>
-     <normaloff>../artwork/icons/oxygen/22x22/configure.png</normaloff>../artwork/icons/oxygen/22x22/configure.png</iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/configure.png</normaloff>../../artwork/icons/oxygen/22x22/configure.png</iconset>
    </property>
    <property name="text">
     <string>Channel settings</string>
