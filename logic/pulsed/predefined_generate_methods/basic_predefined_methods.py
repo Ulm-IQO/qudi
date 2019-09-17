@@ -339,34 +339,31 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         """
         """
 
-        def string_2_list(save_str):
+        def string_2_list(csv_string):
             """
-            Cast a list given as string to a python list.
-            Do nothing and return input unaltered, if not a string.
-            :param save_str: Eg. '[1e-6, 2e-6]'. Don't put evil strings from untrusted sources.
-            :return:
+            Cast a list given as string containing comma-separated float values to a python list.
+            (blanks before and after commas are handled)
+            :param csv_string: Eg. '[1e-6, 2e-6]'. Square brackets are optional.
+            :return: list of float values
             """
-            # ast is not completely safe (better than eval) and may crash the interpreter on malicious input
-            import ast
 
-            if type(save_str) is not str:
-                return save_str
+            if not isinstance(csv_string, str):
+                raise TypeError('string_2_list accepts only str type input.')
+            csv_string = csv_string.replace("[", "")
+            csv_string = csv_string.replace("]", "")
+            csv_string = csv_string.strip().strip(',')
 
-            val_list = ast.literal_eval(save_str)
-            # if list of strings, strip whitespaces
-            try:
-                val_list = [str.strip() for str in val_list]
-            except AttributeError:
-                pass
-
-            return val_list
+            return [float(num_str) for num_str in csv_string.split(',')]
 
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
         # get tau array for measurement ticks
-        tau_array = string_2_list(tau_list)
+        try:
+            tau_array = string_2_list(tau_list)
+        except TypeError:
+            tau_array = tau_list
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)
