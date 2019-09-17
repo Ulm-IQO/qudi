@@ -548,6 +548,7 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.log.error('Reading data from streamer went wrong; '
                                    'killing the stream with next data frame.')
                     self._stop_requested = True
+                    self._sigNextDataFrame.emit()
                     return
 
                 # Process data
