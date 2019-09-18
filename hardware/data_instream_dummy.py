@@ -46,14 +46,13 @@ class InStreamDummy(Base, DataInStreamInterface):
             - 'digital 3'
         analog_channels:  # optional, must provide at least one digital or analog channel
             - 'analog 1'
-            - 'analog 1'
+            - 'analog 2'
         digital_event_rates:  # optional, must have as many entries as digital_channels or just one
             - 1000
             - 10000
             - 100000
         # digital_event_rates: 100000
         analog_amplitudes:  # optional, must have as many entries as analog_channels or just one
-            - 1
             - 5
             - 10
         # analog_amplitudes: 10  # optional (10V by default)
@@ -468,6 +467,8 @@ class InStreamDummy(Base, DataInStreamInterface):
 
         if number_of_samples < 1:
             return 0
+        while self.available_samples < number_of_samples:
+            time.sleep(0.001)
 
         # Check for buffer overflow
         avail_samples = self.available_samples
@@ -483,9 +484,8 @@ class InStreamDummy(Base, DataInStreamInterface):
             if chnl in self._digital_channels:
                 ch_index = self._digital_channels.index(chnl)
                 events_per_bin = self._digital_event_rates[ch_index] / self.__sample_rate
-                np.random.poisson(events_per_bin,
-                                  number_of_samples,
-                                  out=buffer[offset:(offset+number_of_samples)])
+                buffer[offset:(offset+number_of_samples)] = np.random.poisson(events_per_bin,
+                                                                              number_of_samples)
             else:
                 ch_index = self._analog_channels.index(chnl)
                 amplitude = self._analog_amplitudes[ch_index]
@@ -494,6 +494,7 @@ class InStreamDummy(Base, DataInStreamInterface):
                 noise_level = 0.05 * amplitude
                 noise = noise_level - 2 * noise_level * np.random.rand(number_of_samples)
                 buffer[offset:(offset + number_of_samples)] += noise
+            offset += number_of_samples
         return number_of_samples
 
     def read_available_data_into_buffer(self, buffer):
