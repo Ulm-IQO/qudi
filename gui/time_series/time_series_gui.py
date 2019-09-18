@@ -96,7 +96,7 @@ class TimeSeriesGui(GUIBase):
         self.averaged_curves = dict()
 
         self._channels_per_axis = [set(), set()]
-        self.__vb = None
+        self._vb = None
 
         self._hidden_data_traces = None
         self._hidden_averaged_traces = None
@@ -127,14 +127,14 @@ class TimeSeriesGui(GUIBase):
         self._pw.setMenuEnabled(False)
         self._pw.hideButtons()
         # Create second ViewBox to plot with two independent y-axes
-        self.__vb = pg.ViewBox()
-        self.__vb.setXLink(self._pw)
-        self._pw.scene().addItem(self.__vb)
-        self._pw.getAxis('right').linkToView(self.__vb)
-        self.__vb.setXLink(self._pw)
-        self.__vb.disableAutoRange()
-        self.__vb.setMouseEnabled(x=False, y=False)
-        self.__vb.setMenuEnabled(False)
+        self._vb = pg.ViewBox()
+        self._vb.setXLink(self._pw)
+        self._pw.scene().addItem(self._vb)
+        self._pw.getAxis('right').linkToView(self._vb)
+        self._vb.setXLink(self._pw)
+        self._vb.disableAutoRange()
+        self._vb.setMouseEnabled(x=False, y=False)
+        self._vb.setMenuEnabled(False)
         # Sync resize events
         self._pw.plotItem.vb.sigResized.connect(self.__update_viewbox_sync)
 
@@ -326,8 +326,8 @@ class TimeSeriesGui(GUIBase):
         self._csd.trace_selection_scrollArea.setLayout(layout)
 
     def __update_viewbox_sync(self):
-        self.__vb.setGeometry(self._pw.plotItem.vb.sceneBoundingRect())
-        self.__vb.linkedViewChanged(self._pw.plotItem.vb, self.__vb.XAxis)
+        self._vb.setGeometry(self._pw.plotItem.vb.sceneBoundingRect())
+        self._vb.linkedViewChanged(self._pw.plotItem.vb, self._vb.XAxis)
         return
 
     @QtCore.Slot()
@@ -440,7 +440,7 @@ class TimeSeriesGui(GUIBase):
             for channel, y_arr in smooth_data.items():
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
 
-        self.__vb.autoRange()
+        self._vb.autoRange()
         self._pw.autoRange()
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
@@ -638,22 +638,22 @@ class TimeSeriesGui(GUIBase):
 
         left_axis_items = self._pw.items()
         if self.curves[channel] in left_axis_items:
-            self.__vb.removeItem(self.curves[channel])
+            self._vb.removeItem(self.curves[channel])
             self._pw.removeItem(self.curves[channel])
         if self.averaged_curves[channel] in left_axis_items:
-            self.__vb.removeItem(self.averaged_curves[channel])
+            self._vb.removeItem(self.averaged_curves[channel])
             self._pw.removeItem(self.averaged_curves[channel])
 
         if show_data and not self._vsd_widgets[channel]['checkbox1'].isChecked():
             if channel in self._channels_per_axis[0]:
                 self._pw.addItem(self.curves[channel])
             else:
-                self.__vb.addItem(self.curves[channel])
+                self._vb.addItem(self.curves[channel])
         checkbox = self._vsd_widgets[channel]['checkbox2']
         average_enabled = not checkbox.isChecked() and checkbox.isEnabled()
         if show_average and average_enabled and self._time_series_logic.moving_average_width > 1:
             if channel in self._channels_per_axis[0]:
                 self._pw.addItem(self.averaged_curves[channel])
             else:
-                self.__vb.addItem(self.averaged_curves[channel])
+                self._vb.addItem(self.averaged_curves[channel])
         return
