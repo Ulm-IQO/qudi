@@ -491,7 +491,7 @@ class InStreamDummy(Base, DataInStreamInterface):
                 amplitude = self._analog_amplitudes[ch_index]
                 np.sin(analog_x, out=buffer[offset:(offset+number_of_samples)])
                 buffer[offset:(offset + number_of_samples)] *= amplitude
-                noise_level = 0.05 * amplitude
+                noise_level = 0.1 * amplitude
                 noise = noise_level - 2 * noise_level * np.random.rand(number_of_samples)
                 buffer[offset:(offset + number_of_samples)] += noise
             offset += number_of_samples

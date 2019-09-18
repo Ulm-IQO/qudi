@@ -95,6 +95,9 @@ class TimeSeriesGui(GUIBase):
         self.curves = dict()
         self.averaged_curves = dict()
 
+        self._channels_per_axis = [set(), set()]
+        self.__vb = None
+
         self._hidden_data_traces = None
         self._hidden_averaged_traces = None
 
@@ -115,26 +118,32 @@ class TimeSeriesGui(GUIBase):
         # Get hardware constraints
         hw_constr = self._time_series_logic.streamer_constraints
 
-        # Plot labels.
+        # Configure PlotWidget
         self._pw = self._mw.data_trace_PlotWidget
-
-        self._pw.setLabel('left', 'Not quite sure...', units='#')
         self._pw.setLabel('bottom', 'Time', units='s')
         self._pw.disableAutoRange()
         self._pw.setMouseEnabled(x=False, y=False)
         self._pw.setMouseTracking(False)
         self._pw.setMenuEnabled(False)
         self._pw.hideButtons()
+        # Create second ViewBox to plot with two independent y-axes
+        self.__vb = pg.ViewBox()
+        self.__vb.setXLink(self._pw)
+        self._pw.scene().addItem(self.__vb)
+        self._pw.getAxis('right').linkToView(self.__vb)
+        self.__vb.setXLink(self._pw)
+        self.__vb.disableAutoRange()
+        self.__vb.setMouseEnabled(x=False, y=False)
+        self.__vb.setMenuEnabled(False)
+        # Sync resize events
+        self._pw.plotItem.vb.sigResized.connect(self.__update_viewbox_sync)
 
         self.curves = dict()
         self.averaged_curves = dict()
         all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
-        self._mw.curr_value_comboBox.addItem('None')
-        self._mw.curr_value_comboBox.addItems(['average {0}'.format(ch) for ch in all_channels])
-        self._mw.curr_value_comboBox.addItems(all_channels)
-        self.current_value_channel_changed()
         for i, ch in enumerate(all_channels):
             if i % 2 == 0:
+                # FIXME: Choosing a pen width != 1px (not cosmetic) causes massive performance drops
                 # pen1 = {'color': palette.c2, 'width': 2}
                 # pen2 = {'color': palette.c1, 'width': 1}
                 pen1 = pg.mkPen(palette.c2, cosmetic=True)
@@ -152,9 +161,6 @@ class TimeSeriesGui(GUIBase):
                                                clipToView=True,
                                                downsampleMethod='subsample',
                                                autoDownsample=True)
-            self._pw.addItem(self.curves[ch])
-        for curve in self.averaged_curves.values():
-            self._pw.addItem(curve)
 
         #####################
         # Set up channel settings dialog
@@ -166,9 +172,8 @@ class TimeSeriesGui(GUIBase):
 
         #####################
         # Setting default parameters
-        self.update_status(self._time_series_logic.module_state() == 'locked',
-                           self._time_series_logic.data_recording_active)
-        self.update_settings(self._time_series_logic.all_settings)
+        self.update_status()
+        self.update_settings()
         self.update_data()
 
         #####################
@@ -220,7 +225,7 @@ class TimeSeriesGui(GUIBase):
             self.update_settings, QtCore.Qt.QueuedConnection)
         self._time_series_logic.sigStatusChanged.connect(
             self.update_status, QtCore.Qt.QueuedConnection)
-        return 0
+        return
 
     def show(self):
         """Make window visible and put it above all other windows.
@@ -234,6 +239,8 @@ class TimeSeriesGui(GUIBase):
         """ Deactivate the module
         """
         # disconnect signals
+        self._pw.plotItem.vb.sigResized.disconnect()
+
         self._vsd.accepted.disconnect()
         self._vsd.rejected.disconnect()
         self._vsd.buttonBox.button(QtWidgets.QDialogButtonBox.Apply).clicked.disconnect()
@@ -318,6 +325,11 @@ class TimeSeriesGui(GUIBase):
         layout.setRowStretch(i + 1, 1)
         self._csd.trace_selection_scrollArea.setLayout(layout)
 
+    def __update_viewbox_sync(self):
+        self.__vb.setGeometry(self._pw.plotItem.vb.sceneBoundingRect())
+        self.__vb.linkedViewChanged(self._pw.plotItem.vb, self.__vb.XAxis)
+        return
+
     @QtCore.Slot()
     def apply_trace_view_selection(self):
         """
@@ -361,6 +373,25 @@ class TimeSeriesGui(GUIBase):
         else:
             self._mw.curr_value_comboBox.setCurrentIndex(index)
 
+        # Update plot widget axes
+        ch_types = self._time_series_logic.channel_types
+        digital_channels = set(ch for ch, t in ch_types.items() if t == StreamChannelType.DIGITAL)
+        analog_channels = set(ch for ch, t in ch_types.items() if t == StreamChannelType.ANALOG)
+        self._channels_per_axis = list()
+        if digital_channels:
+            self._channels_per_axis.append(digital_channels)
+            unit = self._time_series_logic.channel_units[next(iter(digital_channels))]
+            self._pw.setLabel('left', 'Digital Channels', units=unit)
+        if analog_channels:
+            self._channels_per_axis.append(analog_channels)
+            axis = 'right' if digital_channels else 'left'
+            unit = self._time_series_logic.channel_units[next(iter(analog_channels))]
+            self._pw.setLabel(axis, 'Analog Channels', units=unit)
+        if analog_channels and digital_channels:
+            self._pw.showAxis('right')
+        else:
+            self._pw.hideAxis('right')
+
         # Update view selection dialog
         for chnl, widgets in self._vsd_widgets.items():
             # Hide corresponding view selection
@@ -402,27 +433,15 @@ class TimeSeriesGui(GUIBase):
             self.log.error('Must provide a full data set of x and y values. update_data failed.')
             return
 
-        x_min, x_max = np.inf, -np.inf
-        y_min, y_max = np.inf, -np.inf
         if data is not None:
-            x_min, x_max = min(x_min, data_time.min()), max(x_max, data_time.max())
             for channel, y_arr in data.items():
-                y_min, y_max = min(y_min, y_arr.min()), max(y_max, y_arr.max())
                 self.curves[channel].setData(y=y_arr, x=data_time)
         if smooth_data is not None:
-            x_min, x_max = min(x_min, smooth_time.min()), max(x_max, smooth_time.max())
             for channel, y_arr in smooth_data.items():
-                y_min, y_max = min(y_min, y_arr.min()), max(y_max, y_arr.max())
                 self.averaged_curves[channel].setData(y=y_arr, x=smooth_time)
 
-        if data is not None or smooth_data is not None:
-            if x_min == x_max:
-                x_min = x_min - 1
-                x_max = x_max + 1
-            if y_min == y_max:
-                y_min = y_min - 1
-                y_max = y_max + 1
-            self._pw.setRange(xRange=(x_min, x_max), yRange=(y_min, y_max), update=False)
+        self.__vb.autoRange()
+        self._pw.autoRange()
 
         curr_value_channel = self._mw.curr_value_comboBox.currentText()
         if curr_value_channel != 'None':
@@ -613,20 +632,28 @@ class TimeSeriesGui(GUIBase):
         """
         """
         if channel not in self.curves or channel not in self.averaged_curves:
+            self.log.warning('Unknown channel name "{0}" encountered in _toggle_channel_data_plot.'
+                             ''.format(channel))
             return
 
-        data_visible = self.curves[channel] in self._pw.items()
-        average_visible = self.averaged_curves[channel] in self._pw.items()
-
-        if data_visible:
+        left_axis_items = self._pw.items()
+        if self.curves[channel] in left_axis_items:
+            self.__vb.removeItem(self.curves[channel])
             self._pw.removeItem(self.curves[channel])
-        if average_visible:
+        if self.averaged_curves[channel] in left_axis_items:
+            self.__vb.removeItem(self.averaged_curves[channel])
             self._pw.removeItem(self.averaged_curves[channel])
 
         if show_data and not self._vsd_widgets[channel]['checkbox1'].isChecked():
-            self._pw.addItem(self.curves[channel])
+            if channel in self._channels_per_axis[0]:
+                self._pw.addItem(self.curves[channel])
+            else:
+                self.__vb.addItem(self.curves[channel])
         checkbox = self._vsd_widgets[channel]['checkbox2']
         average_enabled = not checkbox.isChecked() and checkbox.isEnabled()
         if show_average and average_enabled and self._time_series_logic.moving_average_width > 1:
-            self._pw.addItem(self.averaged_curves[channel])
+            if channel in self._channels_per_axis[0]:
+                self._pw.addItem(self.averaged_curves[channel])
+            else:
+                self.__vb.addItem(self.averaged_curves[channel])
         return
