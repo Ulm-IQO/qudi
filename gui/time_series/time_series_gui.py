@@ -88,6 +88,7 @@ class TimeSeriesGui(GUIBase):
         self._time_series_logic = None
         self._mw = None
         self._pw = None
+        self._vb = None
         self._vsd = None
         self._vsd_widgets = dict()
         self._csd = None
@@ -96,7 +97,6 @@ class TimeSeriesGui(GUIBase):
         self.averaged_curves = dict()
 
         self._channels_per_axis = [set(), set()]
-        self._vb = None
 
         self._hidden_data_traces = None
         self._hidden_averaged_traces = None
@@ -142,17 +142,26 @@ class TimeSeriesGui(GUIBase):
         self.averaged_curves = dict()
         all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
         for i, ch in enumerate(all_channels):
-            if i % 2 == 0:
-                # FIXME: Choosing a pen width != 1px (not cosmetic) causes massive performance drops
-                # pen1 = {'color': palette.c2, 'width': 2}
-                # pen2 = {'color': palette.c1, 'width': 1}
+            # Determine pen style
+            # FIXME: Choosing a pen width != 1px (not cosmetic) causes massive performance drops
+            # For mixed signals each signal type (digital or analog) has the same color
+            # If just a single signal type is present, alternate the colors accordingly
+            if hw_constr.analog_channels and hw_constr.digital_channels:
+                if ch in hw_constr.digital_channels:
+                    pen1 = pg.mkPen(palette.c2, cosmetic=True)
+                    pen2 = pg.mkPen(palette.c1, cosmetic=True)
+                else:
+                    pen1 = pg.mkPen(palette.c3, cosmetic=True)
+                    pen2 = pg.mkPen(palette.c4, cosmetic=True)
+            elif i % 3 == 0:
                 pen1 = pg.mkPen(palette.c2, cosmetic=True)
                 pen2 = pg.mkPen(palette.c1, cosmetic=True)
+            elif i % 3 == 1:
+                pen1 = pg.mkPen(palette.c3, cosmetic=True)
+                pen2 = pg.mkPen(palette.c4, cosmetic=True)
             else:
-                # pen1 = {'color': palette.c4, 'width': 2}
-                # pen2 = {'color': palette.c3, 'width': 1}
-                pen1 = pg.mkPen(palette.c4, cosmetic=True)
-                pen2 = pg.mkPen(palette.c3, cosmetic=True)
+                pen1 = pg.mkPen(palette.c5, cosmetic=True)
+                pen2 = pg.mkPen(palette.c6, cosmetic=True)
             self.averaged_curves[ch] = pg.PlotCurveItem(pen=pen1,
                                                         clipToView=True,
                                                         downsampleMethod='subsample',
@@ -325,7 +334,11 @@ class TimeSeriesGui(GUIBase):
         layout.setRowStretch(i + 1, 1)
         self._csd.trace_selection_scrollArea.setLayout(layout)
 
+    @QtCore.Slot()
     def __update_viewbox_sync(self):
+        """
+        Helper method to sync plots for both y-axes.
+        """
         self._vb.setGeometry(self._pw.plotItem.vb.sceneBoundingRect())
         self._vb.linkedViewChanged(self._pw.plotItem.vb, self._vb.XAxis)
         return
