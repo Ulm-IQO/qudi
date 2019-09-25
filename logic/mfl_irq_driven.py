@@ -88,7 +88,7 @@ class MFL_IRQ_Driven(GenericLogic):
                                    'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts,
                                    'ungated_sum_up_cts_nicard': self.pull_data_ungated_sum_up_cts_nicard}
         self._cur_pull_data_method = 'ungated_sum_up_cts_nicard'
-        self.log.info("Setting pull data method to '{}'".format(self._cur_pull_data_method))
+        #self.log.info("Setting pull data method to '{}'".format(self._cur_pull_data_method))
 
         # handling files to communicate with other threads
         self.qudi_vars_metafile = 'temp/mfl_meta.pkl'
@@ -520,6 +520,8 @@ class MFL_IRQ_Driven(GenericLogic):
                 self.log.warning("NaN in array summed up as 0.")
                 t_per_epoch[i] = 0
             t_total[i] = np.sum(t_per_epoch[0:i + 1])
+            if t_total[i] == 0:
+                t_total[i] = np.nan
 
         return t_total
 
@@ -558,18 +560,26 @@ class MFL_IRQ_Driven(GenericLogic):
         t_total_phase_s, t_total_seq_s, t_total_real_s = self.get_total_times()
         dB_tesla = dB_mhz / (GAMMA_NV_MHZ_GAUSS * 1e-2)
 
-        eta_phase_t_s = dB_tesla * np.sqrt(t_phase_s)
+        # padding for backward compability to old indexing of result arrays
+        eta_phase_t_s = dB_tesla * np.pad(np.sqrt(t_phase_s),
+                                          (0, len(dB_tesla) - len(t_phase_s)), mode='constant', constant_values=np.nan)
         eta_seq_t_s = dB_tesla * np.sqrt(t_seq_s)  # Tesla per root Hz
-        eta_real_t_s = dB_tesla * np.sqrt(t_epoch_s)
+        eta_real_t_s = dB_tesla * np.pad(np.sqrt(t_epoch_s),
+                                         (0, len(dB_tesla) - len(t_epoch_s)), mode='constant', constant_values=np.nan)
 
-        eta_phase_total_t_s = dB_tesla * np.sqrt(t_total_phase_s)
+        eta_phase_total_t_s = dB_tesla * np.pad(np.sqrt(t_total_phase_s),
+                                            (0, len(dB_tesla) - len(t_total_phase_s)), mode='constant',constant_values=np.nan)
+
         eta_seq_total_t_s = dB_tesla * np.sqrt(t_total_seq_s)  # Tesla per root Hz
-        eta_real_total_t_s = dB_tesla * np.sqrt(t_total_real_s)
+        eta_real_total_t_s = dB_tesla * np.pad(np.sqrt(t_total_real_s),
+                                         (0, len(dB_tesla) - len(t_total_real_s)), mode='constant', constant_values=np.nan)
+
 
         if use_total_time:
             return eta_phase_total_t_s, eta_seq_total_t_s, eta_real_total_t_s
 
         return eta_phase_t_s, eta_seq_t_s, eta_real_t_s
+
 
     def timestamps_pretty(self):
 
@@ -721,8 +731,6 @@ class MFL_IRQ_Driven(GenericLogic):
                     self.log.debug("Zero data looks like: {}".format(y))
             else:
                 wait_for_data = False
-
-            #y = 0 # DEBUG only
 
         if i_wait > 0:
             self.log.warning("Waited for data from fastcounter for {} ms in epoch {}".format(
