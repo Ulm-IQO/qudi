@@ -88,7 +88,6 @@ class MFL_IRQ_Driven(GenericLogic):
                                    'ungated_sum_up_cts': self.pull_data_ungated_sum_up_cts,
                                    'ungated_sum_up_cts_nicard': self.pull_data_ungated_sum_up_cts_nicard}
         self._cur_pull_data_method = 'ungated_sum_up_cts_nicard'
-        #self.log.info("Setting pull data method to '{}'".format(self._cur_pull_data_method))
 
         # handling files to communicate with other threads
         self.qudi_vars_metafile = 'temp/mfl_meta.pkl'
@@ -181,15 +180,19 @@ class MFL_IRQ_Driven(GenericLogic):
         with open(filename, 'wb') as file:
             pickle.dump(mes, file)
 
-    def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, z_thresh=0.5, calibmode_lintau=False):
+    def init(self, name, n_sweeps, n_epochs=-1, nolog_callback=False, nowait_callback=False,
+             z_thresh=0.5, calibmode_lintau=False):
+
         self.i_epoch = 0
         self.is_running = False
         self.is_calibmode_lintau = calibmode_lintau
         self.n_epochs = n_epochs
         self.nolog_callback = nolog_callback
+        self.nowait_callback = nowait_callback
         self.sequence_name = name
         self.n_sweeps = n_sweeps
         self.z_thresh = z_thresh
+
 
         self.init_arrays(self.n_epochs)
         self.init_mfl_algo()    # this is a dummy init without parameter, call setup_new_run() after
@@ -207,6 +210,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           cb_epoch_done, edges=[True, False])
 
+        self.log.debug("Pull data method is '{}'".format(self._cur_pull_data_method))
         if self._cur_pull_data_method is 'ungated_sum_up_cts_nicard':
             self.log.debug("Setting up edge counter for nicard acquisition.")
             self.setup_ni_edge_counter()
@@ -705,22 +709,20 @@ class MFL_IRQ_Driven(GenericLogic):
     def iterate_mfl(self):
         self.i_epoch += 1
 
-    def get_ramsey_result(self):
+    def get_ramsey_result(self, wait_for_data=True):
 
-        wait_for_data = True
         timeout_cyc = 25
         wait_s = 0.001      # initial wait time, is increased
         wait_total_s = 0
         i_wait = 0
+        i_loop = 0
 
-        #time.sleep(1000e-3)
-
-        while wait_for_data and i_wait < timeout_cyc:
+        while i_loop is 0 or (wait_for_data and i_wait < timeout_cyc):
 
             x, y, sweeps = self._pull_data_methods[self._cur_pull_data_method]()
 
             #if sweeps < (self.i_epoch + 1) * self.n_sweeps:   # sweeps seems to be incremented after counts!
-            if abs(y) < 1e-6:
+            if abs(y) < 1e-6 and wait_for_data:
                 #self.log.warning("Zeros received from fastcounter.")
                 time.sleep(wait_s)
                 wait_total_s += wait_s
@@ -731,6 +733,8 @@ class MFL_IRQ_Driven(GenericLogic):
                     self.log.debug("Zero data looks like: {}".format(y))
             else:
                 wait_for_data = False
+
+            i_loop += 1
 
         if i_wait > 0:
             self.log.warning("Waited for data from fastcounter for {} ms in epoch {}".format(
@@ -954,7 +958,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.timestamp(self.i_epoch, TimestampEvent.irq_start)
 
         # we are after the mes -> prepare for next epoch
-        _, z = self.get_ramsey_result()
+        _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
         prior = self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi)
 
@@ -1300,12 +1304,12 @@ if __name__ == '__main__':
         return success
 
     def setup_mfl_seperate_thread(n_sweeps, n_epochs, z_thresh, t2star_s=None, calibmode_lintau=False, freq_max_mhz=10
-                                  , meta_dict=None):
+                                  , meta_dict=None, nowait_callback=False):
 
         nolog = not calibmode_lintau
 
         mfl_logic.init('mfl_ramsey_pjump', n_sweeps, n_epochs=n_epochs, nolog_callback=nolog, z_thresh=z_thresh,
-                       calibmode_lintau=calibmode_lintau)
+                       calibmode_lintau=calibmode_lintau, nowait_callback=nowait_callback)
         mfl_logic.meta_dict = meta_dict
 
         mfl_logic.save_priors = True     # OK if callback slow
@@ -1389,7 +1393,7 @@ if __name__ == '__main__':
 
     setup_mfl_seperate_thread(n_epochs=params['n_epochs'], n_sweeps=params['n_sweeps'], z_thresh=params['z_thresh'],
                               t2star_s=params['t2star'], calibmode_lintau=params['calibmode_lintau'],
-                              freq_max_mhz=params['freq_max_mhz'], meta_dict=meta)
+                              freq_max_mhz=params['freq_max_mhz'], meta_dict=meta, nowait_callback=params['nowait_callback'])
     join_mfl_seperate_thread()
 
     exit(0)
