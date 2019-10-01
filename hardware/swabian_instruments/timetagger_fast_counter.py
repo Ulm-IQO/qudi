@@ -34,11 +34,11 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
 
     fastcounter_timetagger:
         module.Class: 'swabian_instruments.timetagger_fast_counter.TimeTaggerFastCounter'
-        timetagger_channel_apd_0: 0
-        timetagger_channel_apd_1: 1
-        timetagger_channel_detect: 2
-        timetagger_channel_sequence: 3
-        timetagger_sum_channels: 4
+        timetagger_channel_apd_0: 1
+        timetagger_channel_apd_1: 2
+        timetagger_channel_detect: 3
+        timetagger_channel_sequence: 4
+        timetagger_sum_channels: False
 
     """
 

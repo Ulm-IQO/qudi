@@ -44,7 +44,7 @@ class AWG70K(Base, PulserInterface):
     Example config for copy-paste:
 
     pulser_awg70000:
-        module.Class: 'awg.tektronix_awg70k.AWG70k'
+        module.Class: 'awg.tektronix_awg70k.AWG70K'
         awg_visa_address: 'TCPIP::10.42.0.211::INSTR'
         awg_ip_address: '10.42.0.211'
         timeout: 60
@@ -115,13 +115,16 @@ class AWG70K(Base, PulserInterface):
         else:
             self.awg_model = ''
 
+        self.__installed_options = self.query('*OPT?').split(',')
+
         # Query some constraints from the device and stash them in order to avoid redundant queries.
-        self.__max_seq_steps = int(self.query('SLIS:SEQ:STEP:MAX?'))
-        self.__max_seq_repetitions = int(self.query('SLIS:SEQ:STEP:RCO:MAX?'))
+        if self._has_sequence_mode():
+            self.__max_seq_steps = int(self.query('SLIS:SEQ:STEP:MAX?'))
+            self.__max_seq_repetitions = int(self.query('SLIS:SEQ:STEP:RCO:MAX?'))
         self.__min_waveform_length = int(self.query('WLIS:WAV:LMIN?'))
         self.__max_waveform_length = int(self.query('WLIS:WAV:LMAX?'))
 
-        self.__installed_options = self.query('*OPT?').split(',')
+
         return
 
     def on_deactivate(self):
@@ -167,7 +170,16 @@ class AWG70K(Base, PulserInterface):
 
         if self.awg_model == 'AWG70002A':
             constraints.sample_rate.min = 1.5e3
-            constraints.sample_rate.max = 25.0e9
+
+            if self._has_8GS():
+                constraints.sample_rate.max = 8.0e9
+            elif self._has_16GS():
+                constraints.sample_rate.max = 16.0e9
+            elif self._has_25GS():
+                constraints.sample_rate.max = 25.0e9
+            else:
+                constraints.sample_rate.max = 25.0e9
+
             constraints.sample_rate.step = 5.0e2
             constraints.sample_rate.default = 25.0e9
         elif self.awg_model == 'AWG70001A':
@@ -1683,3 +1695,25 @@ class AWG70K(Base, PulserInterface):
 
     def _has_sequence_mode(self):
         return '03' in self.__installed_options
+
+    def _has_waveform_expansion(self):
+        return '01' in self.__installed_options
+
+    def _has_50GS(self):
+        return '150' in self.__installed_options
+
+    def _has_8GS(self):
+        return '208' in self.__installed_options
+
+    def _has_16GS(self):
+        return '216' in self.__installed_options
+
+    def _has_25GS(self):
+        return '225' in self.__installed_options
+
+    def _has_AC_output(self):
+        return 'AC' in self.__installed_options
+
+
+
+
