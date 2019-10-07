@@ -418,10 +418,11 @@ class MFL_IRQ_Driven(GenericLogic):
         self.data_before_first_epoch = {'b_mhz': b_mhz_0, 'db_mhz': db_mhz_0}
 
 
-    def save_before_update(self, z, prior=None):
+    def save_before_update(self, z):
 
         self.zs[self._arr_idx(self.i_epoch), 0] = z
         if self.save_priors:
+            prior = self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi)
             self.priors.append(prior)
 
     def save_after_update(self, real_tau_s, tau_new_req_s, t_seq_s):
@@ -721,8 +722,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
             x, y, sweeps = self._pull_data_methods[self._cur_pull_data_method]()
 
-            #if sweeps < (self.i_epoch + 1) * self.n_sweeps:   # sweeps seems to be incremented after counts!
-            if abs(y) < 1e-6 and wait_for_data:
+           if abs(y) < 1e-6 and wait_for_data:
                 #self.log.warning("Zeros received from fastcounter.")
                 time.sleep(wait_s)
                 wait_total_s += wait_s
@@ -890,6 +890,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self._idx_timestamps += 1
 
     def majority_vote(self, z, z_thresh=0.5):
+        # Attention: votes high counts -> 1, opposite to common definition
         if z > z_thresh:
             return 1
         else:
@@ -960,9 +961,8 @@ class MFL_IRQ_Driven(GenericLogic):
         # we are after the mes -> prepare for next epoch
         _, z = self.get_ramsey_result(wait_for_data=not self.nowait_callback)
         z_binary = self.majority_vote(z, z_thresh=self.z_thresh)
-        prior = self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi)
 
-        self.save_before_update(z, prior)
+        self.save_before_update(z)
         if not self.nolog_callback:
             self.log.info("MFL callback invoked in epoch {}. z= {} -> {}".format(self.i_epoch, z, z_binary))
 
