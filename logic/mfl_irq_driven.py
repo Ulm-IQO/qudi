@@ -3,14 +3,17 @@ from core.module import Connector, StatusVar, Base
 from threading import Lock
 import time
 import pickle
+import qinfer as qi
 
+# to allow usage as qudi module and start as .py file
 import imp
-path_mfl_lib = './jupyter/Timo/own/mfl_sensing_simplelib.py'
+qudi_dir = 'C:/Users/Setup3-PC/Desktop/qudi/'
+path_mfl_lib = qudi_dir + '/jupyter/Timo/own/mfl_sensing_simplelib.py'
 if __name__ == '__main__':  # for debugging
     path_mfl_lib = '../jupyter/Timo/own/mfl_sensing_simplelib.py'
 
 mfl_lib = imp.load_source('packages', path_mfl_lib)
-import qinfer as qi
+
 
 import line_profiler
 profile = line_profiler.LineProfiler()
@@ -94,7 +97,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.lockfile_done = 'temp/done.lock'
         self.meta_dict = None
 
-    def on_activate(self, logger_override=None):
+    def on_activate(self, logger_override=None, force_no_qudi=False):
         """ Initialisation performed during activation of the module.
         """
 
@@ -103,7 +106,7 @@ class MFL_IRQ_Driven(GenericLogic):
         if logger_override is not None:
             self.log = logger_override
 
-        if not __name__ == '__main__':
+        if not __name__ == '__main__' and not force_no_qudi:
             self.nicard = self.counter()
             self.fastcounter = self.pulsedmasterlogic().pulsedmeasurementlogic().fastcounter()
         else:
@@ -427,40 +430,22 @@ class MFL_IRQ_Driven(GenericLogic):
 
     def save_after_update(self, real_tau_s, tau_new_req_s, t_seq_s):
 
-        b_mhz_rad = self.mfl_updater.est_mean()[0]
-        db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[0,0])
-        if self.mfl_updater.est_covariance_mtx().shape != (1,1):
-            raise NotImplementedError("Never thought about >1 dimensional estimation, sorry.")
+        b_mhz_rad = self.mfl_updater.est_mean()[:]
+        db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[:])
 
-        self.bs[self._arr_idx(self.i_epoch), 0] = b_mhz_rad / (2 * np.pi)   # MHz
-        self.dbs[self._arr_idx(self.i_epoch), 0] = db_mhz_rad / (2 * np.pi)
+        self.bs[self._arr_idx(self.i_epoch), :] = b_mhz_rad / (2 * np.pi)  # MHz
+
+        if self.mfl_updater.est_covariance_mtx().shape == (1,1):
+            # for backward compatibility store not as covariance matrix
+            self.dbs[self._arr_idx(self.i_epoch), :] = db_mhz_rad[0,0] / (2 * np.pi)
+        else:
+            self.dbs[self._arr_idx(self.i_epoch), :] = db_mhz_rad / (2 * np.pi)
 
         # values belonging logically to next epoch
         if self._arr_idx(self.i_epoch) + 1 < len(self.taus):
             self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
             self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
             self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = tau_new_req_s
-
-    def save_current_results(self, real_tau_s, requested_tau_s, t_seq_s, z):
-        # DEPRECATED, old order of save list
-
-        b_mhz_rad = self.mfl_updater.est_mean()[0]
-        db_mhz_rad = np.sqrt(self.mfl_updater.est_covariance_mtx()[0,0])
-        if self.mfl_updater.est_covariance_mtx().shape != (1,1):
-            raise NotImplementedError("Never thought about >1 dimensional estimation, sorry.")
-
-        # row 0: before first epoch, start values for algorithm
-        # todo: double check what belongs into which epoch
-        self.zs[self._arr_idx(self.i_epoch) + 1, 0] = z
-        self.bs[self._arr_idx(self.i_epoch) + 1, 0] = b_mhz_rad / (2 * np.pi)   # MHz
-        self.dbs[self._arr_idx(self.i_epoch) + 1, 0] = db_mhz_rad / (2 * np.pi)
-        # values belonging logically to next epoch
-        self.taus[self._arr_idx(self.i_epoch) + 1, 0] = real_tau_s
-        self.t_seqs[self._arr_idx(self.i_epoch) + 1, 0] = t_seq_s
-        self.taus_requested[self._arr_idx(self.i_epoch) + 1, 0] = requested_tau_s
-
-        if self.save_priors:
-            self.priors.append(self.mfl_updater.sample(n=self.mfl_updater.n_particles) / (2 * np.pi))
 
     def get_current_results(self, i_epoch=None):
 
@@ -722,7 +707,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
             x, y, sweeps = self._pull_data_methods[self._cur_pull_data_method]()
 
-           if abs(y) < 1e-6 and wait_for_data:
+            if abs(y) < 1e-6 and wait_for_data:
                 #self.log.warning("Zeros received from fastcounter.")
                 time.sleep(wait_s)
                 wait_total_s += wait_s
