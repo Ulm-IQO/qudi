@@ -49,7 +49,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             _savelogic_con: <save_logic_name>
     """
     # declare signals
-    sigDataChanged = QtCore.Signal(np.ndarray, dict, object, object)
+    sigDataChanged = QtCore.Signal(object, object, object, object)
     sigStatusChanged = QtCore.Signal(bool, bool)
     sigSettingsChanged = QtCore.Signal(dict)
     _sigNextDataFrame = QtCore.Signal()  # internal signal
@@ -584,12 +584,13 @@ class TimeSeriesReaderLogic(GenericLogic):
                                 self._oversampling_factor))
             data = np.mean(tmp, axis=2)
 
-        digital_channels = [c for c, p in self._streamer.active_channels.items() if
-                            p['type'] == StreamChannelType.DIGITAL]
+        digital_channels = [c for c, typ in self.channel_types.items() if
+                            typ == StreamChannelType.DIGITAL]
+        # Convert digital event count numbers into frequencies according to ConfigOption
         if self._calc_digital_freq and digital_channels:
             data[:len(digital_channels)] *= self.sampling_rate
 
-        # save the data if necessary
+        # Append data to save if necessary
         if self._data_recording_active:
             self._recorded_data.append(data)
 
@@ -601,8 +602,9 @@ class TimeSeriesReaderLogic(GenericLogic):
         # Insert new data
         self._trace_data[:, -new_samples:] = data
 
-        # Calculate moving average
+        # Calculate moving average by using numpy.convolve with a normalized uniform filter
         if self._moving_average_width > 1 and self._averaged_channels:
+            # Only convolve the new data and roll the previously calculated moving average
             self._trace_data_averaged = np.roll(self._trace_data_averaged, -new_samples, axis=1)
             offset = new_samples + len(self.__moving_filter) - 1
             for i, ch in enumerate(self._averaged_channels):
@@ -688,8 +690,8 @@ class TimeSeriesReaderLogic(GenericLogic):
             filelabel = 'data_trace_{0}'.format(name_tag) if name_tag else 'data_trace'
 
             # prepare the data in a dict:
-            header = ', '.join('{0} ({1})'.format(ch, prop['unit']) for ch, prop in
-                               self._streamer.active_channels.items())
+            header = ', '.join(
+                '{0} ({1})'.format(ch, unit) for ch, unit in self.channel_units.items())
 
             data = {header: data_arr.transpose()}
             filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')

@@ -434,8 +434,8 @@ class TimeSeriesGui(GUIBase):
         return
 
     @QtCore.Slot()
-    @QtCore.Slot(np.ndarray, dict)
-    @QtCore.Slot(np.ndarray, dict, object, object)
+    @QtCore.Slot(object, object)
+    @QtCore.Slot(object, object, object, object)
     def update_data(self, data_time=None, data=None, smooth_time=None, smooth_data=None):
         """ The function that grabs the data and sends it to the plot.
         """
