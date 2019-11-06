@@ -33,6 +33,7 @@ from collections import OrderedDict
 from core.module import Base
 from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints
+from core.util.modules import get_home_dir
 
 class AWGM8190A(Base, PulserInterface):
     """ A hardware module for the Keysight M8190A series for generating
@@ -45,11 +46,9 @@ class AWGM8190A(Base, PulserInterface):
             awg_visa_address: 'TCPIP0::localhost::hislip0::INSTR'
             awg_timeout: 20
             pulsed_file_dir: 'C:\\Software\\pulsed_files'
-            sample_rate_div: 1
 
     """
-
-    _modclass = 'awgm8190a'                                                        #Changed name of _modclass to AWGM8190A
+    _modclass = 'awgm8190a'
     _modtype = 'hardware'
 
     # config options
@@ -57,9 +56,12 @@ class AWGM8190A(Base, PulserInterface):
     _awg_timeout = ConfigOption(name='awg_timeout', default=20, missing='warn')
     _pulsed_file_dir = ConfigOption(name='pulsed_file_dir', missing='warn')
     _sample_rate_div = ConfigOption(name='sample_rate_div', default=1, missing='warn')
-    _dac_resolution = 12        # 8190 supports 12 (speed) or 14 (precision)
+    _dac_resolution = 14        # 8190 supports 12 (speed) or 14 (precision)
     _dac_amp_mode = 'direct'    # see manual 1.2 'options'
 
+    # physical output channel mapping
+    ch_map = {'d_ch1': 'MARK1:SAMP', 'd_ch2': 'MARK2:SAMP', 'd_ch3': 'MARK1:SYNC', 'd_ch4': 'MARK2:SYNC'}
+    ch_map_a2d = {'a_ch1': ['d_ch1', 'd_ch3'], 'a_ch2': ['d_ch2', 'd_ch4']}     # corresponding marker channels
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -91,15 +93,22 @@ class AWGM8190A(Base, PulserInterface):
                 ))
 
         if use_default_dir:
-            from core.util.modules import get_home_dir
-            homedir = get_home_dir()
-            self._pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
             self.log.warning('Either no config parameter "pulsed_file_dir" was '
                              'specified in the config for AWGM8195A class as '
                              'directory for the pulsed files or the directory '
                              'does not exist.\nThe default home directory\n'
                              '{0}\nfor pulsed files will be taken instead.'
                              ''.format(self._pulsed_file_dir))
+
+            homedir = get_home_dir()
+            self._pulsed_file_dir = os.path.join(homedir, 'pulsed_files')
+            if not os.path.exists(self._pulsed_file_dir):
+                try:
+                    os.mkdir(self._pulsed_file_dir)
+                    self.log.info("Created folder: {}".format(self._pulsed_file_dir))
+                except Exception as e:
+                    self.log.warning("Couldn't create folder: {}. {}".format(self._pulsed_file_dir,
+                                                                             str(e)))
 
         # connect to awg using PyVISA
         try:
@@ -840,11 +849,10 @@ class AWGM8190A(Base, PulserInterface):
         return low_val, high_val
 
     def _digital_ch_2_internal(self, d_ch_name):
-        mapping = {'d_ch1': 'MARK1:SAMP', 'd_ch2': 'MARK2:SAMP', 'd_ch3': 'MARK1:SYNC', 'd_ch4': 'MARK2:SYNC'}
-        if d_ch_name not in mapping:
+        if d_ch_name not in self.ch_map:
             self.log.error("Don't understand digital channel name: {}".format(d_ch_name))
 
-        return mapping[str(d_ch_name)]
+        return self.ch_map[str(d_ch_name)]
 
     def _digital_ch_corresponding_analogue_ch(self, d_ch_name):
         int_name = self._digital_ch_2_internal(d_ch_name)
@@ -857,8 +865,7 @@ class AWGM8190A(Base, PulserInterface):
 
     def _analogue_ch_corresponding_digital_chs(self, a_ch_name):
         # return value must be: [sample marker, sync marker]
-        mapping = {'a_ch1': ['d_ch1', 'd_ch3'], 'a_ch2': ['d_ch2', 'd_ch4']}
-        return  mapping[a_ch_name]
+        return self.ch_map_a2d[a_ch_name]
 
     def set_digital_level(self, low=None, high=None):
         """ Set low and/or high value of the provided digital channel.
