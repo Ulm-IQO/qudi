@@ -530,7 +530,7 @@ class MFL_IRQ_Driven(GenericLogic):
         t_phase_s = self.taus[:, 0] * n_sweeps
         t_seq_s = self.t_seqs[:, 0] * n_sweeps
         t_epoch_s = self.calc_epoch_runtime(is_start_to_end=False)
-        t_epoch_s = self.extrapolate_first_t_epoch(t_epoch_s)
+        t_epoch_s = np.asarray(self.extrapolate_first_t_epoch(t_epoch_s))
 
         return t_phase_s, t_seq_s, t_epoch_s
 
@@ -552,15 +552,24 @@ class MFL_IRQ_Driven(GenericLogic):
         """
 
         n_sweeps = self.n_sweeps
-        dB_mhz = self.dbs[:, 0]
+        dB_mhz = self.dbs[:, :]
 
         t_phase_s, t_seq_s, t_epoch_s = self.get_times()
         t_total_phase_s, t_total_seq_s, t_total_real_s = self.get_total_times()
         dB_tesla = dB_mhz / (GAMMA_NV_MHZ_GAUSS * 1e-2)
 
+        # padding for supporting 2d db data
+        t_phase_s = np.pad(t_phase_s[:,np.newaxis], [(0,0),(0,dB_mhz.shape[1]-1)], mode='edge')
+        t_seq_s = np.pad(t_seq_s[:, np.newaxis], [(0, 0), (0, dB_mhz.shape[1] - 1)], mode='edge')
+        t_epoch_s = np.pad(t_epoch_s[:, np.newaxis], [(0, 0), (0, dB_mhz.shape[1] - 1)], mode='edge')
+        t_total_phase_s = np.pad(t_total_phase_s[:, np.newaxis], [(0, 0), (0, dB_mhz.shape[1] - 1)], mode='edge')
+        t_total_seq_s = np.pad(t_total_seq_s[:, np.newaxis], [(0, 0), (0, dB_mhz.shape[1] - 1)], mode='edge')
+        t_total_real_s = np.pad(t_total_real_s[:, np.newaxis], [(0, 0), (0, dB_mhz.shape[1] - 1)], mode='edge')
+
         # padding for backward compability to old indexing of result arrays
         eta_phase_t_s = dB_tesla * np.pad(np.sqrt(t_phase_s),
-                                          (0, len(dB_tesla) - len(t_phase_s)), mode='constant', constant_values=np.nan)
+                                          (0, dB_tesla.shape[0] - t_phase_s.shape[0]), mode='constant', constant_values=np.nan)
+
         eta_seq_t_s = dB_tesla * np.sqrt(t_seq_s)  # Tesla per root Hz
         eta_real_t_s = dB_tesla * np.pad(np.sqrt(t_epoch_s),
                                          (0, len(dB_tesla) - len(t_epoch_s)), mode='constant', constant_values=np.nan)
@@ -953,12 +962,17 @@ class MFL_IRQ_Driven(GenericLogic):
         except RuntimeError as e:
             self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
 
-        self.prior_erase_mirrored()
+        self.prior_erase_beyond_sampling()
 
-    def prior_erase_mirrored(self):
+    def prior_erase_beyond_sampling(self):
         # particles = [updater.particle_locations, updater.particle_weights]
-        self.mfl_updater.particle_weights[
-            self.mfl_updater.particle_locations[:,0] > self.mfl_frq_max_mhz * 2*np.pi] = 0
+        if self.n_est_ws == 1:
+            self.mfl_updater.particle_weights[
+                self.mfl_updater.particle_locations[:,0] > self.mfl_frq_max_mhz * 2*np.pi] = 0
+        else:   # probably also works for n_est_ws = 1, for readability
+            self.mfl_updater.particle_weights[
+                (self.mfl_updater.particle_locations[:, :] > self.mfl_frq_max_mhz * 2*np.pi).any(axis=1)] = 0
+
 
     def __cb_func_epoch_done(self, taskhandle, signalID, callbackData):
 
