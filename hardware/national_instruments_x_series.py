@@ -2319,7 +2319,16 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     def set_up_single_edge_counter(self, counter_ch):
 
         task = daq.TaskHandle()
-        daq.DAQmxCreateTask('EdgeCounter{0}'.format(0), daq.byref(task))
+        try:
+            daq.DAQmxCreateTask('EdgeCounter{0}'.format(0), daq.byref(task))
+        except Exception as e:
+            self.log.exception('Error while starting EdgeCounter. CLosing counters. Try again!: {}'.format(str(e)))
+            try:
+                self.close_edge_counters()
+            except:
+                self.log.exception('Could not close counter after error.')
+            return -1
+
 
         # non clocked simple edge counter
         daq.DAQmxCreateCICountEdgesChan(task, counter_ch, 'EdgeCounter Channel {0}'.format(0),
