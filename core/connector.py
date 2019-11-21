@@ -64,6 +64,25 @@ class Connector:
                     return attr[self.interface]
                 else:
                     return attr
+
+            def __setattr__(*args):
+                return setattr(self.obj, args[1], args[2])
+
+            def __delattr__(*args):
+                return delattr(self.obj, args[1])
+
+            def __repr__(*args):
+                return repr(self.obj)
+
+            def __str__(*args):
+                return str(self.obj)
+
+            def __dir__(*args):
+                return dir(self.obj)
+
+            def __sizeof__(*args):
+                return self.obj.__sizeof__()
+
         return ConnectedInterfaceProxy()
 
     @property
