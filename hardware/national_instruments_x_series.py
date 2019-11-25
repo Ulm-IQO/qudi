@@ -99,8 +99,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _counter_ai_channels = ConfigOption('counter_ai_channels', [], missing='info')
 
     # confocal scanner
-    _default_scanner_clock_frequency = ConfigOption(
-        'default_scanner_clock_frequency', 100, missing='info')
+    _default_scanner_clock_frequency = ConfigOption('default_scanner_clock_frequency', 100, missing='info')
     _scanner_clock_channel = ConfigOption('scanner_clock_channel', missing='warn')
     _pixel_clock_channel = ConfigOption('pixel_clock_channel', None)
     _scanner_ao_channels = ConfigOption('scanner_ao_channels', missing='error')
@@ -140,6 +139,10 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
         self._odmr_pulser_daq_task = None
         self._oversampling = 0
         self._lock_in_active = False
+
+        self._photon_sources = self._photon_sources if self._photon_sources is not None else list()
+        self._scanner_counter_channels = self._scanner_counter_channels if self._scanner_counter_channels is not None else list()
+        self._scanner_ai_channels = self._scanner_ai_channels if self._scanner_ai_channels is not None else list()
 
         # handle all the parameters given by the config
         self._current_position = np.zeros(len(self._scanner_ao_channels))
