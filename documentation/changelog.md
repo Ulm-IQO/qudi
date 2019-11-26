@@ -52,7 +52,8 @@ The potential sequence_options are:
   * `NON` (no sequence mode)
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
-* 
+* added the option to do a purely analog ODMR scan.
+*
 
 
 
