@@ -1913,7 +1913,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     def get_odmr_channels(self):
         ch = list()
         if self._scanner_counter_channels:
-            ch = ch.append(self._scanner_counter_channels[0])
+            ch.append(self._scanner_counter_channels[0])
         ch.extend(self._scanner_ai_channels)
         return ch
 
