@@ -1474,7 +1474,7 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                              of the pulse generator hardware.
         """
         num = self.get_status_bit()
-        if num in [1, 2]:
+        if num in [0, 1, 2]:
             state = 0
         else:
             state = 1
