@@ -69,7 +69,6 @@ class TimeSeriesReaderLogic(GenericLogic):
     _data_rate = StatusVar('data_rate', default=50)
     _active_channels = StatusVar('active_channels', default=None)
     _averaged_channels = StatusVar('averaged_channels', default=None)
-    _data_type = StatusVar('data_type', default=None)
 
     def __init__(self, *args, **kwargs):
         """
@@ -110,30 +109,25 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         # Check valid StatusVar
         # active channels
-        constraints = self.streamer_constraints
-        avail_channels = tuple(self._streamer.available_channels)
+        avail_channels = tuple(ch.name for ch in self._streamer.available_channels)
         if self._active_channels is None:
             if self._streamer.active_channels:
-                self._active_channels = tuple(self._streamer.active_channels)
+                self._active_channels = tuple(ch.name for ch in self._streamer.active_channels)
             else:
                 self._active_channels = avail_channels
-        elif any(chnl not in avail_channels for chnl in self._active_channels):
-            self.log.warning('Invalid active channels found in StatusVar. Falling back to default.')
+        elif any(ch not in avail_channels for ch in self._active_channels):
+            self.log.warning('Invalid active channels found in StatusVar. StatusVar ignored.')
             if self._streamer.active_channels:
-                self._active_channels = tuple(self._streamer.active_channels)
+                self._active_channels = tuple(ch.name for ch in self._streamer.active_channels)
             else:
                 self._active_channels = avail_channels
+
         # averaged channels
         if self._averaged_channels is None:
             self._averaged_channels = self._active_channels
-        elif any(ch not in self._active_channels for ch in self._averaged_channels):
-            self._averaged_channels = self._active_channels
-        # data type
-        if self._data_type is None:
-            self._data_type = self._streamer.data_type
-        elif self._data_type not in constraints.data_types:
-            self.log.warning('Invalid data_type found in StatusVar. Falling back to default.')
-            self._data_type = self._streamer.data_type
+        else:
+            self._averaged_channels = tuple(
+                ch for ch in self._averaged_channels if ch in self._active_channels)
 
         # Check for odd moving averaging window
         if self._moving_average_width % 2 == 0:
@@ -143,7 +137,10 @@ class TimeSeriesReaderLogic(GenericLogic):
             self._moving_average_width += 1
 
         # set settings in streamer hardware
-        self.configure_settings(**self.all_settings)
+        settings = self.all_settings
+        settings['active_channels'] = self._active_channels
+        settings['data_rate'] = self._data_rate
+        self.configure_settings(**settings)
 
         # set up internal frame loop connection
         self._sigNextDataFrame.connect(self.acquire_data_block, QtCore.Qt.QueuedConnection)
@@ -157,12 +154,15 @@ class TimeSeriesReaderLogic(GenericLogic):
             self._stop_reader_wait()
 
         self._sigNextDataFrame.disconnect()
+
+        # Save status vars
+        self._active_channels = self.active_channel_names
         return
 
     def _init_data_arrays(self):
         window_size = self.trace_window_size_samples
         self._trace_data = np.zeros(
-            [self.number_of_channels, window_size + self._moving_average_width // 2])
+            [self.number_of_active_channels, window_size + self._moving_average_width // 2])
         self._trace_data_averaged = np.zeros(
             [len(self._averaged_channels), window_size - self._moving_average_width // 2])
         self._trace_times = np.arange(window_size) / self._data_rate
@@ -184,7 +184,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     @property
     def data_rate(self):
-        return self._data_rate
+        return self.sampling_rate / self.oversampling_factor
 
     @data_rate.setter
     def data_rate(self, val):
@@ -232,63 +232,73 @@ class TimeSeriesReaderLogic(GenericLogic):
 
     @property
     def sampling_rate(self):
-        return self._oversampling_factor * self._data_rate
+        return self._streamer.sample_rate
 
     @property
-    def channel_names(self):
-        return tuple(self._streamer.active_channels)
+    def available_channels(self):
+        return self._streamer.available_channels
 
     @property
-    def averaged_channels(self):
-        return self._averaged_channels
+    def active_channels(self):
+        return self._streamer.active_channels
 
     @property
-    def number_of_channels(self):
-        return self._streamer.number_of_channels
+    def active_channel_names(self):
+        return tuple(ch.name for ch in self._streamer.active_channels)
 
     @property
-    def channel_units(self):
+    def active_channel_units(self):
         unit_dict = dict()
-        for ch, prop in self._streamer.active_channels.items():
-            if self._calc_digital_freq and prop['type'] == StreamChannelType.DIGITAL:
-                unit_dict[ch] = 'Hz'
+        for ch in self._streamer.active_channels:
+            if self._calc_digital_freq and ch.type == StreamChannelType.DIGITAL:
+                unit_dict[ch.name] = 'Hz'
             else:
-                unit_dict[ch] = prop['unit']
+                unit_dict[ch.name] = ch.unit
         return unit_dict
 
     @property
-    def channel_types(self):
-        return {ch: prop['type'] for ch, prop in self._streamer.active_channels.items()}
+    def active_channel_types(self):
+        return {ch.name: ch.type for ch in self._streamer.active_channels}
 
     @property
-    def has_analog_channels(self):
-        return any(StreamChannelType.ANALOG == ch_type for ch_type in self.channel_types.values())
+    def has_active_analog_channels(self):
+        return any(ch.type == StreamChannelType.ANALOG for ch in self._streamer.active_channels)
 
     @property
-    def has_digital_channels(self):
-        return any(StreamChannelType.DIGITAL == ch_type for ch_type in self.channel_types.values())
+    def has_active_digital_channels(self):
+        return any(ch.type == StreamChannelType.DIGITAL for ch in self._streamer.active_channels)
+
+    @property
+    def averaged_channel_names(self):
+        return self._averaged_channels
+
+    @property
+    def number_of_active_channels(self):
+        return self._streamer.number_of_channels
 
     @property
     def trace_data(self):
         data_offset = self._trace_data.shape[1] - self._moving_average_width // 2
-        data = {ch: self._trace_data[i, :data_offset] for i, ch in enumerate(self._active_channels)}
+        data = {ch: self._trace_data[i, :data_offset] for i, ch in
+                enumerate(self.active_channel_names)}
         return self._trace_times, data
 
     @property
     def averaged_trace_data(self):
-        if not self._averaged_channels or self._moving_average_width <= 1:
+        if not self.averaged_channel_names or self.moving_average_width <= 1:
             return None, None
-        data = {ch: self._trace_data_averaged[i] for i, ch in enumerate(self._averaged_channels)}
+        data = {ch: self._trace_data_averaged[i] for i, ch in
+                enumerate(self.averaged_channel_names)}
         return self._trace_times[-self._trace_data_averaged.shape[1]:], data
 
     @property
     def all_settings(self):
-        return {'oversampling_factor': self._oversampling_factor,
-                'active_channels': self._active_channels,
-                'averaged_channels': self._averaged_channels,
-                'moving_average_width': self._moving_average_width,
-                'trace_window_size': self._trace_window_size,
-                'data_rate': self._data_rate}
+        return {'oversampling_factor': self.oversampling_factor,
+                'active_channels': self.active_channels,
+                'averaged_channels': self.averaged_channel_names,
+                'moving_average_width': self.moving_average_width,
+                'trace_window_size': self.trace_window_size,
+                'data_rate': self.data_rate}
 
     @QtCore.Slot(dict)
     def configure_settings(self, settings_dict=None, **kwargs):
@@ -313,30 +323,33 @@ class TimeSeriesReaderLogic(GenericLogic):
         if not settings_dict:
             return self.all_settings
 
+        # Flag indicating if the stream should be restarted
         restart = self.module_state() == 'locked'
         if restart:
             self._stop_reader_wait()
 
-        constraints = self.streamer_constraints
-        all_ch = self._streamer.available_channels
-        # Flag indicating if the stream should be restarted
         with self.threadlock:
+            constraints = self.streamer_constraints
+            all_ch = tuple(ch.name for ch in self._streamer.available_channels)
+            data_rate = self.data_rate
+            active_ch = self.active_channel_names
+
             if 'oversampling_factor' in settings_dict:
                 new_val = int(settings_dict['oversampling_factor'])
                 if new_val < 1:
                     self.log.error('Oversampling factor must be integer value >= 1 '
                                    '(received: {0:d}).'.format(new_val))
                 else:
-                    if self.has_analog_channels and self.has_digital_channels:
+                    if self.has_active_analog_channels and self.has_active_digital_channels:
                         min_val = constraints.combined_sample_rate.min
                         max_val = constraints.combined_sample_rate.max
-                    elif self.has_analog_channels:
+                    elif self.has_active_analog_channels:
                         min_val = constraints.analog_sample_rate.min
                         max_val = constraints.analog_sample_rate.max
                     else:
                         min_val = constraints.digital_sample_rate.min
                         max_val = constraints.digital_sample_rate.max
-                    if not (min_val <= (new_val * self._data_rate) <= max_val):
+                    if not (min_val <= (new_val * data_rate) <= max_val):
                         if 'data_rate' in settings_dict:
                             self._oversampling_factor = new_val
                         else:
@@ -356,53 +369,52 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.log.warning('Moving average window must be odd integer number in order to '
                                      'ensure perfect data alignment. Will increase value to {0:d}.'
                                      ''.format(new_val))
-                if new_val / self._data_rate > self._trace_window_size:
+                if new_val / data_rate > self.trace_window_size:
                     if 'data_rate' in settings_dict or 'trace_window_size' in settings_dict:
                         self._moving_average_width = new_val
-                        self.__moving_filter = np.full(shape=self._moving_average_width,
-                                                       fill_value=1.0 / self._moving_average_width)
+                        self.__moving_filter = np.full(shape=self.moving_average_width,
+                                                       fill_value=1.0 / self.moving_average_width)
                     else:
                         self.log.warning('Moving average width to set ({0:d}) is smaller than the '
                                          'trace window size. Will adjust trace window size to '
                                          'match.'.format(new_val))
-                        self._trace_window_size = float(new_val / self._data_rate)
+                        self._trace_window_size = float(new_val / data_rate)
                 else:
                     self._moving_average_width = new_val
-                    self.__moving_filter = np.full(shape=self._moving_average_width,
-                                                   fill_value=1.0 / self._moving_average_width)
+                    self.__moving_filter = np.full(shape=self.moving_average_width,
+                                                   fill_value=1.0 / self.moving_average_width)
 
             if 'data_rate' in settings_dict:
                 new_val = float(settings_dict['data_rate'])
                 if new_val < 0:
                     self.log.error('Data rate must be float value > 0.')
                 else:
-                    if self.has_analog_channels and self.has_digital_channels:
+                    if self.has_active_analog_channels and self.has_active_digital_channels:
                         min_val = constraints.combined_sample_rate.min
                         max_val = constraints.combined_sample_rate.max
-                    elif self.has_analog_channels:
+                    elif self.has_active_analog_channels:
                         min_val = constraints.analog_sample_rate.min
                         max_val = constraints.analog_sample_rate.max
                     else:
                         min_val = constraints.digital_sample_rate.min
                         max_val = constraints.digital_sample_rate.max
-                    sample_rate = new_val * self._oversampling_factor
+                    sample_rate = new_val * self.oversampling_factor
                     if not (min_val <= sample_rate <= max_val):
                         self.log.warning('Data rate to set ({0:.3e}Hz) would cause sampling rate '
                                          'outside allowed value range. Will clip data rate to '
                                          'boundaries.'.format(new_val))
                         if sample_rate > max_val:
-                            new_val = max_val / self._oversampling_factor
+                            new_val = max_val / self.oversampling_factor
                         elif sample_rate < min_val:
-                            new_val = min_val / self._oversampling_factor
+                            new_val = min_val / self.oversampling_factor
 
-                    data_period = 1 / new_val
-                    self._data_rate = new_val
-                    if data_period * self._moving_average_width > self._trace_window_size:
+                    data_rate = new_val
+                    if self.moving_average_width / data_rate > self.trace_window_size:
                         if 'trace_window_size' not in settings_dict:
                             self.log.warning('Data rate to set ({0:.3e}Hz) would cause too few '
                                              'data points within the trace window. Adjusting window'
                                              ' size.'.format(new_val))
-                            self._trace_window_size = data_period * self._moving_average_width
+                            self._trace_window_size = self.moving_average_width / data_rate
 
             if 'trace_window_size' in settings_dict:
                 new_val = float(settings_dict['trace_window_size'])
@@ -410,15 +422,14 @@ class TimeSeriesReaderLogic(GenericLogic):
                     self.log.error('Trace window size must be float value > 0.')
                 else:
                     # Round window to match data rate
-                    data_points = int(round(new_val * self._data_rate))
-                    new_val = data_points / self._data_rate
+                    data_points = int(round(new_val * data_rate))
+                    new_val = data_points / data_rate
                     # Check if enough points are present
-                    if data_points < self._moving_average_width:
+                    if data_points < self.moving_average_width:
                         self.log.warning('Requested trace_window_size ({0:.3e}s) would have too '
                                          'few points for moving average. Adjusting window size.'
                                          ''.format(new_val))
-                        new_val = self._moving_average_width / self._data_rate
-                        data_points = self._moving_average_width
+                        new_val = self.moving_average_width / data_rate
                     self._trace_window_size = new_val
 
             if 'active_channels' in settings_dict:
@@ -426,31 +437,27 @@ class TimeSeriesReaderLogic(GenericLogic):
                 if any(ch not in all_ch for ch in new_val):
                     self.log.error('Invalid channel found to set active.')
                 else:
-                    self._active_channels = new_val
+                    active_ch = new_val
 
             if 'averaged_channels' in settings_dict:
-                new_val = tuple(
-                    ch for ch in settings_dict['averaged_channels'] if ch in self._active_channels)
+                new_val = tuple(ch for ch in settings_dict['averaged_channels'] if ch in active_ch)
                 if any(ch not in all_ch for ch in new_val):
                     self.log.error('Invalid channel found to set activate moving average for.')
                 else:
                     self._averaged_channels = new_val
 
             # Apply settings to hardware if needed
-            curr_settings = self._streamer.configure(sample_rate=self.sampling_rate,
-                                                     data_type=self._data_type,
-                                                     streaming_mode=StreamingMode.CONTINUOUS,
-                                                     active_channels=self._active_channels,
-                                                     buffer_size=10000000,
-                                                     use_circular_buffer=True)
-            # update actually set values
-            self._data_type = curr_settings['data_type']
-            self._active_channels = tuple(curr_settings['active_channels'])
-            self._averaged_channels = tuple(
-                ch for ch in self._averaged_channels if ch in self._active_channels)
-            self._data_rate = curr_settings['sample_rate'] / self._oversampling_factor
+            self._streamer.configure(sample_rate=data_rate * self.oversampling_factor,
+                                     streaming_mode=StreamingMode.CONTINUOUS,
+                                     active_channels=active_ch,
+                                     buffer_size=10000000,
+                                     use_circular_buffer=True)
 
-            self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
+            # update actually set values
+            self._averaged_channels = tuple(
+                ch for ch in self._averaged_channels if ch in self.active_channel_names)
+
+            self._samples_per_frame = int(round(self.data_rate / self._max_frame_rate))
             self._init_data_arrays()
             settings = self.all_settings
             self.sigSettingsChanged.emit(settings)
@@ -479,24 +486,22 @@ class TimeSeriesReaderLogic(GenericLogic):
 
             self.sigStatusChanged.emit(True, self._data_recording_active)
 
-            # Configure streaming device
-            curr_settings = self._streamer.configure(sample_rate=self.sampling_rate,
-                                                     data_type=self._data_type,
-                                                     streaming_mode=StreamingMode.CONTINUOUS,
-                                                     active_channels=self._active_channels,
-                                                     buffer_size=10000000,
-                                                     use_circular_buffer=True)
-            # update actually set values
-            self._data_type = curr_settings['data_type']
-            self._active_channels = tuple(curr_settings['active_channels'])
-            self._averaged_channels = tuple(
-                ch for ch in self._averaged_channels if ch in self._active_channels)
-            self._data_rate = curr_settings['sample_rate'] / self._oversampling_factor
-
-            self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
-            self._init_data_arrays()
-            settings = self.all_settings
-            self.sigSettingsChanged.emit(settings)
+            # # Configure streaming device
+            # curr_settings = self._streamer.configure(sample_rate=self.sampling_rate,
+            #                                          streaming_mode=StreamingMode.CONTINUOUS,
+            #                                          active_channels=self._active_channels,
+            #                                          buffer_size=10000000,
+            #                                          use_circular_buffer=True)
+            # # update actually set values
+            # self._active_channels = tuple(ch.name for ch in curr_settings['active_channels'])
+            # self._averaged_channels = tuple(
+            #     ch for ch in self._averaged_channels if ch in self._active_channels)
+            # self._data_rate = curr_settings['sample_rate'] / self._oversampling_factor
+            #
+            # self._samples_per_frame = int(round(self._data_rate / self._max_frame_rate))
+            # self._init_data_arrays()
+            # settings = self.all_settings
+            # self.sigSettingsChanged.emit(settings)
 
             if self._data_recording_active:
                 self._record_start_time = dt.datetime.now()
@@ -574,17 +579,17 @@ class TimeSeriesReaderLogic(GenericLogic):
         Processes raw data from the streaming device
         """
         # Down-sample and average according to oversampling factor
-        if self._oversampling_factor > 1:
-            if data.shape[1] % self._oversampling_factor != 0:
+        if self.oversampling_factor > 1:
+            if data.shape[1] % self.oversampling_factor != 0:
                 self.log.error('Number of samples per channel not an integer multiple of the '
                                'oversampling factor.')
                 return -1
             tmp = data.reshape((data.shape[0],
-                                data.shape[1] // self._oversampling_factor,
-                                self._oversampling_factor))
+                                data.shape[1] // self.oversampling_factor,
+                                self.oversampling_factor))
             data = np.mean(tmp, axis=2)
 
-        digital_channels = [c for c, typ in self.channel_types.items() if
+        digital_channels = [c for c, typ in self.active_channel_types.items() if
                             typ == StreamChannelType.DIGITAL]
         # Convert digital event count numbers into frequencies according to ConfigOption
         if self._calc_digital_freq and digital_channels:
@@ -603,12 +608,12 @@ class TimeSeriesReaderLogic(GenericLogic):
         self._trace_data[:, -new_samples:] = data
 
         # Calculate moving average by using numpy.convolve with a normalized uniform filter
-        if self._moving_average_width > 1 and self._averaged_channels:
+        if self.moving_average_width > 1 and self.averaged_channel_names:
             # Only convolve the new data and roll the previously calculated moving average
             self._trace_data_averaged = np.roll(self._trace_data_averaged, -new_samples, axis=1)
             offset = new_samples + len(self.__moving_filter) - 1
-            for i, ch in enumerate(self._averaged_channels):
-                data_index = self._active_channels.index(ch)
+            for i, ch in enumerate(self.averaged_channel_names):
+                data_index = self.active_channel_names.index(ch)
                 self._trace_data_averaged[i, -new_samples:] = np.convolve(
                     self._trace_data[data_index, -offset:], self.__moving_filter, mode='valid')
         return
@@ -674,15 +679,15 @@ class TimeSeriesReaderLogic(GenericLogic):
             return np.empty(0), dict()
 
         saving_stop_time = self._record_start_time + dt.timedelta(
-            seconds=data_arr.shape[1] * self._data_rate)
+            seconds=data_arr.shape[1] * self.data_rate)
 
         # write the parameters:
         parameters = dict()
         parameters['Start recoding time'] = self._record_start_time.strftime(
             '%d.%m.%Y, %H:%M:%S.%f')
         parameters['Stop recoding time'] = saving_stop_time.strftime('%d.%m.%Y, %H:%M:%S.%f')
-        parameters['Data rate (Hz)'] = self._data_rate
-        parameters['Oversampling factor (samples)'] = self._oversampling_factor
+        parameters['Data rate (Hz)'] = self.data_rate
+        parameters['Oversampling factor (samples)'] = self.oversampling_factor
         parameters['Sampling rate (Hz)'] = self.sampling_rate
 
         if to_file:
@@ -691,12 +696,21 @@ class TimeSeriesReaderLogic(GenericLogic):
 
             # prepare the data in a dict:
             header = ', '.join(
-                '{0} ({1})'.format(ch, unit) for ch, unit in self.channel_units.items())
+                '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
 
             data = {header: data_arr.transpose()}
             filepath = self._savelogic.get_path_for_module(module_name='TimeSeriesReader')
+            set_of_units = set(self.active_channel_units.values())
+            unit_list = tuple(self.active_channel_units)
+            y_unit = 'arb.u.'
+            occurrences = 0
+            for unit in set_of_units:
+                count = unit_list.count(unit)
+                if count > occurrences:
+                    occurrences = count
+                    y_unit = unit
 
-            fig = self._draw_figure(data_arr, self._data_rate) if save_figure else None
+            fig = self._draw_figure(data_arr, self.data_rate, y_unit) if save_figure else None
 
             self._savelogic.save_data(data=data,
                                       filepath=filepath,
@@ -708,7 +722,7 @@ class TimeSeriesReaderLogic(GenericLogic):
             self.log.info('Time series saved to: {0}'.format(filepath))
         return data_arr, parameters
 
-    def _draw_figure(self, data, timebase):
+    def _draw_figure(self, data, timebase, y_unit):
         """ Draw figure to save with data file.
 
         @param: nparray data: a numpy array containing counts vs time for all detectors
@@ -730,7 +744,7 @@ class TimeSeriesReaderLogic(GenericLogic):
         else:
             ax.plot(time_data, data.transpose(), linestyle=':', linewidth=0.5)
         ax.set_xlabel('Time (s)')
-        ax.set_ylabel('Signal ({0}arb.u.)'.format(max_abs_value.scale))
+        ax.set_ylabel('Signal ({0}{1})'.format(max_abs_value.scale, y_unit))
         return fig
 
     @QtCore.Slot()
@@ -752,13 +766,13 @@ class TimeSeriesReaderLogic(GenericLogic):
             # write the parameters:
             parameters = dict()
             parameters['Time stamp'] = timestamp.strftime('%d.%m.%Y, %H:%M:%S.%f')
-            parameters['Data rate (Hz)'] = self._data_rate
-            parameters['Oversampling factor (samples)'] = self._oversampling_factor
+            parameters['Data rate (Hz)'] = self.data_rate
+            parameters['Oversampling factor (samples)'] = self.oversampling_factor
             parameters['Sampling rate (Hz)'] = self.sampling_rate
 
-            header = ', '.join('{0} ({1})'.format(ch, unit) for ch, unit in
-                               self.channel_units.items())
-            data_offset = self._trace_data.shape[1] - self._moving_average_width // 2
+            header = ', '.join(
+                '{0} ({1})'.format(ch, unit) for ch, unit in self.active_channel_units.items())
+            data_offset = self._trace_data.shape[1] - self.moving_average_width // 2
             data = {header: self._trace_data[:, :data_offset].transpose()}
 
             if to_file:
