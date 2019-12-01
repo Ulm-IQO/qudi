@@ -33,7 +33,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
 from interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
-from interface.data_instream_interface import StreamingMode, StreamChannelType
+from interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 
 
 class NIXSeriesInStreamer(Base, DataInStreamInterface):
@@ -77,6 +77,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         'max_channel_samples_buffer', default=25e6, missing='info')
     _rw_timeout = ConfigOption('read_write_timeout', default=10, missing='nothing')
 
+    # Hardcoded data type
+    __data_type = np.float64
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -92,8 +95,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # Internal settings
         self.__sample_rate = -1.0
-        self.__data_type = np.float64
-        self.__total_number_of_samples = None
+        self.__stream_length = -1
         self.__buffer_size = -1
         self.__use_circular_buffer = False
         self.__streaming_mode = None
@@ -102,8 +104,10 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self._data_buffer = np.empty(0, dtype=self.__data_type)
         self._has_overflown = False
 
-        # List of all available counters for this device
+        # List of all available counters and terminals for this device
         self.__all_counters = tuple()
+        self.__all_digital_terminals = tuple()
+        self.__all_analog_terminals = tuple()
 
         # currently active channels
         self.__active_channels = tuple()
@@ -118,7 +122,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         # Check if device is connected and set device to use
         dev_names = ni.system.System().devices.device_names
-        if self._device_name.lower() not in [dev.lower() for dev in dev_names]:
+        if self._device_name.lower() not in set(dev.lower() for dev in dev_names):
             raise Exception('Device name "{0}" not found in list of connected devices: {1}\n'
                             'Activation of NIXSeriesInStreamer failed!'
                             ''.format(self._device_name, dev_names))
@@ -131,35 +135,33 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         self.__all_counters = tuple(
             ctr.split('/')[-1] for ctr in self._device_handle.co_physical_chans.channel_names if
             'ctr' in ctr.lower())
+        self.__all_digital_terminals = tuple(
+            term.rsplit('/', 1)[-1].lower() for term in self._device_handle.terminals if 'PFI' in term)
+        self.__all_analog_terminals = tuple(
+            term.rsplit('/', 1)[-1].lower() for term in self._device_handle.ai_physical_chans.channel_names)
 
         # Check digital input terminals
         if self._digital_sources:
-            term_names = [term.rsplit('/', 1)[-1] for term in self._device_handle.terminals if
-                          'PFI' in term]
-            new_source_names = [src.strip('/').split('/')[-1].upper() for src in
-                                self._digital_sources]
-            invalid_sources = set(new_source_names).difference(set(term_names))
+            source_set = set(self._extract_terminal(src) for src in self._digital_sources)
+            invalid_sources = source_set.difference(set(self.__all_digital_terminals))
             if invalid_sources:
                 self.log.error(
                     'Invalid digital source terminals encountered. Following sources will '
                     'be ignored:\n  {0}\nValid digital input terminals are:\n  {1}'
                     ''.format(', '.join(natural_sort(invalid_sources)),
-                              ', '.join(term_names)))
-            self._digital_sources = natural_sort(set(new_source_names).difference(invalid_sources))
+                              ', '.join(self.__all_digital_terminals)))
+            self._digital_sources = natural_sort(source_set.difference(invalid_sources))
 
         # Check analog input channels
         if self._analog_sources:
-            channel_names = [chnl.rsplit('/', 1)[-1] for chnl in
-                             self._device_handle.ai_physical_chans.channel_names]
-            new_source_names = [src.strip('/').split('/')[-1].lower() for src in
-                                self._analog_sources]
-            invalid_sources = set(new_source_names).difference(set(channel_names))
+            source_set = set(self._extract_terminal(src) for src in self._analog_sources)
+            invalid_sources = source_set.difference(set(self.__all_analog_terminals))
             if invalid_sources:
                 self.log.error('Invalid analog source channels encountered. Following sources will '
                                'be ignored:\n  {0}\nValid analog input channels are:\n  {1}'
                                ''.format(', '.join(natural_sort(invalid_sources)),
-                                         ', '.join(channel_names)))
-            self._analog_sources = natural_sort(set(new_source_names).difference(invalid_sources))
+                                         ', '.join(self.__all_analog_terminals)))
+            self._analog_sources = natural_sort(source_set.difference(invalid_sources))
 
         # Check if all input channels fit in the device
         if len(self._digital_sources) > 3:
@@ -176,17 +178,21 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # Create constraints
         self._constraints = DataInStreamConstraints()
-        self._constraints.digital_channels = {
-            c: {'unit': 'counts', 'type': StreamChannelType.DIGITAL} for c in self._digital_sources}
-        self._constraints.analog_channels = {
-            c: {'unit': 'V', 'type': StreamChannelType.ANALOG} for c in self._analog_sources}
+        self._constraints.digital_channels = tuple(
+            StreamChannel(name=src,
+                          type=StreamChannelType.DIGITAL,
+                          unit='counts') for src in self._digital_sources)
+        self._constraints.analog_channels = tuple(
+            StreamChannel(name=src,
+                          type=StreamChannelType.ANALOG,
+                          unit='V') for src in self._analog_sources)
 
         self._constraints.analog_sample_rate.min = self._device_handle.ai_min_rate
         self._constraints.analog_sample_rate.max = self._device_handle.ai_max_multi_chan_rate
         self._constraints.analog_sample_rate.step = 1
         self._constraints.analog_sample_rate.unit = 'Hz'
         # FIXME: What is the minimum frequency for the digital counter timebase?
-        self._constraints.digital_sample_rate.min = 0
+        self._constraints.digital_sample_rate.min = 0.1
         self._constraints.digital_sample_rate.max = self._device_handle.ci_max_timebase
         self._constraints.digital_sample_rate.step = 0.1
         self._constraints.digital_sample_rate.unit = 'Hz'
@@ -198,24 +204,19 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         # TODO: Implement FINITE streaming mode
         self._constraints.streaming_modes = (StreamingMode.CONTINUOUS,)  # , StreamingMode.FINITE)
-        if self._analog_sources:
-            self._constraints.data_types = (np.float64,)
-        else:
-            self._constraints.data_types = (np.uint32, np.float64)
+        self._constraints.data_type = np.float64
         self._constraints.allow_circular_buffer = True
 
         # Check external sample clock source
         if self._external_sample_clock_source is not None:
-            new_name = self._external_sample_clock_source.strip('/').lower()
-            if 'dev' in new_name:
-                new_name = new_name.split('/', 1)[-1]
-            if new_name not in [src.split('/', 2)[-1].lower() for src in self._device_handle.terminals]:
+            new_name = self._extract_terminal(self._external_sample_clock_source)
+            if new_name in self.__all_digital_terminals:
+                self._external_sample_clock_source = new_name
+            else:
                 self.log.error('No valid source terminal found for external_sample_clock_source '
                                '"{0}". Falling back to internal sampling clock.'
                                ''.format(self._external_sample_clock_source))
                 self._external_sample_clock_source = None
-            else:
-                self._external_sample_clock_source = new_name
 
         # Check external sample clock frequency
         if self._external_sample_clock_source is None:
@@ -251,20 +252,17 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
                 self._external_sample_clock_frequency = max(
                     self._external_sample_clock_frequency,
                     self._constraints.digital_sample_rate.min)
-        if self._external_sample_clock_frequency is not None:
-            self.__sample_rate = float(self._external_sample_clock_frequency)
 
         self.terminate_all_tasks()
-        self._di_task_handles = list()
-        self._di_readers = list()
-        self._ai_task_handle = None
-        self._ai_reader = None
-        self._clk_task_handle = None
 
-        self.__sample_rate = self._constraints.combined_sample_rate.min
+        if self._external_sample_clock_frequency is not None:
+            self.__sample_rate = float(self._external_sample_clock_frequency)
+        else:
+            self.__sample_rate = self._constraints.combined_sample_rate.min
+
         self.__data_type = np.float64
-        self.__total_number_of_samples = None
-        self.__buffer_size = min(self._max_channel_samples_buffer, 1000000)
+        self.__stream_length = -1
+        self.__buffer_size = max(self._max_channel_samples_buffer, 1000000)
         self.__use_circular_buffer = False
         self.__streaming_mode = StreamingMode.CONTINUOUS
         self.__active_channels = tuple()
@@ -285,11 +283,29 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     @property
     def sample_rate(self):
         """
-        Read-only property to return the currently set sample rate
+        The currently set sample rate
 
         @return float: current sample rate in Hz
         """
         return self.__sample_rate
+
+    @sample_rate.setter
+    def sample_rate(self, rate):
+        if self._check_settings_change():
+            if not self._clk_frequency_valid(rate):
+                if self._analog_sources:
+                    min_val = self._constraints.combined_sample_rate.min
+                    max_val = self._constraints.combined_sample_rate.max
+                else:
+                    min_val = self._constraints.digital_sample_rate.min
+                    max_val = self._constraints.digital_sample_rate.max
+                self.log.warning(
+                    'Sample rate requested ({0:.3e}Hz) is out of bounds. Please choose '
+                    'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
+                    'the closest boundary.'.format(rate, min_val, max_val))
+                rate = max(min(max_val, rate), min_val)
+            self.__sample_rate = float(rate)
+        return
 
     @property
     def data_type(self):
@@ -303,7 +319,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     @property
     def buffer_size(self):
         """
-        Read-only property to return the currently buffer size.
+        The currently set buffer size.
         Buffer size corresponds to the number of samples per channel that can be buffered. So the
         actual buffer size in bytes can be estimated by:
             buffer_size * number_of_channels * size_in_bytes(data_type)
@@ -312,25 +328,61 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         return self.__buffer_size
 
+    @buffer_size.setter
+    def buffer_size(self, size):
+        if self._check_settings_change():
+            size = int(size)
+            if size > self._max_channel_samples_buffer:
+                self.log.error('buffer_size to set ({0}) is larger than maximum allowed buffer '
+                               'size of {1:d} samples per channel.'
+                               ''.format(size, self._max_channel_samples_buffer))
+                return
+            elif size < 1:
+                self.log.error('Buffer size smaller than 1 makes no sense. Tried to set {0} as '
+                               'buffer size and failed.'.format(size))
+                return
+            self.__buffer_size = int(size)
+            self._init_buffer()
+        return
+
     @property
     def use_circular_buffer(self):
         """
-        Read-only property to return a flag indicating if circular sample buffering is being used
-        or not.
+        A flag indicating if circular sample buffering is being used or not.
 
         @return bool: indicate if circular sample buffering is used (True) or not (False)
         """
         return self.__use_circular_buffer
 
+    @use_circular_buffer.setter
+    def use_circular_buffer(self, flag):
+        if self._check_settings_change():
+            if flag and not self._constraints.allow_circular_buffer:
+                self.log.error('Circular buffer not allowed for this hardware module.')
+                return
+            self.__use_circular_buffer = bool(flag)
+        return
+
     @property
     def streaming_mode(self):
         """
-        Read-only property to return the currently configured streaming mode Enum.
+        The currently configured streaming mode Enum.
 
         @return StreamingMode: Finite (StreamingMode.FINITE) or continuous
                                (StreamingMode.CONTINUOUS) data acquisition
         """
         return self.__streaming_mode
+
+    @streaming_mode.setter
+    def streaming_mode(self, mode):
+        if self._check_settings_change():
+            mode = StreamingMode(mode)
+            if mode not in self._constraints.streaming_modes:
+                self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
+                               ''.format(mode, self._constraints.streaming_modes))
+                return
+            self.__streaming_mode = mode
+        return
 
     @property
     def number_of_channels(self):
@@ -345,32 +397,39 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
     def active_channels(self):
         """
         The currently configured data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
         @return dict: currently active data channel properties with keys being the channel names
-                      and values being the corresponding property dicts.
+                      and values being the corresponding StreamChannel instances.
         """
-        return {c: p.copy() for c, p in self.available_channels.items() if
-                c in self.__active_channels}
+        constr = self._constraints
+        return(*(ch.copy() for ch in constr.digital_channels if ch.name in self.__active_channels),
+               *(ch.copy() for ch in constr.analog_channels if ch.name in self.__active_channels))
+
+    @active_channels.setter
+    def active_channels(self, channels):
+        if self._check_settings_change():
+            if any(ch not in self.available_channels for ch in channels):
+                self.log.error('Invalid channel to stream from encountered ({0}).\nValid channels '
+                               'are: {1}'
+                               ''.format(tuple(channels), tuple(self.available_channels)))
+                return
+            self.__active_channels = tuple(channels)
+        return
 
     @property
     def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
-        @return dict: current data channel properties with keys being the channel names and values
-        being the corresponding property dicts.
+        @return tuple: data channel properties for all available channels with keys being the
+                       channel names and values being the corresponding StreamChannel instances.
         """
-        ch_dict = {c: p.copy() for c, p in self._constraints.digital_channels.items()}
-        ch_dict.update({c: p.copy() for c, p in self._constraints.analog_channels.items()})
-        return ch_dict
+        return (*(ch.copy() for ch in self._constraints.digital_channels),
+                *(ch.copy() for ch in self._constraints.analog_channels))
 
     @property
     def available_samples(self):
@@ -391,6 +450,26 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             # avail_samples = self._ai_task_handle.in_stream.total_samp_per_chan_acquired - \
             #                 self._ai_task_handle.in_stream.curr_read_pos
             return self._ai_task_handle.in_stream.avail_samp_per_chan
+
+    @property
+    def stream_length(self):
+        """
+        Property holding the total number of samples per channel to be acquired by this stream.
+        This number is only relevant if the streaming mode is set to StreamingMode.FINITE.
+
+        @return int: The number of samples to acquire per channel. Ignored for continuous streaming.
+        """
+        return self.__stream_length
+
+    @stream_length.setter
+    def stream_length(self, length):
+        if self._check_settings_change():
+            length = int(length)
+            if length < 1:
+                self.log.error('Stream_length must be a positive integer >= 1.')
+                return
+            self.__stream_length = length
+        return
 
     @property
     def is_running(self):
@@ -423,23 +502,21 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @return dict: Dictionary containing all configurable settings
         """
         return {'sample_rate': self.__sample_rate,
-                'data_type': self.__data_type,
                 'streaming_mode': self.__streaming_mode,
-                'active_channels': self.__active_channels,
-                'total_number_of_samples': self.__total_number_of_samples,
+                'active_channels': self.active_channels,
+                'stream_length': self.__stream_length,
                 'buffer_size': self.__buffer_size,
                 'use_circular_buffer': self.__use_circular_buffer}
 
-    def configure(self, sample_rate=None, data_type=None, streaming_mode=None, active_channels=None,
-                  total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
+    def configure(self, sample_rate=None, streaming_mode=None, active_channels=None,
+                  stream_length=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
 
         @param float sample_rate: The sample rate in Hz at which data points are acquired
-        @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
         @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
         @param iterable active_channels: Iterable of channel names (str) to be read from.
-        @param int total_number_of_samples: In case of a finite data stream, the total number of
+        @param int stream_length: In case of a finite data stream, the total number of
                                             samples to read per channel
         @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
         @param bool use_circular_buffer: Use circular buffering (True) or stop upon buffer overflow
@@ -447,88 +524,30 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @return dict: All current settings in a dict. Keywords are the same as kwarg names.
         """
-        if self.is_running:
-            self.log.warning('Unable to configure NI x-series data-in streamer while data '
-                             'acquisition is in progress. Stop the device and try again.')
-            return self.all_settings
+        if self._check_settings_change():
+            # Handle sample rate change
+            if sample_rate is not None:
+                self.sample_rate = sample_rate
 
-        # Handle sample rate change
-        if sample_rate is not None:
-            if not self._clk_frequency_valid(sample_rate):
-                if self._analog_sources:
-                    min_val = self._constraints.combined_sample_rate.min
-                    max_val = self._constraints.combined_sample_rate.max
-                    self.log.warning(
-                        'Sample rate requested ({0:.3e}Hz) is out of bounds. Please choose '
-                        'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
-                        'the closest boundary.'.format(sample_rate, min_val, max_val))
-                else:
-                    min_val = self._constraints.digital_sample_rate.min
-                    max_val = self._constraints.digital_sample_rate.max
-                    self.log.warning(
-                        'Sample rate requested ({0:.3e}Hz) is out of bounds. Please choose '
-                        'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
-                        'the closest boundary.'.format(sample_rate, min_val, max_val))
-                sample_rate = max(min(max_val, sample_rate), min_val)
-            self.__sample_rate = float(sample_rate)
+            # Handle streaming mode change
+            if streaming_mode is not None:
+                self.streaming_mode = streaming_mode
 
-        # Handle data type change
-        if data_type is not None:
-            if data_type != np.uint32 and data_type != np.float64:
-                self.log.error('data_type must be a valid numpy dtype.')
-                return self.all_settings
-            if data_type == np.uint32 and self._analog_sources:
-                self.log.error('Data type numpy.uint32 only allowed for pure digital counting. If '
-                               'you are using analog input channels, you must set this to '
-                               'numpy.float64.')
-                return self.all_settings
-            self.__data_type = data_type
+            # Handle active channels
+            if active_channels is not None:
+                self.active_channels = active_channels
 
-        # Handle streaming mode change
-        if streaming_mode is not None:
-            if streaming_mode not in self._constraints.streaming_modes:
-                self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
-                               ''.format(streaming_mode, self._constraints.streaming_modes))
-                return self.all_settings
-            self.__streaming_mode = streaming_mode
+            # Handle total number of samples
+            if stream_length is not None:
+                self.stream_length = stream_length
 
-        # Handle active channels
-        if active_channels is not None:
-            if any(chnl not in self.available_channels for chnl in active_channels):
-                self.log.error('Invalid channel to stream from encountered ({0}).\nValid channels '
-                               'are: {1}'
-                               ''.format(tuple(active_channels), tuple(self.available_channels)))
-                return self.all_settings
-            self.__active_channels = tuple(active_channels)
+            # Handle buffer size
+            if buffer_size is not None:
+                self.buffer_size = buffer_size
 
-        # Handle total number of samples
-        if total_number_of_samples is not None:
-            if self.__streaming_mode != StreamingMode.FINITE:
-                self.log.warning('total_number_of_samples only accepted for finite length '
-                                 'streaming. Current streaming mode is "{0}". '
-                                 'total_number_of_samples ignored.'.format(self.__streaming_mode))
-            self.__total_number_of_samples = int(total_number_of_samples)
-
-        # Handle buffer size
-        if buffer_size is not None:
-            if buffer_size > self._max_channel_samples_buffer:
-                self.log.error('buffer_size to set ({0}) is larger than maximum allowed buffer '
-                               'size of {1:d} samples per channel.'
-                               ''.format(buffer_size, self._max_channel_samples_buffer))
-                return self.all_settings
-            elif buffer_size < 1:
-                self.log.error('Buffer size smaller than 1 makes no sense. Tried to set {0} as '
-                               'buffer size and failed.'.format(buffer_size))
-                return self.all_settings
-            self.__buffer_size = int(buffer_size)
-            self._init_buffer()
-
-        # Handle circular buffer flag
-        if use_circular_buffer is not None:
-            if use_circular_buffer and not self._constraints.allow_circular_buffer:
-                self.log.error('Circular buffer not allowed for this hardware module.')
-                return self.all_settings
-            self.__use_circular_buffer = bool(use_circular_buffer)
+            # Handle circular buffer flag
+            if use_circular_buffer is not None:
+                self.use_circular_buffer = use_circular_buffer
         return self.all_settings
 
     def get_constraints(self):
@@ -549,7 +568,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             self.log.warning('Unable to start input stream. It is already running.')
             return 0
 
-        if self._init_sample_clock() != 0 or self._init_digital_tasks() != 0 or self._init_analog_task() != 0:
+        if (self._init_sample_clock() + self._init_digital_tasks() + self._init_analog_task()) != 0:
             return -1
 
         self._init_buffer()
@@ -603,7 +622,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         @param int number_of_samples: optional, number of samples to read per channel. If omitted,
                                       this number will be derived from buffer axis 1 size.
 
-        @return int: Number of samples read into buffer; negative value indicates error
+        @return int: Number of samples per channel read into buffer; negative value indicates error
                      (e.g. read timeout)
         """
         if not self.is_running:
@@ -616,10 +635,16 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             return -1
 
         if buffer.ndim == 2:
+            if buffer.shape[0] != self.number_of_channels:
+                self.log.error('Configured number of channels ({0:d}) does not match first '
+                               'dimension of 2D buffer array ({1:d}).'
+                               ''.format(self.number_of_channels, buffer.shape[0]))
+                return -1
             number_of_samples = buffer.shape[1] if number_of_samples is None else number_of_samples
             buffer = buffer.flatten()
         elif buffer.ndim == 1:
-            number_of_samples = (buffer.size // self.number_of_channels) if number_of_samples is None else number_of_samples
+            if number_of_samples is None:
+                number_of_samples = buffer.size // self.number_of_channels
         else:
             self.log.error('Buffer must be a 1D or 2D numpy.ndarray.')
             return -1
@@ -636,16 +661,10 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             # Read digital channels
             for i, reader in enumerate(self._di_readers):
                 # read the counter value. This function is blocking.
-                if self.__data_type == np.float64:
-                    read_samples = reader.read_many_sample_double(
-                        buffer[write_offset:],
-                        number_of_samples_per_channel=number_of_samples,
-                        timeout=self._rw_timeout)
-                else:
-                    read_samples = reader.read_many_sample_uint32(
-                        buffer[write_offset:],
-                        number_of_samples_per_channel=number_of_samples,
-                        timeout=self._rw_timeout)
+                read_samples = reader.read_many_sample_double(
+                    buffer[write_offset:],
+                    number_of_samples_per_channel=number_of_samples,
+                    timeout=self._rw_timeout)
                 if read_samples != number_of_samples:
                     return -1
                 write_offset += number_of_samples
@@ -658,7 +677,7 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
             if read_samples != number_of_samples:
                 return -1
         except ni.DaqError:
-            self.log.exception('Getting samples from counter failed.')
+            self.log.exception('Getting samples from streamer failed.')
             return -1
         return read_samples
 
@@ -676,13 +695,9 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
 
         @param numpy.ndarray buffer: The numpy array to write the samples to
 
-        @return int: Number of samples read into buffer; negative value indicates error
+        @return int: Number of samples per channel read into buffer; negative value indicates error
                      (e.g. read timeout)
         """
-        if not self.is_running:
-            self.log.error('Unable to read data. Device is not running.')
-            return -1
-
         avail_samples = min(buffer.size // self.number_of_channels, self.available_samples)
         return self.read_data_into_buffer(buffer=buffer, number_of_samples=avail_samples)
 
@@ -704,17 +719,17 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         """
         if not self.is_running:
             self.log.error('Unable to read data. Device is not running.')
-            return np.empty((0, 0), dtype=self.data_type)
+            return np.empty((0, 0), dtype=self.__data_type)
 
         if number_of_samples is None:
             read_samples = self.read_available_data_into_buffer(self._data_buffer)
             if read_samples < 0:
-                return np.empty((0, 0), dtype=self.data_type)
+                return np.empty((0, 0), dtype=self.__data_type)
         else:
             read_samples = self.read_data_into_buffer(self._data_buffer,
                                                       number_of_samples=number_of_samples)
             if read_samples != number_of_samples:
-                return np.empty((0, 0), dtype=self.data_type)
+                return np.empty((0, 0), dtype=self.__data_type)
 
         total_samples = self.number_of_channels * read_samples
         return self._data_buffer[:total_samples].reshape((self.number_of_channels,
@@ -1108,9 +1123,35 @@ class NIXSeriesInStreamer(Base, DataInStreamInterface):
         return min_rate <= frequency <= max_rate
 
     def _init_buffer(self):
-        if not self.is_running:
-            self._data_buffer = np.zeros(
-                self.number_of_channels * self.buffer_size,
-                dtype=self.data_type)
-            self._has_overflown = False
+        self._data_buffer = np.zeros(self.number_of_channels * self.buffer_size,
+                                     dtype=self.__data_type)
+        self._has_overflown = False
         return
+
+    def _check_settings_change(self):
+        """
+        Helper method to check if streamer settings can be changed, i.e. if the streamer is idle.
+        Throw a warning if the streamer is running.
+
+        @return bool: Flag indicating if settings can be changed (True) or not (False)
+        """
+        if self.is_running:
+            self.log.warning('Unable to change streamer settings while streamer is running. '
+                             'New settings ignored.')
+            return False
+        return True
+
+    @staticmethod
+    def _extract_terminal(term_str):
+        """
+        Helper function to extract the bare terminal name from a string and strip it of the device
+        name and dashes.
+        Will return the terminal name in lower case.
+
+        @param str term_str: The str to extract the terminal name from
+        @return str: The terminal name in lower case
+        """
+        term = term_str.strip('/').lower()
+        if 'dev' in term:
+            term = term.split('/', 1)[-1]
+        return term

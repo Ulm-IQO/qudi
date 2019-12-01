@@ -140,7 +140,8 @@ class TimeSeriesGui(GUIBase):
 
         self.curves = dict()
         self.averaged_curves = dict()
-        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        all_channels = list(ch.name for ch in hw_constr.digital_channels) + list(
+            ch.name for ch in hw_constr.analog_channels)
         for i, ch in enumerate(all_channels):
             # Determine pen style
             # FIXME: Choosing a pen width != 1px (not cosmetic) causes massive performance drops
@@ -278,8 +279,7 @@ class TimeSeriesGui(GUIBase):
         return
 
     def _init_trace_view_selection_dialog(self):
-        hw_constr = self._time_series_logic.streamer_constraints
-        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        all_channels = tuple(ch.name for ch in self._time_series_logic.available_channels)
         self._vsd = TimeSeriesSelectionDialog()
         self._vsd.setWindowTitle('View Trace Selection')
         self._vsd_widgets = dict()
@@ -306,8 +306,7 @@ class TimeSeriesGui(GUIBase):
         self._vsd.trace_selection_scrollArea.setLayout(layout)
 
     def _init_channel_settings_dialog(self):
-        hw_constr = self._time_series_logic.streamer_constraints
-        all_channels = list(hw_constr.digital_channels) + list(hw_constr.analog_channels)
+        all_channels = tuple(ch.name for ch in self._time_series_logic.available_channels)
         self._csd = TimeSeriesSelectionDialog()
         self._csd.setWindowTitle('Data Channel Settings')
         self._csd_widgets = dict()
@@ -382,24 +381,22 @@ class TimeSeriesGui(GUIBase):
         self._mw.curr_value_comboBox.addItems(channels)
         index = self._mw.curr_value_comboBox.findText(old_value)
         if index < 0:
-            self._mw.curr_value_comboBox.setCurrentIndex(1)
+            self._mw.curr_value_comboBox.setCurrentIndex(0)
         else:
             self._mw.curr_value_comboBox.setCurrentIndex(index)
 
         # Update plot widget axes
-        ch_types = self._time_series_logic.channel_types
-        digital_channels = set(ch for ch, t in ch_types.items() if t == StreamChannelType.DIGITAL)
-        analog_channels = set(ch for ch, t in ch_types.items() if t == StreamChannelType.ANALOG)
+        ch_list = self._time_series_logic.active_channels
+        digital_channels = tuple(ch for ch in ch_list if ch.type == StreamChannelType.DIGITAL)
+        analog_channels = tuple(ch for ch in ch_list if ch.type == StreamChannelType.ANALOG)
         self._channels_per_axis = list()
         if digital_channels:
-            self._channels_per_axis.append(digital_channels)
-            unit = self._time_series_logic.channel_units[next(iter(digital_channels))]
-            self._pw.setLabel('left', 'Digital Channels', units=unit)
+            self._channels_per_axis.append(tuple(ch.name for ch in digital_channels))
+            self._pw.setLabel('left', 'Digital Channels', units=digital_channels[0].unit)
         if analog_channels:
-            self._channels_per_axis.append(analog_channels)
+            self._channels_per_axis.append(tuple(ch.name for ch in analog_channels))
             axis = 'right' if digital_channels else 'left'
-            unit = self._time_series_logic.channel_units[next(iter(analog_channels))]
-            self._pw.setLabel(axis, 'Analog Channels', units=unit)
+            self._pw.setLabel(axis, 'Analog Channels', units=analog_channels[0].unit)
         if analog_channels and digital_channels:
             self._pw.showAxis('right')
         else:
@@ -426,7 +423,7 @@ class TimeSeriesGui(GUIBase):
     def keep_former_channel_settings(self):
         """
         """
-        curr_channels = self._time_series_logic.channel_names
+        curr_channels = self._time_series_logic.active_channel_names
         curr_av_channels = self._time_series_logic.averaged_channels
         for chnl, widgets in self._csd_widgets.items():
             widgets['checkbox1'].setChecked(chnl in curr_channels)
@@ -464,8 +461,8 @@ class TimeSeriesGui(GUIBase):
             else:
                 chnl = curr_value_channel
                 val = data[chnl][-1]
-            ch_type = self._time_series_logic.channel_types[chnl]
-            ch_unit = self._time_series_logic.channel_units[chnl]
+            ch_type = self._time_series_logic.active_channel_types[chnl]
+            ch_unit = self._time_series_logic.active_channel_units[chnl]
             if ch_type == StreamChannelType.ANALOG:
                 self._mw.curr_value_Label.setText('{0:.3f} {1}'.format(val, ch_unit))
             else:
@@ -565,7 +562,6 @@ class TimeSeriesGui(GUIBase):
         """
         """
         val = self._mw.moving_average_spinBox.value()
-        old_val = self._time_series_logic.moving_average_width
         self.sigSettingsChanged.emit({'moving_average_width': val})
 
     @QtCore.Slot()
@@ -623,12 +619,13 @@ class TimeSeriesGui(GUIBase):
             self._mw.data_rate_DoubleSpinBox.setValue(settings_dict['data_rate'])
             self._mw.data_rate_DoubleSpinBox.blockSignals(False)
         if 'active_channels' in settings_dict:
-            val = settings_dict['active_channels']
+            val = tuple(ch.name for ch in settings_dict['active_channels'])
             for chnl, w in self._csd_widgets.items():
                 enabled = chnl in val
                 w['checkbox1'].setChecked(enabled)
         if 'averaged_channels' in settings_dict:
             val = settings_dict['averaged_channels']
+            print('averaged_channels in GUI:', val)
             for chnl, w in self._csd_widgets.items():
                 enabled = chnl in val
                 w['checkbox2'].setChecked(enabled)

@@ -29,7 +29,7 @@ from core.module import Base
 from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
 from interface.data_instream_interface import DataInStreamInterface, DataInStreamConstraints
-from interface.data_instream_interface import StreamingMode, StreamChannelType
+from interface.data_instream_interface import StreamingMode, StreamChannelType, StreamChannel
 
 
 class InStreamDummy(Base, DataInStreamInterface):
@@ -71,7 +71,7 @@ class InStreamDummy(Base, DataInStreamInterface):
         # Internal settings
         self.__sample_rate = -1.0
         self.__data_type = np.float64
-        self.__total_number_of_samples = None
+        self.__stream_length = -1
         self.__buffer_size = -1
         self.__use_circular_buffer = False
         self.__streaming_mode = None
@@ -127,19 +127,19 @@ class InStreamDummy(Base, DataInStreamInterface):
 
         # Create constraints
         self._constraints = DataInStreamConstraints()
-        self._constraints.digital_channels = {
-            c: {'unit': 'counts', 'type': StreamChannelType.DIGITAL} for c in
-            self._digital_channels}
-        self._constraints.analog_channels = {
-            c: {'unit': 'V', 'type': StreamChannelType.ANALOG} for c in self._analog_channels}
-
-        self._constraints.analog_sample_rate.min = 0
+        self._constraints.digital_channels = tuple(
+            StreamChannel(name=ch, type=StreamChannelType.DIGITAL, unit='counts') for ch in
+            self._digital_channels)
+        self._constraints.analog_channels = tuple(
+            StreamChannel(name=ch, type=StreamChannelType.ANALOG, unit='V') for ch in
+            self._analog_channels)
+        self._constraints.analog_sample_rate.min = 1
         self._constraints.analog_sample_rate.max = 2**31-1
         self._constraints.analog_sample_rate.step = 1
         self._constraints.analog_sample_rate.unit = 'Hz'
-        self._constraints.digital_sample_rate.min = 0
+        self._constraints.digital_sample_rate.min = 1
         self._constraints.digital_sample_rate.max = 2**31-1
-        self._constraints.digital_sample_rate.step = 0.1
+        self._constraints.digital_sample_rate.step = 1
         self._constraints.digital_sample_rate.unit = 'Hz'
         self._constraints.combined_sample_rate = self._constraints.analog_sample_rate
 
@@ -149,12 +149,12 @@ class InStreamDummy(Base, DataInStreamInterface):
 
         # TODO: Implement FINITE streaming mode
         self._constraints.streaming_modes = (StreamingMode.CONTINUOUS,)  # , StreamingMode.FINITE)
-        self._constraints.data_types = (np.uint32, np.float64)
+        self._constraints.data_type = np.float64
         self._constraints.allow_circular_buffer = True
 
         self.__sample_rate = self._constraints.combined_sample_rate.min
         self.__data_type = np.float64
-        self.__total_number_of_samples = None
+        self.__stream_length = 0
         self.__buffer_size = 1000
         self.__use_circular_buffer = False
         self.__streaming_mode = StreamingMode.CONTINUOUS
@@ -187,6 +187,24 @@ class InStreamDummy(Base, DataInStreamInterface):
         """
         return self.__sample_rate
 
+    @sample_rate.setter
+    def sample_rate(self, rate):
+        if self._check_settings_change():
+            if not self._clk_frequency_valid(rate):
+                if self._analog_channels:
+                    min_val = self._constraints.combined_sample_rate.min
+                    max_val = self._constraints.combined_sample_rate.max
+                else:
+                    min_val = self._constraints.digital_sample_rate.min
+                    max_val = self._constraints.digital_sample_rate.max
+                self.log.warning(
+                    'Sample rate requested ({0:.3e}Hz) is out of bounds. Please choose '
+                    'a value between {1:.3e}Hz and {2:.3e}Hz. Value will be clipped to '
+                    'the closest boundary.'.format(rate, min_val, max_val))
+                rate = max(min(max_val, rate), min_val)
+            self.__sample_rate = float(rate)
+        return
+
     @property
     def data_type(self):
         """
@@ -208,6 +226,18 @@ class InStreamDummy(Base, DataInStreamInterface):
         """
         return self.__buffer_size
 
+    @buffer_size.setter
+    def buffer_size(self, size):
+        if self._check_settings_change():
+            size = int(size)
+            if size < 1:
+                self.log.error('Buffer size smaller than 1 makes no sense. Tried to set {0} as '
+                               'buffer size and failed.'.format(size))
+                return
+            self.__buffer_size = int(size)
+            self._init_buffer()
+        return
+
     @property
     def use_circular_buffer(self):
         """
@@ -218,6 +248,15 @@ class InStreamDummy(Base, DataInStreamInterface):
         """
         return self.__use_circular_buffer
 
+    @use_circular_buffer.setter
+    def use_circular_buffer(self, flag):
+        if self._check_settings_change():
+            if flag and not self._constraints.allow_circular_buffer:
+                self.log.error('Circular buffer not allowed for this hardware module.')
+                return
+            self.__use_circular_buffer = bool(flag)
+        return
+
     @property
     def streaming_mode(self):
         """
@@ -227,6 +266,17 @@ class InStreamDummy(Base, DataInStreamInterface):
                                (StreamingMode.CONTINUOUS) data acquisition
         """
         return self.__streaming_mode
+
+    @streaming_mode.setter
+    def streaming_mode(self, mode):
+        if self._check_settings_change():
+            mode = StreamingMode(mode)
+            if mode not in self._constraints.streaming_modes:
+                self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
+                               ''.format(mode, self._constraints.streaming_modes))
+                return
+            self.__streaming_mode = mode
+        return
 
     @property
     def number_of_channels(self):
@@ -241,32 +291,41 @@ class InStreamDummy(Base, DataInStreamInterface):
     def active_channels(self):
         """
         The currently configured data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
         @return dict: currently active data channel properties with keys being the channel names
-                      and values being the corresponding property dicts.
+                      and values being the corresponding StreamChannel instances.
         """
-        return {c: p.copy() for c, p in self.available_channels.items() if
-                c in self.__active_channels}
+        constr = self._constraints
+        return (*(ch.copy() for ch in constr.digital_channels if ch.name in self.__active_channels),
+                *(ch.copy() for ch in constr.analog_channels if ch.name in self.__active_channels))
+
+    @active_channels.setter
+    def active_channels(self, channels):
+        if self._check_settings_change():
+            channels = tuple(channels)
+            avail_chnl_names = tuple(ch.name for ch in self.available_channels)
+            if any(ch not in avail_chnl_names for ch in channels):
+                self.log.error('Invalid channel to stream from encountered: {0}.\nValid channels '
+                               'are: {1}'
+                               ''.format(channels, avail_chnl_names))
+                return
+            self.__active_channels = channels
+        return
 
     @property
     def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
-        @return dict: current data channel properties with keys being the channel names and values
-        being the corresponding property dicts.
+        @return tuple: data channel properties for all available channels with keys being the
+                       channel names and values being the corresponding StreamChannel instances.
         """
-        ch_dict = {c: p.copy() for c, p in self._constraints.digital_channels.items()}
-        ch_dict.update({c: p.copy() for c, p in self._constraints.analog_channels.items()})
-        return ch_dict
+        return (*(ch.copy() for ch in self._constraints.digital_channels),
+                *(ch.copy() for ch in self._constraints.analog_channels))
 
     @property
     def available_samples(self):
@@ -279,6 +338,26 @@ class InStreamDummy(Base, DataInStreamInterface):
         if not self.is_running:
             return 0
         return int((time.perf_counter() - self._last_read) * self.__sample_rate)
+
+    @property
+    def stream_length(self):
+        """
+        Property holding the total number of samples per channel to be acquired by this stream.
+        This number is only relevant if the streaming mode is set to StreamingMode.FINITE.
+
+        @return int: The number of samples to acquire per channel. Ignored for continuous streaming.
+        """
+        return self.__stream_length
+
+    @stream_length.setter
+    def stream_length(self, length):
+        if self._check_settings_change():
+            length = int(length)
+            if length < 1:
+                self.log.error('Stream_length must be a positive integer >= 1.')
+                return
+            self.__stream_length = length
+        return
 
     @property
     def is_running(self):
@@ -311,23 +390,21 @@ class InStreamDummy(Base, DataInStreamInterface):
         @return dict: Dictionary containing all configurable settings
         """
         return {'sample_rate': self.__sample_rate,
-                'data_type': self.__data_type,
                 'streaming_mode': self.__streaming_mode,
-                'active_channels': self.__active_channels,
-                'total_number_of_samples': self.__total_number_of_samples,
+                'active_channels': self.active_channels,
+                'stream_length': self.__stream_length,
                 'buffer_size': self.__buffer_size,
                 'use_circular_buffer': self.__use_circular_buffer}
 
-    def configure(self, sample_rate=None, data_type=None, streaming_mode=None, active_channels=None,
-                  total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
+    def configure(self, sample_rate=None, streaming_mode=None, active_channels=None,
+                  stream_length=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
 
         @param float sample_rate: The sample rate in Hz at which data points are acquired
-        @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
         @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
         @param iterable active_channels: Iterable of channel names (str) to be read from.
-        @param int total_number_of_samples: In case of a finite data stream, the total number of
+        @param int stream_length: In case of a finite data stream, the total number of
                                             samples to read per channel
         @param int buffer_size: The size of the data buffer to pre-allocate in samples per channel
         @param bool use_circular_buffer: Use circular buffering (True) or stop upon buffer overflow
@@ -335,63 +412,30 @@ class InStreamDummy(Base, DataInStreamInterface):
 
         @return dict: All current settings in a dict. Keywords are the same as kwarg names.
         """
-        if self.is_running:
-            self.log.warning('Unable to configure data-in streamer while data acquisition is in '
-                             'progress. Stop the device and try again.')
-            return self.all_settings
+        if self._check_settings_change():
+            # Handle sample rate change
+            if sample_rate is not None:
+                self.sample_rate = sample_rate
 
-        # Handle sample rate change
-        if sample_rate is not None:
-            self.__sample_rate = float(sample_rate)
+            # Handle streaming mode change
+            if streaming_mode is not None:
+                self.streaming_mode = streaming_mode
 
-        # Handle data type change
-        if data_type is not None:
-            if data_type != np.uint32 and data_type != np.float64:
-                self.log.error('data_type must be a valid numpy dtype.')
-                return self.all_settings
-            self.__data_type = data_type
+            # Handle active channels
+            if active_channels is not None:
+                self.active_channels = active_channels
 
-        # Handle streaming mode change
-        if streaming_mode is not None:
-            if streaming_mode not in self._constraints.streaming_modes:
-                self.log.error('Unknown streaming mode "{0}" encountered.\nValid modes are: {1}.'
-                               ''.format(streaming_mode, self._constraints.streaming_modes))
-                return self.all_settings
-            self.__streaming_mode = streaming_mode
+            # Handle total number of samples
+            if stream_length is not None:
+                self.stream_length = stream_length
 
-        # Handle active channels
-        if active_channels is not None:
-            if any(chnl not in self.available_channels for chnl in active_channels):
-                self.log.error('Invalid channel to stream from encountered ({0}).\nValid channels '
-                               'are: {1}'
-                               ''.format(tuple(active_channels), tuple(self.available_channels)))
-                return self.all_settings
-            self.__active_channels = tuple(active_channels)
+            # Handle buffer size
+            if buffer_size is not None:
+                self.buffer_size = buffer_size
 
-        # Handle total number of samples
-        if total_number_of_samples is not None:
-            if self.__streaming_mode != StreamingMode.FINITE:
-                self.log.warning('total_number_of_samples only accepted for finite length '
-                                 'streaming. Current streaming mode is "{0}". '
-                                 'total_number_of_samples ignored.'.format(self.__streaming_mode))
-            self.__total_number_of_samples = int(total_number_of_samples)
-
-        # Handle buffer size
-        if buffer_size is not None:
-            if buffer_size < 1:
-                self.log.error('Buffer size smaller than 1 makes no sense. Tried to set {0} as '
-                               'buffer size and failed.'.format(buffer_size))
-                return self.all_settings
-            self.__buffer_size = int(buffer_size)
-
-        # Handle circular buffer flag
-        if use_circular_buffer is not None:
-            if use_circular_buffer and not self._constraints.allow_circular_buffer:
-                self.log.error('Circular buffer not allowed for this hardware module.')
-                return self.all_settings
-            self.__use_circular_buffer = bool(use_circular_buffer)
-
-        self._init_buffer()
+            # Handle circular buffer flag
+            if use_circular_buffer is not None:
+                self.use_circular_buffer = use_circular_buffer
         return self.all_settings
 
     def get_constraints(self):
@@ -457,6 +501,11 @@ class InStreamDummy(Base, DataInStreamInterface):
             return -1
 
         if buffer.ndim == 2:
+            if buffer.shape[0] != self.number_of_channels:
+                self.log.error('Configured number of channels ({0:d}) does not match first '
+                               'dimension of 2D buffer array ({1:d}).'
+                               ''.format(self.number_of_channels, buffer.shape[0]))
+                return -1
             number_of_samples = buffer.shape[1] if number_of_samples is None else number_of_samples
             buffer = buffer.flatten()
         elif buffer.ndim == 1:
@@ -588,6 +637,15 @@ class InStreamDummy(Base, DataInStreamInterface):
         return data
 
     # =============================================================================================
+    def _clk_frequency_valid(self, frequency):
+        if self._analog_channels:
+            max_rate = self._constraints.combined_sample_rate.max
+            min_rate = self._constraints.combined_sample_rate.min
+        else:
+            max_rate = self._constraints.digital_sample_rate.max
+            min_rate = self._constraints.digital_sample_rate.min
+        return min_rate <= frequency <= max_rate
+
     def _init_buffer(self):
         if not self.is_running:
             self._data_buffer = np.zeros(
@@ -595,3 +653,16 @@ class InStreamDummy(Base, DataInStreamInterface):
                 dtype=self.data_type)
             self._has_overflown = False
         return
+
+    def _check_settings_change(self):
+        """
+        Helper method to check if streamer settings can be changed, i.e. if the streamer is idle.
+        Throw a warning if the streamer is running.
+
+        @return bool: Flag indicating if settings can be changed (True) or not (False)
+        """
+        if self.is_running:
+            self.log.warning('Unable to change streamer settings while streamer is running. '
+                             'New settings ignored.')
+            return False
+        return True

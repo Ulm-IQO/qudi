@@ -48,12 +48,12 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     @abstract_interface_method
     def data_type(self):
         """
-        The currently set data type
+        Read-only property.
+        The data type of the stream data. Must be numpy type.
 
-        @return type: current data type
+        @return type: stream data type (numpy type)
         """
         pass
-
 
     @property
     @abstract_interface_method
@@ -91,6 +91,17 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
 
     @property
     @abstract_interface_method
+    def stream_length(self):
+        """
+        Property holding the total number of samples per channel to be acquired by this stream.
+        This number is only relevant if the streaming mode is set to StreamingMode.FINITE.
+
+        @return int: The number of samples to acquire per channel. Ignored for continuous streaming.
+        """
+        pass
+
+    @property
+    @abstract_interface_method
     def all_settings(self):
         """
         Read-only property to return a dict containing all current settings and values that can be
@@ -104,7 +115,7 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     @abstract_interface_method
     def number_of_channels(self):
         """
-        Read-only property to return the currently configured number of data channels.
+        Read-only property to return the currently configured number of active data channels.
 
         @return int: the currently set number of channels
         """
@@ -115,13 +126,11 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     def active_channels(self):
         """
         The currently configured data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
         @return dict: currently active data channel properties with keys being the channel names
-                      and values being the corresponding property dicts.
+                      and values being the corresponding StreamChannel instances.
         """
         pass
 
@@ -130,13 +139,11 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
     def available_channels(self):
         """
         Read-only property to return the currently used data channel properties.
-        The channel properties are a dict of the following form:
-            channel_property = {'unit': 'V', 'type': StreamChannelType.ANALOG}
-            channel_property = {'unit': 'counts', 'type': StreamChannelType.DIGITAL}
-            ...
+        Returns a dict with channel names as keys and corresponding StreamChannel instances as
+        values.
 
-        @return dict: current data channel properties with keys being the channel names and values
-                      being the corresponding property dicts.
+        @return dict: data channel properties for all available channels with keys being the channel
+                      names and values being the corresponding StreamChannel instances.
         """
         pass
 
@@ -176,13 +183,12 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
         pass
 
     @abstract_interface_method
-    def configure(self, sample_rate=None, data_type=None, streaming_mode=None, active_channels=None,
+    def configure(self, sample_rate=None, streaming_mode=None, active_channels=None,
                   total_number_of_samples=None, buffer_size=None, use_circular_buffer=None):
         """
         Method to configure all possible settings of the data input stream.
 
         @param float sample_rate: The sample rate in Hz at which data points are acquired
-        @param type data_type: The data type of the acquired data. Must be numpy.ndarray compatible.
         @param StreamingMode streaming_mode: The streaming mode to use (finite or continuous)
         @param iterable active_channels: Iterable of channel names (str) to be read from.
         @param int total_number_of_samples: In case of a finite data stream, the total number of
@@ -276,10 +282,13 @@ class DataInStreamInterface(metaclass=InterfaceMetaclass):
 
         This method will not return until all requested samples have been read or a timeout occurs.
 
+        If no samples are available, this method will immediately return an empty array.
+        You can check for a failed data read if number_of_samples != <return_array>.shape[1].
+
         @param int number_of_samples: optional, number of samples to read per channel. If omitted,
                                       all available samples are read from buffer.
 
-        @return numpy.ndarray: The read samples
+        @return numpy.ndarray: The read samples in a numpy array
         """
         pass
 
@@ -309,22 +318,58 @@ class StreamingMode(Enum):
     FINITE = 1
 
 
+class StreamChannel:
+    def __init__(self, name, type, unit=None):
+        self._name = str(name)
+        self._type = StreamChannelType(type)
+        if unit is None:
+            if self._type == StreamChannelType.ANALOG:
+                self._unit = 'V'
+            elif self._type == StreamChannelType.DIGITAL:
+                self._unit = 'counts'
+        else:
+            self._unit = str(unit)
+
+    @property
+    def name(self):
+        return self._name
+
+    @property
+    def type(self):
+        return self._type
+
+    @property
+    def unit(self):
+        return self._unit
+
+    @unit.setter
+    def unit(self, new_unit):
+        if isinstance(new_unit, str):
+            self._unit = str(new_unit)
+        else:
+            raise TypeError('StreamChannel unit property must be str.')
+        return
+
+    def copy(self):
+        return StreamChannel(name=self.name, type=self.type, unit=self.unit)
+
+
 class DataInStreamConstraints:
     """
     Collection of constraints for hardware modules implementing SimpleDataInterface.
     """
     def __init__(self, digital_channels=None, analog_channels=None, analog_sample_rate=None,
                  digital_sample_rate=None, combined_sample_rate=None, read_block_size=None,
-                 streaming_modes=None, data_types=None, allow_circular_buffer=None):
+                 streaming_modes=None, data_type=None, allow_circular_buffer=None):
         if digital_channels is None:
             self.digital_channels = dict()
         else:
-            self.digital_channels = {c: p.copy() for c, p in digital_channels.items()}
+            self.digital_channels = tuple(ch.copy() for ch in digital_channels)
 
         if analog_channels is None:
             self.analog_channels = dict()
         else:
-            self.analog_channels = {c: p.copy() for c, p in analog_channels.items()}
+            self.analog_channels = tuple(ch.copy() for ch in analog_channels)
 
         if isinstance(analog_sample_rate, ScalarConstraint):
             self.analog_sample_rate = ScalarConstraint(**vars(analog_sample_rate))
@@ -357,13 +402,12 @@ class DataInStreamConstraints:
         if streaming_modes is None:
             self.streaming_modes = (StreamingMode.CONTINUOUS, StreamingMode.FINITE)
         else:
-            self.streaming_modes = (mode for mode in streaming_modes if
-                                    isinstance(mode, StreamingMode))
+            self.streaming_modes = tuple(StreamingMode(mode) for mode in streaming_modes)
 
-        if data_types is None:
-            self.data_types = (np.uint32, np.float64)
+        if data_type is None:
+            self.data_type = np.float64
         else:
-            self.data_types = tuple(data_types)
+            self.data_type = np.dtype(data_type)
 
         self.allow_circular_buffer = bool(allow_circular_buffer)
         return
