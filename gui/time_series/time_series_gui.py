@@ -20,15 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import numpy as np
 import os
-import time
 import pyqtgraph as pg
 
 from core.connector import Connector
+from core.configoption import ConfigOption
 from gui.colordefs import QudiPalettePale as palette
 from gui.guibase import GUIBase
-from qtpy import QtCore, QtGui
+from qtpy import QtCore
 from qtpy import QtWidgets
 from qtpy import uic
 from interface.data_instream_interface import StreamChannelType
@@ -69,12 +68,16 @@ class TimeSeriesGui(GUIBase):
 
     time_series_gui:
         module.Class: 'time_series_gui.TimeSeriesGui'
+        use_antialias: True  # optional, set to False if you encounter performance issues
         connect:
             _time_series_logic_con: <TimeSeriesReaderLogic_name>
     """
 
     # declare connectors
     _time_series_logic_con = Connector(interface='TimeSeriesReaderLogic')
+
+    # declare ConfigOptions
+    _use_antialias = ConfigOption('use_antialias', default=True)
 
     sigStartCounter = QtCore.Signal()
     sigStopCounter = QtCore.Signal()
@@ -104,6 +107,8 @@ class TimeSeriesGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
+        self._use_antialias = bool(self._use_antialias)
+
         self._time_series_logic = self._time_series_logic_con()
 
         #####################
@@ -115,8 +120,11 @@ class TimeSeriesGui(GUIBase):
         self._mw.centralwidget.hide()
         self._mw.setDockNestingEnabled(True)
 
-        # Get hardware constraints
+        # Get hardware constraints and extract channel names
         hw_constr = self._time_series_logic.streamer_constraints
+        digital_channels = [ch.name for ch in hw_constr.digital_channels]
+        analog_channels = [ch.name for ch in hw_constr.analog_channels]
+        all_channels = digital_channels + analog_channels
 
         # Configure PlotWidget
         self._pw = self._mw.data_trace_PlotWidget
@@ -140,15 +148,13 @@ class TimeSeriesGui(GUIBase):
 
         self.curves = dict()
         self.averaged_curves = dict()
-        all_channels = list(ch.name for ch in hw_constr.digital_channels) + list(
-            ch.name for ch in hw_constr.analog_channels)
         for i, ch in enumerate(all_channels):
             # Determine pen style
             # FIXME: Choosing a pen width != 1px (not cosmetic) causes massive performance drops
             # For mixed signals each signal type (digital or analog) has the same color
             # If just a single signal type is present, alternate the colors accordingly
-            if hw_constr.analog_channels and hw_constr.digital_channels:
-                if ch in hw_constr.digital_channels:
+            if digital_channels and analog_channels:
+                if ch in digital_channels:
                     pen1 = pg.mkPen(palette.c2, cosmetic=True)
                     pen2 = pg.mkPen(palette.c1, cosmetic=True)
                 else:
@@ -166,11 +172,13 @@ class TimeSeriesGui(GUIBase):
             self.averaged_curves[ch] = pg.PlotCurveItem(pen=pen1,
                                                         clipToView=True,
                                                         downsampleMethod='subsample',
-                                                        autoDownsample=True)
+                                                        autoDownsample=True,
+                                                        antialias=self._use_antialias)
             self.curves[ch] = pg.PlotCurveItem(pen=pen2,
                                                clipToView=True,
                                                downsampleMethod='subsample',
-                                               autoDownsample=True)
+                                               autoDownsample=True,
+                                               antialias=self._use_antialias)
 
         #####################
         # Set up channel settings dialog

@@ -157,6 +157,7 @@ class TimeSeriesReaderLogic(GenericLogic):
 
         # Save status vars
         self._active_channels = self.active_channel_names
+        self._data_rate = self.data_rate
         return
 
     def _init_data_arrays(self):
@@ -165,13 +166,13 @@ class TimeSeriesReaderLogic(GenericLogic):
             [self.number_of_active_channels, window_size + self._moving_average_width // 2])
         self._trace_data_averaged = np.zeros(
             [len(self._averaged_channels), window_size - self._moving_average_width // 2])
-        self._trace_times = np.arange(window_size) / self._data_rate
+        self._trace_times = np.arange(window_size) / self.data_rate
         self._recorded_data = list()
         return
 
     @property
     def trace_window_size_samples(self):
-        return int(round(self._trace_window_size * self._data_rate))
+        return int(round(self._trace_window_size * self.data_rate))
 
     @property
     def streamer_constraints(self):
