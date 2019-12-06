@@ -177,11 +177,14 @@ class ExpDecoKnownPrecessionModel():
 
     ## INITIALIZER ##
 
-    def __init__(self, min_freq=0, invT2=0.):
+    def __init__(self, min_freq=0, invT2=0., eta_assym=1):
         super(ExpDecoKnownPrecessionModel, self).__init__()
 
         self._min_freq = min_freq
         self._invT2 = invT2
+        if eta_assym is None:
+            eta_assym = 1
+        self._eta_assym = eta_assym
 
         # Initialize a default scale matrix.
         self._Q = np.ones((self.n_modelparams,))
@@ -387,7 +390,9 @@ class ExpDecoKnownPrecessionModel():
         pr0[:, :] = (
             np.array([np.exp(-t * self._invT2) * (np.cos(t * dw / 2) ** 2) + 0.5 * (1 - np.exp(-t * self._invT2))])).T
 
-        return self.pr0_to_likelihood_array(outcomes, pr0)
+        pr1 = self._eta_assym * (1 - pr0)
+
+        return self.pr0_to_likelihood_array(outcomes, 1 - pr1)
 
 
 class MultimodePrecModel(qi.FiniteOutcomeModel):
@@ -535,6 +540,44 @@ class MultimodePrecModel(qi.FiniteOutcomeModel):
         return qi.FiniteOutcomeModel.pr0_to_likelihood_array(outcomes, pr0)
 
 
+class ExpDecoKnownMultimodePrecModel(MultimodePrecModel):
+
+    def __init__(self, min_freq=0, inv_T2=0.):
+        super().__init__()
+
+        self._min_freq = min_freq
+        self._invT2 = inv_T2
+
+    def likelihood(self, outcomes, modelparams, expparams):
+        """
+        :param np.ndarray outcomes: set of possible experimental outcomes (here [0,1])
+        :param np.ndarray modelparams: Set of model parameter vectors to be
+                updated.
+        :param np.ndarray expparams: An experiment parameter array describing
+            the experiment that was just performed.
+
+        :param numpy.ndarray: likelihoods of obtaining outcome ``0`` from each
+            set of model parameters and experiment parameters.
+
+        """
+
+        # this is just for array dimension matching
+        if len(modelparams.shape) == 1:
+            modelparams = modelparams[..., np.newaxis]
+
+        t = expparams['t']
+        w1 = modelparams[:, 0]
+        w2 = modelparams[:, 1]
+
+        # ESSENTIAL STEP > the likelihoods (i.e. cosines with a damping exp term) are evaluated for all particles
+        pr0 = np.zeros((modelparams.shape[0], expparams.shape[0]))
+        l_no_decoh = 0.5 * (np.cos(t * w1 / 2) ** 2 + np.cos(t * w2 / 2) ** 2)
+        pr0[:, :] = (np.exp(-t * self._invT2) * l_no_decoh + 0.5 * (1 - np.exp(-t * self._invT2)))[
+            ..., np.newaxis]
+
+        return self.pr0_to_likelihood_array(outcomes, pr0)
+
+
 ####################################################
 ##########  Heuristic  definitions       ##########
 ####################################################
@@ -659,7 +702,7 @@ class T2RandPenalty_PGH(stdPGH):
 def identity(arg): return arg
 
 
-class multiPGH(qi.Heuristic):
+class MultiPGH(qi.Heuristic):
 
     def __init__(self, updater, oplist=None, norm='Frobenius', inv_field='x_', t_field='t',
                  inv_func=identity,
@@ -667,7 +710,7 @@ class multiPGH(qi.Heuristic):
                  maxiters=10,
                  other_fields=None
                  ):
-        super(multiPGH, self).__init__(updater)
+        super().__init__(updater)
         self._updater = updater
         self._oplist = oplist
         self._norm = norm
@@ -725,7 +768,7 @@ class multiPGH(qi.Heuristic):
         return 0
 
 
-class T2RandPenalty_MultiPGH(multiPGH):
+class T2RandPenalty_MultiPGH(MultiPGH):
     def __init__(self, updater, tau_thresh_rescale, inv_field='x_', t_field='t',
                  inv_func=qi.expdesign.identity,
                  t_func=qi.expdesign.identity,
