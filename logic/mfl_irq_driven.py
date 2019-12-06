@@ -20,7 +20,7 @@ mfl_lib = imp.load_source('packages', path_mfl_lib)
 import line_profiler
 profile = line_profiler.LineProfiler()
 
-ARRAY_SIZE_MAX = 5000
+ARRAY_SIZE_MAX = 200000
 GAMMA_NV_MHZ_GAUSS = 2.8e6  # Hz per Gauss
 
 
@@ -200,7 +200,6 @@ class MFL_IRQ_Driven(GenericLogic):
         self.n_sweeps = n_sweeps
         self.z_thresh = z_thresh
 
-
         self.init_arrays(self.n_epochs)
         self.init_mfl_algo()    # this is a dummy init without parameter, call setup_new_run() after
 
@@ -244,6 +243,8 @@ class MFL_IRQ_Driven(GenericLogic):
         if n_epochs > ARRAY_SIZE_MAX:
             n_epochs = ARRAY_SIZE_MAX
             self.log.warning("Setting array length for too many epochs to {}".format(n_epochs))
+
+        n_epochs = int(n_epochs)
 
         self.timestamps = np.zeros((2*n_epochs+1, 4))
         self._idx_timestamps = 0
