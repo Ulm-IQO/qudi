@@ -32,10 +32,9 @@ from core.util.network import netobtain
 # The Qudi logic module
 # -----------------------------------------------------------------------------
 
+
 class QudiKernelLogic(GenericLogic):
     """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
-    _modclass = 'QudiKernelLogic'
-    _modtype = 'logic'
 
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)

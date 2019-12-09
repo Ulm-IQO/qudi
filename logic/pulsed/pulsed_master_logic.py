@@ -20,7 +20,7 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Connector
+from core.connector import Connector
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
 import numpy as np
@@ -46,8 +46,6 @@ class PulsedMasterLogic(GenericLogic):
     are decoupled from the calling thread via Qt queued connections.
     This ensures a more intuitive and less error prone use of scripting.
     """
-    _modclass = 'pulsedmasterlogic'
-    _modtype = 'logic'
 
     # declare connectors
     pulsedmeasurementlogic = Connector(interface='PulsedMeasurementLogic')
@@ -647,11 +645,11 @@ class PulsedMasterLogic(GenericLogic):
 
     @property
     def generate_methods(self):
-        return self.sequencegeneratorlogic().generate_methods
+        return getattr(self.sequencegeneratorlogic(), 'generate_methods', dict())
 
     @property
     def generate_method_params(self):
-        return self.sequencegeneratorlogic().generate_method_params
+        return getattr(self.sequencegeneratorlogic(), 'generate_method_params', dict())
 
     #######################################################################
     ###             Sequence generator methods                          ###

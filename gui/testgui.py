@@ -20,7 +20,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 # Test gui (test)
 
-from core.module import ConfigOption
+from core.configoption import ConfigOption
 from gui.guibase import GUIBase
 from qtpy import QtWidgets
 
