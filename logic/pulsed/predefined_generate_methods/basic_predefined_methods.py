@@ -1312,36 +1312,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_sequences.append(t1_sequence)
         return created_blocks, created_ensembles, created_sequences
 
-    def _get_mw_element_linearchirp(self, length, increment, amplitude=None, start_freq=None, stop_freq=None, phase=None):
-        """
-        Creates a MW pulse PulseBlockElement
-
-        @param float length: MW pulse duration in seconds
-        @param float increment: MW pulse duration increment in seconds
-        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
-        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
-        @param float amp: MW amplitude in case of analogue MW channel in V
-        @param float phase: MW phase in case of analogue MW channel in deg
-
-        @return: PulseBlockElement, the generated MW element
-        """
-        if self.microwave_channel.startswith('d'):
-            mw_element = self._get_trigger_element(
-                length=length,
-                increment=increment,
-                channels=self.microwave_channel)
-            self.log.warning('You are trying to create chirped pulses on a digital channel.')
-        else:
-            mw_element = self._get_idle_element(
-                length=length,
-                increment=increment)
-
-            sampling_function_name = 'Chirp'
-            kwargs = {'amplitude': amplitude, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase}
-
-            mw_element.pulse_function[self.microwave_channel] = \
-                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
-        return mw_element
 
     def generate_chirpedodmr(self, name='LinearChirpedODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
                              freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9,
@@ -1438,39 +1408,6 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         # append ensemble to created ensembles
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
-
-    def _get_mw_element_AEchirp(self, length, increment, amp=None, start_freq=None, stop_freq=None, phase=None,
-                                truncation_ratio=0.1):
-        """
-        Creates a MW pulse PulseBlockElement
-
-        @param float length: MW pulse duration in seconds
-        @param float increment: MW pulse duration increment in seconds
-        @param float start_freq: start MW frequency in case of analogue MW channel in Hz
-        @param float stop_freq: stop MW frequency in case of analogue MW channel in Hz
-        @param float amp: MW amplitude in case of analogue MW channel in V
-        @param float phase: MW phase in case of analogue MW channel in deg
-
-        @return: PulseBlockElement, the generated MW element
-        """
-        if self.microwave_channel.startswith('d'):
-            mw_element = self._get_trigger_element(
-                length=length,
-                increment=increment,
-                channels=self.microwave_channel)
-            self.log.warning('You are trying to create chirped pulses on a digital channel.')
-        else:
-            mw_element = self._get_idle_element(
-                length=length,
-                increment=increment)
-
-            sampling_function_name = 'AllenEberlyChirp'
-            kwargs = {'amplitude': amp, 'start_freq': start_freq, 'stop_freq': stop_freq, 'phase': phase,
-                      'tau_pulse': truncation_ratio * length}
-
-            mw_element.pulse_function[self.microwave_channel] = \
-                getattr(SamplingFunctions, sampling_function_name)(**kwargs)
-        return mw_element
 
     def generate_AEchirpedodmr(self, name='AllenEberlyChirpODMR', mw_freq_center=2870.0e6, freq_range=500.0e6,
                                freq_overlap=20.0e6, num_of_points=50, pulse_length=500e-9, truncation_ratio=0.1,
