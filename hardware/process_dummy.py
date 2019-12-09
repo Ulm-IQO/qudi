@@ -34,10 +34,6 @@ class ProcessDummy(Base, ProcessInterface, ProcessControlInterface):
         module.Class: 'process_dummy.ProcessDummy'
 
     """
-
-    _modclass = 'Process'
-    _modtype = 'hardware'
-
     def on_activate(self):
         """ Activate module.
         """

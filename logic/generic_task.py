@@ -24,7 +24,7 @@ import sys
 import logging
 from qtpy import QtCore
 
-from core.util.interfaces import TaskMetaclass
+from core.meta import TaskMetaclass
 from core.util.mutex import Mutex
 from fysom import Fysom
 

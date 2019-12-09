@@ -21,7 +21,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 from influxdb import InfluxDBClient
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.process_interface import ProcessInterface
 
 
@@ -42,9 +43,6 @@ class InfluxDataClient(Base, ProcessInterface):
         criterion: 'criterion_name'
 
     """
-
-    _modclass = 'InfluxDataClient'
-    _modtype = 'hardware'
 
     user = ConfigOption('user', missing='error')
     pw = ConfigOption('password', missing='error')

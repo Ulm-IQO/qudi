@@ -19,25 +19,24 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from enum import Enum
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class DataLoggerInterface(metaclass=InterfaceMetaclass):
-    _modtype = 'DataLoggerInterface'
-    _modclass = 'interface'
+    """
+    """
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_log_channels(self):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_log_channels(self, channelspec):
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def log_to_channel(self, channel, value):
         pass
 

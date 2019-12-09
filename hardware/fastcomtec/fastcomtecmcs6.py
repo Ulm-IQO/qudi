@@ -25,7 +25,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir
 from interface.fast_counter_interface import FastCounterInterface
 import time
@@ -159,6 +160,7 @@ class BOARDSETTING(ctypes.Structure):
                 ('fstchan',     ctypes.c_double),
                 ('timepreset',  ctypes.c_double), ]
 
+
 class FastComtec(Base, FastCounterInterface):
     """ Hardware Class for the FastComtec Card.
 
@@ -175,8 +177,6 @@ class FastComtec(Base, FastCounterInterface):
 
     """
 
-    _modclass = 'FastComtec'
-    _modtype = 'hardware'
     gated = ConfigOption('gated', False, missing='warn')
     trigger_safety = ConfigOption('trigger_safety', 400e-9, missing='warn')
     aom_delay = ConfigOption('aom_delay', 390e-9, missing='warn')

@@ -20,8 +20,10 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import visa
+
 
 class CTC100(Base):
     """ This module implements communication with CTC100 temperature controllers
@@ -37,9 +39,6 @@ class CTC100(Base):
         fitlogic: 'fitlogic' # name of the fitlogic module, see default config
 
     """
-
-    _modclass = 'ctc100'
-    _modtype = 'hardware'
 
     # config options
     _interface = ConfigOption('interface', missing='error')
