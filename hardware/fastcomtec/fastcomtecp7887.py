@@ -166,6 +166,7 @@ class FastComtec(Base, FastCounterInterface):
     trigger_safety = ConfigOption('trigger_safety', 200e-9, missing='warn')
     aom_delay = ConfigOption('aom_delay', 400e-9, missing='warn')
     minimal_binwidth = ConfigOption('minimal_binwidth', 0.25e-9, missing='warn')
+    model = ConfigOption('model', '7887')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -183,7 +184,8 @@ class FastComtec(Base, FastCounterInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.dll = ctypes.windll.LoadLibrary('dp7887.dll')
+        dll_name = 'dp{}.dll'.format(self.model)
+        self.dll = ctypes.windll.LoadLibrary(dll_name)
         if self.gated:
             self.change_sweep_mode(gated=True)
         else:
