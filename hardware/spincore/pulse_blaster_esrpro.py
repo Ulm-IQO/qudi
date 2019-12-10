@@ -29,8 +29,8 @@ from interface.switch_interface import SwitchInterface
 from interface.pulser_interface import PulserInterface
 from interface.pulser_interface import PulserConstraints
 
-from core.module import Base, ConfigOption
-from core.util.modules import get_main_dir
+from core.module import Base
+from core.configoption import ConfigOption
 from core.util.mutex import Mutex
 
 
@@ -99,9 +99,6 @@ class PulseBlasterESRPRO(Base, SwitchInterface, PulserInterface):
                          so that the pulse are emitted sooner relatively to other channels.
                          The first line is 0 and the last is 20.
     """
-
-    _modclass = 'PulseBlasterESRPRO'
-    _modtype = 'hardware'
 
     _library_path = ConfigOption('library_path', default='', missing='info')
 

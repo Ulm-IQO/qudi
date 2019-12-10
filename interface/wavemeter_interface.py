@@ -20,17 +20,14 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class WavemeterInterface(metaclass=InterfaceMetaclass):
     """ Define the controls for a wavemeter hardware."""
 
-    _modclass = 'WavemeterInterface'
-    _modtype = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def start_acqusition(self):
         """ Method to start the wavemeter software.
 
@@ -41,7 +38,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def stop_acqusition(self):
         """ Stops the Wavemeter from measuring and kills the thread that queries
             the data.
@@ -50,7 +47,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_current_wavelength(self, kind="air"):
         """ This method returns the current wavelength.
 
@@ -61,7 +58,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_current_wavelength2(self, kind="air"):
         """ This method returns the current wavelength of the second input channel.
 
@@ -72,7 +69,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_timing(self):
         """ Get the timing of the internal measurement thread.
 
@@ -80,7 +77,7 @@ class WavemeterInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_timing(self, timing):
         """ Set the timing of the internal measurement thread.
 

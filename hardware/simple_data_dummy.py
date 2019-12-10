@@ -36,9 +36,6 @@ class SimpleDummy(Base, SimpleDataInterface):
 
     """
 
-    _modclass = 'simple'
-    _modtype = 'hardware'
-
     def on_activate(self):
         pass
 

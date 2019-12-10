@@ -27,7 +27,7 @@ import os
 import pyqtgraph as pg
 import pyqtgraph.exporters
 
-from core.module import Connector
+from core.connector import Connector
 from core.util import units
 from gui.guibase import GUIBase
 from gui.colordefs import QudiPalettePale as palette
@@ -52,10 +52,9 @@ class WavemeterLogWindow(QtWidgets.QMainWindow):
 
 
 class WavemeterLogGui(GUIBase):
-    _modclass = 'WavemeterLogGui'
-    _modtype = 'gui'
-
-    ## declare connectors
+    """
+    """
+    # declare connectors
     wavemeterloggerlogic1 = Connector(interface='WavemeterLoggerLogic')
     savelogic = Connector(interface='SaveLogic')
 

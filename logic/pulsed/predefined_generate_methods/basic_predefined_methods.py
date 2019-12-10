@@ -23,6 +23,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from logic.pulsed.pulse_objects import PulseBlock, PulseBlockEnsemble, PulseSequence
 from logic.pulsed.pulse_objects import PredefinedGeneratorBase
+from core.util.helpers import csv_2_list
 
 """
 General Pulse Creation Procedure:
@@ -335,17 +336,18 @@ class BasicPredefinedGenerator(PredefinedGeneratorBase):
         created_ensembles.append(block_ensemble)
         return created_blocks, created_ensembles, created_sequences
 
-    def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating = True):
+    def generate_ramsey_from_list(self, name='ramsey', tau_list='[1e-6, 2e-6]', alternating=True):
         """
-
         """
-
         created_blocks = list()
         created_ensembles = list()
         created_sequences = list()
 
         # get tau array for measurement ticks
-        tau_array = [n.strip() for n in tau_list]
+        try:
+            tau_array = csv_2_list(tau_list)
+        except TypeError:
+            tau_array = tau_list
 
         waiting_element = self._get_idle_element(length=self.wait_time,
                                                  increment=0)

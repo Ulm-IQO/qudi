@@ -23,7 +23,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 from scipy.interpolate import interp1d
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 from interface.process_interface import ProcessInterface
 
@@ -47,9 +49,6 @@ class ProcessValueModifier(GenericLogic, ProcessInterface):
     0   0
     1   10
     """
-
-    _modclass = 'ProcessValueModifier'
-    _modtype = 'interfuse'
 
     hardware = Connector(interface='ProcessInterface')
 
