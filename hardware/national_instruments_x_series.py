@@ -1611,7 +1611,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     '')
 
             # Analog task
-            if len(self._scanner_ai_channels) > 0:
+            if self._scanner_ai_channels:
                 daq.DAQmxCreateAIVoltageChan(
                     atask,
                     ', '.join(self._scanner_ai_channels),
@@ -1624,39 +1624,45 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                 )
 
             # connect the pulses from the clock to the counter
+            daq.DAQmxSetCISemiPeriodTerm(
+                task,
+                my_counter_channel,
+                my_clock_channel + 'InternalOutput')
+
+            # connect the pulses from the clock to the counter
             daq.DAQmxSetCIPulseWidthTerm(
                 task,
                 my_counter_channel,
                 my_clock_channel + 'InternalOutput')
 
-            # define the source of ticks for the counter as self._photon_source
-            daq.DAQmxSetCICtrTimebaseSrc(
-                task,
-                my_counter_channel,
-                my_photon_source)
+                # define the source of ticks for the counter as self._photon_source
+                daq.DAQmxSetCICtrTimebaseSrc(
+                    task,
+                    my_counter_channel,
+                    my_photon_source)
 
-            self._scanner_counter_daq_tasks.append(task)
-        except:
-            self.log.exception('Error while setting up the digital counter of ODMR scan.')
-            return -1
+                self._scanner_counter_daq_tasks.append(task)
+            except:
+                self.log.exception('Error while setting up the digital counter of ODMR scan.')
+                return -1
 
-    try:
-        # Analog task
-        if self._scanner_ai_channels:
-            atask = daq.TaskHandle()
-            daq.DAQmxCreateTask('ODMRAnalog', daq.byref(atask))
+        try:
+            # Analog task
+            if self._scanner_ai_channels:
+                atask = daq.TaskHandle()
+                daq.DAQmxCreateTask('ODMRAnalog', daq.byref(atask))
 
-            daq.DAQmxCreateAIVoltageChan(
-                atask,
-                ', '.join(self._scanner_ai_channels),
-                'ODMR Analog',
-                daq.DAQmx_Val_RSE,
-                -10,
-                10,
-                daq.DAQmx_Val_Volts,
-                ''
-            )
-            self._scanner_analog_daq_task = atask
+                daq.DAQmxCreateAIVoltageChan(
+                    atask,
+                    ', '.join(self._scanner_ai_channels),
+                    'ODMR Analog',
+                    daq.DAQmx_Val_RSE,
+                    -10,
+                    10,
+                    daq.DAQmx_Val_Volts,
+                    ''
+                )
+                self._scanner_analog_daq_task = atask
 
             # start and stop pulse task to correctly initiate idle state high voltage.
             daq.DAQmxStartTask(self._scanner_clock_daq_task)
