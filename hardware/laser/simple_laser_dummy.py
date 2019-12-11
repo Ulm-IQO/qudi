@@ -38,9 +38,6 @@ class SimpleLaserDummy(Base, SimpleLaserInterface):
 
     """
 
-    _modclass = 'laserdummy'
-    _modtype = 'hardware'
-
     def __init__(self, **kwargs):
         """ """
         super().__init__(**kwargs)

@@ -36,7 +36,7 @@ from qtpy import QtCore
 from . import config
 
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
-from .util.modules import toposort, isBase
+from .util.modules import toposort, is_base
 from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
@@ -45,7 +45,8 @@ try:
     from .remote import RemoteObjectManager
 except ImportError:
     RemoteObjectManager = None
-from .module import BaseMixin, Connector
+from .module import BaseMixin
+from .connector import Connector
 
 
 class Manager(QtCore.QObject):
@@ -540,7 +541,7 @@ class Manager(QtCore.QObject):
         """
 
         logger.info('Loading module ".{0}.{1}"'.format(baseName, module))
-        if not isBase(baseName):
+        if not is_base(baseName):
             raise Exception('You are trying to cheat the '
                             'system with some category {0}'.format(baseName))
 
@@ -574,7 +575,7 @@ class Manager(QtCore.QObject):
         logger.info('Configuring {0} as {1}'.format(
             className, instanceName))
         with self.lock:
-            if isBase(baseName):
+            if is_base(baseName):
                 if self.isModuleLoaded(baseName, instanceName):
                     raise Exception(
                         '{0} already exists with name {1}'.format(baseName, instanceName))
@@ -771,7 +772,7 @@ class Manager(QtCore.QObject):
                     logger.info('Remote module {0} loaded as {1}.{2}.'
                                 ''.format(defined_module['remote'], base, key))
                     with self.lock:
-                        if isBase(base):
+                        if is_base(base):
                             self.tree['loaded'][base][key] = instance
                             self.sigModulesChanged.emit()
                         else:
@@ -847,7 +848,7 @@ class Manager(QtCore.QObject):
                 logger.info('Remote module {0} loaded as .{1}.{2}.'
                             ''.format(defined_module['remote'], base, key))
                 with self.lock:
-                    if isBase(base):
+                    if is_base(base):
                         self.tree['loaded'][base][key] = instance
                         self.sigModulesChanged.emit()
                     else:
@@ -898,7 +899,7 @@ class Manager(QtCore.QObject):
           @return bool: module is present in definition
         """
         return (
-            isBase(base)
+            is_base(base)
             and base in self.tree['defined']
             and name in self.tree['defined'][base]
             )
@@ -910,7 +911,7 @@ class Manager(QtCore.QObject):
           @return bool: module is loaded
         """
         return (
-            isBase(base)
+            is_base(base)
             and base in self.tree['loaded']
             and name in self.tree['loaded'][base]
             )

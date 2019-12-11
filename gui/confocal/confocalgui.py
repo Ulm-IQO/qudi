@@ -25,7 +25,9 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from qtwidgets.scan_plotwidget import ScanImageItem
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -93,8 +95,6 @@ class OptimizerSettingDialog(QtWidgets.QDialog):
 class ConfocalGui(GUIBase):
     """ Main Confocal Class for xy and depth scans.
     """
-    _modclass = 'ConfocalGui'
-    _modtype = 'gui'
 
     # declare connectors
     confocallogic1 = Connector(interface='ConfocalLogic')

@@ -21,7 +21,6 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 
 from qtpy.QtCore import QCoreApplication
-from qtpy.QtCore import QObject
 from qtpy.QtCore import QThread
 from qtpy.QtCore import QTimer
 from qtpy.QtWidgets import QAbstractButton

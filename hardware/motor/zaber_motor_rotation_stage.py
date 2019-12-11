@@ -24,8 +24,10 @@ import time
 import serial
 from collections import OrderedDict
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.motor_interface import MotorInterface
+
 
 class MotorRotationZaber(Base, MotorInterface):
     """unstable: Christoph Müller, Simon Schmitt
@@ -54,8 +56,6 @@ class MotorRotationZaber(Base, MotorInterface):
         zaber_speed_conversion: 9.375
 
     """
-    _modclass = 'MotorRotation'
-    _modtype = 'hardware'
 
     _com_port_rot = ConfigOption('com_port_zaber', 'ASRL1::INSTR', missing='warn')
     _rot_baud_rate = ConfigOption('zaber_baud_rate', 9600, missing='warn')

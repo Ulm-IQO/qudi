@@ -19,7 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, Connector
+from core.module import Base
+from core.connector import Connector
 from interface.spectrometer_interface import SpectrometerInterface
 
 from time import strftime, localtime

@@ -25,7 +25,8 @@ import os
 import pyqtgraph as pg
 import datetime
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util import units
 from core.util.helpers import natural_sort
 from gui.colordefs import QudiPalettePale as palette
@@ -142,10 +143,6 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
 
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
-
-    _modclass = 'PulsedMeasurementGui'
-    _modtype = 'gui'
-
     ## declare connectors
     pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 
@@ -2622,15 +2619,20 @@ class PulsedMeasurementGui(GUIBase):
             else:
                 self._pa.ana_param_ignore_last_CheckBox.setChecked(False)
         if 'controlled_variable' in settings_dict:
-            self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
-                settings_dict['controlled_variable'][0])
-            if len(settings_dict['controlled_variable']) > 1:
+            if len(settings_dict['controlled_variable']) < 1:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(0)
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(0)
+            elif len(settings_dict['controlled_variable']) == 1:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
+                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
+            else:
+                self._pa.ana_param_x_axis_start_ScienDSpinBox.setValue(
+                    settings_dict['controlled_variable'][0])
                 self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
                     settings_dict['controlled_variable'][1] - settings_dict['controlled_variable'][
                         0])
-            else:
-                self._pa.ana_param_x_axis_inc_ScienDSpinBox.setValue(
-                    settings_dict['controlled_variable'][0])
         if 'invoke_settings' in settings_dict:
             self._pa.ana_param_invoke_settings_CheckBox.setChecked(settings_dict['invoke_settings'])
             self.toggle_measurement_settings_editor(settings_dict['invoke_settings'])
