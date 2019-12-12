@@ -511,18 +511,18 @@ class SaveLogic(GenericLogic):
                 metadata['ModDate'] = time
 
             # determine the PDF-Filename
-            fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
+    #        fig_fname_vector = os.path.join(filepath, filename)[:-4] + '_fig.pdf'
 
             # Create the PdfPages object to which we will save the pages:
             # The with statement makes sure that the PdfPages object is closed properly at
             # the end of the block, even if an Exception occurs.
-            with PdfPages(fig_fname_vector) as pdf:
-                pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
+    #        with PdfPages(fig_fname_vector) as pdf:
+    #            pdf.savefig(plotfig, bbox_inches='tight', pad_inches=0.05)
 
                 # We can also set the file's metadata via the PdfPages object:
-                pdf_metadata = pdf.infodict()
-                for x in metadata:
-                    pdf_metadata[x] = metadata[x]
+    #            pdf_metadata = pdf.infodict()
+    #            for x in metadata:
+    #                pdf_metadata[x] = metadata[x]
 
             # determine the PNG-Filename and save the plain PNG
             fig_fname_image = os.path.join(filepath, filename)[:-4] + '_fig.png'

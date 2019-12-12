@@ -27,7 +27,11 @@ import os
 import pyqtgraph as pg
 import time
 
-from core.module import Connector, ConfigOption, StatusVar
+#from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
+
 from collections import OrderedDict
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar

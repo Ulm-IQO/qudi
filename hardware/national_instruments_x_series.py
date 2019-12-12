@@ -1201,7 +1201,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             but x, xy, xyz and xyza are allowed formats.
         """
 
-        if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray,)):
+        if not isinstance(positions, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given position list is no array type.')
             return np.array([np.NaN])
 
@@ -1360,7 +1360,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             self.log.error('Configured analog input is not running, cannot scan a line.')
             return -1
 
-        if not isinstance(line_path, (frozenset, list, set, tuple, np.ndarray,)):
+        if not isinstance(line_path, (frozenset, list, set, tuple, np.ndarray, )):
             self.log.error('Given line_path list is not array type.')
             return np.array([[-1.]])
         try:
@@ -1610,30 +1610,30 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     daq.DAQmx_Val_Ticks,
                     '')
 
-            # Analog task
-            if self._scanner_ai_channels:
-                daq.DAQmxCreateAIVoltageChan(
-                    atask,
-                    ', '.join(self._scanner_ai_channels),
-                    'ODMR Analog',
-                    daq.DAQmx_Val_RSE,
-                    -10,
-                    10,
-                    daq.DAQmx_Val_Volts,
-                    ''
-                )
+                # Analog task
+                if self._scanner_ai_channels:
+                    daq.DAQmxCreateAIVoltageChan(
+                        atask,
+                        ', '.join(self._scanner_ai_channels),
+                        'ODMR Analog',
+                        daq.DAQmx_Val_RSE,
+                        -10,
+                        10,
+                        daq.DAQmx_Val_Volts,
+                        ''
+                    )
 
-            # connect the pulses from the clock to the counter
-            daq.DAQmxSetCISemiPeriodTerm(
-                task,
-                my_counter_channel,
-                my_clock_channel + 'InternalOutput')
+                # connect the pulses from the clock to the counter
+                daq.DAQmxSetCISemiPeriodTerm(
+                    task,
+                    my_counter_channel,
+                    my_clock_channel + 'InternalOutput')
 
-            # connect the pulses from the clock to the counter
-            daq.DAQmxSetCIPulseWidthTerm(
-                task,
-                my_counter_channel,
-                my_clock_channel + 'InternalOutput')
+                # connect the pulses from the clock to the counter
+                daq.DAQmxSetCIPulseWidthTerm(
+                    task,
+                    my_counter_channel,
+                    my_clock_channel + 'InternalOutput')
 
                 # define the source of ticks for the counter as self._photon_source
                 daq.DAQmxSetCICtrTimebaseSrc(
@@ -1878,8 +1878,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     222,
                     dtype=np.uint32)
 
-            # number of samples which were read will be stored here
-            n_read_samples = daq.int32()
+                # number of samples which were read will be stored here
+                n_read_samples = daq.int32()
 
                 # actually read the counted photons
                 daq.DAQmxReadCounterU32(
@@ -2214,7 +2214,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             timeout = self._RWTimeout
 
         # Count data will be written here
-        _gated_count_data = np.empty([2,samples], dtype=np.uint32)
+        _gated_count_data = np.empty([2, samples], dtype=np.uint32)
 
         # Number of samples which were read will be stored here
         n_read_samples = daq.int32()

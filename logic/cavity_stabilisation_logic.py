@@ -31,7 +31,10 @@ import datetime
 from scipy.stats import norm  # To fit gaussian average to data
 from collections import OrderedDict
 
-from core.module import Connector, ConfigOption, StatusVar
+#from core.module import Connector, ConfigOption, StatusVar
+from core.configoption import ConfigOption
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 
 
