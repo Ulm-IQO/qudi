@@ -203,8 +203,7 @@ class MFL_IRQ_Driven(GenericLogic):
         self.init_arrays(self.n_epochs)
         self.init_mfl_algo()    # this is a dummy init without parameter, call setup_new_run() after
 
-    def setup_new_run(self, tau_first, tau_first_req,  t_first_seq=None, cb_epoch_done=None, t2star_s=None,
-                      freq_max_mhz=10, eta_assym=1):
+    def setup_new_run(self, tau_first, tau_first_req,  t_first_seq=None, cb_epoch_done=None, **kwargs_algo):
 
         # Attention: may not run smoothly in debug mode
 
@@ -212,7 +211,7 @@ class MFL_IRQ_Driven(GenericLogic):
             cb_epoch_done = self.__cb_func_epoch_done
 
         # reset probability distris
-        self.init_mfl_algo(t2star_s=t2star_s, freq_max_mhz=freq_max_mhz, eta_assym=eta_assym)
+        self.init_mfl_algo(**kwargs_algo)
 
         self.nicard.register_callback_on_change_detection(self.get_epoch_done_trig_ch(),
                                                           cb_epoch_done, edges=[True, False])
@@ -226,7 +225,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         if not self.is_no_qudi:
             mes = self.pulsedmasterlogic().pulsedmeasurementlogic()
-            mes.timer_interval = 100  # basically disable analysis loop, pull manually instead
+            mes.timer_interval = 9999  # basically disable analysis loop, pull manually instead
 
     def setup_ni_edge_counter(self, channel='dev1/ctr1'):
 
@@ -257,8 +256,14 @@ class MFL_IRQ_Driven(GenericLogic):
         self.zs = np.zeros((n_epochs, 1))
         self.priors = []   # element: [sampled_pos, particle_loc, particle_weight]
 
+    def init_mfl_algo(self, **kwargs):
 
-    def init_mfl_algo(self, t2star_s=None, freq_max_mhz=10, resample_a=0.98, resample_thresh=0.5, eta_assym=1):
+        t2star_s = kwargs.get('t2_star', None)
+        freq_max_mhz = kwargs.get('freq_max_mhz', 10)
+        eta_assym = kwargs.get('eta_assym', 1)
+        resample_a = kwargs.get('resample_1', 0.98),
+        resample_thresh = kwargs.get('resample_thresh', 0.5)
+
         n_particles = 1000
         freq_min = 0
         freq_max = 2 * np.pi * freq_max_mhz  # MHz rad
@@ -1413,6 +1418,10 @@ if __name__ == '__main__':
     logger.info("Waiting for new mes params. Now start mfl from qudi/jupyter notebook.")
     wait_for_correct_metafile(mfl_logic.qudi_vars_metafile)
     params, _, meta = import_mfl_params(mfl_logic.qudi_vars_metafile)
+    # DEBUG
+    #params = {'n_epochs':1, 'n_sweeps':2, 'z_thresh':0.1, 't2star':1e-6, 'calibmode_lintau': False,
+    #          'freq_max_mhz': 1, 'eta_assym': 0, 'nowait_callback': False}
+    #meta = {'t_start':0}
 
     setup_mfl_seperate_thread(n_epochs=params['n_epochs'], n_sweeps=params['n_sweeps'], z_thresh=params['z_thresh'],
                               t2star_s=params['t2star'], calibmode_lintau=params['calibmode_lintau'],
