@@ -32,7 +32,7 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
     def set_control_value(self, value, channel=None):
         """ Set the value of the controlled process variable
 
-        @param value: The value to set
+        @param (float) value: The value to set
         @param (int) channel: (Optional) The number of the channel
 
         """
@@ -44,7 +44,7 @@ class ProcessControlInterface(metaclass=InterfaceMetaclass):
 
         @param (int) channel: (Optional) The number of the channel
 
-        @return: The current control value
+        @return (float): The current control value
         """
         pass
 
