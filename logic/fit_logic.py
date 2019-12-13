@@ -26,6 +26,8 @@ import lmfit
 from qtpy import QtCore
 import numpy as np
 from os import listdir
+import os
+import sys
 from os.path import isfile, join
 from collections import OrderedDict
 from distutils.version import LooseVersion
@@ -34,6 +36,7 @@ from logic.generic_logic import GenericLogic
 from core.util.modules import get_main_dir
 from core.util.mutex import Mutex
 from core.config import load, save
+from core.configoption import ConfigOption
 
 
 class FitLogic(GenericLogic):
@@ -48,6 +51,12 @@ class FitLogic(GenericLogic):
     For clarity reasons the fit function are imported from different files
     seperated by function type, e.g. gaussianlikemethods, sinemethods, generalmethods
     """
+
+    # Optional additional paths to import from
+    _additional_methods_import_path = ConfigOption(name='additional_predefined_methods_path',
+                                                   default=None,
+                                                   missing='nothing')
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         # locking for thread safety
@@ -55,11 +64,32 @@ class FitLogic(GenericLogic):
 
         filenames = []
         # for path in directories:
-        path = join(get_main_dir(), 'logic', 'fitmethods')
-        for f in listdir(path):
-            if isfile(join(path, f)):
-                if f[-3:] == '.py':
-                    filenames.append(f[:-3])
+        path_list = [join(get_main_dir(), 'logic', 'fitmethods')]
+        # adding additional path, to be defined in the config
+
+        if self._additional_methods_import_path is not None:
+            if isinstance(self._additional_methods_import_path, str):
+                self._additional_methods_import_path = [self._additional_methods_import_path]
+                print('here1')
+
+            if isinstance(self._additional_methods_import_path, (list, tuple, set)):
+                for method_import_path in self._additional_methods_import_path:
+                    print('here2',method_import_path)
+                    if not os.path.exists(method_import_path):
+                        self.log.error('Specified path "{0}" for import of additional fit methods '
+                                       'does not exist.'.format(method_import_path))
+                    else:
+                        path_list.append(method_import_path)
+            else:
+                self.log.error('ConfigOption additional_predefined_methods_path needs to either be a string or '
+                               'a list of strings.')
+        for path in path_list:
+            for f in listdir(path):
+                if isfile(join(path, f)):
+                    if f[-3:] == '.py':
+                        filenames.append(f[:-3])
+                        if path not in sys.path:
+                            sys.path.append(path)
 
         # A dictionary containing all fit methods and their estimators.
         self.fit_list = OrderedDict()
@@ -74,8 +104,7 @@ class FitLogic(GenericLogic):
         fits_for_dict = list()
 
         for files in filenames:
-
-            mod = importlib.import_module('logic.fitmethods.{0}'.format(files))
+            mod = importlib.import_module('{0}'.format(files))
             for method in dir(mod):
                 ref = getattr(mod, method)
                 if callable(ref) and (inspect.ismethod(ref) or inspect.isfunction(ref)):
