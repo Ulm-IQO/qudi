@@ -25,8 +25,7 @@ from core.meta import InterfaceMetaclass
 
 
 class ProcessInterface(metaclass=InterfaceMetaclass):
-    """ A very simple interface to measure a single value.
-        Used for PID controll.
+    """ A simple interface to measure one or multiple value(s).
     """
 
     @abstract_interface_method
