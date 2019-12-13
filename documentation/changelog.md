@@ -53,6 +53,7 @@ The potential sequence_options are:
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
 * added the option to do a purely analog ODMR scan.
+* added multi channel option to process_interface and process_control_interface
 *
 
 
