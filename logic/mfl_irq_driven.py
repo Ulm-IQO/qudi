@@ -21,7 +21,7 @@ import line_profiler
 profile = line_profiler.LineProfiler()
 
 ARRAY_SIZE_MAX = 200000
-GAMMA_NV_MHZ_GAUSS = 2.8e6  # Hz per Gauss
+GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
 
 
 from enum import IntEnum
@@ -562,7 +562,7 @@ class MFL_IRQ_Driven(GenericLogic):
 
         t_phase_s, t_seq_s, t_epoch_s = self.get_times()
         t_total_phase_s, t_total_seq_s, t_total_real_s = self.get_total_times()
-        dB_tesla = dB_mhz / (GAMMA_NV_MHZ_GAUSS * 1e-2)
+        dB_tesla = dB_mhz / (GAMMA_NV_HZ_GAUSS * 1e-2)
 
         # padding for supporting 2d db data
         t_phase_s = np.pad(t_phase_s[:,np.newaxis], [(0,0),(0,dB_mhz.shape[1]-1)], mode='edge')

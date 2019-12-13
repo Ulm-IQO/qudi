@@ -15,7 +15,7 @@ if __name__ == '__main__':  # for debugging
 mfl_lib = imp.load_source('packages', path_mfl_lib)
 
 ARRAY_SIZE_MAX = 5000
-GAMMA_NV_MHZ_GAUSS = 2.8e6  # Hz per Gauss
+GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
 
 class MFL_Multi_IRQ_Driven(MFL_IRQ_Driven):
 

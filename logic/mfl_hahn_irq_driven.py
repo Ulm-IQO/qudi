@@ -15,7 +15,8 @@ if __name__ == '__main__':  # for debugging
 mfl_lib = imp.load_source('packages', path_mfl_lib)
 
 ARRAY_SIZE_MAX = 5000
-GAMMA_NV_MHZ_GAUSS = 2.8e6  # Hz per Gauss
+GAMMA_NV_HZ_GAUSS = 2.8e6  # Hz per Gauss
+GAMMA_C_MHZ_GAUSS = 1.07084e3
 
 class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
 
@@ -44,7 +45,7 @@ class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
         resample_a = kwargs.get('resample_a', 0.98)
         resample_thresh = kwargs.get('resample_thresh', 0.5)
         a_parallel_mhz = kwargs.get('a_parallel_mhz', -1)
-        t2 = kwargs.get('t2_s', -1)
+        t2 = kwargs.get('t2_s', 1)
 
         n_particles = 1000
         freq_min = 2 * np.pi * a_parallel_mhz  # for AparrKnown model
@@ -76,9 +77,37 @@ class MFL_Hahn_IRQ_Driven(MFL_IRQ_Driven):
         self.mfl_updater = mfl_lib.basic_SMCUpdater(self.mfl_model, n_particles, self.mfl_prior,
                                                     resample_a=resample_a, resample_thresh=resample_thresh)
         self.mfl_updater.reset()
-        self.mfl_tau_from_heuristic = mfl_lib.T2_Thresh_MultiHahnPGH(self.mfl_updater, b0_gauss,
-                                                                     inv_field=['w_'], tau_thresh_us=t2*1e6)
+        #self.mfl_tau_from_heuristic = mfl_lib.T2_Thresh_MultiHahnPGH(self.mfl_updater, b0_gauss,
+        #                                                             inv_field=['w_'], tau_thresh_us=t2*1e6)
+        self.mfl_tau_from_heuristic = mfl_lib.T2RandPenalty_MultiHahnPGH(self.mfl_updater, b0_gauss,
+                                                                         tau_thresh_rescale=t2 / 4, scale_f=4,
+                                                                         inv_field=['w_'])
 
+    def update_mfl(self, z_bin):
+        # update posterior = prior * likelihood
+        last_tau = self.taus[self.i_epoch, 0]  # get tau of experiment
+        tau_and_x = self.get_tau_and_x(last_tau)
+        try:
+            self.mfl_updater.update(z_bin, tau_and_x)  # updates prior
+        except RuntimeError as e:
+            self.log.error("Updating mfl failed in epoch {}: {}".format(self.i_epoch, str(e)))
+
+        self.prior_erase_f1()
+
+    def prior_erase_f1(self):
+        # particles = [updater.particle_locations, updater.particle_weights]
+
+        gamma_c = 1.07084e3  # Hz
+        f1 = self.mfl_b0_gauss * gamma_c   # gamma
+
+        df = 10e3
+
+        if self.n_est_ws == 1:
+            self.mfl_updater.particle_weights[
+                 np.logical_and(2*np.pi* (f1 - df) < self.mfl_updater.particle_locations[:,0],
+                                self.mfl_updater.particle_locations[:,0] < 2*np.pi* (f1 + df))] = 0
+        else:
+            raise NotImplementedError
 
 if __name__ == '__main__':
     from logic.user_logic import UserCommands as ucmd
