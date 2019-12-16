@@ -25,10 +25,8 @@ import inspect
 import lmfit
 from qtpy import QtCore
 import numpy as np
-from os import listdir
 import os
 import sys
-from os.path import isfile, join
 from collections import OrderedDict
 from distutils.version import LooseVersion
 
@@ -64,13 +62,14 @@ class FitLogic(GenericLogic):
 
         filenames = []
         # for path in directories:
-        path_list = [join(get_main_dir(), 'logic', 'fitmethods')]
+        path_list = [os.path.join(get_main_dir(), 'logic', 'fitmethods')]
         # adding additional path, to be defined in the config
 
-        if self._additional_methods_import_path is not None:
+        if self._additional_methods_import_path:
             if isinstance(self._additional_methods_import_path, str):
                 self._additional_methods_import_path = [self._additional_methods_import_path]
                 self.log.info('Adding fit methods path: {}'.format(self._additional_methods_import_path))
+
             if isinstance(self._additional_methods_import_path, (list, tuple, set)):
                 self.log.info('Adding fit methods path list: {}'.format(self._additional_methods_import_path))
                 for method_import_path in self._additional_methods_import_path:
@@ -82,13 +81,13 @@ class FitLogic(GenericLogic):
             else:
                 self.log.error('ConfigOption additional_predefined_methods_path needs to either be a string or '
                                'a list of strings.')
+
         for path in path_list:
-            for f in listdir(path):
-                if isfile(join(path, f)):
-                    if f[-3:] == '.py':
-                        filenames.append(f[:-3])
-                        if path not in sys.path:
-                            sys.path.append(path)
+            for f in os.listdir(path):
+                if os.path.isfile(os.path.join(path, f)) and f.endswith('.py'):
+                    filenames.append(f[:-3])
+                    if path not in sys.path:
+                        sys.path.append(path)
 
         # A dictionary containing all fit methods and their estimators.
         self.fit_list = OrderedDict()
