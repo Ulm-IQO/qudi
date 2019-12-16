@@ -53,8 +53,8 @@ The potential sequence_options are:
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
 * added the option to do a purely analog ODMR scan.
-*
-
+* added the option of an additional path for fit methods
+* 
 
 
 Config changes:
@@ -62,6 +62,7 @@ Config changes:
 * The parameters `additional_predefined_methods_path` and `additional_sampling_functions_path` 
 of the `SequenceGeneratorLogic` can now either be a string for a single path 
 or a list of strings for multiple paths.
+* There is an option for the fit logic, to give an additional path: `additional_fit_methods_path`  
 
 ## Release 0.10
 Released on 14 Mar 2019

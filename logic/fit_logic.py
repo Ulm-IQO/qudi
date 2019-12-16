@@ -53,7 +53,7 @@ class FitLogic(GenericLogic):
     """
 
     # Optional additional paths to import from
-    _additional_methods_import_path = ConfigOption(name='additional_predefined_methods_path',
+    _additional_methods_import_path = ConfigOption(name='additional_fit_methods_path',
                                                    default=None,
                                                    missing='nothing')
 
@@ -70,11 +70,10 @@ class FitLogic(GenericLogic):
         if self._additional_methods_import_path is not None:
             if isinstance(self._additional_methods_import_path, str):
                 self._additional_methods_import_path = [self._additional_methods_import_path]
-                print('here1')
-
+                self.log.info('Adding fit methods path: {}'.format(self._additional_methods_import_path))
             if isinstance(self._additional_methods_import_path, (list, tuple, set)):
+                self.log.info('Adding fit methods path list: {}'.format(self._additional_methods_import_path))
                 for method_import_path in self._additional_methods_import_path:
-                    print('here2',method_import_path)
                     if not os.path.exists(method_import_path):
                         self.log.error('Specified path "{0}" for import of additional fit methods '
                                        'does not exist.'.format(method_import_path))
