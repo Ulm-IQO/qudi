@@ -26,8 +26,6 @@ from core.util.mutex import Mutex
 class GenericLogic(Base):
     """A generic logic interface class.
     """
-    _modclass = 'GenericLogic'
-    _modtype = 'logic'
     _threaded = True
 
     def __init__(self, **kwargs):

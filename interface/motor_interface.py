@@ -20,8 +20,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
 
 
 class MotorInterface(metaclass=InterfaceMetaclass):
@@ -31,10 +31,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         methods for the hardware class, which get called by the general method.
     """
 
-    _modtype = 'MotorInterface'
-    _modclass = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_constraints(self):
         """ Retrieve the hardware constrains from the motor device.
 
@@ -97,7 +94,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def move_rel(self,  param_dict):
         """ Moves stage in given direction (relative movement)
 
@@ -113,7 +110,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
 
@@ -127,7 +124,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def abort(self):
         """ Stops movement of the stage
 
@@ -135,7 +132,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_pos(self, param_list=None):
         """ Gets current position of the stage arms
 
@@ -150,7 +147,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self, param_list=None):
         """ Get the status of the position
 
@@ -164,7 +161,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def calibrate(self, param_list=None):
         """ Calibrates the stage.
 
@@ -182,7 +179,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_velocity(self, param_list=None):
         """ Gets the current velocity for all connected axes.
 
@@ -196,7 +193,7 @@ class MotorInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_velocity(self, param_dict):
         """ Write new value for velocity.
 

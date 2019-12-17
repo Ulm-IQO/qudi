@@ -20,7 +20,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import numpy as np
 import visa
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 
 from interface.simple_data_interface import SimpleDataInterface
 from interface.process_interface import ProcessInterface
@@ -44,8 +45,6 @@ class PM100D(Base, SimpleDataInterface, ProcessInterface):
     pip install ThorlabsPM100
     in the Anaconda prompt after having activated qudi environment
     """
-    _modclass = 'powermeter'
-    _modtype = 'hardware'
 
     _address = ConfigOption('address', missing='error')
     _timeout = ConfigOption('timeout', 1)
