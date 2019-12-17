@@ -25,7 +25,7 @@ from logic.generic_logic import GenericLogic
 from interface.confocal_scanner_interface import ConfocalScannerInterface
 
 
-class ScannerAberrationInterfuse(GenericLogic, ConfocalScannerInterface):
+class ScannerLateralPolyCorrectInterfuse(GenericLogic, ConfocalScannerInterface):
     """ This interfuse produces a correction in x and y of simple aberration caused by working off axis
 
     Using a steering mirror to scan a sample by working off axis will induce small aberrations.
