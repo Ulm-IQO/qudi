@@ -25,7 +25,8 @@ import os
 import pyqtgraph as pg
 import datetime
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from core.util import units
 from core.util.helpers import natural_sort
 from gui.colordefs import QudiPalettePale as palette
@@ -142,10 +143,6 @@ class PredefinedMethodsConfigDialog(QtWidgets.QDialog):
 
 class PulsedMeasurementGui(GUIBase):
     """ This is the main GUI Class for pulsed measurements. """
-
-    _modclass = 'PulsedMeasurementGui'
-    _modtype = 'gui'
-
     ## declare connectors
     pulsedmasterlogic = Connector(interface='PulsedMasterLogic')
 

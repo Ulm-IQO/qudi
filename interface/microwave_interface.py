@@ -20,9 +20,9 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import abc
-from core.util.interfaces import InterfaceMetaclass
-from core.util.units import in_range
+from core.interface import abstract_interface_method
+from core.meta import InterfaceMetaclass
+from core.util.helpers import in_range
 from enum import Enum
 
 class TriggerEdge(Enum):
@@ -46,15 +46,13 @@ class MicrowaveMode(Enum):
     SWEEP = 3
     ASWEEP = 4
 
+
 class MicrowaveInterface(metaclass=InterfaceMetaclass):
     """This is the Interface class to define the controls for the simple
     microwave hardware.
     """
 
-    _modclass = 'MicrowaveInterface'
-    _modtype = 'interface'
-
-    @abc.abstractmethod
+    @abstract_interface_method
     def off(self):
         """
         Switches off any microwave output.
@@ -64,7 +62,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_status(self):
         """
         Gets the current status of the MW source, i.e. the mode (cw, list or sweep) and
@@ -74,7 +72,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_power(self):
         """
         Gets the microwave output power for the currently active mode.
@@ -83,7 +81,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_frequency(self):
         """
         Gets the frequency of the microwave output.
@@ -95,7 +93,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def cw_on(self):
         """
         Switches on cw microwave output.
@@ -105,7 +103,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_cw(self, frequency=None, power=None):
         """
         Configures the device for cw-mode and optionally sets frequency and/or power
@@ -120,7 +118,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def list_on(self):
         """
         Switches on the list mode microwave output.
@@ -130,7 +128,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_list(self, frequency=None, power=None):
         """
         Configures the device for list-mode and optionally sets frequencies and/or power
@@ -142,7 +140,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_listpos(self):
         """
         Reset of MW list mode position to start (first frequency step)
@@ -151,7 +149,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def sweep_on(self):
         """ Switches on the sweep mode.
 
@@ -159,7 +157,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_sweep(self, start=None, stop=None, step=None, power=None):
         """
         Configures the device for sweep-mode and optionally sets frequency start/stop/step
@@ -173,7 +171,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def reset_sweeppos(self):
         """
         Reset of MW sweep mode position to start (start frequency)
@@ -182,7 +180,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def set_ext_trigger(self, pol, timing):
         """ Set the external trigger for this device with proper polarization.
 
@@ -205,7 +203,7 @@ class MicrowaveInterface(metaclass=InterfaceMetaclass):
         """
         pass
 
-    @abc.abstractmethod
+    @abstract_interface_method
     def get_limits(self):
         """ Return the device-specific limits in a nested dictionary.
 

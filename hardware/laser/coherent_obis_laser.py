@@ -19,7 +19,8 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.simple_laser_interface import SimpleLaserInterface
 from interface.simple_laser_interface import LaserState
 from interface.simple_laser_interface import ShutterState
@@ -38,9 +39,6 @@ class OBISLaser(Base, SimpleLaserInterface):
         com_port: 'COM3'
 
     """
-
-    _modclass = 'laser'
-    _modtype = 'hardware'
 
     eol = '\r'
     _model_name = 'UNKNOWN'

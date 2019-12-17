@@ -22,7 +22,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 from interface.fast_counter_interface import FastCounterInterface
 import numpy as np
 import TimeTagger as tt
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 import os
 
 
@@ -40,8 +41,6 @@ class TimeTaggerFastCounter(Base, FastCounterInterface):
         timetagger_sum_channels: 4
 
     """
-    _modclass = 'TimeTaggerFastCounter'
-    _modtype = 'hardware'
 
     _channel_apd_0 = ConfigOption('timetagger_channel_apd_0', missing='error')
     _channel_apd_1 = ConfigOption('timetagger_channel_apd_1', missing='error')

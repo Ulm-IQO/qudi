@@ -29,7 +29,9 @@ import traceback
 
 from qtpy import QtCore
 from collections import OrderedDict
-from core.module import StatusVar, Connector, ConfigOption
+from core.statusvariable import StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
 from core.util.modules import get_main_dir, get_home_dir
 from core.util.helpers import natural_sort
 from core.util.network import netobtain
@@ -54,9 +56,6 @@ class SequenceGeneratorLogic(GenericLogic):
     This logic is also responsible to manipulate and read back hardware settings for
     waveform/sequence playback (pp-amplitude, sample rate, active channels etc.).
     """
-
-    _modclass = 'sequencegeneratorlogic'
-    _modtype = 'logic'
 
     # declare connectors
     pulsegenerator = Connector(interface='PulserInterface')
@@ -1089,6 +1088,12 @@ class SequenceGeneratorLogic(GenericLogic):
         """
         gen_method = self.generate_methods[predefined_sequence_name]
         gen_params = self.generate_method_params[predefined_sequence_name]
+        if 'name' not in gen_params:
+            self.log.error('Mandatory generation parameter "name" not found in generate method '
+                           '"{0}" arguments. Generation failed.'.format(predefined_sequence_name))
+            self.sigPredefinedSequenceGenerated.emit(None, False)
+            return
+
         # match parameters to method and throw out unwanted ones
         thrown_out_params = [param for param in kwargs_dict if param not in gen_params]
         for param in thrown_out_params:
@@ -1096,13 +1101,14 @@ class SequenceGeneratorLogic(GenericLogic):
         if thrown_out_params:
             self.log.debug('Unused params during predefined sequence generation "{0}":\n'
                            '{1}'.format(predefined_sequence_name, thrown_out_params))
+
         try:
             blocks, ensembles, sequences = gen_method(**kwargs_dict)
         except:
-            self.log.error('Generation of predefined sequence "{0}" failed.'
-                           ''.format(predefined_sequence_name))
+            self.log.exception('Generation of predefined sequence "{0}" failed with exception:'
+                               ''.format(predefined_sequence_name))
             self.sigPredefinedSequenceGenerated.emit(None, False)
-            raise
+            return
 
         # Save objects
         for block in blocks:
@@ -1121,7 +1127,9 @@ class SequenceGeneratorLogic(GenericLogic):
         for sequence in sequences:
             sequence.sampling_information = dict()
             self.save_sequence(sequence)
-        self.sigPredefinedSequenceGenerated.emit(kwargs_dict.get('name'), len(sequences) > 0)
+
+        created_name = gen_params.get('name') if 'name' not in kwargs_dict else kwargs_dict['name']
+        self.sigPredefinedSequenceGenerated.emit(created_name, len(sequences) > 0)
         return
 
     def _add_default_sequence(self, ensembles, sequences):

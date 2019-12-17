@@ -23,7 +23,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import time
 from collections import OrderedDict
 
-from core.module import Base, StatusVar, ConfigOption
+from core.module import Base
+from core.statusvariable import StatusVar
+from core.configoption import ConfigOption
 from core.util.helpers import natural_sort
 from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
@@ -41,8 +43,6 @@ class PulserDummy(Base, PulserInterface):
         module.Class: 'pulser_dummy.PulserDummy'
 
     """
-    _modclass = 'PulserDummy'
-    _modtype = 'hardware'
 
     activation_config = StatusVar(default=None)
     force_sequence_option = ConfigOption('force_sequence_option', default=False)

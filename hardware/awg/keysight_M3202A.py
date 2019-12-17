@@ -40,7 +40,8 @@ else:
 
 import keysightSD1 as ksd1
 
-from core.module import Base, ConfigOption
+from core.module import Base
+from core.configoption import ConfigOption
 from interface.pulser_interface import PulserInterface, PulserConstraints, SequenceOption
 
 
@@ -54,8 +55,6 @@ class M3202A(Base, PulserInterface):
         awg_serial: 0000000000 # here the serial number of current AWG
 
     """
-    _modclass = 'M3202A'
-    _modtype = 'hardware'
 
     # config options
     serial = ConfigOption(name='awg_serial', missing='error')
