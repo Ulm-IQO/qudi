@@ -28,24 +28,20 @@ import re
 import visa
 
 from core.module import Base, ConfigOption
-from interface.steppers_interface import SteppersInterface
+from interface.motor_interface import MotorInterface
 
 
-class AttoCubeStepper(Base, SteppersInterface):
+class AttocubeStepper(Base, MotorInterface):
     """
     """
 
-    _modtype = 'AttoCubeStepper'
-    _modclass = 'hardware'
-
-    _interface_type = ConfigOption('interface_type', missing='error')  # 'usb'|'ethernet'
+    _interface_type = ConfigOption('interface_type', missing='error')  # 'visa'|'telnet'|'dummy'
 
     _host = ConfigOption('host', None)
     _password = ConfigOption('password', "123456")
     _port = ConfigOption('port', 7230)
-
-    _gpib_address = ConfigOption('gpib_address', None)
-    _gpib_timeout = ConfigOption('gpib_timeout', 10)
+    _visa_address = ConfigOption('visa_address', None)
+    _timeout = ConfigOption('timeout', 10)
 
     _default_axis = {
         'voltage_range': [0, 60],
@@ -60,23 +56,10 @@ class AttoCubeStepper(Base, SteppersInterface):
     _connected = False
 
     _axis_config = ConfigOption('axis', {}, missing='error')
-    #   axis:
-    #       x:
-    #            id:   1
-    #            position_range: [0, 5]
-    #            voltage_range: [0,10]
-    #            frequency_range: [0,20]
-    #            feedback: False
-    #            'frequency': 20,
-    #            'voltage': 30
-    #       y:
-    #            id: 2
-    #            ...
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-
         self._check_axis()
         self._check_connection()
         self._connect(attempt=1)
@@ -98,14 +81,16 @@ class AttoCubeStepper(Base, SteppersInterface):
     def _check_connection(self):
         """ Internal function - Check the connection config is ok
         """
-        if self._interface_type == 'ethernet':
+        if self._interface_type == 'telnet':
             if self._host is None:
-                self.log.error('Ethernet connection required but no host have not been specified')
-        elif self._interface_type == 'usb':
-            if self._gpib_address is None:
-                self.log.error('Usb connection required but interface have not been specified. (ex: COM2)')
+                self.log.error('telnet connection required but no host have not been specified')
+        elif self._interface_type == 'visa':
+            if self._visa_address is None:
+                self.log.error('Visa connection required but interface have not been specified. (ex: COM2)')
+        elif self._interface_type == 'dummy':
+            pass
         else:
-            self.log.error("Wrong interface type, option are 'ethernet' or 'usb'")
+            self.log.error("Wrong interface type, option are 'telnet' or 'visa'")
 
     def _initialize_axis(self):
         """ Internal function - Initialize axis with the values from the config
@@ -126,7 +111,7 @@ class AttoCubeStepper(Base, SteppersInterface):
         """
         self.connected = False
 
-        if self._interface_type == 'ethernet':
+        if self._interface_type == 'telnet':
 
             self.tn = telnetlib.Telnet(self._host, self._port, 3)
             self.tn.open(self._host, self._port)
@@ -149,35 +134,37 @@ class AttoCubeStepper(Base, SteppersInterface):
                     counter += 1
             self.tn.read_very_eager()  # clear the buffer
 
-        elif self._interface_type == 'usb':
+        elif self._interface_type == 'visa':
             self.rm = visa.ResourceManager()
             try:
-                self._gpib_connection = self.rm.open_resource(
-                    self._gpib_address,
-                    timeout=self._gpib_timeout * 1000)
+                self._visa_connection = self.rm.open_resource(
+                    self._visa_address,
+                    timeout=self._timeout * 1000)
             except:
                 self.log.error('Could not connect to the controller '
-                               'address >>{}<<.'.format(self._gpib_address))
+                               'address >>{}<<.'.format(self._visa_address))
                 raise
             self.connected = True
             self.log.info("Connection to ANC300 was established")
+        elif self._interface_type == 'dummy':
+            self.log.debug('Hello world!')
 
     def _disconnect(self, keep_active=False):
-        """ Close connection with ANC after setting all axis to ground (except if keep_active is true)
+        """ Close connection with the controller after setting all axis to ground (except if keep_active is true)
         """
         # Put eve
         if not keep_active:
             for name in self._axis_config:
                 self._send_cmd("setm {} gnd".format(self._axis_config[name]['id']))
 
-        if self._interface_type == 'ethernet':
+        if self._interface_type == 'telnet':
             self.tn.close()
-        elif self._interface_type == 'usb':
-            self._gpib_connection.close()
+        elif self._interface_type == 'visa':
+            self._visa_connection.close()
             self.rm.close()
 
     def _send_cmd(self, cmd, read=True, regex=None, timeout=1):
-        """Sends a command to the attocube steppers and parse the response
+        """Sends a command to the attocube controller and parse the response
 
         @param str cmd: command to send
         @param bool read: if True, try reading the message, otherwise do not read (saves at least 30ms per call)
@@ -187,7 +174,7 @@ class AttoCubeStepper(Base, SteppersInterface):
         """
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
 
-        if self._interface_type == 'ethernet':
+        if self._interface_type == 'telnet':
             self.tn.read_eager()  # disregard old print outs
             self.tn.write(full_cmd)  # send command
             # any response ends with ">" from the attocube. Therefore connection waits until this happened
@@ -198,27 +185,29 @@ class AttoCubeStepper(Base, SteppersInterface):
                     value_binary = self.tn.read_until(b">", timeout=timeout)
                     response = value_binary.decode()
                 except:
-                    self.log.error("Piezo steppers controller telnet timed out ({} second)".format(timeout))
+                    self.log.error("Attocube ANC300 controller telnet timed out ({} second)".format(timeout))
                     return False
         elif self._interface_type == 'usb':
             try:
-                response = self._gpib_connection.query(full_cmd)
+                response = self._visa_connection.query(full_cmd)
             except:
-                self.log.error("Piezo steppers controller telnet timed out ({} second)".format(self._gpib_timeout))
+                self.log.error("Attocube ANC300 controller telnet timed out ({} second)".format(self._timeout))
                 return False
             return None
+        elif self._interface_type == 'dummy':
+            self.log.debug(cmd)
 
         # check for error
         error_search = re.search("ERROR", response)
         if error_search:
-            self.log.error('Piezo steppers controller returned an error message : {}'.format(response))
+            self.log.error('Attocube ANC300 controller returned an error message : {}'.format(response))
             return False
 
         if regex is None:
             if bool(re.search("OK", response)):
                 return True
             else:
-                self.log.error('Piezo steppers controller did not return "OK" : {}'.format(response))
+                self.log.error('Attocube ANC300 controller did not return "OK" : {}'.format(response))
         else:
             return re.findall(regex, response)
 
@@ -320,13 +309,13 @@ class AttoCubeStepper(Base, SteppersInterface):
         return self._get_config(axis, 'position_range')
 
     def voltage(self, axis, value=None, buffered=False):
-        """
-        steppers_interface (overloaded)
-        Function that get or set the voltage of one ore multiple axis
-        :param axis: axis input : 'x', 2, ['z', 3]...
-        :param value: value for axis : 1.0, [1.0], [2.5, 2.8]...
-        :param buffered: if set to True, just return the last read voltage without asking the controller
-        :return: return the voltage of the axis with the same format than axis input
+        """ Function that get or set the voltage of one ore multiple axis
+
+        @:param axis: axis input : 'x', 2, ['z', 3]...
+        @param value: value for axis : 1.0, [1.0], [2.5, 2.8]...
+        @param buffered: if set to True, just return the last read voltage without asking the controller
+
+        @return: return the voltage of the axis with the same format than axis input
         """
         parsed_axis = self._parse_axis(axis)
         if value is not None:
@@ -350,13 +339,12 @@ class AttoCubeStepper(Base, SteppersInterface):
         return self._get_config(axis, 'voltage')
 
     def frequency(self, axis, value=None, buffered=False):
-        """
-        steppers_interface (overloaded)
-        Function that get or set the frequency of one ore multiple axis
-        :param axis: axis input : 'x', 2, ['z', 3]...
-        :param value: value for axis : 100, [200], [500, 1000]...
-        :param buffered: if set to True, just return the last read voltage without asking the controller
-        :return: return the frequency of the axis with the same format than axis input
+        """ Function that get or set the frequency of one ore multiple axis
+        @param axis: axis input : 'x', 2, ['z', 3]...
+        @param value: value for axis : 100, [200], [500, 1000]...
+        @param buffered: if set to True, just return the last read voltage without asking the controller
+
+        @return: return the frequency of the axis with the same format than axis input
         """
         parsed_axis = self._parse_axis(axis)
         if value is not None:
@@ -380,11 +368,9 @@ class AttoCubeStepper(Base, SteppersInterface):
         return self._get_config(axis, 'frequency')
 
     def capacitance(self, axis, buffered=False):
-        """
-        steppers_interface (overloaded)
-        Function that get the capacitance of one ore multiple axis
-        :param axis: axis input : 'x', 2, ['z', 3]...
-        :param buffered: buffered: if set to True, just return the last read capacitance without asking the controller
+        """ Function that get the capacitance of one ore multiple axis
+        @param axis: axis input : 'x', 2, ['z', 3]...
+        @param buffered: buffered: if set to True, just return the last read capacitance without asking the controller
         will be None if never read
         """
         parsed_axis = self._parse_axis(axis)
@@ -407,11 +393,10 @@ class AttoCubeStepper(Base, SteppersInterface):
         return self._get_config(axis, 'capacitance')
 
     def steps(self, axis, number):
-        """
-        steppers_interface (overloaded)
-        Function to do n (or n, m...) steps one one (or several) axis
-        :param axis input : 'x', 2, ['z', 3]...
-        :param number: 100, [200], [500, 1000]...
+        """ Function to do n (or n, m...) steps one one (or several) axis
+
+        @param axis input : 'x', 2, ['z', 3]...
+        @param number: 100, [200], [500, 1000]...
         """
         parsed_axis = self._parse_axis(axis)
         for ax in parsed_axis:
@@ -430,4 +415,151 @@ class AttoCubeStepper(Base, SteppersInterface):
         parsed_axis = self._parse_axis(axis)
         for ax in parsed_axis:
             self._send_cmd("stop {}".format(self._axis_config[ax]['id']))
-        self.log.info("All piezo axis stopped")
+        self.log.info("All axis stopped")
+
+# Motor interface
+
+    def get_constraints(self):
+        """ Retrieve the hardware constrains from the motor device. """
+
+        constraints = {}
+
+        axis_x = {}
+        axis_x['label'] = 'x'
+        axis_x['unit'] = 'm'     # the SI units, only possible m or degree
+        axis_x['ramp'] = ['Linear'], # a possible list of ramps
+        axis_x['pos_min'] = -2.5e-3,
+        axis_x['pos_max'] = 2.5e-3,  # that is basically the traveling range
+        axis_x['pos_step'] = 10000,
+        axis_x['vel_min'] = self.frequency_range('x')[0],
+        axis_x['vel_max'] = self.frequency_range('x')[1],
+        axis_x['vel_step'] = 1,
+        axis_x['acc_min'] = self.voltage_range('x')[0],
+        axis_x['acc_max'] = self.voltage_range('x')[0]
+        axis_x['acc_step'] = 1
+
+        axis_y = {}
+        axis_y['label'] = 'y'
+        axis_y['unit'] = 'm'     # the SI units, only possible m or degree
+        axis_y['ramp'] = ['Linear'], # a possible list of ramps
+        axis_y['pos_min'] = -2.5e-3,
+        axis_y['pos_max'] = 2.5e-3,  # that is basically the traveling range
+        axis_y['pos_step'] = 10000,
+        axis_y['vel_min'] = self.frequency_range('y')[0],
+        axis_y['vel_max'] = self.frequency_range('y')[1],
+        axis_y['vel_step'] = 1,
+        axis_y['acc_min'] = self.voltage_range('y')[0],
+        axis_y['acc_max'] = self.voltage_range('y')[0]
+        axis_y['acc_step'] = 1
+
+        axis_z = {}
+        axis_z['label'] = 'z'
+        axis_z['unit'] = 'm'     # the SI units, only possible m or degree
+        axis_z['ramp'] = ['Linear'], # a possible list of ramps
+        axis_z['pos_min'] = -2.5e-3,
+        axis_z['pos_max'] = 2.5e-3,  # that is basically the traveling range
+        axis_z['pos_step'] = 10000,
+        axis_z['vel_min'] = self.frequency_range('z')[0],
+        axis_z['vel_max'] = self.frequency_range('z')[1],
+        axis_z['vel_step'] = 1,
+        axis_z['acc_min'] = self.voltage_range('z')[0],
+        axis_z['acc_max'] = self.voltage_range('z')[0]
+        axis_z['acc_step'] = 1
+
+        constraints['x'] = axis_x
+        constraints['y'] = axis_y
+        constraints['z'] = axis_z
+
+        return constraints
+
+    def move_rel(self,  param_dict):
+        """ Moves stage in given direction (relative movement)
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-abs-pos-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+        """
+        for key in param_dict:
+            if key in ['x', 'y', 'z']:
+                self.steps(key, int(param_dict[key]))
+        return 0
+
+    def move_abs(self, param_dict):
+        """ Moves stage to absolute position (absolute movement)
+        """
+        return -1
+
+    def abort(self):
+        """ Stops movement of the stage
+
+        @return int: error code (0:OK, -1:error)
+        """
+        try:
+            self.stop()
+            return 0
+        except:
+            return -1
+
+    def get_pos(self, param_list=None):
+        """ Gets current position of the stage arms
+
+        @param list param_list: optional, if a specific position of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed in the param_list.
+                                If nothing is passed, then from each axis the
+                                position is asked.
+
+        @return dict: with keys being the axis labels and item the current
+                      position.
+        """
+        return {'x': 0, 'y': 0, 'z': 0}
+
+    def get_status(self, param_list=None):
+        """ Get the status of the position
+
+        @param list param_list: optional, if a specific status of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed in the param_list.
+                                If nothing is passed, then from each axis the
+                                status is asked.
+
+        @return dict: with the axis label as key and the status number as item.
+        """
+        return {'x': 0, 'y': 0, 'z': 0}
+
+    def calibrate(self, param_list=None):
+        """ Calibrates the stage. """
+        return 0
+
+    def get_velocity(self, param_list=None):
+        """ Gets the current velocity for all connected axes.
+
+        @param dict param_list: optional, if a specific velocity of an axis
+                                is desired, then the labels of the needed
+                                axis should be passed as the param_list.
+                                If nothing is passed, then from each axis the
+                                velocity is asked.
+
+        @return dict : with the axis label as key and the velocity as item.
+        """
+        return {'x': self.frequency('x'),
+                'y': self.frequency('y'),
+                'z': self.frequency('z')}
+
+    def set_velocity(self, param_dict):
+        """ Write new value for velocity.
+
+        @param dict param_dict: dictionary, which passes all the relevant
+                                parameters, which should be changed. Usage:
+                                 {'axis_label': <the-velocity-value>}.
+                                 'axis_label' must correspond to a label given
+                                 to one of the axis.
+
+        @return int: error code (0:OK, -1:error)
+        """
+        for key in param_dict:
+            if key in ['x', 'y', 'z']:
+                self.frequency(key, param_dict[key])
+
