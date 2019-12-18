@@ -39,7 +39,7 @@ class Task(InterruptableTask):
     def runTaskStep(self):
         """ Wait for refocus to finish. """
         time.sleep(0.1)
-        return self.ref['optimizer'].isstate('locked')
+        return self.ref['optimizer'].module_state.isstate('locked')
 
     def pauseTask(self):
         """ pausing a refocus is forbidden """
@@ -56,8 +56,8 @@ class Task(InterruptableTask):
         """ Check whether anything we need is locked. """
         print('things needed for task to start')
         return (
-            not self.ref['optimizer']._scanning_device.isstate('locked')
-            and not self.ref['optimizer'].isstate('locked')
+            not self.ref['optimizer']._scanning_device.module_state.isstate('locked')
+            and not self.ref['optimizer'].module_state.isstate('locked')
             )
 
     def checkExtraPausePrerequisites(self):
