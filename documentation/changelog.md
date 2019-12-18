@@ -54,6 +54,7 @@ The potential sequence_options are:
   * `FORCED` (only output as sequence possible)
 * Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * added the option to do a purely analog ODMR scan.
+* added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
 * 
 
