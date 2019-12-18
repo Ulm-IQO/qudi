@@ -31,11 +31,44 @@ from core.module import Base, ConfigOption
 from interface.motor_interface import MotorInterface
 
 
-class AttocubeStepper(Base, MotorInterface):
-    """
+class AttocubeController(Base, MotorInterface):
+    """ Module to interface the attocube ANC300 hardware, that controls steppers used to position samples or
+    devices.
+
+    Example config :
+        attocube:
+        module.Class: 'steppers.attocube.attocube_steppers.AttoCubeStepper'
+        host: '192.168.1.1'
+        interface_type: 'telnet'
+        axis:
+            x:
+                id: 1
+                position_range: [-2.5e-3, 2.5e-3]
+                voltage_range: [0,70]
+                frequency_range: [0,300]
+                feedback: False
+                'frequency': 100
+                'voltage': 50
+            y:
+                id: 2
+                position_range: [-2.5e-3, 2.5e-3]
+                voltage_range: [0,70]
+                frequency_range: [0,300]
+                feedback: False
+                'frequency': 100
+                'voltage': 50
+            z:
+                id: 3
+                position_range: [-2.5e-3, 2.5e-3]
+                voltage_range: [0,50]
+                frequency_range: [0,200]
+                feedback: False
+                'frequency': 100
+                'voltage': 30
     """
 
     _interface_type = ConfigOption('interface_type', missing='error')  # 'visa'|'telnet'|'dummy'
+    # TODO: visa has not been properly tested
 
     _host = ConfigOption('host', None)
     _password = ConfigOption('password', "123456")
@@ -59,8 +92,7 @@ class AttocubeStepper(Base, MotorInterface):
     _current_position = None
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
+        """ Initialisation performed during activation of the module """
         self._check_axis()
         self._check_connection()
         self._connect(attempt=1)
@@ -70,8 +102,7 @@ class AttocubeStepper(Base, MotorInterface):
         self.calibrate()
 
     def _check_axis(self):
-        """ Internal function - check that the axis in the config file are ok and complete them with default
-        """
+        """ Check that the axis in the config file are ok and complete missing values with default """
         for name in self._axis_config:
             if 'id' not in self._axis_config[name]:
                 self.log.error('id of axis {} is not defined in config file.'.format(name))
@@ -81,8 +112,7 @@ class AttocubeStepper(Base, MotorInterface):
                     self._axis_config[name][key] = self._default_axis[key]
 
     def _check_connection(self):
-        """ Internal function - Check the connection config is ok
-        """
+        """ Check the connection config is ok """
         if self._interface_type == 'telnet':
             if self._host is None:
                 self.log.error('telnet connection required but no host have not been specified')
@@ -95,22 +125,18 @@ class AttocubeStepper(Base, MotorInterface):
             self.log.error("Wrong interface type, option are 'telnet' or 'visa'")
 
     def _initialize_axis(self):
-        """ Internal function - Initialize axis with the values from the config
-        """
+        """ Initialize axis with the values from the config """
         for name in self._axis_config:
             self.capacitance(name)  # capacitance leaves axis in step mode
             self.frequency(name, self._axis_config[name]['frequency'])
             self.voltage(name, self._axis_config[name]['voltage'])
 
     def on_deactivate(self):
-        """ Deinitialisation performed during deactivation of the module.
-        """
+        """ Deinitialisation performed during deactivation of the module. """
         self._disconnect()
 
     def _connect(self, attempt=7):
-        """
-        Try to connect to the ANC300
-        """
+        """ Try to connect to the ANC300 controller """
         self.connected = False
 
         if self._interface_type == 'telnet':
@@ -152,9 +178,7 @@ class AttocubeStepper(Base, MotorInterface):
             self.log.debug('Hello world!')
 
     def _disconnect(self, keep_active=False):
-        """ Close connection with the controller after setting all axis to ground (except if keep_active is true)
-        """
-        # Put eve
+        """ Close connection with the controller after setting all axis to ground (except if keep_active is true) """
         if not keep_active:
             for name in self._axis_config:
                 self._send_cmd("setm {} gnd".format(self._axis_config[name]['id']))
@@ -168,11 +192,11 @@ class AttocubeStepper(Base, MotorInterface):
     def _send_cmd(self, cmd, read=True, regex=None, timeout=1):
         """Sends a command to the attocube controller and parse the response
 
-        @param str cmd: command to send
-        @param bool read: if True, try reading the message, otherwise do not read (saves at least 30ms per call)
-        @param str regex: regular expression used to parse expected response
+        @param (str) cmd: command to send
+        @param (bool) read: if True, try reading the message, otherwise do not read (saves at least 30ms per call)
+        @param (str) regex: regular expression used to parse expected response
 
-        @return int: return None for silent, False for error, true if OK and array or match for regular expression
+        @return (int): return None for silent, False for error, true if OK and array or match for regular expression
         """
         full_cmd = cmd.encode('ascii') + b"\r\n"  # converting to binary
 
@@ -215,9 +239,15 @@ class AttocubeStepper(Base, MotorInterface):
             return re.findall(regex, response)
 
     def _parse_axis(self, axis):
-        """
-        Take an valid axis or list/tuple of axis and return a list with valid axis name.
+        """ Take a valid axis or list/tuple of axis and return a list with valid axis name.
+
+        @param axis: a valid axis or list/tuple of axis
+
+        @return: a list with valid axis name
+
         By doing this we have the same universal axis input for all module functions
+
+        For example :
         'x' -> ['x']
         1 -> ['x']
         ['x', 2] -> ['x', 'y']
@@ -233,8 +263,11 @@ class AttocubeStepper(Base, MotorInterface):
             self.log.error('Can not parse axis : {}'.format(axis))
 
     def _get_axis_name(self, axis):
-        """
-        Get an axis identifier (integer or name), and return axis name after checking axis is valid
+        """ Get an axis identifier (integer or name), and return axis name after checking axis is valid
+
+        @param axis: axis id or name
+
+        @return (str): Axis name
         """
         if type(axis) == str:
             if axis in self._axis_config:
@@ -247,8 +280,14 @@ class AttocubeStepper(Base, MotorInterface):
         self.log.error('Axis {} is not defined in config file'.format(axis))
 
     def _parse_result(self, axis, result):
-        """
-        Take a valid axis input and list result and convert result to original format
+        """ Take a valid axis input and list result and convert result to original format
+
+        @param axis: a valid axis input
+        @param result:  a list of result
+
+        @return: result in the original format
+
+        For example :
         'x' [1000] -> 10000
         ['x', 3] [0.5, 1.2] -> [0.5, 1.2]
         """
@@ -260,8 +299,13 @@ class AttocubeStepper(Base, MotorInterface):
             return result
 
     def _get_config(self, axis, key):
-        """
-        Get a value in axis config for a key for a given axis input and return with same format
+        """ Get a value in axis config for a key for a given axis input and return with same format
+
+        @param axis: A valid axis
+        @param (str) key: the key requested
+
+        @return the value for the axis in a similar format at the request
+
         """
         parsed_axis = self._parse_axis(axis)
         result = []
@@ -414,7 +458,7 @@ class AttocubeStepper(Base, MotorInterface):
                 self._current_position[ax] += number_step_axis
 
     def stop(self, axis=None):
-        """ steppers_interface (overloaded) - Stop all movement on one, several or all (if None) axis"""
+        """ Stop all movement on one, several or all (if None) axis"""
         if axis is None:
             axis = list(self._axis_config.keys())
         parsed_axis = self._parse_axis(axis)
