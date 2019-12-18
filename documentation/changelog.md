@@ -52,6 +52,7 @@ The potential sequence_options are:
   * `NON` (no sequence mode)
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
+* Added interfuse to correct geometrical aberration on scanner via polynomial transformations
 * added the option to do a purely analog ODMR scan.
 * added the option of an additional path for fit methods
 * 
