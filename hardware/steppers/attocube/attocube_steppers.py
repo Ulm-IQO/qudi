@@ -56,6 +56,7 @@ class AttocubeStepper(Base, MotorInterface):
     _connected = False
 
     _axis_config = ConfigOption('axis', {}, missing='error')
+    _current_position = None
 
     def on_activate(self):
         """ Initialisation performed during activation of the module.
@@ -66,6 +67,7 @@ class AttocubeStepper(Base, MotorInterface):
 
         if self.connected:
             self._initialize_axis()
+        self.calibrate()
 
     def _check_axis(self):
         """ Internal function - check that the axis in the config file are ok and complete them with default
@@ -196,6 +198,7 @@ class AttocubeStepper(Base, MotorInterface):
             return None
         elif self._interface_type == 'dummy':
             self.log.debug(cmd)
+            response = 'OK'
 
         # check for error
         error_search = re.search("ERROR", response)
@@ -271,9 +274,7 @@ class AttocubeStepper(Base, MotorInterface):
         return self._parse_result(axis, result)
 
     def _parse_value(self, axis, ax, value):
-        """
-        For a given axis input and a given ax, return the value that make the most sense
-        """
+        """ For a given axis input and a given ax, return the value that make the most sense """
         if isinstance(value, (float, int)):  # a single number : we return it
             return value
         elif isinstance(value, (list, tuple)):  # an array
@@ -285,7 +286,7 @@ class AttocubeStepper(Base, MotorInterface):
                 self.log.error('Could not set value for axis {}, value list length is incorrect')
 
     def _in_range(self, value, value_range, error_message=None):
-        """ Internal function - Check that a value is in range and eventually error of not """
+        """ Check that a value is in range and eventually error of not """
         mini, maxi = value_range
         ok = mini <= value <= maxi
         if not ok and error_message is not None:
@@ -293,25 +294,25 @@ class AttocubeStepper(Base, MotorInterface):
         return ok
 
     def axis(self):
-        """ steppers_interface - Return a tuple of all axis identifiers"""
+        """ Return a tuple of all axis identifiers """
         return tuple(self._axis_config.keys())
 
     def voltage_range(self, axis):
-        """ steppers_interface (overloaded) - Return the voltage range of one (or multiple) axis """
+        """ Return the voltage range of one (or multiple) axis """
         return self._get_config(axis, 'voltage_range')
 
     def frequency_range(self, axis):
-        """ steppers_interface (overloaded) - Return the frequency range of one (or multiple) axis """
+        """ Return the frequency range of one (or multiple) axis """
         return self._get_config(axis, 'frequency_range')
 
     def position_range(self, axis):
-        """ steppers_interface (overloaded) - Return the position range of one (or multiple) axis """
+        """ Return the position range of one (or multiple) axis """
         return self._get_config(axis, 'position_range')
 
     def voltage(self, axis, value=None, buffered=False):
         """ Function that get or set the voltage of one ore multiple axis
 
-        @:param axis: axis input : 'x', 2, ['z', 3]...
+        @param axis: axis input : 'x', 2, ['z', 3]...
         @param value: value for axis : 1.0, [1.0], [2.5, 2.8]...
         @param buffered: if set to True, just return the last read voltage without asking the controller
 
@@ -340,6 +341,7 @@ class AttocubeStepper(Base, MotorInterface):
 
     def frequency(self, axis, value=None, buffered=False):
         """ Function that get or set the frequency of one ore multiple axis
+
         @param axis: axis input : 'x', 2, ['z', 3]...
         @param value: value for axis : 100, [200], [500, 1000]...
         @param buffered: if set to True, just return the last read voltage without asking the controller
@@ -369,6 +371,7 @@ class AttocubeStepper(Base, MotorInterface):
 
     def capacitance(self, axis, buffered=False):
         """ Function that get the capacitance of one ore multiple axis
+
         @param axis: axis input : 'x', 2, ['z', 3]...
         @param buffered: buffered: if set to True, just return the last read capacitance without asking the controller
         will be None if never read
@@ -395,7 +398,7 @@ class AttocubeStepper(Base, MotorInterface):
     def steps(self, axis, number):
         """ Function to do n (or n, m...) steps one one (or several) axis
 
-        @param axis input : 'x', 2, ['z', 3]...
+        @param axis : 'x', 2, ['z', 3]...
         @param number: 100, [200], [500, 1000]...
         """
         parsed_axis = self._parse_axis(axis)
@@ -407,6 +410,8 @@ class AttocubeStepper(Base, MotorInterface):
                 self._send_cmd("stepu {} {}".format(self._axis_config[ax]['id'], number_step_axis))
             elif number_step_axis < 0:
                 self._send_cmd("stepd {} {}".format(self._axis_config[ax]['id'], -number_step_axis))
+            if ax in ['x', 'y', 'z']:
+                self._current_position[ax] += number_step_axis
 
     def stop(self, axis=None):
         """ steppers_interface (overloaded) - Stop all movement on one, several or all (if None) axis"""
@@ -426,43 +431,43 @@ class AttocubeStepper(Base, MotorInterface):
 
         axis_x = {}
         axis_x['label'] = 'x'
-        axis_x['unit'] = 'm'     # the SI units, only possible m or degree
-        axis_x['ramp'] = ['Linear'], # a possible list of ramps
-        axis_x['pos_min'] = -2.5e-3,
-        axis_x['pos_max'] = 2.5e-3,  # that is basically the traveling range
-        axis_x['pos_step'] = 10000,
-        axis_x['vel_min'] = self.frequency_range('x')[0],
-        axis_x['vel_max'] = self.frequency_range('x')[1],
-        axis_x['vel_step'] = 1,
-        axis_x['acc_min'] = self.voltage_range('x')[0],
+        axis_x['unit'] = 'm'
+        axis_x['ramp'] = ['Linear']
+        axis_x['pos_min'] = -1e5
+        axis_x['pos_max'] = +1e5
+        axis_x['pos_step'] = 1
+        axis_x['vel_min'] = self.frequency_range('x')[0]
+        axis_x['vel_max'] = self.frequency_range('x')[1]
+        axis_x['vel_step'] = 1
+        axis_x['acc_min'] = self.voltage_range('x')[0]
         axis_x['acc_max'] = self.voltage_range('x')[0]
         axis_x['acc_step'] = 1
 
         axis_y = {}
         axis_y['label'] = 'y'
-        axis_y['unit'] = 'm'     # the SI units, only possible m or degree
-        axis_y['ramp'] = ['Linear'], # a possible list of ramps
-        axis_y['pos_min'] = -2.5e-3,
-        axis_y['pos_max'] = 2.5e-3,  # that is basically the traveling range
-        axis_y['pos_step'] = 10000,
-        axis_y['vel_min'] = self.frequency_range('y')[0],
-        axis_y['vel_max'] = self.frequency_range('y')[1],
-        axis_y['vel_step'] = 1,
-        axis_y['acc_min'] = self.voltage_range('y')[0],
+        axis_y['unit'] = 'm'
+        axis_y['ramp'] = ['Linear']
+        axis_y['pos_min'] = -1e5
+        axis_y['pos_max'] = +1e5  # that is basically the traveling range
+        axis_y['pos_step'] = 1
+        axis_y['vel_min'] = self.frequency_range('y')[0]
+        axis_y['vel_max'] = self.frequency_range('y')[1]
+        axis_y['vel_step'] = 1
+        axis_y['acc_min'] = self.voltage_range('y')[0]
         axis_y['acc_max'] = self.voltage_range('y')[0]
         axis_y['acc_step'] = 1
 
         axis_z = {}
         axis_z['label'] = 'z'
-        axis_z['unit'] = 'm'     # the SI units, only possible m or degree
-        axis_z['ramp'] = ['Linear'], # a possible list of ramps
-        axis_z['pos_min'] = -2.5e-3,
-        axis_z['pos_max'] = 2.5e-3,  # that is basically the traveling range
-        axis_z['pos_step'] = 10000,
-        axis_z['vel_min'] = self.frequency_range('z')[0],
-        axis_z['vel_max'] = self.frequency_range('z')[1],
-        axis_z['vel_step'] = 1,
-        axis_z['acc_min'] = self.voltage_range('z')[0],
+        axis_z['unit'] = 'm'
+        axis_z['ramp'] = ['Linear']
+        axis_z['pos_min'] = -1e5
+        axis_z['pos_max'] = +1e5
+        axis_z['pos_step'] = 1
+        axis_z['vel_min'] = self.frequency_range('z')[0]
+        axis_z['vel_max'] = self.frequency_range('z')[1]
+        axis_z['vel_step'] = 1
+        axis_z['acc_min'] = self.voltage_range('z')[0]
         axis_z['acc_max'] = self.voltage_range('z')[0]
         axis_z['acc_step'] = 1
 
@@ -489,7 +494,10 @@ class AttocubeStepper(Base, MotorInterface):
     def move_abs(self, param_dict):
         """ Moves stage to absolute position (absolute movement)
         """
-        return -1
+        for key in param_dict:
+            if key in ['x', 'y', 'z']:
+                delta = param_dict[key] - self._current_position[key]
+                self.move_rel({key: delta})
 
     def abort(self):
         """ Stops movement of the stage
@@ -514,7 +522,7 @@ class AttocubeStepper(Base, MotorInterface):
         @return dict: with keys being the axis labels and item the current
                       position.
         """
-        return {'x': 0, 'y': 0, 'z': 0}
+        return self._current_position
 
     def get_status(self, param_list=None):
         """ Get the status of the position
@@ -531,6 +539,7 @@ class AttocubeStepper(Base, MotorInterface):
 
     def calibrate(self, param_list=None):
         """ Calibrates the stage. """
+        self._current_position = {'x': 0, 'y': 0, 'z': 0}
         return 0
 
     def get_velocity(self, param_list=None):
