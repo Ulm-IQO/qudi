@@ -37,7 +37,7 @@ class AttocubeController(Base, MotorInterface):
 
     Example config :
         attocube:
-        module.Class: 'steppers.attocube.attocube_steppers.AttoCubeStepper'
+        module.Class: 'steppers.attocube.attocube_controller.AttocubeController'
         host: '192.168.1.1'
         interface_type: 'telnet'
         axis:
