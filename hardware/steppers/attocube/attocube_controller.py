@@ -616,3 +616,37 @@ class AttocubeController(Base, MotorInterface):
             if key in ['x', 'y', 'z']:
                 self.frequency(key, param_dict[key])
 
+# bonus
+
+    def hello(self):
+        """ Greet humans properly """
+
+        axis = tuple(self.get_constraints().keys())[0]
+        notes = {'c': 261, 'd': 294, 'e': 329, 'f': 349, 'g': 391, 'gS': 415, 'a': 440, 'aS': 455, 'b': 466, 'cH': 523,
+                 'cSH': 554, 'dH': 587, 'dSH': 622, 'eH': 659, 'fH': 698, 'fSH': 740, 'gH': 784, 'gSH': 830, 'aH': 880}
+
+        first_section = [('a', 500), ('a', 500), ('a', 500), ('f', 350), ('cH', 150), ('a', 500), ('f', 350),
+                         ('cH', 150), ('a', 650), ('', 500), ('eH', 500), ('eH', 500), ('eH', 500), ('fH', 350),
+                         ('cH', 150), ('gS', 500), ('f', 350), ('cH', 150), ('a', 650), ('', 500)]
+        second_section = [('aH', 500), ('a', 300), ('a', 150), ('aH', 500), ('gSH', 325), ('fSH', 125), ('fH', 125),
+                          ('fSH', 250), ('', 325), ('aS', 250), ('dSH', 500), ('dH', 325), ('cSH', 175), ('cH', 125),
+                          ('b', 125), ('cH', 250), ('', 350)]
+        variant_1 = [('f', 250), ('gS', 500), ('f', 350), ('a', 125), ('cH', 500), ('a', 375), ('cH', 125), ('eH', 650),
+                     ('', 500)]
+        variant_2 = [('f', 250), ('gS', 500), ('f', 375), ('cH', 125), ('a', 500), ('f', 375), ('cH', 125), ('a', 650),
+                     ('', 650)]
+        total = first_section + second_section + variant_1 + second_section + variant_2
+        count = 0
+        up = True
+        for note, duration in total:
+            if note != '':
+                frequency = notes[note]
+                steps = int(frequency * (float(duration)/1000.))
+                self.frequency(axis, frequency)
+                if not up:
+                    steps = -steps
+                count += steps
+                self.steps(axis, steps)
+            time.sleep((duration + 50)/1000)
+            up = not up
+        self.steps(axis, -count)  # Back to origin
