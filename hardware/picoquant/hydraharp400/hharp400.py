@@ -192,7 +192,7 @@ class HydraHarp400(Base, FastCounterInterface):
         serial = ctypes.create_string_buffer(8)
         dev=[]
         # Check the availability of the configured Pico Quant device
-        op = self.dll.HH_OpenDevice(ctypes.c_int(self._deviceID), ctypes.c_int(self._mode), ctypes.c_int(self._refsource))
+        op = self.dll.HH_OpenDevice(ctypes.c_int(self._deviceID), serial)
         if op == 0:
             ini = self.dll.HH_Initialize(ctypes.c_int(self._deviceID), ctypes.c_int(self._mode), ctypes.c_int(self._refsource))
         else:
@@ -210,7 +210,11 @@ class HydraHarp400(Base, FastCounterInterface):
         else:
             self.change_sweep_mode(gated=False)
         if ini == 0:
-            return
+            cal = self.dll.HH_Calibrate(self._deviceID)
+            if cal == 0:
+                return
+            else:
+                self.log.warn('Calibration failed.')
         else:
             self.log.error('Could not find any Pico Quant device.')
 
@@ -219,6 +223,27 @@ class HydraHarp400(Base, FastCounterInterface):
         """
         self.dll.HH_CloseDevice(ctypes.c_int(self._deviceID))
         return
+
+    def check(self, func_val):
+        """ Check routine for the received error codes.
+
+        @param int func_val: return error code of the called function.
+
+        @return int: pass the error code further so that other functions have
+                     the possibility to use it.
+
+        Each called function in the dll has an 32-bit return integer, which
+        indicates, whether the function was called and finished successfully
+        (then func_val = 0) or if any error has occured (func_val < 0). The
+        errorcode, which corresponds to the return value can be looked up in
+        the file 'errorcodes.h'.
+        """
+
+        if not func_val == 0:
+            self.log.error('Error in HydraHarp400 with errorcode {0}:\n'
+                           '{1}'.format(func_val, self.errorcode[func_val]))
+        return func_val
+
 
     def get_constraints(self):
         """ Retrieve the hardware constrains from the Fast counting device.
@@ -258,11 +283,11 @@ class HydraHarp400(Base, FastCounterInterface):
 
         # the unit of those entries are seconds per bin. In order to get the
         # current binwidth in seonds use the get_binwidth method.
-        #FIXME confirm the values later with HHarp 400 manual
+
         constraints['hardware_binwidth_list'] = list(self.minimal_binwidth * (2 ** np.array(
-                                                     np.linspace(0,24,25))))
-        constraints['max_sweep_len'] = 6.8
-        constraints['max_bins'] = 6.8 /0.2e-9
+                                                     np.linspace(0,25,26))))
+        constraints['max_sweep_len'] = 6
+        constraints['max_bins'] = 65536
         return constraints
 
     def configure(self, bin_width_s, record_length_s, number_of_gates=1):
@@ -299,47 +324,15 @@ class HydraHarp400(Base, FastCounterInterface):
 
         return self.get_binwidth(), self.get_length() * self.get_binwidth(), number_of_gates
 
-    def get_status(self):
-        """
-        Receives the current status of the Fast Counter and outputs it as return value.
-        0 = unconfigured
-        1 = idle
-        2 = running
-        3 = paused
-        -1 = error state
-        """
-        status = AcqStatus()
-        #FIXME need to find the corresponding fucntion in manual
-        self.dll.GetStatusData(ctypes.byref(status), 0)
-        # status.started = 3 measn that fct is about to stop
-        while status.started == 3:
-            time.sleep(0.1)
-            self.dll.GetStatusData(ctypes.byref(status), 0)
-        if status.started == 1:
-            return 2
-        elif status.started == 0:
-            if self.stopped_or_halt == "stopped":
-                return 1
-            elif self.stopped_or_halt == "halt":
-                return 3
-            else:
-                self.log.error('There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
-                return -1
-        else:
-            self.log.error(
-                'There is an unknown status from FastComtec. The status message was %s' % (str(status.started)))
-            return -1
-
-
     def start_measure(self):
         """Start the measurement. """
-        status = self.dll.HH_StartMeas(0, t) # t is aquisition time, can set ACQTMAX as default
+        status = self.dll.HH_StartMeas(ctypes.c_int(self._deviceID), 360000) # t is aquisition time, can set ACQTMAX as default
         return status
 
     def stop_measure(self):
         """Stop the measurement. """
         self.stopped_or_halt = "stopped"
-        status = self.dll.HH_StopMeas(0)
+        status = self.dll.HH_StopMeas(ctypes.c_int(self._deviceID))
      #   if self.gated:
       #      self.timetrace_tmp = []
         return status
@@ -347,12 +340,12 @@ class HydraHarp400(Base, FastCounterInterface):
     def pause_measure(self):
         """Make a pause in the measurement, which can be continued. """
         self.log.warn('HydraHarp400 has no functionality of PAUSE!')
-        return -1
+        return
 
     def continue_measure(self):
         """Continue a paused measurement. """
         self.log.warn('HydraHarp400 has no functionality of PAUSE!')
-        return -1
+        return
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -370,7 +363,7 @@ class HydraHarp400(Base, FastCounterInterface):
         The red out bitshift will be converted to binwidth. The binwidth is
         defined as 2**bitshift*minimal_binwidth.
         """
-        return 1e12*self.dll.HH_GetResolution(0, double* resolution)#FIXME {1} in proper format
+        return 1e12*self.dll.HH_GetResolution(ctypes.c_int(self._deviceID), double* resolution)#FIXME {1} in proper format
 
     def get_data_trace(self):
         """
@@ -451,7 +444,7 @@ class HydraHarp400(Base, FastCounterInterface):
 
         @return string: string representation of the
                         Version number of the current library."""
-        buf = ctypes.create_string_buffer(16)   # at least 8 byte
+        buf = ctypes.create_string_buffer(8)   # at least 8 byte
         self.check(self._dll.HH_GetLibraryVersion(ctypes.byref(buf)))
         return buf.value # .decode() converts byte to string
 
@@ -475,45 +468,6 @@ class HydraHarp400(Base, FastCounterInterface):
     # Establish the connection and initialize the device or disconnect it.
     # =========================================================================
 
-    def open_connection(self):
-        """ Open a connection to this device. """
-
-        buf = ctypes.create_string_buffer(16)  # at least 8 byte
-        ret = self.check(self._dll.HH_OpenDevice(self._deviceID, ctypes.byref(buf)))
-        self._serial = buf.value.decode()   # .decode() converts byte to string
-        if ret >= 0:
-            self.connected_to_device = True
-            self.log.info('Connection to the HydraHarp400 established')
-
-    def initialize(self, mode, refsource):
-        """ Initialize the device with one of the three possible modes.
-
-        @param int mode:    0: histogramming
-                            2: T2
-                            3: T3
-                            8: CONT
-        @param int mode:    0: internal
-                            1: external
-        """
-        mode = int(mode)    # for safety reasons, convert to integer
-        self._mode = mode
-
-        refsource = int(refsource)
-        self._refsource = refsource
-
-        if not ((mode != self.MODE_HIST) or (mode != self.MODE_T2) or (mode != self.MODE_T3) or (mode != self.MODE_CONT)):
-            self.log.error('Hydraharp: Mode for the device could not be set. '
-                           'It must be {0}=Histogram-Mode, {1}=T2-Mode or '
-                           '{2}=T3-Mode, {3}=CONT-Mode but a parameter {4} was '
-                           'passed.'.format(self.MODE_HIST,
-                                            self.MODE_T2,
-                                            self.MODE_T3,
-                                            self.MODE_CONT,
-                                            mode)
-                           )
-        else:
-            self.check(self._dll.HH_Initialize(self._deviceID, mode, refsource))
-
     def close_connection(self):
         """Close the connection to the device.
 
@@ -522,10 +476,6 @@ class HydraHarp400(Base, FastCounterInterface):
         self.connected_to_device = False
         self.check(self._dll.HH_CloseDevice(self._deviceID))
         self.log.info('Connection to the HydraHarp400 closed.')
-
-    #    def __del__(self):
-    #        """ Delete the object PicoHarp300."""
-    #        self.close()
 
     # =========================================================================
     # All functions below can be used if the device was successfully called.
@@ -668,7 +618,7 @@ class HydraHarp400(Base, FastCounterInterface):
 
         return self.check(self._dll.HH_SetStopOverflow(self._deviceID, stop_ovfl, stopcount))
 
-    def set_binning(self, binning):
+    def set_binwidth(self, binwidth):
         """ Set the base resolution of the measurement.
 
         @param int binning: binning code
@@ -689,12 +639,17 @@ class HydraHarp400(Base, FastCounterInterface):
         In histogram mode the internal
         buffer can store 65535 points (each a 32bit word).
         """
+        bitshift = int(np.log2(binwidth/self.minimal_binwidth))
+        new_bitshift=self.set_bitshift(bitshift)
+
+        return self.minimal_binwidth*(2**new_bitshift)
+
         if not(0 <= binning < self.BINSTEPSMAX):
             self.log.error('HydraHarp: Invalid binning.\nValue must be within '
                            'the range [{0},{1}] bins, but a value of {2} has been '
                            'passed.'.format(0, self.BINSTEPSMAX, binning))
         else:
-            self.check(self._dll.HH_SetBinning(self._deviceID, binning))
+            self._dll.HH_SetBinning(self._deviceID, binning)
 
 
     def set_offset(self, offset):
@@ -1034,69 +989,27 @@ class HydraHarp400(Base, FastCounterInterface):
         #FIXME: add second photon source either to config or in a better way to file
         return 0
 
-    def get_counter_channels(self):
-        """ Return one counter channel. """
-        return ['Ctr0']
-
-    def get_constraints(self):
-        """ Get hardware limits of NI device.
-
-        @return SlowCounterConstraints: constraints class for slow counter
-
-        FIXME: ask hardware for limits when module is loaded
-        """
-        constraints = SlowCounterConstraints()
-        constraints.max_detectors = 1
-        constraints.min_count_frequency = 1e-3
-        constraints.max_count_frequency = 10e9
-        constraints.counting_mode = [CountingMode.CONTINUOUS]
-        return constraints
-
-    def get_counter(self, samples=None):
-        """ Returns the current counts per second of the counter.
-
-        @param int samples: if defined, number of samples to read in one go
-
-        @return float: the photon counts per second
-        """
-        time.sleep(0.05)
-        return [self.get_count_rate(self._count_channel)]
-
-    def close_counter(self):
-        """ Closes the counter and cleans up afterwards. Actually, you do not
-        have to do anything with the picoharp. Therefore this command will do
-        nothing and is only here for SlowCounterInterface compatibility.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
-
-    def close_clock(self):
-        """Closes the clock and cleans up afterwards.. Actually, you do not
-        have to do anything with the picoharp. Therefore this command will do
-        nothing and is only here for SlowCounterInterface compatibility.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        return 0
-
-    # =========================================================================
-    #  Functions for the FastCounter Interface
-    # =========================================================================
-
     #FIXME: The interface connection to the fast counter must be established!
 
-    def configure(self, bin_width_ns, record_length_ns, number_of_gates = 0):
+    def configure(self, bin_width_s, record_length_s, number_of_gates = 0):
+        """ Configuration of the fast counter.
+
+        @param float bin_width_s: Length of a single time bin in the time trace
+                                  histogram in seconds.
+        @param float record_length_s: Total length of the timetrace/each single
+                                      gate in seconds.
+        @param int number_of_gates: optional, number of gates in the pulse
+                                    sequence. Ignore for not gated counter.
+
+        @return tuple(binwidth_s, record_length_s, number_of_gates):
+                    binwidth_s: float the actual set binwidth in seconds
+                    gate_length_s: the actual record length in seconds
+                    number_of_gates: the number of gated, which are accepted,
+                    None if not-gated
         """
-        Configuration of the fast counter.
-        bin_width_ns: Length of a single time bin in the time trace histogram
-                      in nanoseconds.
-        record_length_ns: Total length of the timetrace/each single gate in
-                          nanoseconds.
-        number_of_gates: Number of gates in the pulse sequence. Ignore for
-                         ungated counter.
-        """
-        #        self.initialize(mode=3)
+
+        # when not gated, record length = total sequence length, when gated, record length = laser length.
+        # subtract 200 ns to make sure no sequence trigger is missed
         self._bin_width_ns = bin_width_ns
         self._record_length_ns = record_length_ns
         self._number_of_gates = number_of_gates
@@ -1173,158 +1086,3 @@ class HydraHarp400(Base, FastCounterInterface):
         info_dict = {'elapsed_sweeps': None,
                      'elapsed_time': None}  # TODO : implement that according to hardware capabilities
         return self.data_trace, info_dict
-
-    # =========================================================================
-    #  Test routine for continuous readout
-    # =========================================================================
-
-    def start_measure(self):
-        """
-        Starts the fast counter.
-        """
-        self.lock()
-
-        self.meas_run = True
-
-        # start the device:
-        self.start(int(self._record_length_ns/1e6))
-
-        self.sigReadoutHydraharp.emit()
-
-    def stop_measure(self):
-        """ By setting the Flag, the measurement should stop.  """
-        self.meas_run = False
-
-    def get_fresh_data_loop(self):
-        """ This method will be run infinitely until the measurement stops. """
-
-        # for testing one can also take another array:
-        buffer, actual_counts = self.tttr_read_fifo()
-        #        buffer, actual_counts = [1,2,3,4,5,6,7,8,9], 9
-
-        # This analysis signel should be analyzed in a queued thread:
-        self.sigAnalyzeData.emit(buffer[0:actual_counts-1], actual_counts)
-
-        if not self.meas_run:
-            with self.threadlock:
-                self.unlock()
-                self.stop_device()
-                return
-
-        print('get new data.')
-        # get the next data:
-        self.sigReadoutHydraharp.emit()
-
-    def analyze_received_data(self, arr_data, actual_counts):
-        """ Analyze the actual data obtained from the TTTR mode of the device.
-
-        @param arr_data: numpy uint32 array with length 'actual_counts'.
-        @param actual_counts: int, number of read out events from the buffer.
-
-        Write the obtained arr_data to the predefined array data_trace,
-        initialized in the configure method.
-
-        The received array contains 32bit words. The bit assignment starts from
-        the MSB (most significant bit), which is here displayed as the most
-        left bit.
-
-        For T2 (initialized device with mode=2):
-        ----------------------------------------
-
-        [ 4 bit for channel-number |28 bit for time-tag] = [32 bit word]
-
-        channel-number: 4 marker, which serve for the different channels.
-                            0001 = marker 1
-                            0010 = marker 2
-                            0011 = marker 3
-                            0100 = marker 4
-
-                        The channel code 15 (all bits ones, 1111) marks a
-                        special record. Special records can be overflows or
-                        external markers. To differentiate this, the lower 4
-                        bits of timetag must be checked:
-                            - If they are all zero, the record marks an
-                              overflow.
-                            - If they are >=1 the individual bits are external
-                              markers.
-
-                        Overflow period: 210698240
-
-                        the first bit is the overflow bit. It will be set if
-                        the time-tag reached 2^28:
-
-                            0000 = overflow
-
-                        Afterwards both overflow marker and time-tag
-                        will be reseted. This overflow should be detected and
-                        the time axis should be adjusted accordingly.
-
-        time-tag: The resolution is fixed to 4ps. Within the time of
-                  4ps*2^28 = 1.073741824 ms
-                  another photon event should occur so that the time axis can
-                  be computed properly.
-
-        For T3 (initialized device with mode=3):
-        ----------------------------------------
-
-        [ 4 bit for channel-number | 12 bit for start-stop-time | 16 bit for sync counter] = [32 bit word]
-
-        channel-number: 4 marker, which serve for the different channels.
-                            0001 = marker 1
-                            0010 = marker 2
-                            0011 = marker 3
-                            0100 = marker 4
-
-                        the first bit is the overflow bit. It will be set if
-                        the sync-counter reached 65536 events:
-
-                            1000 = overflow
-
-                        Afterwards both, overflow marker and sync-counter
-                        will be reseted. This overflow should be detected and
-                        the time axis should be adjusted accordingly.
-
-        start-stop-time: time between to consecutive sync pulses. Maximal time
-                         between two sync pulses is therefore limited to
-                             2^12 * Res
-                         where Res is the Resolution
-                             Res = {4,8,16,32,54,128,256,512} (in ps)
-                         For largest Resolution of 512ps you have 2097.152 ns.
-        sync-counter: can hold up to 2^16 = 65536 events. It that number is
-                      reached overflow will be set. That means all 4 bits in
-                      the channel-number are set to high (i.e. 1).
-        """
-
-        # at first just a simple test
-        time.sleep(0.2)
-
-        self.data_trace[self.count] = actual_counts
-        self.count += 1
-
-        if self.count > self._number_of_gates-1:
-            self.count = 0
-
-        if actual_counts == self.TTREADMAX:
-            self.log.warning('Overflow!')
-
-        print('Data analyzed.')
-
-#        self.result = []
-#        for entry in arr_data[0:actual_counts-1]:
-#
-#            # apply three bitmasks to extract the relavent numbers:
-#            overflow = entry & (2**(32-1) )
-#            marker_ch = entry & (2**(32-2)  + 2**(32-3) + 2**(32-4))
-#            time_tag = entry & (2**32 -1 - 2**(32-1) + 2**(32-2) + 2**(32-3) + 2**(32-4))
-
-
-
-
-
-
-
-
-
-
-
-
