@@ -858,6 +858,7 @@ class EnsembleEditor(QtWidgets.QTableView):
         for col in range(self.columnCount()):
             width = self.itemDelegateForColumn(col).sizeHint().width()
             self.setColumnWidth(col, width)
+        self.setColumnWidth(0, 400)
         return
 
     def set_available_pulse_blocks(self, blocks):
@@ -1154,7 +1155,7 @@ class SequenceEditorTableModel(QtCore.QAbstractTableModel):
     def headerData(self, section, orientation, role):
         # Horizontal header
         if orientation == QtCore.Qt.Horizontal:
-            if role == QtCore.Qt.DisplayRole and (0 < section < len(self.__horizontal_headers)):
+            if role == QtCore.Qt.DisplayRole and (0 <= section < len(self.__horizontal_headers)):
                 return self.__horizontal_headers[section]
         return super().headerData(section, orientation, role)
 
@@ -1281,6 +1282,7 @@ class SequenceEditor(QtWidgets.QTableView):
         for col in range(self.columnCount()):
             width = self.itemDelegateForColumn(col).sizeHint().width()
             self.setColumnWidth(col, width)
+        self.setColumnWidth(0, 400)
         return
 
     def set_available_block_ensembles(self, ensembles):
