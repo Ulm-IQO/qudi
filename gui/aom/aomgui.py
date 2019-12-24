@@ -32,9 +32,7 @@ from qtpy import QtWidgets
 from qtpy import uic
 
 
-
 class AomMainWindow(QtWidgets.QMainWindow):
-
     """ Create the Main Window based on the *.ui file. """
 
     def __init__(self, **kwargs):
@@ -49,17 +47,10 @@ class AomMainWindow(QtWidgets.QMainWindow):
 
 
 class AomGui(GUIBase):
-
-    """ FIXME: Please document
+    """ GUI for aom logic. Module used for controlling AOM diffraction efficiency via process_value_modifier
     """
-    _modclass = 'aomgui'
-    _modtype = 'gui'
 
-    # declare connectors
-    aomlogic = Connector(interface='AomLogic')
-
-    sigPsatFinished = QtCore.Signal()
-    sigAomChange = QtCore.Signal()
+    logic = Connector(interface='AomLogic')
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -67,129 +58,106 @@ class AomGui(GUIBase):
     def on_activate(self):
         """ Definition and initialisation of the GUI.
         """
-
-        self._aom_logic = self.get_connector('aomlogic')
-
-        # Use the inherited class 'CounterMainWindow' to create the GUI window
         self._mw = AomMainWindow()
-
-        self.psat_image = pg.PlotDataItem(self._aom_logic.powers,
-                                          self._aom_logic.psat_data,
+        self._curve = pg.PlotDataItem(self.logic().voltage,
+                                          self.logic().powers,
                                           pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
                                           symbol='o',
                                           symbolPen=palette.c1,
                                           symbolBrush=palette.c1,
                                           symbolSize=7)
 
-        self.psat_fit_image = pg.PlotDataItem(self._aom_logic.psat_fit_x,
-                                              self._aom_logic.psat_fit_y,
-                                              pen=pg.mkPen(palette.c2))
-
-        # Add the display item to the xy and xz ViewWidget, which was defined in the UI file.
-        self._mw.psat_plot_PlotWidget.addItem(self.psat_image)
-        self._mw.psat_plot_PlotWidget.addItem(self.psat_fit_image)
-        self._mw.psat_plot_PlotWidget.setLabel(axis='left', text='Fluoresence', units='c/s')
-        self._mw.psat_plot_PlotWidget.setLabel(axis='bottom', text='Power', units='W')
+        self._mw.psat_plot_PlotWidget.addItem(self._curve)
+        self._mw.psat_plot_PlotWidget.setLabel(axis='left', text='Power', units='W')
+        self._mw.psat_plot_PlotWidget.setLabel(axis='bottom', text='Voltage', units='V')
         self._mw.psat_plot_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
-        self._mw.setPower.setValue(self.get_power())
-        self._mw.setPower.valueChanged.connect(self.set_power)
-        self._mw.setPower.setMaximum(self._aom_logic.current_maximum_power()*1000)
-        self._mw.set_to_psat.clicked.connect(self.set_power_to_psat)
-        self._aom_logic.power_available.connect(self.update_power_available)
 
-        #####################
-        # Connecting user interactions
-        self._mw.run_psat_Action.triggered.connect(self.run_psat_clicked)
-        self._mw.save_psat_Action.triggered.connect(self.save_clicked)
+        self.update_max_power_from_logic()
+        self.update_parameters_from_logic()
 
-        ##################
         # Handling signals from the logic
-        self._aom_logic.psat_updated.connect(self.update_data)
-        self._aom_logic.psat_fit_updated.connect(self.update_fit)
-        self._aom_logic.aom_updated.connect(self.update_aom)
+        self.logic().sigNewDataPoint.connect(self.update_data)
+        self.logic().sigNewMaxPower.connect(self.update_max_power_from_logic)
+        self.logic().sigStarted.connect(self.started)
+        self.logic().sigFinished.connect(self.finished)
+        self.logic().sigParameterChanged.connect(self.update_parameters_from_logic)
 
-        return 0
+        # Sending signals to the logic
+        self._mw.runAction.triggered.connect(self.logic().calibrate())
+        self._mw.saveAction.triggered.connect(self.logic().save())
+        self._mw.abortAction.triggered.connect(self.logic().abort())
+
+        self._mw.timeBeforeStartDoubleSpinBox.valueChanged.connect(self.parameters_changed)
+        self._mw.resolutionSpinBox.valueChanged.connect(self.parameters_changed)
+        self._mw.delayAfterChangeDoubleSpinBox.valueChanged.connect(self.parameters_changed)
+        self._mw.delayBetweenRepetitions.valueChanged.connect(self.parameters_changed)
+        self._mw.repetitionsSpinBox.valueChanged.connect(self.parameters_changed)
+
+        self._mw.abortAction.setEnabled(False)
 
     def show(self):
-        """Make window visible and put it above all other windows.
-        """
+        """ Make window visible and put it above all other windows. """
         QtWidgets.QMainWindow.show(self._mw)
         self._mw.activateWindow()
         self._mw.raise_()
-        return
 
     def on_deactivate(self):
-        """ Deactivate the module
-        """
-        # disconnect signals
-        self._mw.run_psat_Action.triggered.disconnect()
-        self._mw.save_psat_Action.triggered.disconnect()
-        self._aom_logic.psat_updated.disconnect()
+        """ Deactivate the module """
+        self.logic().sigNewDataPoint.disconnect()
+        self.logic().sigNewMaxPower.disconnect()
+        self.logic().sigStarted.disconnect()
+        self.logic().sigFinished.disconnect()
+
+        self._mw.runAction.triggered.disconnect()
+        self._mw.saveAction.triggered.disconnect()
+        self._mw.abortAction.triggered.disconnect()
+
         self._mw.close()
-        return
 
-    def update_aom(self):
-        self._mw.setPower.blockSignals(True)
-        self._mw.setPower.setValue(self.get_power())
-        self._mw.setPower.blockSignals(False)
+    def update_max_power_from_logic(self):
+        self._mw.maxPower.blockSignals(True)
+        self._mw.maxPower.setValue(self.logic().power_max)
+        self._mw.maxPower.blockSignals(False)
 
-    def set_power_to_psat(self):
-        self._aom_logic.set_power(self._aom_logic.fitted_Psat)
+    def update_parameters_from_logic(self):
+        self._mw.timeBeforeStartDoubleSpinBox.blockSignals(True)
+        self._mw.resolutionSpinBox.blockSignals(True)
+        self._mw.delayAfterChangeDoubleSpinBox.blockSignals(True)
+        self._mw.delayBetweenRepetitions.blockSignals(True)
+        self._mw.repetitionsSpinBox.blockSignals(True)
+
+        self._mw.timeBeforeStartDoubleSpinBox.setValue(self.logic().time_before_start)
+        self._mw.resolutionSpinBox.setValue(self.logic().resolution)
+        self._mw.delayAfterChangeDoubleSpinBox.setValue(self.logic().delay_after_change)
+        self._mw.delayBetweenRepetitions.setValue(self.logic().delay_between_repetitions)
+        self._mw.repetitionsSpinBox.setValue(self.logic().repetition)
+
+        self._mw.timeBeforeStartDoubleSpinBox.blockSignals(False)
+        self._mw.resolutionSpinBox.blockSignals(False)
+        self._mw.delayAfterChangeDoubleSpinBox.blockSignals(False)
+        self._mw.delayBetweenRepetitions.blockSignals(False)
+        self._mw.repetitionsSpinBox.blockSignals(False)
+
+    def parameters_changed(self):
+        self.logic().time_before_start = self._mw.timeBeforeStartDoubleSpinBox.value()
+        self.logic().resolution = self._mw.resolutionSpinBox.value()
+        self.logic().delay_after_change = self._mw.delayAfterChangeDoubleSpinBox.value()
+        self.logic().delay_between_repetitions = self._mw.delayBetweenRepetitions.value()
+        self.logic().repetition = self._mw.repetitionsSpinBox.value()
 
     def update_data(self):
-        """ The function that grabs the data and sends it to the plot.
-        """
-
         """ Refresh the plot widgets with new data. """
-        # Update psat plot
-        self.psat_image.setData(self._aom_logic.powers, self._aom_logic.psat_data)
+        self._curve.setData(self.logic().voltage, self.logic().powers)
 
-        return 0
+    def started(self):
+        """ Update GUI when logic runs """
+        self._mw.abortAction.setEnabled(True)
+        self._mw.runAction.setEnabled(False)
+        self._mw.saveAction.setEnabled(False)
 
-    def set_power(self,power):
-        self._aom_logic.set_power(power/1000)
+    def finished(self):
+        """ Update GUI when logic stops """
+        self._mw.abortAction.setEnabled(False)
+        self._mw.runAction.setEnabled(True)
+        self._mw.saveAction.setEnabled(True)
 
-    def get_power(self):
-        return self._aom_logic.get_power()*1000
-
-    def update_fit(self):
-        """ Refresh the plot widgets with new data. """
-        if self._aom_logic.psat_fit_available():
-            # Update psat plot
-            self.psat_fit_image.setData(self._aom_logic.psat_fit_x, self._aom_logic.psat_fit_y)
-            self._mw.Isat_display.setText("{:.2f}".format(self._aom_logic.fitted_Isat/1000))
-            self._mw.Psat_display.setText("{:.2f}".format(self._aom_logic.fitted_Psat*1000))
-            self._mw.bg_display.setText("{:.2f}".format(self._aom_logic.fitted_offset/1000))
-
-
-    def run_psat_clicked(self):
-        """ Handling the Start button
-        """
-        self.log.info("Running psat")
-        self._aom_logic.run_psat()
-        return self._aom_logic.module_state()
-
-    def save_clicked(self):
-        """ Handling the save button to save the data into a file.
-        """
-        if self._aom_logic.psat_available():
-            self._aom_logic.save_psat()
-        return self._aom_logic.module_state()
-
-    def update_max_power(self, count_length):
-        """Function to ensure that the GUI displays the current value of the logic
-
-        @param int count_length: adjusted count length in bins
-        @return int count_length: see above
-        """
-        self._mw.setPower.blockSignals(True)
-        self._mw.count_length_SpinBox.setValue(count_length)
-        self._pw.setXRange(0, count_length / self._counting_logic.get_count_frequency())
-        self._mw.count_length_SpinBox.blockSignals(False)
-        return count_length
-
-    def update_power_available(self, state):
-        pass
-
-    def update_saving_Action(self, start):
-        pass

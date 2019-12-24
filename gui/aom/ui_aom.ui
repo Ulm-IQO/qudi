@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>320</width>
-    <height>431</height>
+    <width>448</width>
+    <height>596</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -16,76 +16,107 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <widget class="QWidget" name="widget_2" native="true">
-      <layout class="QGridLayout" name="gridLayout_2">
-       <item row="0" column="0">
-        <widget class="QLabel" name="label_2">
-         <property name="text">
-          <string>Psat</string>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="QLabel" name="Psat_display">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="QLabel" name="label_8">
-         <property name="text">
-          <string>mW</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="QLabel" name="label_5">
-         <property name="text">
-          <string>Isat</string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QLabel" name="Isat_display">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QLabel" name="label_7">
-         <property name="text">
-          <string>kc</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="QLabel" name="label_3">
-         <property name="text">
-          <string>Background</string>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QLabel" name="bg_display">
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <widget class="QLabel" name="label_9">
-         <property name="text">
-          <string>kc</string>
-         </property>
-        </widget>
-       </item>
-      </layout>
+     <widget class="QWidget" name="params" native="true">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>180</height>
+       </size>
+      </property>
+      <widget class="QWidget" name="gridLayoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>10</y>
+         <width>411</width>
+         <height>161</height>
+        </rect>
+       </property>
+       <layout class="QGridLayout" name="gridLayout">
+        <item row="2" column="2">
+         <widget class="QLabel" name="label_8">
+          <property name="text">
+           <string>s</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="resolutionSpinBox"/>
+        </item>
+        <item row="3" column="1">
+         <widget class="QDoubleSpinBox" name="delayBetweenRepetitions"/>
+        </item>
+        <item row="0" column="2">
+         <widget class="QLabel" name="label_3">
+          <property name="text">
+           <string>s</string>
+          </property>
+         </widget>
+        </item>
+        <item row="1" column="2">
+         <widget class="QLabel" name="label_6">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="0">
+         <widget class="QLabel" name="label_2">
+          <property name="text">
+           <string>Time before start</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="2">
+         <widget class="QLabel" name="label_10">
+          <property name="text">
+           <string>s</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="0">
+         <widget class="QLabel" name="label_7">
+          <property name="text">
+           <string>Delay after change</string>
+          </property>
+         </widget>
+        </item>
+        <item row="0" column="1">
+         <widget class="QDoubleSpinBox" name="timeBeforeStartDoubleSpinBox"/>
+        </item>
+        <item row="1" column="0">
+         <widget class="QLabel" name="label_5">
+          <property name="text">
+           <string>Resolution</string>
+          </property>
+         </widget>
+        </item>
+        <item row="2" column="1">
+         <widget class="QDoubleSpinBox" name="delayAfterChangeDoubleSpinBox"/>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="label_9">
+          <property name="text">
+           <string>Delay between repetitions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_11">
+          <property name="text">
+           <string>Repetitions</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QSpinBox" name="repetitionsSpinBox"/>
+        </item>
+       </layout>
+      </widget>
      </widget>
     </item>
     <item>
-     <widget class="PlotWidget" name="psat_plot_PlotWidget"/>
+     <widget class="PlotWidget" name="PlotWidget"/>
     </item>
     <item>
      <widget class="QWidget" name="widget" native="true">
@@ -93,14 +124,14 @@
        <item>
         <widget class="QLabel" name="label_4">
          <property name="text">
-          <string>Set Power</string>
+          <string>Max power</string>
          </property>
         </widget>
        </item>
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
-          <widget class="QDoubleSpinBox" name="setPower">
+          <widget class="QDoubleSpinBox" name="maxPower">
            <property name="decimals">
             <number>3</number>
            </property>
@@ -114,18 +145,18 @@
        <item>
         <widget class="QLabel" name="label">
          <property name="text">
-          <string>mW</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="set_to_psat">
-         <property name="text">
-          <string>Set to Psat</string>
+          <string>W</string>
          </property>
         </widget>
        </item>
       </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QPushButton" name="SetFromMeasurement">
+      <property name="text">
+       <string>Set from measurement</string>
+      </property>
      </widget>
     </item>
    </layout>
@@ -135,15 +166,15 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>320</width>
-     <height>21</height>
+     <width>448</width>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuView">
     <property name="title">
      <string>&amp;Menu</string>
     </property>
-    <addaction name="actionClose"/>
+    <addaction name="closeAction"/>
    </widget>
    <addaction name="menuView"/>
   </widget>
@@ -161,40 +192,53 @@
    <attribute name="toolBarBreak">
     <bool>false</bool>
    </attribute>
-   <addaction name="run_psat_Action"/>
-   <addaction name="save_psat_Action"/>
+   <addaction name="runAction"/>
+   <addaction name="abortAction"/>
+   <addaction name="saveAction"/>
   </widget>
-  <action name="run_psat_Action">
+  <action name="runAction">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</normaloff>../../artwork/icons/qudiTheme/22x22/start-counter.png</iconset>
    </property>
    <property name="text">
-    <string>Run Psat</string>
+    <string>Run</string>
    </property>
    <property name="toolTip">
-    <string>Run a Psat measurement</string>
+    <string>Run a calibration sweep</string>
    </property>
   </action>
-  <action name="save_psat_Action">
+  <action name="saveAction">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/document-save.png</normaloff>../../artwork/icons/oxygen/22x22/document-save.png</iconset>
    </property>
    <property name="text">
-    <string>Save Psat</string>
+    <string>Save</string>
    </property>
    <property name="toolTip">
     <string>Save measurement to file</string>
    </property>
   </action>
-  <action name="actionClose">
+  <action name="closeAction">
    <property name="icon">
     <iconset>
      <normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</normaloff>../../artwork/icons/oxygen/22x22/application-exit.png</iconset>
    </property>
    <property name="text">
     <string>Close</string>
+   </property>
+  </action>
+  <action name="abortAction">
+   <property name="icon">
+    <iconset>
+     <normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</normaloff>../../artwork/icons/oxygen/22x22/media-playback-stop.png</iconset>
+   </property>
+   <property name="text">
+    <string>Abort</string>
+   </property>
+   <property name="toolTip">
+    <string>Abort</string>
    </property>
   </action>
  </widget>
@@ -208,7 +252,7 @@
  <resources/>
  <connections>
   <connection>
-   <sender>actionClose</sender>
+   <sender>closeAction</sender>
    <signal>triggered()</signal>
    <receiver>MainWindow</receiver>
    <slot>close()</slot>
