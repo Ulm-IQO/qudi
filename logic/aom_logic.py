@@ -19,7 +19,10 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 import time
+from collections import OrderedDict
+from qtpy import QtCore
 
 from logic.generic_logic import GenericLogic
 from core.connector import Connector
@@ -44,7 +47,16 @@ class AomLogic(GenericLogic):
     _delay_between_repetitions = StatusVar('delay_between_repetitions', .2)
     _repetitions = StatusVar('repetitions', 5)
 
+    _voltages = StatusVar('voltages', [])
+    _powers = StatusVar('power', [])
+
     _abort_requested = None
+
+    sigNewDataPoint = QtCore.Signal()
+    sigNewMaxPower = QtCore.Signal()
+    sigStarted = QtCore.Signal()
+    sigFinished = QtCore.Signal()
+    sigParameterChanged = QtCore.Signal()
 
     def on_activate(self):
         pass
@@ -75,19 +87,26 @@ class AomLogic(GenericLogic):
         if self.module_state() != 'idle':
             self.log.error("Can not calibrate AOM. Logic module is not idle.")
         self.module_state.run()
+        self.sigStarted.emit()
         self._abort_requested = False
+        self._voltages = np.linspace(0, self.voltage_output().get_control_limit()[1], self._resolution)
+        self._powers_read = np.zeros(self._resolution)
+        self.sigNewDataPoint.emit()
         time.sleep(self._time_before_start)
-        voltages = np.linspace(0, self.voltage_output().get_control_limit()[1], self._resolution)
-        powers_read = np.zeros(self._resolution)
-        for i, voltage in enumerate(voltages):
+        for i, voltage in enumerate(self._voltages):
             self.voltage_output().set_control_value(voltage)
             time.sleep(self._delay_after_change)
-            powers_read[i] = self._get_power(self._repetitions)
+            self._powers[i] = self._get_power(self._repetitions)
+            self.sigNewDataPoint.emit()
             if self._abort_requested:
-                self._abort_requested = False
-                return None
+                break
         self.module_state.stop()
-        return voltages, powers_read
+        self.sigFinished()
+        if self._abort_requested:
+            self._abort_requested = False
+            return
+        else:
+            return self._voltages, self._powers
 
 # Accessible methods
 
@@ -96,27 +115,28 @@ class AomLogic(GenericLogic):
         result = self._do_sweep()
         if result is None: # is case of aborted sweep
             return
-        voltages, powers_read = result
-        power_max = powers_read.max()
-        powers_normalized = powers_read / power_max
+        voltages, powers = result
+        power_max = powers.max()
+        powers_normalized = powers / power_max
 
-        i_max = np.argmax(powers_read)
+        i_max = np.argmax(powers)
         y = np.append(np.zeros(1), voltages[0:i_max + 1])
-        x = np.append(np.zeros(1), powers_read[0:i_max + 1])
+        x = np.append(np.zeros(1), powers[0:i_max + 1])
 
         self.control_laser_interfuse().update_calibration(np.array([x, y]).transpose())
-        self.control_laser_interfuse().set_max_power(power_max)
+        self.calibrate_max_from_value(power_max)
 
     def calibrate_max(self):
         """ Method to calibrate only max power based on measured value """
         self.voltage_output().set_control_value(self.voltage_output().get_control_limit()[1])
         time.sleep(self._delay_after_change)
         power_max = self._get_power(self._repetitions)
-        self.control_laser_interfuse().set_max_power(power_max)
+        self.calibrate_max_from_value(power_max)
 
     def calibrate_max_from_value(self, value):
         """ Method to calibrate maximum power based on a value passed as parameter """
         self.control_laser_interfuse().set_max_power(value)
+        self.sigNewMaxPower.emit()
 
     def abort(self):
         """ Method to abort the measurement sweep """
@@ -131,6 +151,8 @@ class AomLogic(GenericLogic):
 
     @time_before_start.setter
     def time_before_start(self, val):
+        if val != self._time_before_start:
+            self.sigParameterChanged()
         self._time_before_start = float(val)
 
     @property
@@ -139,6 +161,8 @@ class AomLogic(GenericLogic):
 
     @resolution.setter
     def resolution(self, val):
+        if val != self._resolution:
+            self.sigParameterChanged()
         self._resolution = int(val)
 
     @property
@@ -147,6 +171,8 @@ class AomLogic(GenericLogic):
 
     @delay_after_change.setter
     def delay_after_change(self, val):
+        if val != self._delay_after_change:
+            self.sigParameterChanged()
         self._delay_after_change = float(val)
 
     @property
@@ -155,6 +181,8 @@ class AomLogic(GenericLogic):
 
     @delay_between_repetitions.setter
     def delay_between_repetitions(self, val):
+        if val != self._delay_between_repetitions:
+            self.sigParameterChanged()
         self._delay_between_repetitions = float(val)
 
     @property
@@ -162,5 +190,48 @@ class AomLogic(GenericLogic):
         return self._repetitions
 
     @repetitions.setter
-    def delay_between_repetitions(self, val):
+    def repetitions(self, val):
+        if val != self._repetitions:
+            self.sigParameterChanged()
         self._repetitions = int(val)
+
+    @property
+    def power_max(self):
+        """ Method used by GUI to get current maximum power known to laser interfuse """
+        return self.control_laser_interfuse().get_power_range()[1]
+
+    @property
+    def voltages(self):
+        return self._voltages
+
+    @property
+    def powers(self):
+        return self._powers
+
+# save functions
+
+    def draw_figure(self):
+        """ Method to draw the curves with matplotlib """
+        fig, ax = plt.subplots()
+        ax.set_xlabel("Voltage (V)", fontsize=15)
+        ax.set_ylabel("Power (W)", fontsize=15)
+        ax.tick_params(axis='both', which='major', labelsize=15)
+        ax.plot(self.voltages, self.powers, marker='.')
+        return fig, ax
+
+    def save(self, draw_figure=True):
+        """ Method to save the measured data for posterity """
+        filepath = self._save_logic.get_path_for_module(module_name='aom_logic')
+        data = OrderedDict()
+        data['powers'] = np.array(self._powers)
+        data['Voltage (V)'] = np.array(self.voltages)
+        parameters = OrderedDict()
+        parameters['time_before_start'] = self.time_before_start
+        parameters['resolution'] = self.resolution
+        parameters['delay_after_change'] = self.delay_after_change
+        parameters['delay_between_repetitions'] = self.delay_between_repetitions
+        parameters['repetitions'] = self.repetitions
+        fig, ax = self.draw_figure() if draw_figure else (None, None)
+
+        self._save_logic.save_data(data, filepath=filepath, parameters=parameters, plotfig=fig, delimiter='\t')
+        self.log.info('AOM data saved')
