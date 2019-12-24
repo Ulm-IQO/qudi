@@ -24,7 +24,8 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import time
 
-from core.module import Connector, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 from logic.generic_logic import GenericLogic
 from interface.simple_laser_interface import SimpleLaserInterface, ControlMode, ShutterState, LaserState
 
