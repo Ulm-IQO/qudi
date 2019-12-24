@@ -18,242 +18,149 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-from collections import OrderedDict
 import numpy as np
+import time
+
 from logic.generic_logic import GenericLogic
-from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
-from qtpy import QtCore
+from core.connector import Connector
+from core.statusvariable import StatusVar
+
 
 class AomLogic(GenericLogic):
-    """
-    This is the logic for controlling AOM diffraction efficiency
-    for power control and Psat
-    """
-    _modclass = 'aomlogic'
-    _modtype = 'logic'
+    """ This is the logic for controlling AOM diffraction efficiency via process_value_modifier and laserlogic
 
-    # declare connectors
-    voltagescanner = Connector(interface='VoltageScannerInterface')
-    laser = Connector(interface='SimpleLaserInterface')
+    The idea is to use an voltage output and a power-meter input to calibrate the power versus voltage curve.
+    Another important task is to update the maximum power reachable via this method.
+    """
+
+    voltage_output = Connector(interface='ProcessControlInterface')
+    power_input = Connector(interface='ProcessInterface')
+    control_laser_interfuse = Connector(interface='ProcessControlModifier')
     savelogic = Connector(interface='SaveLogic')
-    fitlogic = Connector(interface='FitLogic')
 
-    psat_updated = QtCore.Signal()
-    psat_fit_updated = QtCore.Signal()
-    psat_saved = QtCore.Signal()
-    aom_updated = QtCore.Signal()
-    power_available = QtCore.Signal(bool)
-    max_power_update = QtCore.Signal()
+    _time_before_start = StatusVar('time_before_start', 5)
+    _resolution = StatusVar('resolution', 50)
+    _delay_after_change = StatusVar('delay_after_change', 0.5)
+    _delay_between_repetitions = StatusVar('delay_between_repetitions', .2)
+    _repetitions = StatusVar('repetitions', 5)
 
-    # status vars
-    _clock_frequency = StatusVar('clock_frequency', 30)
-    #_calibration_voltage = ConfigOption('voltage', missing='error')
-    #_calibration_efficiency = ConfigOption('efficiency', missing='error')
-
-    # temporary to avoid restarting qudi
-    _calibration_voltage = [0.6, 0.65, .7, .75, .8, .85, .9, .95, 1.0, 1.05, 1.10, 1.15, 1.2, 1.3, 1.4]
-    _calibration_efficiency = [.00141, .00554, .01342, .02467, .03881, .05515, .07320, 0.09160, .11123, .12956,
-                               .14604, .16094, .17408, .19377, .20777]
-
-    def __init__(self, config, **kwargs):
-        super().__init__(config=config, **kwargs)
-
-        self.powers = []
-        self.psat_data = []
-        self.psat_fit_x = []
-        self.psat_fit_y = []
-        self.fitted_Isat = 0.0
-        self.fitted_Psat = 0.0
-        self.fitted_offset = 0.0
-        self.psat_fitted = False
-        self.psat_collected = False
-
-        #locking for thread safety
-        self.threadlock = Mutex()
+    _abort_requested = None
 
     def on_activate(self):
-        """ Initialisation performed during activation of the module.
-        """
-        self._voltagescanner = self.get_connector('voltagescanner')
-        self._laser = self.get_connector('laser')
-        self._save_logic = self.get_connector('savelogic')
-        self._fitlogic = self.get_connector('fitlogic')
-        config = self.getConfiguration()
-
-        # configure calibration
-        self._cal_voltage = config['voltage']
-        self._cal_efficiency = config['efficiency']
-        self.maximum_efficiency = max(self._cal_efficiency)
-
-        self.set_psat_points()
-        self.clear()
-
-        self.psat_updated.connect(self.fit_data)
-        # self.laser.sigPower.connect(self.update_aom)
-
+        pass
 
     def on_deactivate(self):
-        self.psat_updated.disconnect(self.fit_data)
+        pass
 
-    def clear(self):
-        self.set_psat_points()
-        self.psat_data = np.zeros_like(self.powers)
-        self.psat_fit_x = np.linspace(0, max(self.powers), 60)
-        self.psat_fit_y = np.zeros_like(self.psat_fit_x)
-        self.fitted_Isat = 0.0
-        self.fitted_Psat = 0.0
-        self.fitted_offset = 0.0
-        self.psat_fitted = False
-        self.psat_colllected = False
-        self.psat_updated.emit()
-        self.psat_fit_updated.emit()
+# Protected functions
 
-    def psat_available(self):
-        return self.psat_available
+    def _get_power(self, repetitions=1):
+        """ Helper method to read the power multiple times and return average """
+        total_power = 0
+        success = 0
+        for i in range(repetitions):
+            try:
+                total_power += self.voltage_output().get_process_value()
+                success += 1
+            except:
+                self.log.warning('Power-meter value unreadable')
+            finally:
+                time.sleep(self._delay_between_repetitions)
+        if success == 0:
+            raise ConnectionError('Could not read any value from power-meter')
+        return total_power / success
 
-    def psat_fit_available(self):
-        return self.psat_fit_available
+    def _do_sweep(self):
+        """ Method that launch a calibration sequence to measure power versus voltage """
+        if self.module_state() != 'idle':
+            self.log.error("Can not calibrate AOM. Logic module is not idle.")
+        self.module_state.run()
+        self._abort_requested = False
+        time.sleep(self._time_before_start)
+        voltages = np.linspace(0, self.voltage_output().get_control_limit()[1], self._resolution)
+        powers_read = np.zeros(self._resolution)
+        for i, voltage in enumerate(voltages):
+            self.voltage_output().set_control_value(voltage)
+            time.sleep(self._delay_after_change)
+            powers_read[i] = self._get_power(self._repetitions)
+            if self._abort_requested:
+                self._abort_requested = False
+                return None
+        self.module_state.stop()
+        return voltages, powers_read
 
-    def efficiency_for_voltage(self, v):
-        return np.interp(v, self._cal_voltage, self._cal_efficiency)
+# Accessible methods
 
-    def voltage_for_efficiency(self, e):
-        return np.interp(e, self._cal_efficiency, self._cal_voltage, 0.0, np.inf)
+    def calibrate(self):
+        """ Method to call that full calibration procedure """
+        result = self._do_sweep()
+        if result is None: # is case of aborted sweep
+            return
+        voltages, powers_read = result
+        power_max = powers_read.max()
+        powers_normalized = powers_read / power_max
 
-    def voltages_for_powers(self, powers):
-        laser_power = self._get_laser_power()
-        e = [p / laser_power for p in powers]
-        return np.interp(e, self._cal_efficiency, self._cal_voltage, 0.0, np.inf)
+        i_max = np.argmax(powers_read)
+        y = np.append(np.zeros(1), voltages[0:i_max + 1])
+        x = np.append(np.zeros(1), powers_read[0:i_max + 1])
 
-    def set_power(self, p):
-        laser_power = self._get_laser_power()
-        efficiency = p/laser_power
-        if efficiency > self.maximum_efficiency:
-            self.log.warning("Too much power requested, turn the laser up!")
-        else:
-            self.power = p
-            self.update_aom()
+        self.control_laser_interfuse().update_calibration(np.array([x, y]).transpose())
+        self.control_laser_interfuse().set_max_power(power_max)
 
-    def source_changed(self):
-        self.max_power_updated.emit()
-        self.update_aom()
+    def calibrate_max(self):
+        """ Method to calibrate only max power based on measured value """
+        self.voltage_output().set_control_value(self.voltage_output().get_control_limit()[1])
+        time.sleep(self._delay_after_change)
+        power_max = self._get_power(self._repetitions)
+        self.control_laser_interfuse().set_max_power(power_max)
 
-    def update_aom(self):
-        if self.power > self.current_maximum_power():
-            self.power_unavailable.emit()
-        else:
-            laser_power = self._get_laser_power()
-            efficiency = self.power/laser_power
-            v = self.voltage_for_efficiency(efficiency)
-            self.log.info("Setting AOM voltage {}V efficiency {}".format(v, efficiency))
-            self._voltagescanner.set_voltage(v)
-            self.aom_updated.emit()
+    def calibrate_max_from_value(self, value):
+        """ Method to calibrate maximum power based on a value passed as parameter """
+        self.control_laser_interfuse().set_max_power(value)
 
-    def _get_laser_power(self):
-        return self._laser.laser_power_setpoint
+    def abort(self):
+        """ Method to abort the measurement sweep """
+        if self.module_state() == 'running':
+            self._abort_requested = True
 
-    def get_power(self):
-        laser_power = self._get_laser_power()
-        v = self._voltagescanner.get_voltage()
-        efficiency = self.efficiency_for_voltage(v)
-        return laser_power * efficiency
+# Attribute getters and setters
 
-    def current_maximum_power(self):
-        laser_power = self._get_laser_power()
-        return laser_power * self.maximum_efficiency
+    @property
+    def time_before_start(self):
+        return self._time_before_start
 
-    def set_psat_points(self, minimum=0.0, maximum=None, points=100):
-        if maximum is None:
-            maximum = self.current_maximum_power()*.95
-        if maximum > self.current_maximum_power():
-            self.log.warn("Maximum power is not available without more laser power")
+    @time_before_start.setter
+    def time_before_start(self, val):
+        self._time_before_start = float(val)
 
-        self.powers = np.linspace(minimum, maximum, points)
+    @property
+    def resolution(self):
+        return self._resolution
 
-    def run_psat(self):
-        if max(self.powers) > self.current_maximum_power():
-            self.log.warn("Full range not available for current laser power")
-        v = self.voltages_for_powers(self.powers)
-        self.log.info("Scanning AOM efficiency with voltages {}".format(v))
-        self._voltagescanner.set_up_scanner_clock(clock_frequency=self._clock_frequency)
-        self._voltagescanner.set_up_scanner()
-        o = self._voltagescanner.scan_voltage(v)
-        self._voltagescanner.close_scanner()
-        self._voltagescanner.close_scanner_clock()
-        d = np.append(o, [])
-        self.clear()
+    @resolution.setter
+    def resolution(self, val):
+        self._resolution = int(val)
 
-        self.psat_data = d
-        self.psat_voltages = v
+    @property
+    def delay_after_change(self):
+        return self._delay_after_change
 
-        self.psat_collected = True
+    @delay_after_change.setter
+    def delay_after_change(self, val):
+        self._delay_after_change = float(val)
 
-        self.psat_updated.emit()
+    @property
+    def delay_between_repetitions(self):
+        return self._delay_between_repetitions
 
-        return self.powers, v, self.psat_data
+    @delay_between_repetitions.setter
+    def delay_between_repetitions(self, val):
+        self._delay_between_repetitions = float(val)
 
-    def fit_data(self):
-        model, param = self._fitlogic.make_hyperbolicsaturation_model()
-        param['I_sat'].min = 0
-        param['I_sat'].max = 1e7
-        param['I_sat'].value = max(self.psat_data) * .7
-        param['P_sat'].max = 10.0
-        param['P_sat'].min = 0.0
-        param['P_sat'].value = 0.0001
-        param['slope'].min = 0.0
-        param['slope'].value = 1e3
-        param['offset'].min = 0.0
-        fit = self._fitlogic.make_hyperbolicsaturation_fit(x_axis=self.powers, data=self.psat_data,
-                                                           estimator=self._fitlogic.estimate_hyperbolicsaturation,
-                                                           add_params=param)
-        self.fit = fit
-        self.fitted_Psat = fit.best_values['P_sat']
-        self.fitted_Isat = fit.best_values['I_sat']
-        self.fitted_offset = fit.best_values['offset']
-        self.psat_fitted = True
-        self.psat_fit_y = model.eval(x=self.psat_fit_x, params=fit.params)
+    @property
+    def repetitions(self):
+        return self._repetitions
 
-        self.psat_fit_updated.emit()
-
-    def set_to_psat(self):
-        if self.fitted_Psat:
-            self.set_power(self.fitted_Psat)
-
-    def save_psat(self):
-        # File path and name
-        filepath = self._save_logic.get_path_for_module(module_name='Psat')
-
-        # We will fill the data OrderedDict to send to savelogic
-        data = OrderedDict()
-
-        # Lists for each column of the output file
-        power = self.powers
-        voltage = self.psat_voltages
-        counts = self.psat_data
-
-        data['Power (mW)'] = np.array(power)
-        data['Voltage (V)'] = np.array(voltage)
-        data['Count rate (/s)'] = np.array(counts)
-
-        self._save_logic.save_data(data, filepath=filepath, filelabel='Psat', fmt=['%.6e', '%.6e', '%.6e'])
-        self.log.debug('Psat saved to:\n{0}'.format(filepath))
-
-        self.psat_saved.emit()
-
-        return 0
-
-
-    def set_clock_frequency(self, clock_frequency):
-        """Sets the frequency of the clock
-
-        @param int clock_frequency: desired frequency of the clock
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self._clock_frequency = int(clock_frequency)
-        #checks if scanner is still running
-        if self.module_state() == 'locked':
-            return -1
-        else:
-            return 0
+    @repetitions.setter
+    def delay_between_repetitions(self, val):
+        self._repetitions = int(val)
