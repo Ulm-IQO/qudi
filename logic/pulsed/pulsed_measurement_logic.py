@@ -99,7 +99,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
-    sigTimerUpdated = QtCore.Signal(float, int, float)
+    sigTimerUpdated = QtCore.Signal(float, int, float, float)
     sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
@@ -126,6 +126,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.__start_time = 0
         self.__elapsed_time = 0
         self.__elapsed_sweeps = 0
+        self.__trigger_ratio = 0
 
         # threading
         self._threadlock = Mutex()
@@ -359,6 +360,10 @@ class PulsedMeasurementLogic(GenericLogic):
     @property
     def elapsed_time(self):
         return self.__elapsed_time
+
+    @property
+    def trigger_ratio(self):
+        return self.__trigger_ratio
     ############################################################################
 
     ############################################################################
@@ -799,7 +804,8 @@ class PulsedMeasurementLogic(GenericLogic):
                 self._elapsed_pause = 0
                 self.sigTimerUpdated.emit(self.__elapsed_time,
                                           self.__elapsed_sweeps,
-                                          self.__timer_interval)
+                                          self.__timer_interval,
+                                          self.__trigger_ratio)
 
                 # Set starting time and start timer (if present)
                 self.__start_time = time.time()
@@ -932,7 +938,7 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.sigStopTimer.emit()
 
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
-                                      self.__timer_interval)
+                                      self.__timer_interval, self.__trigger_ratio)
         return
 
     @QtCore.Slot(str)
@@ -1143,7 +1149,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
             # emit signals
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
-                                      self.__timer_interval)
+                                      self.__timer_interval, self.__trigger_ratio)
             self.sigMeasurementDataUpdated.emit()
             return
 
@@ -1153,6 +1159,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.raw_data = fc_data
         self.__elapsed_sweeps = info_dict['elapsed_sweeps']
         self.__elapsed_time = info_dict['elapsed_time']
+        self.__trigger_ratio = (self.__elapsed_sweeps * self.__fast_counter_record_length) / self.__elapsed_time
 
         # extract laser pulses from raw data
         return_dict = self._pulseextractor.extract_laser_pulses(self.raw_data)

@@ -802,8 +802,8 @@ class PulsedMeasurementGui(GUIBase):
         self.pulsedmasterlogic().set_timer_interval(timer_interval)
         return
 
-    @QtCore.Slot(float, int, float)
-    def measurement_timer_updated(self, elapsed_time, elapsed_sweeps, timer_interval):
+    @QtCore.Slot(float, int, float, float)
+    def measurement_timer_updated(self, elapsed_time, elapsed_sweeps, timer_interval, trigegr_ratio):
         """
         Refreshes the elapsed time and sweeps of the measurement.
 
@@ -817,14 +817,17 @@ class PulsedMeasurementGui(GUIBase):
         self._pa.time_param_elapsed_time_LineEdit.blockSignals(True)
         self._pa.time_param_ana_periode_DoubleSpinBox.blockSignals(True)
         self._pa.time_param_elapsed_sweep_SpinBox.blockSignals(True)
+        self._pa.time_param_trigger_ratio_DoubleSpinBox.blockSignals(True)
         # Set widgets
         self._pa.time_param_elapsed_time_LineEdit.setText(time_str)
         self._pa.time_param_ana_periode_DoubleSpinBox.setValue(timer_interval)
         self._pa.time_param_elapsed_sweep_SpinBox.setValue(elapsed_sweeps)
+        self._pa.time_param_trigger_ratio_DoubleSpinBox.setValue(trigegr_ratio*100)
         # unblock signals
         self._pa.time_param_elapsed_time_LineEdit.blockSignals(False)
         self._pa.time_param_ana_periode_DoubleSpinBox.blockSignals(False)
         self._pa.time_param_elapsed_sweep_SpinBox.blockSignals(False)
+        self._pa.time_param_trigger_ratio_DoubleSpinBox.blockSignals(False)
         return
 
     ###########################################################################
