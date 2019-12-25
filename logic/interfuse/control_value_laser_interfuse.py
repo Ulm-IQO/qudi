@@ -244,4 +244,6 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
     def set_max_power(self, maxi):
         """ Function to redefine the max power if the value has changed """
         self._max_power = maxi
+        if self._power > maxi:
+            self.set_power(maxi)
 
