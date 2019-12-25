@@ -44,3 +44,5 @@
 * Interface documentation
     * [Pulser Interface](@ref pulser_interface)
 
+* Extra
+    * [Controlling an analog AOM with Qudi](@control-aom)
