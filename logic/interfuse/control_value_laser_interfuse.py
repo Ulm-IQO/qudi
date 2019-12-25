@@ -58,18 +58,6 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
         """
         pass
 
-    def calibrate(self):
-        """ Calibrate the maximum value """
-        if not self.process.is_connected:
-            self.log.warning('Reader not connected. Can not calibrate')
-            return
-        back_up = self.control().get_control_value()
-        mini, maxi = self.control().get_control_limits()
-        self.control().set_control_value(maxi)
-        time.sleep(0.5)
-        self._max_power = self.process().get_process_value()
-        self.control().set_control_value(back_up)
-
     def get_power_range(self):
         """ Return optical power range
 
