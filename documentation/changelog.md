@@ -56,6 +56,7 @@ The potential sequence_options are:
 * added the option to do a purely analog ODMR scan.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
+* added logic modules and GUI to properly control an AOM via a virtual laser - and corresponding documentation
 * 
 
 
