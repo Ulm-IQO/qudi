@@ -37,8 +37,9 @@ class AomLogic(GenericLogic):
     """
 
     voltage_output = Connector(interface='ProcessControlInterface')
+    output_modifier = Connector(interface='ProcessControlModifier')
     power_input = Connector(interface='ProcessInterface')
-    control_laser_interfuse = Connector(interface='ProcessControlModifier')
+    control_laser_interfuse = Connector(interface='Interfuse')
     savelogic = Connector(interface='SaveLogic')
 
     _time_before_start = StatusVar('time_before_start', 5)
@@ -47,8 +48,8 @@ class AomLogic(GenericLogic):
     _delay_between_repetitions = StatusVar('delay_between_repetitions', .2)
     _repetitions = StatusVar('repetitions', 5)
 
-    _voltages = StatusVar('voltages', [])
-    _powers = StatusVar('power', [])
+    _voltages = StatusVar('voltages', [0])
+    _powers = StatusVar('power', [0])
 
     _abort_requested = None
 
@@ -89,24 +90,26 @@ class AomLogic(GenericLogic):
         self.module_state.run()
         self.sigStarted.emit()
         self._abort_requested = False
-        self._voltages = np.linspace(0, self.voltage_output().get_control_limit()[1], self._resolution)
-        self._powers_read = np.zeros(self._resolution)
+        self._voltages = []
+        voltages = np.linspace(0, self.voltage_output().get_control_limit()[1], self._resolution)
+        self._powers = []
         self.sigNewDataPoint.emit()
         time.sleep(self._time_before_start)
-        for i, voltage in enumerate(self._voltages):
+        for voltage in voltages:
             self.voltage_output().set_control_value(voltage)
             time.sleep(self._delay_after_change)
-            self._powers[i] = self._get_power(self._repetitions)
+            self._voltages.append(voltage)
+            self._powers.append(self._get_power(self._repetitions))
             self.sigNewDataPoint.emit()
             if self._abort_requested:
                 break
         self.module_state.stop()
-        self.sigFinished()
+        self.sigFinished.emit()
         if self._abort_requested:
             self._abort_requested = False
             return
         else:
-            return self._voltages, self._powers
+            return np.array(self._voltages), np.array(self._powers)
 
 # Accessible methods
 
@@ -123,7 +126,7 @@ class AomLogic(GenericLogic):
         y = np.append(np.zeros(1), voltages[0:i_max + 1])
         x = np.append(np.zeros(1), powers[0:i_max + 1])
 
-        self.control_laser_interfuse().update_calibration(np.array([x, y]).transpose())
+        self.output_modifier().update_calibration(np.array([x, y]).transpose())
         self.calibrate_max_from_value(power_max)
 
     def calibrate_max(self):
@@ -151,8 +154,8 @@ class AomLogic(GenericLogic):
 
     @time_before_start.setter
     def time_before_start(self, val):
-        if val != self._time_before_start:
-            self.sigParameterChanged()
+        if float(val) != self._time_before_start:
+            self.sigParameterChanged.emit()
         self._time_before_start = float(val)
 
     @property
@@ -161,8 +164,8 @@ class AomLogic(GenericLogic):
 
     @resolution.setter
     def resolution(self, val):
-        if val != self._resolution:
-            self.sigParameterChanged()
+        if int(val) != self._resolution:
+            self.sigParameterChanged.emit()
         self._resolution = int(val)
 
     @property
@@ -171,8 +174,8 @@ class AomLogic(GenericLogic):
 
     @delay_after_change.setter
     def delay_after_change(self, val):
-        if val != self._delay_after_change:
-            self.sigParameterChanged()
+        if float(val) != self._delay_after_change:
+            self.sigParameterChanged.emit()
         self._delay_after_change = float(val)
 
     @property
@@ -181,8 +184,8 @@ class AomLogic(GenericLogic):
 
     @delay_between_repetitions.setter
     def delay_between_repetitions(self, val):
-        if val != self._delay_between_repetitions:
-            self.sigParameterChanged()
+        if float(val) != self._delay_between_repetitions:
+            self.sigParameterChanged.emit()
         self._delay_between_repetitions = float(val)
 
     @property
@@ -191,8 +194,8 @@ class AomLogic(GenericLogic):
 
     @repetitions.setter
     def repetitions(self, val):
-        if val != self._repetitions:
-            self.sigParameterChanged()
+        if int(val) != self._repetitions:
+            self.sigParameterChanged.emit()
         self._repetitions = int(val)
 
     @property
@@ -219,19 +222,19 @@ class AomLogic(GenericLogic):
         ax.plot(self.voltages, self.powers, marker='.')
         return fig, ax
 
-    def save(self, draw_figure=True):
+    def save(self, save_figure=True):
         """ Method to save the measured data for posterity """
-        filepath = self._save_logic.get_path_for_module(module_name='aom_logic')
+        filepath = self.savelogic().get_path_for_module(module_name='aom_logic')
         data = OrderedDict()
-        data['powers'] = np.array(self._powers)
         data['Voltage (V)'] = np.array(self.voltages)
+        data['powers'] = np.array(self._powers)
         parameters = OrderedDict()
         parameters['time_before_start'] = self.time_before_start
         parameters['resolution'] = self.resolution
         parameters['delay_after_change'] = self.delay_after_change
         parameters['delay_between_repetitions'] = self.delay_between_repetitions
         parameters['repetitions'] = self.repetitions
-        fig, ax = self.draw_figure() if draw_figure else (None, None)
+        fig, ax = self.draw_figure()
 
-        self._save_logic.save_data(data, filepath=filepath, parameters=parameters, plotfig=fig, delimiter='\t')
+        self.savelogic().save_data(data, filepath=filepath, parameters=parameters, plotfig=fig, delimiter='\t')
         self.log.info('AOM data saved')
