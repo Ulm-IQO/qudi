@@ -59,7 +59,7 @@ class AomGui(GUIBase):
         """ Definition and initialisation of the GUI.
         """
         self._mw = AomMainWindow()
-        self._curve = pg.PlotDataItem(self.logic().voltage,
+        self._curve = pg.PlotDataItem(self.logic().voltages,
                                           self.logic().powers,
                                           pen=pg.mkPen(palette.c1, style=QtCore.Qt.DotLine),
                                           symbol='o',
@@ -67,10 +67,10 @@ class AomGui(GUIBase):
                                           symbolBrush=palette.c1,
                                           symbolSize=7)
 
-        self._mw.psat_plot_PlotWidget.addItem(self._curve)
-        self._mw.psat_plot_PlotWidget.setLabel(axis='left', text='Power', units='W')
-        self._mw.psat_plot_PlotWidget.setLabel(axis='bottom', text='Voltage', units='V')
-        self._mw.psat_plot_PlotWidget.showGrid(x=True, y=True, alpha=0.8)
+        self._mw.plotWidget.addItem(self._curve)
+        self._mw.plotWidget.setLabel(axis='left', text='Power', units='W')
+        self._mw.plotWidget.setLabel(axis='bottom', text='Voltage', units='V')
+        self._mw.plotWidget.showGrid(x=True, y=True, alpha=0.8)
 
         self.update_max_power_from_logic()
         self.update_parameters_from_logic()
@@ -83,15 +83,18 @@ class AomGui(GUIBase):
         self.logic().sigParameterChanged.connect(self.update_parameters_from_logic)
 
         # Sending signals to the logic
-        self._mw.runAction.triggered.connect(self.logic().calibrate())
-        self._mw.saveAction.triggered.connect(self.logic().save())
-        self._mw.abortAction.triggered.connect(self.logic().abort())
+        self._mw.runAction.triggered.connect(self.logic().calibrate)
+        self._mw.saveAction.triggered.connect(self.logic().save)
+        self._mw.abortAction.triggered.connect(self.logic().abort,  QtCore.Qt.DirectConnection)
 
-        self._mw.timeBeforeStartDoubleSpinBox.valueChanged.connect(self.parameters_changed)
-        self._mw.resolutionSpinBox.valueChanged.connect(self.parameters_changed)
-        self._mw.delayAfterChangeDoubleSpinBox.valueChanged.connect(self.parameters_changed)
-        self._mw.delayBetweenRepetitions.valueChanged.connect(self.parameters_changed)
-        self._mw.repetitionsSpinBox.valueChanged.connect(self.parameters_changed)
+        self._mw.timeBeforeStartDoubleSpinBox.editingFinished.connect(self.parameters_changed)
+        self._mw.resolutionSpinBox.editingFinished.connect(self.parameters_changed)
+        self._mw.delayAfterChangeDoubleSpinBox.editingFinished.connect(self.parameters_changed)
+        self._mw.delayBetweenRepetitions.editingFinished.connect(self.parameters_changed)
+        self._mw.repetitionsSpinBox.editingFinished.connect(self.parameters_changed)
+
+        self._mw.maxPower.editingFinished.connect(self.max_power_changed)
+        self._mw.setFromMeasurement.clicked.connect(self.logic().calibrate_max)
 
         self._mw.abortAction.setEnabled(False)
 
@@ -112,6 +115,15 @@ class AomGui(GUIBase):
         self._mw.saveAction.triggered.disconnect()
         self._mw.abortAction.triggered.disconnect()
 
+        self._mw.timeBeforeStartDoubleSpinBox.editingFinished.disconnect()
+        self._mw.resolutionSpinBox.editingFinished.disconnect()
+        self._mw.delayAfterChangeDoubleSpinBox.editingFinished.disconnect()
+        self._mw.delayBetweenRepetitions.editingFinished.disconnect()
+        self._mw.repetitionsSpinBox.editingFinished.disconnect()
+
+        self._mw.maxPower.editingFinished.disconnect()
+        self._mw.setFromMeasurement.clicked.disconnect()
+
         self._mw.close()
 
     def update_max_power_from_logic(self):
@@ -126,11 +138,11 @@ class AomGui(GUIBase):
         self._mw.delayBetweenRepetitions.blockSignals(True)
         self._mw.repetitionsSpinBox.blockSignals(True)
 
-        self._mw.timeBeforeStartDoubleSpinBox.setValue(self.logic().time_before_start)
-        self._mw.resolutionSpinBox.setValue(self.logic().resolution)
-        self._mw.delayAfterChangeDoubleSpinBox.setValue(self.logic().delay_after_change)
-        self._mw.delayBetweenRepetitions.setValue(self.logic().delay_between_repetitions)
-        self._mw.repetitionsSpinBox.setValue(self.logic().repetition)
+        self._mw.timeBeforeStartDoubleSpinBox.setValue(self.logic().time_before_start*1)
+        self._mw.resolutionSpinBox.setValue(self.logic().resolution*1)
+        self._mw.delayAfterChangeDoubleSpinBox.setValue(self.logic().delay_after_change*1)
+        self._mw.delayBetweenRepetitions.setValue(self.logic().delay_between_repetitions*1)
+        self._mw.repetitionsSpinBox.setValue(self.logic().repetitions*1)
 
         self._mw.timeBeforeStartDoubleSpinBox.blockSignals(False)
         self._mw.resolutionSpinBox.blockSignals(False)
@@ -143,11 +155,18 @@ class AomGui(GUIBase):
         self.logic().resolution = self._mw.resolutionSpinBox.value()
         self.logic().delay_after_change = self._mw.delayAfterChangeDoubleSpinBox.value()
         self.logic().delay_between_repetitions = self._mw.delayBetweenRepetitions.value()
-        self.logic().repetition = self._mw.repetitionsSpinBox.value()
+        self.logic().repetitions = self._mw.repetitionsSpinBox.value()
+
+        self.update_parameters_from_logic()  # needed otherwise weird alternating value effect (gui/logic)
+        return
+
+    def max_power_changed(self):
+        self.logic().calibrate_max_from_value(self._mw.maxPower.value())
+        self.update_max_power_from_logic() # same thing
 
     def update_data(self):
         """ Refresh the plot widgets with new data. """
-        self._curve.setData(self.logic().voltage, self.logic().powers)
+        self._curve.setData(self.logic().voltages, self.logic().powers)
 
     def started(self):
         """ Update GUI when logic runs """

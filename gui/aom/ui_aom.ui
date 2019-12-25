@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>qudi: AOM &amp; Psat</string>
+   <string>AOM Callibration</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
@@ -33,30 +33,23 @@
         </rect>
        </property>
        <layout class="QGridLayout" name="gridLayout">
-        <item row="2" column="2">
-         <widget class="QLabel" name="label_8">
-          <property name="text">
-           <string>s</string>
+        <item row="1" column="1">
+         <widget class="QSpinBox" name="resolutionSpinBox">
+          <property name="suffix">
+           <string/>
+          </property>
+          <property name="minimum">
+           <number>2</number>
+          </property>
+          <property name="maximum">
+           <number>10000</number>
           </property>
          </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QSpinBox" name="resolutionSpinBox"/>
         </item>
         <item row="3" column="1">
-         <widget class="QDoubleSpinBox" name="delayBetweenRepetitions"/>
-        </item>
-        <item row="0" column="2">
-         <widget class="QLabel" name="label_3">
-          <property name="text">
+         <widget class="ScienDSpinBox" name="delayBetweenRepetitions">
+          <property name="suffix">
            <string>s</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="2">
-         <widget class="QLabel" name="label_6">
-          <property name="text">
-           <string/>
           </property>
          </widget>
         </item>
@@ -67,10 +60,20 @@
           </property>
          </widget>
         </item>
-        <item row="3" column="2">
-         <widget class="QLabel" name="label_10">
+        <item row="4" column="1">
+         <widget class="QSpinBox" name="repetitionsSpinBox">
+          <property name="minimum">
+           <number>1</number>
+          </property>
+          <property name="maximum">
+           <number>999</number>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="label_11">
           <property name="text">
-           <string>s</string>
+           <string>Repetitions</string>
           </property>
          </widget>
         </item>
@@ -82,7 +85,11 @@
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QDoubleSpinBox" name="timeBeforeStartDoubleSpinBox"/>
+         <widget class="ScienDSpinBox" name="timeBeforeStartDoubleSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+         </widget>
         </item>
         <item row="1" column="0">
          <widget class="QLabel" name="label_5">
@@ -92,7 +99,11 @@
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QDoubleSpinBox" name="delayAfterChangeDoubleSpinBox"/>
+         <widget class="ScienDSpinBox" name="delayAfterChangeDoubleSpinBox">
+          <property name="suffix">
+           <string>s</string>
+          </property>
+         </widget>
         </item>
         <item row="3" column="0">
          <widget class="QLabel" name="label_9">
@@ -101,22 +112,12 @@
           </property>
          </widget>
         </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="label_11">
-          <property name="text">
-           <string>Repetitions</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QSpinBox" name="repetitionsSpinBox"/>
-        </item>
        </layout>
       </widget>
      </widget>
     </item>
     <item>
-     <widget class="PlotWidget" name="PlotWidget"/>
+     <widget class="PlotWidget" name="plotWidget"/>
     </item>
     <item>
      <widget class="QWidget" name="widget" native="true">
@@ -131,7 +132,10 @@
        <item>
         <layout class="QHBoxLayout" name="horizontalLayout_3">
          <item>
-          <widget class="QDoubleSpinBox" name="maxPower">
+          <widget class="ScienDSpinBox" name="maxPower">
+           <property name="suffix">
+            <string>W</string>
+           </property>
            <property name="decimals">
             <number>3</number>
            </property>
@@ -142,18 +146,11 @@
          </item>
         </layout>
        </item>
-       <item>
-        <widget class="QLabel" name="label">
-         <property name="text">
-          <string>W</string>
-         </property>
-        </widget>
-       </item>
       </layout>
      </widget>
     </item>
     <item>
-     <widget class="QPushButton" name="SetFromMeasurement">
+     <widget class="QPushButton" name="setFromMeasurement">
       <property name="text">
        <string>Set from measurement</string>
       </property>
@@ -247,6 +244,11 @@
    <class>PlotWidget</class>
    <extends>QGraphicsView</extends>
    <header>pyqtgraph</header>
+  </customwidget>
+  <customwidget>
+   <class>ScienDSpinBox</class>
+   <extends>QDoubleSpinBox</extends>
+   <header>qtwidgets.scientific_spinbox.h</header>
   </customwidget>
  </customwidgets>
  <resources/>
