@@ -38,7 +38,7 @@ class Interfuse(GenericLogic, SimpleLaserInterface):
         module.Class: 'interfuse.control_value_laser_interfuse.Interfuse'
         connect:
             control: 'processdummy'
-            process: 'processdummy'
+            #process: 'processdummy' # optional
     """
 
     control = Connector(interface='ProcessControlInterface')
