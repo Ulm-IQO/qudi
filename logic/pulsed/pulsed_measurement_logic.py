@@ -84,6 +84,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # PulseExtractor settings
     extraction_parameters = StatusVar(default=None)
     analysis_parameters = StatusVar(default=None)
+    timetrace_analysis_settings = StatusVar(default={})
 
     # Container to store measurement information about the currently loaded sequence
     _measurement_information = StatusVar(default=dict())
@@ -108,7 +109,9 @@ class PulsedMeasurementLogic(GenericLogic):
     sigFastCounterSettingsUpdated = QtCore.Signal(dict)
     sigMeasurementSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
+    sigTimetraceAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
+
     # Internal signals
     sigStartTimer = QtCore.Signal()
     sigStopTimer = QtCore.Signal()
@@ -675,6 +678,33 @@ class PulsedMeasurementLogic(GenericLogic):
         with self._threadlock:
             self._pulseextractor.extraction_settings = settings_dict
             self.sigExtractionSettingsUpdated.emit(self.extraction_settings)
+        return
+
+    @QtCore.Slot(dict)
+    def set_timetrace_analysis_settings(self, settings_dict=None, **kwargs):
+        """
+        Apply new timetrace analysis settings.
+        Either accept a settings dictionary as positional argument or keyword arguments.
+        If both are present both are being used by updating the settings_dict with kwargs.
+        The keyword arguments take precedence over the items in settings_dict if there are
+        conflicting names.
+
+        @param settings_dict:
+        @param kwargs:
+        @return:
+        """
+        # Determine complete settings dictionary
+        if not isinstance(settings_dict, dict):
+            settings_dict = kwargs
+        else:
+            settings_dict.update(kwargs)
+
+        for key in settings_dict:
+            if key in ['start', 'end', 'origin', 'rebinning']:
+                self.timetrace_analysis_settings[key] = settings_dict[key]
+        # Use threadlock to update settings during a running measurement
+        with self._threadlock:
+            self.sigTimetraceAnalysisSettingsUpdated.emit(self.timetrace_analysis_settings)
         return
 
     @QtCore.Slot(dict)

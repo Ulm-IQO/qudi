@@ -61,6 +61,7 @@ class PulsedMasterLogic(GenericLogic):
     sigMeasurementSettingsChanged = QtCore.Signal(dict)
     sigExtMicrowaveSettingsChanged = QtCore.Signal(dict)
     sigAnalysisSettingsChanged = QtCore.Signal(dict)
+    sigTimetraceAnalysisSettingsChanged = QtCore.Signal(dict)
     sigExtractionSettingsChanged = QtCore.Signal(dict)
     sigTimerIntervalChanged = QtCore.Signal(float)
     sigAlternativeDataTypeChanged = QtCore.Signal(str)
@@ -77,6 +78,7 @@ class PulsedMasterLogic(GenericLogic):
     sigFastCounterSettingsUpdated = QtCore.Signal(dict)
     sigMeasurementSettingsUpdated = QtCore.Signal(dict)
     sigAnalysisSettingsUpdated = QtCore.Signal(dict)
+    sigTimetraceAnalysisSettingsUpdated = QtCore.Signal(dict)
     sigExtractionSettingsUpdated = QtCore.Signal(dict)
 
     # SequenceGeneratorLogic control signals
@@ -153,6 +155,8 @@ class PulsedMasterLogic(GenericLogic):
             self.pulsedmeasurementlogic().set_microwave_settings, QtCore.Qt.QueuedConnection)
         self.sigAnalysisSettingsChanged.connect(
             self.pulsedmeasurementlogic().set_analysis_settings, QtCore.Qt.QueuedConnection)
+        self.sigTimetraceAnalysisSettingsChanged.connect(
+            self.pulsedmeasurementlogic().set_timetrace_analysis_settings, QtCore.Qt.QueuedConnection)
         self.sigExtractionSettingsChanged.connect(
             self.pulsedmeasurementlogic().set_extraction_settings, QtCore.Qt.QueuedConnection)
         self.sigTimerIntervalChanged.connect(
@@ -183,6 +187,8 @@ class PulsedMasterLogic(GenericLogic):
             self.sigMeasurementSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigAnalysisSettingsUpdated.connect(
             self.sigAnalysisSettingsUpdated, QtCore.Qt.QueuedConnection)
+        self.pulsedmeasurementlogic().sigTimetraceAnalysisSettingsUpdated.connect(
+            self.sigTimetraceAnalysisSettingsUpdated, QtCore.Qt.QueuedConnection)
         self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.connect(
             self.sigExtractionSettingsUpdated, QtCore.Qt.QueuedConnection)
 
@@ -257,6 +263,7 @@ class PulsedMasterLogic(GenericLogic):
         self.sigMeasurementSettingsChanged.disconnect()
         self.sigExtMicrowaveSettingsChanged.disconnect()
         self.sigAnalysisSettingsChanged.disconnect()
+        self.sigTimetraceAnalysisSettingsChanged.disconnect()
         self.sigExtractionSettingsChanged.disconnect()
         self.sigTimerIntervalChanged.disconnect()
         self.sigAlternativeDataTypeChanged.disconnect()
@@ -271,7 +278,7 @@ class PulsedMasterLogic(GenericLogic):
         self.pulsedmeasurementlogic().sigExtMicrowaveSettingsUpdated.disconnect()
         self.pulsedmeasurementlogic().sigFastCounterSettingsUpdated.disconnect()
         self.pulsedmeasurementlogic().sigMeasurementSettingsUpdated.disconnect()
-        self.pulsedmeasurementlogic().sigAnalysisSettingsUpdated.disconnect()
+        self.pulsedmeasurementlogic().sigTimetraceAnalysisSettingsUpdated.disconnect()
         self.pulsedmeasurementlogic().sigExtractionSettingsUpdated.disconnect()
 
         # Disconnect signals controlling SequenceGeneratorLogic
@@ -349,6 +356,10 @@ class PulsedMasterLogic(GenericLogic):
     @property
     def analysis_settings(self):
         return self.pulsedmeasurementlogic().analysis_settings
+
+    @property
+    def timetrace_analysis_settings(self):
+        return self.pulsedmeasurementlogic().timetrace_analysis_settings
 
     @property
     def extraction_settings(self):
@@ -435,6 +446,19 @@ class PulsedMasterLogic(GenericLogic):
             self.sigAnalysisSettingsChanged.emit(settings_dict)
         else:
             self.sigAnalysisSettingsChanged.emit(kwargs)
+        return
+
+    @QtCore.Slot(dict)
+    def set_timetrace_analysis_settings(self, settings_dict=None, **kwargs):
+        """
+
+        @param settings_dict:
+        @param kwargs:
+        """
+        if isinstance(settings_dict, dict):
+            self.sigTimetraceAnalysisSettingsChanged.emit(settings_dict)
+        else:
+            self.sigTimetraceAnalysisSettingsChanged.emit(kwargs)
         return
 
     @QtCore.Slot(dict)
