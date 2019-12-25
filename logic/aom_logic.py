@@ -40,6 +40,7 @@ class AomLogic(GenericLogic):
     output_modifier = Connector(interface='ProcessControlModifier')
     power_input = Connector(interface='ProcessInterface')
     control_laser_interfuse = Connector(interface='Interfuse')
+    laser = Connector(interface='LaserLogic')
     savelogic = Connector(interface='SaveLogic')
 
     _time_before_start = StatusVar('time_before_start', 5)
@@ -139,6 +140,7 @@ class AomLogic(GenericLogic):
     def calibrate_max_from_value(self, value):
         """ Method to calibrate maximum power based on a value passed as parameter """
         self.control_laser_interfuse().set_max_power(value)
+        self.laser().update_laser_power_range()
         self.sigNewMaxPower.emit()
 
     def abort(self):

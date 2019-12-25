@@ -184,3 +184,7 @@ class LaserLogic(GenericLogic):
         """ Set laser diode current. """
         self._laser.set_current(current)
 
+    def update_laser_power_range(self):
+        """ Helper method in case we want logic to update max power available from hardware """
+        self.laser_power_range = self._laser.get_power_range()
+
