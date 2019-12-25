@@ -34,6 +34,18 @@ class AomLogic(GenericLogic):
 
     The idea is to use an voltage output and a power-meter input to calibrate the power versus voltage curve.
     Another important task is to update the maximum power reachable via this method.
+
+    Example configuration :
+
+    aomlogic:
+        module.Class: 'aom_logic.AomLogic'
+        connect:
+            voltage_output: 'processdummy'
+            power_input: 'processdummy'
+            control_laser_interfuse: 'control_laser_interfuse'
+            output_modifier: 'power_to_volt_modifier'
+            laser: 'laserlogic'
+            savelogic: 'savelogic'
     """
 
     voltage_output = Connector(interface='ProcessControlInterface')
