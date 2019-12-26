@@ -83,6 +83,7 @@ class HydraHarp400(Base, FastCounterInterface):
     trigger_safety = ConfigOption('trigger_safety', 400e-9, missing='warn') #FIXME need check exact value
     aom_delay = ConfigOption('aom_delay', 390e-9, missing='warn')
     minimal_binwidth = ConfigOption('minimal_binwidth', 1e-12, missing='warn')
+    bins_num = 0
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
@@ -242,26 +243,27 @@ class HydraHarp400(Base, FastCounterInterface):
 
     def start_measure(self):
         """Start the measurement. """
-        status = self.dll.HH_StartMeas(ctypes.c_int(self._deviceID), 360000) # t is aquisition time, can set ACQTMAX as default
+        status = self.dll.HH_StartMeas(self._deviceID, 360000) # t is aquisition time, can set ACQTMAX as default
         return status
 
     def stop_measure(self):
         """Stop the measurement. """
         self.stopped_or_halt = "stopped"
-        status = self.dll.HH_StopMeas(ctypes.c_int(self._deviceID))
-     #   if self.gated:
-      #      self.timetrace_tmp = []
+        status = self.dll.HH_StopMeas(self._deviceID)
+        self.HH_GetHistogram(self._deviceID, int * chcount, int channel, 1)
         return status
 
     def pause_measure(self):
         """Make a pause in the measurement, which can be continued. """
-        self.log.warn('HydraHarp400 has no functionality of PAUSE!')
-        return
+        self.stopped_or_halt = "halt"
+        status = self.dll.HH_StopMeas(self._deviceID)
+        self.HH_GetHistogram(self._deviceID, int * chcount, int channel, 0)
+        return status
 
     def continue_measure(self):
         """Continue a paused measurement. """
-        self.log.warn('HydraHarp400 has no functionality of PAUSE!')
-        return
+        status = self.dll.HH_StartMeas(self._deviceID, 360000)
+        return status
 
     def is_gated(self):
         """ Check the gated counting possibility.
@@ -276,17 +278,9 @@ class HydraHarp400(Base, FastCounterInterface):
 
           @return int: length of the current measurement in bins
         """
-
-        if self.is_gated():
-            cycles = self.get_cycles()
-            if cycles ==0:
-                cycles = 1
-        else:
-            cycles = 1
-        setting = AcqSettings()
-        self.dll.GetSettingData(ctypes.byref(setting), 0)
-        length = int(setting.range / cycles)
-        return length
+        if self.bins_num == 0:
+            self.log.warn('bin number has not been set. Returning 0.')
+        return self.bins_num
 
     def get_data_trace(self):
         """
@@ -302,12 +296,11 @@ class HydraHarp400(Base, FastCounterInterface):
         """
         flags = ctypes.c_int32()
 
-
         if self.is_gated():
             pass
             # TODO implement
         else:
-            self.tryfunc(self.dll.HH_GetHistogram(self._deviceID, ctypes.byref(self.counts[0]), 0, 1), "GetHistogram")
+            self.tryfunc(self.dll.HH_GetHistogram(self._deviceID, ctypes.byref(self.counts[0]), 0, 0), "GetHistogram")
 
         self.tryfunc(self.dll.HH_GetFlags(self._deviceID, ctypes.byref(flags)), "GetFlags")
 
@@ -554,13 +547,6 @@ class HydraHarp400(Base, FastCounterInterface):
         else:
             self.check(self.dll.HH_SetOffset(self._deviceID, offset))
 
-    def clear_hist_memory(self, block=0):
-        """ Clear the histogram memory.
-
-        @param int block: set which block number to clear.
-        """
-        self.check(self.dll.HH_ClearHistMem(self._deviceID, block))
-
     def start(self, acq_time):
         """ Start acquisition for 'acq_time' ms.
 
@@ -680,162 +666,6 @@ class HydraHarp400(Base, FastCounterInterface):
         self.check(self.dll.HH_GetWarningsText(self._deviceID, warning_num, text))
         return text.value
 
-    def get_hardware_debug_info(self):
-        """ Retrieve the debug information for the current hardware.
-
-        @return char[32568]: the information for debugging.
-        """
-        debuginfo = ctypes.create_string_buffer(32568) # buffer at least 16284 byte
-        self.check(self.dll.HH_GetHardwareDebugInfo(self._deviceID, debuginfo))
-        return debuginfo.value
-
-    # =========================================================================
-    #  Special functions for Time-Tagged Time Resolved mode
-    # =========================================================================
-    # To check whether you can use the TTTR mode (must be purchased in
-    # addition) you can call HH_GetFeatures to check.
-
-    def tttr_read_fifo(self):#, num_counts):
-        """ Read out the buffer of the FIFO.
-
-        @param int num_counts: number of TTTR records to be fetched. Maximal
-                               TTREADMAX
-
-        @return tuple (buffer, actual_num_counts):
-                    buffer = data array where the TTTR data are stored.
-                    actual_num_counts = how many numbers of TTTR could be
-                                        actually be read out. THIS NUMBER IS
-                                        NOT CHECKED FOR PERFORMANCE REASONS, SO
-                                        BE  CAREFUL! Maximum is TTREADMAX.
-
-        THIS FUNCTION SHOULD BE CALLED IN A SEPARATE THREAD!
-
-        Must not be called with count larger than buffer size permits. CPU time
-        during wait for completion will be yielded to other processes/threads.
-        Function will return after a timeout period of 80 ms even if not all
-        data could be fetched. Return value indicates how many records were
-        fetched. Buffer must not be accessed until the function returns!
-        """
-
-        # if type(num_counts) is not int:
-        #     num_counts = self.TTREADMAX
-        # elif (num_counts<0) or (num_counts>self.TTREADMAX):
-        #     self.log.error('PicoHarp: num_counts were expected to within the '
-        #                 'interval [0,{0}], but a value of {1} was '
-        #                 'passed'.format(self.TTREADMAX, num_counts))
-        #     num_counts = self.TTREADMAX
-
-        # PicoHarp T3 Format (for analysis and interpretation):
-        # The bit allocation in the record for the 32bit event is, starting
-        # from the MSB:
-        #       channel:     4 bit
-        #       dtime:      12 bit
-        #       nsync:      16 bit
-        # The channel code 15 (all bits ones) marks a special record.
-        # Special records can be overflows or external markers. To
-        # differentiate this, dtime must be checked:
-        #
-        #     If it is zero, the record marks an overflow.
-        #     If it is >=1 the individual bits are external markers.
-
-        num_counts = self.TTREADMAX
-
-        buffer = np.zeros((num_counts,), dtype=np.uint32)
-
-        actual_num_counts = ctypes.c_int32()
-
-        self.check(self.dll.HH_ReadFiFo(self._deviceID, buffer.ctypes.data,
-                                         num_counts, ctypes.byref(actual_num_counts)))
-
-        return buffer, actual_num_counts.value
-
-    def tttr_set_marker_edges(self, me0, me1, me2, me3):
-        """ Set the marker edges
-
-        @param int me<n>:   active edge of marker signal <n>,
-                                0 = falling
-                                1 = rising
-        """
-
-        if (me0 != 0) or (me0 != 1) or (me1 != 0) or (me1 != 1) or \
-                (me2 != 0) or (me2 != 1) or (me3 != 0) or (me3 != 1):
-
-            self.log.error('HydraHarp: All the marker edges must be either 0 '
-                           'or 1, but the current marker settings were passed:\n'
-                           'me0={0}, me1={1}, '
-                           'me2={2}, me3={3},'.format(me0, me1, me2, me3))
-            return
-        else:
-            self.check(self.dll.HH_SetMarkerEdges(self._deviceID, me0, me1,
-                                                     me2, me3))
-
-    def tttr_set_marker_enable(self, me0, me1, me2, me3):
-        """ Set the marker enable or not.
-
-        @param int me<n>:   enabling of marker signal <n>,
-                                0 = disabled
-                                1 = enabled
-        """
-
-        #        if ((me0 != 0) or (me0 != 1)) or ((me1 != 0) or (me1 != 1)) or \
-        #           ((me2 != 0) or (me2 != 1)) or ((me3 != 0) or (me3 != 1)):
-        #
-        #            self.log.error('PicoHarp: Could not set marker enable.\n'
-        #                        'All the marker options must be either 0 or 1, but '
-        #                        'the current marker settings were passed:\n'
-        #                        'me0={0}, me1={1}, '
-        #                        'me2={2}, me3={3},'.format(me0, me1, me2, me3))
-        #            return
-        #        else:
-        self.check(self.dll.HH_SetMarkerEnable(self._deviceID, me0,
-                                                me1, me2, me3))
-
-    def tttr_set_marker_holdofftime(self, holfofftime):
-        """ Set the holdofftime for the markers.
-
-        @param int holdofftime: holdofftime in ns. Maximal value is HOLDOFFMAX.
-
-        This setting can be used to clean up glitches on the marker signals.
-        When set to X ns then after detecting a first marker edge the next
-        marker will not be accepted before x ns. Observe that the internal
-        granularity of this time is only about 50ns. The holdoff time is set
-        equally for all marker inputs but the holdoff logic acts on each
-        marker independently.
-        """
-
-        if not(0 <= holdofftime <= self.HOLDOFFMAX):
-            self.log.error('HydraHarp: Holdofftime could not be set.\n'
-                           'Value of holdofftime must be within the range '
-                           '[0,{0}], but a value of {1} was passed.'
-                           ''.format(self.HOLDOFFMAX, holfofftime))
-        else:
-            self.check(self.dll.HH_SetMarkerHoldofftime(self._deviceID, holfofftime))
-
-
-    def set_up_clock(self, clock_frequency = None, clock_channel = None):
-        """ Set here which channel you want to access of the Hydraharp.
-
-        @param float clock_frequency: Sets the frequency of the clock. That
-                                      frequency will not be taken. It is not
-                                      needed, and argument will be omitted.
-        @param string clock_channel: This is the physical channel
-                                     of the clock. It is not needed, and
-                                     argument will be omitted.
-
-        The Hardware clock for the Hydraharp is not programmable. It is a gated
-        counter every 100ms. That you cannot change. You can retrieve from both
-        channels simultaneously the count rates.
-
-        @return int: error code (0:OK, -1:error)
-        """
-        self.log.info('Hydraharp: The Hardware clock for the Hydraharp is not '
-                      'programmable!\n'
-                      'It is a gated counter every 100ms. That you cannot change. '
-                      'You can retrieve from both channels simultaneously the '
-                      'count rates.')
-
-        return 0
-
     def get_status(self):
         """
         Receives the current status of the Fast Counter and outputs it as
@@ -886,8 +716,6 @@ class HydraHarp400(Base, FastCounterInterface):
 
         return resolution.value * 1e-12
 
-
-
     def set_length(self, length_bins):
         """ Sets the length of the length of the actual measurement.
 
@@ -902,16 +730,18 @@ class HydraHarp400(Base, FastCounterInterface):
         else:
             cycles = 1
         if length_bins *  cycles < constraints['max_bins']:
-            # Smallest increment is 64 bins. Since it is better if the range is too short than too long, round down
-            length_bins = int(64 * int(length_bins / 64))
-            actualen = ctypes.c_int()
-            length_set = self.dll.HH_SetHistoLen(self._deviceID, length_bins, ctypes.byref(actualen))
-            if length_bins == 0:
-                self.log.info('Bin length is {0}, Actual histogram bins are {1}.'.format(length_bins, actualen.value))
+            # bin numbers for Hydraharp, bin_num=1024*2^lencode, where lencode is integral, ranging 0~16.
+            # Therefore, it has a very large bin increments. Bin numbers can be [1024,2048, 4096, ...].
+            lencode = int(np.log2(length_bins/1024)+1)
+            actualength = ctypes.c_int()
+            length_set = self.dll.HH_SetHistoLen(self._deviceID, lencode, ctypes.byref(actualength))
+            if length_set == 0:
+                self.log.info('Bin lencode is {0}, Actual histogram bins are {1}.'.format(lencode, actualength.value))
+                self.bins_num = actualength
             else:
-                self.log.error('Counting length set failed, errocode: {0}. check errorcodes.h for solution.'.format(length_bins))
+                self.log.error('Counting length set failed, errocode: {0}. check errorcodes.h for solution.'.format(length_set))
             time.sleep(0.5)
-            return length_bins
+            return actualength
         else:
             self.log.error('Dimensions {0} are too large for fast counter1!'.format(length_bins *  cycles))
             return -1
