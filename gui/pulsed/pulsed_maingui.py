@@ -29,7 +29,6 @@ from core.connector import Connector
 from core.statusvariable import StatusVar
 from core.util import units
 from core.util.helpers import natural_sort
-from core.util.curve_methods import get_window, rebin_xy
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog
 from gui.guibase import GUIBase
@@ -400,8 +399,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ta_end_line.sigPositionChangeFinished.connect(self.timetrace_analysis_settings_changed)
         self.ta_origin_line.sigPositionChangeFinished.connect(self.timetrace_analysis_settings_changed)
 
-        self._pa.fit_param_PushButton.clicked.connect(self.fit_clicked)
-
+        self._ta.timetrace_fit_pushButton.clicked.connect(self.fit_clicked)
 
     def _connect_predefined_methods_tab_signals(self):
         pass
@@ -567,7 +565,7 @@ class PulsedMeasurementGui(GUIBase):
         self.ta_end_line.sigPositionChangeFinished.disconnect()
         self.ta_origin_line.sigPositionChangeFinished.disconnect()
 
-        self._pa.fit_param_PushButton.clicked.disconnect()
+        self._pa.timetrace_fit_pushButton.clicked.disconnect()
 
     def _disconnect_predefined_methods_tab_signals(self):
         for combobox in self._channel_selection_comboboxes:
@@ -2409,21 +2407,24 @@ class PulsedMeasurementGui(GUIBase):
         """Fits the current data"""
         if self.sender().objectName().startswith('alt_fit_param'):
             current_fit_method = self._pa.fit_param_alt_fit_func_ComboBox.getCurrentFit()[0]
-            use_alt_data = True
+            fit_type = 'pulses_alt'
+        elif self.sender().objectName().startswith('timetrace'):
+            current_fit_method = self._ta.fit_method_comboBox.getCurrentFit()[0]
+            fit_type = 'timetrace'
         else:
             current_fit_method = self._pa.fit_param_fit_func_ComboBox.getCurrentFit()[0]
-            use_alt_data = False
-        self.pulsedmasterlogic().do_fit(current_fit_method, use_alt_data)
+            fit_type = 'pulses'
+        self.pulsedmasterlogic().do_fit(current_fit_method, fit_type)
         return
 
-    @QtCore.Slot(str, np.ndarray, object, bool)
-    def fit_data_updated(self, fit_method, fit_data, result, use_alternative_data):
+    @QtCore.Slot(str, np.ndarray, object, str)
+    def fit_data_updated(self, fit_method, fit_data, result, fit_type):
         """
 
         @param str fit_method:
         @param numpy.ndarray fit_data:
         @param object result:
-        @param bool use_alternative_data:
+        @param str fit_type: 'pulses' 'pulses_alt' or 'timetrace'
         @return:
         """
         # Get formatted result string
@@ -2439,7 +2440,7 @@ class PulsedMeasurementGui(GUIBase):
         # Clear text widget and show formatted result string.
         # Update plot and fit function selection ComboBox.
         # Unblock signals.
-        if use_alternative_data:
+        if fit_type == 'pulses_alt':
             self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(True)
             self._pa.alt_fit_param_results_TextBrowser.clear()
             self._pa.alt_fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
@@ -2451,7 +2452,7 @@ class PulsedMeasurementGui(GUIBase):
             elif fit_method != 'No Fit' and self.second_fit_image not in self._pa.pulse_analysis_second_PlotWidget.items():
                 self._pa.pulse_analysis_second_PlotWidget.addItem(self.second_fit_image)
             self._pa.fit_param_alt_fit_func_ComboBox.blockSignals(False)
-        else:
+        elif fit_type == 'pulses':
             self._pa.fit_param_fit_func_ComboBox.blockSignals(True)
             self._pa.fit_param_results_TextBrowser.clear()
             self._pa.fit_param_results_TextBrowser.setPlainText(formatted_fitresult)
@@ -2463,6 +2464,19 @@ class PulsedMeasurementGui(GUIBase):
             elif fit_method != 'No Fit' and self.fit_image not in self._pa.pulse_analysis_PlotWidget.items():
                 self._pa.pulse_analysis_PlotWidget.addItem(self.fit_image)
             self._pa.fit_param_fit_func_ComboBox.blockSignals(False)
+        elif fit_type == 'timetrace':
+            self._ta.fit_method_comboBox.blockSignals(True)
+            self._ta.fit_result_textBrowser.clear()
+            self._ta.fit_result_textBrowser.setPlainText(formatted_fitresult)
+            if fit_method:
+                self._ta.fit_method_comboBox.setCurrentFit(fit_method)
+            self.ta_window_image_fit.setData(x=fit_data[0], y=fit_data[1])
+            if fit_method == 'No Fit' and self.ta_window_image_fit in self._ta.window_PlotWidget.items():
+                self._ta.window_PlotWidget.removeItem(self.ta_window_image_fit)
+            elif fit_method != 'No Fit' and self.ta_window_image_fit not in self._ta.window_PlotWidget.items():
+                self._ta.window_PlotWidget.addItem(self.ta_window_image_fit)
+            self._ta.fit_method_comboBox.blockSignals(False)
+
         return
 
     @QtCore.Slot()
@@ -3174,6 +3188,9 @@ class PulsedMeasurementGui(GUIBase):
         self._ta.window_PlotWidget.addItem(self.ta_window_image)
         self._ta.window_PlotWidget.setLabel(axis='bottom', text='time', units='s')
         self._ta.window_PlotWidget.setLabel(axis='left', text='events', units='#')
+        self.ta_window_image_fit = pg.PlotDataItem(pen=palette.c3)
+
+        self._ta.fit_method_comboBox.setFitFunctions(self._fsd.currentFits)
 
         # Initialize from logic values
         self.timetrace_analysis_settings_updated(self.pulsedmasterlogic().timetrace_analysis_settings)
@@ -3257,10 +3274,7 @@ class PulsedMeasurementGui(GUIBase):
 
         self.ta_full_image.setData(x=x_data, y=y_data)
 
-        start = self._ta.param_2_start_DSpinBox.value()
-        stop = start + self._ta.param_3_width_DSpinBox.value()
-        origin = self._ta.param_4_origin_DSpinBox.value()
-        x_data, y_data = get_window(x_data, y_data, start, stop)
-        x_data, y_data = rebin_xy(x_data, y_data, self._ta.param_1_rebinnig_spinBox.value(), do_average=False)
-        self.ta_window_image.setData(x=x_data-origin, y=y_data)
+        x_data, y_data = self.pulsedmasterlogic().timetrace_data
+        if len(y_data) > 1:
+            self.ta_window_image.setData(x=x_data, y=y_data)
         return

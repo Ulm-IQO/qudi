@@ -52,7 +52,7 @@ class PulsedMasterLogic(GenericLogic):
     sequencegeneratorlogic = Connector(interface='SequenceGeneratorLogic')
 
     # PulsedMeasurementLogic control signals
-    sigDoFit = QtCore.Signal(str, bool)
+    sigDoFit = QtCore.Signal(str, str)
     sigToggleMeasurement = QtCore.Signal(bool, str)
     sigToggleMeasurementPause = QtCore.Signal(bool)
     sigTogglePulser = QtCore.Signal(bool)
@@ -70,7 +70,7 @@ class PulsedMasterLogic(GenericLogic):
     # signals for master module (i.e. GUI) coming from PulsedMeasurementLogic
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, str)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -382,6 +382,9 @@ class PulsedMasterLogic(GenericLogic):
         return self.pulsedmeasurementlogic().raw_data
 
     @property
+    def timetrace_data(self):
+        return self.pulsedmeasurementlogic().timetrace_data
+    @property
     def laser_data(self):
         return self.pulsedmeasurementlogic().laser_data
 
@@ -580,26 +583,26 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
-    def do_fit(self, fit_function, use_alternative_data=False):
+    @QtCore.Slot(str, str)
+    def do_fit(self, fit_function, fit_type='pulses'):
         """
 
         @param str fit_function:
-        @param bool use_alternative_data:
+        @param str fit_type: 'pulsed', 'pulses_alt' or 'timetrace'
         """
-        if isinstance(fit_function, str) and isinstance(use_alternative_data, bool):
+        if isinstance(fit_function, str) and isinstance(fit_type, str):
             self.status_dict['fitting_busy'] = True
-            self.sigDoFit.emit(fit_function, use_alternative_data)
+            self.sigDoFit.emit(fit_function, fit_type)
         return
 
-    @QtCore.Slot(str, np.ndarray, object, bool)
-    def fit_updated(self, fit_name, fit_data, fit_result, use_alternative_data):
+    @QtCore.Slot(str, np.ndarray, object, str)
+    def fit_updated(self, fit_name, fit_data, fit_result, fit_type):
         """
 
         @return:
         """
         self.status_dict['fitting_busy'] = False
-        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, use_alternative_data)
+        self.sigFitUpdated.emit(fit_name, fit_data, fit_result, fit_type)
         return
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,

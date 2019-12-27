@@ -34,6 +34,7 @@ from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
 from core.util.math import compute_ft
+from core.util.curve_methods import get_window, rebin_xy
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_extractor import PulseExtractor
 from logic.pulsed.pulse_analyzer import PulseAnalyzer
@@ -84,7 +85,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # PulseExtractor settings
     extraction_parameters = StatusVar(default=None)
     analysis_parameters = StatusVar(default=None)
-    timetrace_analysis_settings = StatusVar(default={})
+    timetrace_analysis_settings = StatusVar(default={'start': 0, 'end': 0, 'origin': 0, 'rebinning': 0})
 
     # Container to store measurement information about the currently loaded sequence
     _measurement_information = StatusVar(default=dict())
@@ -101,7 +102,7 @@ class PulsedMeasurementLogic(GenericLogic):
     # notification signals for master module (i.e. GUI)
     sigMeasurementDataUpdated = QtCore.Signal()
     sigTimerUpdated = QtCore.Signal(float, int, float)
-    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, bool)
+    sigFitUpdated = QtCore.Signal(str, np.ndarray, object, str)
     sigMeasurementStatusUpdated = QtCore.Signal(bool, bool)
     sigPulserRunningUpdated = QtCore.Signal(bool)
     sigExtMicrowaveRunningUpdated = QtCore.Signal(bool)
@@ -139,6 +140,7 @@ class PulsedMeasurementLogic(GenericLogic):
         self.measurement_error = np.empty((2, 0), dtype=float)
         self.laser_data = np.zeros((10, 20), dtype='int64')
         self.raw_data = np.zeros((10, 20), dtype='int64')
+        self.timetrace_data = (np.zeros([0, 1], dtype='float'), np.zeros([0, 0], dtype='int64'))
 
         self._saved_raw_data = OrderedDict()  # temporary saved raw data
         self._recalled_raw_data_tag = None  # the currently recalled raw data dict key
@@ -152,8 +154,10 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc = None  # Fit container
         self.fit_result = None
         self.alt_fit_result = None
+        self.timetrace_fit_result = None
         self.signal_fit_data = np.empty((2, 0), dtype=float)  # The x,y data of the fit result
         self.signal_fit_alt_data = np.empty((2, 0), dtype=float)
+        self.signal_fit_timetrace_data = np.empty((2, 0), dtype=float)
         return
 
     def on_activate(self):
@@ -702,6 +706,7 @@ class PulsedMeasurementLogic(GenericLogic):
         for key in settings_dict:
             if key in ['start', 'end', 'origin', 'rebinning']:
                 self.timetrace_analysis_settings[key] = settings_dict[key]
+        self._compute_timetrace_data()
         # Use threadlock to update settings during a running measurement
         with self._threadlock:
             self.sigTimetraceAnalysisSettingsUpdated.emit(self.timetrace_analysis_settings)
@@ -802,8 +807,9 @@ class PulsedMeasurementLogic(GenericLogic):
                 self.module_state.lock()
 
                 # Clear previous fits
-                self.do_fit('No Fit', False)
-                self.do_fit('No Fit', True)
+                self.do_fit('No Fit', 'pulses')
+                self.do_fit('No Fit', 'pulses_alt')
+                self.do_fit('No Fit', 'timetrace')
 
                 # initialize data arrays
                 self._initialize_data_arrays()
@@ -974,7 +980,7 @@ class PulsedMeasurementLogic(GenericLogic):
         """
         with self._threadlock:
             if alt_data_type != self.alternative_data_type:
-                self.do_fit('No Fit', True)
+                self.do_fit('No Fit', 'pulses_alt')
             if alt_data_type == 'Delta' and not self._alternating:
                 if self._alternative_data_type == 'Delta':
                     self._alternative_data_type = None
@@ -999,14 +1005,15 @@ class PulsedMeasurementLogic(GenericLogic):
         return
 
     @QtCore.Slot(str)
-    @QtCore.Slot(str, bool)
-    def do_fit(self, fit_method, use_alternative_data=False, data=None):
+    @QtCore.Slot(str, str)
+    def do_fit(self, fit_method, fit_type='pulses', data=None):
         """
-        Performs the chosen fit on the measured data.
+        Performs the chosen fit on the chosen measured data.
 
         @param str fit_method: name of the fit method to use
-        @param bool use_alternative_data: Flag indicating if the signal data (False) or the
-                                          alternative signal data (True) should be fitted.
+        @param str fit_type: String indicating if the pulses signal data ('pulses'), the
+                                          alternative signal data ('pulses_alt') or the timetrace ('timetrace')
+                                           should be fitted.
                                           Ignored if data is given as parameter
         @param 2D numpy.ndarray data: the x and y data points for the fit (shape=(2,X))
 
@@ -1016,7 +1023,12 @@ class PulsedMeasurementLogic(GenericLogic):
         self.fc.set_current_fit(fit_method)
 
         if data is None:
-            data = self.signal_alt_data if use_alternative_data else self.signal_data
+            if fit_type == 'pulses_alt':
+                data = self.signal_alt_data
+            elif fit_type == 'timetrace':
+                data = self.timetrace_data
+            else:
+                data = self.signal_data
             update_fit_data = True
         else:
             update_fit_data = False
@@ -1030,16 +1042,19 @@ class PulsedMeasurementLogic(GenericLogic):
         fit_data = np.array([x_fit, y_fit])
 
         if update_fit_data:
-            if use_alternative_data:
+            if fit_type == 'pulses_alt':
                 self.signal_fit_alt_data = fit_data
                 self.alt_fit_result = copy.deepcopy(self.fc.current_fit_result)
-                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data,
-                                        self.alt_fit_result, use_alternative_data)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_alt_data, self.alt_fit_result, fit_type)
+            elif fit_type == 'timetrace':
+                self.signal_fit_timetrace_data = fit_data
+                self.timetrace_fit_result = copy.deepcopy(self.fc.current_fit_result)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_timetrace_data,
+                                        self.timetrace_fit_result, fit_type)
             else:
                 self.signal_fit_data = fit_data
                 self.fit_result = copy.deepcopy(self.fc.current_fit_result)
-                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_data, self.fit_result,
-                                        use_alternative_data)
+                self.sigFitUpdated.emit(self.fc.current_fit, self.signal_fit_data, self.fit_result, fit_type)
         return fit_data, self.fc.current_fit_result
 
     def _apply_invoked_settings(self):
@@ -1170,6 +1185,7 @@ class PulsedMeasurementLogic(GenericLogic):
 
                 # Compute alternative data array from signal
                 self._compute_alt_data()
+                self._compute_timetrace_data()
 
             # emit signals
             self.sigTimerUpdated.emit(self.__elapsed_time, self.__elapsed_sweeps,
@@ -1648,5 +1664,15 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_alt_data[0] = self.signal_data[0]
         return
 
+    def _compute_timetrace_data(self):
+        """ Compute the analysed timetrace out of the raw timetrace """
+        y_data = self.raw_data
+        x_data = np.arange(y_data.size, dtype=float) * self.__fast_counter_binwidth
 
+        start = self.timetrace_analysis_settings['start']
+        stop = self.timetrace_analysis_settings['end']
+        origin = self.timetrace_analysis_settings['origin']
+        x_data, y_data = get_window(x_data, y_data, start, stop)
+        x_data, y_data = rebin_xy(x_data, y_data, self.timetrace_analysis_settings['rebinning'], do_average=False)
+        self.timetrace_data = (x_data-origin, y_data)
 
