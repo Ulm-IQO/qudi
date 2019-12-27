@@ -3205,10 +3205,10 @@ class PulsedMeasurementGui(GUIBase):
         self.ta_window_image = pg.PlotDataItem(np.arange(10), np.zeros(10), pen=palette.c1)
         self._ta.window_PlotWidget.addItem(self.ta_window_image)
         self._ta.window_PlotWidget.setLabel(axis='bottom', text='time', units='s')
-        self._ta.window_PlotWidget.setLabel(axis='left', text='events', units='#')
+        self._ta.window_PlotWidget.setLabel(axis='left', text='Photoluminescence', units='c/s')
 
         self._ta.window_PlotWidget.showAxis('right')
-        self._ta.window_PlotWidget.getAxis('right').setLabel('Photoluminescence', units='c/s', color=palette.c1.name())
+        self._ta.window_PlotWidget.getAxis('right').setLabel('events', units='#', color=palette.c1.name())
 
         self._ta.window_PlotWidget_ViewBox = pg.ViewBox()
         self._ta.window_PlotWidget.scene().addItem(self._ta.window_PlotWidget_ViewBox)
@@ -3223,7 +3223,7 @@ class PulsedMeasurementGui(GUIBase):
             if sweeps == 0:
                 return
             view_rect = self._ta.window_PlotWidget.viewRect()
-            y_range = np.array([view_rect.bottom(), view_rect.top()]) / factor
+            y_range = np.array([view_rect.bottom(), view_rect.top()]) * factor
             self._ta.window_PlotWidget_ViewBox.setRange(yRange=y_range, padding=0)
 
         updateSecondAxis()

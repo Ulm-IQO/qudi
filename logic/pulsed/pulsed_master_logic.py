@@ -621,7 +621,7 @@ class PulsedMasterLogic(GenericLogic):
         @return str: filepath where data were saved
         """
         self.pulsedmeasurementlogic().save_measurement_data(tag, with_error, save_laser_pulses, save_pulsed_measurement,
-                                                            save_figure)
+                                                            save_figure, save_timetrace=save_timetrace)
         return
 
     #######################################################################
