@@ -53,7 +53,7 @@ The potential sequence_options are:
   * `OPTIONAL` (sequence mode possible)
   * `FORCED` (only output as sequence possible)
 * added the option to do a purely analog ODMR scan.
-*
+* Adding hardware file of HydraHarp 400 from Pico Quant, basing on the 3.0.0.2 version of function library and user manual.
 
 
 
