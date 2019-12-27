@@ -606,7 +606,7 @@ class PulsedMasterLogic(GenericLogic):
         return
 
     def save_measurement_data(self, tag=None, with_error=True, save_laser_pulses=True, save_pulsed_measurement=True,
-                              save_figure=True):
+                              save_figure=True, save_timetrace=False):
         """
         Prepare data to be saved and create a proper plot of the data.
         This is just handed over to the measurement logic.
@@ -616,6 +616,7 @@ class PulsedMasterLogic(GenericLogic):
         @param bool save_laser_pulses: select whether extracted lasers should be saved
         @param bool save_pulsed_measurement: select whether final measurement should be saved
         @param bool save_figure: select whether png and pdf should be saved
+        @param bool save_timetrace: select whether timetrace should be saved
 
         @return str: filepath where data were saved
         """

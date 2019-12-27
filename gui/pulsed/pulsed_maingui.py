@@ -616,7 +616,7 @@ class PulsedMeasurementGui(GUIBase):
         pass
 
     def _setup_toolbar(self):
-        # create all the needed control widgets on the fly
+        # create all the needed control widgets on the fly - Qt Creator does not like non button objects in toolbars
         self._mw.pulser_on_off_PushButton = QtWidgets.QPushButton()
         self._mw.pulser_on_off_PushButton.setText('Pulser ON')
         self._mw.pulser_on_off_PushButton.setToolTip('Switch the device on and off.')
@@ -644,6 +644,20 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit()
         self._mw.save_tag_LineEdit.setMaximumWidth(200)
         self._mw.save_ToolBar.addWidget(self._mw.save_tag_LineEdit)
+
+
+        self._mw.save_label_pulses =  QtWidgets.QLabel('Save pulses :')
+        self._mw.save_label_pulses.setContentsMargins(5, 0, 0, 0)
+        self._mw.save_checkbox_pulses = QtWidgets.QCheckBox()
+        self._mw.save_checkbox_pulses.setChecked(True)
+        self._mw.save_label_timetrace = QtWidgets.QLabel('Save timetrace :')
+        self._mw.save_label_timetrace.setContentsMargins(5, 0, 0, 0)
+        self._mw.save_checkbox_timetrace = QtWidgets.QCheckBox()
+
+        self._mw.save_ToolBar.addWidget(self._mw.save_label_pulses)
+        self._mw.save_ToolBar.addWidget(self._mw.save_checkbox_pulses)
+        self._mw.save_ToolBar.addWidget(self._mw.save_label_timetrace)
+        self._mw.save_ToolBar.addWidget(self._mw.save_checkbox_timetrace)
         return
 
     @QtCore.Slot(bool)
@@ -829,9 +843,13 @@ class PulsedMeasurementGui(GUIBase):
         self._mw.actionSave.setEnabled(False)
         save_tag = self._mw.save_tag_LineEdit.text()
         with_error = self._pa.ana_param_errorbars_CheckBox.isChecked()
+        save_pulses = self._mw.save_checkbox_pulses.isChecked()
+        save_timetrace = self._mw.save_checkbox_timetrace.isChecked()
 
-        self.pulsedmasterlogic().save_measurement_data(tag=save_tag,
-                                                       with_error=with_error)
+        self.pulsedmasterlogic().save_measurement_data(tag=save_tag, with_error=with_error,
+                                                       save_laser_pulses=save_pulses,
+                                                       save_pulsed_measurement=save_pulses,
+                                                       save_timetrace=save_timetrace)
         self._mw.action_save.setEnabled(True)
         self._mw.actionSave.setEnabled(True)
         return
@@ -3188,6 +3206,30 @@ class PulsedMeasurementGui(GUIBase):
         self._ta.window_PlotWidget.addItem(self.ta_window_image)
         self._ta.window_PlotWidget.setLabel(axis='bottom', text='time', units='s')
         self._ta.window_PlotWidget.setLabel(axis='left', text='events', units='#')
+
+        self._ta.window_PlotWidget.showAxis('right')
+        self._ta.window_PlotWidget.getAxis('right').setLabel('Photoluminescence', units='c/s', color=palette.c1.name())
+
+        self._ta.window_PlotWidget_ViewBox = pg.ViewBox()
+        self._ta.window_PlotWidget.scene().addItem(self._ta.window_PlotWidget_ViewBox)
+        self._ta.window_PlotWidget.getAxis('right').linkToView(self._ta.window_PlotWidget_ViewBox)
+        self._ta.window_PlotWidget_ViewBox.setXLink(self._ta.window_PlotWidget)
+
+        def updateSecondAxis():
+            sweeps = self.pulsedmasterlogic().elapsed_sweeps
+            bin_width = self.pulsedmasterlogic().fast_counter_settings['bin_width']
+            rebinning = self.pulsedmasterlogic().timetrace_analysis_settings['rebinning']
+            factor = (sweeps * (bin_width * rebinning))
+            if sweeps == 0:
+                return
+            view_rect = self._ta.window_PlotWidget.viewRect()
+            y_range = np.array([view_rect.bottom(), view_rect.top()]) / factor
+            self._ta.window_PlotWidget_ViewBox.setRange(yRange=y_range, padding=0)
+
+        updateSecondAxis()
+        self._ta.window_PlotWidget_ViewBox.sigRangeChanged.connect(updateSecondAxis)
+
+
         self.ta_window_image_fit = pg.PlotDataItem(pen=palette.c3)
 
         self._ta.fit_method_comboBox.setFitFunctions(self._fsd.currentFits)
