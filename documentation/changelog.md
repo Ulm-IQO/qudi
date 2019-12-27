@@ -56,6 +56,7 @@ The potential sequence_options are:
 * added the option to do a purely analog ODMR scan.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
+* added timetrace analysis features to pulsed measurement module
 * 
 
 
