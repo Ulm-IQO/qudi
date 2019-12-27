@@ -294,7 +294,7 @@ class HydraHarp400(Base, FastCounterInterface):
         else:
             self.tryfunc(self.dll.HH_GetHistogram(self._deviceID, c_counts, 1, 0), "GetHistogram")
 
-        time_trace = py_counts
+        time_trace = np.int64(py_counts)
 
         meas_t = int(self.get_measurement_time())
         info_dict = {'elapsed_sweeps': None,
