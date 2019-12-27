@@ -230,7 +230,7 @@ class HydraHarp400(Base, FastCounterInterface):
             self.set_length(new_record_length_s)
             # self.set_cycles(number_of_gates)
 
-            return self.get_binwidth(), new_record_length_s, number_of_gates
+            return self.get_binwidth(), self.get_length() * self.get_binwidth(), number_of_gates
 
     def start_measure(self):
         """Start the measurement. """
