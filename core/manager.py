@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 import os
 import sys
 import re
-import time
 import importlib
 
 from qtpy import QtCore
@@ -47,6 +46,7 @@ except ImportError:
     RemoteObjectManager = None
 from .module import BaseMixin
 from .connector import Connector
+from .gui.pop_up_dialog import PopUpMessage
 
 
 class Manager(QtCore.QObject):
@@ -121,10 +121,12 @@ class Manager(QtCore.QObject):
 
             # Gui setup if we have gui
             if self.hasGui:
-                import core.gui
-                self.gui = core.gui.Gui()
-                self.gui.setTheme('qudiTheme', os.path.join(self.getMainDir(), 'artwork', 'icons'))
-                self.gui.setAppIcon()
+                import core.gui.gui
+                self.gui = core.gui.gui.Gui(artwork_dir=os.path.join(self.getMainDir(), 'artwork'))
+                self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
+                self.gui.system_tray_icon.managerAction.triggered.connect(
+                    lambda: self.sigShowManager.emit())
+                self.gui.setTheme('qudiTheme')
 
             # Read in configuration file
             if args.config == '':
@@ -1416,4 +1418,49 @@ class Manager(QtCore.QObject):
                 logger.error('You tried to remove the task runner but none was registered.')
             else:
                 logger.warning('Replacing task runner.')
+
+    @QtCore.Slot(str, str)
+    def pop_up_message(self, title, message):
+        """
+        Slot prompting a dialog window with a message and an OK button to dismiss it.
+
+        @param str title: The window title of the dialog
+        @param str message: The message to be shown in the dialog window
+        """
+        if not self.hasGui:
+            logger.warning('{0}:\n{1}'.format(title, message))
+            return
+
+        if self.thread() is not QtCore.QThread.currentThread():
+            logger.error('Pop-up notifications can only be invoked from GUI/main thread or via '
+                         'queued connection.')
+            return
+        dialog = PopUpMessage(title=title, message=message)
+        dialog.exec_()
+        return
+
+    @QtCore.Slot(str, str)
+    @QtCore.Slot(str, str, object)
+    @QtCore.Slot(str, str, object, object)
+    def balloon_message(self, title, message, time=None, icon=None):
+        """
+        Slot prompting a balloon notification from the system tray icon.
+
+        @param str title: The notification title of the balloon
+        @param str message: The message to be shown in the balloon
+        @param float time: optional, The lingering time of the balloon in seconds
+        @param QIcon icon: optional, an icon to be used in the balloon. "None" will use OS default.
+        """
+        if not self.hasGui or not self.gui.system_tray_icon.supportsMessages():
+            logger.warning('{0}:\n{1}'.format(title, message))
+            return
+        if self.thread() is not QtCore.QThread.currentThread():
+            logger.error('Pop-up notifications can only be invoked from GUI/main thread or via '
+                         'queued connection.')
+            return
+        self.gui.system_tray_notification_bubble(title, message, time=time, icon=icon)
+        return
+
+
+
 
