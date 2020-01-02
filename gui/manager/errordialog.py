@@ -23,7 +23,7 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from qtpy import QtWidgets, QtCore
+from qtpy import QtWidgets
 import re
 
 
@@ -33,76 +33,75 @@ class ErrorDialog(QtWidgets.QDialog):
       you can see the traceback for an exception.
     """
 
-    def __init__(self, logWindow):
+    def __init__(self, log_window):
         """ Create an ErrorDialog object
 
-          @param object logWindow: reference to LogWindow object that this
-                                   popup belongs to
+        @param object log_window: reference to log_window object that this popup belongs to
         """
         super().__init__()
-        self.logWindow = logWindow
-        self.setWindowFlags(QtCore.Qt.Window | QtCore.Qt.WindowStaysOnTopHint)
-        # self.setWindowModality(QtCore.Qt.NonModal)
+
+        self._log_window = log_window  # Save a reference to the log window
+        self.messages = list()  # List of queued individual error messages to display
+
+        # Set up dialog window
+        # self.setWindowFlags(QtCore.Qt.Window)
+        # self.setWindowModality(QtCore.Qt.)
         self.setWindowTitle('Qudi Error')
-        wid = QtWidgets.QDesktopWidget()
-        screenWidth = wid.screen(wid.primaryScreen()).width()
-        screenHeight = wid.screen(wid.primaryScreen()).height()
-        self.setGeometry((screenWidth - 500) / 2,
-                         (screenHeight - 100) / 2, 500, 100)
-        self.layout = QtWidgets.QVBoxLayout()
-        self.layout.setContentsMargins(3, 3, 3, 3)
-        self.setLayout(self.layout)
-        self.messages = []
+        screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
+        screen_width = screen_size.width()
+        screen_height = screen_size.height()
+        self.setGeometry((screen_width * 3) // 8,
+                         (screen_height * 3) // 8,
+                         screen_width // 4,
+                         screen_height // 4)
+        self.setMinimumSize(screen_width // 6, screen_height // 8)
 
-        self.msgLabel = QtWidgets.QLabel()
-        # self.msgLabel.setWordWrap(False)
-        # self.msgLabel.setMaximumWidth(800)
-        self.msgLabel.setSizePolicy(
-            QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        # self.msgLabel.setFrameStyle(QtGui.QFrame.Box)
-        # self.msgLabel.setStyleSheet('QLabel { font-weight: bold }')
-        self.layout.addWidget(self.msgLabel)
-        self.msgLabel.setMaximumWidth(800)
-        self.msgLabel.setMinimumWidth(500)
-        self.msgLabel.setWordWrap(True)
-        self.layout.addStretch()
-        self.disableCheck = QtWidgets.QCheckBox(
-            'Disable error message popups')
-        self.layout.addWidget(self.disableCheck)
+        # Set up message label widget
+        self.msg_label = QtWidgets.QLabel()
+        self.msg_label.setWordWrap(True)
+        self.msg_label.setSizePolicy(QtWidgets.QSizePolicy.Expanding,
+                                     QtWidgets.QSizePolicy.Expanding)
 
-        self.btnLayout = QtWidgets.QHBoxLayout()
-        self.btnLayout.addStretch()
-        self.okBtn = QtWidgets.QPushButton('OK')
-        self.btnLayout.addWidget(self.okBtn)
-        self.nextBtn = QtWidgets.QPushButton('Show next error')
-        self.btnLayout.addWidget(self.nextBtn)
-        self.nextBtn.hide()
-        self.logBtn = QtWidgets.QPushButton('Show Log...')
-        self.btnLayout.addWidget(self.logBtn)
-        self.btnLayoutWidget = QtWidgets.QWidget()
-        self.layout.addWidget(self.btnLayoutWidget)
-        self.btnLayoutWidget.setLayout(self.btnLayout)
-        self.btnLayout.addStretch()
+        # Set up disable checkbox
+        self.disable_checkbox = QtWidgets.QCheckBox('Disable error message popups')
 
-        self.okBtn.clicked.connect(self.okClicked)
-        self.nextBtn.clicked.connect(self.nextMessage)
-        self.logBtn.clicked.connect(self.logClicked)
+        # Set up buttons and group them in a layout
+        self.ok_button = QtWidgets.QPushButton('OK')
+        self.next_button = QtWidgets.QPushButton('Show next error')
+        self.log_button = QtWidgets.QPushButton('Show log...')
+        btn_layout = QtWidgets.QHBoxLayout()
+        btn_layout.addStretch()
+        btn_layout.addWidget(self.ok_button)
+        btn_layout.addWidget(self.next_button)
+        btn_layout.addWidget(self.log_button)
+        btn_layout.addStretch()
+        self.next_button.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                                       QtWidgets.QSizePolicy.Fixed)
+
+        # Set up dialog main layout and add all widgets to it
+        main_layout = QtWidgets.QVBoxLayout()
+        main_layout.setContentsMargins(3, 3, 3, 3)
+        main_layout.addWidget(self.msg_label)
+        main_layout.addWidget(self.disable_checkbox)
+        main_layout.addLayout(btn_layout)
+        self.setLayout(main_layout)
+
+        # Connect button click signals to slots
+        self.ok_button.clicked.connect(self.ok_clicked)
+        self.next_button.clicked.connect(self.next_message)
+        self.log_button.clicked.connect(self.log_clicked)
 
     def show(self, entry):
         """ Show a log entry in a popup window.
 
-          @param dict entry: log entry in dictionary form
-
+        @param dict entry: log entry in dictionary form
         """
-        # rules are:
-        # - Try to show friendly error messages
-        # - If there are any helpfulExceptions, ONLY show those
-        # otherwise, show everything
-        self.lastEntry = entry
+        # Return early if disabled
+        if self.disabled:
+            return
 
         # extract list of exceptions
-        exceptions = []
-        # helpful = []
+        exceptions = list()
         key = 'exception'
         exc = entry
         while key in exc:
@@ -112,54 +111,69 @@ class ErrorDialog(QtWidgets.QDialog):
             # ignore this error if it was generated on the command line.
             tb = exc.get('traceback', ['', ''])
             if len(tb) > 1 and 'File "<stdin>"' in tb[1]:
-                return False
+                return
 
             if exc is None:
                 break
             key = 'oldExc'
-            if exc['message'].startswith('HelpfulException'):
-                exceptions.append(
-                    '<b>' + self.cleanText(re.sub(r'^HelpfulException: ', '',
-                                                  exc['message'])) + '</b>')
-            elif exc['message'] == 'None':
+            if exc['message'] == 'None':
                 continue
+            elif exc['message'].startswith('HelpfulException'):
+                # FIXME: Should be possible to remove this case (not used in qudi)
+                msg = re.sub(r'^HelpfulException: ', '', exc['message'])
+                exceptions.append('<b>{0}</b>'.format(self.clean_text(msg)))
             else:
-                exceptions.append(self.cleanText(exc['message']))
+                exceptions.append(self.clean_text(exc['message']))
 
-        msg = '<b>' + entry['message'] + '</b><br>' + '<br>'.join(exceptions)
+        msg = '<b>{0}</b><br>'.format(entry['message']) + '<br>'.join(exceptions)
 
-        if self.disableCheck.isChecked():
-            return False
         if self.isVisible():
             self.messages.append(msg)
-            self.nextBtn.show()
-            self.nextBtn.setEnabled(True)
-            self.nextBtn.setText('Show next error ({0:d} more)'.format(
-                len(self.messages)))
+            self._update_next_button()
         else:
             w = QtWidgets.QApplication.activeWindow()
-            self.nextBtn.hide()
-            self.msgLabel.setText(msg)
+            self.msg_label.setText(msg)
             self.open()
+            self._update_next_button()
             if w is not None:
                 cp = w.geometry().center()
-                self.setGeometry(cp.x() - self.width() / 2., cp.y() -
-                                 self.height() / 2., self.width(),
+                self.setGeometry(cp.x() - self.width() // 2,
+                                 cp.y() - self.height() // 2,
+                                 self.width(),
                                  self.height())
-        # self.activateWindow()
         self.raise_()
+        self.activateWindow()
+
+    @property
+    def disabled(self):
+        """ Property holding the disabled flag for this error message popup
+
+        @return bool: Flag indicating disabled (True) or enabled (False) error message popups
+        """
+        return self.disable_checkbox.isChecked()
+
+    @disabled.setter
+    def disabled(self, disable):
+        self.disable_checkbox.setChecked(bool(disable))
+
+    def disable(self):
+        """ Convenience method to disable this error message popup.
+        """
+        self.disabled = True
+
+    def enable(self):
+        """ Convenience method to enable this error message popup.
+        """
+        self.disabled = False
 
     @staticmethod
-    def cleanText(text):
+    def clean_text(text):
         """ Return a string with some special characters escaped for HTML.
 
-          @param str text: string to sanitize
-
-          @return str: string with spechial characters replaced by HTML
-                       escape sequences
-
-          FIXME: there is probably a pre-defined function for this, use it!
+        @param str text: string to sanitize
+        @return str: string with special characters replaced by HTML escape sequences
         """
+        # FIXME: there is probably a pre-defined function for this, use it!
         text = re.sub(r'&', '&amp;', text)
         text = re.sub(r'>', '&gt;', text)
         text = re.sub(r'<', '&lt;', text)
@@ -173,33 +187,34 @@ class ErrorDialog(QtWidgets.QDialog):
           Extends the parent class closeEvent hndling function to delete
           pending messages.
         """
-        QtWidgets.QDialog.closeEvent(self, ev)
-        self.messages = []
+        super().closeEvent(ev)
+        self.messages = list()
 
-    def okClicked(self):
-        """ Marks message as acceped and closes popup.
+    def ok_clicked(self):
+        """ Marks messages as accepted and closes dialog.
         """
         self.accept()
-        self.messages = []
+        self.messages = list()
 
-    def logClicked(self):
-        """ Marks message as accepted and shows log window.
+    def log_clicked(self):
+        """ Marks messages as accepted and shows log window.
         """
         self.accept()
-        self.logWindow.show()
-        self.messages = []
+        self._log_window.show()
+        self.messages = list()
 
-    def nextMessage(self):
+    def next_message(self):
         """ Shows the next error message popup.
         """
-        self.msgLabel.setText(self.messages.pop(0))
-        self.nextBtn.setText('Show next error ({0:d} more)'.format(len(self.messages)))
-        if len(self.messages) == 0:
-            self.nextBtn.setEnabled(False)
+        if self.messages:
+            self.msg_label.setText(self.messages.pop(0))
+        self._update_next_button()
 
-    def disable(self, disable):
-        """ Disables popups.
-
-          @param bool disable: disable popups if true, enables if false
-        """
-        self.disableCheck.setChecked(disable)
+    def _update_next_button(self):
+        msg_number = len(self.messages)
+        self.next_button.setText('Show next error ({0:d} more)'.format(msg_number))
+        if msg_number > 0 and not self.next_button.isVisible():
+            self.next_button.show()
+        elif msg_number == 0 and self.next_button.isVisible():
+            self.next_button.hide()
+        return
