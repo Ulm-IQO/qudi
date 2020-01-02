@@ -24,7 +24,6 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 """
 
 from qtpy import QtWidgets
-import re
 
 
 class ErrorDialog(QtWidgets.QDialog):
@@ -120,7 +119,7 @@ class ErrorDialog(QtWidgets.QDialog):
                 continue
             elif exc['message'].startswith('HelpfulException'):
                 # FIXME: Should be possible to remove this case (not used in qudi)
-                msg = re.sub(r'^HelpfulException: ', '', exc['message'])
+                msg = exc['message'].lstrip('HelpfulException: ')
                 exceptions.append('<b>{0}</b>'.format(self.clean_text(msg)))
             else:
                 exceptions.append(self.clean_text(exc['message']))
@@ -173,12 +172,10 @@ class ErrorDialog(QtWidgets.QDialog):
         @param str text: string to sanitize
         @return str: string with special characters replaced by HTML escape sequences
         """
-        # FIXME: there is probably a pre-defined function for this, use it!
-        text = re.sub(r'&', '&amp;', text)
-        text = re.sub(r'>', '&gt;', text)
-        text = re.sub(r'<', '&lt;', text)
-        text = re.sub(r'\n', '<br/>\n', text)
-        return text
+        text = text.replace('&', '&amp;')
+        text = text.replace('>', '&gt;')
+        text = text.replace('<', '&lt;')
+        return text.replace('\n', '<br/>\n')
 
     def closeEvent(self, ev):
         """ Specify close event action.
