@@ -216,6 +216,7 @@ class AppWatchdog(QtCore.QObject):
             print('Closing windows...')
             if manager.hasGui:
                 manager.gui.closeWindows()
+                manager.gui.close_system_tray_icon()
             QtCore.QCoreApplication.instance().processEvents()
             logger.info('Stopping threads...')
             print('Stopping threads...')

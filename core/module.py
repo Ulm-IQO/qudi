@@ -132,6 +132,9 @@ class BaseMixin(metaclass=ModuleMeta):
     _threaded = False
     _connectors = dict()
 
+    _sigPopUpMessage = QtCore.Signal(str, str)
+    _sigBalloonMessage = QtCore.Signal(str, str, object)
+
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
         """ Initialise Base class object and set up its state machine.
 
@@ -193,6 +196,12 @@ class BaseMixin(metaclass=ModuleMeta):
                     setattr(self, opt.var_name, converted_val)
                 else:
                     setattr(self, opt.var_name, opt.constructor_function(self, converted_val))
+
+        # Enable pop-up and balloon messages by establishing a queued connection to manager if qudi
+        # runs in headless mode (pop-up must run in main thread)
+        if manager.hasGui:
+            self._sigPopUpMessage.connect(manager.pop_up_message, QtCore.Qt.QueuedConnection)
+            self._sigBalloonMessage.connect(manager.balloon_message, QtCore.Qt.QueuedConnection)
 
         self._manager = manager
         self._name = name
@@ -340,6 +349,26 @@ class BaseMixin(metaclass=ModuleMeta):
             raise Exception(
                 'Connector {0} does not exist.'
                 ''.format(connector_name))
+
+    def pop_up_message(self, title, message):
+        if not isinstance(title, str) or not isinstance(message, str):
+            self.log.error('Pop-Up notifications require str type title and message parameters.')
+            return
+        if self._manager.hasGui:
+            self._sigPopUpMessage.emit(title, message)
+        else:
+            self.log.warning('{0}:\n{1}'.format(title, message))
+        return
+
+    def balloon_message(self, title, message, time=None):
+        if not isinstance(title, str) or not isinstance(message, str):
+            self.log.error('Balloon notifications require str type title and message parameters.')
+            return
+        if self._manager.hasGui:
+            self._sigBalloonMessage.emit(title, message, time)
+        else:
+            self.log.warning('{0}:\n{1}'.format(title, message))
+        return
 
 
 class Base(QtCore.QObject, BaseMixin):

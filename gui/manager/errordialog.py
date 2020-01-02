@@ -23,7 +23,7 @@ Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
 
-from qtpy import QtWidgets
+from qtpy import QtWidgets, QtCore
 
 
 class ErrorDialog(QtWidgets.QDialog):
@@ -155,11 +155,13 @@ class ErrorDialog(QtWidgets.QDialog):
     def disabled(self, disable):
         self.disable_checkbox.setChecked(bool(disable))
 
+    @QtCore.Slot()
     def disable(self):
         """ Convenience method to disable this error message popup.
         """
         self.disabled = True
 
+    @QtCore.Slot()
     def enable(self):
         """ Convenience method to enable this error message popup.
         """
@@ -187,12 +189,14 @@ class ErrorDialog(QtWidgets.QDialog):
         super().closeEvent(ev)
         self.messages = list()
 
+    @QtCore.Slot()
     def ok_clicked(self):
         """ Marks messages as accepted and closes dialog.
         """
         self.accept()
         self.messages = list()
 
+    @QtCore.Slot()
     def log_clicked(self):
         """ Marks messages as accepted and shows log window.
         """
@@ -200,6 +204,7 @@ class ErrorDialog(QtWidgets.QDialog):
         self._log_window.show()
         self.messages = list()
 
+    @QtCore.Slot()
     def next_message(self):
         """ Shows the next error message popup.
         """
