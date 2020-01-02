@@ -29,7 +29,7 @@ sys.path.append(os.getcwd())
 from core.module import Base
 from gui.guibase import GUIBase
 from logic.generic_logic import GenericLogic
-from logic.generic_task import InterruptableTask, PrePostTask
+from core.task import InterruptableTask, PrePostTask
 
 
 def print_connectors(module):
