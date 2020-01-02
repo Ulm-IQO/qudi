@@ -46,7 +46,7 @@ except ImportError:
     RemoteObjectManager = None
 from .module import BaseMixin
 from .connector import Connector
-from .gui.pop_up_dialog import PopUpMessage
+from .gui.popup_dialog import PopUpMessage
 
 
 class Manager(QtCore.QObject):

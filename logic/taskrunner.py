@@ -25,7 +25,7 @@ import importlib
 
 from core.util.models import ListTableModel
 from logic.generic_logic import GenericLogic
-import logic.generic_task as gt
+import core.task as gt
 
 
 class TaskListTableModel(ListTableModel):

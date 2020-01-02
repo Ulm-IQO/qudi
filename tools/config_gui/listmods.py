@@ -116,7 +116,7 @@ def check_qudi_modules(filelist):
     from core.meta import InterfaceMetaclass
     from gui.guibase import GUIBase
     from logic.generic_logic import GenericLogic
-    from logic.generic_task import InterruptableTask, PrePostTask
+    from core.task import InterruptableTask, PrePostTask
 
     othererror = []
     importerror = []
