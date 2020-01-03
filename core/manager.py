@@ -114,7 +114,7 @@ class Manager(QtCore.QObject):
 
             # Thread management
             self.tm = ThreadManager()
-            logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThreadId()))
+            logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThread()))
 
             # Task runner
             self.tr = None

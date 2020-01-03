@@ -23,10 +23,16 @@ __version__ = '0.1'
 
 # import Qt
 import os
+# TODO: Clean up
+import PySide2
+dirname = os.path.dirname(PySide2.__file__)
+plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 
 if not 'QT_API' in os.environ:
     # use PyQt4 as default
-    os.environ['QT_API'] = 'pyqt5'
+    # os.environ['QT_API'] = 'pyqt5'
+    os.environ['QT_API'] = 'pyside2'
 else:
     print('Specified Qt API:', os.environ['QT_API'])
     # if pyqt4 check environment variable is 'pyqt' and not 'pyqt4' (ipython,

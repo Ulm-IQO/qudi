@@ -70,7 +70,9 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
         }
 
         # Initialise state machine:
-        super().__init__(parent=parent, cfg=_baseStateList, **kwargs)
+        QtCore.QObject.__init__(self, parent)
+        Fysom.__init__(self, cfg=_baseStateList, **kwargs)
+        # super().__init__(parent=parent, cfg=_baseStateList, **kwargs)
 
     def __call__(self):
         """
@@ -93,7 +95,7 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
             def wrap_event(*args, **kwargs):
                 self._parent.log.debug('{0} in thread {1}'.format(
                     noun.capitalize(),
-                    QtCore.QThread.currentThreadId()))
+                    QtCore.QThread.currentThread()))
                 try:
                     base_event(*args, **kwargs)
                 except:

@@ -277,7 +277,7 @@ class ManagerGui(GUIBase):
         # make sure we only log errors and above from ipython
         logging.getLogger('ipykernel').setLevel(logging.WARNING)
         self.log.debug('IPy activation in thread {0}'.format(
-            QtCore.QThread.currentThreadId()))
+            QtCore.QThread.currentThread()))
         self.kernel_manager = QtInProcessKernelManager()
         self.kernel_manager.start_kernel()
         self.kernel = self.kernel_manager.kernel
@@ -336,7 +336,7 @@ Go, play.
     def stopIPython(self):
         """ Stop the IPython kernel.
         """
-        self.log.debug('IPy deactivation: {0}'.format(QtCore.QThread.currentThreadId()))
+        self.log.debug('IPy deactivation: {0}'.format(QtCore.QThread.currentThread()))
         self.kernel_manager.shutdown_kernel()
 
     def stopIPythonWidget(self):
