@@ -77,7 +77,7 @@ class ModuleMeta(QObjectMeta):
         attrs.update(status_vars)
 
         # create a new class with the new dictionaries
-        new_class = super().__new__(cls, name, bases, attrs)
+        new_class = QObjectMeta.__new__(cls, name, bases, attrs)
         new_class._conn = connectors
         new_class._config_options = config_options
         new_class._stat_vars = status_vars

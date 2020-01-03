@@ -110,7 +110,9 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
         """
         record = self.format(record)
         if record:
-            self.sigLoggedMessage.emit(record)
+            # This is a workaround for PySide2. Signal emits cause calls to <instance>.emit()
+            QtCore.QObject.emit(self, QtCore.SIGNAL('sigLoggedMessage(PyObject)'), record)
+            # self.sigLoggedMessage.emit(record)
 
 
 def initialize_logger(path=''):
