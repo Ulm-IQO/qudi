@@ -144,8 +144,8 @@ class Gui(QtCore.QObject):
         Kill and delete system tray icon. Tray icon will be lost until Gui.__init__ is called again.
         """
         self.hide_system_tray_icon()
-        self.system_tray_icon.quitAction.disconnect()
-        self.system_tray_icon.managerAction.disconnect()
+        self.system_tray_icon.quitAction.triggered.disconnect()
+        self.system_tray_icon.managerAction.triggered.disconnect()
         self.system_tray_icon = None
 
     def system_tray_notification_bubble(self, title, message, time=None, icon=None):
