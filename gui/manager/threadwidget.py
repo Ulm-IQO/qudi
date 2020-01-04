@@ -25,8 +25,8 @@ import os
 
 class ThreadWidget(QWidget):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         this_dir = os.path.dirname(__file__)
         ui_file = os.path.join(this_dir, 'ui_threadwidget.ui')
 
