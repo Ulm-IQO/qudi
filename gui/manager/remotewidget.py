@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi remote widget class.
+# FIXME
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,19 +18,31 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from qtpy.QtWidgets import QWidget
-from qtpy import uic
-import os
+
+from qtpy import QtCore, QtGui, QtWidgets
 
 
-class RemoteWidget(QWidget):
-    """ This widget shows information about shared or imported remote modules.
+class RemoteWidget(QtWidgets.QWidget):
     """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_remotewidget.ui')
+    """
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent, **kwargs)
 
-        # Load it
-        uic.loadUi(ui_file, self)
+        # Create widgets
+        self.host_label = QtWidgets.QLabel('host')
+        self.port_label = QtWidgets.QLabel('port')
+        self.shared_module_listview = QtWidgets.QListView()
+        self.shared_module_listview.setUniformItemSizes(True)
+        self.shared_module_listview.setAlternatingRowColors(True)
+        self.remote_module_listview = QtWidgets.QListView()
+        self.remote_module_listview.setUniformItemSizes(True)
+        self.remote_module_listview.setAlternatingRowColors(True)
+
+        # Group widgets in a layout and set as main layout
+        layout = QtWidgets.QGridLayout()
+        layout.addWidget(self.host_label, 0, 0)
+        layout.addWidget(self.shared_module_listview, 1, 0)
+        layout.addWidget(self.port_label, 0, 1)
+        layout.addWidget(self.remote_module_listview, 1, 1)
+        self.setLayout(layout)
