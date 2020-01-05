@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This file contains the Qudi remote widget class.
+# FIXME
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,17 +18,15 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from qtpy.QtWidgets import QWidget
-from qtpy import uic
-import os
+
+from qtpy import QtCore, QtGui, QtWidgets
 
 
-class ThreadWidget(QWidget):
+class AboutDialog(QtWidgets.QDialog):
+    """
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_threadwidget.ui')
+    """
+    def __init__(self, parent=None, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.label = QtWidgets.QLabel()
 
-        # Load it
-        uic.loadUi(ui_file, self)

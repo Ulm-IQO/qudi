@@ -40,11 +40,11 @@ except ImportError:
     from distutils.version import LooseVersion as parse_version
 
 has_pyqtgraph = False
-try:
-    import pyqtgraph
-    has_pyqtgraph = True
-except ImportError:
-    pass
+# try:
+#     import pyqtgraph
+#     has_pyqtgraph = True
+# except ImportError:
+#     pass
 
 logger = logging.getLogger(__name__)
 
