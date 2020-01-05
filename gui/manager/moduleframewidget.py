@@ -27,7 +27,7 @@ class ModuleFrameWidget(QtWidgets.QFrame):
     """
     Custom module QFrame widget for the Qudi manager GUI
     """
-    def __init__(self, parent=None, **kwargs):
+    def __init__(self, parent=None, module_name=None, **kwargs):
         super().__init__(parent, **kwargs)
 
         # Create QToolButtons
@@ -71,3 +71,37 @@ class ModuleFrameWidget(QtWidgets.QFrame):
         layout.addWidget(self.cleanup_button, 0, 3)
         layout.addWidget(self.status_label, 1, 0, 1, 4)
         self.setLayout(layout)
+
+        self._module_name = None
+        if module_name:
+            self.set_module_name(module_name)
+
+    def set_module_name(self, name):
+        if name:
+            self.load_button.setText('Load {0}'.format(name))
+            self._module_name = name
+
+    def set_module_state(self, state):
+        pass
+
+
+class ModuleScrollWidget(QtWidgets.QScrollArea):
+    """
+
+    """
+    def __init__(self, parent=None, module_names=None, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.setLayout(QtWidgets.QVBoxLayout())
+
+        self._frames = dict()
+        if module_names:
+            self.create_module_frames(module_names)
+
+    def create_module_frames(self, module_names):
+        self._frames = dict()
+        self.layout().clear()
+        for name in module_names:
+            if name in self._frames:
+                raise NameError('Module with name "{0}" occurs twice in module list.')
+            self._frames[name] = ModuleFrameWidget(parent=self, module_name=name)
+            self.layout().addWidget(self._frames[name])

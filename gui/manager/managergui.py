@@ -167,6 +167,7 @@ class ManagerGui(GUIBase):
         self._check_timer = QtCore.QTimer()
         self._check_timer.start(1000)
         self.update_gui_module_list()
+        self._check_timer.timeout.connect(self.update_module_states)
 
         # IPython console widget
         self.start_ipython()
@@ -487,6 +488,10 @@ class ManagerGui(GUIBase):
                                                          'Configuration files (*.cfg)')[0]
         if filename:
             self.sigSaveConfig.emit(filename)
+
+    def update_module_states(self):
+        # TODO: Implement module state check and update of module list frames
+        pass
 
 
 # class ModuleListItem(QtWidgets.QFrame):
