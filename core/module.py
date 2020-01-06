@@ -148,8 +148,6 @@ class BaseMixin(metaclass=ModuleMeta):
                                  on state machine transitions
 
         """
-        super().__init__(**kwargs)
-
         if config is None:
             config = {}
         if callbacks is None:
@@ -374,4 +372,6 @@ class BaseMixin(metaclass=ModuleMeta):
 
 
 class Base(QtCore.QObject, BaseMixin):
-    pass
+    def __init__(self, parent=None, **kwargs):
+        QtCore.QObject.__init__(self, parent)
+        BaseMixin.__init__(self, parent=parent, **kwargs)

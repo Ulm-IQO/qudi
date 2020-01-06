@@ -43,7 +43,7 @@ class TaskGui(GUIBase):
         """Create all UI objects and show the window.
         """
         self._mw = TaskMainWindow()
-        self.restoreWindowPos(self._mw)
+        self.restore_window_pos(self._mw)
         self.logic = self.tasklogic()
         self._mw.taskTableView.setModel(self.logic.model)
         self._mw.taskTableView.clicked.connect(self.setRunToolState)
@@ -64,7 +64,7 @@ class TaskGui(GUIBase):
     def on_deactivate(self):
         """ Hide window and stop ipython console.
         """
-        self.saveWindowPos(self._mw)
+        self.save_window_pos(self._mw)
         self._mw.close()
 
     def manualStart(self):

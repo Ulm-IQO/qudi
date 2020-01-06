@@ -28,15 +28,17 @@ import warnings
 class GUIBaseMixin(BaseMixin):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
+    # def __init__(self, **kwargs):
+    #     BaseMixin.__init__(self, **kwargs)
 
     def show(self):
         warnings.warn('Every GUI module needs to reimplement the show() function!')
 
-    def saveWindowPos(self, window):
+    def save_window_pos(self, window):
         self._statusVariables['pos_x'] = window.pos().x()
         self._statusVariables['pos_y'] = window.pos().y()
 
-    def restoreWindowPos(self, window):
+    def restore_window_pos(self, window):
         if 'pos_x' in self._statusVariables and 'pos_y' in self._statusVariables:
             window.move(self._statusVariables['pos_x'],  self._statusVariables['pos_y'])
 
@@ -44,4 +46,4 @@ class GUIBaseMixin(BaseMixin):
 class GUIBase(QObject, GUIBaseMixin):
     def __init__(self, parent=None, **kwargs):
         QObject.__init__(self, parent)
-        GUIBaseMixin.__init__(self, **kwargs)
+        GUIBaseMixin.__init__(self, parent=parent, **kwargs)

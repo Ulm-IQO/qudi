@@ -110,7 +110,7 @@ class ManagerGui(GUIBase):
 
         # Create main window and restore position
         self._mw = ManagerMainWindow()
-        self.restoreWindowPos(self._mw)
+        self.restore_window_pos(self._mw)
         # Create error dialog for error message popups
         self.error_dialog = ErrorDialog(self)
 
@@ -224,7 +224,7 @@ class ManagerGui(GUIBase):
             widget.sigReloadModule.disconnect()
             widget.sigDeactivateModule.disconnect()
             widget.sigCleanupModule.disconnect()
-        self.saveWindowPos(self._mw)
+        self.save_window_pos(self._mw)
         self._mw.close()
 
     def show(self):
