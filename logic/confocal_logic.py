@@ -27,11 +27,11 @@ import datetime
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from io import BytesIO
 
 from logic.generic_logic import GenericLogic
 from core.util.mutex import Mutex
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.statusvariable import StatusVar
 
 
 class OldConfigFileError(Exception):
@@ -252,8 +252,6 @@ class ConfocalLogic(GenericLogic):
     """
     This is the Logic class for confocal scanning.
     """
-    _modclass = 'confocallogic'
-    _modtype = 'logic'
 
     # declare connectors
     confocalscanner1 = Connector(interface='ConfocalScannerInterface')

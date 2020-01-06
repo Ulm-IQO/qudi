@@ -26,17 +26,19 @@ import time
 
 from .qzmqkernel import QZMQKernel
 from core.util.network import netobtain
-#-----------------------------------------------------------------------------
+
+
+# -----------------------------------------------------------------------------
 # The Qudi logic module
-#-----------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
+
 
 class QudiKernelLogic(GenericLogic):
     """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
-    _modclass = 'QudiKernelLogic'
-    _modtype = 'logic'
 
     sigStartKernel = QtCore.Signal(str)
     sigStopKernel = QtCore.Signal(int)
+
     def __init__(self, **kwargs):
         """ Create logic object
           @param dict kwargs: additional parameters as a dict
@@ -83,7 +85,7 @@ class QudiKernelLogic(GenericLogic):
             'np': np,
             'config': self._manager.tree['defined'],
             'manager': self._manager
-            })
+        })
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.log.debug('Kernel is {0}'.format(kernel.engine_id))
         kernelthread.start()

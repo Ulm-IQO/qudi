@@ -24,7 +24,7 @@ import numpy as np
 import os
 import pyqtgraph as pg
 
-from core.module import Connector
+from core.connector import Connector
 from core.util import units
 from gui.guibase import GUIBase
 from gui.guiutils import ColorBar
@@ -67,9 +67,6 @@ class ODMRGui(GUIBase):
     """
     This is the GUI Class for ODMR measurements
     """
-
-    _modclass = 'ODMRGui'
-    _modtype = 'gui'
 
     # declare connectors
     odmrlogic1 = Connector(interface='ODMRLogic')

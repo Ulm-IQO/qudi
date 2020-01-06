@@ -27,11 +27,13 @@ import time
 import datetime
 import matplotlib.pyplot as plt
 
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
 from core.util.mutex import Mutex
 from core.util.network import netobtain
 from core.util import units
-from core.util.helpers import natural_sort
+from core.util.math import compute_ft
 from logic.generic_logic import GenericLogic
 from logic.pulsed.pulse_extractor import PulseExtractor
 from logic.pulsed.pulse_analyzer import PulseAnalyzer
@@ -41,14 +43,12 @@ class PulsedMeasurementLogic(GenericLogic):
     """
     This is the Logic class for the control of pulsed measurements.
     """
-    _modclass = 'PulsedMeasurementLogic'
-    _modtype = 'logic'
 
-    ## declare connectors
+    # declare connectors
     fitlogic = Connector(interface='FitLogic')
     savelogic = Connector(interface='SaveLogic')
     fastcounter = Connector(interface='FastCounterInterface')
-    microwave = Connector(interface='MWInterface')
+    microwave = Connector(interface='MicrowaveInterface')
     pulsegenerator = Connector(interface='PulserInterface')
 
     # Config options
@@ -255,8 +255,8 @@ class PulsedMeasurementLogic(GenericLogic):
     @QtCore.Slot(dict)
     def set_fast_counter_settings(self, settings_dict=None, **kwargs):
         """
-        Either accept a settings dictionary as positional argument or keyword arguments.
-        If both are present both are being used by updating the settings_dict with kwargs.
+        Either accepts a settings dictionary as positional argument or keyword arguments.
+        If both are present, both are being used by updating the settings_dict with kwargs.
         The keyword arguments take precedence over the items in settings_dict if there are
         conflicting names.
 
@@ -991,6 +991,10 @@ class PulsedMeasurementLogic(GenericLogic):
         else:
             update_fit_data = False
 
+        if len(data) < 2 or len(data[0]) < 2 or len(data[1]) < 2:
+            self.log.debug('The data you are trying to fit does not contain enough data for a fit.')
+            return
+
         x_fit, y_fit, result = self.fc.do_fit(data[0], data[1])
 
         fit_data = np.array([x_fit, y_fit])
@@ -1593,22 +1597,22 @@ class PulsedMeasurementLogic(GenericLogic):
             self.signal_alt_data[0] = self.signal_data[0]
             self.signal_alt_data[1] = self.signal_data[1] - self.signal_data[2]
         elif self._alternative_data_type == 'FFT' and self.signal_data.shape[1] >= 2:
-            fft_x, fft_y = units.compute_ft(x_val=self.signal_data[0],
-                                            y_val=self.signal_data[1],
-                                            zeropad_num=self.zeropad,
-                                            window=self.window,
-                                            base_corr=self.base_corr,
-                                            psd=self.psd)
+            fft_x, fft_y = compute_ft(x_val=self.signal_data[0],
+                                      y_val=self.signal_data[1],
+                                      zeropad_num=self.zeropad,
+                                      window=self.window,
+                                      base_corr=self.base_corr,
+                                      psd=self.psd)
             self.signal_alt_data = np.empty((len(self.signal_data), len(fft_x)), dtype=float)
             self.signal_alt_data[0] = fft_x
             self.signal_alt_data[1] = fft_y
             for dim in range(2, len(self.signal_data)):
-                dummy, self.signal_alt_data[dim] = units.compute_ft(x_val=self.signal_data[0],
-                                                                    y_val=self.signal_data[dim],
-                                                                    zeropad_num=self.zeropad,
-                                                                    window=self.window,
-                                                                    base_corr=self.base_corr,
-                                                                    psd=self.psd)
+                dummy, self.signal_alt_data[dim] = compute_ft(x_val=self.signal_data[0],
+                                                              y_val=self.signal_data[dim],
+                                                              zeropad_num=self.zeropad,
+                                                              window=self.window,
+                                                              base_corr=self.base_corr,
+                                                              psd=self.psd)
         else:
             self.signal_alt_data = np.zeros(self.signal_data.shape, dtype=float)
             self.signal_alt_data[0] = self.signal_data[0]
