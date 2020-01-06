@@ -965,12 +965,18 @@ class Manager(QtCore.QObject):
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
+                # success = QtCore.QMetaObject.invokeMethod(
+                #     module.module_state,
+                #     'trigger',
+                #     QtCore.Qt.BlockingQueuedConnection,
+                #     QtCore.Q_RETURN_ARG(bool),
+                #     QtCore.Q_ARG(str, 'activate'))
                 success = QtCore.QMetaObject.invokeMethod(
                     module.module_state,
                     'trigger',
                     QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool),
-                    QtCore.Q_ARG(str, 'activate'))
+                    QtCore.QGenericReturnArgument(bool),
+                    QtCore.QGenericArgument(str, 'activate'))
             else:
                 success = module.module_state.activate() # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(success))

@@ -29,7 +29,7 @@ class GenericLogic(Base):
     _threaded = True
 
     def __init__(self, **kwargs):
-        """ Initialzize a logic module.
+        """ Initialize a logic module.
 
           @param dict kwargs: dict of additional arguments
         """
