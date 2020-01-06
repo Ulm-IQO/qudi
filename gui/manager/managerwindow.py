@@ -25,6 +25,7 @@ from .logwidget import LogWidget
 from .remotewidget import RemoteWidget
 from .aboutdialog import AboutDialog
 from .consolesettingsdialog import ConsoleSettingsDialog
+from .modulewidget import ModuleScrollWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
 
@@ -36,7 +37,7 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         super().__init__(parent, **kwargs)
         self.setWindowTitle('qudi: Manager')
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
-        width = screen_size.width() // 2
+        width = (screen_size.width() * 3) // 4
         height = (screen_size.height() * 3) // 4
         self.resize(width, height)
 
@@ -45,15 +46,15 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         self.module_tabs.setObjectName('moduleTabWidget')
         self.module_tabs.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                        QtWidgets.QSizePolicy.Preferred)
-        self.gui_scroll_area = QtWidgets.QScrollArea()
-        self.gui_scroll_area.setLayout(QtWidgets.QVBoxLayout())
-        self.logic_scroll_area = QtWidgets.QScrollArea()
-        self.logic_scroll_area.setLayout(QtWidgets.QVBoxLayout())
-        self.hardware_scroll_area = QtWidgets.QScrollArea()
-        self.hardware_scroll_area.setLayout(QtWidgets.QVBoxLayout())
-        self.module_tabs.addTab(self.gui_scroll_area, 'GUI')
-        self.module_tabs.addTab(self.logic_scroll_area, 'Logic')
-        self.module_tabs.addTab(self.hardware_scroll_area, 'Hardware')
+        self.gui_scroll_widget = ModuleScrollWidget()
+        self.logic_scroll_widget = ModuleScrollWidget()
+        self.hardware_scroll_widget = ModuleScrollWidget()
+        self.module_scroll_widgets = {'gui': self.gui_scroll_widget,
+                                      'logic': self.logic_scroll_widget,
+                                      'hardware': self.hardware_scroll_widget}
+        self.module_tabs.addTab(self.gui_scroll_widget, 'GUI')
+        self.module_tabs.addTab(self.logic_scroll_widget, 'Logic')
+        self.module_tabs.addTab(self.hardware_scroll_widget, 'Hardware')
         self.setCentralWidget(self.module_tabs)
 
         # Create actions

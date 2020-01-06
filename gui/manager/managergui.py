@@ -29,7 +29,6 @@ from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from .errordialog import ErrorDialog
 from .managerwindow import ManagerMainWindow
-from .moduleframewidget import ModuleFrameWidget
 from gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, QtGui
 
@@ -84,7 +83,6 @@ class ManagerGui(GUIBase):
           @param dict config:
         """
         super().__init__(**kwargs)
-        self.modlist = list()
         self.modules = set()
         self.error_dialog = None
         self.version_label = None
@@ -163,10 +161,18 @@ class ManagerGui(GUIBase):
         self.sigSaveConfig.connect(self._manager.saveConfig)
         self.sigRealQuit.connect(self._manager.realQuit)
 
+        # Init module lists
+        self.update_gui_module_list()
+        for base, widget in self._mw.module_scroll_widgets.items():
+            widget.sigActivateModule.connect(lambda mod, b=base: self.sigStartModule.emit(b, mod))
+            widget.sigReloadModule.connect(lambda mod, b=base: self.sigReloadModule.emit(b, mod))
+            widget.sigDeactivateModule.connect(lambda mod, b=base: self.sigStopModule.emit(b, mod))
+            widget.sigCleanupModule.connect(lambda mod, b=base: self.sigCleanupStatus.emit(b, mod))
+        self.update_module_states()
+
         # Timer for module state display
         self._check_timer = QtCore.QTimer()
         self._check_timer.start(1000)
-        self.update_gui_module_list()
         self._check_timer.timeout.connect(self.update_module_states)
 
         # IPython console widget
@@ -203,8 +209,7 @@ class ManagerGui(GUIBase):
         self.stop_ipython_widget()
         self.stop_ipython()
         self._check_timer.stop()
-        if len(self.modlist) > 0:
-            self._check_timer.timeout.disconnect()
+        self._check_timer.timeout.disconnect()
         self.sigStartModule.disconnect()
         self.sigReloadModule.disconnect()
         self.sigStopModule.disconnect()
@@ -216,6 +221,11 @@ class ManagerGui(GUIBase):
         self._mw.action_load_all_modules.triggered.disconnect()
         self._mw.action_about_qt.triggered.disconnect()
         self._mw.action_about_qudi.triggered.disconnect()
+        for widget in self._mw.module_scroll_widgets.values():
+            widget.sigActivateModule.disconnect()
+            widget.sigReloadModule.disconnect()
+            widget.sigDeactivateModule.disconnect()
+            widget.sigCleanupModule.disconnect()
         self.saveWindowPos(self._mw)
         self._mw.close()
 
@@ -402,36 +412,39 @@ class ManagerGui(GUIBase):
             child.setText(0, str(value))
             item.addChild(child)
 
+    @QtCore.Slot()
     def update_gui_module_list(self):
         """ Clear and refill the module list widget
         """
-        # self.clearModuleList(self)
-        self.fill_module_list(self._mw.gui_scroll_area.layout(), 'gui')
-        self.fill_module_list(self._mw.logic_scroll_area.layout(), 'logic')
-        self.fill_module_list(self._mw.hardware_scroll_area.layout(), 'hardware')
+        for base, widget in self._mw.module_scroll_widgets.items():
+            self.fill_module_list(widget, base)
 
-    # TODO:
-    def fill_module_list(self, layout, base):
-        """ Fill the module list widget with module widgets for defined gui
-            modules.
-
-          @param QLayout layout: layout of th module list widget where
-                                 module widgest should be addad
-          @param str base: module category to fill
+    def fill_module_list(self, scroll_widget, base):
         """
-        pass
-        # for module in self._manager.tree['defined'][base]:
-        #     if module not in self._manager.tree['global']['startup']:
-        #         widget = ModuleFrameWidget(self._manager, base, module)
-        #         self.modlist.append(widget)
-        #         layout.addWidget(widget)
-        #         widget.sigLoadThis.connect(self.sigStartModule)
-        #         widget.sigReloadThis.connect(self.sigReloadModule)
-        #         widget.sigDeactivateThis.connect(self.sigStopModule)
-        #         widget.sigCleanupStatus.connect(self.sigCleanupStatus)
-        #         self.checkTimer.timeout.connect(widget.checkModuleState)
+        Fill the module list widget with module widgets for defined gui modules.
 
-    def get_qudi_version(self):
+        @param ModuleScrollWidget scroll_widget: QScrollWidget subclass showing module controls for
+                                                 a certain module category
+        @param str base: module category to fill
+        """
+        if self._manager.tree['defined'].get(base) is None:
+            self.log.error('Unable to initialize module list for base "{0}". Base not found in '
+                           'module tree.'.format(base))
+            return
+        module_names = [mod for mod in self._manager.tree['defined'][base] if
+                        mod not in self._manager.tree['global']['startup']]
+        scroll_widget.create_module_frames(module_names)
+        pass
+
+    @QtCore.Slot()
+    def update_module_states(self):
+        for base, widget in self._mw.module_scroll_widgets.items():
+            if base in self._manager.tree['loaded']:
+                widget.set_module_states(self._manager.tree['loaded'][base])
+        pass
+
+    @staticmethod
+    def get_qudi_version():
         """ Try to determine the software version in case the program is in
             a git repository.
         """
@@ -488,119 +501,3 @@ class ManagerGui(GUIBase):
                                                          'Configuration files (*.cfg)')[0]
         if filename:
             self.sigSaveConfig.emit(filename)
-
-    def update_module_states(self):
-        # TODO: Implement module state check and update of module list frames
-        pass
-
-
-# class ModuleListItem(QtWidgets.QFrame):
-#
-#     """ This class represents a module widget in the Qudi module list.
-#
-#       @signal str str sigLoadThis: gives signal with base and name of module
-#                                    to be loaded
-#       @signal str str sigReloadThis: gives signal with base and name of
-#                                      module to be reloaded
-#       @signal str str sigStopThis: gives signal with base and name of module
-#                                    to be deactivated
-#     """
-#
-#     sigLoadThis = QtCore.Signal(str, str)
-#     sigReloadThis = QtCore.Signal(str, str)
-#     sigDeactivateThis = QtCore.Signal(str, str)
-#     sigCleanupStatus = QtCore.Signal(str, str)
-#
-#     def __init__(self, manager, basename, modulename):
-#         """ Create a module widget.
-#
-#           @param str basename: module category
-#           @param str modulename: unique module name
-#         """
-#         # Get the path to the *.ui file
-#         this_dir = os.path.dirname(__file__)
-#         ui_file = os.path.join(this_dir, 'ui_module_widget.ui')
-#
-#         # Load it
-#         super().__init__()
-#         uic.loadUi(ui_file, self)
-#
-#         self.manager = manager
-#         self.name = modulename
-#         self.base = basename
-#
-#         self.loadButton.setText('Load {0}'.format(self.name))
-#         # connect buttons
-#         self.loadButton.clicked.connect(self.loadButtonClicked)
-#         self.reloadButton.clicked.connect(self.reloadButtonClicked)
-#         self.deactivateButton.clicked.connect(self.deactivateButtonClicked)
-#         self.cleanupButton.clicked.connect(self.cleanupButtonClicked)
-#
-#     def loadButtonClicked(self):
-#         """ Send signal to load and activate this module.
-#         """
-#         self.sigLoadThis.emit(self.base, self.name)
-#
-#         # Instant return to checked to prevent visual lag before checkModuleState completes
-#         self.loadButton.setChecked(True)
-#
-#     def reloadButtonClicked(self):
-#         """ Send signal to reload this module.
-#         """
-#         self.sigReloadThis.emit(self.base, self.name)
-#
-#     def deactivateButtonClicked(self):
-#         """ Send signal to deactivate this module.
-#         """
-#         self.sigDeactivateThis.emit(self.base, self.name)
-#
-#     def cleanupButtonClicked(self):
-#         """ Send signal to deactivate this module.
-#         """
-#         self.sigCleanupStatus.emit(self.base, self.name)
-#
-#     def checkModuleState(self):
-#         """ Get the state of this module and update visual indications in the GUI.
-#
-#             Modules cannot be unloaded, but they can be deactivated.
-#
-#             Once loaded, the "load <module>" button will remain checked and its text
-#             will be updated to indicate that loading is no longer possible.
-#         """
-#         state = ''
-#         if self.statusLabel.text() != 'exception, cannot get state':
-#             try:
-#                 if (self.base in self.manager.tree['loaded']
-#                         and self.name in self.manager.tree['loaded'][self.base]):
-#                     state = self.manager.tree['loaded'][self.base][self.name].module_state()
-#
-#                     if state != 'deactivated':
-#                         self.reloadButton.setEnabled(True)
-#                         self.deactivateButton.setEnabled(True)
-#                         self.cleanupButton.setEnabled(False)
-#                         self.loadButton.setChecked(True)
-#
-#                         if self.base == 'gui':
-#                             self.loadButton.setText('Show {0}'.format(self.name))
-#                         else:
-#                             self.loadButton.setText(self.name)
-#                     else:
-#                         self.reloadButton.setEnabled(True)
-#                         self.deactivateButton.setEnabled(False)
-#                         self.cleanupButton.setEnabled(True)
-#                         self.loadButton.setChecked(True)
-#
-#                         self.loadButton.setText('Activate {0}'.format(self.name))
-#
-#                 else:
-#                     state = 'not loaded'
-#                     self.reloadButton.setEnabled(False)
-#                     self.deactivateButton.setEnabled(False)
-#                     self.cleanupButton.setEnabled(True)
-#             except:
-#                 state = 'exception, cannot get state'
-#                 self.reloadButton.setEnabled(True)
-#                 self.deactivateButton.setEnabled(True)
-#                 self.cleanupButton.setEnabled(True)
-#
-#             self.statusLabel.setText(state)
