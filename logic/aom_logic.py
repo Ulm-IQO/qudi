@@ -86,7 +86,7 @@ class AomLogic(GenericLogic):
         success = 0
         for i in range(repetitions):
             try:
-                total_power += self.voltage_output().get_process_value()
+                total_power += self.power_input().get_process_value()
                 success += 1
             except:
                 self.log.warning('Power-meter value unreadable')
@@ -129,7 +129,7 @@ class AomLogic(GenericLogic):
     def calibrate(self):
         """ Method to call that full calibration procedure """
         result = self._do_sweep()
-        if result is None: # is case of aborted sweep
+        if result is None:  # in case of aborted sweep
             return
         voltages, powers = result
         power_max = powers.max()
@@ -137,7 +137,7 @@ class AomLogic(GenericLogic):
 
         i_max = np.argmax(powers)
         y = np.append(np.zeros(1), voltages[0:i_max + 1])
-        x = np.append(np.zeros(1), powers[0:i_max + 1])
+        x = np.append(np.zeros(1), powers_normalized[0:i_max + 1])
 
         self.output_modifier().update_calibration(np.array([x, y]).transpose())
         self.calibrate_max_from_value(power_max)

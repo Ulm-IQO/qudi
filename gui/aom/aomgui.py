@@ -48,6 +48,13 @@ class AomMainWindow(QtWidgets.QMainWindow):
 
 class AomGui(GUIBase):
     """ GUI for aom logic. Module used for controlling AOM diffraction efficiency via process_value_modifier
+
+        Example config :
+        aom_gui:
+            module.Class: 'aom.aomgui.AomGui'
+            connect:
+                logic: 'aomlogic'
+
     """
 
     logic = Connector(interface='AomLogic')
