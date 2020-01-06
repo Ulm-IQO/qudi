@@ -20,13 +20,18 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 import os
-from qtpy import QtGui, QtWidgets
+from qtpy import QtCore, QtGui, QtWidgets
 
 
 class ModuleFrameWidget(QtWidgets.QFrame):
     """
     Custom module QFrame widget for the Qudi manager GUI
     """
+    sigLoadClicked = QtCore.Signal(str)
+    sigDeactivateClicked = QtCore.Signal(str)
+    sigReloadClicked = QtCore.Signal(str)
+    sigCleanupClicked = QtCore.Signal(str)
+
     def __init__(self, parent=None, module_name=None, **kwargs):
         super().__init__(parent, **kwargs)
 
@@ -47,7 +52,7 @@ class ModuleFrameWidget(QtWidgets.QFrame):
         # Create activation pushbutton
         self.load_button = QtWidgets.QPushButton('load/activate <module_name>')
         self.load_button.setObjectName('loadButton')
-        self.load_button.setCheckable(True)
+        # self.load_button.setCheckable(True)
         self.load_button.setMinimumWidth(200)
         self.load_button.setSizePolicy(QtWidgets.QSizePolicy.MinimumExpanding,
                                        QtWidgets.QSizePolicy.Fixed)
@@ -72,9 +77,15 @@ class ModuleFrameWidget(QtWidgets.QFrame):
         layout.addWidget(self.status_label, 1, 0, 1, 4)
         self.setLayout(layout)
 
-        self._module_name = None
+        self._module_name = ''
         if module_name:
             self.set_module_name(module_name)
+
+        self.load_button.clicked.connect(self.load_clicked)
+        self.reload_button.clicked.connect(self.reload_clicked)
+        self.deactivate_button.clicked.connect(self.deactivate_clicked)
+        self.cleanup_button.clicked.connect(self.cleanup_clicked)
+        return
 
     def set_module_name(self, name):
         if name:
@@ -82,13 +93,50 @@ class ModuleFrameWidget(QtWidgets.QFrame):
             self._module_name = name
 
     def set_module_state(self, state):
-        pass
+        if state == 'not loaded':
+            self.load_button.setText('Load {0}'.format(self._module_name))
+            self.cleanup_button.setEnabled(True)
+            self.deactivate_button.setEnabled(False)
+            self.reload_button.setEnabled(False)
+        elif state == 'deactivated':
+            self.load_button.setText('Activate {0}'.format(self._module_name))
+            self.cleanup_button.setEnabled(True)
+            self.deactivate_button.setEnabled(False)
+            self.reload_button.setEnabled(False)
+        else:
+            self.load_button.setText(self._module_name)
+            self.cleanup_button.setEnabled(False)
+            self.deactivate_button.setEnabled(True)
+            self.reload_button.setEnabled(True)
+        self.status_label.setText('Module is {0}'.format(state))
+        return
+
+    @QtCore.Slot()
+    def load_clicked(self):
+        self.sigLoadClicked.emit(self._module_name)
+
+    @QtCore.Slot()
+    def deactivate_clicked(self):
+        self.sigDeactivateClicked.emit(self._module_name)
+
+    @QtCore.Slot()
+    def cleanup_clicked(self):
+        self.sigCleanupClicked.emit(self._module_name)
+
+    @QtCore.Slot()
+    def reload_clicked(self):
+        self.sigReloadClicked.emit(self._module_name)
 
 
 class ModuleScrollWidget(QtWidgets.QScrollArea):
     """
 
     """
+    sigActivateModule = QtCore.Signal(str)
+    sigDeactivateModule = QtCore.Signal(str)
+    sigCleanupModule = QtCore.Signal(str)
+    sigReloadModule = QtCore.Signal(str)
+
     def __init__(self, parent=None, module_names=None, **kwargs):
         super().__init__(parent, **kwargs)
         self.setLayout(QtWidgets.QVBoxLayout())
@@ -96,12 +144,43 @@ class ModuleScrollWidget(QtWidgets.QScrollArea):
         self._frames = dict()
         if module_names:
             self.create_module_frames(module_names)
+        return
 
+    @property
+    def module_names(self):
+        return tuple(self._frames)
+
+    @QtCore.Slot(list)
+    @QtCore.Slot(tuple)
     def create_module_frames(self, module_names):
+        for frame in self._frames.values():
+            frame.sigLoadClicked.disconnect()
+            frame.sigReloadClicked.disconnect()
+            frame.sigDeactivateClicked.disconnect()
+            frame.sigCleanupClicked.disconnect()
+            frame.setParent(None)
         self._frames = dict()
-        self.layout().clear()
+        self.setLayout(QtWidgets.QVBoxLayout())
         for name in module_names:
             if name in self._frames:
                 raise NameError('Module with name "{0}" occurs twice in module list.')
             self._frames[name] = ModuleFrameWidget(parent=self, module_name=name)
             self.layout().addWidget(self._frames[name])
+            self._frames[name].sigLoadClicked.connect(self.sigActivateModule)
+            self._frames[name].sigReloadClicked.connect(self.sigReloadModule)
+            self._frames[name].sigDeactivateClicked.connect(self.sigDeactivateModule)
+            self._frames[name].sigCleanupClicked.connect(self.sigCleanupModule)
+        return
+
+    @QtCore.Slot(dict)
+    def set_module_states(self, loaded_tree):
+        for mod_name, frame in self._frames.items():
+            if mod_name in loaded_tree:
+                try:
+                    state = loaded_tree[mod_name].module_state()
+                except:
+                    state = 'BROKEN'
+            else:
+                state = 'not loaded'
+            frame.set_module_state(state)
+        return
