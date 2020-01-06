@@ -76,9 +76,10 @@ class Manager(QtCore.QObject):
     sigShowManager = QtCore.Signal()
 
     def __init__(self, args, **kwargs):
-        """Constructor for Qudi main management class
+        """
+        Constructor for Qudi main management class
 
-          @param args: argparse command line arguments
+        @param args: argparse command line arguments
         """
         # used for keeping some basic methods thread-safe
         self.lock = Mutex(recursive=True)
@@ -99,15 +100,12 @@ class Manager(QtCore.QObject):
         self.tree['global'] = OrderedDict()
         self.tree['global']['startup'] = list()
 
-        self.hasGui = not args.no_gui
-        self.currentDir = None
-        self.baseDir = None
-        self.alreadyQuit = False
+        self.has_gui = not args.no_gui
         self.remote_server = False
 
         try:
             # Initialize parent class QObject
-            super().__init__(**kwargs)
+            super().__init__()
 
             # Register exception handler
             register_exception_handler(self)
@@ -120,13 +118,13 @@ class Manager(QtCore.QObject):
             self.tr = None
 
             # Gui setup if we have gui
-            if self.hasGui:
+            if self.has_gui:
                 import core.gui.gui
                 self.gui = core.gui.gui.Gui(artwork_dir=os.path.join(self.getMainDir(), 'artwork'))
                 self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
                 self.gui.system_tray_icon.managerAction.triggered.connect(
                     lambda: self.sigShowManager.emit())
-                self.gui.setTheme('qudiTheme')
+                self.gui.set_theme('qudiTheme')
 
             # Read in configuration file
             if args.config == '':
@@ -203,7 +201,7 @@ class Manager(QtCore.QObject):
                     elif key in self.tree['defined']['logic']:
                         self.startModule('logic', key)
                         self.sigModulesChanged.emit()
-                    elif self.hasGui and key in self.tree['defined']['gui']:
+                    elif self.has_gui and key in self.tree['defined']['gui']:
                         self.startModule('gui', key)
                         self.sigModulesChanged.emit()
                     else:
@@ -335,7 +333,7 @@ class Manager(QtCore.QObject):
                                            'no module specified'.format(m))
 
                 # GUI
-                elif key == 'gui' and cfg['gui'] is not None and self.hasGui:
+                elif key == 'gui' and cfg['gui'] is not None and self.has_gui:
                     for m in cfg['gui']:
                         if 'module.Class' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
@@ -400,7 +398,7 @@ class Manager(QtCore.QObject):
                         elif m == 'startup':
                             self.tree['global']['startup'] = cfg[
                                 'global']['startup']
-                        elif m == 'stylesheet' and self.hasGui:
+                        elif m == 'stylesheet' and self.has_gui:
                             self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
                             stylesheetpath = os.path.join(
                                 self.getMainDir(),
@@ -412,7 +410,7 @@ class Manager(QtCore.QObject):
                                 logger.warning(
                                     'Stylesheet not found at {0}'.format(stylesheetpath))
                                 continue
-                            self.gui.setStyleSheet(stylesheetpath)
+                            self.gui.set_style_sheet(stylesheetpath)
                         else:
                             self.tree['global'][m] = cfg['global'][m]
 
@@ -1351,7 +1349,7 @@ class Manager(QtCore.QObject):
                 except:
                     brokenmodules = True
         if lockedmodules:
-            if self.hasGui:
+            if self.has_gui:
                 self.sigShutdownAcknowledge.emit(lockedmodules, brokenmodules)
             else:
                 # FIXME: console prompt here
@@ -1427,7 +1425,7 @@ class Manager(QtCore.QObject):
         @param str title: The window title of the dialog
         @param str message: The message to be shown in the dialog window
         """
-        if not self.hasGui:
+        if not self.has_gui:
             logger.warning('{0}:\n{1}'.format(title, message))
             return
 
@@ -1451,7 +1449,7 @@ class Manager(QtCore.QObject):
         @param float time: optional, The lingering time of the balloon in seconds
         @param QIcon icon: optional, an icon to be used in the balloon. "None" will use OS default.
         """
-        if not self.hasGui or not self.gui.system_tray_icon.supportsMessages():
+        if not self.has_gui or not self.gui.system_tray_icon.supportsMessages():
             logger.warning('{0}:\n{1}'.format(title, message))
             return
         if self.thread() is not QtCore.QThread.currentThread():

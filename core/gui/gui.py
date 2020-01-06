@@ -67,30 +67,31 @@ class Gui(QtCore.QObject):
         super().__init__()
         QtWidgets.QApplication.instance().setQuitOnLastWindowClosed(False)
 
+        self.app_icon = None
+
         self._artwork_dir = artwork_dir
-
-        self.setAppIcon()
-
         self.system_tray_icon = SystemTrayIcon(artwork_dir)
         self.show_system_tray_icon()
+        self._init_app_icon()
 
-    def setAppIcon(self):
+    def _init_app_icon(self):
         """ Set up the Qudi application icon.
         """
         iconpath = os.path.join(self._artwork_dir, 'logo')
-        self.appIcon = QtGui.QIcon()
-        self.appIcon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
-        self.appIcon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
-        self.appIcon.addFile(os.path.join(iconpath, 'logo-qudi-32x32.png'), QtCore.QSize(32, 32))
-        self.appIcon.addFile(os.path.join(iconpath, 'logo-qudi-48x48.png'), QtCore.QSize(48, 48))
-        self.appIcon.addFile(
+        self.app_icon = QtGui.QIcon()
+        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
+        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
+        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-32x32.png'), QtCore.QSize(32, 32))
+        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-48x48.png'), QtCore.QSize(48, 48))
+        self.app_icon.addFile(
             os.path.join(iconpath, 'logo-qudi-256x256.png'), QtCore.QSize(256, 256))
-        QtWidgets.QApplication.instance().setWindowIcon(self.appIcon)
+        QtWidgets.QApplication.instance().setWindowIcon(self.app_icon)
 
-    def setTheme(self, theme):
-        """ Set icon theme for qudi app.
-            
-            @param str theme: Qudi theme name
+    def set_theme(self, theme):
+        """
+        Set icon theme for qudi app.
+
+        @param str theme: qudi theme name
         """
         # Make icons work on non-X11 platforms, set custom theme
         # if not sys.platform.startswith('linux') and not sys.platform.startswith('freebsd'):
@@ -103,10 +104,11 @@ class Gui(QtCore.QObject):
         QtGui.QIcon.setThemeSearchPaths(themepaths)
         QtGui.QIcon.setThemeName(theme)
 
-    def setStyleSheet(self, stylesheetpath):
-        """ Set qss style sheet for application.
+    def set_style_sheet(self, stylesheetpath):
+        """
+        Set qss style sheet for application.
 
-            @param str stylesheetpath: path to style sheet file
+        @param str stylesheetpath: path to style sheet file
         """
         with open(stylesheetpath, 'r') as stylesheetfile:
             stylesheet = stylesheetfile.read()
@@ -124,7 +126,7 @@ class Gui(QtCore.QObject):
             stylesheet += mac_fix
         QtWidgets.QApplication.instance().setStyleSheet(stylesheet)
 
-    def closeWindows(self):
+    def close_windows(self):
         """ Close all application windows.
         """
         QtWidgets.QApplication.instance().closeAllWindows()

@@ -25,20 +25,11 @@ __version__ = '0.1'
 import os
 # TODO: Clean up
 import PySide2
+
 dirname = os.path.dirname(PySide2.__file__)
 plugin_path = os.path.join(dirname, 'plugins', 'platforms')
 os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
-
-if not 'QT_API' in os.environ:
-    # use PyQt4 as default
-    # os.environ['QT_API'] = 'pyqt5'
-    os.environ['QT_API'] = 'pyside2'
-else:
-    print('Specified Qt API:', os.environ['QT_API'])
-    # if pyqt4 check environment variable is 'pyqt' and not 'pyqt4' (ipython,
-    # matplotlib, etc)
-    if os.environ['QT_API'].lower() == 'pyqt4':
-        os.environ['QT_API'] = 'pyqt'
+os.environ['QT_API'] = 'pyside2'
 
 import qtpy
 print('Used Qt API:', qtpy.API_NAME)
@@ -51,5 +42,5 @@ if sys.platform == 'win32':
         myappid = 'quantumoptics.quantumdiamond.mainapp'  # arbitrary string
         ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
     except:
-        print('SetCurrentProcessExplicitAppUserModelID failed! This is '
-              'probably not Microsoft Windows!')
+        print('SetCurrentProcessExplicitAppUserModelID failed! This is probably not Microsoft '
+              'Windows!')

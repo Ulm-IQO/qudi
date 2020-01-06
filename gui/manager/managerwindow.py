@@ -85,6 +85,7 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         self.action_quit.setIcon(QtGui.QIcon(os.path.join(icon_path, 'application-exit.png')))
         self.action_quit.setText('Quit qudi')
         self.action_quit.setToolTip('Quit qudi')
+        self.action_quit.setShortcut(QtGui.QKeySequence('Ctrl+Q'))
         # view actions
         self.action_view_console = QtWidgets.QAction()
         self.action_view_console.setCheckable(True)

@@ -30,8 +30,7 @@ class GUIBaseMixin(BaseMixin):
     """
 
     def show(self):
-        warnings.warn('Every GUI module needs to reimplement the show() '
-                'function!')
+        warnings.warn('Every GUI module needs to reimplement the show() function!')
 
     def saveWindowPos(self, window):
         self._statusVariables['pos_x'] = window.pos().x()

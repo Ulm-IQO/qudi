@@ -27,13 +27,11 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 import sys
 import os
 
-# Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS,
-# and SIGILL signals
+# Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
 # -> e.g. for segmentation faults
 import faulthandler
 faulthandler.disable()
 faulthandler.enable(all_threads=True)
-
 
 # parse commandline parameters
 import argparse
@@ -63,17 +61,15 @@ print('Loading Qudi...')
 
 # this loads Qt and makes sure the API version is right with PyQt4
 if __package__ is None:
-    import core
     __package__ = 'core'
-else:
-    import core
+import core
 
 
 # define a global variable for the manager
 man = None
 
-# Until here every module is in the python standard library.
-# Check vital packages for qudi, otherwise qudi will not even start.
+# Until here every module is in the python standard library. Check vital packages for qudi,
+# otherwise qudi will not even start.
 from core.util.helpers import import_check
 err_code = import_check()
 
@@ -84,6 +80,8 @@ if err_code != 0:
 # install logging facility for Qt errors
 import qtpy
 from qtpy import QtCore
+
+
 def qt_message_handler(msgType, msg):
     """
     A message handler handling Qt messages.
@@ -156,7 +154,7 @@ class AppWatchdog(QtCore.QObject):
     def __init__(self):
         super().__init__()
         self.alreadyQuit = False
-        self.hasGui = False
+        self.has_gui = False
         self.exitcode = 0
         # Run python code periodically to allow interactive debuggers to interrupt
         # the qt event loop
@@ -214,8 +212,8 @@ class AppWatchdog(QtCore.QObject):
             self.timer.stop()
             logger.info('Closing windows...')
             print('Closing windows...')
-            if manager.hasGui:
-                manager.gui.closeWindows()
+            if manager.has_gui:
+                manager.gui.close_windows()
                 manager.gui.close_system_tray_icon()
             QtCore.QCoreApplication.instance().processEvents()
             logger.info('Stopping threads...')
@@ -303,7 +301,7 @@ else:
         from pycallgraph.output import GraphvizOutput
         with PyCallGraph(output=GraphvizOutput()):
             app.exec_()
-    elif not man.hasGui:
+    elif not man.has_gui:
         # without gui
         app.exec_()
         helpers.exit(watchdog.exitcode)
