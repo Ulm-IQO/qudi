@@ -156,6 +156,7 @@ def initialize_logger(path=''):
 original_excepthook = None
 _blockLogging = False
 
+
 def _exception_handler(manager, *args):
     """Exception logging function.
 

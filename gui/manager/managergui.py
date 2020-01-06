@@ -51,16 +51,14 @@ _has_pyqtgraph = False
 
 
 class ManagerGui(GUIBase):
+    """
+    This class provides a GUI to the qudi manager.
+    It supports module loading, reloading, logging and other administrative tasks.
 
-    """This class provides a GUI to the Qudi manager.
-
-      @signal sigStartAll: sent when all modules should be loaded
-      @signal str str sigStartThis: load a specific module
-      @signal str str sigReloadThis reload a specific module from Python code
-      @signal str str sigStopThis: stop all actions of a module and remove
-                                   references
-      It supports module loading, reloading, logging and other
-      administrative tasks.
+    @signal sigStartAll: sent when all modules should be loaded
+    @signal str str sigStartThis: load a specific module
+    @signal str str sigReloadThis reload a specific module from Python code
+    @signal str str sigStopThis: stop all actions of a module and remove references
     """
     # status vars
     _console_font_size = StatusVar('console_font_size', 10)
@@ -163,12 +161,12 @@ class ManagerGui(GUIBase):
 
         # Init module lists
         self.update_gui_module_list()
+        self.update_module_states()
         for base, widget in self._mw.module_scroll_widgets.items():
             widget.sigActivateModule.connect(lambda mod, b=base: self.sigStartModule.emit(b, mod))
             widget.sigReloadModule.connect(lambda mod, b=base: self.sigReloadModule.emit(b, mod))
             widget.sigDeactivateModule.connect(lambda mod, b=base: self.sigStopModule.emit(b, mod))
             widget.sigCleanupModule.connect(lambda mod, b=base: self.sigCleanupStatus.emit(b, mod))
-        self.update_module_states()
 
         # Timer for module state display
         self._check_timer = QtCore.QTimer()
