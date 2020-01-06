@@ -63,7 +63,6 @@ class JoystickToMotor(GenericLogic):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
-        self.setup_axis()
         self.joystick_logic().register(str(self), self.callback, trigger_keys={str(self._button_interlock): True})
 
     def on_deactivate(self):
@@ -113,7 +112,7 @@ class JoystickToMotor(GenericLogic):
             if axis:
                 steps = difference[int(index)]
                 if steps:
-                    self.motor_logic.motor_hardware().move_rel(axis, steps)
+                    self.motor_hardware().move_rel({axis: steps})
                     changed = True
         self._hardware_position = after
         # if changed:
