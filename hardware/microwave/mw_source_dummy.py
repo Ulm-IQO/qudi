@@ -162,7 +162,7 @@ class MicrowaveDummy(Base, MicrowaveInterface):
 
         Interleave option is used for arbitrary waveform generator devices.
         """
-        self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {0:f}:'.format(frequency,
+        self.log.debug('MicrowaveDummy>set_cw, frequency: {0:f}, power {1:f}:'.format(frequency,
                                                                                       power))
         self.output_active = False
         self.current_output_mode = MicrowaveMode.CW
