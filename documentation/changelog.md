@@ -58,6 +58,8 @@ The potential sequence_options are:
 * added the option to do a purely analog ODMR scan.
 * added multi channel option to process_interface and process_control_interface
 * added the option of an additional path for fit methods
+* added a hardware file to interface attocube stepper controller ANC300
+* added a joystick connector to control motors XYZ via joystick - compatible with a stepper controller
 * 
 
 
