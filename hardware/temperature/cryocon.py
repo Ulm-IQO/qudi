@@ -56,6 +56,8 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
 
     _inst = None
 
+    _stop_wait = True
+
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
@@ -158,7 +160,7 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         """
         self.set_temperature(temperature, turn_on=True)
         start_time = time.time()
-        while time.time() - start_time < timeout:
+        while time.time() - start_time < timeout and not self._stop_wait:
             current_temperature = self.get_temperature()
             if temperature - delta < current_temperature < temperature + delta:
                         return True
