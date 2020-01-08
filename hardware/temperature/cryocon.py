@@ -61,6 +61,10 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
     def on_activate(self):
         """ Initialisation performed during activation of the module.
         """
+        self.open_resource()
+
+    def open_resource(self):
+        """ Open a new visa connection """
         rm = visa.ResourceManager()
         try:
             address = 'TCPIP::{}::{}::SOCKET'.format(self._ip_address, self._ip_port)
@@ -68,7 +72,7 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
                                           write_termination='\n', read_termination='\n')
         except visa.VisaIOError:
             self.log.error('Could not connect to hardware. Please check the wires and the address.')
-            raise
+            raise visa.VisaIOError
 
     def on_deactivate(self):
         """ Deinitialisation performed during deactivation of the module.
@@ -83,17 +87,31 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         channel = channel if channel is not None else self._main_channel
         try:
             text = 'INPUT? {}'.format(channel)
-            temperature = float(self._inst.query(text))
+            temperature = float(self._query(text))
         except:
             temperature = np.NaN
         return temperature
+
+    def _query(self, text):
+        """ Helper function to send query and deal with errors """
+        try:
+            response = self._inst.query(text)
+        except visa.VisaIOError:
+            self.log.warning('Cryocon connexion lost, automatic attempt to reconnect...')
+            self.open_resource()
+            self._inst.query(text)
+        return response
 
     def set_temperature(self, temperature, channel=None, turn_on=False):
         """ Function to set the temperature setpoint """
         channel = channel if channel is not None else self._main_channel
         loop = 1 if channel == 'A' else 2
         text = 'loop {}:setp {}'.format(loop, temperature)
-        self._inst.query(text)
+        try:
+            self._query(text)
+        except:
+            self.log.error('Cryocon temperature could not be set because of a connexion error.')
+            return
         if turn_on:
             self.control()
 
@@ -103,18 +121,18 @@ class Cryocon(Base, ProcessInterface, ProcessControlInterface):
         loop = 1 if channel == 'A' else 2
         try:
             text = 'loop {}:setp?'.format(loop)
-            setpoint = float(self._inst.query(text)[:-1])
+            setpoint = float(self._query(text)[:-1])
         except:
             setpoint = np.NaN
         return setpoint
 
     def stop(self):
         """  Function to stop the heating of the Cryocon """""
-        self._inst.query('stop')
+        self._query('stop')
 
     def control(self):
         """ Function to turn the heating on """
-        self._inst.query('control')
+        self._query('control')
 
     # ProcessInterface methods
 
