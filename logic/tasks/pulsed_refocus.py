@@ -31,32 +31,35 @@ class Task(InterruptableTask):
         super().__init__(**kwargs)
         self._poi_manager = self.ref['poi_manager']
         self._optimizer_logic = self.ref['optimizer_logic']
-        self._laser = self.ref['laser']
+        # self._laser = self.ref['laser']
         self._master = self.ref['pulsed_master']
         self._generator = self.ref['pulsed_master'].sequencegeneratorlogic()
         self._measurement = self.ref['pulsed_master'].pulsedmeasurementlogic()
-        self._was_power = None
-        self.check_config_key('power', 300e-6)
-        self._power = self.config['power']
+        self._was_invoke_settings = None
+        self._was_running = None
+        self._was_loaded = None
+        # self._was_power = None
+        # self.check_config_key('power', 300e-6)
+        # self._power = self.config['power']
 
     def startTask(self):
-        """ Get position from scanning device and do the refocus """
+        """ Stop pulsed with backup , start laser_on, do refocus """
 
         self._was_running = self._measurement.module_state() == 'locked'
         if self._was_running:
             self._measurement.stop_pulsed_measurement('refocus')
         self._was_loaded = tuple(self._generator.loaded_asset)
-        self._was_power = self._laser.get_power_setpoint()
+        # self._was_power = self._laser.get_power_setpoint()
         self._was_invoke_settings = self._measurement.measurement_settings['invoke_settings']
 
-        self._laser.set_power(self._power)
+        # self._laser.set_power(self._power)
         self.wait_for_idle()
         self._generator.generate_predefined_sequence(predefined_sequence_name='laser_on', kwargs_dict={})
         self._generator.sample_pulse_block_ensemble('laser_on')
         self._generator.load_ensemble('laser_on')
         self._measurement.set_measurement_settings(invoke_settings=False)
         self._measurement.start_pulsed_measurement()
-        self._poi_manager.optimise_poi(poikey=self._poi_manager._current_poi_key)
+        self._poi_manager.optimise_poi_position()
 
     def runTaskStep(self):
         """ Wait for refocus to finish. """
@@ -72,13 +75,13 @@ class Task(InterruptableTask):
         pass
 
     def cleanupTask(self):
-        """ nothing to clean up """
+        """ go back to pulsed acquisition from backup """
         self._measurement.stop_pulsed_measurement()
         self.wait_for_idle()
         if self._was_loaded[1] == 'PulseBlockEnsemble':
             self._generator.sample_pulse_block_ensemble(self._was_loaded[0])
             self._generator.load_ensemble(self._was_loaded[0])
-        self._laser.set_power(self._was_power)
+        # self._laser.set_power(self._was_power)
         if self._was_invoke_settings:
             self._measurement.set_measurement_settings(invoke_settings=True)
         if self._was_running:
