@@ -32,6 +32,7 @@ class Task(InterruptableTask):
         self._task_logic = self.ref['task_logic']
         self._poi_manager = self.ref['poi_manager']
         self._timer_duration = None
+        self._start_time = None
         self.check_config_key('refocus_task', 'refocus')
 
     def startTask(self):
@@ -40,22 +41,21 @@ class Task(InterruptableTask):
 
     def runTaskStep(self):
         """ Wait for refocus to finish. """
-        if time.time() - self._start_time > self._poi_manager.timer_duration:
+        if time.time() - self._start_time > self._poi_manager.refocus_period:
             self._task_logic.startTaskByName(self.config['refocus_task'])
             self._start_time = time.time()
         return True
 
     def pauseTask(self):
-        """ pausing a refocus is forbidden """
+        """ pausing tracking is forbidden """
         pass
 
     def resumeTask(self):
-        """ pausing a refocus is forbidden """
+        """ pausing tracking is forbidden """
         pass
 
     def cleanupTask(self):
         """ nothing to clean up """
-        # self._laser.set_power(self._was_power)
         pass
 
     # def checkExtraStartPrerequisites(self):
