@@ -67,25 +67,22 @@ class Gui(QtCore.QObject):
         super().__init__()
         QtWidgets.QApplication.instance().setQuitOnLastWindowClosed(False)
 
-        self.app_icon = None
-
         self._artwork_dir = artwork_dir
+        self._init_app_icon()
         self.system_tray_icon = SystemTrayIcon(artwork_dir)
         self.show_system_tray_icon()
-        self._init_app_icon()
 
     def _init_app_icon(self):
         """ Set up the Qudi application icon.
         """
         iconpath = os.path.join(self._artwork_dir, 'logo')
-        self.app_icon = QtGui.QIcon()
-        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
-        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
-        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-32x32.png'), QtCore.QSize(32, 32))
-        self.app_icon.addFile(os.path.join(iconpath, 'logo-qudi-48x48.png'), QtCore.QSize(48, 48))
-        self.app_icon.addFile(
-            os.path.join(iconpath, 'logo-qudi-256x256.png'), QtCore.QSize(256, 256))
-        QtWidgets.QApplication.instance().setWindowIcon(self.app_icon)
+        app_icon = QtGui.QIcon()
+        app_icon.addFile(os.path.join(iconpath, 'logo-qudi-16x16.png'), QtCore.QSize(16, 16))
+        app_icon.addFile(os.path.join(iconpath, 'logo-qudi-24x24.png'), QtCore.QSize(24, 24))
+        app_icon.addFile(os.path.join(iconpath, 'logo-qudi-32x32.png'), QtCore.QSize(32, 32))
+        app_icon.addFile(os.path.join(iconpath, 'logo-qudi-48x48.png'), QtCore.QSize(48, 48))
+        app_icon.addFile(os.path.join(iconpath, 'logo-qudi-256x256.png'), QtCore.QSize(256, 256))
+        QtWidgets.QApplication.instance().setWindowIcon(app_icon)
 
     def set_theme(self, theme):
         """
@@ -104,7 +101,8 @@ class Gui(QtCore.QObject):
         QtGui.QIcon.setThemeSearchPaths(themepaths)
         QtGui.QIcon.setThemeName(theme)
 
-    def set_style_sheet(self, stylesheetpath):
+    @staticmethod
+    def set_style_sheet(stylesheetpath):
         """
         Set qss style sheet for application.
 
@@ -126,7 +124,8 @@ class Gui(QtCore.QObject):
             stylesheet += mac_fix
         QtWidgets.QApplication.instance().setStyleSheet(stylesheet)
 
-    def close_windows(self):
+    @staticmethod
+    def close_windows():
         """ Close all application windows.
         """
         QtWidgets.QApplication.instance().closeAllWindows()

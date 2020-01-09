@@ -19,17 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import copy
 import logging
 import warnings
-from fysom import Fysom  # provides a final state machine
+from fysom import Fysom  # provides a finite state machine
 from collections import OrderedDict
 
 from qtpy import QtCore
 from .meta import ModuleMeta
 from .configoption import MissingOption
 from .connector import Connector
-from .statusvariable import StatusVar
 
 
 class ModuleStateMachine(QtCore.QObject, Fysom):
@@ -40,39 +38,33 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
     trigger = QtCore.Slot(str, result=bool)(Fysom.trigger)
 
     # signals
-    sigStateChanged = QtCore.Signal(object)  # (module name, state change)
+    sigStateChanged = QtCore.Signal(object)  # Fysom event
 
     def __init__(self, parent, callbacks=None, **kwargs):
-        self._parent = parent
         if callbacks is None:
-            callbacks = {}
+            callbacks = dict()
 
         # State machine definition
         # the abbreviations for the event list are the following:
         #   name:   event name,
         #   src:    source state,
         #   dst:    destination state
-        _baseStateList = {
-            'initial': 'deactivated',
-            'events': [
-                {'name': 'activate', 'src': 'deactivated', 'dst': 'idle'},
-                {'name': 'deactivate', 'src': 'idle', 'dst': 'deactivated'},
-                {'name': 'deactivate', 'src': 'running', 'dst': 'deactivated'},
-                {'name': 'deactivate', 'src': 'locked', 'dst': 'deactivated'},
-                {'name': 'run', 'src': 'idle', 'dst': 'running'},
-                {'name': 'stop', 'src': 'running', 'dst': 'idle'},
-                {'name': 'lock', 'src': 'idle', 'dst': 'locked'},
-                {'name': 'lock', 'src': 'running', 'dst': 'locked'},
-                {'name': 'unlock', 'src': 'locked', 'dst': 'idle'},
-                {'name': 'runlock', 'src': 'locked', 'dst': 'running'},
-            ],
-            'callbacks': callbacks
-        }
+        fsm_cfg = {'initial': 'deactivated',
+                   'events': [{'name': 'activate', 'src': 'deactivated', 'dst': 'idle'},
+                              {'name': 'deactivate', 'src': 'idle', 'dst': 'deactivated'},
+                              {'name': 'deactivate', 'src': 'running', 'dst': 'deactivated'},
+                              {'name': 'deactivate', 'src': 'locked', 'dst': 'deactivated'},
+                              {'name': 'run', 'src': 'idle', 'dst': 'running'},
+                              {'name': 'stop', 'src': 'running', 'dst': 'idle'},
+                              {'name': 'lock', 'src': 'idle', 'dst': 'locked'},
+                              {'name': 'lock', 'src': 'running', 'dst': 'locked'},
+                              {'name': 'unlock', 'src': 'locked', 'dst': 'idle'},
+                              {'name': 'runlock', 'src': 'locked', 'dst': 'running'}],
+                   'callbacks': callbacks}
 
         # Initialise state machine:
         QtCore.QObject.__init__(self, parent)
-        Fysom.__init__(self, cfg=_baseStateList, **kwargs)
-        # super().__init__(parent=parent, cfg=_baseStateList, **kwargs)
+        Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
 
     def __call__(self):
         """
@@ -82,37 +74,46 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
 
     def _build_event(self, event):
         """
-        Overrides fysom _build_event to wrap on_activate and on_deactivate to
-        catch and log exceptions.
+        Overrides Fysom _build_event to wrap on_activate and on_deactivate to catch and log
+        exceptions.
+
+        @param str event: Event name to build the Fysom event for
+
+        @return function: The event handler used by Fysom for the given event
         """
         base_event = super()._build_event(event)
-        if event in ['activate', 'deactivate']:
-            if event == 'activate':
-                noun = 'activation'
-            else:
-                noun = 'deactivation'
+        if event in ('activate', 'deactivate'):
+            noun = 'activation' if event == 'activate' else 'deactivation'
 
             def wrap_event(*args, **kwargs):
-                self._parent.log.debug('{0} in thread {1}'.format(
-                    noun.capitalize(),
-                    QtCore.QThread.currentThread()))
+                self.parent().log.debug(
+                    '{0} in thread "{1}"'.format(noun.capitalize(),
+                                                 QtCore.QThread.currentThread().objectName()))
                 try:
                     base_event(*args, **kwargs)
                 except:
-                    self._parent.log.exception('Error during {0}'.format(noun))
+                    self.parent().log.exception('Error during {0}'.format(noun))
                     return False
                 return True
 
             return wrap_event
-        else:
-            return base_event
+        return base_event
 
     def onchangestate(self, e):
-        """ Fysom callback for state transition.
+        """
+        Fysom callback for all state transitions.
 
-        @param object e: Fysom state transition description
+        @param object e: Fysom event object passed through all state transition callbacks
         """
         self.sigStateChanged.emit(e)
+
+    @QtCore.Slot()
+    def activate(self):
+        super().activate()
+
+    @QtCore.Slot()
+    def deactivate(self):
+        super().deactivate()
 
 
 class BaseMixin(metaclass=ModuleMeta):
@@ -153,10 +154,8 @@ class BaseMixin(metaclass=ModuleMeta):
         if callbacks is None:
             callbacks = {}
 
-        default_callbacks = {
-            'onactivate': self.__load_status_vars_activate,
-            'ondeactivate': self.__save_status_vars_deactivate
-            }
+        default_callbacks = {'onbeforeactivate': self.__load_status_vars_activate,
+                             'ondeactivate': self.__save_status_vars_deactivate}
         default_callbacks.update(callbacks)
 
         self.module_state = ModuleStateMachine(parent=self, callbacks=default_callbacks)
@@ -208,20 +207,29 @@ class BaseMixin(metaclass=ModuleMeta):
         self._configuration = config
         self._statusVariables = OrderedDict()
 
-    def __load_status_vars_activate(self, event):
-        """ Restore status variables before activation.
+    @QtCore.Slot()
+    def move_to_manager_thread(self):
+        """
 
-            @param e: Fysom event
+        @return:
+        """
+        if QtCore.QThread.currentThread() != self.thread():
+            QtCore.QMetaObject.invokeMethod(self,
+                                            'move_to_manager_thread',
+                                            QtCore.Qt.BlockingQueuedConnection)
+        else:
+            self.moveToThread(self._manager.thread())
+
+    def __load_status_vars_activate(self, event):
+        """
+        Restore status variables before activation and invoke on_activate method.
+
+        @param object event: Fysom event object
         """
         # add status vars
-        sv = self._statusVariables
         for vname, var in self._stat_vars.items():
-
-            if isinstance(var.default, dict) and var.name in sv:
-                svar = copy.deepcopy(var.default)
-                svar.update(sv[var.name])
-            else:
-                svar = sv[var.name] if var.name in sv else copy.deepcopy(var.default)
+            sv = self._statusVariables
+            svar = sv[var.name] if var.name in sv else var.default
 
             if var.constructor_function is None:
                 setattr(self, var.var_name, svar)
@@ -232,9 +240,10 @@ class BaseMixin(metaclass=ModuleMeta):
         self.on_activate()
 
     def __save_status_vars_deactivate(self, event):
-        """ Save status variables after deactivation.
+        """
+        Invoke on_deactivate method and save status variables afterwards even if deactivation fails.
 
-            @param e: Fysom event
+        @param object event: Fysom event object
         """
         try:
             self.on_deactivate()
@@ -244,12 +253,12 @@ class BaseMixin(metaclass=ModuleMeta):
             # save status vars even if deactivation failed
             for vname, var in self._stat_vars.items():
                 if hasattr(self, var.var_name):
-                    value = getattr(self, var.var_name)
-                    if not isinstance(value, StatusVar):
-                        if var.representer_function is None:
-                            self._statusVariables[var.name] = value
-                        else:
-                            self._statusVariables[var.name] = var.representer_function(self, value)
+                    if var.representer_function is None:
+                        self._statusVariables[var.name] = getattr(self, var.var_name)
+                    else:
+                        self._statusVariables[var.name] = var.representer_function(
+                                                            self,
+                                                            getattr(self, var.var_name))
 
     @property
     def log(self):
@@ -267,23 +276,21 @@ class BaseMixin(metaclass=ModuleMeta):
         return self._threaded
 
     def on_activate(self):
-        """ Method called when module is activated. If not overridden
-            this method returns an error.
-
         """
-        self.log.error('Please implement and specify the activation method '
-                         'for {0}.'.format(self.__class__.__name__))
+        Method called when module is activated. If not overridden this method returns an error.
+        """
+        self.log.error('Please implement and specify the activation method for {0}.'
+                       ''.format(self.__class__.__name__))
 
     def on_deactivate(self):
-        """ Method called when module is deactivated. If not overridden
-            this method returns an error.
         """
-        self.log.error('Please implement and specify the deactivation '
-                         'method {0}.'.format(self.__class__.__name__))
+        Method called when module is deactivated. If not overridden this method returns an error.
+        """
+        self.log.error('Please implement and specify the deactivation method {0}.'
+                       ''.format(self.__class__.__name__))
 
     def getStatusVariables(self):
-        """ Return a dict of variable names and their content representing
-            the module state for saving.
+        """ Return a dict of variable names and their content representing the module state for saving.
 
         @return dict: variable names and contents.
 

@@ -473,7 +473,6 @@ class LogWidget(QtWidgets.QSplitter):
         @param int item: Item number
         @param int column: Column number
         """
-        print('update_filter_state:', item, column)
         # check all / uncheck all
         if item is self.filter_treewidget.topLevelItem(1):
             if item.checkState(0):
