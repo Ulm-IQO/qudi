@@ -25,7 +25,6 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 
 import sys
-import os
 
 # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
 # -> e.g. for segmentation faults
@@ -62,7 +61,6 @@ print('Loading Qudi...')
 # this loads Qt and makes sure the API version is right with PyQt4
 if __package__ is None:
     __package__ = 'core'
-import core
 
 
 # define a global variable for the manager

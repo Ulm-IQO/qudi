@@ -46,15 +46,12 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         self.module_tabs.setObjectName('moduleTabWidget')
         self.module_tabs.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
                                        QtWidgets.QSizePolicy.Preferred)
-        self.gui_scroll_widget = ModuleScrollWidget()
-        self.logic_scroll_widget = ModuleScrollWidget()
-        self.hardware_scroll_widget = ModuleScrollWidget()
-        self.module_scroll_widgets = {'gui': self.gui_scroll_widget,
-                                      'logic': self.logic_scroll_widget,
-                                      'hardware': self.hardware_scroll_widget}
-        self.module_tabs.addTab(self.gui_scroll_widget, 'GUI')
-        self.module_tabs.addTab(self.logic_scroll_widget, 'Logic')
-        self.module_tabs.addTab(self.hardware_scroll_widget, 'Hardware')
+        self.module_scroll_widgets = {'gui': ModuleScrollWidget(),
+                                      'logic': ModuleScrollWidget(),
+                                      'hardware': ModuleScrollWidget()}
+        self.module_tabs.addTab(self.module_scroll_widgets['gui'], 'GUI')
+        self.module_tabs.addTab(self.module_scroll_widgets['logic'], 'Logic')
+        self.module_tabs.addTab(self.module_scroll_widgets['hardware'], 'Hardware')
         self.setCentralWidget(self.module_tabs)
 
         # Create actions

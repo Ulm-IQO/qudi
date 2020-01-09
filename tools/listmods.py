@@ -27,7 +27,7 @@ import importlib
 sys.path.append(os.getcwd())
 
 from core.module import Base
-from gui.guibase import GUIBase
+from core.gui.guibase import GUIBase
 from logic.generic_logic import GenericLogic
 from core.task import InterruptableTask, PrePostTask
 

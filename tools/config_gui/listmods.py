@@ -114,7 +114,7 @@ def find_pyfiles(path):
 def check_qudi_modules(filelist):
     from core.module import Base
     from core.meta import InterfaceMetaclass
-    from gui.guibase import GUIBase
+    from core.gui.guibase import GUIBase
     from logic.generic_logic import GenericLogic
     from core.task import InterruptableTask, PrePostTask
 

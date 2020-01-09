@@ -45,6 +45,5 @@ class GUIBaseMixin(BaseMixin):
 
 class GUIBase(QObject, GUIBaseMixin):
     def __init__(self, parent=None, **kwargs):
-        # super().__init__(parent=parent, **kwargs)
         QObject.__init__(self, parent)
         GUIBaseMixin.__init__(self, parent=parent, **kwargs)

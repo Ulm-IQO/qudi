@@ -22,7 +22,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 import os
 
 from core.connector import Connector
-from gui.guibase import GUIBase
+from core.gui.guibase import GUIBase
 from qtpy import QtWidgets
 from qtpy import QtCore
 from qtpy import uic
