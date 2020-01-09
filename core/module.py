@@ -21,6 +21,7 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 
 import logging
 import warnings
+import copy
 from fysom import Fysom  # provides a finite state machine
 from collections import OrderedDict
 
@@ -139,20 +140,19 @@ class BaseMixin(metaclass=ModuleMeta):
     _sigBalloonMessage = QtCore.Signal(str, str, object)
 
     def __init__(self, manager, name, config=None, callbacks=None, **kwargs):
-        """ Initialise Base class object and set up its state machine.
+        """
+        Initialise Base class object and set up its state machine.
 
-          @param object self: the object being initialised
-          @param object manager: the manager object that
-          @param str name: unique name for this object
-          @param dict configuration: parameters from the configuration file
-          @param dict callbacks: dictionary specifying functions to be run
-                                 on state machine transitions
-
+        @param object self: the object being initialised
+        @param object manager: the manager object that
+        @param str name: unique name for this object
+        @param dict configuration: parameters from the configuration file
+        @param dict callbacks: dict specifying functions to be run on state machine transitions
         """
         if config is None:
-            config = {}
+            config = dict()
         if callbacks is None:
-            callbacks = {}
+            callbacks = dict()
 
         default_callbacks = {'onbeforeactivate': self.__load_status_vars_activate,
                              'ondeactivate': self.__save_status_vars_deactivate}
@@ -177,17 +177,14 @@ class BaseMixin(metaclass=ModuleMeta):
                 cfg_val = config[opt.name]
             else:
                 if opt.missing == MissingOption.error:
-                    raise Exception(
-                        'Required variable >> {0} << not given in configuration.\n'
-                        'Configuration is: {1}'.format(opt.name, config))
+                    raise Exception('Required variable >> {0} << not given in configuration.\n'
+                                    'Configuration is: {1}'.format(opt.name, config))
                 elif opt.missing == MissingOption.warn:
-                    self.log.warning(
-                        'No variable >> {0} << configured, using default value {1} instead.'
-                         ''.format(opt.name, opt.default))
+                    self.log.warning('No variable >> {0} << configured, using default value {1} '
+                                     'instead.'.format(opt.name, opt.default))
                 elif opt.missing == MissingOption.info:
-                    self.log.info(
-                        'No variable >> {0} << configured, using default value {1} instead.'
-                         ''.format(opt.name, opt.default))
+                    self.log.info('No variable >> {0} << configured, using default value {1} '
+                                  'instead.'.format(opt.name, opt.default))
                 cfg_val = opt.default
             if opt.check(cfg_val):
                 converted_val = opt.convert(cfg_val)
@@ -205,7 +202,7 @@ class BaseMixin(metaclass=ModuleMeta):
         self._manager = manager
         self._name = name
         self._configuration = config
-        self._statusVariables = OrderedDict()
+        self._status_variables = OrderedDict()
 
     @QtCore.Slot()
     def move_to_manager_thread(self):
@@ -228,7 +225,7 @@ class BaseMixin(metaclass=ModuleMeta):
         """
         # add status vars
         for vname, var in self._stat_vars.items():
-            sv = self._statusVariables
+            sv = self._status_variables
             svar = sv[var.name] if var.name in sv else var.default
 
             if var.constructor_function is None:
@@ -254,9 +251,9 @@ class BaseMixin(metaclass=ModuleMeta):
             for vname, var in self._stat_vars.items():
                 if hasattr(self, var.var_name):
                     if var.representer_function is None:
-                        self._statusVariables[var.name] = getattr(self, var.var_name)
+                        self._status_variables[var.name] = getattr(self, var.var_name)
                     else:
-                        self._statusVariables[var.name] = var.representer_function(
+                        self._status_variables[var.name] = var.representer_function(
                                                             self,
                                                             getattr(self, var.var_name))
 
@@ -265,8 +262,7 @@ class BaseMixin(metaclass=ModuleMeta):
         """
         Returns a logger object
         """
-        return logging.getLogger("{0}.{1}".format(
-            self.__module__, self.__class__.__name__))
+        return logging.getLogger('{0}.{1}'.format(self.__module__, self.__class__.__name__))
 
     @property
     def is_module_threaded(self):
@@ -274,6 +270,37 @@ class BaseMixin(metaclass=ModuleMeta):
         Returns whether the module shall be started in a thread.
         """
         return self._threaded
+
+    @property
+    def status_variables(self):
+        """
+        Returns a deepcopy of the protected status_variable dict with variable names and data
+        representing the module state for saving.
+
+        DO NOT try to use this property to alter or set status variables.
+        Use StatusVar instances from inside the module and do not alter status variables from any
+        external module.
+
+        @return dict: dict with variable names and contents
+        """
+        return copy.deepcopy(self._status_variables)
+
+    @status_variables.setter
+    def status_variables(self, var_dict):
+        """
+        Give the module a dict of variable names and their content representing the module state.
+
+        DO NOT try to use this property to alter or set status variables.
+        Use StatusVar instances from inside the module and do not alter status variables from any
+        external module.
+
+        @param OrderedDict var_dict: variable names and contents
+        """
+        if not isinstance(var_dict, dict):
+            self.log.error('Did not pass a dict or OrderedDict to setStatusVariables in {0}.'
+                           ''.format(self.__class__.__name__))
+            return
+        self._status_variables = var_dict
 
     def on_activate(self):
         """
@@ -288,74 +315,6 @@ class BaseMixin(metaclass=ModuleMeta):
         """
         self.log.error('Please implement and specify the deactivation method {0}.'
                        ''.format(self.__class__.__name__))
-
-    def getStatusVariables(self):
-        """ Return a dict of variable names and their content representing the module state for saving.
-
-        @return dict: variable names and contents.
-
-        @deprecated declare and use StatusVar class variables directly
-        """
-        warnings.warn('getStatusVariables is deprecated and will be removed in future versions. Use '
-                      'StatusVar instead.', DeprecationWarning)
-        return self._statusVariables
-
-    def setStatusVariables(self, variableDict):
-        """ Give a module a dict of variable names and their content
-            representing the module state.
-
-          @param OrderedDict dict: variable names and contents.
-
-          @deprecated declare and use StatusVar class variables
-        """
-        warnings.warn('setStatusVariables is deprecated and will be removed in future versions. Use '
-                      'StatusVar instead.', DeprecationWarning)
-        if not isinstance(variableDict, (dict, OrderedDict)):
-            self.log.error('Did not pass a dict or OrderedDict to '
-                           'setStatusVariables in {0}.'.format(
-                               self.__class__.__name__))
-            return
-        self._statusVariables = variableDict
-
-    def getConfiguration(self):
-        """ Return the configration dictionary for this module.
-
-          @return dict: confiuration dictionary
-          @deprecated declare and use ConfigOption class variables directly
-        """
-        warnings.warn('getConfiguration is deprecated and will be removed in future versions. Use '
-                      'ConfigOptions instead.', DeprecationWarning)
-        return self._configuration
-
-    def get_connector(self, connector_name):
-        """ Return module connected to the given named connector.
-          @param str connector_name: name of the connector
-
-          @return obj: module that is connected to the named connector
-          @deprecated instead of get_connector(connector_name) just use connector_name(). Enabled by using Connector
-                objects as class variables
-        """
-        warnings.warn('get_connector is deprecated and will be removed in future versions. Use '
-                      'Connector() callable instead.', DeprecationWarning)
-        if connector_name in self.connectors:
-            connector = self.connectors[connector_name]
-            # new style legacy connector
-            if isinstance(connector, Connector):
-                return connector()
-            # legacy legacy connector
-            elif isinstance(connector, dict):
-                obj = connector['object']
-                if obj is None:
-                    raise TypeError('No module connected')
-                return obj
-            else:
-                raise Exception(
-                    'Entry {0} in connector dict is of wrong type {1}.'
-                    ''.format(connector_name, type(connector)))
-        else:
-            raise Exception(
-                'Connector {0} does not exist.'
-                ''.format(connector_name))
 
     def pop_up_message(self, title, message):
         if not isinstance(title, str) or not isinstance(message, str):

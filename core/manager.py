@@ -955,7 +955,7 @@ class Manager(QtCore.QObject):
             logger.error('{0} module {1} not deactivated'.format(base, name))
             return
         try:
-            module.setStatusVariables(self.loadStatusVariables(base, name))
+            module.status_variables = self.loadStatusVariables(base, name)
             # start main loop for qt objects
             if module.is_module_threaded:
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
@@ -1016,7 +1016,7 @@ class Manager(QtCore.QObject):
             else:
                 module.module_state.deactivate()  # runs on_deactivate in main thread
 
-            self.saveStatusVariables(base, name, module.getStatusVariables())
+            self.saveStatusVariables(base, name, module.status_variables)
             logger.debug('Deactivation success: {}'.format(module.module_state() == 'deactivated'))
         except:
             logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
