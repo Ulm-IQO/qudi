@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Confocal-refocus task.
+Optimizer refocus task with laser on.
 
 Qudi is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -24,7 +24,18 @@ import time
 
 
 class Task(InterruptableTask):
-    """ This task does a confocal focus optimisation.
+    """ This task pauses pulsed measurement, run laser_on, does a poi refocus then goes back to the pulsed acquisition.
+
+    It uses poi manager refocus duration as input.
+
+    Example:
+        tasks:
+            pulsed_refocus:
+                module: 'pulsed_refocus'
+                needsmodules:
+                    poi_manager: 'poimanagerlogic'
+                    optimizer_logic: 'optimizerlogic'
+                    pulsed_master: 'pulsedmasterlogic'
     """
 
     def __init__(self, **kwargs):
