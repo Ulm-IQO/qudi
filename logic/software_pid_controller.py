@@ -26,16 +26,17 @@ import numpy as np
 
 from logic.generic_logic import GenericLogic
 from interface.pid_controller_interface import PIDControllerInterface
-from core.module import Connector, ConfigOption, StatusVar
+from core.connector import Connector
+from core.configoption import ConfigOption
+from core.statusvariable import StatusVar
+
 
 class SoftPIDController(GenericLogic, PIDControllerInterface):
     """
     Control a process via software PID.
     """
-    _modclass = 'pidlogic'
-    _modtype = 'logic'
 
-    ## declare connectors
+    # declare connectors
     process = Connector(interface='ProcessInterface')
     control = Connector(interface='ProcessControlInterface')
 

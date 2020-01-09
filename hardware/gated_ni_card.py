@@ -74,9 +74,6 @@ class SlowGatedNICard(NationalInstrumentsXSeries):
 
     """
 
-    _modtype = 'SlowGatedNICard'
-    _modclass = 'hardware'
-
     _photon_sources = ConfigOption('photon_sources', missing='error')
 
     def on_activate(self):
