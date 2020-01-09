@@ -426,7 +426,6 @@ class Manager(QtCore.QObject):
                         self.tree['config'][key] = cfg[key]
             except:
                 logger.exception('Error in configuration:')
-        # print self.tree['config']
         self.sigConfigChanged.emit()
 
     def readConfigFile(self, fileName, missingOk=True):
@@ -548,7 +547,6 @@ class Manager(QtCore.QObject):
         # load the python module
         mod = importlib.__import__('{0}.{1}'.format(
             baseName, module), fromlist=['*'])
-        # print('refcnt:', sys.getrefcount(mod))
         return mod
 
     def configureModule(self, moduleObject, baseName, className, instanceName,
@@ -587,7 +585,6 @@ class Manager(QtCore.QObject):
             configuration = {}
 
         # get class from module by name
-        #print(moduleObject, className)
         modclass = getattr(moduleObject, className)
 
         # FIXME: Check if the class we just obtained has the right inheritance
@@ -965,24 +962,21 @@ class Manager(QtCore.QObject):
                 modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
-                # success = QtCore.QMetaObject.invokeMethod(
-                #     module.module_state,
-                #     'trigger',
-                #     QtCore.Qt.BlockingQueuedConnection,
-                #     QtCore.Q_RETURN_ARG(bool),
-                #     QtCore.Q_ARG(str, 'activate'))
-                success = QtCore.QMetaObject.invokeMethod(
-                    module.module_state,
-                    'trigger',
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.QGenericReturnArgument(bool),
-                    QtCore.QGenericArgument(str, 'activate'))
+                QtCore.QMetaObject.invokeMethod(module.module_state,
+                                                'activate',
+                                                QtCore.Qt.BlockingQueuedConnection)
+                # Cleanup if activation was not successful
+                if not module.module_state() != 'deactivated':
+                    QtCore.QMetaObject.invokeMethod(module,
+                                                    'move_to_manager_thread',
+                                                    QtCore.Qt.BlockingQueuedConnection)
+                    self.tm.quitThread(modthread.objectName())
+                    self.tm.joinThread(modthread.objectName())
             else:
-                success = module.module_state.activate() # runs on_activate in main thread
-            logger.debug('Activation success: {}'.format(success))
+                module.module_state.activate()  # runs on_activate in main thread
+            logger.debug('Activation success: {}'.format(module.module_state() != 'deactivated'))
         except:
-            logger.exception(
-                '{0} module {1}: error during activation:'.format(base, name))
+            logger.exception('{0} module {1}: error during activation:'.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
 
     @QtCore.Slot(str, str)
@@ -1011,25 +1005,20 @@ class Manager(QtCore.QObject):
             return
         try:
             if module.is_module_threaded:
-                success = QtCore.QMetaObject.invokeMethod(
-                    module.module_state,
-                    'trigger',
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_RETURN_ARG(bool),
-                    QtCore.Q_ARG(str, 'deactivate'))
-
-                QtCore.QMetaObject.invokeMethod(
-                    module,
-                    'moveToThread',
-                    QtCore.Qt.BlockingQueuedConnection,
-                    QtCore.Q_ARG(QtCore.QThread, self.tm.thread))
-                self.tm.quitThread('mod-{0}-{1}'.format(base, name))
-                self.tm.joinThread('mod-{0}-{1}'.format(base, name))
+                QtCore.QMetaObject.invokeMethod(module.module_state,
+                                                'deactivate',
+                                                QtCore.Qt.BlockingQueuedConnection)
+                QtCore.QMetaObject.invokeMethod(module,
+                                                'move_to_manager_thread',
+                                                QtCore.Qt.BlockingQueuedConnection)
+                thread_name = module.thread().objectName()
+                self.tm.quitThread(thread_name)
+                self.tm.joinThread(thread_name)
             else:
-                success = module.module_state.deactivate() # runs on_deactivate in main thread
+                module.module_state.deactivate()  # runs on_deactivate in main thread
 
             self.saveStatusVariables(base, name, module.getStatusVariables())
-            logger.debug('Deactivation success: {}'.format(success))
+            logger.debug('Deactivation success: {}'.format(module.module_state() == 'deactivated'))
         except:
             logger.exception('{0} module {1}: error during deactivation:'.format(base, name))
         QtCore.QCoreApplication.instance().processEvents()
@@ -1302,7 +1291,6 @@ class Manager(QtCore.QObject):
                     'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
                 config.save(filename, variables)
             except:
-                print(variables)
                 logger.exception('Failed to save status variables of module '
                         '{0}.{1}:\n{2}'.format(base, module, repr(variables)))
 

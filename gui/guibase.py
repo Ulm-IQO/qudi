@@ -28,8 +28,8 @@ import warnings
 class GUIBaseMixin(BaseMixin):
     """This is the GUI base class. It provides functions that every GUI module should have.
     """
-    # def __init__(self, **kwargs):
-    #     BaseMixin.__init__(self, **kwargs)
+    def __init__(self, *args, **kwargs):
+        BaseMixin.__init__(self, *args, **kwargs)
 
     def show(self):
         warnings.warn('Every GUI module needs to reimplement the show() function!')
@@ -45,5 +45,6 @@ class GUIBaseMixin(BaseMixin):
 
 class GUIBase(QObject, GUIBaseMixin):
     def __init__(self, parent=None, **kwargs):
+        # super().__init__(parent=parent, **kwargs)
         QObject.__init__(self, parent)
         GUIBaseMixin.__init__(self, parent=parent, **kwargs)

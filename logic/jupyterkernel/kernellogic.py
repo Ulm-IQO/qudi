@@ -20,7 +20,9 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 from logic.generic_logic import GenericLogic
 from qtpy import QtCore
-import pyqtgraph as pg
+from core.util.helpers import has_pyqtgraph
+if has_pyqtgraph:
+    import pyqtgraph as pg
 import numpy as np
 import time
 
@@ -80,12 +82,11 @@ class QudiKernelLogic(GenericLogic):
         kernel = QZMQKernel(realconfig)
         kernelthread = self._manager.tm.newThread('kernel-{0}'.format(kernel.engine_id))
         kernel.moveToThread(kernelthread)
-        kernel.user_global_ns.update({
-            'pg': pg,
-            'np': np,
-            'config': self._manager.tree['defined'],
-            'manager': self._manager
-        })
+        kernel.user_global_ns.update({'np': np,
+                                      'config': self._manager.tree['defined'],
+                                      'manager': self._manager})
+        if has_pyqtgraph:
+            kernel.user_global_ns.update({'pg': pg})
         kernel.sigShutdownFinished.connect(self.cleanupKernel)
         self.log.debug('Kernel is {0}'.format(kernel.engine_id))
         kernelthread.start()

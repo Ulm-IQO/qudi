@@ -23,12 +23,11 @@ __version__ = '0.1'
 
 # import Qt
 import os
-# TODO: Clean up
-import PySide2
 
-dirname = os.path.dirname(PySide2.__file__)
-plugin_path = os.path.join(dirname, 'plugins', 'platforms')
-os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
+# import PySide2
+# dirname = os.path.dirname(PySide2.__file__)
+# plugin_path = os.path.join(dirname, 'plugins', 'platforms')
+# os.environ['QT_QPA_PLATFORM_PLUGIN_PATH'] = plugin_path
 os.environ['QT_API'] = 'pyside2'
 
 import qtpy
