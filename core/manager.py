@@ -284,10 +284,9 @@ class Manager(QtCore.QObject):
 
           @param string configFile: path to configuration file
         """
-        print("============= Starting Manager configuration from {0} =================".format(
-            configFile))
-        logger.info("Starting Manager configuration from {0}".format(
-            configFile))
+        print('============= Starting Manager configuration from {0} ================='
+              ''.format(configFile))
+        logger.info("Starting Manager configuration from {0}".format(configFile))
         cfg = config.load(configFile)
         self.configFile = configFile
         # Read modules, devices, and stylesheet out of config

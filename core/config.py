@@ -39,17 +39,16 @@ import ruamel.yaml as yaml
 from io import BytesIO
 
 
-def ordered_load(stream, Loader=yaml.Loader):
+def ordered_load(stream, loader_base=yaml.Loader):
     """
     Loads a YAML formatted data from stream and puts it into an OrderedDict
 
     @param Stream stream: stream the data is read from
-    @param Loader Loader: Loader base class
+    @param yaml.Loader loader_base: YAML Loader base class
 
-    Returns OrderedDict with data. If stream is empty then an empty
-    OrderedDict is returned.
+    @return OrderedDict: Dict containing data. If stream is empty then an empty dict is returned
     """
-    class OrderedLoader(Loader):
+    class OrderedLoader(loader_base):
         """
         Loader using an OrderedDict
         """
@@ -64,8 +63,7 @@ def ordered_load(stream, Loader=yaml.Loader):
 
     def construct_ndarray(loader, node):
         """
-        The ndarray constructor, correctly saves a numpy array
-        inside the config file as a string.
+        The ndarray constructor, correctly saves a numpy array inside the config file as a string.
         """
         value = loader.construct_yaml_binary(node)
         with BytesIO(bytes(value)) as f:
@@ -74,7 +72,7 @@ def ordered_load(stream, Loader=yaml.Loader):
 
     def construct_external_ndarray(loader, node):
         """
-        The constructor for an numoy array that is saved in an external file.
+        The constructor for an numpy array that is saved in an external file.
         """
         filename = loader.construct_yaml_str(node)
         arrays = numpy.load(filename)
@@ -100,9 +98,8 @@ def ordered_load(stream, Loader=yaml.Loader):
         if value.startswith('array('):
             try:
                 local = {"array": numpy.array}
-                for dtype in ['int8', 'uint8', 'int16', 'uint16', 'float16',
-                        'int32', 'uint32', 'float32', 'int64', 'uint64',
-                        'float64']:
+                for dtype in ['int8', 'uint8', 'int16', 'uint16', 'float16', 'int32', 'uint32',
+                              'float32', 'int64', 'uint64', 'float64']:
                     local[dtype] = getattr(numpy, dtype)
                 return eval(value, local)
             except SyntaxError:
@@ -110,41 +107,28 @@ def ordered_load(stream, Loader=yaml.Loader):
         else:
             return value
 
-    # add constructor
-    OrderedLoader.add_constructor(
-            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            construct_mapping)
-    OrderedLoader.add_constructor(
-            '!ndarray',
-            construct_ndarray)
-    OrderedLoader.add_constructor(
-            '!extndarray',
-            construct_external_ndarray)
-    OrderedLoader.add_constructor(
-        '!frozenset',
-        construct_frozenset)
-    OrderedLoader.add_constructor(
-            yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG,
-            construct_str)
+    # add constructors
+    OrderedLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, construct_mapping)
+    OrderedLoader.add_constructor('!ndarray', construct_ndarray)
+    OrderedLoader.add_constructor('!extndarray', construct_external_ndarray)
+    OrderedLoader.add_constructor('!frozenset', construct_frozenset)
+    OrderedLoader.add_constructor(yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG, construct_str)
 
     # load config file
     config = yaml.load(stream, OrderedLoader)
     # yaml returns None if the config file was empty
-    if config is not None:
-        return config
-    else:
-        return OrderedDict()
+    return OrderedDict() if config is None else config
 
 
-def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
+def ordered_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
     """
-    dumps (OrderedDict) data in YAML format
+    Dumps OrderedDict data into a YAML format stream
 
-    @param OrderedDict data: the data
-    @param Stream stream: where the data in YAML is dumped
-    @param Dumper Dumper: The dumper that is used as a base class
+    @param OrderedDict data: the data to dump
+    @param Stream stream: stream to dump the data into (in YAML)
+    @param yaml.Dumper dumper_base: The dumper that is used as a base class
     """
-    class OrderedDumper(Dumper):
+    class OrderedDumper(dumper_base):
         """
         A Dumper using an OrderedDict
         """
@@ -156,51 +140,49 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
             """
             return True
 
-    def represent_ordereddict(dumper, dict_data):
+    def represent_ordereddict(dumper, data):
         """
         Representer for OrderedDict
         """
-        return dumper.represent_mapping(
-            yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-            dict_data.items())
+        return dumper.represent_mapping(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
+                                        data.items())
 
-    def represent_int(dumper, int_data):
+    def represent_int(dumper, data):
         """
         Representer for numpy int dtypes
         """
-        return dumper.represent_int(numpy.asscalar(int_data))
+        return dumper.represent_int(numpy.asscalar(data))
 
-    def represent_float(dumper, float_data):
+    def represent_float(dumper, data):
         """
         Representer for numpy float dtypes
         """
-        return dumper.represent_float(numpy.asscalar(float_data))
+        return dumper.represent_float(numpy.asscalar(data))
 
-    def represent_frozenset(dumper, set_data):
+    def represent_frozenset(dumper, data):
         """
         Representer for frozenset
         """
-        node = dumper.represent_set(set(set_data))
+        node = dumper.represent_set(set(data))
         node.tag = '!frozenset'
         return node
 
-    def represent_ndarray(dumper, array_data):
+    def represent_ndarray(dumper, data):
         """
         Representer for numpy ndarrays
         """
         try:
             filename = os.path.splitext(os.path.basename(stream.name))[0]
             configdir = os.path.dirname(stream.name)
-            newpath = '{0}-{1:06}.npz'.format(
-                os.path.join(configdir, filename),
-                dumper.external_ndarray_counter)
-            numpy.savez_compressed(newpath, array=array_data)
+            newpath = '{0}-{1:06}.npz'.format(os.path.join(configdir, filename),
+                                              dumper.external_ndarray_counter)
+            numpy.savez_compressed(newpath, array=data)
             node = dumper.represent_str(newpath)
             node.tag = '!extndarray'
             dumper.external_ndarray_counter += 1
         except:
             with BytesIO() as f:
-                numpy.savez_compressed(f, array=array_data)
+                numpy.savez_compressed(f, array=data)
                 compressed_string = f.getvalue()
             node = dumper.represent_binary(compressed_string)
             node.tag = '!ndarray'
@@ -224,7 +206,7 @@ def ordered_dump(data, stream=None, Dumper=yaml.Dumper, **kwds):
     OrderedDumper.add_representer(frozenset, represent_frozenset)
 
     # dump data
-    return yaml.dump(data, stream, OrderedDumper, **kwds)
+    return yaml.dump(data, stream, OrderedDumper, **kwargs)
 
 
 def load(filename):
@@ -233,7 +215,7 @@ def load(filename):
 
     @param str filename: filename of config file
 
-    Returns OrderedDict
+    @return OrderedDict: The data as python/numpy objects in an OrderedDict
     """
     with open(filename, 'r') as f:
         return ordered_load(f, yaml.SafeLoader)
@@ -247,4 +229,4 @@ def save(filename, data):
     @param OrderedDict data: config values
     """
     with open(filename, 'w') as f:
-        ordered_dump(data, stream=f, Dumper=yaml.SafeDumper, default_flow_style=False)
+        ordered_dump(data, stream=f, dumper_base=yaml.SafeDumper, default_flow_style=False)

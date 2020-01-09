@@ -220,7 +220,7 @@ class BaseMixin(metaclass=ModuleMeta):
         else:
             self.moveToThread(self._manager.thread())
 
-    def __load_status_vars_activate(self, event):
+    def __load_status_vars_activate(self, event=None):
         """
         Restore status variables before activation and invoke on_activate method.
 
@@ -239,7 +239,7 @@ class BaseMixin(metaclass=ModuleMeta):
         # activate
         self.on_activate()
 
-    def __save_status_vars_deactivate(self, event):
+    def __save_status_vars_deactivate(self, event=None):
         """
         Invoke on_deactivate method and save status variables afterwards even if deactivation fails.
 

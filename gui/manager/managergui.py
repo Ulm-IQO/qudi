@@ -27,9 +27,10 @@ import os
 from collections import OrderedDict
 from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
+from core.util.helpers import has_pyqtgraph
 from .errordialog import ErrorDialog
 from .managerwindow import ManagerMainWindow
-from gui.guibase import GUIBase
+from core.gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, QtGui
 
 try:
@@ -42,12 +43,8 @@ try:
 except ImportError:
     pass
 
-_has_pyqtgraph = False
-# try:
-#     import pyqtgraph as pg
-#     _has_pyqtgraph = True
-# except ImportError:
-#     pass
+if has_pyqtgraph:
+    import pyqtgraph as pg
 
 
 class ManagerGui(GUIBase):
@@ -96,7 +93,7 @@ class ManagerGui(GUIBase):
         This method creates the Manager main window.
         """
         # Configure pyqtgraph (if present)
-        if _has_pyqtgraph:
+        if has_pyqtgraph:
             # test setting background of pyqtgraph
             testwidget = QtWidgets.QWidget()
             testwidget.ensurePolished()
@@ -296,7 +293,7 @@ class ManagerGui(GUIBase):
         self._namespace.update({'np': np,
                                 'config': self._manager.tree['defined'],
                                 'manager': self._manager})
-        if _has_pyqtgraph:
+        if has_pyqtgraph:
             self._namespace['pg'] = pg
         self.update_ipython_module_list()
         self._kernel.gui = 'qt4'
@@ -308,7 +305,7 @@ class ManagerGui(GUIBase):
         """
         Create an IPython console widget and connect it to an IPython kernel.
         """
-        if _has_pyqtgraph:
+        if has_pyqtgraph:
             banner_modules = 'The numpy and pyqtgraph modules have already been imported as "np" ' \
                              'and "pg".'
         else:
