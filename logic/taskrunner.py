@@ -110,43 +110,41 @@ class TaskRunner(GenericLogic):
         self._manager.registerTaskRunner(None)
 
     def loadTasks(self):
-        """ Load all tasks specified in the configuration.
-            Check dependencies and load necessary modules.
         """
-        config = self.getConfiguration()
-        if not 'tasks' in config:
+        Load all tasks specified in the configuration.
+        Check dependencies and load necessary modules.
+        """
+        if 'tasks' not in self._configuration:
             return
-        if config['tasks'] is None:
+        if self._configuration['tasks'] is None:
             return
-        for task in config['tasks']:
+        for task in self._configuration['tasks']:
             t = {'ok': False, 'object': None, 'name': task}
-            # print('tsk:', task)
-            if not 'module' in config['tasks'][task]:
+            if not 'module' in self._configuration['tasks'][task]:
                 self.log.error('No module given for task {0}'.format(task))
                 continue
             else:
-                t['module'] = config['tasks'][task]['module']
-                # print('mod:', config['tasks'][task]['module'])
+                t['module'] = self._configuration['tasks'][task]['module']
 
-            if 'preposttasks' in config['tasks'][task]:
-                t['preposttasks'] = config['tasks'][task]['preposttasks']
+            if 'preposttasks' in self._configuration['tasks'][task]:
+                t['preposttasks'] = self._configuration['tasks'][task]['preposttasks']
             else:
-                t['preposttasks'] = []
+                t['preposttasks'] = list()
 
-            if 'pausetasks' in config['tasks'][task]:
-                t['pausetasks'] = config['tasks'][task]['pausetasks']
+            if 'pausetasks' in self._configuration['tasks'][task]:
+                t['pausetasks'] = self._configuration['tasks'][task]['pausetasks']
             else:
-                t['pausetasks'] = []
+                t['pausetasks'] = list()
 
-            if 'needsmodules' in config['tasks'][task]:
-                t['needsmodules'] = config['tasks'][task]['needsmodules']
+            if 'needsmodules' in self._configuration['tasks'][task]:
+                t['needsmodules'] = self._configuration['tasks'][task]['needsmodules']
             else:
-                t['needsmodules'] = {}
+                t['needsmodules'] = dict()
 
-            if 'config' in config['tasks'][task]:
-                t['config'] = config['tasks'][task]['config']
+            if 'config' in self._configuration['tasks'][task]:
+                t['config'] = self._configuration['tasks'][task]['config']
             else:
-                t['config'] = {}
+                t['config'] = dict()
 
             try:
                 ref = dict()
@@ -156,20 +154,18 @@ class TaskRunner(GenericLogic):
                         if success < 0:
                             raise Exception('Loading module {0} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
-                # print('Attempting to import: logic.tasks.{}'.format(t['module']))
                 mod = importlib.__import__('logic.tasks.{0}'.format(t['module']), fromlist=['*'])
-                # print('loaded:', mod)
-                # print('dir:', dir(mod))
-                t['object'] = mod.Task(name=t['name'], runner=self,
-                        references=ref, config=t['config'])
-                if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'], gt.PrePostTask):
+                t['object'] = mod.Task(name=t['name'],
+                                       runner=self,
+                                       references=ref,
+                                       config=t['config'])
+                if isinstance(t['object'], gt.InterruptableTask) or isinstance(t['object'],
+                                                                               gt.PrePostTask):
                     self.model.append(t)
                 else:
-                    self.log.error('Not a subclass of allowd task classes {}'
-                            ''.format(task))
+                    self.log.error('Not a subclass of allowd task classes {}'.format(task))
             except:
-                self.log.exception('Error while importing module for '
-                        'task {}'.format(t['name']))
+                self.log.exception('Error while importing module for task {}'.format(t['name']))
         self.sigCheckTasks.emit()
 
     def registerTask(self, task):

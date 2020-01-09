@@ -25,6 +25,7 @@ Originally distributed under MIT/X11 license. See documentation/MITLicense.txt f
 
 
 import sys
+import os
 
 # Enable stack trace output for SIGSEGV, SIGFPE, SIGABRT, SIGBUS and SIGILL signals
 # -> e.g. for segmentation faults
@@ -185,7 +186,6 @@ class AppWatchdog(QtCore.QObject):
             self.poller.start()
         else:
             logger.warning('Qudi running unsupervised, restart wiill not work.')
-
 
     def quitProxy(self, obj):
         """ Helper function to emit doQuit signal

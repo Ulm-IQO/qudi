@@ -32,15 +32,16 @@ class GUIBaseMixin(BaseMixin):
         BaseMixin.__init__(self, *args, **kwargs)
 
     def show(self):
-        warnings.warn('Every GUI module needs to reimplement the show() function!')
+        warnings.warn('Every GUI module needs to re-implement the show() function!')
 
     def save_window_pos(self, window):
-        self._statusVariables['pos_x'] = window.pos().x()
-        self._statusVariables['pos_y'] = window.pos().y()
+        self._status_variables['__win_pos_x'] = window.pos().x()
+        self._status_variables['__win_pos_y'] = window.pos().y()
 
     def restore_window_pos(self, window):
-        if 'pos_x' in self._statusVariables and 'pos_y' in self._statusVariables:
-            window.move(self._statusVariables['pos_x'],  self._statusVariables['pos_y'])
+        if '__win_pos_x' in self._status_variables and '__win_pos_y' in self._status_variables:
+            window.move(self._status_variables['__win_pos_x'],
+                        self._status_variables['__win_pos_y'])
 
 
 class GUIBase(QObject, GUIBaseMixin):
