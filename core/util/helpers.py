@@ -40,11 +40,11 @@ except ImportError:
     from distutils.version import LooseVersion as parse_version
 
 has_pyqtgraph = False
-# try:
-#     import pyqtgraph
-#     has_pyqtgraph = True
-# except ImportError:
-#     pass
+try:
+    import pyqtgraph
+    has_pyqtgraph = True
+except ImportError:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,22 @@ def exit(exitcode=0):
         close_fd(fd_set)
 
     os._exit(exitcode)
+
+
+def get_appdata_dir():
+    """
+    Get the system specific application data directory.
+
+    @return str: path to appdata directory
+    """
+    if sys.platform == 'win32':
+        # resolves to "C:\Documents and Settings\<UserName>\Application Data" on XP
+        # and "C:\Users\<UserName>\AppData\Roaming" on win7 and newer
+        return os.path.join(os.environ['APPDATA'], 'qudi')
+    elif sys.platform == 'darwin':
+        return os.path.expanduser('~/Library/Preferences/qudi')
+    else:
+        return os.path.expanduser('~/.local/qudi')
 
 
 def close_fd(fd_set):

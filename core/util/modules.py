@@ -31,14 +31,14 @@ def get_main_dir():
          @return string: path to the main tree of the software
 
     """
-    return os.path.abspath(
-        os.path.join(os.path.dirname(__file__), '../..'))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
 
 
 def get_home_dir():
-    """ Returns the path to the home directory, which should definitely
-        exist.
-        @return string: absolute path to the home directory
+    """
+    Returns the path to the home directory, which should definitely exist.
+
+    @return str: absolute path to the home directory
     """
     return os.path.abspath(os.path.expanduser('~'))
 
