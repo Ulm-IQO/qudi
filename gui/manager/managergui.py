@@ -28,8 +28,8 @@ from collections import OrderedDict
 from core.statusvariable import StatusVar
 from core.util.modules import get_main_dir
 from core.util.helpers import has_pyqtgraph
-from .errordialog import ErrorDialog
-from .managerwindow import ManagerMainWindow
+from gui.manager.widgets.errordialog import ErrorDialog
+from gui.manager.widgets.managerwindow import ManagerMainWindow
 from core.gui.guibase import GUIBase
 from qtpy import QtCore, QtWidgets, QtGui
 

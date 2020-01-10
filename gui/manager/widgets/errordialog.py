@@ -43,8 +43,6 @@ class ErrorDialog(QtWidgets.QDialog):
         self.messages = list()  # List of queued individual error messages to display
 
         # Set up dialog window
-        # self.setWindowFlags(QtCore.Qt.Window)
-        # self.setWindowModality(QtCore.Qt.)
         self.setWindowTitle('Qudi Error')
         screen_size = QtWidgets.QApplication.instance().primaryScreen().availableSize()
         screen_width = screen_size.width()
