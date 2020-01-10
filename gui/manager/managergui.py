@@ -113,14 +113,14 @@ class ManagerGui(GUIBase):
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
-        config_file = self._manager.config_file
-        self._mw.about_qudi_dialog.label.setText(
+        self._mw.about_qudi_dialog.sub_header_label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
             '</a>, on branch {1}.'.format(version[0], version[1]))
         self.version_label = QtWidgets.QLabel()
         self.version_label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
-            '</a>, on branch {1}, configured from {2}'.format(version[0], version[1], config_file))
+            '</a>, on branch {1}, configured from {2}'
+            ''.format(version[0], version[1], self._manager.config_file))
         self.version_label.setOpenExternalLinks(True)
         self._mw.statusbar.addWidget(self.version_label)
 
