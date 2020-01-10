@@ -19,17 +19,15 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-import os
-
 from core.connector import Connector
 from core.gui.guibase import GUIBase
-from qtpy import QtWidgets
 from qtpy import QtCore
-from qtpy import uic
+from .taskwindow import TaskMainWindow
 
 
 class TaskGui(GUIBase):
-    """ A grephical interface to mofe switches by hand and change their calibration.
+    """
+    TODO: Document
     """
 
     # declare connectors
@@ -39,51 +37,57 @@ class TaskGui(GUIBase):
     sigPauseTaskFromList = QtCore.Signal(object)
     sigStopTaskFromList = QtCore.Signal(object)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._mw = None
+
     def on_activate(self):
         """Create all UI objects and show the window.
         """
         self._mw = TaskMainWindow()
+        self._mw.task_table_view.setModel(self.tasklogic().model)
+        self._mw.task_table_view.clicked.connect(self.set_run_tool_state)
+        self._mw.action_start_task.triggered.connect(self.manual_start)
+        self._mw.action_pause_task.triggered.connect(self.manual_pause)
+        self._mw.action_stop_task.triggered.connect(self.manual_stop)
+        self.sigRunTaskFromList.connect(self.tasklogic().startTaskByIndex)
+        self.sigPauseTaskFromList.connect(self.tasklogic().pauseTaskByIndex)
+        self.sigStopTaskFromList.connect(self.tasklogic().stopTaskByIndex)
+        self.tasklogic().model.dataChanged.connect(lambda i1, i2: self.set_run_tool_state(None, i1))
         self.restore_window_pos(self._mw)
-        self.logic = self.tasklogic()
-        self._mw.taskTableView.setModel(self.logic.model)
-        self._mw.taskTableView.clicked.connect(self.setRunToolState)
-        self._mw.actionStart_Task.triggered.connect(self.manualStart)
-        self._mw.actionPause_Task.triggered.connect(self.manualPause)
-        self._mw.actionStop_Task.triggered.connect(self.manualStop)
-        self.sigRunTaskFromList.connect(self.logic.startTaskByIndex)
-        self.sigPauseTaskFromList.connect(self.logic.pauseTaskByIndex)
-        self.sigStopTaskFromList.connect(self.logic.stopTaskByIndex)
-        self.logic.model.dataChanged.connect(lambda i1, i2: self.setRunToolState(None, i1))
         self.show()
 
     def show(self):
-        """Make sure that the window is visible and at the top.
+        """ Make sure that the window is visible and at the top.
         """
         self._mw.show()
 
     def on_deactivate(self):
         """ Hide window and stop ipython console.
         """
+        self.sigRunTaskFromList.disconnect()
+        self.sigPauseTaskFromList.disconnect()
+        self.sigStopTaskFromList.disconnect()
         self.save_window_pos(self._mw)
         self._mw.close()
 
-    def manualStart(self):
-        selected = self._mw.taskTableView.selectedIndexes()
+    def manual_start(self):
+        selected = self._mw.task_table_view.selectedIndexes()
         if len(selected) >= 1:
             self.sigRunTaskFromList.emit(selected[0])
 
-    def manualPause(self):
-        selected = self._mw.taskTableView.selectedIndexes()
+    def manual_pause(self):
+        selected = self._mw.task_table_view.selectedIndexes()
         if len(selected) >= 1:
             self.sigPauseTaskFromList.emit(selected[0])
 
-    def manualStop(self):
-        selected = self._mw.taskTableView.selectedIndexes()
+    def manual_stop(self):
+        selected = self._mw.task_table_view.selectedIndexes()
         if len(selected) >= 1:
             self.sigStopTaskFromList.emit(selected[0])
 
-    def setRunToolState(self, index, index2=None):
-        selected = self._mw.taskTableView.selectedIndexes()
+    def set_run_tool_state(self, index, index2=None):
+        selected = self._mw.task_table_view.selectedIndexes()
         try:
             if index2 is not None and selected[0].row() != index2.row():
                 return
@@ -91,36 +95,20 @@ class TaskGui(GUIBase):
             return
 
         if len(selected) >= 1:
-            state = self.logic.model.storage[selected[0].row()]['object'].current
+            state = self.tasklogic().model.storage[selected[0].row()]['object'].current
             if state == 'stopped':
-                self._mw.actionStart_Task.setEnabled(True)
-                self._mw.actionStop_Task.setEnabled(False)
-                self._mw.actionPause_Task.setEnabled(False)
+                self._mw.action_start_task.setEnabled(True)
+                self._mw.action_stop_task.setEnabled(False)
+                self._mw.action_pause_task.setEnabled(False)
             elif state == 'running':
-                self._mw.actionStart_Task.setEnabled(False)
-                self._mw.actionStop_Task.setEnabled(True)
-                self._mw.actionPause_Task.setEnabled(True)
+                self._mw.action_start_task.setEnabled(False)
+                self._mw.action_stop_task.setEnabled(True)
+                self._mw.action_pause_task.setEnabled(True)
             elif state == 'paused':
-                self._mw.actionStart_Task.setEnabled(True)
-                self._mw.actionStop_Task.setEnabled(False)
-                self._mw.actionPause_Task.setEnabled(True)
+                self._mw.action_start_task.setEnabled(True)
+                self._mw.action_stop_task.setEnabled(False)
+                self._mw.action_pause_task.setEnabled(True)
             else:
-                self._mw.actionStart_Task.setEnabled(False)
-                self._mw.actionStop_Task.setEnabled(False)
-                self._mw.actionPause_Task.setEnabled(False)
-
-class TaskMainWindow(QtWidgets.QMainWindow):
-    """ Helper class for window loaded from UI file.
-    """
-    def __init__(self):
-        """ Create the switch GUI window.
-        """
-        # Get the path to the *.ui file
-        this_dir = os.path.dirname(__file__)
-        ui_file = os.path.join(this_dir, 'ui_taskgui.ui')
-
-        # Load it
-        super().__init__()
-        uic.loadUi(ui_file, self)
-        self.show()
-
+                self._mw.action_start_task.setEnabled(False)
+                self._mw.action_stop_task.setEnabled(False)
+                self._mw.action_pause_task.setEnabled(False)

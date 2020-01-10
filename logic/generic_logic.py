@@ -24,35 +24,34 @@ from core.util.mutex import Mutex
 
 
 class GenericLogic(Base):
-    """A generic logic interface class.
+    """ A generic logic module class.
     """
     _threaded = True
 
-    def __init__(self, **kwargs):
-        """ Initialize a logic module.
-
-          @param dict kwargs: dict of additional arguments
+    def __init__(self, *args, **kwargs):
         """
-        super().__init__(**kwargs)
-        self.taskLock = Mutex()
+        Initialize a logic module.
+        """
+        super().__init__(*args, **kwargs)
+        self.taskLock = Mutex()  # FIXME: What's this? Is it needed?
 
     @QtCore.Slot(QtCore.QThread)
     def moveToThread(self, thread):
         super().moveToThread(thread)
 
-    def getModuleThread(self):
-        """ Get the thread associated to this module.
+    @property
+    def module_thread(self):
+        return QtCore.QObject.thread(self)
 
-          @return QThread: thread with qt event loop associated with this module
+    # FIXME: exposing this seems like a great opportunity to shoot yourself in the foot.
+    #  Is it really needed? If the reference to task_runner is really needed and must be protected
+    #  by a Mutex, then the manager should handle safe access. (maybe a manager property?)
+    def get_task_runner(self):
         """
-        return self._manager.thread_manager._threads['mod-logic-' + self._name].thread
+        Get a reference to the task runner module registered in the manager.
+        If there is no registered task runner, an exception is raised.
 
-    def getTaskRunner(self):
-        """ Get a reference to the task runner module registered in the manager.
-
-          @return object: reference to task runner
-
-          If there isno registered task runner, an exception is raised.
+        @return object: reference to task runner
         """
         with self._manager.lock:
             if self._manager.task_runner is not None:
