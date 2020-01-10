@@ -28,5 +28,10 @@ class AboutDialog(QtWidgets.QDialog):
     """
     def __init__(self, parent=None, **kwargs):
         super().__init__(parent, **kwargs)
-        self.label = QtWidgets.QLabel()
 
+        buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
+        buttonbox.setOrientation(QtCore.Qt.Horizontal)
+        self.ok_button = buttonbox.button(buttonbox.Ok)
+
+        self.header_label = QtWidgets.QLabel()
+        self.sub_header_label = QtWidgets.QLabel()
