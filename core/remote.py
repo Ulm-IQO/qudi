@@ -41,7 +41,7 @@ class RemoteObjectManager(QObject):
         """ Handle sharing and getting shared modules.
         """
         super().__init__(**kwargs)
-        self.tm = manager.tm
+        self.tm = manager.thread_manager
         self.manager = manager
         self.remoteModules = ListTableModel()
         self.remoteModules.headers[0] = 'Remote Modules'

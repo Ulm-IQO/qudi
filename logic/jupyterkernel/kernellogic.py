@@ -80,7 +80,7 @@ class QudiKernelLogic(GenericLogic):
         realconfig = netobtain(config)
         self.log.debug('Start {0}'.format(realconfig))
         kernel = QZMQKernel(realconfig)
-        kernelthread = self._manager.tm.newThread('kernel-{0}'.format(kernel.engine_id))
+        kernelthread = self._manager.thread_manager.newThread('kernel-{0}'.format(kernel.engine_id))
         kernel.moveToThread(kernelthread)
         kernel.user_global_ns.update({'np': np,
                                       'config': self._manager.tree['defined'],
@@ -113,7 +113,7 @@ class QudiKernelLogic(GenericLogic):
           @param callable external: reference to rpyc client exit function
         """
         self.log.info('Cleanup kernel {0}'.format(kernelid))
-        self._manager.tm.quitThread('kernel-{0}'.format(kernelid))
+        self._manager.thread_manager.quitThread('kernel-{0}'.format(kernelid))
         del self.kernellist[kernelid]
         if external is not None:
             try:

@@ -101,13 +101,13 @@ class TaskRunner(GenericLogic):
         self.model.rowsRemoved.connect(self.modelChanged)
         self.sigLoadTasks.connect(self.loadTasks)
         self.sigCheckTasks.connect(self.checkTasksInModel)
-        self._manager.registerTaskRunner(self)
+        self._manager.register_task_runner(self)
         self.sigLoadTasks.emit()
 
     def on_deactivate(self):
         """ Shut down task runner.
         """
-        self._manager.registerTaskRunner(None)
+        self._manager.register_task_runner(None)
 
     def loadTasks(self):
         """
