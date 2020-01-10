@@ -180,14 +180,16 @@ class ManagerGui(GUIBase):
 
         # Configure remote widget
         # hide remote menu item if rpyc is not available
-        if self._manager.rm is not None:
-            self._mw.remote_widget.remote_module_listview.setModel(self._manager.rm.remoteModules)
+        if self._manager.remote_manager is not None:
+            self._mw.remote_widget.remote_module_listview.setModel(
+                self._manager.remote_manager.remoteModules)
             if self._manager.remote_server:
                 self._mw.remote_widget.host_label.setText('Server URL:')
                 self._mw.remote_widget.port_label.setText('rpyc://{0}:{1}/'.format(
-                    self._manager.rm.server.host, self._manager.rm.server.port))
+                    self._manager.remote_manager.server.host,
+                    self._manager.remote_manager.server.port))
                 self._mw.remote_widget.shared_module_listview.setModel(
-                    self._manager.rm.sharedModules)
+                    self._manager.remote_manager.sharedModules)
             else:
                 self._mw.remote_widget.host_label.setVisible(False)
                 self._mw.remote_widget.port_label.setVisible(False)
