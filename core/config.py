@@ -209,24 +209,32 @@ def ordered_dump(data, stream=None, dumper_base=yaml.Dumper, **kwargs):
     return yaml.dump(data, stream, OrderedDumper, **kwargs)
 
 
-def load(filename):
+def load(file_path, ignore_missing=False):
     """
-    Loads a config file
+    Loads a config file. Throws a FileNotFoundError if the file does not exist
 
-    @param str filename: filename of config file
+    @param str file_path: path to config file
+    @param bool ignore_missing: Optional flag to suppress FileNotFoundError
 
     @return OrderedDict: The data as python/numpy objects in an OrderedDict
     """
-    with open(filename, 'r') as f:
-        return ordered_load(f, yaml.SafeLoader)
+    if os.path.isfile(file_path):
+        with open(file_path, 'r') as f:
+            return ordered_load(f, yaml.SafeLoader)
+    elif ignore_missing:
+        return OrderedDict()
+    raise FileNotFoundError('Could not load config file "{0}". File not found'.format(file_path))
 
 
-def save(filename, data):
+def save(file_path, data):
     """
-    saves data to filename in yaml format.
+    Saves data to file_path in yaml format. Creates subdirectories if not already present.
 
-    @param str filename: filename of config file
+    @param str file_path: path to config file to save
     @param OrderedDict data: config values
     """
-    with open(filename, 'w') as f:
+    file_dir = os.path.dirname(file_path)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)
+    with open(file_path, 'w') as f:
         ordered_dump(data, stream=f, dumper_base=yaml.SafeDumper, default_flow_style=False)

@@ -35,7 +35,7 @@ from qtpy import QtCore
 from . import config
 
 from .util.mutex import Mutex   # Mutex provides access serialization between threads
-from .util.modules import toposort, is_base
+from .util.modules import toposort, is_base, get_main_dir
 from collections import OrderedDict
 from .logger import register_exception_handler
 from .threadmanager import ThreadManager
@@ -120,19 +120,22 @@ class Manager(QtCore.QObject):
             # Gui setup if we have gui
             if self.has_gui:
                 import core.gui.gui
-                self.gui = core.gui.gui.Gui(artwork_dir=os.path.join(self.getMainDir(), 'artwork'))
+                self.gui = core.gui.gui.Gui(artwork_dir=os.path.join(get_main_dir(), 'artwork'))
                 self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
                 self.gui.system_tray_icon.managerAction.triggered.connect(
                     lambda: self.sigShowManager.emit())
                 self.gui.set_theme('qudiTheme')
 
             # Read in configuration file
-            if args.config == '':
-                config_file = self._getConfigFile()
-            else:
-                config_file = args.config
-            self.configDir = os.path.dirname(config_file)
-            self.readConfig(config_file)
+            self.config_file = args.config if args.config else self.find_default_config_file()
+            # self.config_dir = os.path.dirname(config_file)
+            print('============= Starting Manager configuration from {0} ================='
+                  ''.format(self.config_file))
+            logger.info("Starting Manager configuration from {0}".format(self.config_file))
+            cfg = self.read_config_file(self.config_file, missing_ok=False)
+            self.configure(cfg)
+            print("\n============= Manager configuration complete =================\n")
+            logger.info('Manager configuration complete.')
 
             # check first if remote support is enabled and if so create RemoteObjectManager
             if RemoteObjectManager is None:
@@ -214,113 +217,72 @@ class Manager(QtCore.QObject):
                     and len(self.tree['loaded']['gui']) == 0):
                 logger.critical('No modules loaded during startup.')
 
-    def getMainDir(self):
-        """Returns the absolut path to the directory of the main software.
+    @property
+    def default_config_dir(self):
+        return os.path.join(get_main_dir(), 'config')
 
-             @return string: path to the main tree of the software
+    @property
+    def config_dir(self):
+        return os.path.dirname(self.config_file)
 
+    def find_default_config_file(self):
         """
-        return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+        Search all the default locations to find a suitable configuration file.
 
-    def _getConfigFile(self):
-        """ Search all the default locations to find a configuration file.
-
-          @return sting: path to configuration file
+        @return str: path to configuration file
         """
-        path = self.getMainDir()
-        # we first look for config/load.cfg which can point to another
-        # config file using the "configfile" key
-        loadConfigFile = os.path.join(path, 'config', 'load.cfg')
-        if os.path.isfile(loadConfigFile):
-            logger.info('load.cfg config file found at {0}'.format(
-                loadConfigFile))
+        # we first look for config/load.cfg which can point to another config file using the
+        # "configfile" key
+        load_config_file = os.path.join(self.default_config_dir, 'load.cfg')
+        if os.path.isfile(load_config_file):
+            logger.info('load.cfg config file found at {0}'.format(load_config_file))
             try:
-                confDict = config.load(loadConfigFile)
-                if ('configfile' in confDict
-                        and isinstance(confDict['configfile'], str)):
-                    # check if this config file is existing
-                    # try relative filenames
-                    configFile = os.path.join(path, 'config',
-                                              confDict['configfile'])
-                    if os.path.isfile(configFile):
-                        return configFile
+                config_dict = config.load(load_config_file)
+                if 'configfile' in config_dict and isinstance(config_dict['configfile'], str):
+                    # check if this config file is existing and also try relative filenames
+                    config_file = os.path.join(self.default_config_dir, config_dict['configfile'])
+                    if os.path.isfile(config_file):
+                        return config_file
                     # try absolute filename or relative to pwd
-                    if os.path.isfile(confDict['configfile']):
-                        return confDict['configfile']
+                    if os.path.isfile(config_dict['configfile']):
+                        return config_dict['configfile']
                     else:
-                        logger.critical('Couldn\'t find config file '
-                                        'specified in load.cfg: {0}'.format(
-                                            confDict['configfile']))
-            except Exception:
+                        logger.critical('Couldn\'t find config file specified in load.cfg: {0}'
+                                        ''.format(config_dict['configfile']))
+            except:
                 logger.exception('Error while handling load.cfg.')
-        # try config/example/custom.cfg next
-        cf = os.path.join(path, 'config', 'example', 'custom.cfg')
+        # try config/example/custom.cfg if no file has been found so far
+        cf = os.path.join(self.default_config_dir, 'example', 'custom.cfg')
         if os.path.isfile(cf):
             return cf
-        # try config/example/default.cfg
-        cf = os.path.join(path, 'config', 'example', 'default.cfg')
+        # try config/example/default.cfg if no file has been found so far
+        cf = os.path.join(self.default_config_dir, 'example', 'default.cfg')
         if os.path.isfile(cf):
             return cf
         raise Exception('Could not find any config file.')
 
-    def _appDataDir(self):
-        """Get the system specific application data directory.
-
-          @return string: path to application directory
-        """
-        # return the user application data directory
-        if sys.platform == 'win32':
-            # resolves to "C:/Documents and Settings/User/Application Data/"
-            # on XP and "C:\User\Username\AppData\Roaming" on win7
-            return os.path.join(os.environ['APPDATA'], 'qudi')
-        elif sys.platform == 'darwin':
-            return os.path.expanduser('~/Library/Preferences/qudi')
-        else:
-            return os.path.expanduser('~/.local/qudi')
-
-    @QtCore.Slot(str)
-    def readConfig(self, configFile):
-        """Read configuration file and sort entries into categories.
-
-          @param string configFile: path to configuration file
-        """
-        print('============= Starting Manager configuration from {0} ================='
-              ''.format(configFile))
-        logger.info("Starting Manager configuration from {0}".format(configFile))
-        cfg = config.load(configFile)
-        self.configFile = configFile
-        # Read modules, devices, and stylesheet out of config
-        self.configure(cfg)
-
-        print("\n============= Manager configuration complete =================\n")
-        logger.info('Manager configuration complete.')
-
     @QtCore.Slot(dict)
     def configure(self, cfg):
-        """Sort modules from configuration into categories
-
-          @param dict cfg: dictionary from configuration file
-
-          There are the main categories hardware, logic, gui, startup
-          and global.
-          Startup modules can be logic or gui and are loaded
-          directly on 'startup'.
-          'global' contains settings for the whole application.
-          hardware, logic and gui contain configuration of and
-          for loadable modules.
         """
+        Sort modules from configuration into categories
 
+        @param dict cfg: dictionary from configuration file
+
+        There are the main categories hardware, logic, gui, startup and global.
+        Startup modules can be logic or gui and are loaded directly on 'startup'. 'global' contains
+        settings for the whole application. hardware, logic and gui contain configuration of and
+        for loadable modules.
+        """
         for key in cfg:
             try:
                 # hardware
                 if key == 'hardware' and cfg['hardware'] is not None:
                     for m in cfg['hardware']:
                         if 'module.Class' in cfg['hardware'][m]:
-                            self.tree['defined']['hardware'][
-                                m] = cfg['hardware'][m]
+                            self.tree['defined']['hardware'][m] = cfg['hardware'][m]
                         else:
-                            logger.warning('    --> Ignoring device {0} -- '
-                                           'no module specified'.format(m))
+                            logger.warning(
+                                '    --> Ignoring device {0} -- no module specified'.format(m))
 
                 # logic
                 elif key == 'logic' and cfg['logic'] is not None:
@@ -328,8 +290,8 @@ class Manager(QtCore.QObject):
                         if 'module.Class' in cfg['logic'][m]:
                             self.tree['defined']['logic'][m] = cfg['logic'][m]
                         else:
-                            logger.warning('    --> Ignoring logic {0} -- '
-                                           'no module specified'.format(m))
+                            logger.warning(
+                                '    --> Ignoring logic {0} -- no module specified'.format(m))
 
                 # GUI
                 elif key == 'gui' and cfg['gui'] is not None and self.has_gui:
@@ -337,13 +299,13 @@ class Manager(QtCore.QObject):
                         if 'module.Class' in cfg['gui'][m]:
                             self.tree['defined']['gui'][m] = cfg['gui'][m]
                         else:
-                            logger.warning('    --> Ignoring GUI {0} -- no '
-                                           'module specified'.format(m))
+                            logger.warning(
+                                '    --> Ignoring GUI {0} -- no module specified'.format(m))
 
                 # Load on startup
                 elif key == 'startup':
-                    logger.warning('Old style startup loading not supported. '
-                                   'Please update your config file.')
+                    logger.warning(
+                        'Old style startup loading not supported. Please update your config file.')
 
                 # global config
                 elif key == 'global' and cfg['global'] is not None:
@@ -355,9 +317,8 @@ class Manager(QtCore.QObject):
                             elif isinstance(cfg['global'][m], list):
                                 dirnames = cfg['global'][m]
                             else:
-                                logger.warning('Global ''path'' '
-                                               'configuration is neither str '
-                                               ' nor list. Ignoring.')
+                                logger.warning('Global "path" configuration is neither str nor '
+                                               'list. Ignoring.')
                                 continue
                             # add specified directories
                             for ii, dir_name in enumerate(dirnames):
@@ -368,46 +329,36 @@ class Manager(QtCore.QObject):
                                 else:
                                     # relative path?
                                     path = os.path.abspath(
-                                        '{0}/{1}'.format(
-                                            os.path.dirname(self.configFile),
-                                            dir_name))
+                                        '{0}/{1}'.format(self.config_dir, dir_name))
                                     if not os.path.isdir(path):
                                         path = ''
                                 if path == '':
-                                    logger.warning(
-                                        'Error while adding qudi '
-                                        'extension: Directory \'{0}\' '
-                                        'does not exist.'
-                                        ''.format(dir_name))
+                                    logger.warning('Error while adding qudi extension: Directory '
+                                                   '\'{0}\' does not exist.'.format(dir_name))
                                     continue
-                                # check for __init__.py files within extension
-                                # and issue warning if existing
+                                # check for __init__.py files within extension and issue warning
+                                # if existing
                                 for paths, dirs, files in os.walk(path):
                                     if '__init__.py' in files:
-                                        logger.warning(
-                                            'Warning: Extension {0} contains '
-                                            '__init__.py. Expect unexpected '
-                                            'behaviour. Hope you know what '
-                                            'you are doing.'.format(path))
+                                        logger.warning('Warning: Extension {0} contains '
+                                                       '__init__.py. Expect unexpected behaviour. '
+                                                       'Hope you know what you are doing.'
+                                                       ''.format(path))
                                         break
                                 # add directory to search path
-                                logger.debug('Adding extension path: {0}'
-                                             ''.format(path))
+                                logger.debug('Adding extension path: {0}'.format(path))
                                 sys.path.insert(1+ii, path)
                         elif m == 'startup':
-                            self.tree['global']['startup'] = cfg[
-                                'global']['startup']
+                            self.tree['global']['startup'] = cfg['global']['startup']
                         elif m == 'stylesheet' and self.has_gui:
                             self.tree['global']['stylesheet'] = cfg['global']['stylesheet']
-                            stylesheetpath = os.path.join(
-                                self.getMainDir(),
-                                'artwork',
-                                'styles',
-                                'application',
-                                cfg['global']['stylesheet'])
+                            stylesheetpath = os.path.join(get_main_dir(),
+                                                          'artwork',
+                                                          'styles',
+                                                          'application',
+                                                          cfg['global']['stylesheet'])
                             if not os.path.isfile(stylesheetpath):
-                                logger.warning(
-                                    'Stylesheet not found at {0}'.format(stylesheetpath))
+                                logger.warning('Stylesheet not found at {0}'.format(stylesheetpath))
                                 continue
                             self.gui.set_style_sheet(stylesheetpath)
                         else:
@@ -418,7 +369,7 @@ class Manager(QtCore.QObject):
                 else:
                     if isinstance(cfg[key], dict):
                         if key not in self.tree['config']:
-                            self.tree['config'][key] = {}
+                            self.tree['config'][key] = dict()
                         for key2 in cfg[key]:
                             self.tree['config'][key][key2] = cfg[key][key2]
                     else:
@@ -427,98 +378,75 @@ class Manager(QtCore.QObject):
                 logger.exception('Error in configuration:')
         self.sigConfigChanged.emit()
 
-    def readConfigFile(self, fileName, missingOk=True):
-        """Actually check if the configuration file exists and read it
+    def read_config_file(self, file_path, missing_ok=True):
+        """
+        Actually check if the configuration file exists and read it
 
-          @param string fileName: path to configuration file
-          @param bool missingOk: suppress exception if file does not exist
+        @param str file_path: path to configuration file
+        @param bool missing_ok: suppress exception if file does not exist
 
-          @return dict: configuration from file
+        @return dict: configuration from file
         """
         with self.lock:
-            if os.path.isfile(fileName):
-                return config.load(fileName)
-            else:
-                fileName = self.configFileName(fileName)
-                if os.path.isfile(fileName):
-                    return config.load(fileName)
-                else:
-                    if missingOk:
-                        return {}
-                    else:
-                        raise Exception(
-                            'Config file {0} not found.'.format(fileName))
+            if not os.path.isfile(file_path):
+                file_path = os.path.join(self.config_dir, file_path)
+            return config.load(file_path, ignore_missing=missing_ok)
 
     @QtCore.Slot(dict, str)
-    def writeConfigFile(self, data, fileName):
-        """Write a file into the currently used config directory.
+    def write_config_file(self, data, file_path):
+        """
+        Write a file into the currently used config directory.
 
-          @param dict data: dictionary to write into file
-          @param string fileName: path for filr to be written
+        @param dict data: dictionary to write into file
+        @param str file_path: path for filr to be written
         """
         with self.lock:
-            fileName = self.configFileName(fileName)
-            dirName = os.path.dirname(fileName)
-            if not os.path.exists(dirName):
-                os.makedirs(dirName)
-            config.save(fileName, data)
-
-    def configFileName(self, name):
-        """Get the full path of a configuration file from its filename.
-
-          @param string name: filename of file in configuration directory
-
-          @return string: full path to file
-        """
-        with self.lock:
-            return os.path.join(self.configDir, name)
+            file_path = os.path.join(self.config_dir, file_path)
+            file_dir = os.path.dirname(file_path)
+            if not os.path.exists(file_dir):
+                os.makedirs(file_dir)
+            config.save(file_path, data)
 
     @QtCore.Slot(str)
-    def saveConfig(self, filename):
-        """Save configuration to a file.
-
-          @param str filename: path where the config flie should be saved
+    def save_config_to_file(self, file_path):
         """
-        saveconfig = OrderedDict()
-        saveconfig.update(self.tree['defined'])
-        saveconfig['global'] = self.tree['global']
+        Save current configuration to a file.
 
-        self.writeConfigFile(saveconfig, filename)
-        logger.info('Saved configuration to {0}'.format(filename))
+        @param str file_path: path where the config file should be saved
+        """
+        config_tree = OrderedDict()
+        config_tree.update(self.tree['defined'])
+        config_tree['global'] = self.tree['global']
+
+        self.write_config_file(config_tree, file_path)
+        logger.info('Saved configuration to {0}'.format(file_path))
 
     @QtCore.Slot(str, bool)
-    def loadConfig(self, filename, restart=False):
-        """ Load configuration from file.
-
-          @param str filename: path of file to be loaded
+    def set_load_config(self, file_path, restart=False):
         """
-        maindir = self.getMainDir()
-        configdir = os.path.join(maindir, 'config')
-        loadFile = os.path.join(configdir, 'load.cfg')
-        if filename.startswith(configdir):
-            filename = re.sub(
-                '^' + re.escape('/'),
-                '',
-                re.sub(
-                    '^' + re.escape(configdir),
-                    '',
-                    filename)
-                )
-        loadData = {'configfile': filename}
-        config.save(loadFile, loadData)
-        logger.info('Set loaded configuration to {0}'.format(filename))
+        Set a new config file path and save it to /config/load.cfg.
+        Optionally trigger a restart of qudi.
+
+        @param str file_path: path of file to be loaded
+        @param bool restart: Flag indicating if a restart of qudi should be triggered after loading
+        """
+        load_config_path = os.path.join(self.default_config_dir, 'load.cfg')
+        if file_path.startswith(self.default_config_dir):
+            file_path = os.path.relpath(file_path, self.default_config_dir)
+        config.save(load_config_path, {'configfile': file_path})
+        logger.info('Set loaded configuration to {0}'.format(file_path))
         if restart:
-            logger.info('Restarting Qudi after configuration reload.')
+            logger.info('Restarting qudi after configuration reload.')
             self.restart()
 
     @QtCore.Slot(str, str)
-    def reloadConfigPart(self, base, mod):
+    def reload_config_part(self, base, mod):
         """Reread the configuration file and update the internal configuration of module
 
         @params str modname: name of module where config file should be reloaded.
         """
-        configFile = self._getConfigFile()
-        cfg = self.readConfigFile(configFile)
+        config_path = self.find_default_config_file()
+        cfg = self.read_config_file(config_path)
         try:
             if cfg[base][mod]['module.Class'] == self.tree['defined'][base][mod]['module.Class']:
                 self.tree['defined'][base][mod] = cfg[base][mod]
@@ -1269,7 +1197,7 @@ class Manager(QtCore.QObject):
 
           @return str: path of application status directory
         """
-        appStatusDir = os.path.join(self.configDir, 'app_status')
+        appStatusDir = os.path.join(self.config_dir, 'app_status')
         if not os.path.isdir(appStatusDir):
             os.makedirs(appStatusDir)
         return appStatusDir

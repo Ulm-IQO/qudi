@@ -113,7 +113,7 @@ class ManagerGui(GUIBase):
 
         # Get qudi version number and configure statusbar and "about qudi" dialog
         version = self.get_qudi_version()
-        config_file = self._manager.configFile
+        config_file = self._manager.config_file
         self._mw.about_qudi_dialog.label.setText(
             '<a href=\"https://github.com/Ulm-IQO/qudi/commit/{0}\" style=\"color: cyan;\"> {0} '
             '</a>, on branch {1}.'.format(version[0], version[1]))
@@ -152,8 +152,8 @@ class ManagerGui(GUIBase):
         self.sigReloadModule.connect(self._manager.restartModuleRecursive)
         self.sigCleanupStatus.connect(self._manager.removeStatusFile)
         self.sigStopModule.connect(self._manager.deactivateModule)
-        self.sigLoadConfig.connect(self._manager.loadConfig)
-        self.sigSaveConfig.connect(self._manager.saveConfig)
+        self.sigLoadConfig.connect(self._manager.set_load_config)
+        self.sigSaveConfig.connect(self._manager.save_config_to_file)
         self.sigRealQuit.connect(self._manager.realQuit)
 
         # Init module lists
@@ -462,9 +462,8 @@ class ManagerGui(GUIBase):
             QtWidgets.QMessageBox.No
         )
 
-        config_file = self._manager._getConfigFile()
         restart = reply == QtWidgets.QMessageBox.Yes
-        self.sigLoadConfig.emit(config_file, restart)
+        self.sigLoadConfig.emit(self._manager.config_file, restart)
 
     def get_load_file(self):
         """ Ask the user for a file where the configuration should be loaded from
