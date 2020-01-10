@@ -150,7 +150,7 @@ class TaskRunner(GenericLogic):
                 ref = dict()
                 for moddef, mod in t['needsmodules'].items():
                     if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
-                        success = self._manager.startModule('logic', mod)
+                        success = self._manager.start_module('logic', mod)
                         if success < 0:
                             raise Exception('Loading module {0} failed.'.format(mod))
                     ref[moddef] = self._manager.tree['loaded']['logic'][mod]
@@ -241,7 +241,7 @@ class TaskRunner(GenericLogic):
                 modok = True
             for moddef, mod in task['needsmodules'].items():
                 if mod in self._manager.tree['defined']['logic'] and not mod in self._manager.tree['loaded']['logic']:
-                    self._manager.startModule('logic', mod)
+                    self._manager.start_module('logic', mod)
                 if (mod in self._manager.tree['loaded']['logic']
                         and not self._manager.tree['loaded']['logic'][mod].module_state.isstate('deactivated')):
                     modok = True
