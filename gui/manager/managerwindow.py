@@ -23,7 +23,7 @@ import os
 from qtpy import QtCore, QtGui, QtWidgets
 from .logwidget import LogWidget
 from .remotewidget import RemoteWidget
-from .aboutdialog import AboutDialog
+from .aboutqudidialog import AboutQudiDialog
 from .consolesettingsdialog import ConsoleSettingsDialog
 from .modulewidget import ModuleScrollWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
@@ -173,10 +173,8 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
         self.setStatusBar(self.statusbar)
 
         # Create dialogues
-        self.about_qudi_dialog = AboutDialog()
+        self.about_qudi_dialog = AboutQudiDialog()
         self.about_qudi_dialog.setWindowTitle('About qudi')
-        self.about_qt_dialog = AboutDialog()
-        self.about_qt_dialog.setWindowTitle('About Qt')
         self.console_settings_dialog = ConsoleSettingsDialog()
 
         # Create dockwidgets
@@ -224,6 +222,6 @@ class ManagerMainWindow(QtWidgets.QMainWindow):
 
         # Connect dialog open signals
         self.action_about_qudi.triggered.connect(self.about_qudi_dialog.open)
-        self.action_about_qt.triggered.connect(self.about_qt_dialog.open)
+        self.action_about_qt.triggered.connect(QtWidgets.QApplication.aboutQt)
         self.action_console_settings.triggered.connect(self.console_settings_dialog.exec_)  # modal
         return
