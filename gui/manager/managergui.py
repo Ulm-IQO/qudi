@@ -150,11 +150,11 @@ class ManagerGui(GUIBase):
         # Connect signals
         self.sigStartModule.connect(self._manager.start_module)
         self.sigReloadModule.connect(self._manager.restart_module_recursive)
-        self.sigCleanupStatus.connect(self._manager.removeStatusFile)
+        self.sigCleanupStatus.connect(self._manager.remove_module_status_file)
         self.sigStopModule.connect(self._manager.stop_module)
         self.sigLoadConfig.connect(self._manager.set_load_config)
         self.sigSaveConfig.connect(self._manager.save_config_to_file)
-        self.sigRealQuit.connect(self._manager.realQuit)
+        self.sigRealQuit.connect(self._manager.force_quit)
 
         # Init module lists
         self.update_gui_module_list()
@@ -176,7 +176,7 @@ class ManagerGui(GUIBase):
         self.start_ipython_widget()
 
         # Configure thread widget
-        self._mw.threads_widget.setModel(self._manager.tm)
+        self._mw.threads_widget.setModel(self._manager.thread_manager)
 
         # Configure remote widget
         # hide remote menu item if rpyc is not available

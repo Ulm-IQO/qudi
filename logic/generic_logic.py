@@ -45,7 +45,7 @@ class GenericLogic(Base):
 
           @return QThread: thread with qt event loop associated with this module
         """
-        return self._manager.tm._threads['mod-logic-' + self._name].thread
+        return self._manager.thread_manager._threads['mod-logic-' + self._name].thread
 
     def getTaskRunner(self):
         """ Get a reference to the task runner module registered in the manager.
@@ -55,7 +55,7 @@ class GenericLogic(Base):
           If there isno registered task runner, an exception is raised.
         """
         with self._manager.lock:
-            if self._manager.tr is not None:
-                return self._manager.tr
+            if self._manager.task_runner is not None:
+                return self._manager.task_runner
             else:
                 raise Exception('Tried to access task runner without loading one!')

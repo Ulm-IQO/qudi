@@ -111,19 +111,18 @@ class Manager(QtCore.QObject):
             register_exception_handler(self)
 
             # Thread management
-            self.tm = ThreadManager()
+            self.thread_manager = ThreadManager()
             logger.debug('Main thread is {0}'.format(QtCore.QThread.currentThread()))
 
             # Task runner
-            self.tr = None
+            self.task_runner = None
 
             # Gui setup if we have gui
             if self.has_gui:
                 import core.gui.gui
                 self.gui = core.gui.gui.Gui(artwork_dir=os.path.join(get_main_dir(), 'artwork'))
                 self.gui.system_tray_icon.quitAction.triggered.connect(self.quit)
-                self.gui.system_tray_icon.managerAction.triggered.connect(
-                    lambda: self.sigShowManager.emit())
+                self.gui.system_tray_icon.managerAction.triggered.connect(self.sigShowManager)
                 self.gui.set_theme('qudiTheme')
 
             # Read in configuration file
@@ -151,47 +150,20 @@ class Manager(QtCore.QObject):
                     else:
                         # new style
                         try:
-                            server_address = self.tree['global']['module_server'].get(
-                                'address',
-                                'localhost')
-                            server_port = self.tree['global']['module_server'].get(
-                                'port', 12345)
-                            certfile = self.tree['global']['module_server'].get(
-                                'certfile', None)
+                            server_address = self.tree['global']['module_server'].get('address',
+                                                                                      'localhost')
+                            server_port = self.tree['global']['module_server'].get('port', 12345)
+                            certfile = self.tree['global']['module_server'].get('certfile', None)
                             keyfile = self.tree['global']['module_server'].get('keyfile', None)
                             self.rm.createServer(server_address, server_port, certfile, keyfile)
                             # successfully started remote server
-                            logger.info('Started server rpyc://{0}:{1}'.format(server_address,
-                                                                               server_port))
+                            logger.info(
+                                'Started server rpyc://{0}:{1}'.format(server_address, server_port))
                             self.remote_server = True
                         except:
                             logger.exception('Rpyc server could not be started.')
-                elif 'serveraddress' in self.tree['global']:
-                    logger.warning('Deprecated remote server settings. Please update to new '
-                                   'style. See documentation.')
-                    server_address = self.tree['global']['serveraddress']
-                    try:
-                        if 'serverport' in self.tree['global']:
-                            remote_port = self.tree['global']['serverport']
-                            logger.info('Remote port is configured to {0}'.format(remote_port))
-                        else:
-                            remote_port = 12345
-                            logger.info('Remote port is the standard {0}'.format(remote_port))
-                        if 'certfile' in self.tree['global']:
-                            certfile = self.tree['global']['certfile']
-                        else:
-                            certfile = None
-                        if 'keyfile' in self.tree['global']:
-                            keyfile = self.tree['global']['keyfile']
-                        else:
-                            keyfile = None
-                        self.rm.createServer(server_address, remote_port, certfile, keyfile)
-                        # successfully started remote server
-                        self.remote_server = True
-                    except:
-                        logger.exception('Remote server could not be started.')
 
-            logger.info('Qudi started.')
+            logger.info('qudi started.')
 
             # Load startup things from config here
             if 'startup' in self.tree['global']:
@@ -862,10 +834,10 @@ class Manager(QtCore.QObject):
                 logger.error('{0} module {1} not deactivated'.format(base, name))
             return
         try:
-            module.status_variables = self.loadStatusVariables(base, name)
+            module.status_variables = self.load_module_status_variables(base, name)
             # start main loop for qt objects
             if module.is_module_threaded:
-                modthread = self.tm.newThread('mod-{0}-{1}'.format(base, name))
+                modthread = self.thread_manager.newThread('mod-{0}-{1}'.format(base, name))
                 module.moveToThread(modthread)
                 modthread.start()
                 QtCore.QMetaObject.invokeMethod(module.module_state,
@@ -876,8 +848,8 @@ class Manager(QtCore.QObject):
                     QtCore.QMetaObject.invokeMethod(module,
                                                     'move_to_manager_thread',
                                                     QtCore.Qt.BlockingQueuedConnection)
-                    self.tm.quitThread(modthread.objectName())
-                    self.tm.joinThread(modthread.objectName())
+                    self.thread_manager.quitThread(modthread.objectName())
+                    self.thread_manager.joinThread(modthread.objectName())
             else:
                 module.module_state.activate()  # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(module.module_state() != 'deactivated'))
@@ -917,8 +889,8 @@ class Manager(QtCore.QObject):
                                                 'move_to_manager_thread',
                                                 QtCore.Qt.BlockingQueuedConnection)
                 thread_name = module.thread().objectName()
-                self.tm.quitThread(thread_name)
-                self.tm.joinThread(thread_name)
+                self.thread_manager.quitThread(thread_name)
+                self.thread_manager.joinThread(thread_name)
             else:
                 module.module_state.deactivate()  # runs on_deactivate in main thread
 
@@ -1207,36 +1179,40 @@ class Manager(QtCore.QObject):
                 logger.exception('Failed to save status variables of module {0}.{1}:\n{2}'
                                  ''.format(base, module, repr(variables)))
 
-    def loadStatusVariables(self, base, module):
-        """ If a status variable file exists for a module, load it into a dictionary.
-
-          @param str base: the module category
-          @param str module: the unique mduel name
-
-          @return dict: dictionary of satus variable names and values
+    def load_module_status_variables(self, base, module):
         """
+        If a status variable file exists for a module, load it into a dictionary.
+
+        @param str base: the module category
+        @param str module: the unique module name
+
+        @return dict: dictionary of status variable names and values
+        """
+        variables = OrderedDict()
         try:
-            statusdir = self.get_status_dir()
-            classname = self.tree['loaded'][base][module].__class__.__name__
-            filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+            status_dir = self.get_status_dir()
+            class_name = self.tree['loaded'][base][module].__class__.__name__
+            filename = os.path.join(status_dir,
+                                    'status-{0}_{1}_{2}.cfg'.format(class_name, base, module))
             if os.path.isfile(filename):
                 variables = config.load(filename)
-            else:
-                variables = OrderedDict()
         except:
             logger.exception('Failed to load status variables.')
-            variables = OrderedDict()
         return variables
 
     @QtCore.Slot(str, str)
-    def removeStatusFile(self, base, module):
+    def remove_module_status_file(self, base, module):
+        """
+        Removes (if present) the stored status variable file for given module with base.
+
+        @param str base: the module base category ('gui', 'logic' or 'hardware')
+        @param str module: the unique module name as specified in config
+        """
         try:
-            statusdir = self.get_status_dir()
-            classname = self.tree['defined'][base][
-                module]['module.Class'].split('.')[-1]
-            filename = os.path.join(
-                statusdir, 'status-{0}_{1}_{2}.cfg'.format(classname, base, module))
+            status_dir = self.get_status_dir()
+            class_name = self.tree['defined'][base][module]['module.Class'].split('.')[-1]
+            filename = os.path.join(status_dir,
+                                    'status-{0}_{1}_{2}.cfg'.format(class_name, base, module))
             if os.path.isfile(filename):
                 os.remove(filename)
         except:
@@ -1244,45 +1220,46 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot()
     def quit(self):
-        """Nicely request that all modules shut down."""
-        lockedmodules = False
-        brokenmodules = False
+        """ Nicely request that all modules shut down. """
+        locked_modules = False
+        broken_modules = False
         for base, mods in self.tree['loaded'].items():
             for name, module in mods.items():
                 try:
-                    state = module.module_state()
-                    if state == 'locked':
-                        lockedmodules = True
+                    if module.module_state() == 'locked':
+                        locked_modules = True
                 except:
-                    brokenmodules = True
-        if lockedmodules:
+                    broken_modules = True
+                if broken_modules and locked_modules:
+                    break
+        if locked_modules:
             if self.has_gui:
-                self.sigShutdownAcknowledge.emit(lockedmodules, brokenmodules)
+                self.sigShutdownAcknowledge.emit(locked_modules, broken_modules)
             else:
                 # FIXME: console prompt here
-                self.realQuit()
+                self.force_quit()
         else:
-            self.realQuit()
+            self.force_quit()
 
     @QtCore.Slot()
-    def realQuit(self):
+    def force_quit(self):
         """ Stop all modules, no questions asked. """
-        deps = self.get_all_recursive_module_dependencies(self.tree['loaded'])
-        sorteddeps = toposort(deps)
-        for b, mods in self.tree['loaded'].items():
-            for m in mods.keys():
-                if m not in sorteddeps:
-                    sorteddeps.append(m)
+        dependencies = self.get_all_recursive_module_dependencies(self.tree['loaded'])
+        sorted_dependencies = toposort(dependencies)
+        for modules in self.tree['loaded'].values():
+            for module_name in modules.keys():
+                if module_name not in sorted_dependencies:
+                    sorted_dependencies.append(module_name)
 
-        logger.debug('Deactivating {}'.format(sorteddeps))
+        logger.debug('Deactivating {}'.format(sorted_dependencies))
 
-        for module in reversed(sorteddeps):
+        for module in reversed(sorted_dependencies):
             base = self.find_module_base(module)
             try:
-                deact = self.tree['loaded'][base][module].can('deactivate')
+                can_deactivate = self.tree['loaded'][base][module].can('deactivate')
             except:
-                deact = True
-            if deact:
+                can_deactivate = True
+            if can_deactivate:
                 logger.info('Deactivating module {0}.{1}'.format(base, module))
                 self.deactivate_module(base, module)
             QtCore.QCoreApplication.processEvents()
@@ -1290,39 +1267,39 @@ class Manager(QtCore.QObject):
 
     @QtCore.Slot()
     def restart(self):
-        """Nicely request that all modules shut down for application restart."""
-        for mbase,bdict in self.tree['loaded'].items():
-            for module in bdict:
+        """ Nicely request that all modules shut down for application restart. """
+        for base, base_tree in self.tree['loaded'].items():
+            for module_name in base_tree:
                 try:
-                    if self.is_module_active(mbase, module):
-                        self.deactivate_module(mbase, module)
+                    if self.is_module_active(base, module_name):
+                        self.deactivate_module(base, module_name)
                 except:
                     logger.exception(
-                        'Module {0} failed to stop, continuing anyway.'.format(module))
+                        'Module {0} failed to stop, continuing anyway.'.format(module_name))
                 QtCore.QCoreApplication.processEvents()
         self.sigManagerQuit.emit(self, True)
 
     @QtCore.Slot(object)
-    def registerTaskRunner(self, reference):
-        """ Register/deregister/replace a task runner object.
+    def register_task_runner(self, reference):
+        """
+        Register/unregister/replace a task runner object.
+        If a reference is passed that is not None, it is kept and passed out as the task runner
+        instance.
+        If None is passed, the reference is discarded.
+        If another reference is passed, the current one is replaced.
 
-        @param object reference: reference to a task runner or null class
-
-        If a reference is passed that is not None, it is kept and passed out as the task runner instance.
-        If a None is passed, the reference is discarded.
-        Id another reference is passed, the current one is replaced.
-
+        @param object reference: reference to a task runner or None
         """
         with self.lock:
-            if self.tr is None and reference is not None:
-                self.tr = reference
+            if self.task_runner is None and reference is not None:
                 logger.info('Task runner registered.')
-            elif self.tr is not None and reference is None:
+            elif self.task_runner is not None and reference is None:
                 logger.info('Task runner removed.')
-            elif self.tr is None and reference is None:
-                logger.error('You tried to remove the task runner but none was registered.')
+            elif self.task_runner is None and reference is None:
+                logger.warning('You tried to remove the task runner but none was registered.')
             else:
                 logger.warning('Replacing task runner.')
+            self.task_runner = reference
 
     @QtCore.Slot(str, str)
     def pop_up_message(self, title, message):
