@@ -116,7 +116,6 @@ class FunctionImplementationError(Exception):
 
 
 class SaveLogic(GenericLogic):
-
     """
     A general class which saves all kinds of data in a general sense.
     """
@@ -126,17 +125,10 @@ class SaveLogic(GenericLogic):
     log_into_daily_directory = ConfigOption('log_into_daily_directory', False, missing='warn')
 
     # Matplotlib style definition for saving plots
+    __mpl_colors = ['#1f17f4', '#ffa40e', '#ff3487', '#008b00', '#17becf', '#850085']
+    __mpl_markers = ['o', 's', '^', 'v', 'D', 'd']
     mpl_qd_style = {
-        'axes.prop_cycle': cycler(
-            'color',
-            ['#1f17f4',
-            '#ffa40e',
-            '#ff3487',
-            '#008b00',
-            '#17becf',
-            '#850085'
-            ]
-            ) + cycler('marker', ['o', 's', '^', 'v', 'D', 'd']),
+        'axes.prop_cycle': cycler('color', __mpl_colors) + cycler('marker', __mpl_markers),
         'axes.edgecolor': '0.3',
         'xtick.color': '0.3',
         'ytick.color': '0.3',
@@ -150,10 +142,9 @@ class SaveLogic(GenericLogic):
         'axes.spines.top': True,
         'xtick.minor.visible': True,
         'ytick.minor.visible': True,
-        'savefig.dpi': '180'
-        }
+        'savefig.dpi': '180'}
 
-    _additional_parameters = {}
+    _additional_parameters = dict()
 
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)

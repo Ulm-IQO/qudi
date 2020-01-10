@@ -159,8 +159,8 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """
         try:
             #print('dostart', QtCore.QThread.currentThreadId(), self.current)
-            self.runner.pausePauseTasks(self)
-            self.runner.preRunPPTasks(self)
+            self.runner.pause_pause_tasks(self)
+            self.runner.pre_run_prepost_tasks(self)
             self.startTask()
             self.startingFinished()
             self.sigStarted.emit()
@@ -201,7 +201,7 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """
         try:
             self.pauseTask()
-            self.runner.postRunPPTasks(self)
+            self.runner.post_run_prepost_tasks(self)
             self.pausingFinished()
             self.sigPaused.emit()
         except Exception as e:
@@ -218,7 +218,7 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """ Actually execute resuming action.
         """
         try:
-            self.runner.preRunPPTasks(self)
+            self.runner.pre_run_prepost_tasks(self)
             self.resumeTask()
             self.resumingFinished()
             self.sigResumed.emit()
@@ -237,8 +237,8 @@ class InterruptableTask(QtCore.QObject, Fysom, metaclass=TaskMetaclass):
         """ Actually finish execution.
         """
         self.cleanupTask()
-        self.runner.resumePauseTasks(self)
-        self.runner.postRunPPTasks(self)
+        self.runner.resume_pause_tasks(self)
+        self.runner.post_run_prepost_tasks(self)
         self.finishingFinished()
         self.sigFinished.emit()
 
