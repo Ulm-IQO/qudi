@@ -29,6 +29,8 @@ class AboutQudiDialog(QtWidgets.QDialog):
     def __init__(self, parent=None, **kwargs):
         super().__init__(parent, **kwargs)
 
+        self.setWindowFlags(QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowCloseButtonHint)
+
         buttonbox = QtWidgets.QDialogButtonBox(QtWidgets.QDialogButtonBox.Ok)
         buttonbox.setOrientation(QtCore.Qt.Horizontal)
         self.ok_button = buttonbox.button(buttonbox.Ok)
