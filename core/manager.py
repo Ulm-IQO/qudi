@@ -139,9 +139,9 @@ class Manager(QtCore.QObject):
             # check first if remote support is enabled and if so create RemoteObjectManager
             if RemoteObjectManager is None:
                 logger.error('Remote modules disabled. Rpyc not installed.')
-                self.rm = None
+                self.remote_manager = None
             else:
-                self.rm = RemoteObjectManager(self)
+                self.remote_manager = RemoteObjectManager(self)
                 # Create remote module server if specified in config file
                 if 'module_server' in self.tree['global']:
                     if not isinstance(self.tree['global']['module_server'], dict):
@@ -155,7 +155,10 @@ class Manager(QtCore.QObject):
                             server_port = self.tree['global']['module_server'].get('port', 12345)
                             certfile = self.tree['global']['module_server'].get('certfile', None)
                             keyfile = self.tree['global']['module_server'].get('keyfile', None)
-                            self.rm.createServer(server_address, server_port, certfile, keyfile)
+                            self.remote_manager.createServer(server_address,
+                                                             server_port,
+                                                             certfile,
+                                                             keyfile)
                             # successfully started remote server
                             logger.info(
                                 'Started server rpyc://{0}:{1}'.format(server_address, server_port))
@@ -626,7 +629,7 @@ class Manager(QtCore.QObject):
         defined_module = self.tree['defined'][base][instance_name]
         if 'module.Class' in defined_module:
             if 'remote' in defined_module:
-                if self.rm is None:
+                if self.remote_manager is None:
                     logger.error('Remote module functionality disabled. Rpyc not installed.')
                     return -1
                 if not isinstance(defined_module['remote'], str):
@@ -636,9 +639,9 @@ class Manager(QtCore.QObject):
                 try:
                     certfile = defined_module.get('certfile', None)
                     keyfile = defined_module.get('keyfile', None)
-                    instance = self.rm.getRemoteModuleUrl(defined_module['remote'],
-                                                          certfile=certfile,
-                                                          keyfile=keyfile)
+                    instance = self.remote_manager.getRemoteModuleUrl(defined_module['remote'],
+                                                                      certfile=certfile,
+                                                                      keyfile=keyfile)
                     logger.info('Remote module {0} loaded as {1}.{2}.'
                                 ''.format(defined_module['remote'], base, instance_name))
                     with self.lock:
@@ -678,7 +681,7 @@ class Manager(QtCore.QObject):
                                                defined_module)
 
                     if 'remoteaccess' in defined_module and defined_module['remoteaccess']:
-                        if self.rm is None:
+                        if self.remote_manager is None:
                             logger.error(
                                 'Remote module sharing functionality disabled. Rpyc not installed.')
                             return 1
@@ -687,7 +690,8 @@ class Manager(QtCore.QObject):
                                          'configured or server startup failed earlier. Check your '
                                          'configuration and log.')
                             return 1
-                        self.rm.shareModule(instance_name, self.tree['loaded'][base][instance_name])
+                        self.remote_manager.shareModule(instance_name,
+                                                        self.tree['loaded'][base][instance_name])
                 except:
                     logger.exception(
                         'Error while loading {0} module: {1}'.format(base, instance_name))
@@ -709,7 +713,7 @@ class Manager(QtCore.QObject):
         """
         defined_module = self.tree['defined'][base][instance_name]
         if 'remote' in defined_module:
-            if self.rm is None:
+            if self.remote_manager is None:
                 logger.error('Remote functionality not working, check your log.')
                 return -1
             if not isinstance(defined_module['remote'], str):
@@ -717,7 +721,7 @@ class Manager(QtCore.QObject):
                     'Remote URL of {0} module {1} not a string.'.format(base, instance_name))
                 return -1
             try:
-                instance = self.rm.getRemoteModuleUrl(defined_module['remote'])
+                instance = self.remote_manager.getRemoteModuleUrl(defined_module['remote'])
                 logger.info('Remote module {0} loaded as .{1}.{2}.'
                             ''.format(defined_module['remote'], base, instance_name))
                 with self.lock:
