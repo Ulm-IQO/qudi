@@ -129,7 +129,7 @@ class ManagerGui(GUIBase):
         self._mw.action_load_configuration.triggered.connect(self.get_load_file)
         self._mw.action_reload_qudi.triggered.connect(self.reload_qudi)
         self._mw.action_save_configuration.triggered.connect(self.get_save_file)
-        self._mw.action_load_all_modules.triggered.connect(self._manager.startAllConfiguredModules)
+        self._mw.action_load_all_modules.triggered.connect(self._manager.start_all_modules)
         self._mw.action_view_default.triggered.connect(self.reset_default_layout)
         # Connect signals from manager
         self._manager.sigShowManager.connect(self.show)
@@ -148,10 +148,10 @@ class ManagerGui(GUIBase):
         self.console_keep_settings()
 
         # Connect signals
-        self.sigStartModule.connect(self._manager.startModule)
-        self.sigReloadModule.connect(self._manager.restartModuleRecursive)
+        self.sigStartModule.connect(self._manager.start_module)
+        self.sigReloadModule.connect(self._manager.restart_module_recursive)
         self.sigCleanupStatus.connect(self._manager.removeStatusFile)
-        self.sigStopModule.connect(self._manager.deactivateModule)
+        self.sigStopModule.connect(self._manager.stop_module)
         self.sigLoadConfig.connect(self._manager.set_load_config)
         self.sigSaveConfig.connect(self._manager.save_config_to_file)
         self.sigRealQuit.connect(self._manager.realQuit)
