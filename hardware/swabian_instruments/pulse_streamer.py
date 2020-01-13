@@ -770,4 +770,3 @@ class PulseStreamer(Base, PulserInterface):
         @return: bool, True for yes, False for no.
         """
         return False
-
