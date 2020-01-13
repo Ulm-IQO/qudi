@@ -32,7 +32,8 @@ from gui.colordefs import ColorScaleInferno
 from gui.colordefs import QudiPalettePale as palette
 from gui.fitsettings import FitSettingsDialog, FitSettingsComboBox
 from qtpy import QtCore
-from qtpy import QtWidgets
+from qtpy import QtCore, QtWidgets, uic
+from qtwidgets.scientific_spinbox import ScienDSpinBox, ScienSpinBox
 from qtpy import uic
 
 
@@ -91,6 +92,7 @@ class ODMRGui(GUIBase):
     sigSaveMeasurement = QtCore.Signal(str, list, list)
     sigAverageLinesChanged = QtCore.Signal(int)
 
+
     def __init__(self, config, **kwargs):
         super().__init__(config=config, **kwargs)
 
@@ -127,6 +129,84 @@ class ODMRGui(GUIBase):
         self._mw.cw_power_DoubleSpinBox.setMinimum(constraints.min_power)
         self._mw.sweep_power_DoubleSpinBox.setMaximum(constraints.max_power)
         self._mw.sweep_power_DoubleSpinBox.setMinimum(constraints.min_power)
+
+        # Add grid layout for ranges
+        groupBox = QtWidgets.QGroupBox(self._mw.dockWidgetContents_3)
+        groupBox.setAlignment(QtCore.Qt.AlignLeft)
+        groupBox.setTitle('Scanning Ranges')
+        gridLayout = QtWidgets.QGridLayout(groupBox)
+        for row in range(self._odmr_logic.ranges):
+            # start
+            start_label = QtWidgets.QLabel(groupBox)
+            start_label.setText('Start:')
+            setattr(self._mw.odmr_control_DockWidget, 'start_label_{}'.format(row), start_label)
+            start_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+            start_freq_DoubleSpinBox.setSuffix('Hz')
+            start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
+            start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
+            start_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+            start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start)
+            start_freq_DoubleSpinBox.setMinimumWidth(75)
+            start_freq_DoubleSpinBox.setMaximumWidth(100)
+            setattr(self._mw.odmr_control_DockWidget, 'start_freq_DoubleSpinBox_{}'.format(row),
+                    start_freq_DoubleSpinBox)
+            gridLayout.addWidget(start_label, row,  1, 1, 1)
+            gridLayout.addWidget(start_freq_DoubleSpinBox, row, 2, 1, 1)
+
+            # step
+            step_label = QtWidgets.QLabel(groupBox)
+            step_label.setText('Step:')
+            setattr(self._mw.odmr_control_DockWidget, 'step_label_{}'.format(row), step_label)
+            step_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+            step_freq_DoubleSpinBox.setSuffix('Hz')
+            step_freq_DoubleSpinBox.setMaximum(100e9)
+            step_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+            step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step)
+            step_freq_DoubleSpinBox.setMinimumWidth(75)
+            step_freq_DoubleSpinBox.setMaximumWidth(100)
+            setattr(self._mw.odmr_control_DockWidget, 'step_freq_DoubleSpinBox_{}'.format(row),
+                    step_freq_DoubleSpinBox)
+            gridLayout.addWidget(step_label, row,  3, 1, 1)
+            gridLayout.addWidget(step_freq_DoubleSpinBox, row, 4, 1, 1)
+
+            # stop
+            stop_label = QtWidgets.QLabel(groupBox)
+            stop_label.setText('Stop:')
+            setattr(self._mw.odmr_control_DockWidget, 'stop_label_{}'.format(row), stop_label)
+            stop_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+            stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
+            stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
+            stop_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+            stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop)
+            stop_freq_DoubleSpinBox.setMinimumWidth(75)
+            stop_freq_DoubleSpinBox.setMaximumWidth(100)
+            setattr(self._mw.odmr_control_DockWidget, 'stop_freq_DoubleSpinBox_{}'.format(row),
+                    stop_freq_DoubleSpinBox)
+            gridLayout.addWidget(stop_label, row, 5, 1, 1)
+            gridLayout.addWidget(stop_freq_DoubleSpinBox, row, 6, 1, 1)
+            if row == 0:
+                # add range
+                add_range_button = QtWidgets.QPushButton(groupBox)
+                add_range_button.setText('Add Range')
+                add_range_button.setMinimumWidth(75)
+                add_range_button.setMaximumWidth(100)
+                add_range_button.clicked.connect(self.add_ranges_gui_elements_clicked)
+                gridLayout.addWidget(add_range_button, row, 7, 1, 1)
+
+                remove_range_button = QtWidgets.QPushButton(groupBox)
+                remove_range_button.setText('Remove Range')
+                remove_range_button.setMinimumWidth(75)
+                remove_range_button.setMaximumWidth(100)
+                remove_range_button.clicked.connect(self.remove_ranges_gui_elements_clicked)
+                gridLayout.addWidget(remove_range_button, row, 8, 1, 1)
+
+
+
+        setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
+        self._mw.dockWidgetContents_3_grid_layout = self._mw.dockWidgetContents_3.layout()
+        # (QWidget * widget, int row, int column, Qt::Alignment alignment = Qt::Alignment())
+
+        self._mw.dockWidgetContents_3_grid_layout.addWidget(groupBox, 7, 1, 1, 5)
 
         # Add save file tag input box
         self._mw.save_tag_LineEdit = QtWidgets.QLineEdit(self._mw)
@@ -365,6 +445,124 @@ class ODMRGui(GUIBase):
     def _menu_settings(self):
         """ Open the settings menu """
         self._sd.exec_()
+
+    def add_ranges_gui_elements_clicked(self):
+        """
+        When button >>add range<< is pushed add some buttons to the gui and connect accordingly to the
+        logic.
+        :return:
+        """
+        # make sure the logic keeps track
+        groupBox = self._mw.odmr_control_DockWidget.ranges_groupBox
+        gridLayout = groupBox.layout()
+        constraints = self._odmr_logic.get_hw_constraints()
+
+        insertion_row = self._odmr_logic.ranges
+        # start
+        start_label = QtWidgets.QLabel(groupBox)
+        start_label.setText('Start:')
+        setattr(self._mw.odmr_control_DockWidget, 'start_label_{}'.format(insertion_row), start_label)
+        start_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+        start_freq_DoubleSpinBox.setSuffix('Hz')
+        start_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
+        start_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
+        start_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+        start_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_start)
+        start_freq_DoubleSpinBox.setMinimumWidth(75)
+        start_freq_DoubleSpinBox.setMaximumWidth(100)
+        setattr(self._mw.odmr_control_DockWidget, 'start_freq_DoubleSpinBox_{}'.format(insertion_row),
+                start_freq_DoubleSpinBox)
+        gridLayout.addWidget(start_label, insertion_row, 1, 1, 1)
+        gridLayout.addWidget(start_freq_DoubleSpinBox, insertion_row, 2, 1, 1)
+
+        # step
+        step_label = QtWidgets.QLabel(groupBox)
+        step_label.setText('Step:')
+        setattr(self._mw.odmr_control_DockWidget, 'step_label_{}'.format(insertion_row), step_label)
+        step_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+        step_freq_DoubleSpinBox.setSuffix('Hz')
+        step_freq_DoubleSpinBox.setMaximum(100e9)
+        step_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+        step_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_step)
+        step_freq_DoubleSpinBox.setMinimumWidth(75)
+        step_freq_DoubleSpinBox.setMaximumWidth(100)
+        setattr(self._mw.odmr_control_DockWidget, 'step_freq_DoubleSpinBox_{}'.format(insertion_row),
+                step_freq_DoubleSpinBox)
+        gridLayout.addWidget(step_label, insertion_row, 3, 1, 1)
+        gridLayout.addWidget(step_freq_DoubleSpinBox, insertion_row, 4, 1, 1)
+
+        # stop
+        stop_label = QtWidgets.QLabel(groupBox)
+        stop_label.setText('Stop:')
+        setattr(self._mw.odmr_control_DockWidget, 'stop_label_{}'.format(insertion_row), stop_label)
+        stop_freq_DoubleSpinBox = ScienDSpinBox(groupBox)
+        stop_freq_DoubleSpinBox.setMaximum(constraints.max_frequency)
+        stop_freq_DoubleSpinBox.setMinimum(constraints.min_frequency)
+        stop_freq_DoubleSpinBox.setMinimumSize(QtCore.QSize(80, 0))
+        stop_freq_DoubleSpinBox.setValue(self._odmr_logic.mw_stop)
+        stop_freq_DoubleSpinBox.setMinimumWidth(75)
+        stop_freq_DoubleSpinBox.setMaximumWidth(100)
+        setattr(self._mw.odmr_control_DockWidget, 'stop_freq_DoubleSpinBox_{}'.format(insertion_row),
+                stop_freq_DoubleSpinBox)
+        gridLayout.addWidget(stop_label, insertion_row, 5, 1, 1)
+        gridLayout.addWidget(stop_freq_DoubleSpinBox, insertion_row, 6, 1, 1)
+
+        self._odmr_logic.ranges += 1
+        return
+
+    def remove_ranges_gui_elements_clicked(self):
+        remove_row = self._odmr_logic.ranges - 1
+
+        groupBox = self._mw.odmr_control_DockWidget.ranges_groupBox
+        gridLayout = groupBox.layout()
+
+        # get elements to be removed
+        # first names
+        start_label_str = 'start_label_{}'.format(remove_row)
+        step_label_str = 'step_label_{}'.format(remove_row)
+        stop_label_str = 'stop_label_{}'.format(remove_row)
+
+        # get widgets
+        start_freq_DoubleSpinBox_str = 'start_freq_DoubleSpinBox_{}'.format(remove_row)
+        step_freq_DoubleSpinBox_str = 'step_freq_DoubleSpinBox_{}'.format(remove_row)
+        stop_freq_DoubleSpinBox_str = 'stop_freq_DoubleSpinBox_{}'.format(remove_row)
+
+        start_label = getattr(self._mw.odmr_control_DockWidget, start_label_str)
+        step_label = getattr(self._mw.odmr_control_DockWidget, step_label_str)
+        stop_label = getattr(self._mw.odmr_control_DockWidget, stop_label_str)
+
+        start_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, start_freq_DoubleSpinBox_str)
+        step_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, step_freq_DoubleSpinBox_str)
+        stop_freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, stop_freq_DoubleSpinBox_str)
+
+        # hide widgets
+        start_label.hide()
+        step_label.hide()
+        stop_label.hide()
+
+        start_freq_DoubleSpinBox.hide()
+        step_freq_DoubleSpinBox.hide()
+        stop_freq_DoubleSpinBox.hide()
+
+        # remove widgets
+        gridLayout.removeWidget(start_label)
+        gridLayout.removeWidget(step_label)
+        gridLayout.removeWidget(stop_label)
+
+        gridLayout.removeWidget(start_freq_DoubleSpinBox)
+        gridLayout.removeWidget(step_freq_DoubleSpinBox)
+        gridLayout.removeWidget(stop_freq_DoubleSpinBox)
+
+        # finally delete the elements
+        del start_label
+        del step_label
+        del stop_label
+
+        del start_freq_DoubleSpinBox
+        del step_freq_DoubleSpinBox
+        del stop_freq_DoubleSpinBox
+
+        self._odmr_logic.ranges -= 1
 
     def run_stop_odmr(self, is_checked):
         """ Manages what happens if odmr scan is started/stopped. """

@@ -62,6 +62,7 @@ class ODMRLogic(GenericLogic):
     mw_step = StatusVar('mw_step', 2e6)
     run_time = StatusVar('run_time', 60)
     number_of_lines = StatusVar('number_of_lines', 50)
+    ranges = StatusVar('ranges', 1)
     fc = StatusVar('fits', None)
     lines_to_average = StatusVar('lines_to_average', 0)
     _oversampling = StatusVar('oversampling', default=10)
