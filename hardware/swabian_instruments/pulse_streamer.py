@@ -20,7 +20,6 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
 from core.module import Base
 from core.configoption import ConfigOption
 from core.statusvariable import  StatusVar
@@ -33,15 +32,25 @@ import pulsestreamer as ps
 
 
 class PulseStreamer(Base, PulserInterface):
-    """ Interface class to define the abstract controls and
-    communication with all pulsing devices.
+    """ Methods to control the Swabian Instruments Pulse Streamer 8/2
+
+    Example config for copy-paste:
+
+    pulsestreamer:
+        module.Class: 'swabian_instruments.pulse_streamer.PulseStreamer'
+        pulsestreamer_ip: '192.168.1.100'
+        #pulsed_file_dir: 'C:\\Software\\pulsed_files'
+        laser_channel: 0
+        uw_x_channel: 1
+        use_external_clock: False
+        external_clock_option: 0
     """
 
     _pulsestreamer_ip = ConfigOption('pulsestreamer_ip', '192.168.1.100', missing='warn')
     _laser_channel = ConfigOption('laser_channel', 1, missing='warn')
     _uw_x_channel = ConfigOption('uw_x_channel', 3, missing='warn')
-    _use_external_clock = ConfigOption('use_external_clock',False,missing='warn')
-    _external_clock_option = ConfigOption('external_clock_option', 0, missing='warn')
+    _use_external_clock = ConfigOption('use_external_clock', False, missing='info')
+    _external_clock_option = ConfigOption('external_clock_option', 0, missing='info')
     # 0: Internal (default), 1: External 125 MHz, 2: External 10 MHz
 
     __current_waveform = StatusVar(name='current_waveform', default={})
@@ -208,8 +217,7 @@ class PulseStreamer(Base, PulserInterface):
         # channels. Here all possible channel configurations are stated, where only the generic
         # names should be used. The names for the different configurations can be customary chosen.
         activation_config = OrderedDict()
-        activation_config['all'] = {'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7',
-                                    'd_ch8'}
+        activation_config['all'] = frozenset({'d_ch1', 'd_ch2', 'd_ch3', 'd_ch4', 'd_ch5', 'd_ch6', 'd_ch7', 'd_ch8'})
         constraints.activation_config = activation_config
 
         return constraints
