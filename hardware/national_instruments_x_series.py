@@ -56,6 +56,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
             - '/Dev1/Ctr1'
         counter_ai_channels:
             - '/Dev1/AI0'
+        counter_voltage_range: [-10, 10]
         default_scanner_clock_frequency: 100 # optional, in Hz
         scanner_clock_channel: '/Dev1/Ctr2'
         pixel_clock_channel: '/Dev1/PFI6'
@@ -97,6 +98,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
     _default_clock_frequency = ConfigOption('default_clock_frequency', 100, missing='info')
     _counter_channels = ConfigOption('counter_channels', missing='error')
     _counter_ai_channels = ConfigOption('counter_ai_channels', list(), missing='info')
+    _counter_voltage_range = ConfigOption('counter_voltage_range', [-10, 10], missing='info')
 
     # confocal scanner
     _default_scanner_clock_frequency = ConfigOption('default_scanner_clock_frequency', 100, missing='info')
@@ -450,8 +452,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                         ', '.join(self._counter_ai_channels),
                         'Counter Analog In',
                         daq.DAQmx_Val_RSE,
-                        -10,
-                        10,
+                        self.counter_voltage_range[0],
+                        self._counter_voltage_range[1],
                         daq.DAQmx_Val_Volts,
                         ''
                     )
@@ -992,8 +994,8 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     ', '.join(self._scanner_ai_channels),
                     'Scan Analog In',
                     daq.DAQmx_Val_RSE,
-                    -10,
-                    10,
+                    self.counter_voltage_range[0],
+                    self._counter_voltage_range[1],
                     daq.DAQmx_Val_Volts,
                     ''
                 )
