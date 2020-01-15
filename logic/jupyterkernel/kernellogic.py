@@ -18,7 +18,7 @@ along with Qudi. If not, see <http://www.gnu.org/licenses/>.
 Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
-from logic.generic_logic import GenericLogic
+from core.module import LogicBase
 from qtpy import QtCore
 from core.util.helpers import has_pyqtgraph
 if has_pyqtgraph:
@@ -35,7 +35,7 @@ from core.util.network import netobtain
 # -----------------------------------------------------------------------------
 
 
-class QudiKernelLogic(GenericLogic):
+class QudiKernelLogic(LogicBase):
     """ Logic module providing a Jupyer-compatible kernel connected via ZMQ."""
 
     sigStartKernel = QtCore.Signal(str)

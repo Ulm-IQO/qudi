@@ -24,7 +24,7 @@ from qtpy import QtCore
 import importlib
 
 from core.util.models import ListTableModel
-from logic.generic_logic import GenericLogic
+from core.module import LogicBase
 import core.task as gt
 
 
@@ -84,7 +84,7 @@ class TaskListTableModel(ListTableModel):
                 lambda x: self.dataChanged.emit(self.index(n, 1), self.index(n, 1)))
 
 
-class TaskRunner(GenericLogic):
+class TaskRunner(LogicBase):
     """
     This module keeps a collection of tasks that have varying preconditions, postconditions and
     conflicts and executes these tasks as their given conditions allow.
