@@ -452,7 +452,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                         ', '.join(self._counter_ai_channels),
                         'Counter Analog In',
                         daq.DAQmx_Val_RSE,
-                        self.counter_voltage_range[0],
+                        self._counter_voltage_range[0],
                         self._counter_voltage_range[1],
                         daq.DAQmx_Val_Volts,
                         ''
@@ -994,7 +994,7 @@ class NationalInstrumentsXSeries(Base, SlowCounterInterface, ConfocalScannerInte
                     ', '.join(self._scanner_ai_channels),
                     'Scan Analog In',
                     daq.DAQmx_Val_RSE,
-                    self.counter_voltage_range[0],
+                    self._counter_voltage_range[0],
                     self._counter_voltage_range[1],
                     daq.DAQmx_Val_Volts,
                     ''
