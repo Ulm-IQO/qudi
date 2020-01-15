@@ -1027,6 +1027,10 @@ class PredefinedGeneratorBase:
         return self.__sequencegeneratorlogic.generation_parameters
 
     @property
+    def pulse_generator_constraints(self):
+        return self.__sequencegeneratorlogic.pulse_generator_constraints
+
+    @property
     def channel_set(self):
         channels = self.pulse_generator_settings.get('activation_config')
         if channels is None:
