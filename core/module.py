@@ -29,6 +29,7 @@ from qtpy import QtCore
 from .meta import ModuleMeta
 from .configoption import MissingOption
 from .connector import Connector
+from core.util.mutex import Mutex
 
 
 class ModuleStateMachine(QtCore.QObject, Fysom):
@@ -117,7 +118,7 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
         super().deactivate()
 
 
-class BaseMixin(metaclass=ModuleMeta):
+class Base(QtCore.QObject, metaclass=ModuleMeta):
     """
     Base class for all loadable modules
 
@@ -149,6 +150,8 @@ class BaseMixin(metaclass=ModuleMeta):
         @param dict configuration: parameters from the configuration file
         @param dict callbacks: dict specifying functions to be run on state machine transitions
         """
+        super().__init__(**kwargs)
+
         if config is None:
             config = dict()
         if callbacks is None:
@@ -216,6 +219,12 @@ class BaseMixin(metaclass=ModuleMeta):
                                             QtCore.Qt.BlockingQueuedConnection)
         else:
             self.moveToThread(self._manager.thread())
+
+    @property
+    def module_thread(self):
+        if self._threaded:
+            return self.thread()
+        return None
 
     def __load_status_vars_activate(self, event=None):
         """
@@ -337,7 +346,47 @@ class BaseMixin(metaclass=ModuleMeta):
         return
 
 
-class Base(QtCore.QObject, BaseMixin):
-    def __init__(self, parent=None, **kwargs):
-        QtCore.QObject.__init__(self, parent)
-        BaseMixin.__init__(self, parent=parent, **kwargs)
+class LogicBase(Base):
+    """
+
+    """
+    _threaded = True
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize a logic module.
+        """
+        super().__init__(*args, **kwargs)
+        self.task_lock = Mutex()  # FIXME: What's this? Is it needed?
+
+    # FIXME: exposing this seems like a great opportunity to shoot yourself in the foot.
+    #  Is it really needed? If the reference to task_runner is really needed and must be protected
+    #  by a Mutex, then the manager should handle safe access. (maybe a manager property?)
+    def get_task_runner(self):
+        """
+        Get a reference to the task runner module registered in the manager.
+        If there is no registered task runner, an exception is raised.
+
+        @return object: reference to task runner
+        """
+        with self._manager.lock:
+            if self._manager.task_runner is not None:
+                return self._manager.task_runner
+            else:
+                raise Exception('Tried to access task runner without loading one!')
+
+
+class GuiBase(Base):
+    """This is the GUI base class. It provides functions that every GUI module should have.
+    """
+    def show(self):
+        warnings.warn('Every GUI module needs to re-implement the show() function!')
+
+    def save_window_pos(self, window):
+        self._status_variables['__win_pos_x'] = window.pos().x()
+        self._status_variables['__win_pos_y'] = window.pos().y()
+
+    def restore_window_pos(self, window):
+        if '__win_pos_x' in self._status_variables and '__win_pos_y' in self._status_variables:
+            window.move(self._status_variables['__win_pos_x'],
+                        self._status_variables['__win_pos_y'])

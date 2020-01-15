@@ -20,12 +20,12 @@ top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi
 """
 
 from core.connector import Connector
-from core.gui.guibase import GUIBase
+from core.module import GuiBase
 from qtpy import QtCore
 from .taskwindow import TaskMainWindow
 
 
-class TaskGui(GUIBase):
+class TaskGui(GuiBase):
     """
     TODO: Document
     """

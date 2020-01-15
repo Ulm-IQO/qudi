@@ -26,9 +26,7 @@ import importlib
 
 sys.path.append(os.getcwd())
 
-from core.module import Base
-from core.gui.guibase import GUIBase
-from logic.generic_logic import GenericLogic
+from core.module import Base, GuiBase, LogicBase
 from core.task import InterruptableTask, PrePostTask
 
 
@@ -76,10 +74,10 @@ for f in pyfiles:
         for thingname in thinglist:
             thing = getattr(mod, thingname)
             try:
-                if issubclass(thing, GenericLogic) and thingname != 'GenericLogic':
+                if issubclass(thing, LogicBase) and thingname != 'LogicBase':
                     print('MODULE ' + f + '.' + thingname)
                     print_connectors(thing)
-                elif issubclass(thing, GUIBase) and thingname != 'GUIBase':
+                elif issubclass(thing, GuiBase) and thingname != 'GuiBase':
                     print('MODULE ' + f + '.' + thingname)
                     print_connectors(thing)
                 elif issubclass(thing, InterruptableTask) and thingname != 'InterruptableTask' :
@@ -87,7 +85,7 @@ for f in pyfiles:
                     print(thing.pauseTasks)
                 elif issubclass(thing, PrePostTask) and thingname != 'PerPostTask':
                     print('PPTASK ' + f + ' ' + thingname)
-                elif issubclass(thing, Base) and thingname != 'Base' and thingname != 'GenericLogic' and thingname != 'GUIBase':
+                elif issubclass(thing, Base) and thingname != 'Base' and thingname != 'LogicBase' and thingname != 'GuiBase':
                     print('MODULE ' + f + '.' + thingname)
                     print_connectors(thing)
                 else:

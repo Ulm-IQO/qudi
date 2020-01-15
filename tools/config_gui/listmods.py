@@ -112,10 +112,8 @@ def find_pyfiles(path):
     return pyfiles
 
 def check_qudi_modules(filelist):
-    from core.module import Base
     from core.meta import InterfaceMetaclass
-    from core.gui.guibase import GUIBase
-    from logic.generic_logic import GenericLogic
+    from core.module import Base, GuiBase, LogicBase
     from core.task import InterruptableTask, PrePostTask
 
     othererror = []
@@ -140,7 +138,7 @@ def check_qudi_modules(filelist):
                 try:
                     if not inspect.isclass(thing):
                         continue
-                    if issubclass(thing, GenericLogic) and thingname != 'GenericLogic':
+                    if issubclass(thing, LogicBase) and thingname != 'LogicBase':
                         modules['logic'][path] = Module(
                             path,
                             thingname,
@@ -150,7 +148,7 @@ def check_qudi_modules(filelist):
                             thing._config_options,
                             thing._stat_vars
                             )
-                    elif issubclass(thing, GUIBase) and thingname != 'GUIBase':
+                    elif issubclass(thing, GuiBase) and thingname != 'GuiBase':
                         modules['gui'][path] = Module(
                             path,
                             thingname,
@@ -166,8 +164,8 @@ def check_qudi_modules(filelist):
                         modules['pptask'][path] = {}
                     elif (issubclass(thing, Base)
                         and thingname != 'Base'
-                        and thingname != 'GenericLogic'
-                        and thingname != 'GUIBase'
+                        and thingname != 'LogicBase'
+                        and thingname != 'GuiBase'
                         ):
                         modules['hardware'][path] = Module(
                             path,

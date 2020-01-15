@@ -44,7 +44,7 @@ try:
     from .remote import RemoteObjectManager
 except ImportError:
     RemoteObjectManager = None
-from .module import BaseMixin
+from .module import Base
 from .connector import Connector
 from .gui.popup_dialog import PopUpMessage
 
@@ -481,7 +481,7 @@ class Manager(QtCore.QObject):
         modclass = getattr(module, class_name)
 
         # Check if the class we just obtained has the right inheritance
-        if not issubclass(modclass, BaseMixin):
+        if not issubclass(modclass, Base):
             raise Exception('Bad inheritance for instance {0!s} from {1!s}.{2!s}.'
                             ''.format(instance_name, base, class_name))
 

@@ -30,7 +30,7 @@ from core.util.modules import get_main_dir
 from core.util.helpers import has_pyqtgraph
 from gui.manager.widgets.errordialog import ErrorDialog
 from gui.manager.widgets.managerwindow import ManagerMainWindow
-from core.gui.guibase import GUIBase
+from core.module import GuiBase
 from qtpy import QtCore, QtWidgets, QtGui
 
 try:
@@ -47,7 +47,7 @@ if has_pyqtgraph:
     import pyqtgraph as pg
 
 
-class ManagerGui(GUIBase):
+class ManagerGui(GuiBase):
     """
     This class provides a GUI to the qudi manager.
     It supports module loading, reloading, logging and other administrative tasks.
