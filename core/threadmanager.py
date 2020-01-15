@@ -19,12 +19,11 @@ Copyright (c) the Qudi Developers. See the COPYRIGHT.txt file at the
 top-level directory of this distribution and at <https://github.com/Ulm-IQO/qudi/>
 """
 
-
+from qtpy import QtCore
+from .util.mutex import Mutex
+from functools import partial
 import logging
 logger = logging.getLogger(__name__)
-from qtpy import QtCore
-from collections import OrderedDict
-from .util.mutex import Mutex
 
 
 class ThreadManager(QtCore.QAbstractTableModel):
@@ -32,119 +31,174 @@ class ThreadManager(QtCore.QAbstractTableModel):
     """
     def __init__(self):
         super().__init__()
-        self._threads = OrderedDict()
-        self.lock = Mutex()
-        self.headers = ['Name', 'Thread']
-        self.thread = QtCore.QThread.currentThread()
+        self._threads = list()
+        self._thread_names = list()
+        self.lock = Mutex(recursive=True)
 
-    def newThread(self, name):
-        """ Create a new thread with a name, return its object
-          @param str name: unique name of thread
-
-          @return QThread: new thred, none if failed
+    def get_new_thread(self, name):
         """
-        logger.debug('Creating thread: \"{0}\".'.format(name))
+        Create and return a new QThread with objectName <name>
+
+        @param str name: unique name of thread
+
+        @return QThread: new thread, none if failed
+        """
+        logger.debug('Creating thread: "{0}".'.format(name))
         with self.lock:
-            if 'name' in self._threads:
+            if name in self._thread_names:
                 return None
+            thread = QtCore.QThread()
+            thread.setObjectName(name)
+            self.register_thread(thread)
+        return thread
+
+    @QtCore.Slot(QtCore.QThread)
+    def register_thread(self, thread):
+        """
+        Add QThread to ThreadManager.
+
+        @param QtCore.QThread thread: thread to register with unique objectName
+        """
+        name = thread.objectName()
+        with self.lock:
+            if name in self._thread_names:
+                if self.get_thread_by_name(name) is thread:
+                    return None
+                raise Exception(
+                    'Different thread with name "{0}" already registered in ThreadManager'
+                    ''.format(name))
+
             row = len(self._threads)
             self.beginInsertRows(QtCore.QModelIndex(), row, row)
-            self._threads[name] = ThreadItem(name)
-            self._threads[name].sigThreadHasQuit.connect(self.cleanupThread, QtCore.Qt.QueuedConnection)
+            self._threads.append(thread)
+            self._thread_names.append(name)
+            thread.finished.connect(
+                partial(self.unregister_thread, name=name), QtCore.Qt.QueuedConnection)
             self.endInsertRows()
-        return self._threads[name].thread
 
-    def quitThread(self, name):
-        """Stop event loop of QThread.
-
-          @param str name: unique thread name
+    @QtCore.Slot(str)
+    @QtCore.Slot(QtCore.QThread)
+    def unregister_thread(self, name):
         """
-        if name in self._threads:
-            logger.debug('Quitting thread {0}.'.format(name))
-            self._threads[name].thread.quit()
-        else:
-            logger.debug('You tried quitting a nonexistent thread {0}.'.format(name))
+        Remove thread from ThreadManager.
 
-    def joinThread(self, name, time=None):
-        """Stop event loop of QThread.
-
-          @param str name: unique thread name
-          @param int time: timeout for waiting in msec
+        @param str name: unique thread name
         """
-        if name in self._threads:
-            logger.debug('Waiting for thread {0} to end.'.format(name))
-            if time is None:
-                self._threads[name].thread.wait()
+        if isinstance(name, QtCore.QThread):
+            name = name.objectName()
+        with self.lock:
+            if name in self._thread_names:
+                index = self._thread_names.index(name)
+                if not self._threads[index].isRunning():
+                    logger.debug('Cleaning up thread {0}.'.format(name))
+                    self.beginRemoveRows(QtCore.QModelIndex(), index, index)
+                    del self._threads[index]
+                    del self._thread_names[index]
+                    self.endRemoveRows()
+
+    def quit_thread(self, name):
+        """
+        Stop event loop of QThread.
+
+        @param str name: unique thread name
+        """
+        with self.lock:
+            thread = self.get_thread_by_name(name)
+            if thread is None:
+                logger.debug('You tried quitting a nonexistent thread {0}.'.format(name))
             else:
-                self._threads[name].thread.wait(time)
-        else:
-            logger.debug('You tried waiting for a nonexistent thread {0}.'.format(name))
+                logger.debug('Quitting thread {0}.'.format(name))
+                thread.quit()
 
-    def cleanupThread(self, name):
-        """Remove thread from thread list.
-
-          @param str name: unique thread name
+    def join_thread(self, name, time=None):
         """
-        if name in self._threads and not self._threads[name].thread.isRunning():
-            logger.debug('Cleaning up thread {0}.'.format(name))
-            with self.lock:
-                row = self.getItemNumberByKey(name)
-                self.beginRemoveRows(QtCore.QModelIndex(), row, row)
-                self._threads.pop(name)
-                self.endRemoveRows()
+        Wait for stop of QThread event loop.
 
-    def quitAllThreads(self):
-        """Stop event loop of all QThreads.
+        @param str name: unique thread name
+        @param int time: timeout for waiting in msec
         """
-        logger.debug('Quit all threads.')
-        for name in self._threads:
-            self._threads[name].thread.quit()
+        with self.lock:
+            thread = self.get_thread_by_name(name)
+            if thread is None:
+                logger.debug('You tried waiting for a nonexistent thread {0}.'.format(name))
+            else:
+                logger.debug('Waiting for thread {0} to end.'.format(name))
+                if time is None:
+                    thread.wait()
+                else:
+                    thread.wait(time)
 
-    def getItemByNumber(self, n):
-        """ Get thread by number ins list.
-
-            @param int n: number in list
-
-            @return (threadname, thread): thread name and thread
+    @QtCore.Slot()
+    def quit_all_threads(self):
+        """ Stop event loop of all QThreads.
         """
-        i = 0
-        if not(0 <= n < len(self._threads)):
-            raise IndexError
-        it = iter(self._threads)
-        key = next(it)
-        while i<n:
-            key = next(it)
-            i += 1
-        return key, self._threads[key]
+        with self.lock:
+            logger.debug('Quit all threads.')
+            for thread in self._threads:
+                thread.quit()
 
-    def getItemNumberByKey(self, key):
-        """ Get number in list from thread name.
-
-            @param str key: thread name
-
-            @return int: thread number in list
+    def get_thread_by_name(self, name):
         """
-        i = 0
-        it = iter(self._threads)
-        newkey = next(it)
-        while key != newkey:
-            newkey = next(it)
-            i += 1
-        return i
+        Get registered QThread instance by its objectName
 
-    def rowCount(self, parent = QtCore.QModelIndex()):
-        """ Gives the number of threads registered.
+        @param str name: objectName of the QThread to return
+        @return QThread: The registered thread object
+        """
+        if name in self._thread_names:
+            index = self._thread_names.index(name)
+            return self._threads[index]
+        return None
 
-          @return int: number of threads
+    # QAbstractTableModel interface methods follow below
+
+    def rowCount(self, parent=None):
+        """
+        Gives the number of threads registered.
+
+        @return int: number of threads
         """
         return len(self._threads)
 
-    def columnCount(self, parent = QtCore.QModelIndex()):
-        """ Gives the number of data fields of a thread.
+    def columnCount(self, parent=None):
+        """
+        Gives the number of data fields of a thread.
 
-          @return int: number of thread data fields
+        @return int: number of thread data fields
         """
         return 2
+
+    def headerData(self, section, orientation, role=QtCore.Qt.DisplayRole):
+        """
+        Data for the table view headers.
+
+        @param int section: column/row index to get header data for
+        @param QtCore.Qt.Orientation orientation: orientation of header (horizontal or vertical)
+        @param QtCore.ItemDataRole role: data access role
+
+        @return str: header data for given column/row and role
+        """
+        if role == QtCore.Qt.DisplayRole and orientation == QtCore.Qt.Horizontal:
+            if section == 0:
+                return 'Name'
+            elif section == 1:
+                return 'Thread'
+        return None
+
+    def data(self, index, role):
+        """
+        Get data from model for a given cell. Data can have a role that affects display.
+
+        @param QtCore.QModelIndex index: cell for which data is requested
+        @param QtCore.Qt.ItemDataRole role: data access role of request
+
+        @return QVariant: data for given cell and role
+        """
+        if index.isValid() and role == QtCore.Qt.DisplayRole and 0 <= index.row() < self.rowCount():
+            if index.column() == 0:
+                return self._thread_names[index.row()]
+            elif index.column() == 1:
+                return self._threads[index.row()]
+        return None
 
     def flags(self, index):
         """ Determines what can be done with entry cells in the table view.
@@ -153,70 +207,4 @@ class ThreadManager(QtCore.QAbstractTableModel):
 
           @return Qt.ItemFlags: actins allowed fotr this cell
         """
-        return QtCore.Qt.ItemIsEnabled |  QtCore.Qt.ItemIsSelectable
-
-    def data(self, index,  role):
-        """ Get data from model for a given cell. Data can have a role that affects display.
-
-          @param QModelIndex index: cell for which data is requested
-          @param ItemDataRole role: role for which data is requested
-
-          @return QVariant: data for given cell and role
-        """
-        if not index.isValid():
-            return None
-        elif role == QtCore.Qt.DisplayRole:
-            item = self.getItemByNumber(index.row())
-            if index.column() == 0:
-               return item[1].name
-            elif index.column() == 1:
-                return item[1].thread
-            else:
-                return None
-        else:
-            return None
-
-    def headerData(self, section, orientation, role = QtCore.Qt.DisplayRole):
-        """ Data for the table view headers.
-
-          @param int section: number of the column to get header data for
-          @param Qt.Orientation: orientation of header (horizontal or vertical)
-          @param ItemDataRole: role for which to get data
-
-          @return QVariant: header data for given column and role
-        """
-        if not(0 <= section <= 1):
-            return None
-        elif role != QtCore.Qt.DisplayRole:
-            return None
-        elif orientation != QtCore.Qt.Horizontal:
-            return None
-        else:
-            return self.headers[section]
-
-class ThreadItem(QtCore.QObject):
-    """ This class represents a QThread.
-
-      @signal str sigThreadHasQuit: sents a signal containig the name of the thread tha has quit
-    """
-    sigThreadHasQuit = QtCore.Signal(str)
-
-    def __init__(self, name):
-        """ Create a ThreadItwm object
-
-          @param str name: unique name of the thread
-        """
-        super().__init__()
-        self.thread = QtCore.QThread()
-        self.thread.setObjectName(name)
-        self.name = name
-        self.thread.finished.connect(self.myThreadHasQuit)
-
-    def myThreadHasQuit(self):
-        """ Signal handler for quitting thread.
-            Re-emits signal containing the unique thread name.
-        """
-        self.sigThreadHasQuit.emit(self.name)
-        logger.debug('Thread {0} has quit.'.format(self.name))
-
-
+        return QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable

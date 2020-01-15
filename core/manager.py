@@ -22,7 +22,7 @@ Derived form ACQ4:
 Copyright 2010  Luke Campagnola
 Originally distributed under MIT/X11 license. See documentation/MITLicense.txt for more infomation.
 """
-
+import time
 import logging
 logger = logging.getLogger(__name__)
 
@@ -542,27 +542,6 @@ class Manager(QtCore.QObject):
                 logger.error('{0}.{1}.{2}: Connector is no Connector object instance.'
                              ''.format(c, base, instance_name))
                 continue
-            # legacy connector
-            # elif isinstance(connectors[c], OrderedDict):
-            #     if 'class' not in connectors[c]:
-            #         logger.error('{0}.{1}.{2}: No class key in connection declaration.'
-            #             ''.format(c, base, instance_name))
-            #         continue
-            #     if not isinstance(connectors[c]['class'], str):
-            #         logger.error('{0}.{1}.{2}: Value {3} for class key is not a string.'
-            #             ''.format(c, base, instance_name, connectors[c]['class']))
-            #         continue
-            #     if 'object' not in connectors[c]:
-            #         logger.error('{0}.{1}.{2}: No object key in connection declaration.'
-            #             ''.format(c, base, instance_name))
-            #         continue
-            #     if connectors[c]['object'] is not None:
-            #         logger.warning('Connector {0}.{1}.{2} is already connected.'
-            #             ''.format(c, base, instance_name))
-            #         continue
-            #     logger.warning('Connector {0} in {1}.{2} is a legacy connector.\n'
-            #         'Use core.module.Connector to declare connectors.'
-            #         ''.format(c, base, instance_name))
             if not isinstance(connections[c], str):
                 logger.error('Connector configuration {0}.{1}.{2} is broken since it is not a str.'
                              ''.format(base, instance_name, c))
@@ -595,9 +574,6 @@ class Manager(QtCore.QObject):
                         ''.format(base, instance_name, c, destbase, destmod))
             if isinstance(connectors[c], Connector):
                 connectors[c].connect(self.tree['loaded'][destbase][destmod])
-            # legacy connector
-            # elif isinstance(connectors[c], dict):
-            #     connectors[c]['object'] = self.tree['loaded'][destbase][destmod]
             else:
                 logger.error(
                     'Connector {0} has wrong type even though we checked before.'.format(c))
@@ -609,12 +585,6 @@ class Manager(QtCore.QObject):
                 logger.error('Connector {0} of module {1}.{2} is not connected. Connection not '
                              'complete.'.format(c, base, instance_name))
                 return -1
-            # legacy connector
-            # elif isinstance(v, dict) and v['object'] is None:
-            #     logger.error('Connector {0} of module {1}.{2} is not '
-            #                  'connected. Connection not complete.'.format(
-            #                      c, base, instance_name))
-            #     return -1
         return 0
 
     def load_and_configure_qudi_module(self, base, instance_name):
@@ -841,9 +811,10 @@ class Manager(QtCore.QObject):
             module.status_variables = self.load_module_status_variables(base, name)
             # start main loop for qt objects
             if module.is_module_threaded:
-                modthread = self.thread_manager.newThread('mod-{0}-{1}'.format(base, name))
-                module.moveToThread(modthread)
-                modthread.start()
+                thread_name = 'mod-{0}-{1}'.format(base, name)
+                thread = self.thread_manager.get_new_thread(thread_name)
+                module.moveToThread(thread)
+                thread.start()
                 QtCore.QMetaObject.invokeMethod(module.module_state,
                                                 'activate',
                                                 QtCore.Qt.BlockingQueuedConnection)
@@ -852,8 +823,8 @@ class Manager(QtCore.QObject):
                     QtCore.QMetaObject.invokeMethod(module,
                                                     'move_to_manager_thread',
                                                     QtCore.Qt.BlockingQueuedConnection)
-                    self.thread_manager.quitThread(modthread.objectName())
-                    self.thread_manager.joinThread(modthread.objectName())
+                    self.thread_manager.quit_thread(thread_name)
+                    self.thread_manager.join_thread(thread_name)
             else:
                 module.module_state.activate()  # runs on_activate in main thread
             logger.debug('Activation success: {}'.format(module.module_state() != 'deactivated'))
@@ -886,15 +857,16 @@ class Manager(QtCore.QObject):
             return
         try:
             if module.is_module_threaded:
+                thread_name = module.thread().objectName()
                 QtCore.QMetaObject.invokeMethod(module.module_state,
                                                 'deactivate',
                                                 QtCore.Qt.BlockingQueuedConnection)
                 QtCore.QMetaObject.invokeMethod(module,
                                                 'move_to_manager_thread',
                                                 QtCore.Qt.BlockingQueuedConnection)
-                thread_name = module.thread().objectName()
-                self.thread_manager.quitThread(thread_name)
-                self.thread_manager.joinThread(thread_name)
+
+                self.thread_manager.quit_thread(thread_name)
+                self.thread_manager.join_thread(thread_name)
             else:
                 module.module_state.deactivate()  # runs on_deactivate in main thread
 

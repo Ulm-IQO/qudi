@@ -102,7 +102,7 @@ class RemoteObjectManager(QObject):
 
           @param int port: port where the server should be running
         """
-        thread = self.tm.newThread('rpyc-server')
+        thread = self.tm.get_new_thread('rpyc-server')
         if certfile is not None and keyfile is not None:
             self.server = RPyCServer(
                 self.makeRemoteService(),
