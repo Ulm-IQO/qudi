@@ -75,7 +75,7 @@ class QtLogFormatter(logging.Formatter):
         return entry
 
 
-class QtLogHandler(QtCore.QObject, logging.Handler):
+class QtLogHandler(logging.Handler, QtCore.QObject):
     """Log handler for displaying log records in a QT gui.
 
       For each log record the Qt signal sigLoggedMessage is emitted
@@ -92,11 +92,9 @@ class QtLogHandler(QtCore.QObject, logging.Handler):
       @param object parent: parent of QObject, defaults to None
       @param int level: log level, defaults to NOTSET
     """
-
     sigLoggedMessage = QtCore.Signal(object)
-    """signal emitted for each log record"""
 
-    def __init__(self, parent=None, level=0):
+    def __init__(self, level=0, parent=None):
         QtCore.QObject.__init__(self, parent)
         logging.Handler.__init__(self, level)
         self.setFormatter(QtLogFormatter())

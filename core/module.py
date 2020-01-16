@@ -32,7 +32,7 @@ from .connector import Connector
 from core.util.mutex import Mutex
 
 
-class ModuleStateMachine(QtCore.QObject, Fysom):
+class ModuleStateMachine(Fysom, QtCore.QObject):
     """
     FIXME
     """
@@ -42,7 +42,7 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
     # signals
     sigStateChanged = QtCore.Signal(object)  # Fysom event
 
-    def __init__(self, parent, callbacks=None, **kwargs):
+    def __init__(self, callbacks=None, parent=None, **kwargs):
         if callbacks is None:
             callbacks = dict()
 
@@ -65,8 +65,9 @@ class ModuleStateMachine(QtCore.QObject, Fysom):
                    'callbacks': callbacks}
 
         # Initialise state machine:
-        QtCore.QObject.__init__(self, parent)
-        Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
+        super().__init__(parent=parent, cfg=fsm_cfg, **kwargs)
+        # QtCore.QObject.__init__(self, parent)
+        # Fysom.__init__(self, cfg=fsm_cfg, **kwargs)
 
     def __call__(self):
         """
