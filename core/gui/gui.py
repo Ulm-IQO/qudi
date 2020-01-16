@@ -31,7 +31,7 @@ class SystemTrayIcon(QtWidgets.QSystemTrayIcon):
         """Tray icon constructor.
         Adds all the appropriate menus and actions.
         """
-        QtWidgets.QSystemTrayIcon.__init__(self)
+        super().__init__()
         self.setIcon(QtWidgets.QApplication.instance().windowIcon())
         self.right_menu = QtWidgets.QMenu('Quit')
         self.left_menu = QtWidgets.QMenu('Manager')

@@ -223,6 +223,9 @@ class ManagerGui(GuiBase):
             widget.sigReloadModule.disconnect()
             widget.sigDeactivateModule.disconnect()
             widget.sigCleanupModule.disconnect()
+        for loghandler in logging.getLogger().handlers:
+            if isinstance(loghandler, core.logger.QtLogHandler):
+                loghandler.sigLoggedMessage.disconnect()
         self.save_window_pos(self._mw)
         self._mw.close()
 
