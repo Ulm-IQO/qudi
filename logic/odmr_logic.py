@@ -210,7 +210,10 @@ class ODMRLogic(GenericLogic):
             freqs = np.arange(mw_start, mw_stop, mw_step)
             final_freq_list.extend(freqs)
 
-        self.odmr_plot_x = np.array(final_freq_list)
+        if self.final_freq_list:
+            self.odmr_plot_x = np.array(self.final_freq_list)
+        else:
+            self.odmr_plot_x = np.array(final_freq_list)
         self.odmr_plot_y = np.zeros([len(self.get_odmr_channels()), self.odmr_plot_x.size])
 
         range_to_fit = self.range_to_fit
@@ -421,10 +424,9 @@ class ODMRLogic(GenericLogic):
         self.mw_stops = []
 
         if self.module_state() != 'locked':
-            for start in starts:
+            for start, step, stop in zip(starts, steps, stops):
                 if isinstance(start, (int, float)):
                     self.mw_starts.append(limits.frequency_in_range(start))
-            for step, stop in zip(steps, stops):
                 if isinstance(stop, (int, float)) and isinstance(step, (int, float)):
                     if stop <= start:
                         stop = start + step
@@ -487,10 +489,14 @@ class ODMRLogic(GenericLogic):
         self.final_freq_list = []
         if self.mw_scanmode == MicrowaveMode.LIST:
             final_freq_list = []
+            used_starts = []
+            used_steps = []
+            used_stops = []
             for mw_start, mw_stop, mw_step in zip(self.mw_starts, self.mw_stops, self.mw_steps):
-                used_starts = []
-                used_steps = []
-                used_stops = []
+
+                num_steps = int(np.rint((mw_stop - mw_start) / mw_step))
+                end_freq = mw_start + num_steps * mw_step
+                freq_list = np.linspace(mw_start, end_freq, num_steps + 1)
                 if np.abs(mw_stop - mw_start) / mw_step >= limits.list_maxentries:
                     self.log.warning('Number of frequency steps too large for microwave device. '
                                      'Lowering resolution to fit the maximum length.')
@@ -501,29 +507,22 @@ class ODMRLogic(GenericLogic):
 
                 # adjust the end frequency in order to have an integer multiple of step size
                 # The master module (i.e. GUI) will be notified about the changed end frequency
-
-
-                num_steps = int(np.rint((mw_stop - mw_start) / mw_step))
-                end_freq = mw_start + num_steps * mw_step
-                freq_list = np.linspace(mw_start, end_freq, num_steps + 1)
                 final_freq_list.extend(freq_list)
                 self.frequency_lists.append(freq_list)
-                mw_start = freq_list[0]
-                mw_stop = freq_list[-1]
 
                 used_starts.append(mw_start)
                 used_steps.append(mw_step)
-                used_stops.append(mw_stop)
+                used_stops.append(end_freq)
 
 
 
             freq_list, self.sweep_mw_power, mode = self._mw_device.set_list(final_freq_list,
                                                                             self.sweep_mw_power)
+
             self.final_freq_list = freq_list
             self.mw_starts = used_starts
             self.mw_stops = used_stops
             self.mw_steps = used_steps
-
             param_dict = {'mw_starts': used_starts, 'mw_stops': used_stops,
                           'mw_steps': used_steps, 'sweep_mw_power': self.sweep_mw_power}
 
@@ -840,11 +839,15 @@ class ODMRLogic(GenericLogic):
         Execute the currently configured fit on the measurement data. Optionally on passed data
         """
         if (x_data is None) or (y_data is None):
-
             x_data = self.frequency_lists[fit_range]
-            y_args = np.argwhere(x_data - self.final_freq_list)
+            x_data_full_length = np.zeros(len(self.final_freq_list))
+            # how to insert the data at the right position?
+            start_pos = np.where(np.isclose(self.final_freq_list, self.mw_starts[fit_range]))[0][0]
+            self.log.warning("start_pos {}".format(start_pos))
+            x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
+            y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
+            self.log.warning("y_args {}".format(y_args))
             y_data = self.odmr_plot_y[channel_index][y_args]
-
         if fit_function is not None and isinstance(fit_function, str):
             if fit_function in self.get_fit_functions():
                 self.fc.set_current_fit(fit_function)
