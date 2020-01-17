@@ -618,7 +618,7 @@ class ODMRGui(GUIBase):
             dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
+                [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
             self._sd.oversampling_SpinBox.setEnabled(False)
@@ -642,7 +642,7 @@ class ODMRGui(GUIBase):
             dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
+                [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
             self._mw.runtime_DoubleSpinBox.setEnabled(False)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
             self._sd.oversampling_SpinBox.setEnabled(False)
@@ -693,7 +693,7 @@ class ODMRGui(GUIBase):
                 dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
                 for identifier_name in dspinbox_dict:
                     dspinbox_type_list = dspinbox_dict[identifier_name]
-                    [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
+                    [dspinbox_type.setEnabled(False) for dspinbox_type in dspinbox_type_list]
                 self._mw.sweep_power_DoubleSpinBox.setEnabled(False)
                 self._mw.runtime_DoubleSpinBox.setEnabled(False)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(False)
@@ -709,7 +709,7 @@ class ODMRGui(GUIBase):
                 dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
                 for identifier_name in dspinbox_dict:
                     dspinbox_type_list = dspinbox_dict[identifier_name]
-                    [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
+                    [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
                 self._mw.sweep_power_DoubleSpinBox.setEnabled(True)
                 self._mw.runtime_DoubleSpinBox.setEnabled(True)
                 self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
@@ -729,7 +729,7 @@ class ODMRGui(GUIBase):
             dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
             for identifier_name in dspinbox_dict:
                 dspinbox_type_list = dspinbox_dict[identifier_name]
-                [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
+                [dspinbox_type.setEnabled(True) for dspinbox_type in dspinbox_type_list]
             self._mw.runtime_DoubleSpinBox.setEnabled(True)
             self._sd.clock_frequency_DoubleSpinBox.setEnabled(True)
             self._sd.oversampling_SpinBox.setEnabled(True)
@@ -1007,9 +1007,10 @@ class ODMRGui(GUIBase):
         for counter in range(num):
             # construct strings
             start, stop, step = self.get_frequencies_from_row(counter)
+
             starts.append(start)
-            steps.append(steps)
-            stops.append(stops)
+            steps.append(step)
+            stops.append(stop)
 
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
@@ -1020,11 +1021,11 @@ class ODMRGui(GUIBase):
         for object_name in object_dict:
             if "DoubleSpinBox" in object_name:
                 if "start" in object_name:
-                    start = object_dict[object_name].value
+                    start = object_dict[object_name].value()
                 elif "step" in object_name:
-                    step = object_dict[object_name].value
+                    step = object_dict[object_name].value()
                 elif "stop" in object_name:
-                    stop = object_dict[object_name].value
+                    stop = object_dict[object_name].value()
 
         return start, stop, step
 
