@@ -322,10 +322,6 @@ class ODMRGui(GUIBase):
         self._mw.cw_frequency_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
 
         dspinbox_dict = self.get_all_dspinboxes_from_groupbox()
-        for identifier_name in dspinbox_dict:
-            dspinbox_type_list = dspinbox_dict[identifier_name]
-            [dspinbox_type.editingFinished.disconnect() for dspinbox_type in dspinbox_type_list]
-
         self._mw.sweep_power_DoubleSpinBox.editingFinished.connect(self.change_sweep_params)
         self._mw.cw_power_DoubleSpinBox.editingFinished.connect(self.change_cw_params)
         self._mw.runtime_DoubleSpinBox.editingFinished.connect(self.change_runtime)
@@ -542,6 +538,8 @@ class ODMRGui(GUIBase):
                 object_dict[object_name].editingFinished.disconnect()
             object_dict[object_name].hide()
             gridLayout.removeWidget(object_dict[object_name])
+            odmr_control_DockWidget_spinbox_attr = getattr(self._mw.odmr_control_DockWidget, object_name)
+            del odmr_control_DockWidget_spinbox_attr
 
         self._odmr_logic.ranges -= 1
 
@@ -1022,11 +1020,11 @@ class ODMRGui(GUIBase):
         for object_name in object_dict:
             if "DoubleSpinBox" in object_name:
                 if "start" in object_name:
-                    start = object_dict[object_name]
+                    start = object_dict[object_name].value
                 elif "step" in object_name:
-                    step = object_dict[object_name]
+                    step = object_dict[object_name].value
                 elif "stop" in object_name:
-                    stop = object_dict[object_name]
+                    stop = object_dict[object_name].value
 
         return start, stop, step
 
