@@ -94,20 +94,21 @@ class QtLogHandler(logging.Handler, QtCore.QObject):
     """
     sigLoggedMessage = QtCore.Signal(object)
 
-    def __init__(self, level=0, parent=None):
+    def __init__(self, level=0, parent=None, **kwargs):
         QtCore.QObject.__init__(self, parent)
         logging.Handler.__init__(self, level)
         self.setFormatter(QtLogFormatter())
 
     def emit(self, record):
-        """Emit function of handler.
-
-          Formats the log record and emits :sigLoggedMessage:
+        """
+        Emit function of handler.
+        Formats the log record and hands it to the callback.
 
           @param object record: :logging.LogRecord:
         """
         record = self.format(record)
         if record:
+            print(self.parent())
             # This is a workaround for PySide2. Signal emits cause calls to <instance>.emit()
             QtCore.QObject.emit(self, QtCore.SIGNAL('sigLoggedMessage(PyObject)'), record)
             # self.sigLoggedMessage.emit(record)
@@ -142,9 +143,8 @@ def initialize_logger(path=''):
     logger.addHandler(rotating_file_handler)
 
     # add Qt log handler
-    qt_log_handler = QtLogHandler()
-    qt_log_handler.setLevel(logging.DEBUG)
-    logging.getLogger().addHandler(qt_log_handler)
+    # qt_log_handler = QtLogHandler(level=logging.DEBUG)
+    # logging.getLogger().addHandler(qt_log_handler)
 
     for logger_name in ['core', 'gui', 'logic', 'hardware']:
             logging.getLogger(logger_name).setLevel(logging.DEBUG)
