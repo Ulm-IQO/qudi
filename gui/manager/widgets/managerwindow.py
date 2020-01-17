@@ -28,7 +28,7 @@ from .consolesettingsdialog import ConsoleSettingsDialog
 from .modulewidget import ModuleScrollWidget
 from qtconsole.rich_jupyter_widget import RichJupyterWidget
 
-
+import logging
 class ManagerMainWindow(QtWidgets.QMainWindow):
     """
     Main Window definition for the manager GUI.

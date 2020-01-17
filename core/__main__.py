@@ -81,24 +81,23 @@ import qtpy
 from qtpy import QtCore
 
 
-def qt_message_handler(msgType, msg):
+def qt_message_handler(msg_type, context, msg):
     """
     A message handler handling Qt messages.
     """
     logger = logging.getLogger('Qt')
     if qtpy.PYQT4:
         msg = msg.decode('utf-8')
-    if msgType == QtCore.QtDebugMsg:
+    if msg_type == QtCore.QtDebugMsg:
         logger.debug(msg)
-    elif msgType == QtCore.QtWarningMsg:
+    elif msg_type == QtCore.QtWarningMsg:
         logger.warning(msg)
-    elif msgType == QtCore.QtCriticalMsg:
+    elif msg_type == QtCore.QtCriticalMsg:
         logger.critical(msg)
     else:
         import traceback
-        logger.critical('Fatal error occurred: {0}\n'
-                'Traceback:\n'
-                '{1}'.format(msg, ''.join(traceback.format_stack())))
+        logger.critical('Fatal error occurred: {0}\nTraceback:\n{1}'
+                        ''.format(msg, ''.join(traceback.format_stack())))
         global man
         if man is not None:
             logger.critical('Asking manager to quit.')
@@ -108,12 +107,8 @@ def qt_message_handler(msgType, msg):
             except:
                 logger.exception('Manager failed quitting.')
 
-if qtpy.PYQT4 or qtpy.PYSIDE:
-    QtCore.qInstallMsgHandler(qt_message_handler)
-else:
-    def qt5_message_handler(msgType, context, msg):
-        qt_message_handler(msgType, msg)
-    QtCore.qInstallMessageHandler(qt5_message_handler)
+
+QtCore.qInstallMessageHandler(qt_message_handler)
 
 
 # instantiate Qt Application (gui or non-gui)

@@ -138,9 +138,9 @@ class ManagerGui(GuiBase):
         self._manager.sigShutdownAcknowledge.connect(self.prompt_shutdown)
 
         # Log widget
-        for loghandler in logging.getLogger().handlers:
-            if isinstance(loghandler, core.logger.QtLogHandler):
-                loghandler.sigLoggedMessage.connect(self.handle_log_entry)
+        # for loghandler in logging.getLogger().handlers:
+        #     if isinstance(loghandler, core.logger.QtLogHandler):
+        #         loghandler.sigLoggedMessage.connect(self.handle_log_entry)
 
         # Console settings
         self._mw.console_settings_dialog.accepted.connect(self.console_apply_settings)
@@ -223,9 +223,6 @@ class ManagerGui(GuiBase):
             widget.sigReloadModule.disconnect()
             widget.sigDeactivateModule.disconnect()
             widget.sigCleanupModule.disconnect()
-        for loghandler in logging.getLogger().handlers:
-            if isinstance(loghandler, core.logger.QtLogHandler):
-                loghandler.sigLoggedMessage.disconnect()
         self.save_window_pos(self._mw)
         self._mw.close()
 

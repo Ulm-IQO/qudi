@@ -299,8 +299,9 @@ class AutoToolTipDelegate(QtWidgets.QStyledItemDelegate):
             return True
         return super().helpEvent(e, view, option, index)
 
-
-class LogWidget(QtWidgets.QSplitter):
+import logging
+from core.logger import QtLogFormatter
+class LogWidget(logging.Handler, QtWidgets.QSplitter):
     """A widget to show log entries and filter them.
     """
     _sigAddEntry = QtCore.Signal(object)
@@ -312,7 +313,10 @@ class LogWidget(QtWidgets.QSplitter):
         @param QObject parent: Qt parent object for log widget
         @param Manager manager: Manager instance this widget belongs to
         """
-        super().__init__(QtCore.Qt.Horizontal, parent, **kwargs)
+        # super().__init__(QtCore.Qt.Horizontal, parent, **kwargs)
+        logging.Handler.__init__(self, level=0)
+        QtWidgets.QSplitter.__init__(self, QtCore.Qt.Horizontal, parent)
+        self.setFormatter(QtLogFormatter())
         self._log_length = 1000  # Number of max log model entries
 
         # Set up data model and visibility filter model
@@ -390,6 +394,21 @@ class LogWidget(QtWidgets.QSplitter):
         # connect signals
         self._sigAddEntry.connect(self.add_entry, QtCore.Qt.QueuedConnection)
         self.filter_treewidget.itemChanged.connect(self.update_filter_state)
+
+        logging.getLogger().addHandler(self)
+
+    def __del__(self):
+        logging.getLogger().removeHandler(self)
+        # super().__del__()
+
+    def emit(self, record):
+        record = self.format(record)
+        if record:
+            print(self.parent())
+            # This is a workaround for PySide2. Signal emits cause calls to <instance>.emit()
+            # QtCore.QObject.emit(self, QtCore.SIGNAL('sigLoggedMessage(PyObject)'), record)
+            # self.sigLoggedMessage.emit(record)
+            self.add_entry(record)
 
     @property
     def log_length(self):
