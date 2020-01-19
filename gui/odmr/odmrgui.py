@@ -523,6 +523,7 @@ class ODMRGui(GUIBase):
         gridLayout.addWidget(stop_freq_DoubleSpinBox, insertion_row, 6, 1, 1)
 
         self._odmr_logic.ranges += 1
+        self.sigMwSweepParamsChanged.emit()
         return
 
     def remove_ranges_gui_elements_clicked(self):
@@ -542,8 +543,8 @@ class ODMRGui(GUIBase):
             del odmr_control_DockWidget_spinbox_attr
 
         self._odmr_logic.ranges -= 1
-
-        return 0
+        self.sigMwSweepParamsChanged.emit()
+        return
 
     def get_objects_from_groupbox_row(self, row):
         # get elements from the row
@@ -892,7 +893,7 @@ class ODMRGui(GUIBase):
         return
 
     def update_fit_range(self):
-        self._odmr_logic.range_to_fit = self._mw.fit_range_SpinBox.value
+        self._odmr_logic.range_to_fit = self._mw.fit_range_SpinBox.value()
         return
 
     def update_parameter(self, param_dict):
