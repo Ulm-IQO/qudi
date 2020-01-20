@@ -784,15 +784,33 @@ class ODMRGui(GUIBase):
         # Update raw data matrix plot
         cb_range = self.get_matrix_cb_range()
         self.update_colorbar(cb_range)
+        self.log.warning("QRect Settings")
+        self.log.warning("First argument {}".format(odmr_data_x[0]))
+        self.log.warning("Third argument {}".format(odmr_data_x[-1] - odmr_data_x[0]))
+        matrix_range = self._mw.odmr_control_DockWidget.matrix_range_SpinBox.value()
+        start = self._odmr_logic.mw_starts[matrix_range]
+        step = self._odmr_logic.mw_steps[matrix_range]
+        stop = self._odmr_logic.mw_stops[matrix_range]
+        selected_odmr_data_x = np.arange(start, stop, step)
+
         self.odmr_matrix_image.setRect(
             QtCore.QRectF(
-                odmr_data_x[0],
+                selected_odmr_data_x[0],
                 0,
-                np.abs(odmr_data_x[-1] - odmr_data_x[0]),
+                np.abs(selected_odmr_data_x[-1] - selected_odmr_data_x[0]),
                 odmr_matrix.shape[0])
             )
+        odmr_matrix_dp = odmr_matrix[:, self.display_channel]
+        x_data = self._odmr_logic.frequency_lists[matrix_range]
+        x_data_full_length = np.zeros(len(self._odmr_logic.final_freq_list))
+        start_pos = np.where(np.isclose(self._odmr_logic.final_freq_list,
+                                        self._odmr_logic.mw_starts[matrix_range]))[0][0]
+        x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
+        y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
+        odmr_matrix_range = odmr_matrix_dp[:, y_args]
+        self.log.warning('odmr_matrix_shape {}'.format(odmr_matrix.shape))
         self.odmr_matrix_image.setImage(
-            image=odmr_matrix[:, self.display_channel],
+            image=odmr_matrix_range,
             axisOrder='row-major',
             levels=(cb_range[0], cb_range[1]))
 
@@ -924,6 +942,7 @@ class ODMRGui(GUIBase):
         return
 
     def update_matrix_range(self):
+        self.matrix_range = self._mw
         return
 
     def update_parameter(self, param_dict):
