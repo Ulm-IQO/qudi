@@ -211,6 +211,20 @@ class ODMRGui(GUIBase):
                 remove_range_button.clicked.connect(self.remove_ranges_gui_elements_clicked)
                 gridLayout.addWidget(remove_range_button, row, 8, 1, 1)
 
+                matrix_range_label = QtWidgets.QLabel(groupBox)
+                matrix_range_label.setText('Matrix Range:')
+                matrix_range_label.setMinimumWidth(75)
+                matrix_range_label.setMaximumWidth(100)
+                gridLayout.addWidget(matrix_range_label, row + 1, 7, 1, 1)
+
+                matrix_range_SpinBox = QtWidgets.QSpinBox(groupBox)
+                matrix_range_SpinBox.setValue(0)
+                matrix_range_SpinBox.setMinimumWidth(75)
+                matrix_range_SpinBox.setMaximumWidth(100)
+                matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+                gridLayout.addWidget(matrix_range_SpinBox, row + 1, 8, 1, 1)
+                setattr(self._mw.odmr_control_DockWidget, 'matrix_range_SpinBox',
+                        matrix_range_SpinBox)
 
 
         setattr(self._mw.odmr_control_DockWidget, 'ranges_groupBox', groupBox)
@@ -341,6 +355,7 @@ class ODMRGui(GUIBase):
         self._mw.action_RestoreDefault.triggered.connect(self.restore_defaultview)
         self._mw.do_fit_PushButton.clicked.connect(self.do_fit)
         self._mw.fit_range_SpinBox.editingFinished.connect(self.update_fit_range)
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.editingFinished.connect(self.update_matrix_range)
 
         # Control/values-changed signals to logic
         self.sigCwMwOn.connect(self._odmr_logic.mw_cw_on, QtCore.Qt.QueuedConnection)
@@ -527,11 +542,15 @@ class ODMRGui(GUIBase):
         steps = self.get_frequencies_from_spinboxes('step')
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
-        # TODO increase maximum of fit boxes
+        self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges)
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges)
         self._odmr_logic.ranges += 1
         return
 
     def remove_ranges_gui_elements_clicked(self):
+        if self._odmr_logic.ranges == 1:
+            return
+
         remove_row = self._odmr_logic.ranges - 1
 
         groupBox = self._mw.odmr_control_DockWidget.ranges_groupBox
@@ -544,18 +563,16 @@ class ODMRGui(GUIBase):
                 object_dict[object_name].editingFinished.disconnect()
             object_dict[object_name].hide()
             gridLayout.removeWidget(object_dict[object_name])
-            #odmr_control_DockWidget_spinbox_attr = getattr(self._mw.odmr_control_DockWidget, object_name)
-            #del odmr_control_DockWidget_spinbox_attr
             del self._mw.odmr_control_DockWidget.__dict__[object_name]
 
         starts = self.get_frequencies_from_spinboxes('start')
         stops = self.get_frequencies_from_spinboxes('stop')
         steps = self.get_frequencies_from_spinboxes('step')
-        self.log.warning("starts {}".format(starts))
         power = self._mw.sweep_power_DoubleSpinBox.value()
         self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
-        # TODO reduce maximum of fit boxes
         self._odmr_logic.ranges -= 1
+        self._mw.fit_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
+        self._mw.odmr_control_DockWidget.matrix_range_SpinBox.setMaximum(self._odmr_logic.ranges - 1)
         return
 
     def get_objects_from_groupbox_row(self, row):
@@ -904,6 +921,9 @@ class ODMRGui(GUIBase):
 
     def update_fit_range(self):
         self._odmr_logic.range_to_fit = self._mw.fit_range_SpinBox.value()
+        return
+
+    def update_matrix_range(self):
         return
 
     def update_parameter(self, param_dict):
