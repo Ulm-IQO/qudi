@@ -522,8 +522,13 @@ class ODMRGui(GUIBase):
         gridLayout.addWidget(stop_label, insertion_row, 5, 1, 1)
         gridLayout.addWidget(stop_freq_DoubleSpinBox, insertion_row, 6, 1, 1)
 
+        starts = self.get_frequencies_from_spinboxes('start')
+        stops = self.get_frequencies_from_spinboxes('stop')
+        steps = self.get_frequencies_from_spinboxes('step')
+        power = self._mw.sweep_power_DoubleSpinBox.value()
+        self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
+        # TODO increase maximum of fit boxes
         self._odmr_logic.ranges += 1
-        self.sigMwSweepParamsChanged.emit()
         return
 
     def remove_ranges_gui_elements_clicked(self):
@@ -539,11 +544,18 @@ class ODMRGui(GUIBase):
                 object_dict[object_name].editingFinished.disconnect()
             object_dict[object_name].hide()
             gridLayout.removeWidget(object_dict[object_name])
-            odmr_control_DockWidget_spinbox_attr = getattr(self._mw.odmr_control_DockWidget, object_name)
-            del odmr_control_DockWidget_spinbox_attr
+            #odmr_control_DockWidget_spinbox_attr = getattr(self._mw.odmr_control_DockWidget, object_name)
+            #del odmr_control_DockWidget_spinbox_attr
+            del self._mw.odmr_control_DockWidget.__dict__[object_name]
 
+        starts = self.get_frequencies_from_spinboxes('start')
+        stops = self.get_frequencies_from_spinboxes('stop')
+        steps = self.get_frequencies_from_spinboxes('step')
+        self.log.warning("starts {}".format(starts))
+        power = self._mw.sweep_power_DoubleSpinBox.value()
+        self.sigMwSweepParamsChanged.emit(starts, stops, steps, power)
+        # TODO reduce maximum of fit boxes
         self._odmr_logic.ranges -= 1
-        self.sigMwSweepParamsChanged.emit()
         return
 
     def get_objects_from_groupbox_row(self, row):
@@ -580,10 +592,11 @@ class ODMRGui(GUIBase):
     def get_freq_dspinboxes_from_groubpox(self, identifier):
         n_rows = self._odmr_logic.ranges
         dspinboxes = []
-        for row in range(n_rows):
-            freq_DoubleSpinBox_str = '{}_freq_DoubleSpinBox_{}'.format(identifier, row)
-            freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, freq_DoubleSpinBox_str)
-            dspinboxes.append(freq_DoubleSpinBox)
+        for name in self._mw.odmr_control_DockWidget.__dict__:
+            box_name = identifier + '_freq_DoubleSpinBox'
+            if box_name in name:
+                freq_DoubleSpinBox = getattr(self._mw.odmr_control_DockWidget, name)
+                dspinboxes.append(freq_DoubleSpinBox)
 
         return dspinboxes
 
@@ -598,11 +611,8 @@ class ODMRGui(GUIBase):
 
 
     def get_frequencies_from_spinboxes(self, identifier):
-        dspinboxes_dict = self.get_all_dspinboxes_from_groupbox()
-        freqs = []
-        for d_spinbox_name in dspinboxes_dict:
-            if identifier in d_spinbox_name:
-                freqs.append(dspinboxes_dict[d_spinbox_name].value)
+        dspinboxes = self.get_freq_dspinboxes_from_groubpox(identifier)
+        freqs = [dspinbox.value() for dspinbox in dspinboxes]
         return freqs
 
     def run_stop_odmr(self, is_checked):

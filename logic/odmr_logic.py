@@ -843,10 +843,8 @@ class ODMRLogic(GenericLogic):
             x_data_full_length = np.zeros(len(self.final_freq_list))
             # how to insert the data at the right position?
             start_pos = np.where(np.isclose(self.final_freq_list, self.mw_starts[fit_range]))[0][0]
-            self.log.warning("start_pos {}".format(start_pos))
             x_data_full_length[start_pos:(start_pos + len(x_data))] = x_data
             y_args = np.array([ind_list[0] for ind_list in np.argwhere(x_data_full_length)])
-            self.log.warning("y_args {}".format(y_args))
             y_data = self.odmr_plot_y[channel_index][y_args]
         if fit_function is not None and isinstance(fit_function, str):
             if fit_function in self.get_fit_functions():
